@@ -1,0 +1,6 @@
+@SuperBot.WebApi_HostAddress = http://localhost:5263
+
+GET {{SuperBot.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
