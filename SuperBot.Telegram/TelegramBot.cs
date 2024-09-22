@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using SuperBot.Core.Entities;
+using System.Net.Http.Json;
 
 namespace SuperBot.Telegram
 {

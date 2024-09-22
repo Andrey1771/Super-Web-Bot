@@ -7,21 +7,24 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F4850650-267
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{1B71B6C1-D0D1-4574-B275-577EEEA14CAE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.WebApi", "SuperBot.WebApi\SuperBot.WebApi.csproj", "{54E164C0-111D-49A0-BCAD-126B70DB4270}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.WebApi", "SuperBot.WebApi\SuperBot.WebApi.csproj", "{54E164C0-111D-49A0-BCAD-126B70DB4270}"
+	ProjectSection(ProjectDependencies) = postProject
+		{CB3BED97-4B5E-4092-8AA8-B4D4DEF5491C} = {CB3BED97-4B5E-4092-8AA8-B4D4DEF5491C}
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Core", "SuperBot.Core\SuperBot.Core.csproj", "{CB3BED97-4B5E-4092-8AA8-B4D4DEF5491C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Core", "SuperBot.Core\SuperBot.Core.csproj", "{CB3BED97-4B5E-4092-8AA8-B4D4DEF5491C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Data", "SuperBot.Data\SuperBot.Data.csproj", "{274121C7-9318-4503-BD03-A9D6FA7946D4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Data", "SuperBot.Data\SuperBot.Data.csproj", "{274121C7-9318-4503-BD03-A9D6FA7946D4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Tests", "SuperBot.Tests\SuperBot.Tests.csproj", "{B0C13AA7-357D-428B-8349-6988481B2F53}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Tests", "SuperBot.Tests\SuperBot.Tests.csproj", "{B0C13AA7-357D-428B-8349-6988481B2F53}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Telegram", "SuperBot.Telegram\SuperBot.Telegram.csproj", "{7D3600E6-B2C9-43CB-A209-E62755A873E5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Telegram", "SuperBot.Telegram\SuperBot.Telegram.csproj", "{7D3600E6-B2C9-43CB-A209-E62755A873E5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Application", "SuperBot.Application\SuperBot.Application.csproj", "{BCD68989-2D2D-44A2-8CF9-FC2BF59703ED}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Application", "SuperBot.Application\SuperBot.Application.csproj", "{BCD68989-2D2D-44A2-8CF9-FC2BF59703ED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Infrastructure", "SuperBot.Infrastructure\SuperBot.Infrastructure.csproj", "{7D4FD53B-2F45-419F-BA9A-A71A5B1FFF45}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Infrastructure", "SuperBot.Infrastructure\SuperBot.Infrastructure.csproj", "{7D4FD53B-2F45-419F-BA9A-A71A5B1FFF45}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Presentation", "SuperBot.Presentation\SuperBot.Presentation.csproj", "{5D3C5644-F8BA-4295-83B4-856DF7A553C0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Presentation", "SuperBot.Presentation\SuperBot.Presentation.csproj", "{5D3C5644-F8BA-4295-83B4-856DF7A553C0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

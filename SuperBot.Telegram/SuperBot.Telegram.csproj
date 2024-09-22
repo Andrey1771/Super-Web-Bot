@@ -12,4 +12,8 @@
     <Folder Include="Handlers\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SuperBot.Core\SuperBot.Core.csproj" />
+  </ItemGroup>
+
 </Project>
