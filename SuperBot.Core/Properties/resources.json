@@ -1,0 +1,22 @@
+{
+  "Translations": {
+    "Ru": {
+      "BuySteamGames": "Купить игры Steam",
+      "InternationalTransfers": "Переводы за рубеж",
+      "Investments": "Инвестиции",
+      "Account": "Мой кабинет",
+      "SelectAction": "Выберите действие:",
+      "SteamTopUp": "Пополнение Steam",
+      "Store": "Магазин"
+    }
+  },
+  "KeyboardKeys": {
+    "BuySteamGames": "/buy",
+    "InternationalTransfers": "/transfers",
+    "Investments": "/investments",
+    "Account": "/account",
+    "SelectAction": "/selectAction",
+    "SteamTopUp": "/topUp",
+    "Store": "/store"
+  }
+}

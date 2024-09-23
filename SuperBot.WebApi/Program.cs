@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Localization;
+using SuperBot.Application.Commands;
 using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Types;
 using System.Globalization;
@@ -34,7 +36,12 @@ builder.Services.Configure<BotConfiguration>(botConfigSection);
 builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<ITelegramBotClient>(
     httpClient => new TelegramBotClient(botConfigSection.Get<BotConfiguration>()!.BotToken, httpClient));
 builder.Services.AddSingleton<UpdateHandler>();
+
 builder.Services.ConfigureTelegramBotMvc();
+
+var domainAssembly = typeof(GetMainMenuCommand).Assembly;
+builder.Services
+    .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
 
 builder.Services.AddControllers();
 

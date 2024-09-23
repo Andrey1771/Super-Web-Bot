@@ -25,6 +25,7 @@ namespace SuperBot.WebApi.Controllers
         {
             if (Request.Headers["X-Telegram-Bot-Api-Secret-Token"] != Config.Value.SecretToken)
                 return Forbid();
+
             try
             {
                 await handleUpdateService.HandleUpdateAsync(bot, update, ct);
