@@ -1,6 +1,8 @@
 {
   "Translations": {
     "Ru": {
+      "BotMenu": "Меню бота:",
+
       "BuySteamGames": "Купить игры Steam",
       "InternationalTransfers": "Переводы за рубеж",
       "Investments": "Инвестиции",

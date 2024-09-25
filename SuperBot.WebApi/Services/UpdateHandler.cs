@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Components.Forms;
+using SuperBot.Application.Commands;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -24,24 +25,27 @@ namespace SuperBot.WebApi.Services;
         public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+        var c = new GetMainMenuCommand();
+        c.ChatId = update.Message.Chat.Id;
 
             await (update switch
             {
-                { Message: { } message } =>  OnMessage(message),
-                { EditedMessage: { } message } => OnMessage(message),
-                { CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
-                { InlineQuery: { } inlineQuery } => OnInlineQuery(inlineQuery),
-                { ChosenInlineResult: { } chosenInlineResult } => OnChosenInlineResult(chosenInlineResult),
-                { Poll: { } poll } => OnPoll(poll),
-                { PollAnswer: { } pollAnswer } => OnPollAnswer(pollAnswer),
-                // ChannelPost:
-                // EditedChannelPost:
-                // ShippingQuery:
-                // PreCheckoutQuery:
-                _ => UnknownUpdateHandlerAsync(update)
+                { Message: { } message } => mediator.Send(c),
+                _ => throw new NotImplementedException(),
+                /*{ EditedMessage: { } message } => OnMessage(message),
+{ CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
+{ InlineQuery: { } inlineQuery } => OnInlineQuery(inlineQuery),
+{ ChosenInlineResult: { } chosenInlineResult } => OnChosenInlineResult(chosenInlineResult),
+{ Poll: { } poll } => OnPoll(poll),
+{ PollAnswer: { } pollAnswer } => OnPollAnswer(pollAnswer),
+// ChannelPost:
+// EditedChannelPost:
+// ShippingQuery:
+// PreCheckoutQuery:
+_ => UnknownUpdateHandlerAsync(update)*/
             });
         }
-
+    /*
         private async Task OnMessage(Message msg)
         {
             logger.LogInformation("Receive message type: {MessageType}", msg.Type);
@@ -80,7 +84,7 @@ namespace SuperBot.WebApi.Services;
             """;
             return await bot.SendTextMessageAsync(msg.Chat, usage, parseMode: ParseMode.Html, replyMarkup: new ReplyKeyboardRemove());
         }
-
+    */
     /*
     async Task<Message> SendPhoto(Message msg)
     {

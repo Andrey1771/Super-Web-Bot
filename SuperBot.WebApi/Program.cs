@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Localization;
 using SuperBot.Application.Commands;
+using SuperBot.Core.Interfaces;
+using SuperBot.Core.Services;
 using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Types;
 using System.Globalization;
@@ -43,7 +45,11 @@ var domainAssembly = typeof(GetMainMenuCommand).Assembly;
 builder.Services
     .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
 
+
 builder.Services.AddControllers();
+
+builder.Services.AddTransient<IResourceService, JsonResourceService>();
+builder.Services.AddTransient<ITranslationsService, TranslationsService>();
 
 var app = builder.Build();
 
