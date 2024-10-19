@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Services;
+using SuperBot.Infrastructure.Models;
+using SuperBot.WebApi;
 using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Types;
 using System.Globalization;
@@ -50,6 +53,9 @@ builder.Services.AddControllers();
 
 builder.Services.AddTransient<IResourceService, JsonResourceService>();
 builder.Services.AddTransient<ITranslationsService, TranslationsService>();
+
+//builder.Configu.AddAutoMapper(typeof(GameProfile));
+builder.Services.AddAutoMapper(typeof(GameProfile));
 
 var app = builder.Build();
 

@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SuperBot.Application\SuperBot.Application.csproj" />
     <ProjectReference Include="..\SuperBot.Core\SuperBot.Core.csproj" />
+    <ProjectReference Include="..\SuperBot.Infrastructure\SuperBot.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

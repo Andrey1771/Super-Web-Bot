@@ -1,9 +1,8 @@
-﻿using MediatR;
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 
 namespace SuperBot.Application.Commands
 {
-    public class GetMainMenuCommand : BaseCommand
+    public class BuyGameCommand : BaseCommand
     {
         public long ChatId { get; set; }
     }
