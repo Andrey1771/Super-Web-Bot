@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
+using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
+using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -8,23 +11,25 @@ namespace SuperBot.WebApi.Controllers
     public class GamesCatalogController : ControllerBase
     {
         private readonly IGameRepository _gameRepository;
+        private readonly IMapper _mapper;
 
-        public GamesCatalogController(IGameRepository gameRepository)
+        public GamesCatalogController(IGameRepository gameRepository, IMapper mapper)
         {
+            _mapper = mapper;
             _gameRepository = gameRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAllGames()
         {
-            var games = await _gameRepository.GetAllGamesAsync();
+            var games = await _gameRepository.GetAllAsync();
             return Ok(games);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetGameById(string id)
         {
-            var game = await _gameRepository.GetGameByIdAsync(id);
+            var game = await _gameRepository.GetByIdAsync(id);
             if (game == null)
             {
                 return NotFound();
@@ -33,37 +38,37 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateGame([FromBody] GameDto newGameDto)
+        public async Task<IActionResult> CreateGame([FromBody] Game newGame)
         {
-            var newGame = GameMapper.MapToModel(newGameDto); // Если используется маппер
-            var game = await _gameRepository.CreateGameAsync(newGame);
-            return CreatedAtAction(nameof(GetGameById), new { id = game.Id }, game);
+            var game = _mapper.Map<Game>(newGame);
+            await _gameRepository.CreateAsync(game);
+            return CreatedAtAction(nameof(GetGameById), new { id = Guid.NewGuid() }, game);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateGame(string id, [FromBody] GameDto updatedGameDto)
+        public async Task<IActionResult> UpdateGame(string id, [FromBody] Game updatedGame)
         {
-            var game = await _gameRepository.GetGameByIdAsync(id);
+            var game = await _gameRepository.GetByIdAsync(id);
             if (game == null)
             {
                 return NotFound();
             }
 
-            var updatedGame = GameMapper.MapToModel(updatedGameDto); // Если используется маппер
-            await _gameRepository.UpdateGameAsync(id, updatedGame);
+            var updatedGameForDb = _mapper.Map<Game>(game);
+            await _gameRepository.UpdateAsync(id, updatedGameForDb);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteGame(string id)
         {
-            var game = await _gameRepository.GetGameByIdAsync(id);
+            var game = await _gameRepository.GetByIdAsync(id);
             if (game == null)
             {
                 return NotFound();
             }
 
-            await _gameRepository.DeleteGameAsync(id);
+            await _gameRepository.DeleteAsync(id);
             return NoContent();
         }
     }
