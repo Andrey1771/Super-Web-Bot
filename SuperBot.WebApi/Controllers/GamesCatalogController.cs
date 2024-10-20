@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
-using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.WebApi.Controllers
 {

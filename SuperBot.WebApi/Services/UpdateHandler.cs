@@ -1,6 +1,9 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Components.Forms;
+using MongoDB.Driver;
 using SuperBot.Application.Commands;
+using SuperBot.Core.Interfaces;
+using SuperBot.Core.Services;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -10,29 +13,29 @@ using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.WebApi.Services;
-    public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, IMediator mediator) : IUpdateHandler
+public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, IMediator mediator, ITranslationsService translationsService) : IUpdateHandler
+{
+    private static readonly InputPollOption[] PollOptions = ["Hello", "World!"];
+
+    public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
     {
-        private static readonly InputPollOption[] PollOptions = ["Hello", "World!"];
+        logger.LogInformation("HandleError: {Exception}", exception);
+        // Cooldown in case of network connection error
+        if (exception is RequestException)
+            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+    }
 
-        public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
-        {
-            logger.LogInformation("HandleError: {Exception}", exception);
-            // Cooldown in case of network connection error
-            if (exception is RequestException)
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
-        }
-
-        public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+    public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var c = new GetMainMenuCommand();
         c.ChatId = update.Message.Chat.Id;
 
-            await (update switch
-            {
-                { Message: { } message } => mediator.Send(c),
-                _ => throw new NotImplementedException(),
-                /*{ EditedMessage: { } message } => OnMessage(message),
+        await (update switch
+        {
+            { Message: { } message } => OnMessage(message),
+            _ => throw new NotImplementedException(),
+            /*{ EditedMessage: { } message } => OnMessage(message),
 { CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
 { InlineQuery: { } inlineQuery } => OnInlineQuery(inlineQuery),
 { ChosenInlineResult: { } chosenInlineResult } => OnChosenInlineResult(chosenInlineResult),
@@ -43,31 +46,53 @@ namespace SuperBot.WebApi.Services;
 // ShippingQuery:
 // PreCheckoutQuery:
 _ => UnknownUpdateHandlerAsync(update)*/
-            });
-        }
-    /*
-        private async Task OnMessage(Message msg)
+        });
+    }
+
+    private async Task OnMessage(Message msg)
+    {
+        logger.LogInformation("Receive message type: {MessageType}", msg.Type);
+        if (msg.Text is not { } messageText)
+            return;
+
+        string command = messageText.Split(' ')[0];
+        Message sentMessage;
+
+        if (command == translationsService.KeyboardKeys.BuySteamGames)
         {
-            logger.LogInformation("Receive message type: {MessageType}", msg.Type);
-            if (msg.Text is not { } messageText)
-                return;
-
-            Message sentMessage = await (messageText.Split(' ')[0] switch
-            {
-                "/photo" => SendPhoto(msg),
-                "/inline_buttons" => SendInlineKeyboard(msg),
-                "/keyboard" => SendReplyKeyboard(msg),
-                "/remove" => RemoveKeyboard(msg),
-                "/request" => RequestContactAndLocation(msg),
-                "/inline_mode" => StartInlineQuery(msg),
-                "/poll" => SendPoll(msg),
-                "/poll_anonymous" => SendAnonymousPoll(msg),
-                "/throw" => FailingHandler(msg),
-                _ => Usage(msg)
-            });
-            logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
+            sentMessage = await BuySteamGames(msg);
         }
+        else
+        {
+            sentMessage = await Usage(msg);
+        }
+        logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
+    }
+    private Task<Message> BuySteamGames(Message msg)
+    {
+        var command = new BuyGameCommand();
+        command.ChatId = msg.Chat.Id;
+        return mediator.Send(command);
+    }
 
+    private Task<Message> Usage(Message msg)
+    {
+        var command = new GetMainMenuCommand();
+        command.ChatId = msg.Chat.Id;
+        return mediator.Send(command);
+    }
+
+
+    /*
+     * stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.BuySteamGames, _translationsService.Translation.BuySteamGames));
+            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.InternationalTransfers, _translationsService.Translation.InternationalTransfers));
+            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Investments, _translationsService.Translation.Investments));
+            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Account, _translationsService.Translation.Account));
+            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SelectAction, _translationsService.Translation.SelectAction));
+            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SteamTopUp, _translationsService.Translation.SteamTopUp));
+            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Store, _translationsService.Translation.Store));
+     * 
+     * 
         async Task<Message> Usage(Message msg)
         {
             const string usage = """
