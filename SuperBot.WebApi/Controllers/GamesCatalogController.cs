@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
-using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IRepositories;
 
 namespace SuperBot.WebApi.Controllers
 {

@@ -3,7 +3,7 @@ using Telegram.Bot.Types;
 
 namespace SuperBot.Application.Commands
 {
-    public class GetMainMenuCommand : BaseCommand
+    public class GetMainMenuCommand : BaseMessageCommand
     {
         public long ChatId { get; set; }
     }

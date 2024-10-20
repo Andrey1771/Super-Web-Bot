@@ -1,10 +1,15 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver;
 using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IBotStateService;
+using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
 using SuperBot.Infrastructure.Models;
+using SuperBot.Infrastructure.Repositories;
 using SuperBot.WebApi;
 using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Types;
@@ -53,9 +58,30 @@ builder.Services.AddControllers();
 
 builder.Services.AddTransient<IResourceService, JsonResourceService>();
 builder.Services.AddTransient<ITranslationsService, TranslationsService>();
+builder.Services.AddTransient<IBotStateReaderService, BotStateService>();
+builder.Services.AddTransient<IBotStateWriterService, BotStateService>();
+
+
+builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>
+{
+    var connectionString = builder.Configuration.GetSection("MongoDb").Value;
+    return new MongoClient(connectionString);
+});
+// Регистрация MongoDatabase
+builder.Services.AddScoped<IMongoDatabase>(sp =>
+{
+    var mongoClient = sp.GetRequiredService<IMongoClient>();
+
+    var mongoName = builder.Configuration.GetSection("Name").Value;
+    return mongoClient.GetDatabase(mongoName);  // Укажите имя вашей базы данных
+});
+builder.Services.AddTransient<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddTransient<IOrderRepository, OrderMongoDbRepository>();
+
 
 //builder.Configu.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(GameProfile));
+builder.Services.AddAutoMapper(typeof(OrderProfile));
 
 var app = builder.Build();
 

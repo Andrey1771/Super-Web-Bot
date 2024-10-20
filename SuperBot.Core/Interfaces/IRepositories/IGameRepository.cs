@@ -1,7 +1,6 @@
-﻿
-using SuperBot.Core.Entities;
+﻿using SuperBot.Core.Entities;
 
-namespace SuperBot.Core.Interfaces
+namespace SuperBot.Core.Interfaces.IRepositories
 {
     public interface IGameRepository
     {

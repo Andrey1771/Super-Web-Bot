@@ -2,7 +2,7 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
-using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Repositories

@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Components.Forms;
 using MongoDB.Driver;
 using SuperBot.Application.Commands;
+using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Services;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -13,7 +15,8 @@ using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.WebApi.Services;
-public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, IMediator mediator, ITranslationsService translationsService) : IUpdateHandler
+public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, IMediator mediator,
+    ITranslationsService translationsService, IBotStateReaderService botStateReaderService) : IUpdateHandler
 {
     private static readonly InputPollOption[] PollOptions = ["Hello", "World!"];
 
@@ -56,29 +59,62 @@ _ => UnknownUpdateHandlerAsync(update)*/
             return;
 
         string command = messageText.Split(' ')[0];
-        Message sentMessage;
+        var sentMessage = await HandleMessageAsync(msg, command);
 
+        logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage?.MessageId);
+    }
+
+    private async Task<Message> HandleMessageAsync(Message msg, string command)
+    {
         if (command == translationsService.KeyboardKeys.BuySteamGames)
         {
-            sentMessage = await BuySteamGames(msg);
+            await ChangeDialogState(msg, DialogState.BuyGame);
+            return await Task.FromResult<Message>(null);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(msg.Chat.Id)).DialogState == DialogState.BuyGame)
+        {
+            return await BuySteamGames(msg);
         }
         else
         {
-            sentMessage = await Usage(msg);
+            return await Usage(msg);
         }
-        logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
     }
+
+
+    private Task ChangeDialogState(Message msg, DialogState dialogState)
+    {
+        var command = new ChangeDialogStateCommand();
+        command.ChatId = msg.Chat.Id;
+        command.DialogState = dialogState;
+        return mediator.Send(command);
+    }
+
+    private async Task<Message> Usage(Message msg)
+    {
+        switch ((await botStateReaderService.GetChatStateAsync(msg.Chat.Id)).DialogState)
+        {
+            case DialogState.MainMenu:
+                var command = new GetMainMenuCommand();
+                command.ChatId = msg.Chat.Id;
+                return await mediator.Send(command);
+
+            case DialogState.BuyGame:
+                return await BuySteamGames(msg);
+
+            default:
+                throw new NotImplementedException();
+        }
+
+    }
+
     private Task<Message> BuySteamGames(Message msg)
     {
         var command = new BuyGameCommand();
         command.ChatId = msg.Chat.Id;
-        return mediator.Send(command);
-    }
+        command.FromUsername = msg.From.Username;
+        command.Text = msg.Text;
 
-    private Task<Message> Usage(Message msg)
-    {
-        var command = new GetMainMenuCommand();
-        command.ChatId = msg.Chat.Id;
         return mediator.Send(command);
     }
 
