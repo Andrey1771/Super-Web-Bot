@@ -4,6 +4,9 @@
       "BotMenu": "Меню бота:",
 
       "BuySteamGames": "Купить игры Steam",
+      "NavigateToGamePurchase": "Для приобретения игры введите ее название",
+      "NotFoundGameError": "Извините, игра не найдена в нашем каталоге.",
+      "MadeOrderGame": "Игра '{0}' успешно добавлена в ваш заказ!/nВ ближайшее время с вами свяжутся.",
       "InternationalTransfers": "Переводы за рубеж",
       "Investments": "Инвестиции",
       "Account": "Мой кабинет",

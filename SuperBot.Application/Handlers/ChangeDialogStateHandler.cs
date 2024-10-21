@@ -1,20 +1,23 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
 using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace SuperBot.Application.Handlers
 {
-    public class ChangeDialogStateHandler(IBotStateWriterService botStateWriterService) : IRequestHandler<ChangeDialogStateCommand>
+    public class ChangeDialogStateHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IBotStateWriterService botStateWriterService) : IRequestHandler<ChangeDialogStateCommand, Message>
     {
-        public Task Handle(ChangeDialogStateCommand request, CancellationToken cancellationToken)
+        public async Task<Message> Handle(ChangeDialogStateCommand request, CancellationToken cancellationToken)
         {
             var chatState = new ChatState();
             chatState.LastInteractionTime = DateTime.UtcNow;
             chatState.DialogState = request.DialogState;
 
-            botStateWriterService.SaveChatStateAsync(request.ChatId, chatState);
-            return Task.CompletedTask;
+            await botStateWriterService.SaveChatStateAsync(request.ChatId, chatState);
+            return await _botClient.SendTextMessageAsync(request.ChatId, request.Text);
         }
     }
 }

@@ -58,8 +58,11 @@ builder.Services.AddControllers();
 
 builder.Services.AddTransient<IResourceService, JsonResourceService>();
 builder.Services.AddTransient<ITranslationsService, TranslationsService>();
-builder.Services.AddTransient<IBotStateReaderService, BotStateService>();
-builder.Services.AddTransient<IBotStateWriterService, BotStateService>();
+
+
+builder.Services.AddSingleton<BotStateService>();
+builder.Services.AddSingleton<IBotStateReaderService>(provider => provider.GetRequiredService<BotStateService>());
+builder.Services.AddSingleton<IBotStateWriterService>(provider => provider.GetRequiredService<BotStateService>());
 
 
 builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>

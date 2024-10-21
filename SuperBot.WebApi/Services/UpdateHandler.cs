@@ -68,7 +68,7 @@ _ => UnknownUpdateHandlerAsync(update)*/
     {
         if (command == translationsService.KeyboardKeys.BuySteamGames)
         {
-            await ChangeDialogState(msg, DialogState.BuyGame);
+            await ChangeDialogState(msg, DialogState.BuyGame, translationsService.Translation.NavigateToGamePurchase);
             return await Task.FromResult<Message>(null);
         }
         else if ((await botStateReaderService.GetChatStateAsync(msg.Chat.Id)).DialogState == DialogState.BuyGame)
@@ -82,11 +82,12 @@ _ => UnknownUpdateHandlerAsync(update)*/
     }
 
 
-    private Task ChangeDialogState(Message msg, DialogState dialogState)
+    private Task<Message> ChangeDialogState(Message msg, DialogState dialogState, string text)
     {
         var command = new ChangeDialogStateCommand();
         command.ChatId = msg.Chat.Id;
         command.DialogState = dialogState;
+        command.Text = text;
         return mediator.Send(command);
     }
 
@@ -100,7 +101,8 @@ _ => UnknownUpdateHandlerAsync(update)*/
                 return await mediator.Send(command);
 
             case DialogState.BuyGame:
-                return await BuySteamGames(msg);
+                await BuySteamGames(msg);
+                return await ChangeDialogState(msg, DialogState.MainMenu, translationsService.Translation.BotMenu);
 
             default:
                 throw new NotImplementedException();

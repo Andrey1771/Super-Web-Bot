@@ -15,6 +15,9 @@
     {
         public string BotMenu { get; set; }
         public string BuySteamGames { get; set; }
+        public string NavigateToGamePurchase { get; set; }
+        public string NotFoundGameError { get; set; }
+        public string MadeOrderGame { get; set; }
         public string InternationalTransfers { get; set; }
         public string Investments { get; set; }
         public string Account { get; set; }

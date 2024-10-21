@@ -10,11 +10,12 @@ namespace SuperBot.Core.Services
 
         public Task<ChatState> GetChatStateAsync(long chatId)
         {
+            var state = _chatStates.FirstOrDefault(chatState => chatState.Key == chatId).Value;
             // Если состояния для пользователя нет, возвращаем новое
-            if (!_chatStates.TryGetValue(chatId, out var state))
+            if (state == null)
             {
-                state = new ChatState { LastInteractionTime = DateTime.UtcNow };
-                _chatStates[chatId] = state;
+                state = new ChatState { LastInteractionTime = DateTime.UtcNow, DialogState = DialogState.MainMenu };
+                //_chatStates[chatId] = state;
             }
             return Task.FromResult(state);
         }

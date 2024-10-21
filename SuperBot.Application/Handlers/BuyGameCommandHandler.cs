@@ -25,7 +25,7 @@ namespace SuperBot.Application.Handlers
             if (game == null)
             {
                 //return Unit.Value;
-                return await _botClient.SendTextMessageAsync(chatId, "Извините, игра не найдена в нашем каталоге.");
+                return await _botClient.SendTextMessageAsync(chatId, _translationsService.Translation.NotFoundGameError);
             }
 
             // Если игра найдена, создаем заказ
@@ -39,7 +39,7 @@ namespace SuperBot.Application.Handlers
             await orderRepository.CreateOrderAsync(newOrder);
 
             // Подтверждаем покупку
-            return await _botClient.SendTextMessageAsync(chatId, $"Игра '{game.Name}' успешно добавлена в ваш заказ!/n В ближайшее время с вами свяжутся.");
+            return await _botClient.SendTextMessageAsync(chatId, string.Format(_translationsService.Translation.NavigateToGamePurchase, game.Name));
         }
     }
 }

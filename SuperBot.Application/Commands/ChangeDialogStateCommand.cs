@@ -2,9 +2,11 @@
 
 namespace SuperBot.Application.Commands
 {
-    public class ChangeDialogStateCommand : BaseCommand
+    public class ChangeDialogStateCommand : BaseMessageCommand
     {
         public long ChatId { get; set; }
         public DialogState DialogState { get; set; }
+        public string Text { get; set; }
+
     }
 }
