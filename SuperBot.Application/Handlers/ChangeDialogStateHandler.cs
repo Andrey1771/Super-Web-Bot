@@ -17,7 +17,9 @@ namespace SuperBot.Application.Handlers
             chatState.DialogState = request.DialogState;
 
             await botStateWriterService.SaveChatStateAsync(request.ChatId, chatState);
-            return await _botClient.SendTextMessageAsync(request.ChatId, request.Text);
+
+            var text = request.Text;
+            return text == "" ? await Task.FromResult<Message>(null) : await _botClient.SendTextMessageAsync(request.ChatId, text);
         }
     }
 }

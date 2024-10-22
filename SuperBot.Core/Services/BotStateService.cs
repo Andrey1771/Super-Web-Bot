@@ -15,7 +15,7 @@ namespace SuperBot.Core.Services
             if (state == null)
             {
                 state = new ChatState { LastInteractionTime = DateTime.UtcNow, DialogState = DialogState.MainMenu };
-                //_chatStates[chatId] = state;
+                _chatStates[chatId] = state;
             }
             return Task.FromResult(state);
         }
