@@ -6,6 +6,7 @@ using Telegram.Bot;
 using System.Text;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using SuperBot.Core.Entities;
 
 namespace SuperBot.Application.Handlers
 {
@@ -13,12 +14,23 @@ namespace SuperBot.Application.Handlers
     {
         public async Task<Message> Handle(OpenMyAccountCommand request, CancellationToken cancellationToken)
         {
+            await SendToChangeDialogStateAsync(request.ChatId);
+
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
                 text: GetMenuText(),
                 parseMode: ParseMode.Html,
                 replyMarkup: GetKeyboard(request.ChatId),
                 cancellationToken: cancellationToken);
+        }
+
+        private Task<Message> SendToChangeDialogStateAsync(long chatId)
+        {
+            var command = new ChangeDialogStateCommand();
+            command.ChatId = chatId;
+            command.DialogState = DialogState.Account;
+            command.Text = "";
+            return mediator.Send(command);
         }
 
         public string GetMenuText()

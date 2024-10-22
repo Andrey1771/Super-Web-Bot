@@ -1,18 +1,13 @@
 ﻿using MediatR;
-using Microsoft.AspNetCore.Components.Forms;
-using MongoDB.Driver;
 using SuperBot.Application.Commands;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
-using SuperBot.Core.Services;
+using SuperBot.WebApi.Types;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InlineQueryResults;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.WebApi.Services;
 public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, IMediator mediator,
@@ -36,7 +31,7 @@ public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger
         {
             { Message: { } message } => OnMessage(message),
             { CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
-            _ => GetMainMenu(update.Message),//TODO
+            _ => throw new NotImplementedException(),//TODO
             /*{ EditedMessage: { } message } => OnMessage(message),
 { CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
 { InlineQuery: { } inlineQuery } => OnInlineQuery(inlineQuery),
@@ -58,52 +53,59 @@ _ => UnknownUpdateHandlerAsync(update)*/
             return;
 
         string command = messageText.Split(' ')[0];
-        var sentMessage = await HandleMessageAsync(msg, command);
+        var telegramDataForProcessing = new TelegramDataForProcessing();
+        telegramDataForProcessing.Text = msg.Text;
+        telegramDataForProcessing.CommandName = command;
+        telegramDataForProcessing.FromUsername = msg.From.Username;
+        telegramDataForProcessing.ChatId = msg.Chat.Id;
+
+        var sentMessage = await HandleMessageAsync(telegramDataForProcessing);
 
         logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage?.MessageId);
     }
 
-    private async Task<Message> HandleMessageAsync(Message msg, string command)
+    private async Task<Message> HandleMessageAsync(TelegramDataForProcessing telegramDataForProcessing)
     {
+        var command = telegramDataForProcessing.CommandName;
         if (command == translationsService.KeyboardKeys.BuySteamGames)
         {
-            await ChangeDialogState(msg, DialogState.BuyGame, translationsService.Translation.NavigateToGamePurchase);
+            await ChangeDialogState(telegramDataForProcessing, DialogState.BuyGame, translationsService.Translation.NavigateToGamePurchase);
             return await Task.FromResult<Message>(null);
         }
-        else if ((await botStateReaderService.GetChatStateAsync(msg.Chat.Id)).DialogState == DialogState.BuyGame)
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.BuyGame)
         {
-            return await BuySteamGames(msg);
+            return await BuySteamGames(telegramDataForProcessing);
         }
         else if (command == translationsService.KeyboardKeys.Account)
         {
-            return await OpenMyAccount(msg);
+            return await OpenMyAccount(telegramDataForProcessing);
         }
         else
         {
-            return await Usage(msg);
+            return await Usage(telegramDataForProcessing);
         }
     }
 
 
-    private Task<Message> ChangeDialogState(Message msg, DialogState dialogState, string text)
+    private Task<Message> ChangeDialogState(TelegramDataForProcessing telegramDataForProcessing, DialogState dialogState, string text)
     {
         var command = new ChangeDialogStateCommand();
-        command.ChatId = msg.Chat.Id;//TODO
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
         command.DialogState = dialogState;
         command.Text = text;
         return mediator.Send(command);
     }
 
-    private async Task<Message> Usage(Message msg)
+    private async Task<Message> Usage(TelegramDataForProcessing telegramDataForProcessing)
     {
-        switch ((await botStateReaderService.GetChatStateAsync(msg.Chat.Id)).DialogState)
+        switch ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState)
         {
             case DialogState.MainMenu:
-                return await GetMainMenu(msg);
+                return await GetMainMenu(telegramDataForProcessing);
 
             case DialogState.BuyGame:
-                await BuySteamGames(msg);
-                return await ChangeDialogState(msg, DialogState.MainMenu, translationsService.Translation.BotMenu);
+                await BuySteamGames(telegramDataForProcessing);
+                return await ChangeDialogState(telegramDataForProcessing, DialogState.MainMenu, translationsService.Translation.BotMenu);
 
             default:
                 throw new NotImplementedException();
@@ -111,28 +113,28 @@ _ => UnknownUpdateHandlerAsync(update)*/
 
     }
 
-    private Task<Message> GetMainMenu(Message msg)
+    private Task<Message> GetMainMenu(TelegramDataForProcessing telegramDataForProcessing)
     {
         var command = new GetMainMenuCommand();
-        command.ChatId = msg.Chat.Id;//TODO
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
 
         return mediator.Send(command);
     }
 
-    private Task<Message> BuySteamGames(Message msg)
+    private Task<Message> BuySteamGames(TelegramDataForProcessing telegramDataForProcessing)
     {
         var command = new BuyGameCommand();
-        command.ChatId = msg.Chat.Id;//TODO
-        command.FromUsername = msg.From.Username;
-        command.Text = msg.Text;
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.FromUsername = telegramDataForProcessing.FromUsername;
+        command.Text = telegramDataForProcessing.Text;
 
         return mediator.Send(command);
     }
 
-    private Task<Message> OpenMyAccount(Message msg)
+    private Task<Message> OpenMyAccount(TelegramDataForProcessing telegramDataForProcessing)
     {
         var command = new OpenMyAccountCommand();
-        command.ChatId = msg.Chat.Id;//TODO
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
 
         return mediator.Send(command);
     }
@@ -140,8 +142,20 @@ _ => UnknownUpdateHandlerAsync(update)*/
     // Process Inline Keyboard callback data
     private async Task OnCallbackQuery(CallbackQuery callbackQuery)
     {
-        throw new NotImplementedException();
+        //TODO
         logger.LogInformation("Received inline keyboard callback from: {CallbackQueryId}", callbackQuery.Id);
+
+        var msg = callbackQuery.Message;
+        if (callbackQuery.Data is "")
+            return;
+
+        var telegramDataForProcessing = new TelegramDataForProcessing();
+        telegramDataForProcessing.Text = msg.Text;
+        telegramDataForProcessing.CommandName = callbackQuery.Data;
+        telegramDataForProcessing.FromUsername = msg.From.Username;
+        telegramDataForProcessing.ChatId = msg.Chat.Id;
+
+        var sentMessage = await HandleMessageAsync(telegramDataForProcessing);
         //await bot.AnswerCallbackQueryAsync(callbackQuery.Id, $"Received {callbackQuery.Data}");
         //await bot.SendTextMessageAsync(callbackQuery.Message!.Chat, $"Received {callbackQuery.Data}");
     }

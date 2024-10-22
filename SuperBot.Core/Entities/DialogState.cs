@@ -3,6 +3,7 @@
     public enum DialogState
     {
         MainMenu,
-        BuyGame
+        BuyGame,
+        Account
     }
 }
