@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace SuperBot.Application.Handlers
 {
-    public class BuyGameCommandHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<BuyGameCommand, Message>
+    public class BuyGameHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<BuyGameCommand, Message>
     {
         public async Task<Message> Handle(BuyGameCommand request, CancellationToken cancellationToken)
         {
