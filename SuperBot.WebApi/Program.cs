@@ -67,7 +67,7 @@ builder.Services.AddSingleton<IBotStateWriterService>(provider => provider.GetRe
 
 builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>
 {
-    var connectionString = builder.Configuration.GetSection("MongoDb").Value;
+    var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
     return new MongoClient(connectionString);
 });
 // Регистрация MongoDatabase
@@ -75,11 +75,11 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 {
     var mongoClient = sp.GetRequiredService<IMongoClient>();
 
-    var mongoName = builder.Configuration.GetSection("Name").Value;
+    var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
     return mongoClient.GetDatabase(mongoName);  // Укажите имя вашей базы данных
 });
-builder.Services.AddTransient<IGameRepository, GameMongoDbRepository>();
-builder.Services.AddTransient<IOrderRepository, OrderMongoDbRepository>();
+builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 
 
 //builder.Configu.AddAutoMapper(typeof(GameProfile));
