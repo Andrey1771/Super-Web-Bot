@@ -8,6 +8,6 @@ namespace SuperBot.Application.Commands
 {
     public class OpenMyAccountCommand : BaseMessageCommand
     {
-
+        public long ChatId { get; set; }
     }
 }

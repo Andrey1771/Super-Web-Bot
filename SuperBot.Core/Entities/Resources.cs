@@ -1,4 +1,6 @@
-﻿namespace SuperBot.Core.Entities
+﻿using System;
+
+namespace SuperBot.Core.Entities
 {
     public class Resources
     {
@@ -24,6 +26,10 @@
         public string SelectAction { get; set; }
         public string SteamTopUp { get; set; }
         public string Store { get; set; }
+        public string ReferralProgram { get; set; }
+        public string TopUpBalance { get; set; }
+        public string WithdrawFunds { get; set; }
+        public string PurchaseHistory { get; set; }
     }
 
     public class KeyboardKeys
@@ -35,5 +41,9 @@
         public string SelectAction { get; set; }
         public string SteamTopUp { get; set; }
         public string Store { get; set; }
+        public string ReferralProgram { get; set; }
+        public string TopUpBalance { get; set; }
+        public string WithdrawFunds { get; set; }
+        public string PurchaseHistory { get; set; }
     }
 }

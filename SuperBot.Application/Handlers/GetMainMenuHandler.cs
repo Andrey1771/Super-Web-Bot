@@ -16,13 +16,6 @@ namespace SuperBot.Application.Handlers
 
         public async Task<Message> Handle(GetMainMenuCommand request, CancellationToken cancellationToken)
         {
-            // ANCHOR: multiple-row
-            var replyMarkup = new ReplyKeyboardMarkup(true)
-                .AddButton("Help me")
-                .AddNewRow("Call me ☎️", "Write me ✉️");
-
-            return await _botClient.SendTextMessageAsync(request.ChatId, "Choose a response", replyMarkup: replyMarkup);
-
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
                 text: GetMenuText(),
