@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Components.Forms;
 using SuperBot.Application.Commands;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
@@ -10,12 +11,14 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers
 {
-    public class GetMainMenuHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService) : IRequestHandler<GetMainMenuCommand, Message>
+    public class GetMainMenuHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator mediator) : IRequestHandler<GetMainMenuCommand, Message>
     {
         private Dictionary<string, string> commandDescriptions;
 
         public async Task<Message> Handle(GetMainMenuCommand request, CancellationToken cancellationToken)
         {
+            await SendToChangeDialogStateAsync(request.ChatId);
+
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
                 text: GetMenuText(),
@@ -79,6 +82,15 @@ namespace SuperBot.Application.Handlers
 
             // Создаем клавиатуру
             return new InlineKeyboardMarkup(inlineKeyboard);
+        }
+
+        private Task<Message> SendToChangeDialogStateAsync(long chatId)
+        {
+            var command = new ChangeDialogStateCommand();
+            command.ChatId = chatId;
+            command.DialogState = DialogState.MainMenu;
+            command.Text = "";
+            return mediator.Send(command);
         }
     }
 }

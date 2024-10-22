@@ -31,13 +31,12 @@ public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var c = new GetMainMenuCommand();
-        c.ChatId = update.Message.Chat.Id;
 
         await (update switch
         {
             { Message: { } message } => OnMessage(message),
-            _ => throw new NotImplementedException(),
+            { CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
+            _ => GetMainMenu(update.Message),//TODO
             /*{ EditedMessage: { } message } => OnMessage(message),
 { CallbackQuery: { } callbackQuery } => OnCallbackQuery(callbackQuery),
 { InlineQuery: { } inlineQuery } => OnInlineQuery(inlineQuery),
@@ -75,6 +74,10 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await BuySteamGames(msg);
         }
+        else if (command == translationsService.KeyboardKeys.Account)
+        {
+            return await OpenMyAccount(msg);
+        }
         else
         {
             return await Usage(msg);
@@ -85,7 +88,7 @@ _ => UnknownUpdateHandlerAsync(update)*/
     private Task<Message> ChangeDialogState(Message msg, DialogState dialogState, string text)
     {
         var command = new ChangeDialogStateCommand();
-        command.ChatId = msg.Chat.Id;
+        command.ChatId = msg.Chat.Id;//TODO
         command.DialogState = dialogState;
         command.Text = text;
         return mediator.Send(command);
@@ -96,9 +99,7 @@ _ => UnknownUpdateHandlerAsync(update)*/
         switch ((await botStateReaderService.GetChatStateAsync(msg.Chat.Id)).DialogState)
         {
             case DialogState.MainMenu:
-                var command = new GetMainMenuCommand();
-                command.ChatId = msg.Chat.Id;
-                return await mediator.Send(command);
+                return await GetMainMenu(msg);
 
             case DialogState.BuyGame:
                 await BuySteamGames(msg);
@@ -110,16 +111,47 @@ _ => UnknownUpdateHandlerAsync(update)*/
 
     }
 
+    private Task<Message> GetMainMenu(Message msg)
+    {
+        var command = new GetMainMenuCommand();
+        command.ChatId = msg.Chat.Id;//TODO
+
+        return mediator.Send(command);
+    }
+
     private Task<Message> BuySteamGames(Message msg)
     {
         var command = new BuyGameCommand();
-        command.ChatId = msg.Chat.Id;
+        command.ChatId = msg.Chat.Id;//TODO
         command.FromUsername = msg.From.Username;
         command.Text = msg.Text;
 
         return mediator.Send(command);
     }
 
+    private Task<Message> OpenMyAccount(Message msg)
+    {
+        var command = new OpenMyAccountCommand();
+        command.ChatId = msg.Chat.Id;//TODO
+
+        return mediator.Send(command);
+    }
+
+    // Process Inline Keyboard callback data
+    private async Task OnCallbackQuery(CallbackQuery callbackQuery)
+    {
+        throw new NotImplementedException();
+        logger.LogInformation("Received inline keyboard callback from: {CallbackQueryId}", callbackQuery.Id);
+        //await bot.AnswerCallbackQueryAsync(callbackQuery.Id, $"Received {callbackQuery.Data}");
+        //await bot.SendTextMessageAsync(callbackQuery.Message!.Chat, $"Received {callbackQuery.Data}");
+    }
+
+    private async Task OnError(CallbackQuery callbackQuery)
+    {
+        
+        logger.LogInformation("Received inline keyboard callback from: {CallbackQueryId}", callbackQuery.Id);
+
+    }
 
     /*
      * stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.BuySteamGames, _translationsService.Translation.BuySteamGames));
