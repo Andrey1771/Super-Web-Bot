@@ -2,8 +2,8 @@
 
 namespace SuperBot.Core.Interfaces.IRepositories
 {
-    public interface IOrderRepository
+    public interface IUserRepository
     {
-        Task CreateOrderAsync(Order order);
+        Task<User> GetUserDetailsAsync(string userId);
     }
 }

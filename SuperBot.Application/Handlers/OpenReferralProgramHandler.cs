@@ -1,26 +1,44 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands;
+using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
-using Telegram.Bot.Types;
-using Telegram.Bot;
+using SuperBot.Core.Interfaces.IRepositories;
 using System.Text;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using SuperBot.Core.Entities;
-using SuperBot.Core.Interfaces.IRepositories;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenMyAccountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, ITranslationsService _translationsService, IMediator mediator) : IRequestHandler<OpenMyAccountCommand, Message>
+    public class OpenReferralProgramHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<OpenReferralProgramCommand, Message>
     {
-        public async Task<Message> Handle(OpenMyAccountCommand request, CancellationToken cancellationToken)
+        public async Task<Message> Handle(OpenReferralProgramCommand request, CancellationToken cancellationToken)
         {
+            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
+            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
+
             await SendToChangeDialogStateAsync(request.ChatId);
+
+            // Получение данных о пользователе из MongoDB
+            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+
+            if (user == null)
+            {
+                // Если пользователь не найден, можно отправить сообщение об ошибке
+                return await _botClient.SendTextMessageAsync(
+                    chatId: request.ChatId,
+                    text: "Пользователь не найден.",
+                    cancellationToken: cancellationToken);
+            }
+
+            var personalLink = GeneratePersonalLink(request.UserId);
 
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
-                text: GetMenuText(request.Name, request.UserID, await GetBalanceAsync(request.UserID)),
+                text: GetMenuText(user.CountOfInvited, user.Discount, user.QuantityBeforeIncrease, personalLink),
                 parseMode: ParseMode.Html,
                 replyMarkup: GetKeyboard(request.ChatId),
                 cancellationToken: cancellationToken);
@@ -35,19 +53,16 @@ namespace SuperBot.Application.Handlers
             return mediator.Send(command);
         }
 
-        private async Task<decimal> GetBalanceAsync(long userId)
+        private string GeneratePersonalLink(string userId)//TODO Доделать персональную ссылку
         {
-            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
-
-            return (await userRepository.GetUserDetailsAsync(userId.ToString())).Balance;
+            return $"https://yourwebsite.com/referral/{userId}";
         }
 
-        public string GetMenuText(string name, long userID, decimal balance)
+        public string GetMenuText(int countOfInvited, decimal discount, int quantityBeforeIncrease, string personalLink)
         {
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.Account}:</u></b>");
-            stringBuilder.AppendLine(string.Format(_translationsService.Translation.AccountBody, name, userID, balance));
+            stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.ReferralProgram}:</u></b>");
+            stringBuilder.AppendLine(string.Format(_translationsService.Translation.ReferralProgramBody, countOfInvited, discount, quantityBeforeIncrease, personalLink));
             //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.ReferralProgram, _translationsService.Translation.ReferralProgram));
             //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SteamTopUp, _translationsService.Translation.SteamTopUp));
             //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.WithdrawFunds, _translationsService.Translation.WithdrawFunds));

@@ -13,7 +13,6 @@ namespace SuperBot.WebApi.Services;
 public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger, IMediator mediator,
     ITranslationsService translationsService, IBotStateReaderService botStateReaderService) : IUpdateHandler
 {
-    private static readonly InputPollOption[] PollOptions = ["Hello", "World!"];
 
     public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
     {
@@ -58,6 +57,9 @@ _ => UnknownUpdateHandlerAsync(update)*/
         telegramDataForProcessing.CommandName = command;
         telegramDataForProcessing.FromUsername = msg.From.Username;
         telegramDataForProcessing.ChatId = msg.Chat.Id;
+        telegramDataForProcessing.UserID = msg.From.Id;
+        telegramDataForProcessing.UserFirstName = msg.From.FirstName;
+
 
         var sentMessage = await HandleMessageAsync(telegramDataForProcessing);
 
@@ -135,6 +137,8 @@ _ => UnknownUpdateHandlerAsync(update)*/
     {
         var command = new OpenMyAccountCommand();
         command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserID = telegramDataForProcessing.UserID;
+        command.Name = telegramDataForProcessing.UserFirstName;
 
         return mediator.Send(command);
     }

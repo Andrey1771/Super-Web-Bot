@@ -30,6 +30,10 @@ namespace SuperBot.Core.Entities
         public string TopUpBalance { get; set; }
         public string WithdrawFunds { get; set; }
         public string PurchaseHistory { get; set; }
+
+        public string AccountBody { get; set; }
+
+        public string ReferralProgramBody { get; set; }
     }
 
     public class KeyboardKeys

@@ -8,5 +8,9 @@ namespace SuperBot.WebApi.Types
         public long ChatId { get; set; }
         public string Text { get; set; }
         public string FromUsername { get; set; }
+        public string UserFirstName { get; set; }
+
+        public long UserID { get; set; }
+
     }
 }
