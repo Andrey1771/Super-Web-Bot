@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace SuperBot.Application.Commands
 {
-    public class TopUpSteamCommand : BaseMessageCommand
+    public class PrepareTopUpSteamCommand : BaseMessageCommand
     {
         public long ChatId { get; set; }
-        public decimal Amount { get; set; }
-        public string SteamLogin { get; set; }
+        public decimal? Amount { get; set; }
+        public string? SteamLogin { get; set; }
+
     }
 }

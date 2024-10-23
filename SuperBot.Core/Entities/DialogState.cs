@@ -4,6 +4,9 @@
     {
         MainMenu,
         BuyGame,
-        Account
+        Account,
+        TopUpWithoutData,
+        TopUpWithLogin,
+        TopUpWithData,
     }
 }

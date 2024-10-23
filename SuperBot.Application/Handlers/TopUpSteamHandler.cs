@@ -9,11 +9,13 @@ namespace SuperBot.Application.Handlers
 {
     public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<TopUpSteamCommand, Message>
     {
+        // TODO Вынести в конфиг
+        private const decimal commissionRate = 0.15m;// 15% комиссия
+        private const long adminChatId = 795184375;// TODO!
+
         public async Task<Message> Handle(TopUpSteamCommand request, CancellationToken cancellationToken)
         {
-            // Расчет суммы с комиссией
-            decimal commissionRate = 0.15m; // 15% комиссия
-            decimal totalAmount = request.Amount + (request.Amount * commissionRate);
+            var totalAmount = request.Amount + (request.Amount * commissionRate);
 
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {request.SteamLogin}.\n" + //TODO Текст
@@ -44,7 +46,6 @@ namespace SuperBot.Application.Handlers
                                   $"Сумма с комиссией: {totalAmount} ₽";
 
             // Отправка уведомления админу (укажите здесь ID чата админа)
-            long adminChatId = /* Ваш админ ID */;
             await _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);
         }
     }

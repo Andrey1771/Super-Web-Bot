@@ -14,6 +14,7 @@ namespace SuperBot.Core.Entities
         public int CountOfInvited { get; set; }
         public decimal Discount { get; set; }
         public int QuantityBeforeIncrease { get; set; }
+        public decimal ChoseAmountOfTopUp { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
