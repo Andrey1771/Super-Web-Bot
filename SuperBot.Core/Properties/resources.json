@@ -26,6 +26,8 @@
     }
   },
   "KeyboardKeys": {
+    "Start": "/start",
+
     "BuySteamGames": "/buy",
     "InternationalTransfers": "/transfers",
     "Investments": "/investments",

@@ -86,12 +86,25 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await OpenReferralProgram(telegramDataForProcessing);
         }
+        else if (command == translationsService.KeyboardKeys.Start)
+        {
+            return await OpenStart(telegramDataForProcessing);
+        }
         else
         {
             return await Usage(telegramDataForProcessing);
         }
     }
 
+    private Task<Message> OpenStart(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new OpenStartCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserId = telegramDataForProcessing.UserID;
+        command.Username = telegramDataForProcessing.FromUsername;
+        
+        return mediator.Send(command);
+    }
 
     private Task<Message> ChangeDialogState(TelegramDataForProcessing telegramDataForProcessing, DialogState dialogState, string text)
     {

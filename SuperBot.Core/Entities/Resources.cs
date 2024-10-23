@@ -38,6 +38,7 @@ namespace SuperBot.Core.Entities
 
     public class KeyboardKeys
     {
+        public string Start { get; set; }
         public string BuySteamGames { get; set; }
         public string InternationalTransfers { get; set; }
         public string Investments { get; set; }
