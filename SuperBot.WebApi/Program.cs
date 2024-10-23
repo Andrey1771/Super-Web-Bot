@@ -80,6 +80,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 });
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
+builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 
 
 //builder.Configu.AddAutoMapper(typeof(GameProfile));

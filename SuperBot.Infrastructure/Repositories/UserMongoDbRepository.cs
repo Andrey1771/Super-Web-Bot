@@ -17,9 +17,9 @@ namespace SuperBot.Infrastructure.Repositories
             _usersCollection = database.GetCollection<UserDb>("Users");
         }
 
-        public async Task<User> GetUserDetailsAsync(string userId)
+        public async Task<User> GetUserDetailsAsync(long userId)
         {
-            var user = await _usersCollection.Find(u => u.UserId == userId).FirstOrDefaultAsync();
+            var user = await _usersCollection.Find(u => u.UserId == userId.ToString()).FirstOrDefaultAsync();
             return _mapper.Map<User>(user);
         }
     }

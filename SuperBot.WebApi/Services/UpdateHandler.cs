@@ -82,6 +82,10 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await OpenMyAccount(telegramDataForProcessing);
         }
+        else if (command == translationsService.KeyboardKeys.ReferralProgram)
+        {
+            return await OpenReferralProgram(telegramDataForProcessing);
+        }
         else
         {
             return await Usage(telegramDataForProcessing);
@@ -142,7 +146,15 @@ _ => UnknownUpdateHandlerAsync(update)*/
 
         return mediator.Send(command);
     }
+    
+    private Task<Message> OpenReferralProgram(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new OpenReferralProgramCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserId = telegramDataForProcessing.UserID;
 
+        return mediator.Send(command);
+    }
     // Process Inline Keyboard callback data
     private async Task OnCallbackQuery(CallbackQuery callbackQuery)
     {

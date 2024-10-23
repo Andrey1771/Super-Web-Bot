@@ -4,6 +4,6 @@ namespace SuperBot.Core.Interfaces.IRepositories
 {
     public interface IUserRepository
     {
-        Task<User> GetUserDetailsAsync(string userId);
+        Task<User> GetUserDetailsAsync(long userId);
     }
 }

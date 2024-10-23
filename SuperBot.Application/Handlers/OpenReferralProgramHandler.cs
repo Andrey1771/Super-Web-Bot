@@ -53,7 +53,7 @@ namespace SuperBot.Application.Handlers
             return mediator.Send(command);
         }
 
-        private string GeneratePersonalLink(string userId)//TODO Доделать персональную ссылку
+        private string GeneratePersonalLink(long userId)//TODO Доделать персональную ссылку
         {
             return $"https://yourwebsite.com/referral/{userId}";
         }

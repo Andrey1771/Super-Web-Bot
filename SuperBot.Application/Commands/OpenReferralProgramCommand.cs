@@ -3,6 +3,6 @@
     public class OpenReferralProgramCommand : BaseMessageCommand
     {
         public long ChatId { get; set; }
-        public string UserId { get; set; }
+        public long UserId { get; set; }
     }
 }
