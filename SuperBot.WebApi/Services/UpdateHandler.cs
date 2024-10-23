@@ -178,11 +178,16 @@ _ => UnknownUpdateHandlerAsync(update)*/
         if (callbackQuery.Data is "")
             return;
 
-        var telegramDataForProcessing = new TelegramDataForProcessing();
+        var telegramDataForProcessing = new TelegramDataForProcessing();//TODO МАППЕР!!
         telegramDataForProcessing.Text = msg.Text;
         telegramDataForProcessing.CommandName = callbackQuery.Data;
         telegramDataForProcessing.FromUsername = msg.From.Username;
         telegramDataForProcessing.ChatId = msg.Chat.Id;
+        telegramDataForProcessing.UserID = msg.From.Id;
+        telegramDataForProcessing.UserFirstName = msg.Chat.FirstName;
+
+
+
 
         var sentMessage = await HandleMessageAsync(telegramDataForProcessing);
         //await bot.AnswerCallbackQueryAsync(callbackQuery.Id, $"Received {callbackQuery.Data}");

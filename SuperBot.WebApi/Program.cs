@@ -78,6 +78,8 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
     return mongoClient.GetDatabase(mongoName);  // Укажите имя вашей базы данных
 });
+builder.Services.AddScoped<MongoDbInitializer>();//TODO Подумать
+
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
@@ -94,6 +96,13 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+
+// Получаем инициализатор из DI-контейнера и выполняем инициализацию
+using (var scope = app.Services.CreateScope())
+{
+    var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
+    await mongoDbInitializer.InitializeAsync(); // Инициализация базы данных
 }
 
 // Поддержка локализации
