@@ -25,7 +25,7 @@ namespace SuperBot.Application.Handlers
                 var newUser = new Core.Entities.User();
                 newUser.UserId = request.UserId;
                 newUser.Username = request.Username;
-                newUser.Discount = 0;
+                newUser.Discount = 3;
                 newUser.Balance = 0;
                 newUser.CountOfInvited = 0;
                 newUser.QuantityBeforeIncrease = 10;

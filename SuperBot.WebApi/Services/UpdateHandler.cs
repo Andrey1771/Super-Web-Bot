@@ -183,7 +183,7 @@ _ => UnknownUpdateHandlerAsync(update)*/
         telegramDataForProcessing.CommandName = callbackQuery.Data;
         telegramDataForProcessing.FromUsername = msg.From.Username;
         telegramDataForProcessing.ChatId = msg.Chat.Id;
-        telegramDataForProcessing.UserID = msg.From.Id;
+        telegramDataForProcessing.UserID = callbackQuery.From.Id;
         telegramDataForProcessing.UserFirstName = msg.Chat.FirstName;
 
 
