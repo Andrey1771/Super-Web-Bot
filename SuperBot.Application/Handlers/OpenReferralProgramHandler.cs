@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands;
+using SuperBot.Application.Handlers.Base;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -13,7 +14,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenReferralProgramHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<OpenReferralProgramCommand, Message>
+    public class OpenReferralProgramHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<OpenReferralProgramCommand>(mediator), IRequestHandler<OpenReferralProgramCommand, Message>
     {
         public async Task<Message> Handle(OpenReferralProgramCommand request, CancellationToken cancellationToken)
         {
@@ -42,15 +43,6 @@ namespace SuperBot.Application.Handlers
                 parseMode: ParseMode.Html,
                 replyMarkup: GetKeyboard(request.ChatId),
                 cancellationToken: cancellationToken);
-        }
-
-        private Task<Message> SendToChangeDialogStateAsync(long chatId)
-        {
-            var command = new ChangeDialogStateCommand();
-            command.ChatId = chatId;
-            command.DialogState = DialogState.Account;
-            command.Text = "";
-            return mediator.Send(command);
         }
 
         private string GeneratePersonalLink(long userId)//TODO Доделать персональную ссылку

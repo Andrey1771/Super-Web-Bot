@@ -9,10 +9,11 @@ using Telegram.Bot.Types.ReplyMarkups;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using Microsoft.Extensions.DependencyInjection;
+using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenMyAccountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, ITranslationsService _translationsService, IMediator mediator) : IRequestHandler<OpenMyAccountCommand, Message>
+    public class OpenMyAccountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, ITranslationsService _translationsService, IMediator mediator) : DialogCommandHandler<OpenMyAccountCommand>(mediator), IRequestHandler<OpenMyAccountCommand, Message>
     {
         public async Task<Message> Handle(OpenMyAccountCommand request, CancellationToken cancellationToken)
         {
@@ -24,15 +25,6 @@ namespace SuperBot.Application.Handlers
                 parseMode: ParseMode.Html,
                 replyMarkup: GetKeyboard(request.ChatId),
                 cancellationToken: cancellationToken);
-        }
-
-        private Task<Message> SendToChangeDialogStateAsync(long chatId)
-        {
-            var command = new ChangeDialogStateCommand();
-            command.ChatId = chatId;
-            command.DialogState = DialogState.Account;
-            command.Text = "";
-            return mediator.Send(command);
         }
 
         private async Task<decimal> GetBalanceAsync(long userId)

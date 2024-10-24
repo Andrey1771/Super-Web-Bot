@@ -4,10 +4,11 @@ using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
+using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<TopUpSteamCommand, Message>
+    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<TopUpSteamCommand>(mediator), IRequestHandler<TopUpSteamCommand, Message>
     {
         // TODO Вынести в конфиг
         private const decimal commissionRate = 0.15m;// 15% комиссия
@@ -15,6 +16,8 @@ namespace SuperBot.Application.Handlers
 
         public async Task<Message> Handle(TopUpSteamCommand request, CancellationToken cancellationToken)
         {
+            await SendToChangeDialogStateAsync(request.ChatId);
+
             var totalAmount = request.Amount + (request.Amount * commissionRate);
 
             // Формируем сообщение пользователю с запросом на оплату

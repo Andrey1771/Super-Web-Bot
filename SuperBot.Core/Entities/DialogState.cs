@@ -5,6 +5,7 @@
         MainMenu,
         BuyGame,
         Account,
+        Ref,//TODO
         TopUpWithoutData,
         TopUpWithLogin,
         TopUpWithData,

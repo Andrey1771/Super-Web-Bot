@@ -8,10 +8,11 @@ using Telegram.Bot;
 using SuperBot.Core.Entities;
 using Telegram.Bot.Types.Enums;
 using System.Text;
+using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenStartHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<OpenStartCommand, Message>
+    public class OpenStartHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<OpenStartCommand>(mediator), IRequestHandler<OpenStartCommand, Message>
     {
         public async Task<Message> Handle(OpenStartCommand request, CancellationToken cancellationToken)
         {
@@ -47,15 +48,6 @@ namespace SuperBot.Application.Handlers
             var command = new GetMainMenuCommand();
             command.ChatId = chatId;//TODO
 
-            return mediator.Send(command);
-        }
-
-        private Task<Message> SendToChangeDialogStateAsync(long chatId)
-        {
-            var command = new ChangeDialogStateCommand();
-            command.ChatId = chatId;
-            command.DialogState = DialogState.MainMenu;
-            command.Text = "";
             return mediator.Send(command);
         }
 

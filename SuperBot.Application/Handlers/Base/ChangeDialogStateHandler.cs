@@ -6,7 +6,7 @@ using SuperBot.Core.Interfaces.IBotStateService;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace SuperBot.Application.Handlers
+namespace SuperBot.Application.Handlers.Base
 {
     public class ChangeDialogStateHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IBotStateWriterService botStateWriterService) : IRequestHandler<ChangeDialogStateCommand, Message>
     {

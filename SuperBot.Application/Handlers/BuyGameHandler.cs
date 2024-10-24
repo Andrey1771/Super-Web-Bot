@@ -6,10 +6,11 @@ using Telegram.Bot;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Entities;
 using Microsoft.Extensions.DependencyInjection;
+using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class BuyGameHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<BuyGameCommand, Message>
+    public class BuyGameHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<BuyGameCommand>(_mediator), IRequestHandler<BuyGameCommand, Message>
     {
         public async Task<Message> Handle(BuyGameCommand request, CancellationToken cancellationToken)
         {
@@ -47,15 +48,6 @@ namespace SuperBot.Application.Handlers
             await SendToChangeDialogStateAsync(chatId);
             // Подтверждаем покупку
             return await _botClient.SendTextMessageAsync(chatId, string.Format(_translationsService.Translation.NavigateToGamePurchase, game.Name));
-        }
-
-        private Task<Message> SendToChangeDialogStateAsync(long chatId)
-        {
-            var command = new ChangeDialogStateCommand();
-            command.ChatId = chatId;
-            command.DialogState = DialogState.MainMenu;
-            command.Text = "";
-            return mediator.Send(command);
         }
     }
 }

@@ -10,13 +10,16 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using SuperBot.Core.Entities;
 using Telegram.Bot.Types.Enums;
+using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class PrepareTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : IRequestHandler<PrepareTopUpSteamCommand, Message>
+    public class PrepareTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<PrepareTopUpSteamCommand>(mediator), IRequestHandler<PrepareTopUpSteamCommand, Message>
     {
         public async Task<Message> Handle(PrepareTopUpSteamCommand request, CancellationToken cancellationToken)
         {
+
+            //if (request.)
             await SendToChangeDialogStateAsync(request.ChatId);
 
             return await _botClient.SendTextMessageAsync(
@@ -25,15 +28,6 @@ namespace SuperBot.Application.Handlers
                 parseMode: ParseMode.Html,
                 //replyMarkup: GetKeyboard(request.ChatId),
                 cancellationToken: cancellationToken);
-        }
-
-        private Task<Message> SendToChangeDialogStateAsync(long chatId, DialogState dialogState)
-        {
-            var command = new ChangeDialogStateCommand();
-            command.ChatId = chatId;
-            command.DialogState = dialogState;
-            command.Text = "";
-            return mediator.Send(command);
         }
 
         public string GetMenuText()
