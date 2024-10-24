@@ -22,6 +22,8 @@ namespace SuperBot.Application.Handlers
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
 
+            await SendToChangeDialogStateAsync(request.ChatId);
+
             var user = await userRepository.GetUserDetailsAsync(request.UserId);
             user.ChoseSteamLogin = request.SteamLogin;
 

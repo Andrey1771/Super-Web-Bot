@@ -24,14 +24,15 @@ namespace SuperBot.Application.Handlers
             var user = await userRepository.GetUserDetailsAsync(request.UserId);
 
             var steamLogin = user.ChoseSteamLogin;
+            var discount = user.Discount/100;
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var totalAmount = request.Amount + (request.Amount * commissionRate);
+            var totalAmount = request.Amount + (request.Amount * (commissionRate - discount));
 
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + //TODO Текст
-                                    $"Итого с комиссией 15%: {totalAmount} ₽.\n" +
+                                    $"Итого с комиссией {(commissionRate - discount) * 100}%: {totalAmount} ₽.\n" +
                                     $"Пожалуйста, перейдите по ссылке для оплаты: [Оплатить]";
 
             // Отправляем сообщение пользователю

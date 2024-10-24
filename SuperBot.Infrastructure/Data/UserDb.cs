@@ -32,6 +32,12 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("quantityBeforeIncrease")] // Количество покупок до увеличения скидки
         public int QuantityBeforeIncrease { get; set; }
 
+        [BsonElement("username")]
+        public string Username { get; set; }
+
+        [BsonElement("choseSteamLogin")]
+        public string ChoseSteamLogin { get; set; }
+
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }
 
