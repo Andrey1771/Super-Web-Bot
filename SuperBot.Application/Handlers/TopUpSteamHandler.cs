@@ -10,7 +10,7 @@ using SuperBot.Core.Interfaces.IRepositories;
 
 namespace SuperBot.Application.Handlers
 {
-    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<TopUpSteamCommand>(mediator), IRequestHandler<TopUpSteamCommand, Message>
+    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator, IPayService _payService) : DialogCommandHandler<TopUpSteamCommand>(mediator), IRequestHandler<TopUpSteamCommand, Message>
     {
         // TODO Вынести в конфиг
         private const decimal commissionRate = 0.15m;// 15% комиссия
@@ -30,10 +30,12 @@ namespace SuperBot.Application.Handlers
 
             var totalAmount = request.Amount + (request.Amount * (commissionRate - discount));
 
+            var payLink = _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта {steamLogin}", "TODO");
+
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + //TODO Текст
                                     $"Итого с комиссией {(commissionRate - discount) * 100}%: {totalAmount} ₽.\n" +
-                                    $"Пожалуйста, перейдите по ссылке для оплаты: [Оплатить]";
+                                    $"Пожалуйста, перейдите по ссылке для оплаты: <a href={payLink}>Ссылка</a>";
 
             // Отправляем сообщение пользователю
             var sentMessage = await _botClient.SendTextMessageAsync(

@@ -8,6 +8,7 @@ using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
+using SuperBot.Infrastructure.ExternalServices;
 using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
 using SuperBot.WebApi;
@@ -83,6 +84,9 @@ builder.Services.AddScoped<MongoDbInitializer>();//TODO Подумать
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
+
+
+builder.Services.AddTransient<IPayService, YooKassaService>();
 
 
 //builder.Configu.AddAutoMapper(typeof(GameProfile));
