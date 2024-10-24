@@ -16,8 +16,8 @@ namespace SuperBot.Application.Handlers.Base
             { typeof(OpenReferralProgramCommand), DialogState.Ref },
             { typeof(OpenStartCommand), DialogState.MainMenu },
 
-            { typeof(PrepareTopUpSteamCommand), DialogState.TopUpWithLogin },
-            { typeof(PrepareSecondTopUpSteamCommand), DialogState.TopUpWithData },
+            { typeof(OpenTopUpSteamCommand), DialogState.TopUpWithLogin },
+            { typeof(PrepareTopUpSteamCommand), DialogState.TopUpWithData },
             { typeof(TopUpSteamCommand), DialogState.MainMenu }
             // Добавляйте другие команды и их состояния
         };

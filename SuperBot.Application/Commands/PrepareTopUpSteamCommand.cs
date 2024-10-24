@@ -9,8 +9,7 @@ namespace SuperBot.Application.Commands
     public class PrepareTopUpSteamCommand : BaseMessageCommand
     {
         public long ChatId { get; set; }
-        public decimal? Amount { get; set; }
-        public string? SteamLogin { get; set; }
-
+        public long UserId { get; set; }
+        public string SteamLogin { get; set; }
     }
 }

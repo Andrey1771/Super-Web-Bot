@@ -15,6 +15,7 @@ namespace SuperBot.Core.Entities
         public decimal Discount { get; set; }
         public int QuantityBeforeIncrease { get; set; }
         public decimal ChoseAmountOfTopUp { get; set; }
+        public string ChoseSteamLogin { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

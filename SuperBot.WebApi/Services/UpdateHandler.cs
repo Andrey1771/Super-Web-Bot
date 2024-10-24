@@ -61,6 +61,7 @@ _ => UnknownUpdateHandlerAsync(update)*/
         telegramDataForProcessing.UserFirstName = msg.From.FirstName;
 
 
+
         var sentMessage = await HandleMessageAsync(telegramDataForProcessing);
 
         logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage?.MessageId);
@@ -90,10 +91,50 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await OpenStart(telegramDataForProcessing);
         }
+        else if (command == translationsService.KeyboardKeys.TopUpBalance)
+        {
+            return await OpenTopUpBalance(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.TopUpWithLogin)
+        {
+            return await PrepareTopUpBalance(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.TopUpWithData)
+        {
+            return await TopUpBalance(telegramDataForProcessing);
+        }
         else
         {
             return await Usage(telegramDataForProcessing);
         }
+    }
+
+    private Task<Message> OpenTopUpBalance(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new OpenTopUpSteamCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> PrepareTopUpBalance(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new PrepareTopUpSteamCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserId = telegramDataForProcessing.UserID;
+        command.SteamLogin = telegramDataForProcessing.Text;
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> TopUpBalance(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new TopUpSteamCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserId = telegramDataForProcessing.UserID;
+        command.Amount = decimal.Parse(telegramDataForProcessing.Text);
+
+        return mediator.Send(command);
     }
 
     private Task<Message> OpenStart(TelegramDataForProcessing telegramDataForProcessing)

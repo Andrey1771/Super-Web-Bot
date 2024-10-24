@@ -5,6 +5,8 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 using SuperBot.Application.Handlers.Base;
+using Microsoft.Extensions.DependencyInjection;
+using SuperBot.Core.Interfaces.IRepositories;
 
 namespace SuperBot.Application.Handlers
 {
@@ -16,12 +18,19 @@ namespace SuperBot.Application.Handlers
 
         public async Task<Message> Handle(TopUpSteamCommand request, CancellationToken cancellationToken)
         {
+            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
+            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
+
+            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+
+            var steamLogin = user.ChoseSteamLogin;
+
             await SendToChangeDialogStateAsync(request.ChatId);
 
             var totalAmount = request.Amount + (request.Amount * commissionRate);
 
             // Формируем сообщение пользователю с запросом на оплату
-            string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {request.SteamLogin}.\n" + //TODO Текст
+            string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + //TODO Текст
                                     $"Итого с комиссией 15%: {totalAmount} ₽.\n" +
                                     $"Пожалуйста, перейдите по ссылке для оплаты: [Оплатить]";
 
@@ -34,7 +43,7 @@ namespace SuperBot.Application.Handlers
             );
 
             // После оплаты сохраняем данные в базе данных или отправляем сообщение администратору
-            await NotifyAdmin(request.ChatId, request.SteamLogin, request.Amount, totalAmount);
+            await NotifyAdmin(request.ChatId, steamLogin, request.Amount, totalAmount);
 
             return sentMessage;
         }

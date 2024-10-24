@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace SuperBot.Application.Commands
 {
-    public class PrepareSecondTopUpSteamCommand : BaseMessageCommand
+    public class OpenTopUpSteamCommand : BaseMessageCommand
     {
+        public long ChatId { get; set; }
     }
 }
