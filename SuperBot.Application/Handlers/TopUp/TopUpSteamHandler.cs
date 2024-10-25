@@ -1,5 +1,4 @@
 ﻿using MediatR;
-using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using Telegram.Bot;
@@ -7,8 +6,9 @@ using Telegram.Bot.Types.Enums;
 using SuperBot.Application.Handlers.Base;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Application.Commands.TopUp;
 
-namespace SuperBot.Application.Handlers
+namespace SuperBot.Application.Handlers.TopUp
 {
     public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator, IPayService _payService) : DialogCommandHandler<TopUpSteamCommand>(mediator), IRequestHandler<TopUpSteamCommand, Message>
     {
@@ -24,18 +24,18 @@ namespace SuperBot.Application.Handlers
             var user = await userRepository.GetUserDetailsAsync(request.UserId);
 
             var steamLogin = user.ChoseSteamLogin;
-            var discount = user.Discount/100;
+            var discount = user.Discount / 100;
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var totalAmount = request.Amount + (request.Amount * (commissionRate - discount));
+            var totalAmount = request.Amount + request.Amount * (commissionRate - discount);
 
-            var payLink = _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта {steamLogin}", "TODO");
+            var payLink = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", "TODO");
 
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + //TODO Текст
                                     $"Итого с комиссией {(commissionRate - discount) * 100}%: {totalAmount} ₽.\n" +
-                                    $"Пожалуйста, перейдите по ссылке для оплаты: <a href={payLink}>Ссылка</a>";
+                                    $"Пожалуйста, перейдите по ссылке для оплаты: <a href='{payLink}'>Ссылка</a>";
 
             // Отправляем сообщение пользователю
             var sentMessage = await _botClient.SendTextMessageAsync(
@@ -58,7 +58,8 @@ namespace SuperBot.Application.Handlers
                                   $"Пользователь Telegram ID: {chatId}\n" +
                                   $"Логин Steam: {steamLogin}\n" +
                                   $"Сумма: {amount} ₽\n" +
-                                  $"Сумма с комиссией: {totalAmount} ₽";
+                                  $"Сумма с комиссией: {totalAmount} ₽" +
+                                  "Оплатил: нет";
 
             // Отправка уведомления админу (укажите здесь ID чата админа)
             await _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);

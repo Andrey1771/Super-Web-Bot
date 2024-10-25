@@ -1,4 +1,5 @@
-﻿using SuperBot.Core.Entities;
+﻿using SuperBot.Application.Commands.Base;
+using SuperBot.Core.Entities;
 
 namespace SuperBot.Application.Commands
 {

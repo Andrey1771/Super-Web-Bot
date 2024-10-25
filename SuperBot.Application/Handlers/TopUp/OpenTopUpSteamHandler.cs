@@ -1,5 +1,4 @@
 ﻿using MediatR;
-using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -13,8 +12,9 @@ using Telegram.Bot.Types.Enums;
 using SuperBot.Application.Handlers.Base;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Application.Commands.TopUp;
 
-namespace SuperBot.Application.Handlers
+namespace SuperBot.Application.Handlers.TopUp
 {
     public class OpenTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<OpenTopUpSteamCommand>(mediator), IRequestHandler<OpenTopUpSteamCommand, Message>
     {

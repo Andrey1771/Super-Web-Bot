@@ -1,6 +1,6 @@
 ﻿using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using SuperBot.Application.Commands;
+using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -13,7 +13,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace SuperBot.Application.Handlers
+namespace SuperBot.Application.Handlers.TopUp
 {
     public class PrepareTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<PrepareTopUpSteamCommand>(_mediator), IRequestHandler<PrepareTopUpSteamCommand, Message>
     {

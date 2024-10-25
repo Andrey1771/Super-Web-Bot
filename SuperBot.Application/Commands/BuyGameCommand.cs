@@ -1,4 +1,6 @@
-﻿namespace SuperBot.Application.Commands
+﻿using SuperBot.Application.Commands.Base;
+
+namespace SuperBot.Application.Commands
 {
     public class BuyGameCommand : BaseMessageCommand
     {
