@@ -2,6 +2,8 @@
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.Base;
 using SuperBot.Application.Commands.TopUp;
+using SuperBot.Application.Commands.WithdrawalOfFunds;
+using SuperBot.Application.Handlers.WithdrawalOfFunds;
 using SuperBot.Core.Entities;
 using Telegram.Bot.Types;
 
@@ -25,6 +27,10 @@ namespace SuperBot.Application.Handlers.Base
 
             { typeof(OpenTopUpAccountCommand), DialogState.TopUpAccountWithData },
             { typeof(TopUpAccountCommand), DialogState.MainMenu },
+
+            { typeof(OpenWithdrawalOfFundsCommand), DialogState.WithdrawalOfFundsWithCard },
+            { typeof(PrepareWithdrawalOfFundsCommand), DialogState.WithdrawalOfFundsWithData },
+            { typeof(WithdrawalOfFundsCommand), DialogState.MainMenu },
         };
 
         protected async Task<Message> SendToChangeDialogStateAsync(long chatId, string text = "")

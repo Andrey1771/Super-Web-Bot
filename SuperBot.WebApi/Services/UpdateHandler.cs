@@ -2,6 +2,7 @@
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.Base;
 using SuperBot.Application.Commands.TopUp;
+using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
@@ -115,10 +116,52 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await TopUpAccountBalance(telegramDataForProcessing);
         }
+
+        else if (command == translationsService.KeyboardKeys.WithdrawFunds)
+        {
+            return await OpenWithdrawalOfFunds(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.WithdrawalOfFundsWithData)
+        {
+            return await PrepareWithdrawalOfFunds(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.WithdrawalOfFundsWithCard)
+        {
+            return await WithdrawalOfFunds(telegramDataForProcessing);
+        }
         else
         {
             return await Usage(telegramDataForProcessing);
         }
+    }
+
+    private Task<Message> OpenWithdrawalOfFunds(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new OpenWithdrawalOfFundsCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> PrepareWithdrawalOfFunds(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new PrepareWithdrawalOfFundsCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserId = telegramDataForProcessing.UserID;
+        command.ChoseCard = telegramDataForProcessing.Text;
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> WithdrawalOfFunds(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new WithdrawalOfFundsCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserID = telegramDataForProcessing.UserID;
+        command.DestinationType = "card";//TODO
+        command.Amount = decimal.Parse(telegramDataForProcessing.Text);
+
+        return mediator.Send(command);
     }
 
     private Task<Message> OpenTopUpAccountBalance(TelegramDataForProcessing telegramDataForProcessing)

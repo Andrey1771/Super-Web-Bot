@@ -6,10 +6,13 @@
         BuyGame,
         Account,
         Ref,//TODO
-        TopUpWithoutData,
         TopUpWithLogin,
         TopUpWithData,
 
         TopUpAccountWithData,
+
+
+        WithdrawalOfFundsWithData,
+        WithdrawalOfFundsWithCard,
     }
 }

@@ -1,13 +1,12 @@
 ﻿using SuperBot.Application.Commands.Base;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SuperBot.Application.Commands.WithdrawalOfFunds
 {
     public class WithdrawalOfFundsCommand : BaseMessageCommand
     {
+        public long ChatId { get; set; }
+        public decimal Amount { get; set; }
+        public string DestinationType { get; set; }
+        public long UserID { get; set; }
     }
 }

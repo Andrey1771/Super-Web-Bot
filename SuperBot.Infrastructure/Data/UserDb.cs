@@ -38,6 +38,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("choseSteamLogin")]
         public string ChoseSteamLogin { get; set; }
 
+        [BsonElement("choseCard")]
+        public string ChoseCard { get; set; }
+
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }
 
