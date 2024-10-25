@@ -59,7 +59,7 @@ namespace SuperBot.Application.Handlers
             var buttons = new List<InlineKeyboardButton>
             {
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.ReferralProgram, _translationsService.KeyboardKeys.ReferralProgram),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.SteamTopUp, _translationsService.KeyboardKeys.SteamTopUp),
+                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.TopUpBalance, _translationsService.KeyboardKeys.TopUpBalance),
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.WithdrawFunds, _translationsService.KeyboardKeys.WithdrawFunds),
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.PurchaseHistory, _translationsService.KeyboardKeys.PurchaseHistory)
             };

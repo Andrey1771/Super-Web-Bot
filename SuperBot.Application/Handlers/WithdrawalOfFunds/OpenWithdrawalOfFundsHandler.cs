@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 {
-    internal class OpenWithdrawalOfFundsHandler
+    public class OpenWithdrawalOfFundsHandler
     {
     }
 }

@@ -36,7 +36,7 @@ namespace SuperBot.Application.Handlers
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.InternationalTransfers, _translationsService.Translation.InternationalTransfers));
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Investments, _translationsService.Translation.Investments));
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Account, _translationsService.Translation.Account));
-            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SelectAction, _translationsService.Translation.SelectAction));
+            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SelectAction, _translationsService.Translation.SelectAction));
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SteamTopUp, _translationsService.Translation.SteamTopUp));
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Store, _translationsService.Translation.Store));
             return stringBuilder.ToString();
@@ -58,7 +58,7 @@ namespace SuperBot.Application.Handlers
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.InternationalTransfers, _translationsService.KeyboardKeys.InternationalTransfers),
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.Investments, _translationsService.KeyboardKeys.Investments),
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.Account, _translationsService.KeyboardKeys.Account),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.SelectAction, _translationsService.KeyboardKeys.SelectAction),
+                //InlineKeyboardButton.WithCallbackData(_translationsService.Translation.SelectAction, _translationsService.KeyboardKeys.SelectAction),
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.SteamTopUp, _translationsService.KeyboardKeys.SteamTopUp),
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.Store, _translationsService.KeyboardKeys.Store)
             };

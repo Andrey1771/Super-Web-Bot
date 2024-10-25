@@ -9,5 +9,7 @@
         TopUpWithoutData,
         TopUpWithLogin,
         TopUpWithData,
+
+        TopUpAccountWithData,
     }
 }

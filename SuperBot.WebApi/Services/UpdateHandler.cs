@@ -1,5 +1,7 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
+using SuperBot.Application.Commands.Base;
+using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
@@ -91,7 +93,8 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await OpenStart(telegramDataForProcessing);
         }
-        else if (command == translationsService.KeyboardKeys.TopUpBalance)
+
+        else if (command == translationsService.KeyboardKeys.SteamTopUp)
         {
             return await OpenTopUpBalance(telegramDataForProcessing);
         }
@@ -103,11 +106,38 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await TopUpBalance(telegramDataForProcessing);
         }
+
+        else if (command == translationsService.KeyboardKeys.TopUpBalance)
+        {
+            return await OpenTopUpAccountBalance(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.TopUpAccountWithData)
+        {
+            return await TopUpAccountBalance(telegramDataForProcessing);
+        }
         else
         {
             return await Usage(telegramDataForProcessing);
         }
     }
+
+    private Task<Message> OpenTopUpAccountBalance(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new OpenTopUpAccountCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+
+        return mediator.Send(command);
+    }
+    private Task<Message> TopUpAccountBalance(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new TopUpAccountCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.UserId = telegramDataForProcessing.UserID;
+        command.Amount = decimal.Parse(telegramDataForProcessing.Text);
+
+        return mediator.Send(command);
+    }
+
 
     private Task<Message> OpenTopUpBalance(TelegramDataForProcessing telegramDataForProcessing)
     {

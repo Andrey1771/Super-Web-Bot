@@ -37,7 +37,7 @@
     "Store": "/store",
 
     "ReferralProgram": "/ref",
-    "TopUpBalance": "/topUp",
+    "TopUpBalance": "/topUpAccount",
     "WithdrawFunds": "/withdrawFunds",
     "PurchaseHistory": "/history"
   }

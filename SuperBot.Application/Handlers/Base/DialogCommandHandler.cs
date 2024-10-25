@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
+using SuperBot.Application.Commands.Base;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using Telegram.Bot.Types;
@@ -19,8 +20,11 @@ namespace SuperBot.Application.Handlers.Base
 
             { typeof(OpenTopUpSteamCommand), DialogState.TopUpWithLogin },
             { typeof(PrepareTopUpSteamCommand), DialogState.TopUpWithData },
-            { typeof(TopUpSteamCommand), DialogState.MainMenu }
-            // Добавляйте другие команды и их состояния
+            { typeof(TopUpSteamCommand), DialogState.MainMenu },
+
+
+            { typeof(OpenTopUpAccountCommand), DialogState.TopUpAccountWithData },
+            { typeof(TopUpAccountCommand), DialogState.MainMenu },
         };
 
         protected async Task<Message> SendToChangeDialogStateAsync(long chatId, string text = "")

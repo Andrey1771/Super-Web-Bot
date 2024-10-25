@@ -72,7 +72,7 @@ namespace SuperBot.Infrastructure.ExternalServices
             {
                 amount = new
                 {
-                    value = amount.ToString("F2"), // Сумма выплаты, два знака после запятой
+                    value = amount, // Сумма выплаты, два знака после запятой
                     currency = currency // Валюта (например, "RUB")
                 },
                 payout_destination_data = new

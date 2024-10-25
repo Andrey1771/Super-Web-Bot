@@ -10,6 +10,7 @@ using SuperBot.Application.Commands.TopUp;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
+    //TODO Рефакторинг
     public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator, IPayService _payService) : DialogCommandHandler<TopUpSteamCommand>(mediator), IRequestHandler<TopUpSteamCommand, Message>
     {
         // TODO Вынести в конфиг
@@ -22,7 +23,7 @@ namespace SuperBot.Application.Handlers.TopUp
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
 
             var user = await userRepository.GetUserDetailsAsync(request.UserId);
-
+            
             var steamLogin = user.ChoseSteamLogin;
             var discount = user.Discount / 100;
 
@@ -46,19 +47,19 @@ namespace SuperBot.Application.Handlers.TopUp
             );
 
             // После оплаты сохраняем данные в базе данных или отправляем сообщение администратору
-            await NotifyAdmin(request.ChatId, steamLogin, request.Amount, totalAmount);
+            await NotifyAdmin(user.Username, steamLogin, request.Amount, totalAmount);
 
             return sentMessage;
         }
 
         // Уведомление администратора о пополнении
-        private async Task NotifyAdmin(long chatId, string steamLogin, decimal amount, decimal totalAmount)
+        private async Task NotifyAdmin(string username, string steamLogin, decimal amount, decimal totalAmount)
         {
             string adminMessage = $"Пополнение баланса Steam:\n" +//TODO Текст
-                                  $"Пользователь Telegram ID: {chatId}\n" +
+                                  $"Пользователь Telegram: {username}\n" +
                                   $"Логин Steam: {steamLogin}\n" +
                                   $"Сумма: {amount} ₽\n" +
-                                  $"Сумма с комиссией: {totalAmount} ₽" +
+                                  $"Сумма с комиссией: {totalAmount} ₽\n" +
                                   "Оплатил: нет";
 
             // Отправка уведомления админу (укажите здесь ID чата админа)

@@ -1,5 +1,5 @@
 ﻿using MediatR;
-using SuperBot.Application.Commands;
+using SuperBot.Application.Commands.Base;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
