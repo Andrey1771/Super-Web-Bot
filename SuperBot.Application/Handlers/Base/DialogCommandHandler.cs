@@ -33,8 +33,12 @@ namespace SuperBot.Application.Handlers.Base
             { typeof(PrepareWithdrawalOfFundsCommand), DialogState.WithdrawalOfFundsWithData },
             { typeof(WithdrawalOfFundsCommand), DialogState.MainMenu },
 
+            //{ typeof(OpenInvestmentCommand), DialogState.AwaitingInvestmentAmount },
+            { typeof(OpenInvestmentCommand), DialogState.MainMenu },
+            { typeof(StartInvestmentCommand), DialogState.AwaitingInvestmentAmount },
             { typeof(EnterInvestmentAmountCommand), DialogState.AwaitingInvestmentDuration },
             { typeof(EnterInvestmentDurationCommand), DialogState.InvestmentDecision },
+            { typeof(InvestmentDecisionCommand), DialogState.MainMenu },
         };
 
         protected async Task<Message> SendToChangeDialogStateAsync(long chatId, string text = "")

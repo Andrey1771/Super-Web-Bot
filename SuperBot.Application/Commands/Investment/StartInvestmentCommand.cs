@@ -2,10 +2,8 @@
 
 namespace SuperBot.Application.Commands.Investment
 {
-    public class EnterInvestmentAmountCommand : BaseMessageCommand
+    public class StartInvestmentCommand : BaseMessageCommand
     {
         public long ChatId { get; set; }
-        public long UserId { get; set; }
-        public decimal Amount { get; set; }
     }
 }

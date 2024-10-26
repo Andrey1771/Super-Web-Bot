@@ -22,7 +22,9 @@
 
       "TopUpBalance": "Пополнить баланс",
       "WithdrawFunds": "Вывод денег",
-      "PurchaseHistory": "История покупок"
+      "PurchaseHistory": "История покупок",
+
+      "StartInvest":  "Начать инвестировать"
     }
   },
   "KeyboardKeys": {
@@ -31,6 +33,8 @@
     "BuySteamGames": "/buy",
     "InternationalTransfers": "/transfers",
     "Investments": "/investments",
+    "StartInvest": "/startInvest",
+
     "Account": "/account",
     "SelectAction": "/selectAction",
     "SteamTopUp": "/topUp",

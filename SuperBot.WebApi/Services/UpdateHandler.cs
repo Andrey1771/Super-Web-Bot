@@ -135,13 +135,22 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await OpenInvestments(telegramDataForProcessing);
         }
+        else if (command == translationsService.KeyboardKeys.StartInvest)
+        {
+            return await StartInvestments(telegramDataForProcessing);
+        }
         else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.AwaitingInvestmentAmount)
         {
-            return await OpenInvestments(telegramDataForProcessing);
+            return await EnterInvestmentAmount(telegramDataForProcessing);
+            //return await OpenInvestments(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.AwaitingInvestmentDuration)
+        {
+            return await EnterInvestmentDuration(telegramDataForProcessing);
         }
         else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.InvestmentDecision)
         {
-            return await OpenInvestments(telegramDataForProcessing);
+            return await OpenInvestmentDecision(telegramDataForProcessing);
         }
         else
         {
@@ -151,9 +160,45 @@ _ => UnknownUpdateHandlerAsync(update)*/
 
     private Task<Message> OpenInvestments(TelegramDataForProcessing telegramDataForProcessing)
     {
+        var command = new OpenInvestmentCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> StartInvestments(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new StartInvestmentCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> EnterInvestmentAmount(TelegramDataForProcessing telegramDataForProcessing)
+    {
         var command = new EnterInvestmentAmountCommand();
         command.ChatId = telegramDataForProcessing.ChatId;//TODO
         command.Amount = decimal.Parse(telegramDataForProcessing.Text);
+        command.UserId = telegramDataForProcessing.UserID;
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> EnterInvestmentDuration(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new EnterInvestmentDurationCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.Duration = int.Parse(telegramDataForProcessing.Text);
+        command.UserId = telegramDataForProcessing.UserID;
+
+        return mediator.Send(command);
+    }
+
+    private Task<Message> OpenInvestmentDecision(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new InvestmentDecisionCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.Decision = telegramDataForProcessing.Text;
 
         return mediator.Send(command);
     }

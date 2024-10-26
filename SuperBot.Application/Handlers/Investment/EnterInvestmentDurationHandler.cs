@@ -7,10 +7,12 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
+using Microsoft.Extensions.DependencyInjection;
+using SuperBot.Core.Interfaces.IRepositories;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class EnterInvestmentDurationHandler(ITelegramBotClient _botClient, IMediator _mediator) : DialogCommandHandler<OpenTopUpSteamCommand>(_mediator), IRequestHandler<EnterInvestmentDurationCommand, Message>
+    public class EnterInvestmentDurationHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<EnterInvestmentDurationCommand>(_mediator), IRequestHandler<EnterInvestmentDurationCommand, Message>
     {
         public async Task<Message> Handle(EnterInvestmentDurationCommand request, CancellationToken cancellationToken)
         {
@@ -23,9 +25,16 @@ namespace SuperBot.Application.Handlers.Investment
                 );
             }
 
+            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
+            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
+
+            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+
+
+            var amount = user.ChoseAmountOfInvestment;
             // Расчет доходности
-            decimal profit = request.Amount * 0.15m;
-            decimal total = request.Amount + profit;
+            decimal profit = amount * 0.15m;
+            decimal total = amount + profit;
 
             // Переводим диалог в состояние с выбором
             await SendToChangeDialogStateAsync(request.ChatId);
@@ -38,7 +47,7 @@ namespace SuperBot.Application.Handlers.Investment
 
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
-                text: $"Сумма: {request.Amount:C}\nСрок: {request.Duration} дней\nДоходность: +15%\nИтого: {total:C}\nХотите инвестировать?",
+                text: $"Сумма: {amount:C}\nСрок: {request.Duration} дней\nДоходность: +15%\nИтого: {total:C}\nХотите инвестировать?",
                 replyMarkup: keyboard,
                 cancellationToken: cancellationToken
             );

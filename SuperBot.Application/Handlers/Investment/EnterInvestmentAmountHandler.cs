@@ -6,10 +6,12 @@ using Telegram.Bot;
 using SuperBot.Application.Commands.Investment;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
+using Microsoft.Extensions.DependencyInjection;
+using SuperBot.Core.Interfaces.IRepositories;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class EnterInvestmentAmountHandler(ITelegramBotClient _botClient, IMediator _mediator) : DialogCommandHandler<OpenTopUpSteamCommand>(_mediator), IRequestHandler<EnterInvestmentAmountCommand, Message>
+    public class EnterInvestmentAmountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<EnterInvestmentAmountCommand>(_mediator), IRequestHandler<EnterInvestmentAmountCommand, Message>
     {
         public async Task<Message> Handle(EnterInvestmentAmountCommand request, CancellationToken cancellationToken)
         {
@@ -22,6 +24,13 @@ namespace SuperBot.Application.Handlers.Investment
                     cancellationToken: cancellationToken
                 );
             }
+            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
+            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
+
+            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+            user.ChoseAmountOfInvestment = request.Amount;
+
+            await userRepository.UpdateUserAsync(user);
 
             // Переводим диалог в состояние ожидания срока инвестиций
             await SendToChangeDialogStateAsync(request.ChatId);

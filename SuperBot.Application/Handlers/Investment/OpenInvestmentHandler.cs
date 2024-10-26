@@ -4,10 +4,12 @@ using SuperBot.Application.Handlers.Base;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using Telegram.Bot;
+using SuperBot.Core.Services;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class OpenInvestmentHandler(ITelegramBotClient _botClient, IPayService _payService, IMediator _mediator) : DialogCommandHandler<OpenInvestmentCommand>(_mediator), IRequestHandler<OpenInvestmentCommand, Message>
+    public class OpenInvestmentHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IPayService _payService, IMediator _mediator) : DialogCommandHandler<OpenInvestmentCommand>(_mediator), IRequestHandler<OpenInvestmentCommand, Message>
     {
         public async Task<Message> Handle(OpenInvestmentCommand request, CancellationToken cancellationToken)
         {
@@ -16,6 +18,7 @@ namespace SuperBot.Application.Handlers.Investment
 
             return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
+                    replyMarkup: GetButtons(),
                     text: "Инвестируйте в своё будущее с гарантированной доходностью +15%!\r\n\r\n" +
                     "Устали от нестабильности финансов? Хотите, чтобы деньги работали на вас? Мы предлагаем простой и надежный способ увеличить ваш капитал!\r\n\r\n" +
                     "+15% доходности на каждую инвестицию\r\nМинимальный срок всего 30 дней — быстрый возврат и рост вложений\r\n" +
@@ -28,8 +31,14 @@ namespace SuperBot.Application.Handlers.Investment
                     "🔥 Действуйте сейчас — начните инвестировать уже сегодня и сделайте первый шаг к финансовой свободе!\r\n\r\n" +
                     "💬 Если остались вопросы — мы всегда на связи.",
                     cancellationToken: cancellationToken
-                );
+            );
+        }
 
+        private InlineKeyboardMarkup GetButtons()
+        {
+            var button = InlineKeyboardButton.WithCallbackData(_translationsService.Translation.StartInvest, _translationsService.KeyboardKeys.StartInvest);
+
+            return new InlineKeyboardMarkup(button);
         }
     }
 }

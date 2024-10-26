@@ -23,6 +23,7 @@ namespace SuperBot.Core.Entities
         public string MadeOrderGame { get; set; }
         public string InternationalTransfers { get; set; }
         public string Investments { get; set; }
+        public string StartInvest { get; set; }
         public string Account { get; set; }
         public string SelectAction { get; set; }
         public string SteamTopUp { get; set; }
@@ -43,6 +44,7 @@ namespace SuperBot.Core.Entities
         public string BuySteamGames { get; set; }
         public string InternationalTransfers { get; set; }
         public string Investments { get; set; }
+        public string StartInvest { get; set; }
         public string Account { get; set; }
         public string SelectAction { get; set; }
         public string SteamTopUp { get; set; }
