@@ -8,7 +8,7 @@ using Telegram.Bot.Types;
 
 namespace SuperBot.Application.Handlers.Base
 {
-    public class ChangeDialogStateHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IBotStateWriterService botStateWriterService) : IRequestHandler<ChangeDialogStateCommand, Message>
+    public class ChangeDialogStateHandler(ITelegramBotClient _botClient, IBotStateWriterService botStateWriterService) : IRequestHandler<ChangeDialogStateCommand, Message>
     {
         public async Task<Message> Handle(ChangeDialogStateCommand request, CancellationToken cancellationToken)
         {

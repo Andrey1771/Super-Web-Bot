@@ -16,7 +16,7 @@ using SuperBot.Application.Commands.TopUp;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
-    public class OpenTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<OpenTopUpSteamCommand>(mediator), IRequestHandler<OpenTopUpSteamCommand, Message>
+    public class OpenTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenTopUpSteamCommand>(_mediator), IRequestHandler<OpenTopUpSteamCommand, Message>
     {
         public async Task<Message> Handle(OpenTopUpSteamCommand request, CancellationToken cancellationToken)
         {

@@ -10,7 +10,7 @@ using SuperBot.Core.Interfaces.IRepositories;
 
 namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 {
-    public class PrepareWithdrawalOfFundsHandler(ITelegramBotClient _botClient, IPayService _payService, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<PrepareWithdrawalOfFundsCommand>(_mediator), IRequestHandler<PrepareWithdrawalOfFundsCommand, Message>
+    public class PrepareWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<PrepareWithdrawalOfFundsCommand>(_mediator), IRequestHandler<PrepareWithdrawalOfFundsCommand, Message>
     {
         public async Task<Message> Handle(PrepareWithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {

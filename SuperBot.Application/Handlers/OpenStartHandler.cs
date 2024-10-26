@@ -12,7 +12,7 @@ using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenStartHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<OpenStartCommand>(mediator), IRequestHandler<OpenStartCommand, Message>
+    public class OpenStartHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<OpenStartCommand>(_mediator), IRequestHandler<OpenStartCommand, Message>
     {
         public async Task<Message> Handle(OpenStartCommand request, CancellationToken cancellationToken)
         {

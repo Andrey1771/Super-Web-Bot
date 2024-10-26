@@ -11,7 +11,7 @@ using SuperBot.Application.Commands.TopUp;
 namespace SuperBot.Application.Handlers.TopUp
 {
     //TODO Рефакторинг
-    public class TopUpAccountHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator, IPayService _payService) : DialogCommandHandler<TopUpAccountCommand>(mediator), IRequestHandler<TopUpAccountCommand, Message>
+    public class TopUpAccountHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService) : DialogCommandHandler<TopUpAccountCommand>(_mediator), IRequestHandler<TopUpAccountCommand, Message>
     {
         // TODO Вынести в конфиг
         private const decimal commissionRate = 0.15m;// 15% комиссия

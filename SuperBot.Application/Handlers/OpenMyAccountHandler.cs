@@ -13,7 +13,7 @@ using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenMyAccountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, ITranslationsService _translationsService, IMediator mediator) : DialogCommandHandler<OpenMyAccountCommand>(mediator), IRequestHandler<OpenMyAccountCommand, Message>
+    public class OpenMyAccountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenMyAccountCommand>(_mediator), IRequestHandler<OpenMyAccountCommand, Message>
     {
         public async Task<Message> Handle(OpenMyAccountCommand request, CancellationToken cancellationToken)
         {

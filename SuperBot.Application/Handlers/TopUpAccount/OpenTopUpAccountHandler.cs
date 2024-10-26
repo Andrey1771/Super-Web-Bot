@@ -16,7 +16,7 @@ using SuperBot.Application.Commands.TopUp;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
-    public class OpenTopUpAccountHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator mediator) : DialogCommandHandler<OpenTopUpAccountCommand>(mediator), IRequestHandler<OpenTopUpAccountCommand, Message>
+    public class OpenTopUpAccountHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenTopUpAccountCommand>(_mediator), IRequestHandler<OpenTopUpAccountCommand, Message>
     {
         public async Task<Message> Handle(OpenTopUpAccountCommand request, CancellationToken cancellationToken)
         {

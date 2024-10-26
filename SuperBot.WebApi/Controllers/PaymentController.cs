@@ -6,17 +6,8 @@ namespace SuperBot.WebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PaymentController : Controller
+    public class PaymentController(IGameRepository _gameRepository, IMapper _mapper) : Controller
     {
-        private readonly IGameRepository _gameRepository;
-        private readonly IMapper _mapper;
-
-        public PaymentController(IGameRepository gameRepository, IMapper mapper)
-        {
-            _mapper = mapper;
-            _gameRepository = gameRepository;
-        }
-
         [HttpGet]
         public async Task<IActionResult> GetAllGames()
         {

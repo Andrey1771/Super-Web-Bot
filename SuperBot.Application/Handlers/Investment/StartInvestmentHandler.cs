@@ -12,7 +12,7 @@ using Telegram.Bot.Types;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class StartInvestmentHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IPayService _payService, IMediator _mediator) : DialogCommandHandler<StartInvestmentCommand>(_mediator), IRequestHandler<StartInvestmentCommand, Message>
+    public class StartInvestmentHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<StartInvestmentCommand>(_mediator), IRequestHandler<StartInvestmentCommand, Message>
     {
         public async Task<Message> Handle(StartInvestmentCommand request, CancellationToken cancellationToken)
         {

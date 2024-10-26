@@ -12,7 +12,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers
 {
-    public class GetMainMenuHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator mediator) : DialogCommandHandler<GetMainMenuCommand>(mediator), IRequestHandler<GetMainMenuCommand, Message>
+    public class GetMainMenuHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<GetMainMenuCommand>(_mediator), IRequestHandler<GetMainMenuCommand, Message>
     {
         private Dictionary<string, string> commandDescriptions;
 
