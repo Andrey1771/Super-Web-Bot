@@ -38,6 +38,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("choseSteamLogin")]
         public string ChoseSteamLogin { get; set; }
 
+        [BsonElement("choseAmountOfInvestment")]
+        public decimal ChoseAmountOfInvestment { get; set; }
+
         [BsonElement("choseCard")]
         public string ChoseCard { get; set; }
 
