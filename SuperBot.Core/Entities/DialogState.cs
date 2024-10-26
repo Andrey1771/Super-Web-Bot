@@ -14,5 +14,10 @@
 
         WithdrawalOfFundsWithData,
         WithdrawalOfFundsWithCard,
+
+
+        InvestmentDecision,
+        AwaitingInvestmentAmount,    // Ожидание ввода суммы
+        AwaitingInvestmentDuration,  // Ожидание срока инвестиций
     }
 }

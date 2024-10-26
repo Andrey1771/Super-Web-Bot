@@ -24,7 +24,7 @@ namespace SuperBot.Application.Handlers.TopUp
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var payLink = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "TODO");
+            var payLink = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "Payment");
 
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта.\n" + //TODO Текст

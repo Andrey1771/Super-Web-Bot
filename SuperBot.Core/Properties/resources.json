@@ -40,5 +40,6 @@
     "TopUpBalance": "/topUpAccount",
     "WithdrawFunds": "/withdrawFunds",
     "PurchaseHistory": "/history"
-  }
+  },
+  "MainUrl": "https://0fef-109-252-87-130.ngrok-free.app/api"
 }

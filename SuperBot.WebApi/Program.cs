@@ -59,6 +59,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddTransient<IResourceService, JsonResourceService>();
 builder.Services.AddTransient<ITranslationsService, TranslationsService>();
+builder.Services.AddTransient<IUrlService, UrlService>();
 
 
 builder.Services.AddSingleton<BotStateService>();

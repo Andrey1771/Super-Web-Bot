@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.Base;
+using SuperBot.Application.Commands.Investment;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Application.Handlers.WithdrawalOfFunds;
@@ -31,6 +32,9 @@ namespace SuperBot.Application.Handlers.Base
             { typeof(OpenWithdrawalOfFundsCommand), DialogState.WithdrawalOfFundsWithCard },
             { typeof(PrepareWithdrawalOfFundsCommand), DialogState.WithdrawalOfFundsWithData },
             { typeof(WithdrawalOfFundsCommand), DialogState.MainMenu },
+
+            { typeof(EnterInvestmentAmountCommand), DialogState.AwaitingInvestmentDuration },
+            { typeof(EnterInvestmentDurationCommand), DialogState.InvestmentDecision },
         };
 
         protected async Task<Message> SendToChangeDialogStateAsync(long chatId, string text = "")

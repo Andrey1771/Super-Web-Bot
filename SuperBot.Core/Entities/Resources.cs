@@ -6,6 +6,7 @@ namespace SuperBot.Core.Entities
     {
         public Translations Translations { get; set; }
         public KeyboardKeys KeyboardKeys { get; set; }
+        public string MainUrl { get; set; }//TODO Нарушение ответственности?
     }
 
     public class Translations

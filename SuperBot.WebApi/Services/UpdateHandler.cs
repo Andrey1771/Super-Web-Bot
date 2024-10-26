@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.Base;
+using SuperBot.Application.Commands.Investment;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Core.Entities;
@@ -129,10 +130,32 @@ _ => UnknownUpdateHandlerAsync(update)*/
         {
             return await WithdrawalOfFunds(telegramDataForProcessing);
         }
+
+        else if (command == translationsService.KeyboardKeys.Investments)
+        {
+            return await OpenInvestments(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.AwaitingInvestmentAmount)
+        {
+            return await OpenInvestments(telegramDataForProcessing);
+        }
+        else if ((await botStateReaderService.GetChatStateAsync(telegramDataForProcessing.ChatId)).DialogState == DialogState.InvestmentDecision)
+        {
+            return await OpenInvestments(telegramDataForProcessing);
+        }
         else
         {
             return await Usage(telegramDataForProcessing);
         }
+    }
+
+    private Task<Message> OpenInvestments(TelegramDataForProcessing telegramDataForProcessing)
+    {
+        var command = new EnterInvestmentAmountCommand();
+        command.ChatId = telegramDataForProcessing.ChatId;//TODO
+        command.Amount = decimal.Parse(telegramDataForProcessing.Text);
+
+        return mediator.Send(command);
     }
 
     private Task<Message> OpenWithdrawalOfFunds(TelegramDataForProcessing telegramDataForProcessing)
