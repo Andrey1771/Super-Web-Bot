@@ -48,7 +48,7 @@ namespace SuperBot.Application.Handlers
             var command = new GetMainMenuCommand();
             command.ChatId = chatId;//TODO
 
-            return mediator.Send(command);
+            return _mediator.Send(command);
         }
 
         public string GetMenuText()

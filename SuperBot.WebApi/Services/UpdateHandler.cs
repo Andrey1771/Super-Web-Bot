@@ -110,7 +110,7 @@ public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger
         mediator.Send(new EnterInvestmentDurationCommand { ChatId = data.ChatId, Duration = int.Parse(data.Text), UserId = data.UserID });
 
     private Task<Message> OpenInvestmentDecision(TelegramDataForProcessing data) =>
-        mediator.Send(new InvestmentDecisionCommand { ChatId = data.ChatId, Decision = data.Text });
+        mediator.Send(new InvestmentDecisionCommand { ChatId = data.ChatId, Decision = data.CommandName });
 
     private Task<Message> OpenWithdrawalOfFunds(TelegramDataForProcessing data) =>
         mediator.Send(new OpenWithdrawalOfFundsCommand { ChatId = data.ChatId });

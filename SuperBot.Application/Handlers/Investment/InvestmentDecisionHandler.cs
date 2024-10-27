@@ -10,6 +10,8 @@ using Telegram.Bot;
 using SuperBot.Core.Interfaces;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
+using Microsoft.AspNetCore.Components;
+using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers.Investment
 {
@@ -30,9 +32,12 @@ namespace SuperBot.Application.Handlers.Investment
             }
             else if (request.Decision == "Decline")
             {
+                var ownerName = "andrey6eb";
+                var ownerUrl = $"https://t.me/{ownerName}";
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: "Если у вас возникли вопросы, свяжитесь с нами.",
+                    text: $"Если у вас возникли вопросы, свяжитесь с <a href='{ownerUrl}'>нами</a>.",
+                    parseMode: ParseMode.Html,
                     cancellationToken: cancellationToken
                 );
             }

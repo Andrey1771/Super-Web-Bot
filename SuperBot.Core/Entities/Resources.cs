@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace SuperBot.Core.Entities
 {
     public class Resources

@@ -24,7 +24,7 @@
       "WithdrawFunds": "Вывод денег",
       "PurchaseHistory": "История покупок",
 
-      "StartInvest":  "Начать инвестировать"
+      "StartInvest": "Начать инвестировать"
     }
   },
   "KeyboardKeys": {
@@ -45,5 +45,5 @@
     "WithdrawFunds": "/withdrawFunds",
     "PurchaseHistory": "/history"
   },
-  "MainUrl": "https://0fef-109-252-87-130.ngrok-free.app/api"
+  "MainUrl": "https://e491-176-59-162-223.ngrok-free.app/api"
 }
