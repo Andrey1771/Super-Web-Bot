@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.Base;
+using SuperBot.Application.Commands.InternationalTransfers;
 using SuperBot.Application.Commands.Investment;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Commands.WithdrawalOfFunds;
@@ -93,9 +94,19 @@ public class UpdateHandler(ITelegramBotClient bot, ILogger<UpdateHandler> logger
             _ when dialogState == DialogState.AwaitingInvestmentDuration => await EnterInvestmentDuration(telegramData),
             _ when dialogState == DialogState.InvestmentDecision => await OpenInvestmentDecision(telegramData),
 
+            var cmd when cmd == translationsService.KeyboardKeys.InternationalTransfers => await OpenInternationalTransfers(telegramData),
+            _ when dialogState == DialogState.InternationalTransfers => await InternationalTransfers(telegramData),
+
             _ => await Usage(telegramData)
         };
     }
+
+    private Task<Message> InternationalTransfers(TelegramDataForProcessing data) =>
+        mediator.Send(new InternationalTransfersCommand { ChatId = data.ChatId, Text = data.Text, Username = data.FromUsername });
+
+    private Task<Message> OpenInternationalTransfers(TelegramDataForProcessing data) =>
+        mediator.Send(new OpenInternationalTransfersCommand { ChatId = data.ChatId, UserId = data.UserID });
+
 
     private Task<Message> OpenInvestments(TelegramDataForProcessing data) =>
         mediator.Send(new OpenInvestmentCommand { ChatId = data.ChatId });
