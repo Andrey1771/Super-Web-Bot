@@ -20,13 +20,13 @@ namespace SuperBot.Application.Handlers.InternationalTransfers
 
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
-                text: GetMenuText(),
+                text: GetText(),
                 parseMode: ParseMode.Html,
                 //replyMarkup: GetKeyboard(request.ChatId),
                 cancellationToken: cancellationToken);
         }
 
-        public string GetMenuText()
+        public string GetText()
         {
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine($"Укажите данные перевода:\n\nОткуда (страна):\nКуда (страна):\nСумма (валюта):");

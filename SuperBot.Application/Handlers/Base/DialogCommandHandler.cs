@@ -8,6 +8,7 @@ using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Application.Handlers.WithdrawalOfFunds;
 using SuperBot.Core.Entities;
 using Telegram.Bot.Types;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SuperBot.Application.Handlers.Base
 {
@@ -43,7 +44,8 @@ namespace SuperBot.Application.Handlers.Base
 
 
             { typeof(OpenInternationalTransfersCommand), DialogState.InternationalTransfers },
-            { typeof(InternationalTransfersCommand), DialogState.MainMenu }
+            { typeof(InternationalTransfersCommand), DialogState.MainMenu },
+            { typeof(ErrorCommand), DialogState.MainMenu }
         };
 
         protected async Task<Message> SendToChangeDialogStateAsync(long chatId, string text = "")
