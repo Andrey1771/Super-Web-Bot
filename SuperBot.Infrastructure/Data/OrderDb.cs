@@ -12,6 +12,7 @@ namespace SuperBot.Infrastructure.Data
         public string GameId { get; set; }
         public string GameName { get; set; }
         public string UserName { get; set; }
+        public bool IsPaid { get; set; }
         public DateTime OrderDate { get; set; }
     }
 }

@@ -5,5 +5,10 @@ namespace SuperBot.Core.Interfaces.IRepositories
     public interface IOrderRepository
     {
         Task CreateOrderAsync(Order order);
+        Task<Order> GetOrderByIdAsync(string orderId);
+        Task<IEnumerable<Order>> GetAllOrdersAsync();
+        Task UpdateOrderAsync(Order order);
+        Task DeleteOrderAsync(string orderId);
+
     }
 }

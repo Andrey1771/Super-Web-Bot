@@ -37,7 +37,7 @@ namespace SuperBot.Infrastructure.ExternalServices
                 {
                     type = "redirect",
                     return_url = returnUrl,
-                    confirmation_url = "https://yoomoney.ru/api-pages/v2/payment-confirm/epl?orderId=23d93cac-000f-5000-8000-126628f15141"
+                    confirmation_url = $"https://yoomoney.ru/api-pages/v2/payment-confirm/epl?orderId={orderId}"
                 },
             description = description // Описание платежа
             };
