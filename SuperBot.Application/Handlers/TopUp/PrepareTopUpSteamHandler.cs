@@ -3,7 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
 using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,19 +17,16 @@ using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
-    public class PrepareTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<PrepareTopUpSteamCommand>(_mediator), IRequestHandler<PrepareTopUpSteamCommand, Message>
+    public class PrepareTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<PrepareTopUpSteamCommand>(_mediator), IRequestHandler<PrepareTopUpSteamCommand, Message>
     {
         public async Task<Message> Handle(PrepareTopUpSteamCommand request, CancellationToken cancellationToken)
         {
-            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
-
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var user = await userRepository.GetUserByIdAsync(request.UserId);
-            user.ChoseSteamLogin = request.SteamLogin;
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+            oldState.UserState.ChoseSteamLogin = request.SteamLogin;
 
-            await userRepository.UpdateUserAsync(user);
+            await _botStateWriterService.SaveChatStateAsync(request.ChatId, oldState);
 
             return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,

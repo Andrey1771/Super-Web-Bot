@@ -53,8 +53,6 @@ namespace SuperBot.Infrastructure.Repositories
                 .Set(u => u.CountOfInvited, user.CountOfInvited)
                 .Set(u => u.Discount, user.Discount)
                 .Set(u => u.QuantityBeforeIncrease, user.QuantityBeforeIncrease)
-                .Set(u => u.ChoseSteamLogin, user.ChoseSteamLogin)
-                .Set(u => u.ChoseAmountOfInvestment, user.ChoseAmountOfInvestment)
                 .Set(u => u.UpdatedAt, DateTime.UtcNow);
 
             await _usersCollection.UpdateOneAsync(filter, update);

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Application.Handlers.Base;
 using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces.IRepositories;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -11,19 +12,16 @@ using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 {
-    public class WithdrawalOfFundsHandler(ITelegramBotClient _botClient, IPayService _payService, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<WithdrawalOfFundsCommand>(_mediator), IRequestHandler<WithdrawalOfFundsCommand, Message>
+    public class WithdrawalOfFundsHandler(ITelegramBotClient _botClient, IPayService _payService, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<WithdrawalOfFundsCommand>(_mediator), IRequestHandler<WithdrawalOfFundsCommand, Message>
     {
         public async Task<Message> Handle(WithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {
-            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserID);
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var user = await userRepository.GetUserByIdAsync(request.UserID);
-
             string paymentMessage = $"Вы запросили средств {request.Amount} ₽ с вашего аккаунта\n" + //TODO Текст
-                                    $"На карту: {user.ChoseCard}.\n"; //TODO Учитывать тип
+                                    $"На карту: {oldState.UserState.ChoseCard}.\n"; //TODO Учитывать тип
 
             // Отправляем сообщение пользователю
             await _botClient.SendTextMessageAsync(
@@ -33,7 +31,7 @@ namespace SuperBot.Application.Handlers.WithdrawalOfFunds
                 cancellationToken: cancellationToken
             );
 
-            var response = await _payService.CreatePayoutAsync(request.Amount, "RUB", request.DestinationType, user.ChoseCard);
+            var response = await _payService.CreatePayoutAsync(request.Amount, "RUB", request.DestinationType, oldState.UserState.ChoseCard);
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
                 text: response,

@@ -7,22 +7,20 @@ using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Interfaces.IBotStateService;
 
 namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 {
-    public class PrepareWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<PrepareWithdrawalOfFundsCommand>(_mediator), IRequestHandler<PrepareWithdrawalOfFundsCommand, Message>
+    public class PrepareWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<PrepareWithdrawalOfFundsCommand>(_mediator), IRequestHandler<PrepareWithdrawalOfFundsCommand, Message>
     {
         public async Task<Message> Handle(PrepareWithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {
-            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
-
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var user = await userRepository.GetUserByIdAsync(request.UserId);
-            user.ChoseCard = request.ChoseCard;
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+            oldState.UserState.ChoseCard = request.ChoseCard;
 
-            await userRepository.UpdateUserAsync(user);
+            await _botStateWriterService.SaveChatStateAsync(request.ChatId, oldState);
 
             var message = "Введите сумму в рублях";
 

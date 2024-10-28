@@ -9,10 +9,11 @@ using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Interfaces.IBotStateService;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class EnterInvestmentDurationHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<EnterInvestmentDurationCommand>(_mediator), IRequestHandler<EnterInvestmentDurationCommand, Message>
+    public class EnterInvestmentDurationHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<EnterInvestmentDurationCommand>(_mediator), IRequestHandler<EnterInvestmentDurationCommand, Message>
     {
         public async Task<Message> Handle(EnterInvestmentDurationCommand request, CancellationToken cancellationToken)
         {
@@ -25,13 +26,9 @@ namespace SuperBot.Application.Handlers.Investment
                 );
             }
 
-            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
 
-            var user = await userRepository.GetUserByIdAsync(request.UserId);
-
-
-            var amount = user.ChoseAmountOfInvestment;
+            var amount = oldState.UserState.ChoseAmountOfInvestment;
             // Расчет доходности
             decimal profit = amount * 0.15m;
             decimal total = amount + profit;

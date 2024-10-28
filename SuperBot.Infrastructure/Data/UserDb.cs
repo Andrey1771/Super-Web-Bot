@@ -12,6 +12,7 @@ namespace SuperBot.Infrastructure.Data
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
+        [BsonElement("id")]
         public string Id { get; set; }
 
         [BsonElement("userId")]
@@ -34,15 +35,6 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("username")]
         public string Username { get; set; }
-
-        [BsonElement("choseSteamLogin")]
-        public string ChoseSteamLogin { get; set; }
-
-        [BsonElement("choseAmountOfInvestment")]
-        public decimal ChoseAmountOfInvestment { get; set; }
-
-        [BsonElement("choseCard")]
-        public string ChoseCard { get; set; }
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }

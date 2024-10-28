@@ -14,7 +14,17 @@ namespace SuperBot.Core.Services
             // Если состояния для пользователя нет, возвращаем новое
             if (state == null)
             {
-                state = new ChatState { LastInteractionTime = DateTime.UtcNow, DialogState = DialogState.MainMenu };
+                state = new ChatState
+                {
+                    LastInteractionTime = DateTime.UtcNow,
+                    DialogState = DialogState.MainMenu,
+                    UserState = new UserState
+                    {
+                        ChoseAmountOfInvestment = 0,
+                        ChoseCard = "",
+                        ChoseSteamLogin = ""
+                    }
+                };
                 _chatStates[chatId] = state;
             }
             return Task.FromResult(state);

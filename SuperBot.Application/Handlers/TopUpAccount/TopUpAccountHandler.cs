@@ -20,9 +20,6 @@ namespace SuperBot.Application.Handlers.TopUp
 
         public async Task<Message> Handle(TopUpAccountCommand request, CancellationToken cancellationToken)
         {
-            using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
-
             await SendToChangeDialogStateAsync(request.ChatId);
 
             var payLink = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "Payment", Guid.NewGuid().ToString());

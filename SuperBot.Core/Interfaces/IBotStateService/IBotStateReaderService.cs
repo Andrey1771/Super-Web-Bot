@@ -4,6 +4,6 @@ namespace SuperBot.Core.Interfaces.IBotStateService
 {
     public interface IBotStateReaderService
     {
-        Task<ChatState> GetChatStateAsync(long userId);
+        Task<ChatState> GetChatStateAsync(long chatId);
     }
 }

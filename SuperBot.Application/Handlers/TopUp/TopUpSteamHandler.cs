@@ -9,11 +9,12 @@ using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.APIs;
+using SuperBot.Core.Interfaces.IBotStateService;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
     //TODO Рефакторинг
-    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService) : DialogCommandHandler<TopUpSteamCommand>(_mediator), IRequestHandler<TopUpSteamCommand, Message>
+    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<TopUpSteamCommand>(_mediator), IRequestHandler<TopUpSteamCommand, Message>
     {
         // TODO Вынести в конфиг
         private const decimal commissionRate = 0.15m;// 15% комиссия
@@ -21,12 +22,14 @@ namespace SuperBot.Application.Handlers.TopUp
 
         public async Task<Message> Handle(TopUpSteamCommand request, CancellationToken cancellationToken)
         {
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
 
             var user = await userRepository.GetUserByIdAsync(request.UserId);
             
-            var steamLogin = user.ChoseSteamLogin;
+            var steamLogin = oldState.UserState.ChoseSteamLogin;
             var discount = user.Discount / 100;
 
             await SendToChangeDialogStateAsync(request.ChatId);
