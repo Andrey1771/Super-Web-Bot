@@ -7,7 +7,7 @@ namespace SuperBot.WebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class GamesCatalogController(IGameRepository _gameRepository, IMapper _mapper) : ControllerBase
+    public class GameController(IGameRepository _gameRepository, IMapper _mapper) : ControllerBase
     {
         [HttpGet]
         public async Task<IActionResult> GetAllGames()

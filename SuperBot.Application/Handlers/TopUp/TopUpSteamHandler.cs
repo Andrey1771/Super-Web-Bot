@@ -7,6 +7,8 @@ using SuperBot.Application.Handlers.Base;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Application.Commands.TopUp;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces.APIs;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
@@ -22,7 +24,7 @@ namespace SuperBot.Application.Handlers.TopUp
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
 
-            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+            var user = await userRepository.GetUserByIdAsync(request.UserId);
             
             var steamLogin = user.ChoseSteamLogin;
             var discount = user.Discount / 100;
@@ -31,7 +33,14 @@ namespace SuperBot.Application.Handlers.TopUp
 
             var totalAmount = request.Amount + request.Amount * (commissionRate - discount);
 
-            var payLink = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", "TODO");
+            var order = new Order() {
+                IsPaid = false,
+                
+            };
+
+            //await _orderApiClient.CreateOrderAsync();
+
+            var payLink = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", "", Guid.NewGuid().ToString());
 
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + //TODO Текст

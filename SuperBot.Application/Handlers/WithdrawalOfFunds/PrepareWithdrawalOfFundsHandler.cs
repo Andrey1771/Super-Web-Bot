@@ -19,7 +19,7 @@ namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+            var user = await userRepository.GetUserByIdAsync(request.UserId);
             user.ChoseCard = request.ChoseCard;
 
             await userRepository.UpdateUserAsync(user);

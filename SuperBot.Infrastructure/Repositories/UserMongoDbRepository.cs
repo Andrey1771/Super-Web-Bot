@@ -23,33 +23,48 @@ namespace SuperBot.Infrastructure.Repositories
             user.CreatedAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
 
-            await _usersCollection.InsertOneAsync(_mapper.Map<UserDb>(user));
+            var userDb = _mapper.Map<UserDb>(user);
+            await _usersCollection.InsertOneAsync(userDb);
         }
 
-        public async Task<User> GetUserDetailsAsync(long userId)
+        // Получение всех пользователей
+        public async Task<IEnumerable<User>> GetAllUsersAsync()
         {
-            var user = await _usersCollection.Find(u => u.UserId == userId.ToString()).FirstOrDefaultAsync();
-            return _mapper.Map<User>(user);
+            var usersDb = await _usersCollection.Find(_ => true).ToListAsync();
+            return _mapper.Map<IEnumerable<User>>(usersDb);
+        }
+
+        // Получение пользователя по идентификатору
+        public async Task<User> GetUserByIdAsync(long userId)
+        {
+            var userDb = await _usersCollection.Find(u => u.UserId == userId.ToString()).FirstOrDefaultAsync();
+            return _mapper.Map<User>(userDb);
         }
 
         // Обновление данных пользователя
         public async Task UpdateUserAsync(User user)
         {
             user.UpdatedAt = DateTime.UtcNow;
+
             var filter = Builders<UserDb>.Filter.Eq(u => u.UserId, user.UserId.ToString());
             var update = Builders<UserDb>.Update
-                .Set(u => u.Name, user.Username)
+                .Set(u => u.Username, user.Username)
                 .Set(u => u.Balance, user.Balance)
                 .Set(u => u.CountOfInvited, user.CountOfInvited)
                 .Set(u => u.Discount, user.Discount)
                 .Set(u => u.QuantityBeforeIncrease, user.QuantityBeforeIncrease)
-                .Set(u => u.UpdatedAt, DateTime.UtcNow)
                 .Set(u => u.ChoseSteamLogin, user.ChoseSteamLogin)
-                .Set(u => u.Username, user.Username)
-                .Set(u => u.ChoseAmountOfInvestment, user.ChoseAmountOfInvestment);
-
+                .Set(u => u.ChoseAmountOfInvestment, user.ChoseAmountOfInvestment)
+                .Set(u => u.UpdatedAt, DateTime.UtcNow);
 
             await _usersCollection.UpdateOneAsync(filter, update);
+        }
+
+        // Удаление пользователя по идентификатору
+        public async Task DeleteUserAsync(string userId)
+        {
+            var filter = Builders<UserDb>.Filter.Eq(u => u.UserId, userId);
+            await _usersCollection.DeleteOneAsync(filter);
         }
 
         // Проверка, существует ли пользователь с данным userId

@@ -4,9 +4,11 @@ namespace SuperBot.Core.Interfaces.IRepositories
 {
     public interface IUserRepository
     {
-        Task<User> GetUserDetailsAsync(long userId);
-        Task AddUserAsync(User user);                    // Добавление нового пользователя
-        Task UpdateUserAsync(User user);                 // Обновление данных пользователя
-        Task<bool> UserExistsAsync(string userId);       // Проверка, существует ли пользователь
+        public Task AddUserAsync(User user);
+        public Task<IEnumerable<User>> GetAllUsersAsync();
+        public Task<User> GetUserByIdAsync(long userId);
+        public Task UpdateUserAsync(User user);
+        public Task DeleteUserAsync(string userId);
+        public Task<bool> UserExistsAsync(string userId);
     }
 }

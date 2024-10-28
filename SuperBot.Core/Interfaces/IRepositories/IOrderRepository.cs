@@ -9,6 +9,5 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<IEnumerable<Order>> GetAllOrdersAsync();
         Task UpdateOrderAsync(Order order);
         Task DeleteOrderAsync(string orderId);
-
     }
 }

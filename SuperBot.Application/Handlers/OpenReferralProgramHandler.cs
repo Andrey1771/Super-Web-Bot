@@ -24,7 +24,7 @@ namespace SuperBot.Application.Handlers
             await SendToChangeDialogStateAsync(request.ChatId);
 
             // Получение данных о пользователе из MongoDB
-            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+            var user = await userRepository.GetUserByIdAsync(request.UserId);
 
             if (user == null)
             {

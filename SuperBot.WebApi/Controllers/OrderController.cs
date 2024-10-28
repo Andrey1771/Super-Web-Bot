@@ -28,7 +28,7 @@ namespace SuperBot.WebApi.Controllers
 
         // GET: api/order/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<OrderDto>> GetOrderById(string id)
+        public async Task<ActionResult<Order>> GetOrderById(string id)
         {
             var order = await _orderRepository.GetOrderByIdAsync(id);
             if (order == null)
@@ -36,22 +36,22 @@ namespace SuperBot.WebApi.Controllers
                 return NotFound();
             }
 
-            return Ok(_mapper.Map<OrderDto>(order));
+            return Ok(_mapper.Map<Order>(order));
         }
 
         // GET: api/order
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<OrderDto>>> GetAllOrders()
+        public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
         {
             var orders = await _orderRepository.GetAllOrdersAsync();
-            var orderDtos = _mapper.Map<IEnumerable<OrderDto>>(orders);
+            var orderDtos = _mapper.Map<IEnumerable<Order>>(orders);
 
             return Ok(orderDtos);
         }
 
         // POST: api/order
         [HttpPost]
-        public async Task<ActionResult> CreateOrder([FromBody] OrderDto orderDto)
+        public async Task<ActionResult> CreateOrder([FromBody] Order orderDto)
         {
             if (!ModelState.IsValid)
             {
@@ -66,7 +66,7 @@ namespace SuperBot.WebApi.Controllers
 
         // PUT: api/order/{id}
         [HttpPut("{id}")]
-        public async Task<ActionResult> UpdateOrder(string id, [FromBody] OrderDto orderDto)
+        public async Task<ActionResult> UpdateOrder(string id, [FromBody] Order orderDto)
         {
             if (!ModelState.IsValid)
             {
@@ -80,7 +80,7 @@ namespace SuperBot.WebApi.Controllers
             }
 
             var updatedOrder = _mapper.Map<Order>(orderDto);
-            updatedOrder.Id = id; // Ensure the ID is the same
+            updatedOrder.Id = Guid.Parse(id); // Ensure the ID is the same
 
             await _orderRepository.UpdateOrderAsync(updatedOrder);
 

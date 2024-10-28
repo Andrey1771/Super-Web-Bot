@@ -28,7 +28,7 @@ namespace SuperBot.Application.Handlers.Investment
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
 
-            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+            var user = await userRepository.GetUserByIdAsync(request.UserId);
 
 
             var amount = user.ChoseAmountOfInvestment;

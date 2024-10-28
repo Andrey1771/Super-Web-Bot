@@ -19,7 +19,7 @@ namespace SuperBot.Infrastructure.ExternalServices
                 Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_shopId}:{_secretKey}")));
         }
 
-        public async Task<string> CreatePaymentAsync(decimal amount, string currency, string description, string returnUrl)
+        public async Task<string> CreatePaymentAsync(decimal amount, string currency, string description, string returnUrl, string orderId)
         {
             var paymentRequest = new
             {

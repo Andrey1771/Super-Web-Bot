@@ -7,6 +7,7 @@ using SuperBot.Application.Handlers.Base;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Application.Commands.TopUp;
+using SuperBot.Core.Services;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
@@ -24,7 +25,7 @@ namespace SuperBot.Application.Handlers.TopUp
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var payLink = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "Payment");
+            var payLink = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "Payment", Guid.NewGuid().ToString());
 
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта.\n" + //TODO Текст

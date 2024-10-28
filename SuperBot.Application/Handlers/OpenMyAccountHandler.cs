@@ -32,7 +32,7 @@ namespace SuperBot.Application.Handlers
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
 
-            return (await userRepository.GetUserDetailsAsync(userId)).Balance;
+            return (await userRepository.GetUserByIdAsync(userId)).Balance;//TODO
         }
 
         public string GetMenuText(string name, long userID, decimal balance)

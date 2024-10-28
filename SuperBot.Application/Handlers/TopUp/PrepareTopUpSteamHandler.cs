@@ -24,7 +24,7 @@ namespace SuperBot.Application.Handlers.TopUp
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var user = await userRepository.GetUserDetailsAsync(request.UserId);
+            var user = await userRepository.GetUserByIdAsync(request.UserId);
             user.ChoseSteamLogin = request.SteamLogin;
 
             await userRepository.UpdateUserAsync(user);
