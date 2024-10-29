@@ -12,7 +12,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 {
-    public class WithdrawalOfFundsHandler(ITelegramBotClient _botClient, IPayService _payService, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<WithdrawalOfFundsCommand>(_mediator), IRequestHandler<WithdrawalOfFundsCommand, Message>
+    public class WithdrawalOfFundsHandler(ITelegramBotClient _botClient, IPayService _payService, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<WithdrawalOfFundsCommand>(_mediator, _translationsService), IRequestHandler<WithdrawalOfFundsCommand, Message>
     {
         public async Task<Message> Handle(WithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {

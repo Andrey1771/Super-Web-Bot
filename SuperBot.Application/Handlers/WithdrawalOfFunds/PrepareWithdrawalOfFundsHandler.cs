@@ -11,7 +11,7 @@ using SuperBot.Core.Interfaces.IBotStateService;
 
 namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 {
-    public class PrepareWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<PrepareWithdrawalOfFundsCommand>(_mediator), IRequestHandler<PrepareWithdrawalOfFundsCommand, Message>
+    public class PrepareWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<PrepareWithdrawalOfFundsCommand>(_mediator, _translationsService), IRequestHandler<PrepareWithdrawalOfFundsCommand, Message>
     {
         public async Task<Message> Handle(PrepareWithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {

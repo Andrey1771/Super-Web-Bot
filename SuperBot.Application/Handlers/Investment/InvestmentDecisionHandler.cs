@@ -15,7 +15,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class InvestmentDecisionHandler(ITelegramBotClient _botClient, IPayService _payService, IMediator _mediator) : DialogCommandHandler<InvestmentDecisionCommand>(_mediator), IRequestHandler<InvestmentDecisionCommand, Message>//TODO Сделай их зависимыми друг от друга
+    public class InvestmentDecisionHandler(ITelegramBotClient _botClient, IPayService _payService, IMediator _mediator, ITranslationsService _translationsService) : DialogCommandHandler<InvestmentDecisionCommand>(_mediator, _translationsService), IRequestHandler<InvestmentDecisionCommand, Message>//TODO Сделай их зависимыми друг от друга
     {
         public async Task<Message> Handle(InvestmentDecisionCommand request, CancellationToken cancellationToken)
         {

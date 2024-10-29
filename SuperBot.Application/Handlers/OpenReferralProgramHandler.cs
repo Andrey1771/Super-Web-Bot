@@ -14,7 +14,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenReferralProgramHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<OpenReferralProgramCommand>(_mediator), IRequestHandler<OpenReferralProgramCommand, Message>
+    public class OpenReferralProgramHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<OpenReferralProgramCommand>(_mediator, _translationsService), IRequestHandler<OpenReferralProgramCommand, Message>
     {
         public async Task<Message> Handle(OpenReferralProgramCommand request, CancellationToken cancellationToken)
         {

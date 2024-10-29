@@ -8,7 +8,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class OpenInvestmentHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenInvestmentCommand>(_mediator), IRequestHandler<OpenInvestmentCommand, Message>
+    public class OpenInvestmentHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenInvestmentCommand>(_mediator, _translationsService), IRequestHandler<OpenInvestmentCommand, Message>
     {
         public async Task<Message> Handle(OpenInvestmentCommand request, CancellationToken cancellationToken)
         {

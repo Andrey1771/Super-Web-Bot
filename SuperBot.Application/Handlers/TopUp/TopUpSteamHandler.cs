@@ -14,7 +14,7 @@ using SuperBot.Core.Interfaces.IBotStateService;
 namespace SuperBot.Application.Handlers.TopUp
 {
     //TODO Рефакторинг
-    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<TopUpSteamCommand>(_mediator), IRequestHandler<TopUpSteamCommand, Message>
+    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<TopUpSteamCommand>(_mediator, _translationsService), IRequestHandler<TopUpSteamCommand, Message>
     {
         // TODO Вынести в конфиг
         private const decimal commissionRate = 0.15m;// 15% комиссия

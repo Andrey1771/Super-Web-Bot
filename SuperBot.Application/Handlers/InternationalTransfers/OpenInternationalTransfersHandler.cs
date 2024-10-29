@@ -13,7 +13,7 @@ using SuperBot.Core.Interfaces;
 
 namespace SuperBot.Application.Handlers.InternationalTransfers
 {
-    public class OpenInternationalTransfersHandler(ITelegramBotClient _botClient, IMediator _mediator, ITranslationsService _translationsService) : DialogCommandHandler<OpenInternationalTransfersCommand>(_mediator), IRequestHandler<OpenInternationalTransfersCommand, Message>
+    public class OpenInternationalTransfersHandler(ITelegramBotClient _botClient, IMediator _mediator, ITranslationsService _translationsService) : DialogCommandHandler<OpenInternationalTransfersCommand>(_mediator, _translationsService), IRequestHandler<OpenInternationalTransfersCommand, Message>
     {
         public async Task<Message> Handle(OpenInternationalTransfersCommand request, CancellationToken cancellationToken)
         {

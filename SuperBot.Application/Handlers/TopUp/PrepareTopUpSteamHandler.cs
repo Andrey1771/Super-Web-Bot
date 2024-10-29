@@ -17,7 +17,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
-    public class PrepareTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<PrepareTopUpSteamCommand>(_mediator), IRequestHandler<PrepareTopUpSteamCommand, Message>
+    public class PrepareTopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<PrepareTopUpSteamCommand>(_mediator, _translationsService), IRequestHandler<PrepareTopUpSteamCommand, Message>
     {
         public async Task<Message> Handle(PrepareTopUpSteamCommand request, CancellationToken cancellationToken)
         {

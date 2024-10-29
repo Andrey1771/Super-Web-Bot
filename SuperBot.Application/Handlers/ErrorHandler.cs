@@ -13,7 +13,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers
 {
-    public class ErrorHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<ErrorCommand>(_mediator), IRequestHandler<ErrorCommand, Message>
+    public class ErrorHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<ErrorCommand>(_mediator, _translationsService), IRequestHandler<ErrorCommand, Message>
     {
         public async Task<Message> Handle(ErrorCommand request, CancellationToken cancellationToken)
         {

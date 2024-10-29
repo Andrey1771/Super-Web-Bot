@@ -10,7 +10,7 @@ using SuperBot.Application.Handlers.Base;
 
 namespace SuperBot.Application.Handlers
 {
-    public class BuyGameHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<BuyGameCommand>(_mediator), IRequestHandler<BuyGameCommand, Message>
+    public class BuyGameHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<BuyGameCommand>(_mediator, _translationsService), IRequestHandler<BuyGameCommand, Message>
     {
         public async Task<Message> Handle(BuyGameCommand request, CancellationToken cancellationToken)
         {

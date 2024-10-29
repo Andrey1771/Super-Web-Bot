@@ -9,10 +9,11 @@ using SuperBot.Application.Handlers.Base;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Interfaces.IBotStateService;
+using SuperBot.Core.Interfaces;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class EnterInvestmentAmountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService) : DialogCommandHandler<EnterInvestmentAmountCommand>(_mediator), IRequestHandler<EnterInvestmentAmountCommand, Message>
+    public class EnterInvestmentAmountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService, ITranslationsService _translationsService) : DialogCommandHandler<EnterInvestmentAmountCommand>(_mediator, _translationsService), IRequestHandler<EnterInvestmentAmountCommand, Message>
     {
         public async Task<Message> Handle(EnterInvestmentAmountCommand request, CancellationToken cancellationToken)
         {

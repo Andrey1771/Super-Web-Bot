@@ -8,7 +8,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 {
-    public class OpenWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenWithdrawalOfFundsCommand>(_mediator), IRequestHandler<OpenWithdrawalOfFundsCommand, Message>
+    public class OpenWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenWithdrawalOfFundsCommand>(_mediator, _translationsService), IRequestHandler<OpenWithdrawalOfFundsCommand, Message>
     {
         public async Task<Message> Handle(OpenWithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {
