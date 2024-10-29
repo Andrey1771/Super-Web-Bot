@@ -25,8 +25,7 @@ namespace SuperBot.Application.Handlers.TopUp
             var payLink = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "Payment", Guid.NewGuid().ToString());
 
             // Формируем сообщение пользователю с запросом на оплату
-            string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта.\n" + //TODO Текст
-                                    $"Пожалуйста, перейдите по ссылке для оплаты: <a href='{payLink}'>Ссылка</a>";
+            string paymentMessage = string.Format(_translationsService.Translation.RequestTopUp, request.Amount, payLink);
 
             // Отправляем сообщение пользователю
             var sentMessage = await _botClient.SendTextMessageAsync(

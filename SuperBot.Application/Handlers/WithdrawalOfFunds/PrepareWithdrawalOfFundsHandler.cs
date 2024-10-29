@@ -22,7 +22,7 @@ namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 
             await _botStateWriterService.SaveChatStateAsync(request.ChatId, oldState);
 
-            var message = "Введите сумму в рублях";
+            var message = _translationsService.Translation.EnterAmountInRubles;
 
             // Отправляем сообщение пользователю
             return await _botClient.SendTextMessageAsync(

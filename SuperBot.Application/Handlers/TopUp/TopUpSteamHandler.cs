@@ -46,9 +46,7 @@ namespace SuperBot.Application.Handlers.TopUp
             var payLink = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", "", Guid.NewGuid().ToString());
 
             // Формируем сообщение пользователю с запросом на оплату
-            string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + //TODO Текст
-                                    $"Итого с комиссией {(commissionRate - discount) * 100}%: {totalAmount} ₽.\n" +
-                                    $"Пожалуйста, перейдите по ссылке для оплаты: <a href='{payLink}'>Ссылка</a>";
+            string paymentMessage = string.Format(_translationsService.Translation.TopUpSteam, request.Amount, steamLogin, (commissionRate - discount) * 100, totalAmount, payLink);
 
             // Отправляем сообщение пользователю
             var sentMessage = await _botClient.SendTextMessageAsync(
@@ -67,13 +65,7 @@ namespace SuperBot.Application.Handlers.TopUp
         // Уведомление администратора о пополнении
         private async Task NotifyAdmin(string username, string steamLogin, decimal amount, decimal totalAmount)
         {
-            string adminMessage = $"Пополнение баланса Steam:\n" +//TODO Текст
-                                  $"Пользователь Telegram: {username}\n" +
-                                  $"Логин Steam: {steamLogin}\n" +
-                                  $"Сумма: {amount} ₽\n" +
-                                  $"Сумма с комиссией: {totalAmount} ₽\n" +
-                                  "Оплатил: нет";
-
+            string adminMessage = string.Format(_translationsService.Translation.NotifyTopUpSteam, username, steamLogin, amount, totalAmount);
             // Отправка уведомления админу (укажите здесь ID чата админа)
             await _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);
         }

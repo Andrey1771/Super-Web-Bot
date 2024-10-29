@@ -32,9 +32,7 @@ namespace SuperBot.Application.Handlers
         public string GetText(string error)
         {
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine($"Произошла ошибка:\n{error}");
-            //stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.Account}:</u></b>");
-            //stringBuilder.AppendLine(string.Format(_translationsService.Translation.AccountBody, name, userID, balance));
+            stringBuilder.AppendLine($"{_translationsService.Translation.ErrorOccurred}:\n{error}");
             return stringBuilder.ToString();
         }
 

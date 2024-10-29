@@ -32,7 +32,10 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="server.ts" />
+    <Content Include="About us.html" />
+    <Content Include="Game List.html" />
     <Content Include="index %287%29.html" />
+    <Content Include="index.html" />
     <Content Include="tsconfig.json" />
     <Content Include="package.json" />
     <Content Include="README.md" />

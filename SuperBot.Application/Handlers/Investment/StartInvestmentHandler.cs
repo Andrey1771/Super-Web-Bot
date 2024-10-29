@@ -21,7 +21,7 @@ namespace SuperBot.Application.Handlers.Investment
 
             return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: "Введите сумму инвестирования\r\n\r\n",
+                    text: _translationsService.Translation.EnterInvestmentAmount,
                     cancellationToken: cancellationToken
             );
         }

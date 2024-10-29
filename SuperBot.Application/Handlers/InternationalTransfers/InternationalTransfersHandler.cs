@@ -7,14 +7,15 @@ using SuperBot.Application.Commands.InternationalTransfers;
 using SuperBot.Core.Entities;
 using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types.Enums;
+using SuperBot.Core.Interfaces;
 
 namespace SuperBot.Application.Handlers.InternationalTransfers
 {
-    public class InternationalTransfersHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<InternationalTransfersCommand>(_mediator), IRequestHandler<InternationalTransfersCommand, Message>
+    public class InternationalTransfersHandler(ITelegramBotClient _botClient, IMediator _mediator, ITranslationsService _translationsService) : DialogCommandHandler<InternationalTransfersCommand>(_mediator), IRequestHandler<InternationalTransfersCommand, Message>
     {
         public async Task<Message> Handle(InternationalTransfersCommand request, CancellationToken cancellationToken)
         {
-            string notificationMessage = $"Новый запрос на перевод:\n\n{request.Text}\nПользователь: {request.Username}";
+            string notificationMessage = string.Format(_translationsService.Translation.RequestAccepted, request.Text, request.Username);
             //await _notificationService.SendNotificationAsync(notificationMessage);
 
             await NotifyAdmin(notificationMessage);
@@ -25,7 +26,7 @@ namespace SuperBot.Application.Handlers.InternationalTransfers
             var ownerUrl = $"https://t.me/{ownerUsername}";
             return await _botClient.SendTextMessageAsync(
             chatId: request.ChatId,
-            text: $"Ваш запрос принят! Мы свяжемся с вами для дальнейших инструкций.\n{ownerUrl}",
+            text: string.Format(_translationsService.Translation.RequestAccepted, ownerUrl),
             cancellationToken: cancellationToken
         );
         }

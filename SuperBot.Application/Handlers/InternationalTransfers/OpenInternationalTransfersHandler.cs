@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
+using SuperBot.Core.Interfaces;
 
 namespace SuperBot.Application.Handlers.InternationalTransfers
 {
-    public class OpenInternationalTransfersHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<OpenInternationalTransfersCommand>(_mediator), IRequestHandler<OpenInternationalTransfersCommand, Message>
+    public class OpenInternationalTransfersHandler(ITelegramBotClient _botClient, IMediator _mediator, ITranslationsService _translationsService) : DialogCommandHandler<OpenInternationalTransfersCommand>(_mediator), IRequestHandler<OpenInternationalTransfersCommand, Message>
     {
         public async Task<Message> Handle(OpenInternationalTransfersCommand request, CancellationToken cancellationToken)
         {
@@ -29,9 +30,7 @@ namespace SuperBot.Application.Handlers.InternationalTransfers
         public string GetText()
         {
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine($"Укажите данные перевода:\n\nОткуда (страна):\nКуда (страна):\nСумма (валюта):");
-            //stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.Account}:</u></b>");
-            //stringBuilder.AppendLine(string.Format(_translationsService.Translation.AccountBody, name, userID, balance));
+            stringBuilder.AppendLine(_translationsService.Translation.ProvideTransferDetails);
             return stringBuilder.ToString();
         }
     }

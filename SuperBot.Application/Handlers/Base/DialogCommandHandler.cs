@@ -7,12 +7,13 @@ using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Application.Handlers.WithdrawalOfFunds;
 using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SuperBot.Application.Handlers.Base
 {
-    public abstract class DialogCommandHandler<TCommand>(IMediator _mediator)
+    public abstract class DialogCommandHandler<TCommand>(IMediator _mediator, ITranslationsService _translateService)
     {
         // Словарь для сопоставления типов команд с состояниями, в которые он будет переводить
         protected Dictionary<Type, DialogState> CommandStateMapping => new Dictionary<Type, DialogState>
@@ -67,7 +68,7 @@ namespace SuperBot.Application.Handlers.Base
             }
             else
             {
-                throw new NotImplementedException("Переход для данной команды не реализован");
+                throw new NotImplementedException(_translateService.Translation.TransitionForThisCommandIsNotImplemented);
             }
         }
     }

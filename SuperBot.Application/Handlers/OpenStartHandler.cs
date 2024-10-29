@@ -36,7 +36,7 @@ namespace SuperBot.Application.Handlers
 
             await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
-                text: GetMenuText(),
+                text: GetStartText(),
                 parseMode: ParseMode.Html,
                 cancellationToken: cancellationToken);
 
@@ -51,12 +51,10 @@ namespace SuperBot.Application.Handlers
             return _mediator.Send(command);
         }
 
-        public string GetMenuText()
+        public string GetStartText()
         {
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine($"Этот сервис помогает пользователям с финансовыми операциями и покупками игр. В меню доступны разделы международных переводов, пополнения и покупки игр в Steam, а также инвестирования. Тут можно пополнять баланс, выводить деньги, участвовать в реферальной программе, просматривать историю покупок и инвестировать средства на заданный срок!");
-            //stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.Account}:</u></b>");
-            //stringBuilder.AppendLine(string.Format(_translationsService.Translation.AccountBody, name, userID, balance));
+            stringBuilder.AppendLine(_translationsService.Translation.DescriptionBotStart);
             return stringBuilder.ToString();
         }
     }

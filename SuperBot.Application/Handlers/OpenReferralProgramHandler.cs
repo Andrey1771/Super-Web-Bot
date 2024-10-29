@@ -31,7 +31,7 @@ namespace SuperBot.Application.Handlers
                 // Если пользователь не найден, можно отправить сообщение об ошибке
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: "Пользователь не найден.",
+                    text: _translationsService.Translation.UserNotFound,
                     cancellationToken: cancellationToken);
             }
 
@@ -55,10 +55,6 @@ namespace SuperBot.Application.Handlers
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.ReferralProgram}:</u></b>");
             stringBuilder.AppendLine(string.Format(_translationsService.Translation.ReferralProgramBody, countOfInvited, discount, quantityBeforeIncrease, personalLink));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.ReferralProgram, _translationsService.Translation.ReferralProgram));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SteamTopUp, _translationsService.Translation.SteamTopUp));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.WithdrawFunds, _translationsService.Translation.WithdrawFunds));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.PurchaseHistory, _translationsService.Translation.PurchaseHistory));
             return stringBuilder.ToString();
         }
 

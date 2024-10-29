@@ -33,9 +33,7 @@ namespace SuperBot.Application.Handlers.TopUp
         public string GetMenuText()
         {
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine($"Введите сумму пополнения");
-            //stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.Account}:</u></b>");
-            //stringBuilder.AppendLine(string.Format(_translationsService.Translation.AccountBody, name, userID, balance));
+            stringBuilder.AppendLine(_translationsService.Translation.TopUpAmount);
             return stringBuilder.ToString();
         }
     }

@@ -35,6 +35,22 @@ namespace SuperBot.Core.Entities
         public string AccountBody { get; set; }
 
         public string ReferralProgramBody { get; set; }
+        public string ErrorOccurred { get; set; }
+        public string UserNotFound { get; set; }
+        public string DescriptionBotStart { get; set; }
+        public string WithdrawalOfFundsMessage { get; set; }
+        public string EnterAmountInRubles { get; set; }
+        public string EnterCardNumberToWithdrawFunds { get; set; }
+        public string RequestTopUp { get; set; }
+        public string TopUpAmount { get; set; }
+        public string TopUpSteam { get; set; }
+        public string NotifyTopUpSteam { get; set; }
+        public string EnterSteamLogin { get; set; }
+        public string TransitionForThisCommandIsNotImplemented { get; set; }
+        public string RequestAccepted { get; set; }
+        public string ProvideTransferDetails { get; set; }
+        public string EnterInvestmentAmount { get; set; }
+        public string InvestInYourFuture { get; set; }
     }
 
     public class KeyboardKeys

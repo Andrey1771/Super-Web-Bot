@@ -12,7 +12,7 @@ namespace SuperBot.Application.Handlers.WithdrawalOfFunds
     {
         public async Task<Message> Handle(OpenWithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {
-            var message = "Введите номер карты для вывода средств";
+            var message = _translationsService.Translation.EnterCardNumberToWithdrawFunds;
 
             // Отправляем сообщение пользователю
             return await _botClient.SendTextMessageAsync(

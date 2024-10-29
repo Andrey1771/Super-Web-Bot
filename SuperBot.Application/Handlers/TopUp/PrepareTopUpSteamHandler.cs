@@ -30,18 +30,16 @@ namespace SuperBot.Application.Handlers.TopUp
 
             return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: GetMenuText(),
+                    text: GetText(),
                     parseMode: ParseMode.Html,
                     //replyMarkup: GetKeyboard(request.ChatId),
                     cancellationToken: cancellationToken);
         }
 
-        public string GetMenuText()
+        public string GetText()
         {
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine($"Введите сумму пополнения");
-            //stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.Account}:</u></b>");
-            //stringBuilder.AppendLine(string.Format(_translationsService.Translation.AccountBody, name, userID, balance));
+            stringBuilder.AppendLine(_translationsService.Translation.TopUpAmount);
             return stringBuilder.ToString();
         }
     }
