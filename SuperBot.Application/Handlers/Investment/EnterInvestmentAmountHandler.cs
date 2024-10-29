@@ -13,7 +13,7 @@ using SuperBot.Core.Interfaces;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class EnterInvestmentAmountHandler(ITelegramBotClient _botClient, IServiceProvider _serviceProvider, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService, ITranslationsService _translationsService) : DialogCommandHandler<EnterInvestmentAmountCommand>(_mediator, _translationsService), IRequestHandler<EnterInvestmentAmountCommand, Message>
+    public class EnterInvestmentAmountHandler(ITelegramBotClient _botClient, IMediator _mediator, IBotStateWriterService _botStateWriterService, IBotStateReaderService _botStateReaderService, ITranslationsService _translationsService) : DialogCommandHandler<EnterInvestmentAmountCommand>(_mediator, _translationsService), IRequestHandler<EnterInvestmentAmountCommand, Message>
     {
         public async Task<Message> Handle(EnterInvestmentAmountCommand request, CancellationToken cancellationToken)
         {
@@ -22,7 +22,7 @@ namespace SuperBot.Application.Handlers.Investment
             {
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: "Некорректная сумма, введите сумму больше 0.",
+                    text: _translationsService.Translation.SomeSumMoreThenZero,
                     cancellationToken: cancellationToken
                 );
             }
@@ -36,7 +36,7 @@ namespace SuperBot.Application.Handlers.Investment
 
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
-                text: "Введите срок инвестиций в днях (не менее 30 дней).",
+                text: _translationsService.Translation.EnterTimeOfInvest,
                 cancellationToken: cancellationToken
             );
         }

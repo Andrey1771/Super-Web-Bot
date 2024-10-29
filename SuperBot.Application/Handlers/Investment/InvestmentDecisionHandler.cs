@@ -26,7 +26,7 @@ namespace SuperBot.Application.Handlers.Investment
 
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: $"Перейдите по ссылке для оплаты: {paymentUrl}",
+                    text: string.Format(_translationsService.Translation.FollowLinkToPay, paymentUrl),
                     cancellationToken: cancellationToken
                 );
             }
@@ -36,7 +36,7 @@ namespace SuperBot.Application.Handlers.Investment
                 var ownerUrl = $"https://t.me/{ownerName}";
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: $"Если у вас возникли вопросы, свяжитесь с <a href='{ownerUrl}'>нами</a>.",
+                    text:  string.Format(_translationsService.Translation.IfYouHaveQuestions, ownerUrl),
                     parseMode: ParseMode.Html,
                     cancellationToken: cancellationToken
                 );

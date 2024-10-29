@@ -51,6 +51,14 @@ namespace SuperBot.Core.Entities
         public string ProvideTransferDetails { get; set; }
         public string EnterInvestmentAmount { get; set; }
         public string InvestInYourFuture { get; set; }
+        public string SomeSumMoreThenZero { get; set; }
+        public string EnterTimeOfInvest { get; set; }
+        public string FollowLinkToPay { get; set; }
+        public string IfYouHaveQuestions { get; set; }
+        public string MinimumInvestmentPeriod { get; set; }
+        public string Invest { get; set; }
+        public string Reject { get; set; }
+        public string SumTimeValueTotal { get; set; }
     }
 
     public class KeyboardKeys

@@ -1,14 +1,9 @@
 ﻿using MediatR;
-using SuperBot.Application.Commands.Base;
 using SuperBot.Application.Commands.Investment;
-using SuperBot.Core.Entities;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
 using Telegram.Bot;
-using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
-using Microsoft.Extensions.DependencyInjection;
-using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces;
 
@@ -22,7 +17,7 @@ namespace SuperBot.Application.Handlers.Investment
             {
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: "Минимальный срок инвестиций — 30 дней.",
+                    text: _translationsService.Translation.MinimumInvestmentPeriod,
                     cancellationToken: cancellationToken
                 );
             }
@@ -39,13 +34,13 @@ namespace SuperBot.Application.Handlers.Investment
 
             var keyboard = new InlineKeyboardMarkup(new[]
             {
-            new InlineKeyboardButton("Инвестировать") { CallbackData = "Invest" },
-            new InlineKeyboardButton("Отказаться") { CallbackData = "Decline" }
+            new InlineKeyboardButton(_translationsService.Translation.Invest) { CallbackData = "Invest" },
+            new InlineKeyboardButton(_translationsService.Translation.Reject) { CallbackData = "Decline" }
         });
 
             return await _botClient.SendTextMessageAsync(
                 chatId: request.ChatId,
-                text: $"Сумма: {amount:C}\nСрок: {request.Duration} дней\nДоходность: +15%\nИтого: {total:C}\nХотите инвестировать?",
+                text: string.Format(_translationsService.Translation.SumTimeValueTotal, amount, request.Duration, total),
                 replyMarkup: keyboard,
                 cancellationToken: cancellationToken
             );
