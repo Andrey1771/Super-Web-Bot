@@ -1,0 +1,129 @@
+﻿using Konscious.Security.Cryptography;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
+using SuperBot.Identity.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
+namespace SuperBot.Identity.Controllers
+{
+    [ApiController]
+    [Route("api/auth")]
+    public class AuthController : ControllerBase
+    {
+        private readonly IMongoDatabase _database;
+        private readonly IConfiguration _configuration;
+
+        public AuthController(IMongoDatabase database, IConfiguration configuration)
+        {
+            _database = database;
+            _configuration = configuration;
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            var users = _database.GetCollection<User>("Users");
+            var existingUser = await users.Find(u => u.Username == model.Username).FirstOrDefaultAsync();
+            if (existingUser != null)
+                return Conflict("Username already taken");
+
+            var passwordHash = await HashPasswordAsync(model.Password);
+
+            var user = new User
+            {
+                Username = model.Username,
+                PasswordHash = passwordHash
+            };
+
+            await users.InsertOneAsync(user);
+            return Ok("Registration successful");
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        {
+            var users = _database.GetCollection<User>("Users");
+            var user = await users.Find(u => u.Username == model.Username).FirstOrDefaultAsync();
+            if (user == null || !await VerifyPasswordAsync(model.Password, user.PasswordHash))
+                return Unauthorized("Invalid credentials");
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:SecretKey"]);
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+                }),
+                Expires = DateTime.UtcNow.AddHours(1),
+                Issuer = _configuration["JwtSettings:Issuer"],
+                Audience = _configuration["JwtSettings:Audience"],
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return Ok(new { Token = tokenHandler.WriteToken(token) });
+        }
+
+        private async Task<string> HashPasswordAsync(string password)
+        {
+            var salt = new byte[16];
+            using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+            var hasher = new Argon2id(Encoding.UTF8.GetBytes(password))
+            {
+                Salt = salt,
+                DegreeOfParallelism = 8,
+                Iterations = 4,
+                MemorySize = 1024 * 16
+            };
+            var hash = await hasher.GetBytesAsync(16);
+
+            // Конкатенируем соль и хэш пароля в одну строку, чтобы хранить их вместе
+            var result = new byte[salt.Length + hash.Length];
+            Buffer.BlockCopy(salt, 0, result, 0, salt.Length);
+            Buffer.BlockCopy(hash, 0, result, salt.Length, hash.Length);
+
+            return Convert.ToBase64String(result);
+        }
+
+        private async Task<bool> VerifyPasswordAsync(string password, string hashedPassword)
+        {
+            var hashBytes = Convert.FromBase64String(hashedPassword);
+
+            // Проверка, что длина соответствует ожидаемой (16 байт для соли + 16 байт для хэша)
+            if (hashBytes.Length != 32)
+            {
+                throw new ArgumentException("Invalid stored password format.");
+            }
+
+            // Извлекаем соль и хэш из массива
+            var salt = new byte[16];
+            var hash = new byte[16];
+            Buffer.BlockCopy(hashBytes, 0, salt, 0, 16);
+            Buffer.BlockCopy(hashBytes, 16, hash, 0, 16);
+
+            var hasher = new Argon2id(Encoding.UTF8.GetBytes(password))
+            {
+                Salt = salt,
+                DegreeOfParallelism = 8,
+                Iterations = 4,
+                MemorySize = 1024 * 16
+            };
+            var computedHash = await hasher.GetBytesAsync(16);
+
+            // Сравнение computedHash с hash
+            for (int i = 0; i < computedHash.Length; i++)
+            {
+                if (computedHash[i] != hash[i])
+                    return false;
+            }
+            return true;
+        }
+    }
+}

@@ -28,7 +28,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Presentation", "Su
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "WebCatalogApp", "Tale_gameshop\WebCatalogApp.njsproj", "{953C3172-07BD-465A-9EAD-77C9CD755988}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Services.Identity", "SuperBot.Services.Identity\SuperBot.Services.Identity.csproj", "{C2ED6F7F-FF20-4ABC-A59F-1BF075A77DCA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Identity", "SuperBot.Identity\SuperBot.Identity.csproj", "{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -72,10 +72,10 @@ Global
 		{953C3172-07BD-465A-9EAD-77C9CD755988}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{953C3172-07BD-465A-9EAD-77C9CD755988}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{953C3172-07BD-465A-9EAD-77C9CD755988}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C2ED6F7F-FF20-4ABC-A59F-1BF075A77DCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C2ED6F7F-FF20-4ABC-A59F-1BF075A77DCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C2ED6F7F-FF20-4ABC-A59F-1BF075A77DCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C2ED6F7F-FF20-4ABC-A59F-1BF075A77DCA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
