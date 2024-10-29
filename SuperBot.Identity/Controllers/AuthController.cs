@@ -3,50 +3,47 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SuperBot.Identity.Models;
+using SuperBot.Identity.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
 namespace SuperBot.Identity.Controllers
 {
-    [ApiController]
-    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
-        private readonly IMongoDatabase _database;
+        private readonly IMongoCollection<User> _users;
+        private readonly EncryptionService _encryptionService;
         private readonly IConfiguration _configuration;
 
         public AuthController(IMongoDatabase database, IConfiguration configuration)
         {
-            _database = database;
+            _users = database.GetCollection<User>("Users");
             _configuration = configuration;
+            _encryptionService = new EncryptionService("8924889b-7f38-451d-8da4-842a1c2cedcd"); // Замените на свой ключ TODO
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
-            var users = _database.GetCollection<User>("Users");
-            var existingUser = await users.Find(u => u.Username == model.Username).FirstOrDefaultAsync();
-            if (existingUser != null)
-                return Conflict("Username already taken");
-
-            var passwordHash = await HashPasswordAsync(model.Password);
+            var encryptedUsername = _encryptionService.Encrypt(model.Username);
 
             var user = new User
             {
-                Username = model.Username,
-                PasswordHash = passwordHash
+                Username = encryptedUsername,
+                PasswordHash = await HashPasswordAsync(model.Password)
             };
 
-            await users.InsertOneAsync(user);
+            await _users.InsertOneAsync(user);
             return Ok("Registration successful");
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
-            var users = _database.GetCollection<User>("Users");
-            var user = await users.Find(u => u.Username == model.Username).FirstOrDefaultAsync();
+            var encryptedUsername = _encryptionService.Encrypt(model.Username);
+            var user = await _users.Find(u => u.Username == encryptedUsername).FirstOrDefaultAsync();
+
             if (user == null || !await VerifyPasswordAsync(model.Password, user.PasswordHash))
                 return Unauthorized("Invalid credentials");
 
