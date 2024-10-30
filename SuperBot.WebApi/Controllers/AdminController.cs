@@ -5,6 +5,8 @@ using SuperBot.Core.Interfaces;
 
 namespace SuperBot.WebApi.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class AdminController(IResourceService _resourceService) : Controller
     {
         [HttpGet]

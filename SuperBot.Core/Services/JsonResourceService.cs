@@ -6,7 +6,7 @@ namespace SuperBot.Core.Services
 {
     public class JsonResourceService : IResourceService
     {
-        private readonly string _jsonFilePath = "../SuperBot.Core/Properties/resources.json";//TODO
+        private readonly string _jsonFilePath = "bin/Debug/net8.0/Properties/resources.json";//TODO
 
         private Resources? _resources;
         public Resources Resources {
