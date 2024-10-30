@@ -23,7 +23,7 @@ namespace SuperBot.Application.Handlers.TopUp
         {
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.ChatId);
             oldState.UserState.ChoseSteamLogin = request.SteamLogin;
 
             await _botStateWriterService.SaveChatStateAsync(request.ChatId, oldState);

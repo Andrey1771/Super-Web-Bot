@@ -22,7 +22,7 @@ namespace SuperBot.Application.Handlers.Investment
                 );
             }
 
-            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.ChatId);
 
             var amount = oldState.UserState.ChoseAmountOfInvestment;
             // Расчет доходности

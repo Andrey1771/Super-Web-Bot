@@ -22,7 +22,7 @@ namespace SuperBot.Application.Handlers.TopUp
 
         public async Task<Message> Handle(TopUpSteamCommand request, CancellationToken cancellationToken)
         {
-            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.ChatId);
 
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;

@@ -26,7 +26,7 @@ namespace SuperBot.Application.Handlers.Investment
                     cancellationToken: cancellationToken
                 );
             }
-            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.ChatId);
             oldState.UserState.ChoseAmountOfInvestment = request.Amount;
 
             await _botStateWriterService.SaveChatStateAsync(request.ChatId, oldState);

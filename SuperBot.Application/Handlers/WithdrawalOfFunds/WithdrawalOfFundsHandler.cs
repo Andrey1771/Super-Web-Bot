@@ -16,7 +16,7 @@ namespace SuperBot.Application.Handlers.WithdrawalOfFunds
     {
         public async Task<Message> Handle(WithdrawalOfFundsCommand request, CancellationToken cancellationToken)
         {
-            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserID);
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.ChatId);
 
             await SendToChangeDialogStateAsync(request.ChatId);
 

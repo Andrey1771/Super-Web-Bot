@@ -39,7 +39,7 @@ namespace SuperBot.Application.Handlers
         private Task<Message> GetMainMenu(long chatId)
         {
             var command = new GetMainMenuCommand();
-            command.ChatId = chatId;//TODO
+            command.ChatId = chatId;
 
             return _mediator.Send(command);
         }

@@ -17,7 +17,7 @@ namespace SuperBot.Application.Handlers.WithdrawalOfFunds
         {
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var oldState = await _botStateReaderService.GetChatStateAsync(request.UserId);
+            var oldState = await _botStateReaderService.GetChatStateAsync(request.ChatId);
             oldState.UserState.ChoseCard = request.ChoseCard;
 
             await _botStateWriterService.SaveChatStateAsync(request.ChatId, oldState);
