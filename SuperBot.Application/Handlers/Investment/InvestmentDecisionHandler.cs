@@ -12,10 +12,11 @@ using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Handlers.Base;
 using Microsoft.AspNetCore.Components;
 using Telegram.Bot.Types.Enums;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.Application.Handlers.Investment
 {
-    public class InvestmentDecisionHandler(ITelegramBotClient _botClient, IPayService _payService, IMediator _mediator, ITranslationsService _translationsService) : DialogCommandHandler<InvestmentDecisionCommand>(_mediator, _translationsService), IRequestHandler<InvestmentDecisionCommand, Message>
+    public class InvestmentDecisionHandler(ITelegramBotClient _botClient, IPayService _payService, IMediator _mediator, ITranslationsService _translationsService, IAdminSettingsProvider _adminSettingsProvider) : DialogCommandHandler<InvestmentDecisionCommand>(_mediator, _translationsService), IRequestHandler<InvestmentDecisionCommand, Message>
     {
         public async Task<Message> Handle(InvestmentDecisionCommand request, CancellationToken cancellationToken)
         {
@@ -32,7 +33,7 @@ namespace SuperBot.Application.Handlers.Investment
             }
             else if (request.Decision == "Decline")
             {
-                var ownerName = "andrey6eb";
+                var ownerName = _adminSettingsProvider.Username;
                 var ownerUrl = $"https://t.me/{ownerName}";
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,

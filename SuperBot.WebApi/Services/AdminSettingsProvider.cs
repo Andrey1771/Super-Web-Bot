@@ -9,7 +9,7 @@
 
         public AdminSettingsProvider(IConfiguration configuration)
         {
-            _username = configuration["Username"];
+            _username = configuration["TelegramUsername"];
             _commissionRate = int.Parse(configuration["CommissionRate"]);
             _adminChatId = long.Parse(configuration["AdminChatId"]);
         }
