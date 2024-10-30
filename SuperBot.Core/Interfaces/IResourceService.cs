@@ -5,5 +5,7 @@ namespace SuperBot.Core.Interfaces
     public interface IResourceService
     {
         Resources Resources { get; }
+
+        Task UpdateResourcesAsync(Resources newResources);
     }
 }
