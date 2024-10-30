@@ -78,6 +78,5 @@
     "TopUpBalance": "/topUpAccount",
     "WithdrawFunds": "/withdrawFunds",
     "PurchaseHistory": "/history"
-  },
-  "MainUrl": "https://e491-176-59-162-223.ngrok-free.app"
+  }
 }

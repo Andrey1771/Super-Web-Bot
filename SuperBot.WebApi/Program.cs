@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces;
@@ -62,7 +63,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddTransient<IResourceService, JsonResourceService>();
 builder.Services.AddTransient<ITranslationsService, TranslationsService>();
-builder.Services.AddTransient<IUrlService, UrlService>();
+builder.Services.AddSingleton<IUrlService, UrlProvider>();
 
 
 builder.Services.AddSingleton<BotStateService>();

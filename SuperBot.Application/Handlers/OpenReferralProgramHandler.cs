@@ -14,7 +14,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers
 {
-    public class OpenReferralProgramHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<OpenReferralProgramCommand>(_mediator, _translationsService), IRequestHandler<OpenReferralProgramCommand, Message>
+    public class OpenReferralProgramHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IUrlService _urlService) : DialogCommandHandler<OpenReferralProgramCommand>(_mediator, _translationsService), IRequestHandler<OpenReferralProgramCommand, Message>
     {
         public async Task<Message> Handle(OpenReferralProgramCommand request, CancellationToken cancellationToken)
         {
@@ -45,9 +45,9 @@ namespace SuperBot.Application.Handlers
                 cancellationToken: cancellationToken);
         }
 
-        private string GeneratePersonalLink(long userId)//TODO Доделать персональную ссылку
+        private string GeneratePersonalLink(long userId)
         {
-            return $"https://yourwebsite.com/referral/{userId}";
+            return $"{_urlService.MainUrl}/referral/{userId}";
         }
 
         public string GetMenuText(int countOfInvited, decimal discount, int quantityBeforeIncrease, string personalLink)
