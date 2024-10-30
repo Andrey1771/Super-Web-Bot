@@ -20,7 +20,7 @@ namespace SuperBot.Application.Handlers.TopUp
         //public async Task<Message> Handle(TopUpSteamConfirmCommand request, CancellationToken cancellationToken)
         //{
             // Формируем сообщение пользователю с запросом на оплату
-            //string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + //TODO Текст
+            //string paymentMessage = $"Вы запросили пополнение на {request.Amount} ₽ для аккаунта Steam: {steamLogin}.\n" + // TODO
             //$"Итого с комиссией {(commissionRate - discount) * 100}%: {totalAmount} ₽.\n" +
             //                        $"Пожалуйста, перейдите по ссылке для оплаты: <a href='{payLink}'>Ссылка</a>";
 
@@ -41,13 +41,6 @@ namespace SuperBot.Application.Handlers.TopUp
         // Уведомление администратора о пополнении
         private async Task NotifyAdmin(string username, string steamLogin, decimal amount, decimal totalAmount)
         {
-            string adminMessage = $"Пополнение баланса Steam:\n" +//TODO Текст
-                                  $"Пользователь Telegram: {username}\n" +
-                                  $"Логин Steam: {steamLogin}\n" +
-                                  $"Сумма: {amount} ₽\n" +
-                                  $"Сумма с комиссией: {totalAmount} ₽\n" +
-                                  "Оплатил: да";
-
             // Отправка уведомления админу (укажите здесь ID чата админа)
             //await _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);
         }

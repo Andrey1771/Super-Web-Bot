@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.Base;
+using SuperBot.Application.Commands.BuyGame;
 using SuperBot.Application.Commands.InternationalTransfers;
 using SuperBot.Application.Commands.Investment;
 using SuperBot.Application.Commands.TopUp;
@@ -18,7 +19,9 @@ namespace SuperBot.Application.Handlers.Base
         // Словарь для сопоставления типов команд с состояниями, в которые он будет переводить
         protected Dictionary<Type, DialogState> CommandStateMapping => new Dictionary<Type, DialogState>
         {
+            { typeof(OpenBuyGameCommand), DialogState.BuyGame },
             { typeof(BuyGameCommand), DialogState.MainMenu },
+
             { typeof(GetMainMenuCommand), DialogState.MainMenu },
             { typeof(OpenMyAccountCommand), DialogState.Account },
             { typeof(OpenReferralProgramCommand), DialogState.Referral },

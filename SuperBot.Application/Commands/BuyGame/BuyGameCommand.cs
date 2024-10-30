@@ -1,6 +1,6 @@
 ﻿using SuperBot.Application.Commands.Base;
 
-namespace SuperBot.Application.Commands
+namespace SuperBot.Application.Commands.BuyGame
 {
     public class BuyGameCommand : BaseMessageCommand
     {

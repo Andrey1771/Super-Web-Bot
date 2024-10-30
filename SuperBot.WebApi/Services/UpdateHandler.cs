@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.Base;
+using SuperBot.Application.Commands.BuyGame;
 using SuperBot.Application.Commands.InternationalTransfers;
 using SuperBot.Application.Commands.Investment;
 using SuperBot.Application.Commands.TopUp;
@@ -81,7 +82,7 @@ public class UpdateHandler(ITelegramBotClient _bot, ILogger<UpdateHandler> _logg
 
         return command switch
         {
-            var cmd when cmd == _translationsService.KeyboardKeys.BuySteamGames => await ChangeDialogState(telegramData, DialogState.BuyGame, _translationsService.Translation.NavigateToGamePurchase),
+            var cmd when cmd == _translationsService.KeyboardKeys.BuySteamGames => await OpenBuyGame(telegramData),
             _ when dialogState == DialogState.BuyGame => await BuySteamGames(telegramData),
 
             var cmd when cmd == _translationsService.KeyboardKeys.Account => await OpenMyAccount(telegramData),
@@ -167,8 +168,8 @@ public class UpdateHandler(ITelegramBotClient _bot, ILogger<UpdateHandler> _logg
     private Task<Message> OpenReferralProgram(TelegramDataForProcessing data) =>
         _mediator.Send(new OpenReferralProgramCommand { ChatId = data.ChatId, UserId = data.UserID });
 
-    private Task<Message> ChangeDialogState(TelegramDataForProcessing data, DialogState state, string text) =>
-        _mediator.Send(new ChangeDialogStateCommand { ChatId = data.ChatId, DialogState = state, Text = text });
+    private Task<Message> OpenBuyGame(TelegramDataForProcessing data) =>
+        _mediator.Send(new OpenBuyGameCommand { ChatId = data.ChatId });
 
     private async Task<Message> Usage(TelegramDataForProcessing data)
     {
@@ -176,7 +177,6 @@ public class UpdateHandler(ITelegramBotClient _bot, ILogger<UpdateHandler> _logg
         return chatState?.DialogState switch
         {
             DialogState.MainMenu => await GetMainMenu(data),
-            DialogState.BuyGame => await ChangeDialogState(data, DialogState.MainMenu, _translationsService.Translation.BotMenu),
             _ => throw new NotImplementedException()
         };
     }

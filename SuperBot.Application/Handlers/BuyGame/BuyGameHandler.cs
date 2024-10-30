@@ -1,5 +1,4 @@
 ﻿using MediatR;
-using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using Telegram.Bot;
@@ -7,8 +6,9 @@ using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Handlers.Base;
+using SuperBot.Application.Commands.BuyGame;
 
-namespace SuperBot.Application.Handlers
+namespace SuperBot.Application.Handlers.BuyGame
 {
     public class BuyGameHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator) : DialogCommandHandler<BuyGameCommand>(_mediator, _translationsService), IRequestHandler<BuyGameCommand, Message>
     {
@@ -23,7 +23,7 @@ namespace SuperBot.Application.Handlers
             var userName = request.FromUsername;
             var gameName = request.Text;
 
-            
+
             // Поиск игры в базе данных
             var games = await gameRepository.GetAllAsync();
             var game = games.FirstOrDefault(g => g.Name == gameName);
