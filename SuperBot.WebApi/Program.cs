@@ -93,6 +93,7 @@ builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 
 builder.Services.AddTransient<IPayService, YooKassaService>();
 
+builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
 
 //builder.Configu.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(GameProfile));

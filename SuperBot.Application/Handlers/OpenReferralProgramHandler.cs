@@ -47,7 +47,7 @@ namespace SuperBot.Application.Handlers
 
         private string GeneratePersonalLink(long userId)
         {
-            return $"{_urlService.MainUrl}/referral/{userId}";
+            return $"{_urlService.MainUrl}/api/referral/{userId}";
         }
 
         public string GetMenuText(int countOfInvited, decimal discount, int quantityBeforeIncrease, string personalLink)

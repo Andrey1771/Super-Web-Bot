@@ -32,7 +32,7 @@ namespace SuperBot.Application.Handlers
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var userRepository = serviceScope.ServiceProvider.GetService(typeof(IUserRepository)) as IUserRepository;
 
-            return (await userRepository.GetUserByIdAsync(userId)).Balance;//TODO
+            return (await userRepository.GetUserByIdAsync(userId)).Balance;
         }
 
         public string GetMenuText(string name, long userID, decimal balance)
@@ -40,10 +40,6 @@ namespace SuperBot.Application.Handlers
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.Account}:</u></b>");
             stringBuilder.AppendLine(string.Format(_translationsService.Translation.AccountBody, name, userID, balance));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.ReferralProgram, _translationsService.Translation.ReferralProgram));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SteamTopUp, _translationsService.Translation.SteamTopUp));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.WithdrawFunds, _translationsService.Translation.WithdrawFunds));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.PurchaseHistory, _translationsService.Translation.PurchaseHistory));
             return stringBuilder.ToString();
         }
 

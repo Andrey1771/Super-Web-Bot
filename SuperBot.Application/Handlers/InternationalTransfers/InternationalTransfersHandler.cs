@@ -8,10 +8,11 @@ using SuperBot.Core.Entities;
 using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types.Enums;
 using SuperBot.Core.Interfaces;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.Application.Handlers.InternationalTransfers
 {
-    public class InternationalTransfersHandler(ITelegramBotClient _botClient, IMediator _mediator, ITranslationsService _translationsService) : DialogCommandHandler<InternationalTransfersCommand>(_mediator, _translationsService), IRequestHandler<InternationalTransfersCommand, Message>
+    public class InternationalTransfersHandler(ITelegramBotClient _botClient, IMediator _mediator, ITranslationsService _translationsService, IAdminSettingsProvider _adminSettingsProvider) : DialogCommandHandler<InternationalTransfersCommand>(_mediator, _translationsService), IRequestHandler<InternationalTransfersCommand, Message>
     {
         public async Task<Message> Handle(InternationalTransfersCommand request, CancellationToken cancellationToken)
         {
@@ -22,7 +23,7 @@ namespace SuperBot.Application.Handlers.InternationalTransfers
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var ownerUsername = "andrey6eb";
+            var ownerUsername = _adminSettingsProvider.Username;
             var ownerUrl = $"https://t.me/{ownerUsername}";
             return await _botClient.SendTextMessageAsync(
             chatId: request.ChatId,
@@ -34,7 +35,7 @@ namespace SuperBot.Application.Handlers.InternationalTransfers
         // Уведомление администратора о пополнении
         private async Task NotifyAdmin(string text)
         {
-            var adminChatId = 795184375;// TODO!
+            var adminChatId = _adminSettingsProvider.AdminChatId;
             string adminMessage = text;
 
             // Отправка уведомления админу (укажите здесь ID чата админа)

@@ -8,15 +8,16 @@ using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Services;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
     //TODO Рефакторинг
-    public class TopUpAccountHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService) : DialogCommandHandler<TopUpAccountCommand>(_mediator, _translationsService), IRequestHandler<TopUpAccountCommand, Message>
+    public class TopUpAccountHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService, IAdminSettingsProvider _adminSettingsProvider) : DialogCommandHandler<TopUpAccountCommand>(_mediator, _translationsService), IRequestHandler<TopUpAccountCommand, Message>
     {
         // TODO Вынести в конфиг
         private const decimal commissionRate = 0.15m;// 15% комиссия
-        private const long adminChatId = 795184375;// TODO!
+        private readonly long adminChatId = _adminSettingsProvider.AdminChatId;// TODO!
 
         public async Task<Message> Handle(TopUpAccountCommand request, CancellationToken cancellationToken)
         {
