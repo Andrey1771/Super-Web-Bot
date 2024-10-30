@@ -22,7 +22,7 @@ namespace SuperBot.Infrastructure.Repositories
         {
             var gamesDb = await _games.Find(game => true).ToListAsync();
             if (gamesDb == null) {
-                throw new Exception("Коллекция не найдена");//TODO
+                throw new Exception("Коллекция не найдена");
             }
                 
             return _mapper.Map<List<Game>>(gamesDb);
@@ -33,7 +33,7 @@ namespace SuperBot.Infrastructure.Repositories
             var gamesDb = await _games.Find(game => game.Id == id).ToListAsync();
             if (gamesDb == null)
             {
-                throw new Exception("Коллекция не найдена");//TODO
+                throw new Exception("Коллекция не найдена");
             }
             return _mapper.Map<Game>(gamesDb.FirstOrDefault());
         }

@@ -12,12 +12,10 @@ using SuperBot.WebApi.Services;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
-    //TODO Рефакторинг
     public class TopUpAccountHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService, IAdminSettingsProvider _adminSettingsProvider) : DialogCommandHandler<TopUpAccountCommand>(_mediator, _translationsService), IRequestHandler<TopUpAccountCommand, Message>
     {
-        // TODO Вынести в конфиг
-        private const decimal commissionRate = 0.15m;// 15% комиссия
-        private readonly long adminChatId = _adminSettingsProvider.AdminChatId;// TODO!
+        private readonly decimal commissionRate = decimal.Parse(_adminSettingsProvider.CommissionRate.ToString()) / 100;
+        private readonly long adminChatId = _adminSettingsProvider.AdminChatId;
 
         public async Task<Message> Handle(TopUpAccountCommand request, CancellationToken cancellationToken)
         {

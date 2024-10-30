@@ -21,7 +21,7 @@ namespace SuperBot.Application.Handlers.Base
             { typeof(BuyGameCommand), DialogState.MainMenu },
             { typeof(GetMainMenuCommand), DialogState.MainMenu },
             { typeof(OpenMyAccountCommand), DialogState.Account },
-            { typeof(OpenReferralProgramCommand), DialogState.Ref },
+            { typeof(OpenReferralProgramCommand), DialogState.Referral },
             { typeof(OpenStartCommand), DialogState.MainMenu },
 
             { typeof(OpenTopUpSteamCommand), DialogState.TopUpWithLogin },

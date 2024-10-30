@@ -20,7 +20,7 @@ namespace SuperBot.Application.Handlers.WithdrawalOfFunds
 
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            string paymentMessage = string.Format(_translationsService.Translation.WithdrawalOfFundsMessage, request.Amount, oldState.UserState.ChoseCard); //TODO Текст //TODO Учитывать тип
+            string paymentMessage = string.Format(_translationsService.Translation.WithdrawalOfFundsMessage, request.Amount, oldState.UserState.ChoseCard);
 
             // Отправляем сообщение пользователю
             await _botClient.SendTextMessageAsync(

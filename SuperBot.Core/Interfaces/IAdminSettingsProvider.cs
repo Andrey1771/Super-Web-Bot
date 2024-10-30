@@ -3,6 +3,7 @@
     public interface IAdminSettingsProvider
     {
         string Username { get; }
+        int CommissionRate { get; }
         long AdminChatId { get; }
     }
 }

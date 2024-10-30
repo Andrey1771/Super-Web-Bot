@@ -9,7 +9,7 @@ namespace SuperBot.Core.Services
         {
             get
             {
-                return _resourceService.Resources.Translations.Ru; // TODO TEMP
+                return _resourceService.Resources.Translations.Ru;
             }
         }
 

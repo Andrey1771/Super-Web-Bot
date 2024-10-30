@@ -84,7 +84,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
     return mongoClient.GetDatabase(mongoName);  // Укажите имя вашей базы данных
 });
-builder.Services.AddScoped<MongoDbInitializer>();//TODO Подумать
+builder.Services.AddScoped<MongoDbInitializer>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();

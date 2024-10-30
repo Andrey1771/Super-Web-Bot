@@ -5,7 +5,7 @@
         MainMenu,
         BuyGame,
         Account,
-        Ref,//TODO
+        Referral,
         TopUpWithLogin,
         TopUpWithData,
 
