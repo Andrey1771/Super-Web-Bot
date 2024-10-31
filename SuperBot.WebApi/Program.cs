@@ -1,3 +1,7 @@
+using Hangfire;
+using Hangfire.Mongo;
+using Hangfire.Mongo.Migration.Strategies.Backup;
+using Hangfire.Mongo.Migration.Strategies;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
@@ -98,6 +102,27 @@ builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
 //builder.Configu.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(OrderProfile));
+
+// Добавление Hangfire с использованием MongoDB
+builder.Services.AddHangfire(config =>
+{
+    var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
+    var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
+
+    var mongoUrlBuilder = new MongoUrlBuilder(connectionString);
+    config.UseMongoStorage(mongoUrlBuilder.ToMongoUrl().Url, mongoName, new MongoStorageOptions
+    {
+        MigrationOptions = new MongoMigrationOptions
+        {
+            MigrationStrategy = new DropMongoMigrationStrategy(),
+            //MigrationStrategy = new MigrateMongoMigrationStrategy(),
+            BackupStrategy = new CollectionMongoBackupStrategy()
+        }
+    });
+});
+
+// Добавление Dashboard и серверов Hangfire
+builder.Services.AddHangfireServer();
 
 var app = builder.Build();
 
