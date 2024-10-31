@@ -19,7 +19,7 @@ namespace SuperBot.Infrastructure.ExternalServices
                 Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_shopId}:{_secretKey}")));
         }
 
-        public async Task<string> CreatePaymentAsync(decimal amount, string currency, string description, string returnUrl, string orderId)
+        public async Task<(string Id, string ConfirmationUrl)> CreatePaymentAsync(decimal amount, string currency, string description, string returnUrl, string orderId)
         {
             var paymentRequest = new
             {
@@ -37,7 +37,7 @@ namespace SuperBot.Infrastructure.ExternalServices
                 {
                     type = "redirect",
                     return_url = returnUrl,
-                    confirmation_url = $"https://yoomoney.ru/api-pages/v2/payment-confirm/epl?orderId={orderId}"
+                    confirmation_url = $"https://yoomoney.ru/api-pages/v2/payment-confirm/epl?orderId={orderId}",
                 },
             description = description // Описание платежа
             };
@@ -57,7 +57,8 @@ namespace SuperBot.Infrastructure.ExternalServices
             {
                 // Парсим ответ и возвращаем URL для оплаты
                 var result = JsonSerializer.Deserialize<YooKassaPaymentResponseDto>(jsonResponse);
-                return result.Confirmation.ConfirmationUrl;
+
+                return (result.Id, result.Confirmation.ConfirmationUrl);
                 //return paymentRequest.confirmation.confirmation_url;
             }
             else

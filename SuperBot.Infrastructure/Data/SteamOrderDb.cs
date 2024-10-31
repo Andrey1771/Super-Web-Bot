@@ -11,12 +11,13 @@ namespace SuperBot.Infrastructure.Data
     public class SteamOrderDb
     {
         [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
+        [BsonRepresentation(BsonType.String)] // Хранение Guid как строки
+        public Guid Id { get; set; }
         public string Username { get; set; }
         public string SteamLogin { get; set; }
         public decimal Amount { get; set; }
         public decimal TotalAmount { get; set; }
         public bool IsPaid { get; set; }
+        public string PayId { get; set; }
     }
 }

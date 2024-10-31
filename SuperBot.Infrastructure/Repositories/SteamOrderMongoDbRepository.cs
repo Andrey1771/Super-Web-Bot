@@ -1,11 +1,12 @@
 ﻿using AutoMapper;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Repositories
 {
-    internal class SteamOrderMongoDbRepository
+    public class SteamOrderMongoDbRepository : ISteamOrderRepository
     {
         private readonly IMongoCollection<SteamOrderDb> _orders;
         private readonly IMapper _mapper;
@@ -24,7 +25,7 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task<SteamOrder> GetOrderByIdAsync(string orderId)
         {
-            var orderDb = await _orders.Find(o => o.Id == orderId).FirstOrDefaultAsync();
+            var orderDb = await _orders.Find(o => o.Id.ToString() == orderId).FirstOrDefaultAsync();
             return _mapper.Map<SteamOrder>(orderDb);
         }
 
@@ -42,7 +43,7 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task DeleteOrderAsync(string orderId)
         {
-            await _orders.DeleteOneAsync(o => o.Id == orderId);
+            await _orders.DeleteOneAsync(o => o.Id.ToString() == orderId);
         }
     }
 }

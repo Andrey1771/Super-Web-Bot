@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
@@ -8,20 +10,18 @@ namespace SuperBot.WebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OrderController(IOrderRepository _orderRepository, IMapper _mapper) : Controller
+    public class OrderController(IOrderRepository _orderRepository, IMapper _mapper, IMediator _mediator) : Controller
     {
-        [HttpPost("{orderId}")]
-        public async Task<IActionResult> SetPaidSteamOrder(string id)
+        [HttpPost("confirm/{orderId}")]
+        public async Task<IActionResult> SetPaidSteamOrder(string orderId)
         {
-            var order = await _orderRepository.GetOrderByIdAsync(id);
-            if (order == null)
+            var confirmTopUpSteamCommand = new ConfirmTopUpSteamCommand()
             {
-                return NotFound();
-            }
+                OrderId = orderId
+            };
 
-            order.IsPaid = true;
-
-            await _orderRepository.UpdateOrderAsync(order);
+            await _mediator.Send(confirmTopUpSteamCommand);
+            
             return Ok();
         }
 

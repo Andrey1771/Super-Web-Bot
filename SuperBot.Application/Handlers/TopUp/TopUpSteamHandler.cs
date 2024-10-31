@@ -36,9 +36,18 @@ namespace SuperBot.Application.Handlers.TopUp
             var totalAmount = request.Amount + request.Amount * (commissionRate - discount);
 
             var steamOrderRepository = serviceScope.ServiceProvider.GetService(typeof(ISteamOrderRepository)) as ISteamOrderRepository;
+
+
+
+            //await _orderApiClient.CreateOrderAsync();
+            var id = Guid.NewGuid().ToString();
+
+            var pay = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", "TODO", id);// TODO возвращение до реализации магазина на сайте
+            
             var order = new SteamOrder()
             {
-                Id = Guid.NewGuid(),
+                Id = id,
+                PayId = pay.Id,
                 IsPaid = false,
                 Amount = request.Amount,
                 SteamLogin = steamLogin,
@@ -46,17 +55,10 @@ namespace SuperBot.Application.Handlers.TopUp
                 Username = user.Username
             };
 
-
-
             await steamOrderRepository.CreateOrderAsync(order);
-            
-
-            //await _orderApiClient.CreateOrderAsync();
-
-            var payLink = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", $"{_urlService}/api/order/confirm/{order.Id}", order.Id.ToString());
 
             // Формируем сообщение пользователю с запросом на оплату
-            string paymentMessage = string.Format(_translationsService.Translation.TopUpSteam, request.Amount, steamLogin, (commissionRate - discount) * 100, totalAmount, payLink);
+            string paymentMessage = string.Format(_translationsService.Translation.TopUpSteam, request.Amount, steamLogin, (commissionRate - discount) * 100, totalAmount, pay.ConfirmationUrl);
 
             // Отправляем сообщение пользователю
             var sentMessage = await _botClient.SendTextMessageAsync(
@@ -75,7 +77,7 @@ namespace SuperBot.Application.Handlers.TopUp
         // Уведомление администратора о пополнении
         private async Task NotifyAdmin(string username, string steamLogin, decimal amount, decimal totalAmount)
         {
-            string adminMessage = string.Format(_translationsService.Translation.NotifyTopUpSteam, username, steamLogin, amount, totalAmount);
+            string adminMessage = string.Format(_translationsService.Translation.NotifyTopUpSteam, username, steamLogin, amount, totalAmount, "Нет");
             // Отправка уведомления админу (укажите здесь ID чата админа)
             await _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);
         }

@@ -8,10 +8,11 @@ namespace SuperBot.Core.Entities
 {
     public class SteamTopUpOrder
     {
-        public Guid Id { get; set; }
+        public string Id { get; set; }
         public string SteamName { get; set; }
         public string UserName { get; set; }
         public bool IsPaid { get; set; }
+        public string PayId { get; set; }
         public DateTime OrderDate { get; set; }
     }
 }

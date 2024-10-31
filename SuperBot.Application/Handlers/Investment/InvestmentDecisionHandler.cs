@@ -23,11 +23,11 @@ namespace SuperBot.Application.Handlers.Investment
             if (request.Decision == "Invest")
             {
                 // Генерация ссылки на оплату через YooKassa
-                string paymentUrl = await _payService.CreatePaymentAsync(500m, "RUB", "investment", "Инвестиции", Guid.NewGuid().ToString());// Todo
+                var payment = await _payService.CreatePaymentAsync(500m, "RUB", "investment", "Инвестиции", Guid.NewGuid().ToString());// Todo
 
                 return await _botClient.SendTextMessageAsync(
                     chatId: request.ChatId,
-                    text: string.Format(_translationsService.Translation.FollowLinkToPay, paymentUrl),
+                    text: string.Format(_translationsService.Translation.FollowLinkToPay, payment.ConfirmationUrl),
                     cancellationToken: cancellationToken
                 );
             }

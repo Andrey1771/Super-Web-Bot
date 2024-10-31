@@ -21,10 +21,10 @@ namespace SuperBot.Application.Handlers.TopUp
         {
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            var payLink = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "Payment", Guid.NewGuid().ToString());
+            var pay = await _payService.CreatePaymentAsync(request.Amount, "RUB", $"Пополнение аккаунта", "Payment", Guid.NewGuid().ToString());
 
             // Формируем сообщение пользователю с запросом на оплату
-            string paymentMessage = string.Format(_translationsService.Translation.RequestTopUp, request.Amount, payLink);
+            string paymentMessage = string.Format(_translationsService.Translation.RequestTopUp, request.Amount, pay.ConfirmationUrl);
 
             // Отправляем сообщение пользователю
             var sentMessage = await _botClient.SendTextMessageAsync(
