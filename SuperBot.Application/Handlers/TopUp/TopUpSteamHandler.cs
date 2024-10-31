@@ -14,7 +14,7 @@ using SuperBot.WebApi.Services;
 
 namespace SuperBot.Application.Handlers.TopUp
 {
-    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService, IBotStateReaderService _botStateReaderService, IAdminSettingsProvider _adminSettingsProvider) : DialogCommandHandler<TopUpSteamCommand>(_mediator, _translationsService), IRequestHandler<TopUpSteamCommand, Message>
+    public class TopUpSteamHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IServiceProvider _serviceProvider, IMediator _mediator, IPayService _payService, IBotStateReaderService _botStateReaderService, IAdminSettingsProvider _adminSettingsProvider, IUrlService _urlService) : DialogCommandHandler<TopUpSteamCommand>(_mediator, _translationsService), IRequestHandler<TopUpSteamCommand, Message>
     {
         private readonly decimal commissionRate = decimal.Parse(_adminSettingsProvider.CommissionRate.ToString()) / 100;
         private readonly long adminChatId = _adminSettingsProvider.AdminChatId;
@@ -35,14 +35,25 @@ namespace SuperBot.Application.Handlers.TopUp
 
             var totalAmount = request.Amount + request.Amount * (commissionRate - discount);
 
-            var order = new Order() {
+            var steamOrderRepository = serviceScope.ServiceProvider.GetService(typeof(ISteamOrderRepository)) as ISteamOrderRepository;
+            var order = new SteamOrder()
+            {
+                Id = Guid.NewGuid(),
                 IsPaid = false,
-                
+                Amount = request.Amount,
+                SteamLogin = steamLogin,
+                TotalAmount = totalAmount,
+                Username = user.Username
             };
+
+
+
+            await steamOrderRepository.CreateOrderAsync(order);
+            
 
             //await _orderApiClient.CreateOrderAsync();
 
-            var payLink = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", "", Guid.NewGuid().ToString());
+            var payLink = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", $"{_urlService}/api/order/confirm/{order.Id}", order.Id.ToString());
 
             // Формируем сообщение пользователю с запросом на оплату
             string paymentMessage = string.Format(_translationsService.Translation.TopUpSteam, request.Amount, steamLogin, (commissionRate - discount) * 100, totalAmount, payLink);
