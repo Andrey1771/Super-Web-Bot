@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
-using SuperBot.Core.Interfaces.APIs;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.WebApi.Services;
 
@@ -37,9 +36,6 @@ namespace SuperBot.Application.Handlers.TopUp
 
             var steamOrderRepository = serviceScope.ServiceProvider.GetService(typeof(ISteamOrderRepository)) as ISteamOrderRepository;
 
-
-
-            //await _orderApiClient.CreateOrderAsync();
             var id = Guid.NewGuid().ToString();
 
             var pay = await _payService.CreatePaymentAsync(totalAmount, "RUB", $"Пополнение аккаунта {steamLogin}", "TODO", id);// TODO возвращение до реализации магазина на сайте

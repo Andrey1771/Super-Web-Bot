@@ -9,6 +9,6 @@ namespace SuperBot.Application.Commands.TopUp
 {
     public class ConfirmTopUpSteamCommand : BaseMessageCommand
     {
-        public string OrderId { get; set; }
+        public string PayId { get; set; }
     }
 }

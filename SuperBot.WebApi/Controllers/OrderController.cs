@@ -17,7 +17,7 @@ namespace SuperBot.WebApi.Controllers
         {
             var confirmTopUpSteamCommand = new ConfirmTopUpSteamCommand()
             {
-                OrderId = orderId
+                PayId = orderId
             };
 
             await _mediator.Send(confirmTopUpSteamCommand);

@@ -22,9 +22,10 @@ namespace SuperBot.Application.Handlers.TopUp
         public async Task<Message> Handle(ConfirmTopUpSteamCommand request, CancellationToken cancellationToken)
         {
             using var serviceScope = _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var orderRepository = serviceScope.ServiceProvider.GetService(typeof(ISteamOrderRepository)) as ISteamOrderRepository;
-            
-            var order = await orderRepository.GetOrderByIdAsync(request.OrderId);
+            var steamOrderRepository = serviceScope.ServiceProvider.GetService(typeof(ISteamOrderRepository)) as ISteamOrderRepository;
+
+            var order = (await steamOrderRepository.GetAllOrdersAsync())
+                    .FirstOrDefault(order => order.PayId == request.PayId);
 
             if (order == null)
             {
@@ -33,7 +34,7 @@ namespace SuperBot.Application.Handlers.TopUp
 
             order.IsPaid = true;
 
-            await orderRepository.UpdateOrderAsync(order);
+            await steamOrderRepository.UpdateOrderAsync(order);
 
             return await NotifyAdminAsync(order.Username, order.SteamLogin, order.Amount, order.TotalAmount);
         }
