@@ -48,7 +48,8 @@ namespace SuperBot.Application.Handlers.TopUp
                 Amount = request.Amount,
                 SteamLogin = steamLogin,
                 TotalAmount = totalAmount,
-                Username = user.Username
+                Username = user.Username,
+                OrderCreationDate = DateTime.UtcNow
             };
 
             await steamOrderRepository.CreateOrderAsync(order);

@@ -21,6 +21,7 @@ using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Types;
 using System.Globalization;
 using Telegram.Bot;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -124,6 +125,9 @@ builder.Services.AddHangfire(config =>
 // Добавление Dashboard и серверов Hangfire
 builder.Services.AddHangfireServer();
 
+
+builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -132,6 +136,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseHangfireDashboard();
 
 // Получаем инициализатор из DI-контейнера и выполняем инициализацию
 using (var scope = app.Services.CreateScope())
@@ -153,4 +159,9 @@ app.UseHttpsRedirection();
 
 app.MapControllers();
 
+// Периодическая задача
+RecurringJob.AddOrUpdate<IBackgroundTaskService>(
+                "clear-old-order-records",
+                x => x.ScheduleClearOutdatedDataJob(),
+                Cron.Daily);
 app.Run();

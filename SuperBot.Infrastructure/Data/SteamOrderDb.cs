@@ -19,5 +19,6 @@ namespace SuperBot.Infrastructure.Data
         public decimal TotalAmount { get; set; }
         public bool IsPaid { get; set; }
         public string PayId { get; set; }
+        public DateTime OrderCreationDate { get; set; }
     }
 }
