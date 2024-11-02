@@ -1,0 +1,291 @@
+import React from "react";
+import './tale-gameshop-main-page.css'
+
+export default function TaleGameshopMainPage() {
+    return (
+        <div>
+            <div className="bg-gray-100 py-10">
+                <div className="container mx-auto grid grid-cols-3 gap-8">
+
+                    <div>
+                        <h2 className="text-lg font-bold mb-4">
+                            Explore Our Games
+                        </h2>
+                        <ul className="space-y-4">
+                            <li className="flex items-start">
+                                <i className="fas fa-gamepad text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            Action Games
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Discover thrilling action-packed adventures.
+                                    </p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <i className="fas fa-puzzle-piece text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            Puzzle Games
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Challenge your mind with engaging puzzles.
+                                    </p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <i className="fas fa-dice-d20 text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            RPG Games
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Immerse yourself in epic role-playing adventures.
+                                    </p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <i className="fas fa-chess text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            Strategy Games
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Plan and conquer with strategic gameplay.
+                                    </p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h2 className="text-lg font-bold mb-4">
+                            Latest Blog Posts
+                        </h2>
+                        <ul className="space-y-4">
+                            <li className="flex items-start">
+                                <i className="fas fa-pen-nib text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            Game Reviews
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Read our latest game reviews and insights.
+                                    </p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <i className="fas fa-newspaper text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            Gaming News
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Stay updated with the latest gaming news.
+                                    </p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <i className="fas fa-lightbulb text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            Tips &amp; Tricks
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Enhance your gameplay with expert tips.
+                                    </p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <i className="fas fa-file-alt text-xl mr-3">
+                                </i>
+                                <div>
+                                    <h3 className="font-bold">
+                                        <a className="text-gray-700 menu-item" href="#">
+                                            Featured Articles
+                                        </a>
+                                    </h3>
+                                    <p>
+                                        Explore our featured articles for insights.
+                                    </p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h2 className="text-lg font-bold mb-4">
+                            Highlights from Blog
+                        </h2>
+                        <div className="space-y-4">
+                            <div className="bg-gray-200 p-4 flex items-center">
+                                <img alt="Placeholder image" className="mr-4" height="50"
+                                     src="https://storage.googleapis.com/a1aa/image/We1VGIYWP9xoWyMyBh6WbeoFDyZSn0PCWW3X19MKNwHOvXqTA.jpg"
+                                     width="50"/>
+                                <div>
+                                    <h3 className="font-bold">
+                                        Top Picks
+                                    </h3>
+                                    <p>
+                                        Check out our top game picks for you.
+                                        <a className="text-blue-500" href="#">
+                                            Read more
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="bg-gray-200 p-4 flex items-center">
+                                <img alt="Placeholder image" className="mr-4" height="50"
+                                     src="https://storage.googleapis.com/a1aa/image/We1VGIYWP9xoWyMyBh6WbeoFDyZSn0PCWW3X19MKNwHOvXqTA.jpg"
+                                     width="50"/>
+                                <div>
+                                    <h3 className="font-bold">
+                                        Latest Updates
+                                    </h3>
+                                    <p>
+                                        Get the latest updates on new releases.
+                                        <a className="text-blue-500" href="#">
+                                            Read more
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            className="mt-4 px-4 py-2 border border-gray-700 text-gray-700 flex items-center animated-button">
+                            Let's Go
+                            <i className="fas fa-chevron-right ml-2">
+                            </i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-black text-white py-20">
+                <div className="container mx-auto text-center">
+                    <h1 className="text-4xl font-bold mb-6">
+                        Discover Your Next Favourite Computer Game
+                    </h1>
+                    <p className="mb-8">
+                        Welcome to our gaming paradise, where you can explore a vast selection of computer games
+                        tailored to
+                        your interests. Our mission is to connect gamers with the titles they love, making every gaming
+                        experience unforgettable.
+                    </p>
+                    <div className="flex justify-center space-x-4">
+                        <button className="px-6 py-3 bg-white text-black animated-button">
+                            Shop
+                        </button>
+                        <button className="px-6 py-3 border border-white animated-button">
+                            Learn More
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex items-start justify-start min-h-screen bg-white p-8">
+                <div className="flex items-start space-x-8 w-full">
+                    <div className="w-1/2">
+                        <h1 className="text-3xl font-bold glow-text">
+                            Welcome to the future of gaming: where passion meets innovation.
+                        </h1>
+                        <p className="mt-4 glow-text above-iframe-text-label">
+                            At our core, we strive to revolutionise the gaming experience by providing an extensive
+                            catalogue of
+                            titles that cater to every player's taste. Our vision is to create a vibrant community where
+                            gamers
+                            can discover, connect, and thrive.
+                        </p>
+                    </div>
+                    <div className="w-1/2 bg-gray-200 flex items-center justify-center iframe-aspect">
+                        <iframe className="w-full h-full" src="https://www.youtube.com/embed/vBZrLkD659Y"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen></iframe>
+                    </div>
+                </div>
+            </div>
+            <div className="container mx-auto text-center py-16">
+                <h2 className="text-sm uppercase tracking-wider text-gray-500">Explore</h2>
+                <h1 className="text-4xl font-bold mt-2">Discover Your Next Favourite Game</h1>
+                <p className="text-lg mt-4 max-w-2xl mx-auto">
+                    With a vast library of titles, we cater to every gaming preference. Dive into our extensive
+                    collection and
+                    find your perfect match.
+                </p>
+                <div className="flex justify-center mt-12 space-x-8">
+                    <div className="text-center">
+                        <i className="fas fa-cube text-4xl text-gray-700"></i>
+                        <h3 className="text-xl font-bold mt-4">Intuitive and Easy-to-Navigate Interface</h3>
+                        <p className="mt-2 text-gray-600">Our user-friendly design ensures a seamless browsing
+                            experience.</p>
+                    </div>
+                    <div className="text-center">
+                        <i className="fas fa-cube text-4xl text-gray-700"></i>
+                        <h3 className="text-xl font-bold mt-4">Safe and Secure Payment Options</h3>
+                        <p className="mt-2 text-gray-600">Shop with confidence knowing your transactions are
+                            protected.</p>
+                    </div>
+                    <div className="text-center">
+                        <i className="fas fa-cube text-4xl text-gray-700"></i>
+                        <h3 className="text-xl font-bold mt-4">Join Our Gaming Community Today</h3>
+                        <p className="mt-2 text-gray-600">Connect with fellow gamers and share your experiences.</p>
+                    </div>
+                </div>
+                <div className="mt-12">
+                    <button
+                        className="bg-transparent border border-gray-800 text-gray-800 py-2 px-6 rounded-full mr-4">Learn
+                        More
+                    </button>
+                    <button className="bg-transparent text-gray-800 py-2 px-6 rounded-full">Sign Up <i
+                        className="fas fa-arrow-right"></i></button>
+                </div>
+                <div className="mt-16">
+                    <div className="flex justify-center">
+                        <i className="fas fa-star text-2xl text-yellow-500"></i>
+                        <i className="fas fa-star text-2xl text-yellow-500"></i>
+                        <i className="fas fa-star text-2xl text-yellow-500"></i>
+                        <i className="fas fa-star text-2xl text-yellow-500"></i>
+                        <i className="fas fa-star text-2xl text-yellow-500"></i>
+                    </div>
+                    <p className="text-xl font-semibold mt-4">
+                        "The service provided exceeded my expectations, and the selection of games is fantastic! I
+                        highly
+                        recommend them to any gaming enthusiast."
+                    </p>
+                    <div className="flex items-center justify-center mt-6">
+                        <img alt="Profile picture of John Doe" className="rounded-full" height="50"
+                             src="https://storage.googleapis.com/a1aa/image/eNdfm3dg3usfeSvmgxUlX7qSa3fYTqZgqV4G1VRcqiSlfAm6E.jpg"
+                             width="50"/>
+                        <div className="ml-4 text-left">
+                            <p className="font-bold">John Doe</p>
+                            <p className="text-gray-600">Game Reviewer, Tech Magazine</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

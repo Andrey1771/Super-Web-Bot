@@ -1,8 +1,15 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json());
+// Настройка статической папки для раздачи файлов
+app.use(express.static(path.join(__dirname, 'src')));
+
+// Маршрут для корневого пути "/"
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src', 'index.html'));
+});
 
 // Маршрут для получения списка игр
 app.get('/api/games', (req, res) => {

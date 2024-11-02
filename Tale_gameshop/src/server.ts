@@ -1,8 +1,17 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
-app.use(express.json());
-// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
+
+// Настройка статической папки для раздачи файлов
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Маршрут для корневого пути "/"
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Маршрут для получения списка игр
 app.get('/api/games', (req, res) => {
     const games = [
         { id: 1, name: 'Cyberpunk 2077', price: 59.99 },
@@ -11,7 +20,8 @@ app.get('/api/games', (req, res) => {
     ];
     res.json(games);
 });
-// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+
+// Маршрут для поиска игры по названию
 app.get('/api/games/:name', (req, res) => {
     const gameName = req.params.name.toLowerCase();
     const games = [
@@ -22,12 +32,11 @@ app.get('/api/games/:name', (req, res) => {
     const game = games.find(g => g.name.toLowerCase() === gameName);
     if (game) {
         res.json(game);
-    }
-    else {
+    } else {
         res.status(404).send('Game not found');
     }
 });
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
-//# sourceMappingURL=server.js.map

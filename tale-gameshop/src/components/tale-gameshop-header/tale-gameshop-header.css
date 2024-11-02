@@ -1,0 +1,26 @@
+.menu-item:hover {
+    color: #8a2be2;
+    transition: color 0.3s ease-in-out;
+    text-shadow: 0 0 5px #8a2be2;
+}
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+.accordion-item {
+    cursor: pointer;
+}
+.accordion-content {
+    display: none;
+    overflow: hidden;
+}
+.accordion-item.open .accordion-content {
+    display: block;
+}
+.animated-button {
+    transition: all 0.3s ease-in-out;
+}
+.animated-button:hover {
+    background-color: #8a2be2;
+    color: white;
+    border-color: #8a2be2;
+}

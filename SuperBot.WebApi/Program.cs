@@ -135,9 +135,8 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHangfireDashboard();
 }
-
-app.UseHangfireDashboard();
 
 // Получаем инициализатор из DI-контейнера и выполняем инициализацию
 using (var scope = app.Services.CreateScope())
