@@ -3,9 +3,24 @@
     transition: color 0.3s ease-in-out;
     text-shadow: 0 0 5px #8a2be2;
 }
-.dropdown:hover .dropdown-menu {
+
+/* Изменения в логике появления dropdown-menu */
+.dropdown:hover .dropdown-menu,
+.dropdown-menu:hover {
     display: block;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
 }
+
+/* Начальные стили для скрытого меню */
+.dropdown-menu {
+    display: block;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
 .accordion-item {
     cursor: pointer;
 }
@@ -16,6 +31,7 @@
 .accordion-item.open .accordion-content {
     display: block;
 }
+
 .animated-button {
     transition: all 0.3s ease-in-out;
 }
