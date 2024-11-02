@@ -14,7 +14,7 @@ export default function TaleGameshopHeader() {
     });
 
     return (
-        <nav className="bg-white border-b border-gray-200">
+        <nav className="bg-white border-b border-gray-200 header-nav">
             <div className="container mx-auto flex justify-between items-center py-4">
                 <div className="flex items-center">
                     <div className="text-2xl font-bold">

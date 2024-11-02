@@ -1,5 +1,16 @@
 import React from "react";
 import './tale-gameshop-main-page.css'
+import '../../font-awesome.ts';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faChess, faCube,
+    faDiceD20, faFileAlt,
+    faGamepad,
+    faLightbulb,
+    faNewspaper,
+    faPenNib,
+    faPuzzlePiece, faStar
+} from "@fortawesome/free-solid-svg-icons";
 
 export default function TaleGameshopMainPage() {
     return (
@@ -13,8 +24,7 @@ export default function TaleGameshopMainPage() {
                         </h2>
                         <ul className="space-y-4">
                             <li className="flex items-start">
-                                <i className="fas fa-gamepad text-xl mr-3">
-                                </i>
+                                    <FontAwesomeIcon className="fas text-xl mr-3" icon={faGamepad} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -27,8 +37,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <i className="fas fa-puzzle-piece text-xl mr-3">
-                                </i>
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faPuzzlePiece} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -41,8 +50,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <i className="fas fa-dice-d20 text-xl mr-3">
-                                </i>
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faDiceD20} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -55,8 +63,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <i className="fas fa-chess text-xl mr-3">
-                                </i>
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faChess} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -77,8 +84,7 @@ export default function TaleGameshopMainPage() {
                         </h2>
                         <ul className="space-y-4">
                             <li className="flex items-start">
-                                <i className="fas fa-pen-nib text-xl mr-3">
-                                </i>
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faPenNib} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -91,8 +97,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <i className="fas fa-newspaper text-xl mr-3">
-                                </i>
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faNewspaper} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -105,8 +110,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <i className="fas fa-lightbulb text-xl mr-3">
-                                </i>
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faLightbulb} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -119,8 +123,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <i className="fas fa-file-alt text-xl mr-3">
-                                </i>
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faFileAlt} />
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -237,19 +240,19 @@ export default function TaleGameshopMainPage() {
                 </p>
                 <div className="flex justify-center mt-12 space-x-8">
                     <div className="text-center">
-                        <i className="fas fa-cube text-4xl text-gray-700"></i>
+                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube} />
                         <h3 className="text-xl font-bold mt-4">Intuitive and Easy-to-Navigate Interface</h3>
                         <p className="mt-2 text-gray-600">Our user-friendly design ensures a seamless browsing
                             experience.</p>
                     </div>
                     <div className="text-center">
-                        <i className="fas fa-cube text-4xl text-gray-700"></i>
+                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube} />
                         <h3 className="text-xl font-bold mt-4">Safe and Secure Payment Options</h3>
                         <p className="mt-2 text-gray-600">Shop with confidence knowing your transactions are
                             protected.</p>
                     </div>
                     <div className="text-center">
-                        <i className="fas fa-cube text-4xl text-gray-700"></i>
+                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube} />
                         <h3 className="text-xl font-bold mt-4">Join Our Gaming Community Today</h3>
                         <p className="mt-2 text-gray-600">Connect with fellow gamers and share your experiences.</p>
                     </div>
@@ -264,11 +267,11 @@ export default function TaleGameshopMainPage() {
                 </div>
                 <div className="mt-16">
                     <div className="flex justify-center">
-                        <i className="fas fa-star text-2xl text-yellow-500"></i>
-                        <i className="fas fa-star text-2xl text-yellow-500"></i>
-                        <i className="fas fa-star text-2xl text-yellow-500"></i>
-                        <i className="fas fa-star text-2xl text-yellow-500"></i>
-                        <i className="fas fa-star text-2xl text-yellow-500"></i>
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
                     </div>
                     <p className="text-xl font-semibold mt-4">
                         "The service provided exceeded my expectations, and the selection of games is fantastic! I
