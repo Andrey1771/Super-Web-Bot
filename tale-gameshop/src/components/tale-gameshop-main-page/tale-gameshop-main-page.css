@@ -5,3 +5,8 @@
 .above-iframe-text-label {
     font-family: 'Dancing Script', cursive;
 }
+
+/* Отступ для основного контента, чтобы компенсировать фиксированную высоту навигации */
+.main-page-down-header-padding {
+    margin-top: 74px;
+}

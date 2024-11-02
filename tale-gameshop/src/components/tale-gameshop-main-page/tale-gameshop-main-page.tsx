@@ -14,7 +14,7 @@ import {
 
 export default function TaleGameshopMainPage() {
     return (
-        <div>
+        <div className="main-page-down-header-padding">
             <div className="bg-gray-100 py-10">
                 <div className="container mx-auto grid grid-cols-3 gap-8">
 
