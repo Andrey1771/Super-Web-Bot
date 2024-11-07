@@ -43,5 +43,24 @@ namespace SuperBot.WebApi.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+        [HttpGet("list")]
+        public IActionResult GetImagePaths()
+        {
+            try
+            {
+                // Получаем все файлы в папке загрузок
+                var files = Directory.GetFiles(_uploadFolder)
+                                     .Select(Path.GetFileName) // Получаем только имена файлов
+                                     .Select(fileName => Url.Content($"~/uploads/{fileName}")) // Создаем URL для файла
+                                     .ToList();
+
+                return Ok(files);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
     }
 }
