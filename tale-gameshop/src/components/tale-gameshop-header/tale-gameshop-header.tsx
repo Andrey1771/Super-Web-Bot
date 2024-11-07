@@ -33,8 +33,6 @@ export default function TaleGameshopHeader() {
                             <Link className="text-gray-700 menu-item" to="/about">About Us</Link>
                         </li>
 
-
-
                         <li className="relative dropdown">
                             <a className="text-gray-700 menu-item" href="#">
                                 More Games

@@ -5,15 +5,17 @@ import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-
 import './tale-gameshop-main-window.css'
 import {Route, Routes} from "react-router-dom";
 import TaleGameshopGameList from "../game-list-page/game-list-page";
+import AboutUs from "../about-us/about-us";
 
 export default function TaleGameshopMainWindow() {
     return (
         <div>
             <TaleGameshopHeader></TaleGameshopHeader>
+            <div className="main-page-down-header-padding"></div>
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
-                    <Route path="/about" element={<TaleGameshopGameList/>}/>
+                    <Route path="/about" element={<AboutUs/>}/>
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>
         </div>
