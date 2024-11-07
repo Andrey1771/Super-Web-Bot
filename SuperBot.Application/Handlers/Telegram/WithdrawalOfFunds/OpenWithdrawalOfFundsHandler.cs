@@ -1,0 +1,26 @@
+﻿using MediatR;
+using SuperBot.Application.Commands.WithdrawalOfFunds;
+using SuperBot.Core.Interfaces;
+using Telegram.Bot.Types;
+using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
+using SuperBot.Application.Handlers.Telegram.Base;
+
+namespace SuperBot.Application.Handlers.Telegram.WithdrawalOfFunds
+{
+    public class OpenWithdrawalOfFundsHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<OpenWithdrawalOfFundsCommand>(_mediator, _translationsService), IRequestHandler<OpenWithdrawalOfFundsCommand, Message>
+    {
+        public async Task<Message> Handle(OpenWithdrawalOfFundsCommand request, CancellationToken cancellationToken)
+        {
+            var message = _translationsService.Translation.EnterCardNumberToWithdrawFunds;
+
+            // Отправляем сообщение пользователю
+            return await _botClient.SendTextMessageAsync(
+                chatId: request.ChatId,
+                text: message,
+                parseMode: ParseMode.Html,
+                cancellationToken: cancellationToken
+            );
+        }
+    }
+}

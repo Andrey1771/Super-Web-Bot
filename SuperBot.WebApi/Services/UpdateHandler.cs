@@ -1,9 +1,9 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands;
-using SuperBot.Application.Commands.Base;
 using SuperBot.Application.Commands.BuyGame;
 using SuperBot.Application.Commands.InternationalTransfers;
 using SuperBot.Application.Commands.Investment;
+using SuperBot.Application.Commands.Telegram;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Core.Entities;

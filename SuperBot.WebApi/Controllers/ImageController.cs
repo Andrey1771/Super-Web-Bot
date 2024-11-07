@@ -1,0 +1,47 @@
+﻿using Microsoft.AspNetCore.Mvc;
+
+namespace SuperBot.WebApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ImageController : ControllerBase
+    {
+        private readonly string _uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+
+        public ImageController()
+        {
+            // Проверка, что папка для загрузки существует
+            if (!Directory.Exists(_uploadFolder))
+            {
+                Directory.CreateDirectory(_uploadFolder);
+            }
+        }
+
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("No file provided or file is empty.");
+            }
+
+            // Генерация уникального имени файла, чтобы избежать конфликтов
+            var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+            var filePath = Path.Combine(_uploadFolder, uniqueFileName);
+
+            try
+            {
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                return Ok(new { FilePath = filePath });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+    }
+}

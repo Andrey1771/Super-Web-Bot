@@ -8,7 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -22,6 +21,7 @@ using SuperBot.WebApi.Types;
 using System.Globalization;
 using Telegram.Bot;
 using System.Diagnostics;
+using SuperBot.Application.Commands.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
 
