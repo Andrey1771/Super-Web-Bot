@@ -1,5 +1,7 @@
 import React from "react";
+import {Link, Route, Router, Routes, useLocation, useNavigate} from "react-router-dom";
 import './tale-gameshop-header.css'
+import TaleGameshopGameList from "../game-list-page/game-list-page";
 
 export default function TaleGameshopHeader() {
     //Todo Временно
@@ -22,20 +24,17 @@ export default function TaleGameshopHeader() {
                     </div>
                     <ul className="flex space-x-6 ml-10">
                         <li>
-                            <a className="text-gray-700 menu-item" href="#">
-                                Home Page
-                            </a>
+                            <Link className="text-gray-700 menu-item" to="/">Home Page</Link>
                         </li>
                         <li>
-                            <a className="text-gray-700 menu-item" href="#">
-                                Game List
-                            </a>
+                            <Link className="text-gray-700 menu-item" to="/games">Game List</Link>
                         </li>
                         <li>
-                            <a className="text-gray-700 menu-item" href="#">
-                                About Us
-                            </a>
+                            <Link className="text-gray-700 menu-item" to="/about">About Us</Link>
                         </li>
+
+
+
                         <li className="relative dropdown">
                             <a className="text-gray-700 menu-item" href="#">
                                 More Games
@@ -311,6 +310,7 @@ export default function TaleGameshopHeader() {
                             </ul>
                         </li>
                     </ul>
+
                 </div>
                 <div className="flex space-x-4">
                     <button className="px-4 py-2 border border-gray-700 text-gray-700 animated-button">
