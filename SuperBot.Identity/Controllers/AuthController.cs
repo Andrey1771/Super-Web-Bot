@@ -10,6 +10,8 @@ using System.Text;
 
 namespace SuperBot.Identity.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly IMongoCollection<User> _users;
