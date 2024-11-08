@@ -2,6 +2,7 @@ import React from "react";
 import {Link, Route, Router, Routes, useLocation, useNavigate} from "react-router-dom";
 import './tale-gameshop-header.css'
 import TaleGameshopGameList from "../game-list-page/game-list-page";
+import LoginPage from "../login-page/login-page";
 
 export default function TaleGameshopHeader() {
     //Todo Временно
@@ -311,12 +312,8 @@ export default function TaleGameshopHeader() {
 
                 </div>
                 <div className="flex space-x-4">
-                    <button className="px-4 py-2 border border-gray-700 text-gray-700 animated-button">
-                        Login
-                    </button>
-                    <button className="px-4 py-2 bg-black text-white animated-button">
-                        Sign In
-                    </button>
+                    <Link className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" to="/login">Login</Link>
+                    <Link className="px-4 py-2 bg-black text-white animated-button" to="/signUp">Sign Up</Link>
                 </div>
             </div>
         </nav>

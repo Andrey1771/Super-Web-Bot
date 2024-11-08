@@ -6,6 +6,8 @@ import './tale-gameshop-main-window.css'
 import {Route, Routes} from "react-router-dom";
 import TaleGameshopGameList from "../game-list-page/game-list-page";
 import AboutUs from "../about-us/about-us";
+import LoginPage from "../login-page/login-page";
+import RegistrationPage from "../registration-page/registration-page";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -16,6 +18,8 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
                     <Route path="/about" element={<AboutUs/>}/>
+                    <Route path="/logIn" element={<LoginPage/>}/>LoginPage
+                    <Route path="/signUp" element={<RegistrationPage/>}/>LoginPage
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>
         </div>
