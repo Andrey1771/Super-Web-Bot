@@ -64,6 +64,19 @@ builder.Services
     .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
 
 
+// Добавление CORS с конкретной политикой
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigin",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:3000") // Замените на URL вашего клиента
+                   .AllowAnyHeader()
+                   .AllowAnyMethod()
+                   .AllowCredentials(); // Если необходимы куки/учетные данные
+        });
+});
+
 builder.Services.AddControllers();
 
 builder.Services.AddTransient<IResourceService, JsonResourceService>();
@@ -155,6 +168,8 @@ var localizationOptions = new RequestLocalizationOptions()
 app.UseRequestLocalization(localizationOptions);
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowSpecificOrigin");
 
 app.MapControllers();
 

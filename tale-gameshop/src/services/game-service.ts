@@ -3,7 +3,7 @@ import { injectable } from 'inversify';
 import { IGameService } from '../iterfaces/i-game-service';
 import { Game } from '../models/game';
 
-const API_URL = 'https://localhost:7083/api/game'; // Замените на ваш URL
+const API_URL = 'https://localhost:7117/api/Game'; // Замените на ваш URL
 
 @injectable()
 class GameService implements IGameService {
