@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import './login-page.css'
-import { login } from '../../services/authService'; // Импортируем сервис
+import { login } from '../../services/auth-service'; // Импортируем сервис
 
 const LoginForm: React.FC = () => {
     const [email, setEmail] = useState('');

@@ -5,16 +5,20 @@ import App from './app/tale-gameshop/App';
 import reportWebVitals from './reportWebVitals';
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import TaleGameshopGameList from "./components/game-list-page/game-list-page";
+import {Provider} from 'inversify-react';
+import container from './inversify.config';
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
 );
 root.render(
-    <React.StrictMode>
-        <BrowserRouter>
-            <App/>
-        </BrowserRouter>
-    </React.StrictMode>
+    <Provider container={container}>
+        <React.StrictMode>
+            <BrowserRouter>
+                <App/>
+            </BrowserRouter>
+        </React.StrictMode>
+    </Provider>
 );
 
 // If you want to start measuring performance in your app, pass a function

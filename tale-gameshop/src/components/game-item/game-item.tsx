@@ -4,7 +4,6 @@ import './game-item.css'
 export default function AboutUs() {
     //https://localhost:7117/api/Game
 
-
 return (
     <div className="bg-white p-4 rounded-lg shadow">
         <img alt="Action Game 1" className="mb-4" height="100"

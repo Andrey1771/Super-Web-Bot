@@ -43,8 +43,9 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="C:\projects\Super-Bot\tale-gameshop\src\components" />
+      <recent name="C:\projects\Super-Bot\tale-gameshop\src\constants" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src" />
+      <recent name="C:\projects\Super-Bot\tale-gameshop\src\components" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -64,7 +65,8 @@
       <updated>1730538462807</updated>
       <workItem from="1730538463938" duration="11824000" />
       <workItem from="1730978781817" duration="4145000" />
-      <workItem from="1730983747172" duration="13201000" />
+      <workItem from="1730983747172" duration="19096000" />
+      <workItem from="1731136351509" duration="5558000" />
     </task>
     <servers />
   </component>

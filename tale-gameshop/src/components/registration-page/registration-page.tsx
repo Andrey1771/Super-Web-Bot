@@ -1,8 +1,6 @@
 import React, {useState} from "react";
 import './registration-page.css'
-import {register} from "../../services/authService";
-
-
+import {register} from "../../services/auth-service";
 
 export default function RegistrationPage() {
     const [email, setEmail] = useState('');

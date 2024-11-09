@@ -1,16 +1,12 @@
 import axios from 'axios';
+import { injectable } from 'inversify';
+import { IGameService } from '../iterfaces/i-game-service';
+import { Game } from '../models/game';
 
 const API_URL = 'https://localhost:7083/api/game'; // Замените на ваш URL
 
-// Типы данных для игры
-interface Game {
-    id?: string;
-    name: string;
-    description: string;
-    // добавьте другие поля в зависимости от структуры вашего объекта Game
-}
-
-class GameService {
+@injectable()
+class GameService implements IGameService {
     // Получение всех игр
     async getAllGames(): Promise<Game[]> {
         try {
@@ -65,4 +61,4 @@ class GameService {
     }
 }
 
-export default new GameService();
+export default GameService;
