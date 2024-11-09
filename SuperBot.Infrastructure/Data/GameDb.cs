@@ -1,5 +1,6 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson;
+using SuperBot.Core.Entities;
 
 namespace SuperBot.Infrastructure.Data
 {
@@ -17,6 +18,15 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("description")]
         public string Description { get; set; }
+
+        [BsonElement("title")]
+        public string Title { get; set; }
+
+        [BsonElement("gameType")]
+        public GameType GameType { get; set; }
+
+        [BsonElement("imagePath")]
+        public string ImagePath { get; set; }
 
         [BsonElement("releaseDate")]
         public DateTime ReleaseDate { get; set; }

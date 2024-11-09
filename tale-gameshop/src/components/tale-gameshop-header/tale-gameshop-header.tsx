@@ -20,9 +20,9 @@ export default function TaleGameshopHeader() {
         <nav className="bg-white border-b border-gray-200 header-nav">
             <div className="container mx-auto flex justify-between items-center py-4">
                 <div className="flex items-center">
-                    <div className="text-2xl font-bold">
-                        Logo
-                    </div>
+                    <img className="text-2xl font-bold" src="../../../public/shop_tale_logo.svg">
+
+                    </img>
                     <ul className="flex space-x-6 ml-10">
                         <li>
                             <Link className="text-gray-700 menu-item" to="/">Home Page</Link>
