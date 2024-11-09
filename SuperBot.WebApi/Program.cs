@@ -22,6 +22,7 @@ using System.Globalization;
 using Telegram.Bot;
 using System.Diagnostics;
 using SuperBot.Application.Commands.Telegram;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -170,6 +171,12 @@ app.UseRequestLocalization(localizationOptions);
 app.UseHttpsRedirection();
 
 app.UseCors("AllowSpecificOrigin");
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads")),
+    RequestPath = "/wwwroot/uploads"
+});
 
 app.MapControllers();
 

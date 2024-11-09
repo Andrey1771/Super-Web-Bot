@@ -6,7 +6,7 @@ namespace SuperBot.WebApi.Controllers
     [ApiController]
     public class ImageController : ControllerBase
     {
-        private readonly string _uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+        private readonly string _uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
 
         public ImageController()
         {
@@ -52,7 +52,7 @@ namespace SuperBot.WebApi.Controllers
                 // Получаем все файлы в папке загрузок
                 var files = Directory.GetFiles(_uploadFolder)
                                      .Select(Path.GetFileName) // Получаем только имена файлов
-                                     .Select(fileName => Url.Content($"~/uploads/{fileName}")) // Создаем URL для файла
+                                     .Select(fileName => Url.Content($"~/wwwroot/uploads/{fileName}")) // Создаем URL для файла
                                      .ToList();
 
                 return Ok(files);
