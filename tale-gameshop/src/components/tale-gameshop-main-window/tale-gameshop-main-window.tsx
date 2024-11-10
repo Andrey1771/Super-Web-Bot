@@ -8,6 +8,7 @@ import TaleGameshopGameList from "../game-list-page/game-list-page";
 import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
 import RegistrationPage from "../registration-page/registration-page";
+import ChatBot from "../bot/chat-bot/chat-bot";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -22,6 +23,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/signUp" element={<RegistrationPage/>}/>LoginPage
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>
+            <ChatBot></ChatBot>
         </div>
     );
 }
