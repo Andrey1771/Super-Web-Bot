@@ -1,4 +1,4 @@
 export interface Settings {
-    Id: string;
-    GameCategories: string[];
+    id: string;
+    gameCategories: string[];
 }

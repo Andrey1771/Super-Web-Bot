@@ -24,6 +24,7 @@ using System.Diagnostics;
 using SuperBot.Application.Commands.Telegram;
 using Microsoft.Extensions.FileProviders;
 using SuperBot.Core.Entities;
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,12 +113,24 @@ builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 
+
+builder.Services.AddTransient<IPayService, YooKassaService>();
+
+builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
+
+//builder.Configu.AddAutoMapper(typeof(GameProfile));
+builder.Services.AddAutoMapper(typeof(GameProfile));
+//builder.Services.AddAutoMapper(typeof(OrderProfile));
+//builder.Services.AddAutoMapper(typeof(SettingsProfile));
+//builder.Services.AddAutoMapper(typeof(SteamOrderProfile));
+//builder.Services.AddAutoMapper(typeof(UserProfile));
+
 //TODO Заготовка на динамические жанры игр, если у нас нет настроек, то добавляем их
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
 {
     var repository = scope.ServiceProvider.GetRequiredService<ISettingsRepository>();
     var settings = await repository.GetAllAsync();
-    if(settings.Count() == 0)
+    if (settings.Count() == 0)
     {
         var gameCategories = Enum.GetNames(typeof(GameType)).ToList();
 
@@ -129,15 +142,6 @@ using (var scope = builder.Services.BuildServiceProvider().CreateScope())
         await repository.CreateAsync(newSettings);
     }
 }
-
-
-builder.Services.AddTransient<IPayService, YooKassaService>();
-
-builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
-
-//builder.Configu.AddAutoMapper(typeof(GameProfile));
-builder.Services.AddAutoMapper(typeof(GameProfile));
-builder.Services.AddAutoMapper(typeof(OrderProfile));
 
 // Добавление Hangfire с использованием MongoDB
 builder.Services.AddHangfire(config =>

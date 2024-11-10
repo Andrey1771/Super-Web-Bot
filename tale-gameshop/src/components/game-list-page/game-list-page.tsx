@@ -43,7 +43,7 @@ class TaleGameshopGameList extends Component<{}, State>{
 
         const { games } = this.state;
         return games.reduce((acc: any, game) => {
-            const category = settings?.GameCategories[game.gameType] ?? "";
+            const category = settings?.gameCategories[game.gameType] ?? "";
             if (!acc[category]) {
                 acc[category] = [];
             }
