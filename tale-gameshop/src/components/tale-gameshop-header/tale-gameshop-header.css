@@ -46,7 +46,13 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1000; /* Слой выше контента */
-    background-color: white; /* Фон, чтобы текст не сливался с контентом при прокрутке */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Лёгкая тень для разделения */
+    z-index: 1000;
+    background-color: white;
+    transition: all 0.3s ease-in-out; /* Плавный переход */
+}
+
+.header-nav.scrolled {
+    background-color: rgba(255, 255, 255, 0.9); /* Полупрозрачный фон */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Более заметная тень */
+    padding: 0.5rem 1rem; /* Изменение padding при прокрутке */
 }

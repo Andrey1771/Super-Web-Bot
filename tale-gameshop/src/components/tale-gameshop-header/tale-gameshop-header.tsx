@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {Link, Route, Router, Routes, useLocation, useNavigate} from "react-router-dom";
 import './tale-gameshop-header.css'
 import TaleGameshopGameList from "../game-list-page/game-list-page";
@@ -15,6 +15,23 @@ export default function TaleGameshopHeader() {
             });
         });
     });
+
+    useEffect(() => {
+        // Функция для обработки скролла
+        const handleScroll = () => {
+            const header = document.querySelector('.header-nav');
+            if (window.scrollY > 0) {
+                header?.classList.add('scrolled');
+            } else {
+                header?.classList.remove('scrolled');
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        // Очистка события при размонтировании компонента
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
 
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
