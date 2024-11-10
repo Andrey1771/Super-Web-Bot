@@ -5,24 +5,8 @@ export interface Game {
     description: string;
     price: number;
     title: string;
-    gameType: GameType;
+    gameType: number; // Соотносится с сервером
     imagePath: string;
     releaseDate: string;
     // добавьте другие поля в зависимости от структуры вашего объекта Game
-}
-
-enum GameType
-{
-    Action,
-    Adventure,
-    RolePlayingGames, // RPGs
-    Simulation,
-    Strategy,
-    Puzzle,
-    Sports,
-    CardAndBoardGames,
-    MassivelyMultiplayerOnline, // MMO
-    Horror,
-    CasualGames,
-    EducationalGames
 }

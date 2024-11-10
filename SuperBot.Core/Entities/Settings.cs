@@ -8,5 +8,7 @@ namespace SuperBot.Core.Entities
 {
     public class Settings
     {
+        public Guid Id { get; set; }
+        public string[] GameCategories { get; set; }
     }
 }
