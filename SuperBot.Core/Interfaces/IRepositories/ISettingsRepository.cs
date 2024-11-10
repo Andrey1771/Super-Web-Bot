@@ -11,5 +11,6 @@ namespace SuperBot.Core.Interfaces.IRepositories
     {
         Task<IEnumerable<Settings>> GetAllAsync();
         Task UpdateAsync(Settings updatedSettings);
+        Task CreateAsync(Settings settings);
     }
 }

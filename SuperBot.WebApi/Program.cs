@@ -23,6 +23,7 @@ using Telegram.Bot;
 using System.Diagnostics;
 using SuperBot.Application.Commands.Telegram;
 using Microsoft.Extensions.FileProviders;
+using SuperBot.Core.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -110,6 +111,25 @@ builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
+
+//TODO «аготовка на динамические жанры игр, если у нас нет настроек, то добавл€ем их
+using (var scope = builder.Services.BuildServiceProvider().CreateScope())
+{
+    var repository = scope.ServiceProvider.GetRequiredService<ISettingsRepository>();
+    var settings = await repository.GetAllAsync();
+    if(settings.Count() == 0)
+    {
+        var gameCategories = Enum.GetNames(typeof(GameType)).ToList();
+
+        var newSettings = new Settings
+        {
+            Id = Guid.NewGuid(),
+            GameCategories = gameCategories.ToArray(),
+        };
+        await repository.CreateAsync(newSettings);
+    }
+}
+
 
 builder.Services.AddTransient<IPayService, YooKassaService>();
 

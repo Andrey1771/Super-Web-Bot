@@ -1,6 +1,6 @@
 ﻿namespace SuperBot.Core.Entities
 {
-    public enum GameType
+    public enum GameType //TODO
     {
         Action,
         Adventure,

@@ -4,6 +4,7 @@ using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using Telegram.Bot.Types;
 
 namespace SuperBot.Infrastructure.Repositories
 {
@@ -28,6 +29,12 @@ namespace SuperBot.Infrastructure.Repositories
         {
             var settingsDb = _mapper.Map<SettingsDb>(updatedSettings);
             await _settings.ReplaceOneAsync(s => s.Id == settingsDb.Id, settingsDb);
+        }
+
+        public async Task CreateAsync(Settings settings)
+        {
+            var settingsDb = _mapper.Map<SettingsDb>(settings);
+            await _settings.InsertOneAsync(settingsDb);
         }
     }
 }
