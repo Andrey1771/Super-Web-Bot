@@ -208,7 +208,7 @@ export default function TaleGameshopMainPage() {
                 </div>
             </div>
 
-            <div className="flex items-start justify-start min-h-screen bg-white p-8">
+            <div className="flex items-start justify-start bg-white p-8 mb-28">
                 <div className="flex items-start space-x-8 w-full">
                     <div className="w-1/2">
                         <h1 className="text-3xl font-bold glow-text">

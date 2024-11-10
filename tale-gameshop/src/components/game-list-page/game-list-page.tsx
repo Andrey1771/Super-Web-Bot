@@ -18,11 +18,13 @@ class TaleGameshopGameList extends Component<{}, State> {
     @resolve(IDENTIFIERS.IGameService) private readonly _gameService!: IGameService;
     @resolve(IDENTIFIERS.ISettingsService) private readonly _settingsService!: ISettingsService;
 
+    private readonly loadMoreStep = 9;
+
     constructor(props: any) {
         super(props);
         this.state = {
             games: [],
-            visibleGamesCount: 9,
+            visibleGamesCount: this.loadMoreStep,
             gamesByCategory: {},
         };
     }
@@ -35,7 +37,7 @@ class TaleGameshopGameList extends Component<{}, State> {
 
     loadMoreGames = () => {
         this.setState((prevState) => ({
-            visibleGamesCount: prevState.visibleGamesCount + 9,
+            visibleGamesCount: prevState.visibleGamesCount + this.loadMoreStep,
         }));
     };
 
