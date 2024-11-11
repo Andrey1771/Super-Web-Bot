@@ -16,7 +16,6 @@ const ChatBot: React.FC = () => {
     const [size, setSize] = useState({ width: 360, height: 480 });
     const [dragging, setDragging] = useState(false);
     const [resizing, setResizing] = useState(false);
-    const [resizeDirection, setResizeDirection] = useState('');
     const [startMousePosition, setStartMousePosition] = useState({ x: 0, y: 0 });
     const [initialSize, setInitialSize] = useState({ width: 360, height: 480 });
     const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
@@ -26,34 +25,40 @@ const ChatBot: React.FC = () => {
     const MAX_WIDTH = window.innerWidth - 50;
     const MAX_HEIGHT = window.innerHeight - 50;
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.TouchEvent<HTMLDivElement>) => {
         if (resizing) return;
         setDragging(true);
-        setInitialPosition({ x: e.clientX - position.x, y: e.clientY - position.y });
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        setInitialPosition({ x: clientX - position.x, y: clientY - position.y });
         e.preventDefault();
     };
 
-    const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>, direction: string) => {
+    const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         setResizing(true);
-        setResizeDirection(direction);
-        setStartMousePosition({ x: e.clientX, y: e.clientY });
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        setStartMousePosition({ x: clientX, y: clientY });
         setInitialSize(size);
         e.stopPropagation();
         e.preventDefault();
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
         if (resizing) {
-            const dx = e.clientX - startMousePosition.x;
-            const dy = e.clientY - startMousePosition.y;
-
+            const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+            const dx = clientX - startMousePosition.x;
+            const dy = clientY - startMousePosition.y;
             setSize((prevSize) => ({
                 width: Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, initialSize.width + dx)),
                 height: Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, initialSize.height + dy)),
             }));
         } else if (dragging) {
-            const dx = e.clientX - initialPosition.x;
-            const dy = e.clientY - initialPosition.y;
+            const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+            const dx = clientX - initialPosition.x;
+            const dy = clientY - initialPosition.y;
             setPosition({ x: dx, y: dy });
         }
     };
@@ -64,12 +69,19 @@ const ChatBot: React.FC = () => {
     };
 
     useEffect(() => {
+        const handleTouchMove = (e: TouchEvent) => handleMouseMove(e);
+        const handleTouchEnd = () => handleMouseUp();
+
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchend', handleTouchEnd);
 
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
         };
     }, [dragging, resizing]);
 
@@ -91,7 +103,7 @@ const ChatBot: React.FC = () => {
         setShowForm(false);
         setMessages((prev) => [...prev, { sender: 'bot', text: 'Спасибо за предоставленные данные!' }]);
     };
-//#8a2be2
+
     return (
         <div>
             {!isOpen && (
@@ -106,11 +118,19 @@ const ChatBot: React.FC = () => {
             {isOpen && (
                 <div
                     className="fixed bg-white border border-gray-300 rounded-lg shadow-lg flex flex-col"
-                    style={{top: position.y, left: position.x, width: size.width, height: size.height, minWidth: initialSize.width, minHeight: initialSize.height}}
+                    style={{
+                        top: position.y,
+                        left: position.x,
+                        width: size.width,
+                        height: size.height,
+                        minWidth: MIN_WIDTH,
+                        minHeight: MIN_HEIGHT,
+                    }}
                 >
                     <div
                         className="flex items-center justify-between chat-background-color text-white p-2 rounded-t-lg cursor-move"
                         onMouseDown={handleMouseDown}
+                        onTouchStart={handleMouseDown}
                     >
                         <span className="font-semibold">Чат-бот</span>
                         <button
@@ -122,24 +142,21 @@ const ChatBot: React.FC = () => {
                     </div>
 
                     <div className="flex-grow overflow-y-auto p-2">
-                        <MessageList messages={messages}/>
+                        <MessageList messages={messages} />
 
                         {showForm && (
                             <form onSubmit={handleFormSubmit} className="bg-gray-100 p-3 rounded mt-2">
                                 <div className="mb-2">
                                     <label className="block text-sm font-medium">Имя</label>
-                                    <input type="text" required
-                                           className="w-full p-2 border border-gray-300 rounded mt-1"/>
+                                    <input type="text" required className="w-full p-2 border border-gray-300 rounded mt-1" />
                                 </div>
                                 <div className="mb-2">
                                     <label className="block text-sm font-medium">Электронная почта</label>
-                                    <input type="email" required
-                                           className="w-full p-2 border border-gray-300 rounded mt-1"/>
+                                    <input type="email" required className="w-full p-2 border border-gray-300 rounded mt-1" />
                                 </div>
                                 <div className="mb-2">
                                     <label className="block text-sm font-medium">Телефонный номер</label>
-                                    <input type="tel" required
-                                           className="w-full p-2 border border-gray-300 rounded mt-1"/>
+                                    <input type="tel" required className="w-full p-2 border border-gray-300 rounded mt-1" />
                                 </div>
                                 <button
                                     type="submit"
@@ -151,18 +168,19 @@ const ChatBot: React.FC = () => {
                         )}
                     </div>
 
-                    <MessageInput onSendMessage={handleUserMessage}/>
+                    <MessageInput onSendMessage={handleUserMessage} />
 
                     <div
                         className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-center justify-center"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'bottom-right')}
+                        onMouseDown={handleResizeMouseDown}
+                        onTouchStart={handleResizeMouseDown}
                     >
-                        {/* Иконка для ресайза */}
-                        <FontAwesomeIcon icon={faGripLines} className="text-gray-400 -rotate-45"/>
+                        <FontAwesomeIcon icon={faGripLines} className="text-gray-400 -rotate-45" />
                     </div>
                 </div>
             )}
         </div>
     );
 };
+
 export default ChatBot;
