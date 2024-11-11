@@ -68,11 +68,24 @@
       <workItem from="1730978781817" duration="4145000" />
       <workItem from="1730983747172" duration="19096000" />
       <workItem from="1731136351509" duration="15191000" />
-      <workItem from="1731224026871" duration="9524000" />
+      <workItem from="1731224026871" duration="12446000" />
+      <workItem from="1731314144254" duration="4335000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/src/components/bot/chat-bot/chat-bot.tsx</url>
+          <line>125</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>
