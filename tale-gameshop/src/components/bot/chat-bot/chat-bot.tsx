@@ -91,13 +91,13 @@ const ChatBot: React.FC = () => {
         setShowForm(false);
         setMessages((prev) => [...prev, { sender: 'bot', text: 'Спасибо за предоставленные данные!' }]);
     };
-
+//#8a2be2
     return (
         <div>
             {!isOpen && (
                 <button
                     onClick={toggleChat}
-                    className="fixed bottom-4 right-4 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition duration-200"
+                    className="fixed bottom-4 right-4 chat-background-color text-white p-3 rounded-full shadow-lg transition duration-200"
                 >
                     Чат
                 </button>
@@ -109,7 +109,7 @@ const ChatBot: React.FC = () => {
                     style={{top: position.y, left: position.x, width: size.width, height: size.height, minWidth: initialSize.width, minHeight: initialSize.height}}
                 >
                     <div
-                        className="flex items-center justify-between bg-blue-500 text-white p-2 rounded-t-lg cursor-move"
+                        className="flex items-center justify-between chat-background-color text-white p-2 rounded-t-lg cursor-move"
                         onMouseDown={handleMouseDown}
                     >
                         <span className="font-semibold">Чат-бот</span>
@@ -143,7 +143,7 @@ const ChatBot: React.FC = () => {
                                 </div>
                                 <button
                                     type="submit"
-                                    className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition duration-200"
+                                    className="w-full chat-background-color animated-button text-white py-2 rounded hover:bg-blue-600 transition duration-200"
                                 >
                                     Отправить
                                 </button>

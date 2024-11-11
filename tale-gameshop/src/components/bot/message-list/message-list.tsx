@@ -11,7 +11,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => (
                 key={index}
                 className={`p-2 mb-2 rounded-lg ${
                     message.sender === 'user'
-                        ? 'bg-blue-500 text-white self-end text-right'
+                        ? 'chat-background-color text-white self-end text-right'
                         : 'bg-gray-300 text-black'
                 }`}
             >

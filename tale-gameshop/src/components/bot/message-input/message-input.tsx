@@ -28,7 +28,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
             />
             <button
                 type="submit"
-                className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none"
+                className="chat-background-color  ml-2 px-4 py-2 animated-button text-white rounded-lg hover:bg-blue-600 focus:outline-none"
             >
                 Отправить
             </button>
