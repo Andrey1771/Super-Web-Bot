@@ -7,7 +7,7 @@ import { faGripLines } from '@fortawesome/free-solid-svg-icons';
 
 const ChatBot: React.FC = () => {
     const [messages, setMessages] = useState<{ sender: string; text: string }[]>([
-        { sender: 'bot', text: 'Привет! Чем могу помочь?' },
+        { sender: 'bot', text: 'Привет! Опишите какой у вас вопрос?' },
     ]);
     const [isOpen, setIsOpen] = useState(false);
     const [hasResponded, setHasResponded] = useState(false);
@@ -88,7 +88,7 @@ const ChatBot: React.FC = () => {
     const handleUserMessage = (text: string) => {
         setMessages((prev) => [...prev, { sender: 'user', text }]);
         if (!hasResponded) {
-            setMessages((prev) => [...prev, { sender: 'bot', text: 'Вам скоро ответят' }]);
+            setMessages((prev) => [...prev, { sender: 'bot', text: 'Пожалуйста, заполните форму ниже, чтобы мы могли с вами связаться' }]);
             setHasResponded(true);
             setShowForm(true);
         }
@@ -101,7 +101,7 @@ const ChatBot: React.FC = () => {
     const handleFormSubmit = (event: React.FormEvent) => {
         event.preventDefault();
         setShowForm(false);
-        setMessages((prev) => [...prev, { sender: 'bot', text: 'Спасибо за предоставленные данные!' }]);
+        setMessages((prev) => [...prev, { sender: 'bot', text: 'Спасибо за предоставленные данные! В ближайшее время с вами свяжутся.' }]);
     };
 
     return (
