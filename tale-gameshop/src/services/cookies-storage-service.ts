@@ -1,7 +1,7 @@
 import {IAuthStorageService} from "../iterfaces/i-auth-storage-service";
 const Cookies = require('js-cookie');
 
-export class CookieStorage implements IAuthStorageService {
+export class CookiesStorageService implements IAuthStorageService {
     getItem(key: string): string | undefined {
         return Cookies.get(key);
     }
