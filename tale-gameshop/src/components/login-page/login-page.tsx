@@ -1,12 +1,21 @@
 import React, { useState } from "react";
 import './login-page.css'
-import { login } from '../../services/auth-service'; // Импортируем сервис
+import { login } from '../../services/auth-service';
+import {resolve} from "inversify-react";
+import IDENTIFIERS from "../../constants/identifiers";
+import type {IGameService} from "../../iterfaces/i-game-service"; // Импортируем сервис
+import { IAuthStorageService } from "../../iterfaces/i-auth-storage-service";
+import container from "../../inversify.config";
+import {useNavigate} from "react-router-dom";
 
 const LoginForm: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
+
+    const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault(); // Предотвращаем стандартное поведение формы
@@ -15,6 +24,8 @@ const LoginForm: React.FC = () => {
 
         try {
             const data = await login(email, password); // Вызов сервиса
+            tokenStorage.setItem("token", data.token ?? "");
+            navigate('/');//TODO home
             console.log('Login successful:', data);
             // Дополнительная обработка, например, сохранение токена или перенаправление
         } catch (error) {
