@@ -6,6 +6,7 @@ import {resolve} from "inversify-react";
 import type {ISettingsService} from "../iterfaces/i-settings-service";
 import { IApiClient } from '../iterfaces/i-api-client';
 import container from "../inversify.config";
+import webSettings from '../webSettings.json'; // Импортируем настройки из JSON
 
 @injectable()
 export class ApiClient implements IApiClient {
@@ -18,7 +19,7 @@ export class ApiClient implements IApiClient {
         this._tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
 
         this._api = axios.create({
-            baseURL: 'https://your-api-url.com', // Замените на ваш базовый URL API
+            baseURL: webSettings.apiBaseUrl,
             headers: {
                 'Content-Type': 'application/json',
             },
