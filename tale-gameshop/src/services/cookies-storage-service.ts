@@ -1,6 +1,8 @@
 import {IAuthStorageService} from "../iterfaces/i-auth-storage-service";
+import {injectable} from "inversify";
 const Cookies = require('js-cookie');
 
+@injectable()
 export class CookiesStorageService implements IAuthStorageService {
     getItem(key: string): string | undefined {
         return Cookies.get(key);

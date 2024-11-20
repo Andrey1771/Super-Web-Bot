@@ -1,16 +1,31 @@
 import axios from 'axios';
-import { injectable } from 'inversify';
+import {inject, injectable} from 'inversify';
 import { IGameService } from '../iterfaces/i-game-service';
 import { Game } from '../models/game';
+import {resolve} from "inversify-react";
+import IDENTIFIERS from "../constants/identifiers";
+import type {IAuthStorageService} from "../iterfaces/i-auth-storage-service";
+import type {IApiClient} from "../iterfaces/i-api-client";
+import container from '../inversify.config';
+import { ApiClient } from './api-client';
 
 const API_URL = 'https://localhost:7117/api/Game'; // Замените на ваш URL
 
 @injectable()
-class GameService implements IGameService {
+export class GameService implements IGameService {
+    //@resolve(IDENTIFIERS.IApiClient) private apiClient!: IApiClient;
+
+    private readonly _apiClient: IApiClient;
+
+    constructor() {
+        //TODO Почему-то не resolve по нормальному, Проблема в том, что действие в сервисе, а не в компоненте?
+        this._apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+    }
+
     // Получение всех игр
     async getAllGames(): Promise<Game[]> {
         try {
-            const response = await axios.get(API_URL);
+            const response = await this._apiClient.api.get(API_URL);
             return response.data;
         } catch (error) {
             console.error('Error fetching games:', error);
@@ -21,7 +36,7 @@ class GameService implements IGameService {
     // Получение игры по id
     async getGameById(id: string): Promise<Game> {
         try {
-            const response = await axios.get(`${API_URL}/${id}`);
+            const response = await this._apiClient.api.get(`${API_URL}/${id}`);
             return response.data;
         } catch (error) {
             console.error('Error fetching game by ID:', error);
@@ -32,7 +47,7 @@ class GameService implements IGameService {
     // Создание новой игры
     async createGame(newGame: Game): Promise<Game> {
         try {
-            const response = await axios.post(API_URL, newGame);
+            const response = await this._apiClient.api.post(API_URL, newGame);
             return response.data;
         } catch (error) {
             console.error('Error creating game:', error);
@@ -43,7 +58,7 @@ class GameService implements IGameService {
     // Обновление игры
     async updateGame(id: string, updatedGame: Game): Promise<void> {
         try {
-            await axios.put(`${API_URL}/${id}`, updatedGame);
+            await this._apiClient.api.put(`${API_URL}/${id}`, updatedGame);
         } catch (error) {
             console.error('Error updating game:', error);
             throw error;
@@ -53,12 +68,10 @@ class GameService implements IGameService {
     // Удаление игры
     async deleteGame(id: string): Promise<void> {
         try {
-            await axios.delete(`${API_URL}/${id}`);
+            await this._apiClient.api.delete(`${API_URL}/${id}`);
         } catch (error) {
             console.error('Error deleting game:', error);
             throw error;
         }
     }
 }
-
-export default GameService;
