@@ -6,13 +6,28 @@ import IDENTIFIERS from "../../constants/identifiers";
 import type {IGameService} from "../../iterfaces/i-game-service"; // Импортируем сервис
 import { IAuthStorageService } from "../../iterfaces/i-auth-storage-service";
 import container from "../../inversify.config";
-import {useNavigate} from "react-router-dom";
+import {useLocation, useNavigate} from "react-router-dom";
+import {decodeToken} from "../../utils/token-utils";
+import { useSelector, useDispatch } from 'react-redux'
+import { updateMessage } from "../../stateSlice";
 
 const LoginForm: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const location = useLocation();
+    const state = location.state as { tokenChanged: (token: string) => void ; };
+
+    const message = useSelector((state: any) => state.state.message);
+
+    //const newToken = tokenStorage.getItem("token");
+    //const newJwt = newToken ? decodeToken(newToken) : null;
+    //setJwt(newJwt);
+
+    const dispatch = useDispatch();
+
     const navigate = useNavigate();
 
     const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
@@ -26,6 +41,8 @@ const LoginForm: React.FC = () => {
             const data = await login(email, password); // Вызов сервиса
             tokenStorage.setItem("token", data.token ?? "");
             navigate('/');//TODO home
+            state.tokenChanged(data.token ?? "");
+            dispatch(updateMessage('Updated message from Parent via Redux'));
             console.log('Login successful:', data);
             // Дополнительная обработка, например, сохранение токена или перенаправление
         } catch (error) {

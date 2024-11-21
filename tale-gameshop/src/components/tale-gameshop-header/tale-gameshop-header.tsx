@@ -8,6 +8,9 @@ import type {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
 import {CustomJwtPayload, decodeToken} from "../../utils/token-utils";
 import SignOutButton from "../logout-button/logout-button";
+import LogOutButton from "../logout-button/logout-button";
+import {useDispatch, useSelector} from "react-redux";
+import {updateMessage} from "../../stateSlice";
 
 export default function TaleGameshopHeader() {
     const [jwt, setJwt] = useState<CustomJwtPayload | null>(null);
@@ -22,6 +25,8 @@ export default function TaleGameshopHeader() {
             });
         });
     });
+
+    const message = useSelector((state: any) => state.state.message);
 
     useEffect(() => {
         const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
@@ -344,7 +349,7 @@ export default function TaleGameshopHeader() {
                     {
                         !jwt ? (
                                 <React.Fragment>
-                                    <Link state={{ some: "value" }}  className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
+                                    <Link state={{ jwt: jwt }}  className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
                                           to="/login">Login</Link>
                                     <Link className="px-4 py-2 bg-black text-white animated-button" to="/signUp">Sign
                                         Up</Link>
@@ -353,7 +358,10 @@ export default function TaleGameshopHeader() {
                             (
                                 <div className="flex items-center justify-between">
                                     <div className="mr-2">{jwt.unique_name}</div>
-                                    <SignOutButton></SignOutButton>
+                                    <LogOutButton onTokenChange={(token) => {
+                                        const newJwt = token ? decodeToken(token) : null;
+                                        setJwt(newJwt);
+                                    }}></LogOutButton>
                                 </div>
                             )
                     }

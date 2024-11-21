@@ -4,15 +4,20 @@ import container from "../../inversify.config";
 import {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
 
-const SignOutButton: React.FC = () => {
+interface ChildComponentProps {
+    onTokenChange: (token: string) => void; // Функция из родителя
+}
+
+const LogOutButton: React.FC<ChildComponentProps> = ({ onTokenChange }) => {
     const navigate = useNavigate();
 
     const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
 
-    const handleSignOut = () => {
+    const handleLogOut = () => {
         try {
             tokenStorage.setItem("token", "");
             navigate('/');//TODO home
+            onTokenChange("");
             console.log('Logout successful');
             // Дополнительная обработка, например, сохранение токена или перенаправление
         } catch (error) {
@@ -20,7 +25,7 @@ const SignOutButton: React.FC = () => {
         }
     };
 
-    return <button className="px-4 py-2 bg-black text-white animated-button" onClick={handleSignOut}>Sign Out</button>;
+    return <button className="px-4 py-2 bg-black text-white animated-button" onClick={handleLogOut}>Sign Out</button>;
 };
 
-export default SignOutButton;
+export default LogOutButton;
