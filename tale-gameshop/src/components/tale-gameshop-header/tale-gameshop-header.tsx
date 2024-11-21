@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, {useEffect} from "react";
 import {Link, Route, Router, Routes, useLocation, useNavigate} from "react-router-dom";
 import './tale-gameshop-header.css'
 import TaleGameshopGameList from "../game-list-page/game-list-page";
@@ -337,8 +337,23 @@ export default function TaleGameshopHeader() {
 
                 </div>
                 <div className="flex space-x-4">
-                    <Link className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" to="/login">Login</Link>
-                    <Link className="px-4 py-2 bg-black text-white animated-button" to="/signUp">Sign Up</Link>
+                    {
+                        !jwt ? (
+                                <React.Fragment>
+                                    <Link className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
+                                          to="/login">Login</Link>
+                                    <Link className="px-4 py-2 bg-black text-white animated-button" to="/signUp">Sign
+                                        Up</Link>
+                                </React.Fragment>
+                            ) :
+                            (
+                                <div className="flex items-center justify-between">
+                                    <div className="mr-2">{jwt.unique_name}</div>
+                                    <Link className="px-4 py-2 bg-black text-white animated-button" to="/logOut">Log
+                                        Out</Link>
+                                </div>
+                            )
+                    }
                 </div>
             </div>
         </nav>

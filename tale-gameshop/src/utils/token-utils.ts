@@ -1,9 +1,9 @@
 import { jwtDecode, JwtPayload } from 'jwt-decode';
 
 export interface CustomJwtPayload extends JwtPayload {
-    role?: string | string[]; // Роли пользователя
-    userId?: string;          // ID пользователя
-    email?: string;           // Email пользователя
+    role?: string | string[];
+    userId?: string;
+    unique_name?: string;
 }
 
 // Функция для расшифровки токена
