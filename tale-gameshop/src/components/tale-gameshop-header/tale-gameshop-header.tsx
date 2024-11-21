@@ -3,6 +3,10 @@ import {Link, Route, Router, Routes, useLocation, useNavigate} from "react-route
 import './tale-gameshop-header.css'
 import TaleGameshopGameList from "../game-list-page/game-list-page";
 import LoginPage from "../login-page/login-page";
+import container from "../../inversify.config";
+import type {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
+import IDENTIFIERS from "../../constants/identifiers";
+import {decodeToken} from "../../utils/token-utils";
 
 export default function TaleGameshopHeader() {
     //Todo Временно
@@ -32,6 +36,10 @@ export default function TaleGameshopHeader() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
+
+    const token = tokenStorage.getItem("token");
+    const jwt = decodeToken(token ?? "");
 
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
