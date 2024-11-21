@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {Link, Route, Router, Routes, useLocation, useNavigate} from "react-router-dom";
 import './tale-gameshop-header.css'
 import TaleGameshopGameList from "../game-list-page/game-list-page";
@@ -6,9 +6,12 @@ import LoginPage from "../login-page/login-page";
 import container from "../../inversify.config";
 import type {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
-import {decodeToken} from "../../utils/token-utils";
+import {CustomJwtPayload, decodeToken} from "../../utils/token-utils";
+import SignOutButton from "../logout-button/logout-button";
 
 export default function TaleGameshopHeader() {
+    const [jwt, setJwt] = useState<CustomJwtPayload | null>(null);
+
     //Todo Временно
     document.addEventListener('DOMContentLoaded', function () {
         const accordionItems = document.querySelectorAll('.accordion-item');
@@ -21,6 +24,12 @@ export default function TaleGameshopHeader() {
     });
 
     useEffect(() => {
+        const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
+        const newToken = tokenStorage.getItem("token");
+        const newJwt = newToken ? decodeToken(newToken) : null;
+        setJwt(newJwt);
+
+
         // Функция для обработки скролла
         const handleScroll = () => {
             const header = document.querySelector('.header-nav');
@@ -35,11 +44,6 @@ export default function TaleGameshopHeader() {
         // Очистка события при размонтировании компонента
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-
-    const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
-
-    const token = tokenStorage.getItem("token");
-    const jwt = decodeToken(token ?? "");
 
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
@@ -340,7 +344,7 @@ export default function TaleGameshopHeader() {
                     {
                         !jwt ? (
                                 <React.Fragment>
-                                    <Link className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
+                                    <Link state={{ some: "value" }}  className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
                                           to="/login">Login</Link>
                                     <Link className="px-4 py-2 bg-black text-white animated-button" to="/signUp">Sign
                                         Up</Link>
@@ -349,8 +353,7 @@ export default function TaleGameshopHeader() {
                             (
                                 <div className="flex items-center justify-between">
                                     <div className="mr-2">{jwt.unique_name}</div>
-                                    <Link className="px-4 py-2 bg-black text-white animated-button" to="/logOut">Log
-                                        Out</Link>
+                                    <SignOutButton></SignOutButton>
                                 </div>
                             )
                     }
