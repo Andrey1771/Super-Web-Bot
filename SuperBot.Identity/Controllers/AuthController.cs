@@ -51,11 +51,14 @@ namespace SuperBot.Identity.Controllers
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:SecretKey"]);
+
+            var username = _encryptionService.Decrypt(user.Username);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.Name, _encryptionService.Decrypt(user.Username)),
+                    new Claim(ClaimTypes.Name, username),
+                    new Claim(ClaimTypes.Role, username == "Hohlov908.com" ? "admin" : "user"),//TODO Вынести в файл настроек
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
                 }),
                 Expires = DateTime.UtcNow.AddHours(1),
