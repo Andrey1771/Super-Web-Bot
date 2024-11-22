@@ -1,19 +1,16 @@
-import React, {useEffect, useState} from "react";
-import {Link, Route, Router, Routes, useLocation, useNavigate} from "react-router-dom";
+import React, {useEffect} from "react";
+import {Link} from "react-router-dom";
 import './tale-gameshop-header.css'
-import TaleGameshopGameList from "../game-list-page/game-list-page";
-import LoginPage from "../login-page/login-page";
 import container from "../../inversify.config";
 import type {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
-import {CustomJwtPayload, decodeToken} from "../../utils/token-utils";
-import SignOutButton from "../logout-button/logout-button";
+import {decodeToken} from "../../utils/token-utils";
 import LogOutButton from "../logout-button/logout-button";
 import {useDispatch, useSelector} from "react-redux";
-import {updateMessage} from "../../stateSlice";
 
 export default function TaleGameshopHeader() {
-    const [jwt, setJwt] = useState<CustomJwtPayload | null>(null);
+    const jwt = useSelector((state: any) => state.jwt);
+    const dispatch = useDispatch();
 
     //Todo Временно
     document.addEventListener('DOMContentLoaded', function () {
@@ -26,13 +23,12 @@ export default function TaleGameshopHeader() {
         });
     });
 
-    const message = useSelector((state: any) => state.state.message);
-
     useEffect(() => {
         const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
         const newToken = tokenStorage.getItem("token");
         const newJwt = newToken ? decodeToken(newToken) : null;
-        setJwt(newJwt);
+
+        dispatch({ type: 'SET_JWT', payload: newJwt });
 
 
         // Функция для обработки скролла
@@ -360,7 +356,7 @@ export default function TaleGameshopHeader() {
                                     <div className="mr-2">{jwt.unique_name}</div>
                                     <LogOutButton onTokenChange={(token) => {
                                         const newJwt = token ? decodeToken(token) : null;
-                                        setJwt(newJwt);
+                                        dispatch({ type: 'SET_JWT', payload: newJwt })
                                     }}></LogOutButton>
                                 </div>
                             )
