@@ -28,7 +28,7 @@ export default function TaleGameshopHeader() {
         const newToken = tokenStorage.getItem("token");
         const newJwt = newToken ? decodeToken(newToken) : null;
 
-        dispatch({ type: 'SET_JWT', payload: newJwt });
+        dispatch({type: 'SET_JWT', payload: newJwt});
 
 
         // Функция для обработки скролла
@@ -345,7 +345,8 @@ export default function TaleGameshopHeader() {
                     {
                         !jwt ? (
                                 <React.Fragment>
-                                    <Link state={{ jwt: jwt }}  className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
+                                    <Link state={{jwt: jwt}}
+                                          className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
                                           to="/login">Login</Link>
                                     <Link className="px-4 py-2 bg-black text-white animated-button" to="/signUp">Sign
                                         Up</Link>
@@ -354,10 +355,7 @@ export default function TaleGameshopHeader() {
                             (
                                 <div className="flex items-center justify-between">
                                     <div className="mr-2">{jwt.unique_name}</div>
-                                    <LogOutButton onTokenChange={(token) => {
-                                        const newJwt = token ? decodeToken(token) : null;
-                                        dispatch({ type: 'SET_JWT', payload: newJwt })
-                                    }}></LogOutButton>
+                                    <LogOutButton></LogOutButton>
                                 </div>
                             )
                     }

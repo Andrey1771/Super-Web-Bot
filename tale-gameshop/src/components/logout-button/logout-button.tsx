@@ -3,13 +3,12 @@ import {useNavigate} from "react-router-dom";
 import container from "../../inversify.config";
 import {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
+import {decodeToken} from "../../utils/token-utils";
+import {useDispatch} from "react-redux";
 
-interface ChildComponentProps {
-    onTokenChange: (token: string) => void; // Функция из родителя
-}
-
-const LogOutButton: React.FC<ChildComponentProps> = ({ onTokenChange }) => {
+const LogOutButton: React.FC = () => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
 
@@ -17,7 +16,7 @@ const LogOutButton: React.FC<ChildComponentProps> = ({ onTokenChange }) => {
         try {
             tokenStorage.setItem("token", "");
             navigate('/');//TODO home
-            onTokenChange("");
+            dispatch({ type: 'SET_JWT', payload: "" })
             console.log('Logout successful');
             // Дополнительная обработка, например, сохранение токена или перенаправление
         } catch (error) {
