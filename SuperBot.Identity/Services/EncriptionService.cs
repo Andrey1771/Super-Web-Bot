@@ -48,9 +48,11 @@ namespace SuperBot.Identity.Services
                 using (var ms = new MemoryStream(Convert.FromBase64String(cipherText)))
                 using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
                 {
-                    var plainBytes = new byte[cipherText.Length];
-                    var byteCount = cs.Read(plainBytes, 0, plainBytes.Length);
-                    return Encoding.UTF8.GetString(plainBytes, 0, byteCount);
+                    using (var resultStream = new MemoryStream())
+                    {
+                        cs.CopyTo(resultStream);
+                        return Encoding.UTF8.GetString(resultStream.ToArray());
+                    }
                 }
             }
         }

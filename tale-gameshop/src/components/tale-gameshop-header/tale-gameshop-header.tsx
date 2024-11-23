@@ -80,25 +80,32 @@ export default function TaleGameshopHeader() {
                 <div className="flex space-x-4">
                     {
                         !jwt ? (
-                                <React.Fragment>
-                                    <Link state={{jwt: jwt}}
-                                          className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
-                                          to="/login">Login</Link>
-                                    <Link className="px-4 py-2 bg-black text-white animated-button" to="/signUp">Sign
-                                        Up</Link>
-                                </React.Fragment>
-                            ) :
-                            (
-                                jwt.role === "admin" && (
-                                    <div>
-                                        
-                                    </div>
-                                )
-                                    <div className="flex items-center justify-between">
-                                        <div className="mr-2">{jwt.unique_name}</div>
-                                        <LogOutButton></LogOutButton>
-                                    </div>
-                            )
+                            <React.Fragment>
+                                <Link
+                                    state={{jwt: jwt}}
+                                    className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
+                                    to="/login"
+                                >
+                                    Login
+                                </Link>
+                                <Link
+                                    className="px-4 py-2 bg-black text-white animated-button"
+                                    to="/signUp"
+                                >
+                                    Sign Up
+                                </Link>
+                            </React.Fragment>
+                        ) : (
+                            <React.Fragment>
+                                {jwt?.role === "admin" && (
+                                    <div>админ</div>
+                                )}
+                                <div className="flex items-center justify-between">
+                                    <div className="mr-2">{jwt.unique_name}</div>
+                                    <LogOutButton/>
+                                </div>
+                            </React.Fragment>
+                        )
                     }
                 </div>
             </div>
