@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using SuperBot.Common.Auth;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,29 +31,7 @@ builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>
     new MongoClient(builder.Configuration.GetConnectionString("MongoDb")));
 builder.Services.AddScoped(sp => sp.GetRequiredService<IMongoClient>().GetDatabase("AuthServiceDb"));
 
-var jwtSection = builder.Configuration.GetSection("JwtSettings");
-var key = Encoding.ASCII.GetBytes(jwtSection["SecretKey"]);
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSection["Issuer"],
-        ValidAudience = jwtSection["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key)
-    };
-});
-
-builder.Services.AddAuthorization();
-
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 
 var app = builder.Build();

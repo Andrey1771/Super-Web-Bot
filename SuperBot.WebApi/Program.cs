@@ -25,6 +25,7 @@ using SuperBot.Application.Commands.Telegram;
 using Microsoft.Extensions.FileProviders;
 using SuperBot.Core.Entities;
 using AutoMapper;
+using SuperBot.Common.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -166,6 +167,8 @@ builder.Services.AddHangfireServer();
 
 
 builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
+
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 

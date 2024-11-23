@@ -100,7 +100,8 @@ export default function TaleGameshopHeader() {
                                 <div className="flex items-center justify-between">
                                     <div className="mr-2">{jwt.unique_name}</div>
                                     {jwt?.role === "admin" && (
-                                        <a href=""></a>
+                                        <Link className="px-4 py-2 bg-red-500 text-white transition"
+                                              to="/admin">Open Admin Panel</Link>
                                     )}
                                     <LogOutButton/>
                                 </div>

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 
@@ -10,12 +11,14 @@ namespace SuperBot.WebApi.Controllers
     public class AdminController(IResourceService _resourceService) : Controller
     {
         [HttpGet]
+        [Authorize(Roles = "admin")]
         public ActionResult<IEnumerable<Resources>> GetResources()
         {
             return Ok(_resourceService.Resources);
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<IEnumerable<Resources>>> UpdateResources([FromBody] Resources newResources)
         {
             if (newResources == null)

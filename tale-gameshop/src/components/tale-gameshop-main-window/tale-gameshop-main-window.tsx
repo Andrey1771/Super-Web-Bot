@@ -9,6 +9,7 @@ import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
 import RegistrationPage from "../registration-page/registration-page";
 import ChatBot from "../bot/chat-bot/chat-bot";
+import AdminPanelPage from "../admin-panel-page/admin-panel-page";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -21,6 +22,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/about" element={<AboutUs/>}/>
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>
+                    <Route path="/admin" element={<AdminPanelPage/>}/>
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>
             <ChatBot></ChatBot>
