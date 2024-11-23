@@ -58,7 +58,7 @@ namespace SuperBot.Identity.Controllers
                 Subject = new ClaimsIdentity(new Claim[]
                 {
                     new Claim(ClaimTypes.Name, username),
-                    new Claim(ClaimTypes.Role, username == "Hohlov908.com" ? "admin" : "user"),//TODO Вынести в файл настроек
+                    new Claim(ClaimTypes.Role, username == "Hohlov908@gmail.com" ? "admin" : "user"),//TODO Вынести в файл настроек
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
                 }),
                 Expires = DateTime.UtcNow.AddHours(1),

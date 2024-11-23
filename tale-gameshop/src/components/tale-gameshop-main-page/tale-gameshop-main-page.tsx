@@ -11,6 +11,7 @@ import {
     faPenNib,
     faPuzzlePiece, faStar
 } from "@fortawesome/free-solid-svg-icons";
+import Iframe from "react-iframe";
 
 export default function TaleGameshopMainPage() {
     return (
@@ -223,10 +224,11 @@ export default function TaleGameshopMainPage() {
                         </p>
                     </div>
                     <div className="w-1/2 bg-gray-200 flex items-center justify-center iframe-aspect">
-                        <iframe className="w-full h-full" src="https://www.youtube.com/embed/vBZrLkD659Y"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen></iframe>
+                        <Iframe url="https://www.youtube.com/embed/vBZrLkD659Y"
+                                width="100%"
+                                height="100%"
+                                display="block"
+                                position="relative"/>
                     </div>
                 </div>
             </div>

@@ -97,11 +97,11 @@ export default function TaleGameshopHeader() {
                             </React.Fragment>
                         ) : (
                             <React.Fragment>
-                                {jwt?.role === "admin" && (
-                                    <div>админ</div>
-                                )}
                                 <div className="flex items-center justify-between">
                                     <div className="mr-2">{jwt.unique_name}</div>
+                                    {jwt?.role === "admin" && (
+                                        <a href=""></a>
+                                    )}
                                     <LogOutButton/>
                                 </div>
                             </React.Fragment>

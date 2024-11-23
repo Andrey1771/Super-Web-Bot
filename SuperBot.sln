@@ -28,7 +28,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Presentation", "Su
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "WebCatalogApp", "Tale_gameshop\WebCatalogApp.njsproj", "{953C3172-07BD-465A-9EAD-77C9CD755988}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Identity", "SuperBot.Identity\SuperBot.Identity.csproj", "{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Identity", "SuperBot.Identity\SuperBot.Identity.csproj", "{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -89,6 +89,7 @@ Global
 		{BCD68989-2D2D-44A2-8CF9-FC2BF59703ED} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
 		{7D4FD53B-2F45-419F-BA9A-A71A5B1FFF45} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
 		{5D3C5644-F8BA-4295-83B4-856DF7A553C0} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
+		{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {18BAA4A1-F904-4368-8A7A-AA45DF3BE327}
