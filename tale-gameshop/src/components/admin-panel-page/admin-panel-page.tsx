@@ -5,12 +5,15 @@ import container from "../../inversify.config";
 import type {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
 import {decodeToken} from "../../utils/token-utils";
+import type {IApiClient} from "../../iterfaces/i-api-client";
 
 const AdminPanelPage: () => React.JSX.Element = () => {
     useEffect(() => {
         (async () => {
             try {
-                const response = await axios.get('https://localhost:7117/api/Admin');
+                const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+
+                const response = apiClient.api.get('https://localhost:7117/api/Admin');
             } catch (error) {
                 console.error('Error get data:', error);
             }

@@ -1,6 +1,8 @@
 import { LoginResponse } from "../models/login-response";
 import { RegisterResponse } from "../models/register-response";
 import axios from 'axios';
+import { UserManager, WebStorageStateStore } from "oidc-client-ts";
+let { Issuer } = require("openid-client");
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
     try {
@@ -33,22 +35,70 @@ export const register = async (email: string, password: string): Promise<Registe
         throw new Error('Registration failed');
     }
 };
-/*
 
-import { UserManager } from "oidc-client-ts";
-
-const config = {
-    authority: "https://localhost:7083/api", // IdentityServer
+/*const config = {
+    authority: "https://localhost:7083/api/Auth/login", // IdentityServer
     client_id: "tale-gameshop",
-    redirect_uri: "http://localhost:3000/callback", // URL для редиректа после логина
+    redirect_uri: "https://localhost:7117/", // URL для редиректа после логина callback
     response_type: "code",
     scope: "openid profile api1 roles",
-    post_logout_redirect_uri: "http://localhost:3000/",
-};
+    post_logout_redirect_uri: "https://localhost:7117/",
+};*/
 
-const userManager = new UserManager(config);
+// const userManager = new UserManager({
+//     authority: 'https://localhost:7083', // URL вашего IdentityServer
+//     client_id: 'tale-gameshop',
+//     redirect_uri: 'http://localhost:3000/login',
+//     post_logout_redirect_uri: 'http://localhost:3000/logout-callback',
+//     response_type: 'code',
+//     scope: 'openid profile api_scope',
+//     automaticSilentRenew: true,
+//     silent_redirect_uri: 'http://localhost:3000/silent-refresh',
+//     userStore: new WebStorageStateStore({ store: window.localStorage }),
+// });
 
-export const login = () => userManager.signinRedirect();
+/*async function setupClient() {
+    // Загружаем метаданные провайдера (IdentityServer)
+    const issuer = await Issuer.discover('https://localhost:7083'); // Замените на адрес вашего IdentityServer
+
+    // Создаём клиента
+    const client = new issuer.Client({
+        client_id: 'tale-gameshop',
+        redirect_uris: ['http://localhost:3000/login'], // Укажите ваш redirect_uri
+        response_types: ['code'], // Используем Authorization Code Flow
+    });
+
+    return client;
+}
+
+async function redirectToLogin() {
+    const client = await setupClient();
+
+    const authUrl = client.authorizationUrl({
+        scope: 'openid profile api_scope',
+        code_challenge: '...', // Сгенерируйте код-вызывающее значение (PKCE)
+        code_challenge_method: 'S256',
+    });
+
+    // Перенаправление пользователя на страницу авторизации
+    window.location.href = authUrl;
+}*/
+
+const userManager = new UserManager({
+    authority: 'https://localhost:7083', // URL вашего IdentityServer
+    client_id: 'tale-gameshop',
+    redirect_uri: 'http://localhost:3000/login',
+    post_logout_redirect_uri: 'http://localhost:3000/logout-callback',
+    response_type: 'code',
+    scope: 'openid profile api_scope',
+    automaticSilentRenew: true,
+    silent_redirect_uri: 'http://localhost:3000/silent-refresh',
+    userStore: new WebStorageStateStore({ store: window.localStorage }),
+});
+
+console.log(userManager.settings);
+
+export const redirectToLogin = () => userManager.signinRedirect();
 export const logout = () => userManager.signoutRedirect();
 export const getUser = () => userManager.getUser();
-export const renewToken = () => userManager.signinSilent();*/
+export const renewToken = () => userManager.signinSilent();

@@ -213,4 +213,8 @@ RecurringJob.AddOrUpdate<IBackgroundTaskService>(
                 "clear-old-order-records",
                 x => x.ScheduleClearOutdatedDataJob(),
                 Cron.Daily);
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.Run();

@@ -27,11 +27,11 @@ const LoginForm: React.FC = () => {
 
         try {
             const data = await login(email, password); // Вызов сервиса
-            tokenStorage.setItem("token", data.token ?? "");
+            //tokenStorage.setItem("token", data.token ?? "");
             navigate('/');//TODO home
 
-            const newJwt = data.token ? decodeToken(data.token) : null;
-            dispatch({ type: 'SET_JWT', payload: newJwt });
+            //const newJwt = data.token ? decodeToken(data.token) : null;
+            //dispatch({ type: 'SET_JWT', payload: newJwt });
             console.log('Login successful:', data);
             // Дополнительная обработка, например, сохранение токена или перенаправление
         } catch (error) {

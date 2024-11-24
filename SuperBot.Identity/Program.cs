@@ -1,4 +1,6 @@
+using Duende.IdentityServer.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
@@ -33,6 +35,44 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IMongoClient>().GetDataba
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
+var jwtSection = builder.Configuration.GetSection("JwtSettings");
+var key = Encoding.ASCII.GetBytes(jwtSection["SecretKey"]);
+
+builder.Services.AddIdentityServer(options =>
+{
+    options.IssuerUri = "https://localhost:7083";
+    options.UserInteraction.LoginUrl = "/login"; // ”кажите путь к вашей странице логина
+    options.UserInteraction.LogoutUrl = "/logout"; // ”кажите путь к странице выхода
+    options.UserInteraction.CreateAccountReturnUrlParameter = "/return";
+    options.UserInteraction.LoginReturnUrlParameter = "/return2";
+})
+.AddDeveloperSigningCredential() // дл€ разработки
+.AddInMemoryClients(new List<Client>
+{
+    new Client
+    {
+        ClientId = "tale-gameshop",
+        ClientSecrets = { new Secret(key.ToString().Sha256()) },
+        AllowedGrantTypes = GrantTypes.Code,
+        RequirePkce = true,
+        RedirectUris = { "http://localhost:3000/login" },
+        LogoUri = "http://localhost:3000",
+        PostLogoutRedirectUris = { "http://localhost:3000/logout-callback" },
+        ClientUri = "http://localhost:3000",
+        AllowedScopes = { "openid", "profile", "api_scope" },
+       AllowedCorsOrigins = {"http://localhost:3000"},
+       RequireClientSecret = false,
+    }
+})
+.AddInMemoryApiScopes(new List<ApiScope>
+{
+    new ApiScope("api_scope", "Access to API")
+})
+.AddInMemoryIdentityResources(new List<IdentityResource>
+{
+    new IdentityResources.OpenId(),
+    new IdentityResources.Profile(),
+});
 
 var app = builder.Build();
 
@@ -55,5 +95,8 @@ app.UseAuthorization();
 //app.UseEndpoints(endpoints => endpoints.MapControllers());
 
 app.MapControllers();
+
+// »спользуем IdentityServer
+app.UseIdentityServer();
 
 app.Run();
