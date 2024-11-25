@@ -84,6 +84,7 @@ async function redirectToLogin() {
     window.location.href = authUrl;
 }*/
 
+/*
 const userManager = new UserManager({
     authority: 'https://localhost:7083', // URL вашего IdentityServer
     client_id: 'tale-gameshop',
@@ -102,3 +103,73 @@ export const redirectToLogin = () => userManager.signinRedirect();
 export const logout = () => userManager.signoutRedirect();
 export const getUser = () => userManager.getUser();
 export const renewToken = () => userManager.signinSilent();
+*/
+
+const config = {
+    authority: 'http://localhost:8180/realms/Tale-Shop', // URL вашего Realm
+    client_id: 'tale-shop-app', // ID клиента в Keycloak
+    redirect_uri: 'http://localhost:3000/callback', // URL редиректа после входа
+    post_logout_redirect_uri: 'http://localhost:3000', // URL после выхода
+    response_type: 'code', // Используем Authorization Code Flow
+    scope: 'openid profile email', // Запрашиваемые скоупы
+    loadUserInfo: true, // Получение дополнительной информации о пользователе
+    stateStore: new WebStorageStateStore({ store: window.localStorage }), // Хранилище состояния
+    automaticSilentRenew: true, // Автоматическое обновление токенов
+    silent_redirect_uri: 'http://localhost:3000/silent-renew', // URL для тихого обновления токенов
+};
+
+export const userManager = new UserManager(config);
+
+userManager.events.addUserSignedOut(async () => {
+    console.log('User signed out');
+    await userManager?.removeUser();
+    window.location.reload();
+});
+
+userManager.events.addSilentRenewError(async error => {
+    console.error(`Silent renew error: ${error}`);
+    if (error.message === 'login_required') {
+        await logout();
+        return;
+    }
+    //retrySigninSilent();
+});
+
+/*retrySigninSilent() {
+    console.log('Retry signin silent');
+    this._userManager?.signinSilent().catch(async error => {
+        console.error(`Signin silent error: ${error}`);
+        if (error.message === 'login_required') {
+            await this.logout();
+        } else {
+            if (this.retrySigninSilentTimeout != null)
+                window.clearTimeout(this.retrySigninSilentTimeout);
+            this.retrySigninSilentTimeout = window.setTimeout(
+                () => this.retrySigninSilent(),
+                this.RETRY_SIGNIN_TIMEOUT_IN_MS
+            );
+        }
+    });
+}*/
+
+userManager.events.addAccessTokenExpired(async () => {
+    console.warn('Access token expired');
+    await userManager?.removeUser();
+    window.location.reload();
+});
+
+// Функция для входа
+export const redirectToLogin = async () => {
+    await userManager.signinRedirect();
+};
+
+// Функция для выхода
+export const logout = async () => {
+    await userManager.signoutRedirect();
+};
+
+// Функция для обработки редиректа
+export const completeLogin = async () => {
+    const user = await userManager.signinRedirectCallback();
+    return user;
+};

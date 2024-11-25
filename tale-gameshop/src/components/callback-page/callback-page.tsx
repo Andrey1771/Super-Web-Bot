@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { UserManager } from 'oidc-client-ts';
 import { useNavigate } from 'react-router-dom';
 
-const Callback = () => {
+const CallbackPage = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -29,4 +29,4 @@ const Callback = () => {
     return <div>Processing login...</div>;
 };
 
-export default Callback;
+export default CallbackPage;
