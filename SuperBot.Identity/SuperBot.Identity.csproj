@@ -17,6 +17,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SuperBot.Common.Auth\SuperBot.Common.Auth.csproj" />
+    <ProjectReference Include="..\SuperBot.Core\SuperBot.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Pages\Account\Logout\" />
   </ItemGroup>
 
 </Project>

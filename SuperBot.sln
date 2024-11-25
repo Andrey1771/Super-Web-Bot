@@ -30,7 +30,7 @@ Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "WebCatalogApp", "Tale_games
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Identity", "SuperBot.Identity\SuperBot.Identity.csproj", "{7633ACDA-9BCC-41EB-A7E9-966A4DEA41FB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.Common.Auth", "SuperBot.Common.Auth\SuperBot.Common.Auth.csproj", "{1967DABA-CC2C-4D78-9D4B-A4F07892FE93}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Common.Auth", "SuperBot.Common.Auth\SuperBot.Common.Auth.csproj", "{1967DABA-CC2C-4D78-9D4B-A4F07892FE93}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

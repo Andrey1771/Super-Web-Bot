@@ -71,5 +71,27 @@ namespace SuperBot.Infrastructure.Repositories
             var count = await _usersCollection.CountDocumentsAsync(u => u.UserId == userId);
             return count > 0;
         }
+
+
+
+        public async Task<User> FindByUsernameAsync(string username)
+        {
+            var userDb = await _usersCollection.Find(u => u.Username == username).FirstOrDefaultAsync();
+            return _mapper.Map<User>(userDb);
+        }
+
+        public async Task<bool> ValidateCredentialsAsync(string username, string password)
+        {
+            var user = await FindByUsernameAsync(username);
+            if (user == null) return false;
+
+            // Расшифровка пароля (используйте свою логику)
+            return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+        }
+
+        public async Task<IEnumerable<User>> GetAllAsync()
+        {
+            return await _users.Find(FilterDefinition<User>.Empty).ToListAsync();
+        }
     }
 }

@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, {useEffect, useState } from "react";
 import './login-page.css'
-import { login } from '../../services/auth-service';
+//import { login } from '../../services/auth-service';
 import IDENTIFIERS from "../../constants/identifiers";
 import { IAuthStorageService } from "../../iterfaces/i-auth-storage-service";
 import container from "../../inversify.config";
 import {useLocation, useNavigate} from "react-router-dom";
 import {decodeToken} from "../../utils/token-utils";
 import { useSelector, useDispatch } from 'react-redux'
+import { UserManager } from "oidc-client-ts";
+import type {IApiClient} from "../../iterfaces/i-api-client";
 
 const LoginForm: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -20,19 +22,43 @@ const LoginForm: React.FC = () => {
 
     const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
 
+    const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '/';
+
+    /*useEffect(() => {
+        (async () => {
+            const userManager = new UserManager({
+                authority: 'https://localhost:7083',
+                client_id: 'tale-gameshop',
+                redirect_uri: 'http://localhost:3000/callback',
+                response_type: 'code',
+                scope: 'openid profile api_scope',
+            });
+
+            await userManager.signinRedirect({ state: returnUrl });
+        })();
+    }, []);*/
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault(); // Предотвращаем стандартное поведение формы
         setLoading(true);
         setError(null);
 
         try {
-            const data = await login(email, password); // Вызов сервиса
+            //const data = await login(email, password); // Вызов сервиса
             //tokenStorage.setItem("token", data.token ?? "");
-            navigate('/');//TODO home
+            //navigate('/');//TODO home
+            const userManager = new UserManager({
+                authority: 'https://localhost:7083',
+                client_id: 'tale-gameshop',
+                redirect_uri: 'http://localhost:3000/callback',
+                response_type: 'code',
+                scope: 'openid profile api_scope',
+            });
 
+            await userManager.signinRedirect({ state: returnUrl });
             //const newJwt = data.token ? decodeToken(data.token) : null;
             //dispatch({ type: 'SET_JWT', payload: newJwt });
-            console.log('Login successful:', data);
+            //console.log('Login successful:', data);
             // Дополнительная обработка, например, сохранение токена или перенаправление
         } catch (error) {
             setError('Failed to login. Please check your email and password.');

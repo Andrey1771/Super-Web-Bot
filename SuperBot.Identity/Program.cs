@@ -40,11 +40,10 @@ var key = Encoding.ASCII.GetBytes(jwtSection["SecretKey"]);
 
 builder.Services.AddIdentityServer(options =>
 {
-    options.IssuerUri = "https://localhost:7083";
-    options.UserInteraction.LoginUrl = "/login"; // ”кажите путь к вашей странице логина
-    options.UserInteraction.LogoutUrl = "/logout"; // ”кажите путь к странице выхода
-    options.UserInteraction.CreateAccountReturnUrlParameter = "/return";
-    options.UserInteraction.LoginReturnUrlParameter = "/return2";
+    options.UserInteraction.LoginUrl = "/Account/Login"; // ”казываем путь к странице логина
+    options.UserInteraction.LogoutUrl = "/Account/Logout"; // ”казываем путь к странице выхода
+    options.UserInteraction.ErrorUrl = "http://localhost:3000/error"; // URL страницы ошибок в React
+    options.UserInteraction.LoginReturnUrlParameter = "returnUrl"; // »м€ параметра возвратного URL
 })
 .AddDeveloperSigningCredential() // дл€ разработки
 .AddInMemoryClients(new List<Client>
@@ -74,6 +73,8 @@ builder.Services.AddIdentityServer(options =>
     new IdentityResources.Profile(),
 });
 
+builder.Services.AddRazorPages();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -98,5 +99,6 @@ app.MapControllers();
 
 // »спользуем IdentityServer
 app.UseIdentityServer();
+app.MapRazorPages(); // ¬ключаем Razor Pages
 
 app.Run();

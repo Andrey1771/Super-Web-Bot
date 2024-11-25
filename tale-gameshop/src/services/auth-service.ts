@@ -4,7 +4,7 @@ import axios from 'axios';
 import { UserManager, WebStorageStateStore } from "oidc-client-ts";
 let { Issuer } = require("openid-client");
 
-export const login = async (email: string, password: string): Promise<LoginResponse> => {
+/*export const login = async (email: string, password: string): Promise<LoginResponse> => {
     try {
         const response = await axios.post('https://localhost:7083/api/Auth/login', {
             username: email,
@@ -18,7 +18,7 @@ export const login = async (email: string, password: string): Promise<LoginRespo
     } catch (error) {
         throw new Error('Login failed');
     }
-};
+};*/
 
 export const register = async (email: string, password: string): Promise<RegisterResponse> => {
     try {

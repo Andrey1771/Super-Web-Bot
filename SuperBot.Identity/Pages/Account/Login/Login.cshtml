@@ -1,0 +1,24 @@
+﻿@page
+@model SuperBot.Identity.Pages.Account.Login.LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<h1>Login</h1>
+
+<form method="post">
+    <div>
+        <label asp-for="Input.Username"></label>
+        <input asp-for="Input.Username" />
+    </div>
+    <div>
+        <label asp-for="Input.Password"></label>
+        <input asp-for="Input.Password" type="password" />
+    </div>
+    <div>
+        <label asp-for="Input.RememberLogin"></label>
+        <input asp-for="Input.RememberLogin" type="checkbox" />
+    </div>
+    <input type="hidden" asp-for="Input.ReturnUrl" />
+    <button type="submit">Login</button>
+</form>
