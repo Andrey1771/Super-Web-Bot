@@ -1,32 +1,37 @@
 import { useEffect } from 'react';
-import { UserManager } from 'oidc-client-ts';
+import {UserManager, WebStorageStateStore} from 'oidc-client-ts';
 import { useNavigate } from 'react-router-dom';
+import { userManager } from '../../services/auth-service';
 
 const CallbackPage = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const userManager = new UserManager({
-            authority: 'https://localhost:7083',
-            client_id: 'your-client-id',
-            redirect_uri: 'http://localhost:3000/callback',
-            response_type: 'code',
-            scope: 'openid profile api_scope',
-        });
+        const processCallback = async () => {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                if (!code) {
+                    console.error('No authorization code in the URL');
+                    navigate('/error');
+                    return;
+                }
 
-        userManager.signinRedirectCallback().then(user => {
-            if (user.state) {
-                navigate(user.state);
-            } else {
-                navigate('/');
+                const user = await userManager.signinRedirectCallback();
+                if (user.state) {
+                    navigate(user.state);
+                } else {
+                    navigate('/');
+                }
+            } catch (err) {
+                console.error('Error during callback processing:', err);
+                navigate('/error');
             }
-        }).catch(err => {
-            console.error('Error during callback processing:', err);
-            navigate('/error');
-        });
+        };
+
+        processCallback();
     }, [navigate]);
 
     return <div>Processing login...</div>;
 };
-
 export default CallbackPage;

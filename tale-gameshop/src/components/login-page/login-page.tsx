@@ -9,6 +9,7 @@ import {decodeToken} from "../../utils/token-utils";
 import { useSelector, useDispatch } from 'react-redux'
 import { UserManager } from "oidc-client-ts";
 import type {IApiClient} from "../../iterfaces/i-api-client";
+import { userManager } from "../../services/auth-service";
 
 const LoginForm: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -47,15 +48,15 @@ const LoginForm: React.FC = () => {
             //const data = await login(email, password); // Вызов сервиса
             //tokenStorage.setItem("token", data.token ?? "");
             //navigate('/');//TODO home
-            const userManager = new UserManager({
+            /*const userManager = new UserManager({
                 authority: 'https://localhost:7083',
                 client_id: 'tale-gameshop',
                 redirect_uri: 'http://localhost:3000/callback',
                 response_type: 'code',
                 scope: 'openid profile api_scope',
-            });
+            });*/
 
-            await userManager.signinRedirect({ state: returnUrl });
+            await userManager.signinRedirect(/*{ state: returnUrl }*/);
             //const newJwt = data.token ? decodeToken(data.token) : null;
             //dispatch({ type: 'SET_JWT', payload: newJwt });
             //console.log('Login successful:', data);
