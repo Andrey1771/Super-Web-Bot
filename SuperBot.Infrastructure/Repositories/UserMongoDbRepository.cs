@@ -91,7 +91,9 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task<IEnumerable<User>> GetAllAsync()
         {
-            return await _users.Find(FilterDefinition<User>.Empty).ToListAsync();
+
+            var userDbs = await _usersCollection.Find(FilterDefinition<UserDb>.Empty).ToListAsync();
+            return _mapper.Map<List<User>>(userDbs);
         }
     }
 }

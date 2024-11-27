@@ -117,11 +117,11 @@ const config = {
     automaticSilentRenew: true, // Автоматическое обновление токенов
     silent_redirect_uri: 'http://localhost:3000/silent-renew', // URL для тихого обновления токенов
     client_secret: "VacIN0mdxlOlEnyjuEQNffZVrt2gO8Kq",
-    usePkce: true
 };
 
 export const userManager = new UserManager(config);
 
+/*
 userManager.events.addUserSignedOut(async () => {
     console.log('User signed out');
     await userManager?.removeUser();
@@ -136,6 +136,7 @@ userManager.events.addSilentRenewError(async error => {
     }
     //retrySigninSilent();
 });
+*/
 
 /*retrySigninSilent() {
     console.log('Retry signin silent');
@@ -154,11 +155,11 @@ userManager.events.addSilentRenewError(async error => {
     });
 }*/
 
-userManager.events.addAccessTokenExpired(async () => {
+/*userManager.events.addAccessTokenExpired(async () => {
     console.warn('Access token expired');
     await userManager?.removeUser();
     window.location.reload();
-});
+});*/
 
 // Функция для входа
 export const redirectToLogin = async () => {

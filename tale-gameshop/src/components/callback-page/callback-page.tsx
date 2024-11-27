@@ -5,31 +5,27 @@ import { userManager } from '../../services/auth-service';
 
 const CallbackPage = () => {
     const navigate = useNavigate();
+    let t = 0;
 
     useEffect(() => {
-        const processCallback = async () => {
+        (async () => {
             try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const code = urlParams.get('code');
-                if (!code) {
-                    console.error('No authorization code in the URL');
-                    navigate('/error');
+                if(t===1) return;
+                t = 1;
+                if (localStorage.getItem('callback_processed')) {
+                    console.warn('Callback already processed, skipping...');
+                    navigate('/');
                     return;
                 }
 
                 const user = await userManager.signinRedirectCallback();
-                if (user.state) {
-                    navigate(user.state);
-                } else {
-                    navigate('/');
-                }
+                localStorage.setItem('callback_processed', 'true');
+                navigate(user.state || '/');
             } catch (err) {
                 console.error('Error during callback processing:', err);
                 navigate('/error');
             }
-        };
-
-        processCallback();
+        })();
     }, [navigate]);
 
     return <div>Processing login...</div>;
