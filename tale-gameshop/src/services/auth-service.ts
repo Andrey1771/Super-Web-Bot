@@ -117,6 +117,7 @@ const config = {
     automaticSilentRenew: true, // Автоматическое обновление токенов
     silent_redirect_uri: 'http://localhost:3000/silent-renew', // URL для тихого обновления токенов
     client_secret: "VacIN0mdxlOlEnyjuEQNffZVrt2gO8Kq",
+    filterProtocolClaims: true,
 };
 
 export const userManager = new UserManager(config);

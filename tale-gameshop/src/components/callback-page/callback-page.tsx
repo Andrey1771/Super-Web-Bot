@@ -5,22 +5,20 @@ import { userManager } from '../../services/auth-service';
 
 const CallbackPage = () => {
     const navigate = useNavigate();
-    let t = 0;
 
     useEffect(() => {
         (async () => {
             try {
-                if(t===1) return;
-                t = 1;
-                if (localStorage.getItem('callback_processed')) {
+                /*if (localStorage.getItem('callback_processed')) {
                     console.warn('Callback already processed, skipping...');
                     navigate('/');
                     return;
-                }
+                }*/
 
-                const user = await userManager.signinRedirectCallback();
-                localStorage.setItem('callback_processed', 'true');
-                navigate(user.state || '/');
+                console.log(window.localStorage)
+                const user = await userManager.signinRedirectCallback(window.location.href); //userManager.signinCallback(window.location.href,); //await userManager.signinRedirectCallback();
+                //localStorage.setItem('callback_processed', 'true');
+                //navigate(user.state || '/');
             } catch (err) {
                 console.error('Error during callback processing:', err);
                 navigate('/error');

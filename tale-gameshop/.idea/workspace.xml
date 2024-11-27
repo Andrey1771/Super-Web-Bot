@@ -78,7 +78,7 @@
       <workItem from="1732372334746" duration="939000" />
       <workItem from="1732373461445" duration="19000000" />
       <workItem from="1732539993902" duration="2460000" />
-      <workItem from="1732562664833" duration="19243000" />
+      <workItem from="1732562664833" duration="25101000" />
     </task>
     <servers />
   </component>
@@ -96,6 +96,12 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/login-page/login-page.tsx</url>
           <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/src/components/callback-page/callback-page.tsx</url>
+          <line>24</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
