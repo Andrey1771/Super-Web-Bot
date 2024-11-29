@@ -8,11 +8,14 @@ import {decodeToken} from "../../utils/token-utils";
 import LogOutButton from "../logout-button/logout-button";
 import {useDispatch, useSelector} from "react-redux";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
-import {redirectToLogin} from "../../services/auth-service";
+import {useAuth} from "react-oidc-context";
+import authService, { userManager } from "../../services/auth-service";
+//import {redirectToLogin} from "../../services/auth-service";
 
 export default function TaleGameshopHeader() {
     const jwt = useSelector((state: any) => state.jwt);
     const dispatch = useDispatch();
+    const auth = useAuth();
 
     //Todo Временно
     document.addEventListener('DOMContentLoaded', function () {
@@ -89,7 +92,9 @@ export default function TaleGameshopHeader() {
                                 >
                                     Login
                                 </Link>*/}
-                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" onClick={redirectToLogin}>Login</a>
+                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" onClick={() => authService.signinRedirect({
+                                    redirect_uri: `${window.location.origin}/callback`
+                                })}>Login</a>
                                 <Link
                                     className="px-4 py-2 bg-black text-white animated-button"
                                     to="/signUp"

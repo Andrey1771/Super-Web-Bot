@@ -2,6 +2,8 @@ import { LoginResponse } from "../models/login-response";
 import { RegisterResponse } from "../models/register-response";
 import axios from 'axios';
 import { UserManager, WebStorageStateStore } from "oidc-client-ts";
+
+import createAuth0Client, { Auth0Client, RedirectLoginOptions, PopupLoginOptions } from '@auth0/auth0-spa-js';
 let { Issuer } = require("openid-client");
 
 /*export const login = async (email: string, password: string): Promise<LoginResponse> => {
@@ -108,6 +110,7 @@ export const renewToken = () => userManager.signinSilent();
 const config = {
     authority: 'http://localhost:8180/realms/Tale-Shop', // URL вашего Realm
     client_id: 'tale-shop-app', // ID клиента в Keycloak
+    client_secret: "VacIN0mdxlOlEnyjuEQNffZVrt2gO8Kq",
     redirect_uri: 'http://localhost:3000/callback', // URL редиректа после входа
     post_logout_redirect_uri: 'http://localhost:3000', // URL после выхода
     response_type: 'code', // Используем Authorization Code Flow
@@ -116,11 +119,67 @@ const config = {
     stateStore: new WebStorageStateStore({ store: window.localStorage }), // Хранилище состояния
     automaticSilentRenew: true, // Автоматическое обновление токенов
     silent_redirect_uri: 'http://localhost:3000/silent-renew', // URL для тихого обновления токенов
-    client_secret: "VacIN0mdxlOlEnyjuEQNffZVrt2gO8Kq",
     filterProtocolClaims: true,
 };
 
 export const userManager = new UserManager(config);
+
+
+class AuthService {
+    private auth0Client!: Auth0Client;
+
+    constructor(domain: string, clientId: string, redirectUri: string) {
+        this.initAuth0(domain, clientId, redirectUri);
+    }
+
+    private async initAuth0(domain: string, clientId: string, redirectUri: string): Promise<void> {
+        this.auth0Client = await createAuth0Client({
+            domain,
+            clientId,
+            redirect_uri: redirectUri,
+        });
+    }
+
+    // Метод для редиректа на страницу аутентификации
+    async signinRedirect(options?: RedirectLoginOptions): Promise<void> {
+        await this.auth0Client.loginWithRedirect(options);
+    }
+
+    // Метод для обработки редиректа и получения токенов
+    async signinRedirectCallback(): Promise<void> {
+        const result = await this.auth0Client.handleRedirectCallback();
+        console.log('Callback result:', result);
+
+        const user = await this.auth0Client.getUser();
+        console.log('Authenticated user:', user);
+    }
+
+    // Получение токена доступа
+    async getAccessToken(): Promise<string | undefined> {
+        return await this.auth0Client.getTokenSilently();
+    }
+
+    // Проверка аутентификации пользователя
+    async isAuthenticated(): Promise<boolean> {
+        return await this.auth0Client.isAuthenticated();
+    }
+
+    // Выход из системы
+    async logout(): Promise<void> {
+        await this.auth0Client.logout({
+            //returnTo: window.location.origin,
+        });
+    }
+}
+
+// Пример использования AuthService
+const authService = new AuthService(
+    'your-domain.auth0.com',   // Замените на ваш домен
+    'your-client-id',          // Замените на ваш clientId
+    `${window.location.origin}/callback` // URL для редиректа после входа
+);
+
+export default authService;
 
 /*
 userManager.events.addUserSignedOut(async () => {
@@ -163,6 +222,7 @@ userManager.events.addSilentRenewError(async error => {
 });*/
 
 // Функция для входа
+/*
 export const redirectToLogin = async () => {
     await userManager.signinRedirect();
 };
@@ -176,4 +236,4 @@ export const logout = async () => {
 export const completeLogin = async () => {
     const user = await userManager.signinRedirectCallback();
     return user;
-};
+};*/

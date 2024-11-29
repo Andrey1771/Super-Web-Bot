@@ -9,7 +9,8 @@ import {decodeToken} from "../../utils/token-utils";
 import { useSelector, useDispatch } from 'react-redux'
 import { UserManager } from "oidc-client-ts";
 import type {IApiClient} from "../../iterfaces/i-api-client";
-import { userManager } from "../../services/auth-service";
+//import { userManager } from "../../services/auth-service";
+import {useAuth} from "react-oidc-context";
 
 const LoginForm: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -24,6 +25,8 @@ const LoginForm: React.FC = () => {
     const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
 
     const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '/';
+
+    const auth = useAuth()
 
     /*useEffect(() => {
         (async () => {
@@ -56,7 +59,11 @@ const LoginForm: React.FC = () => {
                 scope: 'openid profile api_scope',
             });*/
 
-            await userManager.signinRedirect(/*{ state: returnUrl }*/);
+
+            //await auth.signinRedirect();
+
+            const oidcStorage = localStorage.getItem(`oidc.user:<your authority>:<your client id>`)
+            //await userManager.signinRedirect(/*{ state: returnUrl }*/);
             //const newJwt = data.token ? decodeToken(data.token) : null;
             //dispatch({ type: 'SET_JWT', payload: newJwt });
             //console.log('Login successful:', data);
