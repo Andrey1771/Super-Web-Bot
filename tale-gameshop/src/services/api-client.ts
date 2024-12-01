@@ -6,17 +6,19 @@ import {resolve} from "inversify-react";
 import type {ISettingsService} from "../iterfaces/i-settings-service";
 import { IApiClient } from '../iterfaces/i-api-client';
 import container from "../inversify.config";
-import webSettings from '../webSettings.json'; // Импортируем настройки из JSON
+import webSettings from '../webSettings.json';
+import {IKeycloakAuthService} from "../iterfaces/i-keycloak-auth-service"; // Импортируем настройки из JSON
+import { IKeycloakService } from '../iterfaces/i-keycloak-service';
 
 @injectable()
 export class ApiClient implements IApiClient {
     private readonly _api: AxiosInstance;
 
-    private _tokenStorage!: IAuthStorageService;
+    private _keycloakService!: IKeycloakService;
 
     constructor() {
         //TODO Почему-то не resolve по нормальному, Проблема в том, что действие в сервисе, а не в компоненте?
-        this._tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
+        this._keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
 
         this._api = axios.create({
             baseURL: webSettings.apiBaseUrl,
@@ -29,7 +31,8 @@ export class ApiClient implements IApiClient {
         this._api.interceptors.request.use(
             (config: any) => {
                 debugger;
-                const token = this._tokenStorage.getItem("token"); // Получаем токен (если он существует)
+                const token = this._keycloakService.keycloak.token; // Получаем токен (если он существует)
+                console.log(token)
                 if (token) {
                     config.headers = {
                         ...config.headers,

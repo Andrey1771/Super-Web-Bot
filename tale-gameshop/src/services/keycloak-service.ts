@@ -1,30 +1,42 @@
 import Keycloak, { KeycloakInstance } from 'keycloak-js';
 import {IKeycloakAuthService} from "../iterfaces/i-keycloak-auth-service";
+import { IKeycloakService } from '../iterfaces/i-keycloak-service';
+import {injectable} from "inversify";
+import {AuthClientInitOptions} from "@react-keycloak/core/lib/types";
 
-export class KeycloakService {
+@injectable()
+export class KeycloakService implements IKeycloakService {
 
-    public keycloak: KeycloakInstance = new (Keycloak as any)({
-        url: "http://localhost:8087/",
+    public _keycloak: KeycloakInstance = new (Keycloak as any)({
+        url: "http://localhost:8088/",
         realm: "TaleShop",
         clientId: 'tale-shop-app'
     });
 
-    public initOptions = {
+    get keycloak(): KeycloakInstance {
+        return this._keycloak;
+    }
+
+    private _initOptions = {
         onLoad: 'check-sso',
         redirectUri: "http://localhost:3000/"
+    }
+
+    get initOptions(): AuthClientInitOptions {
+        return this._initOptions;
     }
 
     public async initialiseKeycloak() {
         try {
             console.log('Initializing keycloak service...');
-            this.keycloak = new (Keycloak as any)({
-                url: "http://localhost:8087/",
+            this._keycloak = new (Keycloak as any)({
+                url: "http://localhost:8088/",
                 realm: "TaleShop",
                 clientId: 'tale-shop-app',
             });
-            this.keycloak.redirectUri = 'http://localhost:3000/callback';
+            this._keycloak.redirectUri = 'http://localhost:3000/callback';
 
-            const authenticated = await this.keycloak.init({
+            const authenticated = await this._keycloak.init({
                 onLoad: 'check-sso',
             });
             if (authenticated) {

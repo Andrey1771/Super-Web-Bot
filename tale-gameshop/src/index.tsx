@@ -9,14 +9,14 @@ import container from './inversify.config';
 import {store} from './store';
 import {Provider as ReduxProvider} from 'react-redux';
 import {ReactKeycloakProvider} from "@react-keycloak/web";
-import { KeycloakService } from './services/keycloak-service';
+import {IKeycloakService} from "./iterfaces/i-keycloak-service";
+import IDENTIFIERS from "./constants/identifiers";
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
 );
 
-const keycloakService = new KeycloakService();
-//(async () => keycloakService.initialiseKeycloak())();
+const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
 
 root.render(
     <ReactKeycloakProvider authClient={keycloakService.keycloak} initOptions={keycloakService.initOptions}>
