@@ -9,7 +9,7 @@ import LogOutButton from "../logout-button/logout-button";
 import {useDispatch, useSelector} from "react-redux";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
 import {useAuth} from "react-oidc-context";
-import authService, { userManager } from "../../services/auth-service";
+import {loginWithRedirect, keycloak} from "../../services/auth-service";
 //import {redirectToLogin} from "../../services/auth-service";
 
 export default function TaleGameshopHeader() {
@@ -92,9 +92,20 @@ export default function TaleGameshopHeader() {
                                 >
                                     Login
                                 </Link>*/}
-                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" onClick={() => authService.signinRedirect({
-                                    redirect_uri: `${window.location.origin}/callback`
-                                })}>Login</a>
+                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" onClick={async () => {
+                                    try {
+                                        console.log(keycloak);
+                                        // Проверка, аутентифицирован ли пользователь
+                                        if (!keycloak.authenticated) {
+                                            console.log('Пользователь не аутентифицирован, выполняем логин...');
+                                            await loginWithRedirect();
+                                        } else {
+                                            console.log('Пользователь уже аутентифицирован:', keycloak.tokenParsed);
+                                        }
+                                    } catch (error) {
+                                        console.error('Ошибка инициализации приложения:', error);
+                                    }
+                                }}>Login</a>
                                 <Link
                                     className="px-4 py-2 bg-black text-white animated-button"
                                     to="/signUp"

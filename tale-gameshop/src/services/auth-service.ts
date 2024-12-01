@@ -2,8 +2,9 @@ import { LoginResponse } from "../models/login-response";
 import { RegisterResponse } from "../models/register-response";
 import axios from 'axios';
 import { UserManager, WebStorageStateStore } from "oidc-client-ts";
-
 import createAuth0Client, { Auth0Client, RedirectLoginOptions, PopupLoginOptions } from '@auth0/auth0-spa-js';
+import Keycloak from "keycloak-js";
+
 let { Issuer } = require("openid-client");
 
 /*export const login = async (email: string, password: string): Promise<LoginResponse> => {
@@ -125,7 +126,7 @@ const config = {
 export const userManager = new UserManager(config);
 
 
-class AuthService {
+/*class AuthService {
     private auth0Client!: Auth0Client;
 
     constructor(domain: string, clientId: string, redirectUri: string) {
@@ -170,16 +171,61 @@ class AuthService {
             //returnTo: window.location.origin,
         });
     }
-}
+}*/
 
+/*
 // Пример использования AuthService
 const authService = new AuthService(
     'your-domain.auth0.com',   // Замените на ваш домен
     'your-client-id',          // Замените на ваш clientId
     `${window.location.origin}/callback` // URL для редиректа после входа
 );
+*/
+/*
+export default authService;*/
 
-export default authService;
+
+export const keycloak = new Keycloak({
+    url: "http://localhost:8087/",
+    realm: "TaleShop",
+    clientId: 'tale-shop-app',
+});
+
+(async function initialiseKeycloak() {
+    try {
+        const authenticated = await keycloak.init({
+            onLoad: 'check-sso',
+        });
+        if (authenticated) {
+            console.log('User is authenticated');
+        } else {
+            console.log('User is not authenticated');
+        }
+    } catch (error) {
+        console.error('Failed to initialize adapter:', error);
+    }
+})();
+
+export async function loginWithRedirect(): Promise<void> {
+    try {
+        await keycloak.login({
+            redirectUri: 'http://localhost:3000/callback', // Укажите URL для редиректа после логина
+        });
+    } catch (error) {
+        console.error('Ошибка при логине:', error);
+    }
+}
+
+export async function fetchUsers() {
+    const response = await fetch('/api/users', {
+        headers: {
+            accept: 'application/json',
+            authorization: `Bearer ${keycloak.token}`
+        }
+    });
+
+    return response.json();
+}
 
 /*
 userManager.events.addUserSignedOut(async () => {

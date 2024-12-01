@@ -3,7 +3,7 @@ import {UserManager, WebStorageStateStore} from 'oidc-client-ts';
 import { useNavigate } from 'react-router-dom';
 //import { userManager } from '../../services/auth-service';
 import { useAuth } from 'react-oidc-context';
-import authService, { userManager } from '../../services/auth-service';
+import {fetchUsers} from "../../services/auth-service";
 
 function CallbackPage() {
     const oidc = useAuth();
@@ -30,7 +30,9 @@ function CallbackPage() {
             return oidc.events.addAccessTokenExpiring(() => {
                 oidc.signinSilent();
             })*/
-            console.log(await authService.signinRedirectCallback());
+            //console.log(await authService.signinRedirectCallback());
+
+            console.log(await fetchUsers());
             navigate('/');
         })()
     }, [oidc]);

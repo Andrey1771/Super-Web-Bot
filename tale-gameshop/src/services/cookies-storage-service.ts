@@ -9,11 +9,11 @@ export class CookiesStorageService implements IAuthStorageService {
     }
 
     setItem(key: string, value: string): void {
-        Cookies.set(key, value, {
+        /*Cookies.set(key, value, {
             // Настройки безопасности:
             expires: 7, // Количество дней, на которое хранится токен
             secure: true, // Используйте secure, чтобы куки работали только по HTTPS (в продакшене)
             sameSite: 'Strict', // Защита от CSRF-атак, можно использовать 'Strict' или 'Lax'
-        });
+        });*/
     }
 }

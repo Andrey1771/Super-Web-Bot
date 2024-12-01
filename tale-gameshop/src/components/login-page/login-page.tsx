@@ -62,7 +62,7 @@ const LoginForm: React.FC = () => {
 
             //await auth.signinRedirect();
 
-            const oidcStorage = localStorage.getItem(`oidc.user:<your authority>:<your client id>`)
+            //const oidcStorage = localStorage.getItem(`oidc.user:<your authority>:<your client id>`)
             //await userManager.signinRedirect(/*{ state: returnUrl }*/);
             //const newJwt = data.token ? decodeToken(data.token) : null;
             //dispatch({ type: 'SET_JWT', payload: newJwt });
