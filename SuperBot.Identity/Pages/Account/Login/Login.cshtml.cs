@@ -37,7 +37,7 @@ namespace SuperBot.Identity.Pages.Account.Login
             }
 
             // Проверяем логин и пароль через MongoDB
-            var isValid = await _userRepository.ValidateCredentialsAsync(Input.Username, Input.Password);
+            /*var isValid = //await _userRepository.ValidateCredentialsAsync(Input.Username, Input.Password);
             if (isValid)
             {
                 // Получаем пользователя
@@ -63,7 +63,7 @@ namespace SuperBot.Identity.Pages.Account.Login
                 }
 
                 return Redirect("~/");
-            }
+            }*/
 
             ModelState.AddModelError("", "Invalid username or password");
             return Page();

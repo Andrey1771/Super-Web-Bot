@@ -80,15 +80,6 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<User>(userDb);
         }
 
-        public async Task<bool> ValidateCredentialsAsync(string username, string password)
-        {
-            var user = await FindByUsernameAsync(username);
-            if (user == null) return false;
-
-            // Расшифровка пароля (используйте свою логику)
-            return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
-        }
-
         public async Task<IEnumerable<User>> GetAllAsync()
         {
 
