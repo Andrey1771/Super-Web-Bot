@@ -12,6 +12,7 @@ import ChatBot from "../bot/chat-bot/chat-bot";
 import AdminPanelPage from "../admin-panel-page/admin-panel-page";
 import Callback from "../callback-page/callback-page";
 import CallbackPage from "../callback-page/callback-page";
+import PrivateRoute from "../../utils/private-route";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -24,7 +25,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/about" element={<AboutUs/>}/>
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>
-                    <Route path="/admin" element={<AdminPanelPage/>}/>
+                    <Route path="/admin" element={<PrivateRoute><AdminPanelPage/></PrivateRoute>}/>
                     <Route path="/callback" element={<CallbackPage/>}/>
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>

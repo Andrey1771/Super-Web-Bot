@@ -6,14 +6,12 @@ import type {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
 import {decodeToken} from "../../utils/token-utils";
 import LogOutButton from "../logout-button/logout-button";
-import {useDispatch, useSelector} from "react-redux";
+import {useDispatch} from "react-redux";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
 import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
 import { useKeycloak } from "@react-keycloak/web";
-import {KeycloakService} from "../../services/keycloak-service";
 
 export default function TaleGameshopHeader() {
-    const jwt = useSelector((state: any) => state.jwt);
     const dispatch = useDispatch();
     const { keycloak } = useKeycloak();
 
@@ -53,6 +51,8 @@ export default function TaleGameshopHeader() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // @ts-ignore Тип возвращаемых данных и объекта keyckoak отличается
+    const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(role => role === "admin");
     const login = async () => {
         try {
             console.log(keycloak);
@@ -121,8 +121,8 @@ export default function TaleGameshopHeader() {
                         ) : (
                             <React.Fragment>
                                 <div className="flex items-center justify-between">
-                                    <div className="mr-2">{jwt.unique_name}</div>
-                                    {keycloak.userInfo['roles'].contains("admin") && (
+                                    <div className="mr-2">{keycloak.profile?.username}</div>
+                                    {isAdmin && (
                                         <Link className="px-4 py-2 bg-red-500 text-white transition"
                                               to="/admin">Open Admin Panel</Link>
                                     )}
