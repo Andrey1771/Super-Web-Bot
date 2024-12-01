@@ -14,7 +14,6 @@ const LogOutButton: React.FC = () => {
 
     const handleLogOut = () => {
         try {
-            tokenStorage.setItem("token", "");
             navigate('/');//TODO home
             dispatch({ type: 'SET_JWT', payload: "" })
             console.log('Logout successful');

@@ -14,9 +14,9 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="package.json" />
-        <option value="TypeScript File" />
         <option value="CSS File" />
         <option value="TypeScript JSX File" />
+        <option value="TypeScript File" />
       </list>
     </option>
   </component>
@@ -44,6 +44,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\projects\Super-Bot\tale-gameshop\src\utils" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\bot" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\constants" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src" />
@@ -81,7 +82,8 @@
       <workItem from="1732562664833" duration="47234000" />
       <workItem from="1733001283966" duration="11487000" />
       <workItem from="1733028058468" duration="7000" />
-      <workItem from="1733028204638" duration="445000" />
+      <workItem from="1733028204638" duration="2454000" />
+      <workItem from="1733066392836" duration="8008000" />
     </task>
     <servers />
   </component>
@@ -102,7 +104,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/callback-page/callback-page.tsx</url>
-          <line>105</line>
+          <line>17</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>

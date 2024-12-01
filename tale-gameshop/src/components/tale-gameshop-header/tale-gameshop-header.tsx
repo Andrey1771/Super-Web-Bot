@@ -8,14 +8,16 @@ import {decodeToken} from "../../utils/token-utils";
 import LogOutButton from "../logout-button/logout-button";
 import {useDispatch, useSelector} from "react-redux";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
-import {useAuth} from "react-oidc-context";
-import {loginWithRedirect, keycloak} from "../../services/auth-service";
-//import {redirectToLogin} from "../../services/auth-service";
+import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
+import { useKeycloak } from "@react-keycloak/web";
+import {KeycloakService} from "../../services/keycloak-service";
 
 export default function TaleGameshopHeader() {
     const jwt = useSelector((state: any) => state.jwt);
     const dispatch = useDispatch();
-    const auth = useAuth();
+    const { keycloak } = useKeycloak();
+
+    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
     //Todo Временно
     document.addEventListener('DOMContentLoaded', function () {
@@ -51,6 +53,22 @@ export default function TaleGameshopHeader() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const login = async () => {
+        try {
+            console.log(keycloak);
+            // Проверка, аутентифицирован ли пользователь
+            if (!keycloak.authenticated) {
+                console.log('Пользователь не аутентифицирован, выполняем логин...');
+                await keycloakAuthService.loginWithRedirect(keycloak);
+            } else {
+                console.log('Пользователь уже аутентифицирован:', keycloak.tokenParsed);
+            }
+        } catch (error) {
+            console.error('Ошибка инициализации приложения:', error);
+        }
+    }
+
+
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
             <div className="container mx-auto flex justify-between items-center py-4">
@@ -83,7 +101,7 @@ export default function TaleGameshopHeader() {
                 </div>
                 <div className="flex space-x-4">
                     {
-                        !jwt ? (
+                        !keycloak.authenticated ? (
                             <React.Fragment>
                                 {/*<Link
                                     state={{jwt: jwt}}
@@ -92,20 +110,7 @@ export default function TaleGameshopHeader() {
                                 >
                                     Login
                                 </Link>*/}
-                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" onClick={async () => {
-                                    try {
-                                        console.log(keycloak);
-                                        // Проверка, аутентифицирован ли пользователь
-                                        if (!keycloak.authenticated) {
-                                            console.log('Пользователь не аутентифицирован, выполняем логин...');
-                                            await loginWithRedirect();
-                                        } else {
-                                            console.log('Пользователь уже аутентифицирован:', keycloak.tokenParsed);
-                                        }
-                                    } catch (error) {
-                                        console.error('Ошибка инициализации приложения:', error);
-                                    }
-                                }}>Login</a>
+                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button" onClick={login}>Login</a>
                                 <Link
                                     className="px-4 py-2 bg-black text-white animated-button"
                                     to="/signUp"
@@ -117,7 +122,7 @@ export default function TaleGameshopHeader() {
                             <React.Fragment>
                                 <div className="flex items-center justify-between">
                                     <div className="mr-2">{jwt.unique_name}</div>
-                                    {jwt?.role === "admin" && (
+                                    {keycloak.userInfo['roles'].contains("admin") && (
                                         <Link className="px-4 py-2 bg-red-500 text-white transition"
                                               to="/admin">Open Admin Panel</Link>
                                     )}

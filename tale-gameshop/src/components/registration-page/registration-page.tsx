@@ -1,6 +1,5 @@
 import React, {useState} from "react";
 import './registration-page.css'
-import {register} from "../../services/auth-service";
 
 export default function RegistrationPage() {
     const [email, setEmail] = useState('');
@@ -24,10 +23,7 @@ export default function RegistrationPage() {
         }
 
         try {
-            const data = await register(email, password); // Вызов сервиса регистрации
             setSuccess('Registration successful!');
-            console.log('Registration successful:', data);
-            // Можно добавить дополнительную обработку (например, перенаправление)
         } catch (error) {
             setError('Failed to register. Please try again.');
             console.error('Error registering:', error);

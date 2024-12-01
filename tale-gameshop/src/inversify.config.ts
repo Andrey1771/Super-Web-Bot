@@ -9,6 +9,8 @@ import {IAuthStorageService} from "./iterfaces/i-auth-storage-service";
 import {CookiesStorageService} from "./services/cookies-storage-service";
 import {ApiClient} from "./services/api-client";
 import {IApiClient} from "./iterfaces/i-api-client";
+import {IKeycloakAuthService} from "./iterfaces/i-keycloak-auth-service";
+import {KeycloakAuthService} from "./services/keycloak-auth-service";
 
 const container = new Container();
 
@@ -17,5 +19,8 @@ container.bind<ISettingsService>(IDENTIFIERS.ISettingsService).to(SettingsServic
 container.bind<IAuthStorageService>(IDENTIFIERS.IAuthStorageService).to(CookiesStorageService);
 
 container.bind<IApiClient>(IDENTIFIERS.IApiClient).to(ApiClient);
+
+container.bind<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService).to(KeycloakAuthService).inSingletonScope();
+
 
 export default container;

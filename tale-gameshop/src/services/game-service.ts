@@ -1,13 +1,9 @@
-import axios from 'axios';
-import {inject, injectable} from 'inversify';
+import {injectable} from 'inversify';
 import { IGameService } from '../iterfaces/i-game-service';
 import { Game } from '../models/game';
-import {resolve} from "inversify-react";
 import IDENTIFIERS from "../constants/identifiers";
-import type {IAuthStorageService} from "../iterfaces/i-auth-storage-service";
 import type {IApiClient} from "../iterfaces/i-api-client";
 import container from '../inversify.config';
-import { ApiClient } from './api-client';
 
 const API_URL = 'https://localhost:7117/api/Game'; // Замените на ваш URL
 
