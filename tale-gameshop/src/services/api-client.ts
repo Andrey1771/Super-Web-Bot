@@ -1,13 +1,9 @@
 import axios, {AxiosResponse, AxiosError, AxiosInstance} from 'axios';
-import {inject, injectable} from "inversify";
-import type {IAuthStorageService} from "../iterfaces/i-auth-storage-service";
+import {injectable} from "inversify";
 import IDENTIFIERS from "../constants/identifiers";
-import {resolve} from "inversify-react";
-import type {ISettingsService} from "../iterfaces/i-settings-service";
 import { IApiClient } from '../iterfaces/i-api-client';
 import container from "../inversify.config";
 import webSettings from '../webSettings.json';
-import {IKeycloakAuthService} from "../iterfaces/i-keycloak-auth-service"; // Импортируем настройки из JSON
 import { IKeycloakService } from '../iterfaces/i-keycloak-service';
 
 @injectable()
@@ -30,9 +26,7 @@ export class ApiClient implements IApiClient {
 // Перехватчик запросов
         this._api.interceptors.request.use(
             (config: any) => {
-                debugger;
                 const token = this._keycloakService.keycloak.token; // Получаем токен (если он существует)
-                console.log(token)
                 if (token) {
                     config.headers = {
                         ...config.headers,
@@ -49,12 +43,9 @@ export class ApiClient implements IApiClient {
 // Перехватчик ответов
         this._api.interceptors.response.use(
             (response: AxiosResponse) => {
-                debugger;
-                // Можно добавить логику обработки успешных ответов, если нужно
                 return response;
             },
             (error: AxiosError) => {
-                // Обработка ошибок
                 if (error.response && error.response.status === 401) {
                     // Логика при 401 Unauthorized, например, разлогин пользователя
                     console.error('Unauthorized, redirecting to login...');

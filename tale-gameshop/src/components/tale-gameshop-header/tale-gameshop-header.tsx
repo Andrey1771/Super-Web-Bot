@@ -7,7 +7,6 @@ import LogOutButton from "../logout-button/logout-button";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
 import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
 import { useKeycloak } from "@react-keycloak/web";
-import type {IApiClient} from "../../iterfaces/i-api-client";
 
 export default function TaleGameshopHeader() {
     const { keycloak } = useKeycloak();

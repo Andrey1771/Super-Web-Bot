@@ -1,4 +1,3 @@
-import { inject } from 'inversify';
 import React, { Component } from 'react';
 import IDENTIFIERS from "../../constants/identifiers";
 import './game-list-page.css';

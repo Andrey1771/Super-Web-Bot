@@ -10,7 +10,6 @@ import LoginPage from "../login-page/login-page";
 import RegistrationPage from "../registration-page/registration-page";
 import ChatBot from "../bot/chat-bot/chat-bot";
 import AdminPanelPage from "../admin-panel-page/admin-panel-page";
-import Callback from "../callback-page/callback-page";
 import CallbackPage from "../callback-page/callback-page";
 import PrivateRoute from "../utils/private-route/private-route";
 
