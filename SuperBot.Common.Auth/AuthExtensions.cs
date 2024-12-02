@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 namespace SuperBot.Common.Auth
 {
@@ -10,8 +10,10 @@ namespace SuperBot.Common.Auth
     {
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
-            var jwtSection = configuration.GetSection("JwtSettings");
-            var key = Encoding.ASCII.GetBytes(jwtSection["SecretKey"]);
+            var keycloakSection = configuration.GetSection("Keycloak");
+            var uri = keycloakSection["Uri"];
+            var realm = keycloakSection["Realm"];
+            var clientId = keycloakSection["ClientId"];
 
             services.AddAuthentication(options =>
             {
@@ -20,15 +22,31 @@ namespace SuperBot.Common.Auth
             })
             .AddJwtBearer(options =>
             {
+                options.Authority = $"{uri}/realms/{realm}";
+                options.Audience = clientId;
+                options.RequireHttpsMetadata = false; // Включите, если используете HTTPS
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
                     ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSection["Issuer"],
-                    ValidAudience = jwtSection["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(key)
+                    ValidIssuer = $"{uri}/realms/{realm}",
+                    ValidAudience = clientId
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        context.Response.StatusCode = 401;
+                        context.Response.ContentType = "application/json";
+                        return context.Response.WriteAsync(new { error = "Authentication failed" }.ToString());
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        // Вы можете добавить дополнительную логику после успешной проверки токена
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
