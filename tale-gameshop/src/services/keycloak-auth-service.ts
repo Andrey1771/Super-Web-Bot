@@ -4,30 +4,30 @@ import {KeycloakInstance} from "keycloak-js";
 
 @injectable()
 export class KeycloakAuthService implements IKeycloakAuthService {
-    async loginWithRedirect(keycloak: KeycloakInstance): Promise<void> {
+    async loginWithRedirect(keycloak: KeycloakInstance, uri: string): Promise<void> {
         try {
             await keycloak.login({
-                redirectUri: 'http://localhost:3000/callback', // Укажите URL для редиректа после логина
+                redirectUri: uri, // Укажите URL для редиректа после логина
             });
         } catch (error) {
             console.error('Ошибка при логине:', error);
         }
     }
 
-    async logoutWithRedirect(keycloak: KeycloakInstance): Promise<void> {
+    async logoutWithRedirect(keycloak: KeycloakInstance, uri: string): Promise<void> {
         try {
             await keycloak.logout({
-                redirectUri: 'http://localhost:3000',
+                redirectUri: uri,
             });
         } catch (error) {
             console.error('Ошибка при логине:', error);
         }
     }
 
-    async registerWithRedirect(keycloak: KeycloakInstance): Promise<void> {
+    async registerWithRedirect(keycloak: KeycloakInstance, uri: string): Promise<void> {
         try {
             await keycloak.register({
-                redirectUri: 'http://localhost:3000/callback',
+                redirectUri: uri,
             });
         } catch (error) {
             console.error('Ошибка при логине:', error);

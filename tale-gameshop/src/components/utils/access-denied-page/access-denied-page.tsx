@@ -1,17 +1,8 @@
-import {useKeycloak} from "@react-keycloak/web";
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
 import React from "react";
 
-type PrivateRouteProps = {
-    children: React.ReactNode;
-};
-
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-    const {keycloak} = useKeycloak();
-
-    const isLoggedIn = keycloak.authenticated;
-
-    return isLoggedIn ? (<>{children}</>) : (
+const AccessDeniedPage: React.FC = () => {
+    return (
         <div className="bg-gray-100 flex items-center justify-center min-h-screen">
             <div className="text-center p-8 bg-white shadow-lg rounded-lg">
                 <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -26,4 +17,4 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     );
 };
 
-export default PrivateRoute;
+export default AccessDeniedPage;

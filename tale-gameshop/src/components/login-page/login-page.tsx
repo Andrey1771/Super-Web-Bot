@@ -17,9 +17,6 @@ const LoginForm: React.FC = () => {
 
 
 
-
-
-
         } catch (error) {
             setError('Failed to login. Please check your email and password.');
             console.error('Error logging in:', error);

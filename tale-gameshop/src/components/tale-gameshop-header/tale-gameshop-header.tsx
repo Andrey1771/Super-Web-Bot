@@ -2,17 +2,13 @@ import React, {useEffect} from "react";
 import {Link} from "react-router-dom";
 import './tale-gameshop-header.css'
 import container from "../../inversify.config";
-import type {IAuthStorageService} from "../../iterfaces/i-auth-storage-service";
 import IDENTIFIERS from "../../constants/identifiers";
-import {decodeToken} from "../../utils/token-utils";
 import LogOutButton from "../logout-button/logout-button";
-import {useDispatch} from "react-redux";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
 import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
 import { useKeycloak } from "@react-keycloak/web";
 
 export default function TaleGameshopHeader() {
-    const dispatch = useDispatch();
     const { keycloak } = useKeycloak();
 
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
@@ -29,13 +25,6 @@ export default function TaleGameshopHeader() {
     });
 
     useEffect(() => {
-        const tokenStorage = container.get<IAuthStorageService>(IDENTIFIERS.IAuthStorageService);
-        const newToken = tokenStorage.getItem("token");
-        const newJwt = newToken ? decodeToken(newToken) : null;
-
-        dispatch({type: 'SET_JWT', payload: newJwt});
-
-
         // Функция для обработки скролла
         const handleScroll = () => {
             const header = document.querySelector('.header-nav');
@@ -51,15 +40,17 @@ export default function TaleGameshopHeader() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // @ts-ignore Тип возвращаемых данных и объекта keyckoak отличается
+    // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
     const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(role => role === "admin");
+    // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
+    const email = keycloak.tokenParsed?.email;
+
     const login = async () => {
         try {
-            console.log(keycloak);
             // Проверка, аутентифицирован ли пользователь
             if (!keycloak.authenticated) {
                 console.log('Пользователь не аутентифицирован, выполняем логин...');
-                await keycloakAuthService.loginWithRedirect(keycloak);
+                await keycloakAuthService.loginWithRedirect(keycloak, window.location.href);
             } else {
                 console.log('Пользователь уже аутентифицирован:', keycloak.tokenParsed);
             }
@@ -70,13 +61,11 @@ export default function TaleGameshopHeader() {
 
     const register = async () => {
         try {
-            await keycloakAuthService.registerWithRedirect(keycloak);
+            await keycloakAuthService.registerWithRedirect(keycloak, window.location.href);
         } catch (error) {
             console.error('Ошибка инициализации приложения:', error);
         }
     }
-
-
 
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
@@ -120,7 +109,7 @@ export default function TaleGameshopHeader() {
                         ) : (
                             <React.Fragment>
                             <div className="flex items-center justify-between">
-                                    <div className="mr-2">{keycloak.profile?.username}</div>
+                                    <div className="mr-2">{email}</div>
                                     {isAdmin && (
                                         <Link className="px-4 py-2 bg-red-500 text-white transition"
                                               to="/admin">Open Admin Panel</Link>

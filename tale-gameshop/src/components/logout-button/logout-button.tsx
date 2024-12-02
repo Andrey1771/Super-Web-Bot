@@ -19,7 +19,7 @@ const logout = async (keycloak: KeycloakInstance) => {
     try {
         const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
-        await keycloakAuthService.logoutWithRedirect(keycloak);
+        await keycloakAuthService.logoutWithRedirect(keycloak, window.location.href);
         console.log('Logout successful');
     } catch (error) {
         console.error('Error logout:', error);
