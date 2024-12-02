@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 namespace SuperBot.Common.Auth
 {
@@ -31,6 +32,7 @@ namespace SuperBot.Common.Auth
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidIssuer = $"{uri}/realms/{realm}",
+                    RoleClaimType = ClaimTypes.Role,
                     ValidAudience = clientId
                 };
 
@@ -38,19 +40,27 @@ namespace SuperBot.Common.Auth
                 {
                     OnAuthenticationFailed = context =>
                     {
-                        context.Response.StatusCode = 401;
-                        context.Response.ContentType = "application/json";
-                        return context.Response.WriteAsync(new { error = "Authentication failed" }.ToString());
+                        Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                        return Task.CompletedTask;
                     },
-                    OnTokenValidated = context =>
+                    OnChallenge = context =>
                     {
-                        // Вы можете добавить дополнительную логику после успешной проверки токена
+                        Console.WriteLine("Token challenge triggered");
+                        return Task.CompletedTask;
+                    },
+                    OnForbidden = context =>
+                    {
+                        Console.WriteLine("Token is forbidden");
                         return Task.CompletedTask;
                     }
                 };
             });
 
-            services.AddAuthorization();
+            /*services.AddAuthorization(options =>
+            {
+                options.AddPolicy("AdminOnly", policy =>
+                    policy.RequireRole("admin"));
+            });*/
 
             return services;
         }

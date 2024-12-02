@@ -26,6 +26,7 @@ using Microsoft.Extensions.FileProviders;
 using SuperBot.Core.Entities;
 using AutoMapper;
 using SuperBot.Common.Auth;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +67,7 @@ builder.Services.ConfigureTelegramBotMvc();
 var domainAssembly = typeof(GetMainMenuCommand).Assembly;
 builder.Services
     .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
+
 
 
 // Добавление CORS с конкретной политикой
@@ -169,6 +171,13 @@ builder.Services.AddHangfireServer();
 builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddTransient<IClaimsTransformation, KeycloakClaimsTransformation>();
+
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+});
 
 var app = builder.Build();
 
