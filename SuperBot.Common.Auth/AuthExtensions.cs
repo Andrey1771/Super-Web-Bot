@@ -14,7 +14,7 @@ namespace SuperBot.Common.Auth
             var keycloakSection = configuration.GetSection("Keycloak");
             var uri = keycloakSection["Uri"];
             var realm = keycloakSection["Realm"];
-            var clientId = keycloakSection["ClientId"];
+            var clientId = keycloakSection["Audience"];
 
             services.AddAuthentication(options =>
             {
