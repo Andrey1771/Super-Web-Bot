@@ -29,8 +29,9 @@ const AdminPanelPage: React.FC = () => {
     const [editableData, setEditableData] = useState<Data>(response);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [view, setView] = useState<'translations' | 'keyboardKeys'>('translations'); // Для переключения между компонентами
 
-    // References to all text areas for dynamic height adjustment
+    // Ссылки на все текстовые поля для динамической подстройки высоты
     const textAreaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
 
     useEffect(() => {
@@ -45,40 +46,48 @@ const AdminPanelPage: React.FC = () => {
         })();
     }, []);
 
-    // Function to update the height of all text areas
+    // Функция для обновления высоты всех текстовых полей
     const updateTextAreaHeight = () => {
         textAreaRefs.current.forEach((textarea) => {
             if (textarea) {
-                // Reset the height to calculate the new one
                 textarea.style.height = 'auto';
-                // Set the height based on content
                 textarea.style.height = `${textarea.scrollHeight}px`;
             }
         });
     };
 
     useEffect(() => {
-        // Call updateTextAreaHeight after the first render
         updateTextAreaHeight();
-    }, [editableData]); // Watch for data changes
+    }, [editableData, view]);
 
     const handleInputChange = (key: string, value: string) => {
-        setEditableData((prevData) => ({
-            ...prevData,
-            translations: {
-                ...prevData.translations,
-                ru: {
-                    ...prevData.translations.ru,
-                    [key]: value,
-                },
-            },
-        }));
+        setEditableData((prevData) => {
+            if (view === 'translations') {
+                return {
+                    ...prevData,
+                    translations: {
+                        ...prevData.translations,
+                        ru: {
+                            ...prevData.translations.ru,
+                            [key]: value,
+                        },
+                    },
+                };
+            } else if (view === 'keyboardKeys') {
+                return {
+                    ...prevData,
+                    keyboardKeys: {
+                        ...prevData.keyboardKeys,
+                        [key]: value,
+                    },
+                };
+            }
+            return prevData;
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Set loading status
         setLoading(true);
         setError(null);
 
@@ -95,14 +104,31 @@ const AdminPanelPage: React.FC = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen p-8 bg-gray-100">
+        <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-100">
             <div className="w-full max-w-4xl bg-white p-8 rounded-lg shadow-md">
-                <h2 className="text-2xl font-bold mb-6 text-center">Edit Bot Translation Data</h2>
+                <h2 className="text-2xl font-bold mb-6 text-center">Edit Bot Data</h2>
+
+                {/* Переключение между отображениями */}
+                <div className="flex justify-center mb-6">
+                    <button
+                        onClick={() => setView('translations')}
+                        className={`py-2 px-4 mx-2 ${view === 'translations' ? 'bg-green-500 text-white' : 'bg-gray-300'} rounded-md focus:outline-none`}
+                    >
+                        Translations
+                    </button>
+                    <button
+                        onClick={() => setView('keyboardKeys')}
+                        className={`py-2 px-4 mx-2 ${view === 'keyboardKeys' ? 'bg-green-500 text-white' : 'bg-gray-300'} rounded-md focus:outline-none`}
+                    >
+                        Keyboard Keys
+                    </button>
+                </div>
+
                 <form onSubmit={handleSubmit}>
                     <div>
-                        <h3 className="text-xl font-semibold mb-4">Editable Values:</h3>
-                        {editableData && editableData.translations && editableData.translations.ru ? (
-                            Object.entries(editableData.translations.ru).map(([key, value], index) => (
+                        <h3 className="text-xl font-semibold mb-4">{view === 'translations' ? 'Editable Translations:' : 'Editable Keyboard Keys:'}</h3>
+                        {editableData && editableData[view] ? (
+                            Object.entries((view === 'translations' ? editableData[view].ru : editableData[view]) ?? {}).map(([key, value], index) => (
                                 <div key={key} className="mb-4">
                                     <label htmlFor={key} className="block text-sm font-semibold mb-2">
                                         {key}
