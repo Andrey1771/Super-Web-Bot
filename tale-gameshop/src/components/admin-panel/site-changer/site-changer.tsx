@@ -8,29 +8,75 @@ type Data = string[];
 const SiteChangerPage: React.FC = () => {
     const [images, setImages] = useState<Data>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [file, setFile] = useState(null);
+
 
     useEffect(() => {
         (async () => {
             try {
-                const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-                const response = (await apiClient.api.get<Data>('https://localhost:7117/api/Image/list')).data;
-                setImages(response);
+                await updateImages();
             } catch (error) {
                 console.error('Error getting data:', error);
             }
         })();
     }, []);
 
+
+    const updateImages = async () => {
+        const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+        const response = (await apiClient.api.get<Data>('https://localhost:7117/api/Image/list')).data;
+        setImages(response);
+    }
+
     // Удаление изображения
-    const handleDelete = (index: any) => {
-        setImages(images.filter((_, i) => i !== index));
+    const handleDelete = async (index: any) => {
+        try {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+            const fileName = images.at(index)?.split('/')?.pop() ?? "";
+            await apiClient.api.delete(`https://localhost:7117/api/Image/delete?fileName=${encodeURIComponent(fileName)}`);
+        } catch (error) {
+            console.error('Error getting data:', error);
+        }
+        finally {
+            await updateImages();
+        }
     };
 
-    // Добавление изображения
-    const handleAddImage = (newImage: any) => {
-        setImages([...images, newImage]);
-        setIsModalOpen(false);
+    // Обработчик выбора файла
+    const handleFileChange = (e: any) => {
+        setFile(e.target.files[0]);
     };
+
+    // Загрузка файла на сервер
+    const handleUpload = async () => {
+        if (!file) {
+            alert("Chose file before download");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+            const response = await apiClient.api.post("https://localhost:7117/api/Image/upload", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data"
+                },
+            });
+
+            setImages([...images, response.data.filePath]); // Добавляем новый путь к изображениям
+            setIsModalOpen(false);
+            setFile(null); // Сброс файла после загрузки
+        } catch (error) {
+            console.error(error);
+            alert("Error load file");
+        }
+        finally {
+            await updateImages();
+        }
+    };
+
 
     return (
         <div className="p-8">
@@ -40,7 +86,7 @@ const SiteChangerPage: React.FC = () => {
                         <img
                             src={`https://localhost:7117${image}`}
                             alt={`Image ${index + 1}`}
-                            className="w-full h-32 object-cover rounded"
+                            className="w-full h-32 object-fill rounded"
                         />
                         <button
                             onClick={() => handleDelete(index)}
@@ -65,28 +111,24 @@ const SiteChangerPage: React.FC = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded shadow-lg">
-                        <h2 className="text-lg font-semibold mb-4">Добавить изображение</h2>
+                        <h2 className="text-lg font-semibold mb-4">Add image</h2>
                         <input
-                            type="text"
-                            placeholder="Введите URL изображения"
-                            className="border p-2 w-full rounded mb-4"
-                            id="imageInput"
+                            type="file"
+                            onChange={handleFileChange}
+                            className="mb-4"
                         />
                         <div className="flex justify-end">
                             <button
                                 onClick={() => setIsModalOpen(false)}
                                 className="mr-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                             >
-                                Отмена
+                                Cancel
                             </button>
                             <button
-                                onClick={() =>
-                                    // @ts-ignore Существует
-                                    handleAddImage(document.getElementById('imageInput').value)
-                                }
+                                onClick={handleUpload}
                                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                             >
-                                Добавить
+                                Load
                             </button>
                         </div>
                     </div>

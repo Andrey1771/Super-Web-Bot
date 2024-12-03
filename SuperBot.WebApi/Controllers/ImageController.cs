@@ -7,7 +7,7 @@ namespace SuperBot.WebApi.Controllers
     [ApiController]
     public class ImageController : ControllerBase
     {
-        private readonly string _uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
+        private readonly string _uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot\\uploads");
 
         public ImageController()
         {
@@ -39,6 +39,36 @@ namespace SuperBot.WebApi.Controllers
                 }
 
                 return Ok(new { FilePath = filePath });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpDelete("delete")]
+        [Authorize(Roles = "admin")]
+        public IActionResult DeleteImage(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return BadRequest("File name is not provided.");
+            }
+
+            // Полный путь к файлу
+            var filePath = Path.Combine(_uploadFolder, fileName);
+
+            try
+            {
+                if (System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                    return Ok(new { Message = "File deleted successfully." });
+                }
+                else
+                {
+                    return NotFound("File not found.");
+                }
             }
             catch (Exception ex)
             {
