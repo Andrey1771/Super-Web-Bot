@@ -14,9 +14,9 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="package.json" />
-        <option value="CSS File" />
-        <option value="TypeScript JSX File" />
         <option value="TypeScript File" />
+        <option value="TypeScript JSX File" />
+        <option value="CSS File" />
       </list>
     </option>
   </component>
@@ -44,11 +44,11 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\admin-panel" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\utils\private-route" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\utils\authorized-route" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\utils" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\utils" />
-      <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\bot" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -84,7 +84,7 @@
       <workItem from="1733028058468" duration="7000" />
       <workItem from="1733028204638" duration="2454000" />
       <workItem from="1733066392836" duration="14164000" />
-      <workItem from="1733090885934" duration="19514000" />
+      <workItem from="1733090885934" duration="21467000" />
     </task>
     <servers />
   </component>

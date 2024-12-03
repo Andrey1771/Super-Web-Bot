@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import container from "../../inversify.config";
-import IDENTIFIERS from "../../constants/identifiers";
-import type { IApiClient } from "../../iterfaces/i-api-client";
+import container from "../../../inversify.config";
+import IDENTIFIERS from "../../../constants/identifiers";
+import type { IApiClient } from "../../../iterfaces/i-api-client";
 
 type Translations = {
     [key: string]: string;
@@ -21,7 +21,7 @@ type EditableDataProps = {
     onSubmit: (updatedData: Data) => void;
 };
 
-const AdminPanelPage: React.FC = () => {
+const BotChangerPage: React.FC = () => {
     let response: Data = {
         keyboardKeys: {},
         translations: {}
@@ -164,4 +164,4 @@ const AdminPanelPage: React.FC = () => {
     );
 };
 
-export default AdminPanelPage;
+export default BotChangerPage;

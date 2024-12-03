@@ -9,9 +9,11 @@ import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
 import RegistrationPage from "../registration-page/registration-page";
 import ChatBot from "../bot/chat-bot/chat-bot";
-import AdminPanelPage from "../admin-panel-page/admin-panel-page";
+import AdminPanelPage from "../admin-panel/admin-panel-page/admin-panel-page";
 import CallbackPage from "../callback-page/callback-page";
 import PrivateRoute from "../utils/private-route/private-route";
+import BotChangerPage from "../admin-panel/bot-changer-page/bot-changer-page";
+import SiteChangerPage from "../admin-panel/site-changer/site-changer";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -25,6 +27,8 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>
                     <Route path="/admin" element={<PrivateRoute><AdminPanelPage/></PrivateRoute>}/>
+                    <Route path="/admin/botChanger" element={<PrivateRoute><BotChangerPage/></PrivateRoute>}/>
+                    <Route path="/admin/siteChanger" element={<PrivateRoute><SiteChangerPage/></PrivateRoute>}/>
                     <Route path="/callback" element={<CallbackPage/>}/>
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>
