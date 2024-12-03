@@ -22,11 +22,10 @@ type EditableDataProps = {
 };
 
 const BotChangerPage: React.FC = () => {
-    let response: Data = {
+    const [editableData, setEditableData] = useState<Data>({
         keyboardKeys: {},
         translations: {}
-    };
-    const [editableData, setEditableData] = useState<Data>(response);
+    });
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [view, setView] = useState<'translations' | 'keyboardKeys'>('translations'); // Для переключения между компонентами
@@ -38,7 +37,7 @@ const BotChangerPage: React.FC = () => {
         (async () => {
             try {
                 const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-                response = (await apiClient.api.get<Data>('https://localhost:7117/api/Admin')).data;
+                const response = (await apiClient.api.get<Data>('https://localhost:7117/api/Admin')).data;
                 setEditableData(response);
             } catch (error) {
                 console.error('Error getting data:', error);

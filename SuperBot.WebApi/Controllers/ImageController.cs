@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -18,6 +19,7 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpPost("upload")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UploadImage(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -45,6 +47,7 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpGet("list")]
+        [Authorize(Roles = "admin")]
         public IActionResult GetImagePaths()
         {
             try
