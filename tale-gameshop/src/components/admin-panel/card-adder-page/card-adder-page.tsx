@@ -4,6 +4,21 @@ import container from "../../../inversify.config";
 import type {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
 
+const gameTypes = {
+    0: "Action",
+    1: "Adventure",
+    2: "Role-Playing Games",
+    3: "Simulation",
+    4: "Strategy",
+    5: "Puzzle",
+    6: "Sports",
+    7: "Card and Board Games",
+    8: "Massively Multiplayer Online",
+    9: "Horror",
+    10: "Casual Games",
+    11: "Educational Games",
+};
+
 const CardAdderPage: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
     const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -11,10 +26,10 @@ const CardAdderPage: React.FC = () => {
     const [form, setForm] = useState({
         id: '',
         name: '',
-        price: '',
+        price: 0,
         description: '',
         title: '',
-        gameType: '',
+        gameType: 0,
         imagePath: '',
         releaseDate: '',
     });
@@ -47,22 +62,21 @@ const CardAdderPage: React.FC = () => {
         setForm({
             id: item.id || '',
             name: item.name || '',
-            price: item.price || '',
+            price: item.price || 0,
             description: item.description || '',
             title: item.title || '',
-            gameType: item.gameType || '',
+            gameType: item.gameType || 0,
             imagePath: item.imagePath || '',
             releaseDate: item.releaseDate ? item.releaseDate.split('T')[0] : '',
         });
         setMode('edit');
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setForm((prev) => ({
-            ...prev,
-            [name]: name === 'price' || name === 'gameType' ? (value === '' ? '' : Number(value)) : value,
-        }));
+    const handleChange = (e: any) => {
+        const value = parseInt(e.target.value, 10);
+        if (!isNaN(value) && gameTypes.hasOwnProperty(value)) {
+            setForm({ ...form, gameType: value });
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,10 +144,10 @@ const CardAdderPage: React.FC = () => {
         setForm({
             id: '',
             name: '',
-            price: '',
+            price: 0,
             description: '',
             title: '',
-            gameType: '',
+            gameType: 0,
             imagePath: '',
             releaseDate: '',
         });
@@ -147,6 +161,7 @@ const CardAdderPage: React.FC = () => {
             setPage((prev) => prev + 1);
         }
     };
+
 
     return (
         <div className="p-8">
@@ -217,14 +232,21 @@ const CardAdderPage: React.FC = () => {
                         onChange={handleChange}
                         className="w-full p-2 border rounded"
                     />
-                    <input
-                        type="number"
-                        name="gameType"
-                        placeholder="Game Type"
-                        value={form.gameType}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                    />
+                    <div className="w-full">
+                        {/* Выпадающий список */}
+                        <select
+                            name="gameType"
+                            value={form.gameType}
+                            onChange={handleChange}
+                            className="w-full p-2 border rounded"
+                        >
+                            {Object.entries(gameTypes).map(([key, label]) => (
+                                <option key={key} value={key}>
+                                    {label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                     <input
                         type="date"
                         name="releaseDate"
@@ -232,7 +254,7 @@ const CardAdderPage: React.FC = () => {
                         onChange={handleChange}
                         className="w-full p-2 border rounded"
                     />
-                    <input type="file" onChange={handleFileChange} className="w-full p-2 border rounded" />
+                    <input type="file" onChange={handleFileChange} className="w-full p-2 border rounded"/>
                     <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                         {mode === 'edit' ? 'Сохранить изменения' : 'Добавить объект'}
                     </button>
