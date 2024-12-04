@@ -46,10 +46,8 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task UpdateAsync(string id, Game updatedGame)
         {
-            var filter = new BsonDocument { { "Id", id } };
             var game = _mapper.Map<GameDb>(updatedGame);
-
-            await _games.ReplaceOneAsync(filter, game);
+            await _games.ReplaceOneAsync(g => g.Id == id, game);
         }
 
         public async Task DeleteAsync(string id)

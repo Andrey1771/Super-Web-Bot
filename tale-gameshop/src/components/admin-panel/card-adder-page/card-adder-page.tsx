@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import container from "../../../inversify.config";
+import type {IApiClient} from "../../../iterfaces/i-api-client";
+import IDENTIFIERS from "../../../constants/identifiers";
 
 const CardAdderPage: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [mode, setMode] = useState<'add' | 'edit'>('edit');
     const [form, setForm] = useState({
+        id: '',
         name: '',
         price: '',
         description: '',
@@ -24,7 +28,8 @@ const CardAdderPage: React.FC = () => {
 
     const fetchItems = async (page: number, reset: boolean = false) => {
         try {
-            const response = await axios.get(`https://localhost:7117/api/game?page=${page}&limit=20`);
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+            const response = await apiClient.api.get(`https://localhost:7117/api/game?page=${page}&limit=20`);
             const newItems = response.data;
 
             setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
@@ -39,13 +44,25 @@ const CardAdderPage: React.FC = () => {
 
     const handleSelect = (item: any) => {
         setSelectedItem(item);
-        setForm(item);
+        setForm({
+            id: item.id || '',
+            name: item.name || '',
+            price: item.price || '',
+            description: item.description || '',
+            title: item.title || '',
+            gameType: item.gameType || '',
+            imagePath: item.imagePath || '',
+            releaseDate: item.releaseDate ? item.releaseDate.split('T')[0] : '',
+        });
         setMode('edit');
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setForm({ ...form, [name]: value });
+        setForm((prev) => ({
+            ...prev,
+            [name]: name === 'price' || name === 'gameType' ? (value === '' ? '' : Number(value)) : value,
+        }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,32 +78,47 @@ const CardAdderPage: React.FC = () => {
         formData.append('file', file);
 
         try {
-            const response = await axios.post('https://localhost:7117/api/image/upload', formData, {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+            const response = await apiClient.api.post('https://localhost:7117/api/image/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            return response.data.filePath;
+            return getFilePath(response.data.filePath);
         } catch (error) {
             console.error('Ошибка загрузки изображения:', error);
             return form.imagePath;
         }
     };
 
+    const getFilePath = (fullPath: string) => {
+        // Извлекаем только имя файла
+        const fileName = fullPath.split('\\').pop();
+        // Добавляем путь wwwroot\uploads\
+        const newPath = `wwwroot\\uploads\\${fileName}`;
+        return newPath;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const imagePath = await uploadImage();
 
-        const updatedItem = { ...form, imagePath };
+        const updatedItem = {
+            ...form,
+            price: form.price ? Number(form.price) : 0,
+            gameType: form.gameType ? Number(form.gameType) : 0,
+            imagePath,
+        };
 
         try {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
             if (mode === 'edit') {
-                await axios.put(`https://localhost:7117/api/game/${selectedItem._id}`, updatedItem);
+                await apiClient.api.put(`https://localhost:7117/api/game/${selectedItem.id}`, updatedItem);
             } else {
-                await axios.post('https://localhost:7117/api/game', updatedItem);
+                await apiClient.api.post('https://localhost:7117/api/game', updatedItem);
             }
             setPage(1);
             setHasMore(true);
             setItems([]);
-            fetchItems(1, true);
+            await fetchItems(1, true);
             resetForm();
         } catch (error) {
             console.error('Ошибка сохранения объекта:', error);
@@ -96,6 +128,7 @@ const CardAdderPage: React.FC = () => {
     const resetForm = () => {
         setSelectedItem(null);
         setForm({
+            id: '',
             name: '',
             price: '',
             description: '',

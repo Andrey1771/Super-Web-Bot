@@ -12,7 +12,7 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                 alt={game.title}
                 className="mb-4"
                 height="100"
-                src={game.imagePath}
+                src={`https://localhost:7117/${game.imagePath}`}
                 width="100"
             />
             <h2 className="text-xl font-bold mb-2">{game.title}</h2>

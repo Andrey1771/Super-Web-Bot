@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -28,6 +29,7 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateGame([FromBody] Game newGame)
         {
             var game = _mapper.Map<Game>(newGame);
@@ -36,6 +38,7 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateGame(string id, [FromBody] Game updatedGame)
         {
             var game = await _gameRepository.GetByIdAsync(id);
@@ -44,12 +47,13 @@ namespace SuperBot.WebApi.Controllers
                 return NotFound();
             }
 
-            var updatedGameForDb = _mapper.Map<Game>(game);
+            var updatedGameForDb = _mapper.Map<Game>(updatedGame);
             await _gameRepository.UpdateAsync(id, updatedGameForDb);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteGame(string id)
         {
             var game = await _gameRepository.GetByIdAsync(id);
