@@ -1,0 +1,212 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const CardAdderPage: React.FC = () => {
+    const [items, setItems] = useState<any[]>([]);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [mode, setMode] = useState<'add' | 'edit'>('edit');
+    const [form, setForm] = useState({
+        name: '',
+        price: '',
+        description: '',
+        title: '',
+        gameType: '',
+        imagePath: '',
+        releaseDate: '',
+    });
+    const [file, setFile] = useState<File | null>(null);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+
+    useEffect(() => {
+        fetchItems(page, true);
+    }, [page]);
+
+    const fetchItems = async (page: number, reset: boolean = false) => {
+        try {
+            const response = await axios.get(`https://localhost:7117/api/game?page=${page}&limit=20`);
+            const newItems = response.data;
+
+            setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
+
+            if (newItems.length < 20) {
+                setHasMore(false); // Больше страниц нет
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки объектов:', error);
+        }
+    };
+
+    const handleSelect = (item: any) => {
+        setSelectedItem(item);
+        setForm(item);
+        setMode('edit');
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setForm({ ...form, [name]: value });
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+                setFile(e.target.files[0]);
+        }
+    };
+
+    const uploadImage = async () => {
+        if (!file) return form.imagePath;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await axios.post('https://localhost:7117/api/image/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            return response.data.filePath;
+        } catch (error) {
+            console.error('Ошибка загрузки изображения:', error);
+            return form.imagePath;
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const imagePath = await uploadImage();
+
+        const updatedItem = { ...form, imagePath };
+
+        try {
+            if (mode === 'edit') {
+                await axios.put(`https://localhost:7117/api/game/${selectedItem._id}`, updatedItem);
+            } else {
+                await axios.post('https://localhost:7117/api/game', updatedItem);
+            }
+            setPage(1);
+            setHasMore(true);
+            setItems([]);
+            fetchItems(1, true);
+            resetForm();
+        } catch (error) {
+            console.error('Ошибка сохранения объекта:', error);
+        }
+    };
+
+    const resetForm = () => {
+        setSelectedItem(null);
+        setForm({
+            name: '',
+            price: '',
+            description: '',
+            title: '',
+            gameType: '',
+            imagePath: '',
+            releaseDate: '',
+        });
+        setFile(null);
+        setMode('edit');
+    };
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        if (scrollTop + clientHeight >= scrollHeight - 10 && hasMore) {
+            setPage((prev) => prev + 1);
+        }
+    };
+
+    return (
+        <div className="p-8">
+            <div className="flex justify-between mb-4">
+                <h1 className="text-2xl font-bold">
+                    {mode === 'edit' ? 'Выберите объект для редактирования' : 'Добавление нового объекта'}
+                </h1>
+                <button
+                    onClick={() => {
+                        resetForm();
+                        setMode(mode === 'edit' ? 'add' : 'edit');
+                    }}
+                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                >
+                    {mode === 'edit' ? 'Добавить новый объект' : 'Перейти к редактированию'}
+                </button>
+            </div>
+
+            {mode === 'edit' && (
+                <div className="overflow-y-auto h-64 border p-4" onScroll={handleScroll}>
+                    <ul>
+                        {items.map((item: any) => (
+                            <li
+                                key={item._id}
+                                onClick={() => handleSelect(item)}
+                                className={`p-2 cursor-pointer rounded ${
+                                    selectedItem?._id === item._id ? 'bg-blue-100' : 'hover:bg-gray-100'
+                                }`}
+                            >
+                                {item.name}
+                            </li>
+                        ))}
+                    </ul>
+                    {!hasMore && <p className="text-center mt-4">Больше объектов нет.</p>}
+                </div>
+            )}
+
+            {(mode === 'add' || selectedItem) && (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input
+                        type="text"
+                        name="name"
+                        placeholder="Name"
+                        value={form.name}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                    />
+                    <input
+                        type="number"
+                        name="price"
+                        placeholder="Price"
+                        value={form.price}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                    />
+                    <textarea
+                        name="description"
+                        placeholder="Description"
+                        value={form.description}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                    ></textarea>
+                    <input
+                        type="text"
+                        name="title"
+                        placeholder="Title"
+                        value={form.title}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                    />
+                    <input
+                        type="number"
+                        name="gameType"
+                        placeholder="Game Type"
+                        value={form.gameType}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                    />
+                    <input
+                        type="date"
+                        name="releaseDate"
+                        value={form.releaseDate.split('T')[0]}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                    />
+                    <input type="file" onChange={handleFileChange} className="w-full p-2 border rounded" />
+                    <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        {mode === 'edit' ? 'Сохранить изменения' : 'Добавить объект'}
+                    </button>
+                </form>
+            )}
+        </div>
+    );
+};
+
+export default CardAdderPage;

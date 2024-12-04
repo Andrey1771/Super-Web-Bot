@@ -13,7 +13,8 @@ import AdminPanelPage from "../admin-panel/admin-panel-page/admin-panel-page";
 import CallbackPage from "../callback-page/callback-page";
 import PrivateRoute from "../utils/private-route/private-route";
 import BotChangerPage from "../admin-panel/bot-changer-page/bot-changer-page";
-import SiteChangerPage from "../admin-panel/site-changer/site-changer";
+import SiteChangerPage from "../admin-panel/site-changer-page/site-changer-page";
+import CardAdderPage from "../admin-panel/card-adder-page/card-adder-page";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -29,6 +30,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/admin" element={<PrivateRoute><AdminPanelPage/></PrivateRoute>}/>
                     <Route path="/admin/botChanger" element={<PrivateRoute><BotChangerPage/></PrivateRoute>}/>
                     <Route path="/admin/siteChanger" element={<PrivateRoute><SiteChangerPage/></PrivateRoute>}/>
+                    <Route path="/admin/cardAdder" element={<PrivateRoute><CardAdderPage/></PrivateRoute>}/>
                     <Route path="/callback" element={<CallbackPage/>}/>
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>

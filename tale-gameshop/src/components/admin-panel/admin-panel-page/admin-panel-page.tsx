@@ -10,7 +10,10 @@ const AdminPanelPage: React.FC = () => {
                 to="/admin/botChanger">Open bot changer</Link>
             <Link
                 className="w-full mt-6 py-3 px-6 bg-green-500 text-white font-semibold rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
-                to="/admin/siteChanger">Open site changer</Link>
+                to="/admin/siteChanger">Open image changer</Link>
+            <Link
+                className="w-full mt-6 py-3 px-6 bg-green-500 text-white font-semibold rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400"
+                to="/admin/cardAdder">Open card adder</Link>
         </div>
 
     );
