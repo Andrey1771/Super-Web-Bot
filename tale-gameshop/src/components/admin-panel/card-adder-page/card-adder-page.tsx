@@ -72,12 +72,20 @@ const CardAdderPage: React.FC = () => {
         setMode('edit');
     };
 
-    const handleChange = (e: any) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({
+            ...prev,
+            [name]: name === 'price' || name === 'gameType' ? (value === '' ? '' : Number(value)) : value,
+        }));
+    };
+
+    const handleChangeSelect = (e: any) => {
         const value = parseInt(e.target.value, 10);
         if (!isNaN(value) && gameTypes.hasOwnProperty(value)) {
-            setForm({ ...form, gameType: value });
+            setForm({...form, gameType: value});
         }
-    };
+    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -237,7 +245,7 @@ const CardAdderPage: React.FC = () => {
                         <select
                             name="gameType"
                             value={form.gameType}
-                            onChange={handleChange}
+                            onChange={handleChangeSelect}
                             className="w-full p-2 border rounded"
                         >
                             {Object.entries(gameTypes).map(([key, label]) => (
