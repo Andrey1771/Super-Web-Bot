@@ -86,12 +86,6 @@ const CardAdderPage: React.FC = () => {
         }
     }
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
-        }
-    };
-
     const uploadImage = async () => {
         if (!file) return form.imagePath;
 
@@ -185,6 +179,12 @@ const CardAdderPage: React.FC = () => {
         }
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setFile(e.target.files[0]);
+            setForm((prev) => ({ ...prev, imagePath: e?.target?.files?.[0]?.name ?? "" })); // Показываем имя нового файла
+        }
+    };
 
     return (
         <div className="p-8">
@@ -285,8 +285,26 @@ const CardAdderPage: React.FC = () => {
                         onChange={handleChange}
                         className="w-full p-2 border rounded"
                     />
-                    <input type="file" onChange={handleFileChange} className="w-full p-2 border rounded"/>
-                    <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    <input
+                        type="file"
+                        onChange={handleFileChange}
+                        className="w-full p-2 border rounded"
+                    />
+
+                    {form.imagePath && (
+                        <p className="mt-2 text-gray-600">
+                            Current file: {form.imagePath.split('\\').pop()}
+                        </p>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({...prev, imagePath: ''}))}
+                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 mt-2"
+                    >
+                        Clear File
+                    </button>
+                    <button type="submit" className="px-4 ml-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                         {mode === 'edit' ? 'Save changes' : 'Add object'}
                     </button>
                 </form>
