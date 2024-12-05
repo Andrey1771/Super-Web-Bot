@@ -4,23 +4,7 @@ import type {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
 import {useDispatch, useSelector} from "react-redux";
 import {Form} from "../../../store";
-import SiteChangerPage from "../site-changer-page/site-changer-page";
 import GameTypeDropdown from "../game-type-dropdown/game-type-dropdown";
-
-const gameTypes = {
-    0: "Action",
-    1: "Adventure",
-    2: "Role-Playing Games",
-    3: "Simulation",
-    4: "Strategy",
-    5: "Puzzle",
-    6: "Sports",
-    7: "Card and Board Games",
-    8: "Massively Multiplayer Online",
-    9: "Horror",
-    10: "Casual Games",
-    11: "Educational Games",
-};
 
 const CardAdderPage: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
