@@ -2,6 +2,10 @@ import React, {useState, useEffect} from 'react';
 import container from "../../../inversify.config";
 import type {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
+import {useDispatch, useSelector} from "react-redux";
+import {Form} from "../../../store";
+import SiteChangerPage from "../site-changer-page/site-changer-page";
+import GameTypeDropdown from "../game-type-dropdown/game-type-dropdown";
 
 const gameTypes = {
     0: "Action",
@@ -22,16 +26,10 @@ const CardAdderPage: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [mode, setMode] = useState<'add' | 'edit'>('edit');
-    const [form, setForm] = useState({
-        id: '',
-        name: '',
-        price: 0,
-        description: '',
-        title: '',
-        gameType: 0,
-        imagePath: '',
-        releaseDate: '',
-    });
+
+    const form = useSelector((state: { form: Form }) => state.form);//TODO
+    const dispatch = useDispatch();
+
     const [file, setFile] = useState<File | null>(null);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -58,33 +56,30 @@ const CardAdderPage: React.FC = () => {
 
     const handleSelect = (item: any) => {
         setSelectedItem(item);
-        setForm({
-            id: item.id || '',
-            name: item.name || '',
-            price: item.price || 0,
-            description: item.description || '',
-            title: item.title || '',
-            gameType: item.gameType || 0,
-            imagePath: item.imagePath || '',
-            releaseDate: item.releaseDate ? item.releaseDate.split('T')[0] : '',
+        dispatch({
+            type: "SET_GAME_TYPE_FORM", payload: {
+                id: item.id || '',
+                name: item.name || '',
+                price: item.price || 0,
+                description: item.description || '',
+                title: item.title || '',
+                gameType: item.gameType || 0,
+                imagePath: item.imagePath || '',
+                releaseDate: item.releaseDate ? item.releaseDate.split('T')[0] : '',
+            }
         });
         setMode('edit');
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const {name, value} = e.target;
-        setForm((prev) => ({
-            ...prev,
-            [name]: name === 'price' || name === 'gameType' ? (value === '' ? '' : Number(value)) : value,
-        }));
+        dispatch({
+            type: "SET_GAME_TYPE_FORM", payload: {
+                ...form,
+                [name]: name === "price" || name === "gameType" ? Number(value) : value
+            }
+        });
     };
-
-    const handleChangeSelect = (e: any) => {
-        const value = parseInt(e.target.value, 10);
-        if (!isNaN(value) && gameTypes.hasOwnProperty(value)) {
-            setForm({...form, gameType: value});
-        }
-    }
 
     const uploadImage = async () => {
         if (!file) return form.imagePath;
@@ -141,15 +136,17 @@ const CardAdderPage: React.FC = () => {
 
     const resetForm = () => {
         setSelectedItem(null);
-        setForm({
-            id: '',
-            name: '',
-            price: 0,
-            description: '',
-            title: '',
-            gameType: 0,
-            imagePath: '',
-            releaseDate: '',
+        dispatch({
+            type: "SET_GAME_TYPE_FORM", payload: {
+                id: '',
+                name: '',
+                price: 0,
+                description: '',
+                title: '',
+                gameType: 0,
+                imagePath: '',
+                releaseDate: '',
+            }
         });
         setFile(null);
         setMode('edit');
@@ -172,8 +169,7 @@ const CardAdderPage: React.FC = () => {
                 resetForm();
             } catch (error) {
                 console.error('Object deletion error:', error);
-            }
-            finally {
+            } finally {
                 await fetchItems(1, true);
             }
         }
@@ -182,7 +178,12 @@ const CardAdderPage: React.FC = () => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
-            setForm((prev) => ({ ...prev, imagePath: e?.target?.files?.[0]?.name ?? "" })); // Показываем имя нового файла
+            dispatch({
+                type: "SET_GAME_TYPE_FORM", payload: {
+                    ...form,
+                    imagePath: e?.target?.files?.[0]?.name ?? ""
+                }
+            });
         }
     };
 
@@ -263,21 +264,7 @@ const CardAdderPage: React.FC = () => {
                         onChange={handleChange}
                         className="w-full p-2 border rounded"
                     />
-                    <div className="w-full">
-                        {/* Выпадающий список */}
-                        <select
-                            name="gameType"
-                            value={form.gameType}
-                            onChange={handleChangeSelect}
-                            className="w-full p-2 border rounded"
-                        >
-                            {Object.entries(gameTypes).map(([key, label]) => (
-                                <option key={key} value={key}>
-                                    {label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <GameTypeDropdown></GameTypeDropdown>
                     <input
                         type="date"
                         name="releaseDate"
@@ -299,7 +286,12 @@ const CardAdderPage: React.FC = () => {
 
                     <button
                         type="button"
-                        onClick={() => setForm((prev) => ({...prev, imagePath: ''}))}
+                        onClick={() => dispatch({
+                            type: "SET_GAME_TYPE_FORM", payload: {
+                                ...form,
+                                imagePath: ''
+                            }
+                        })}
                         className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 mt-2"
                     >
                         Clear File

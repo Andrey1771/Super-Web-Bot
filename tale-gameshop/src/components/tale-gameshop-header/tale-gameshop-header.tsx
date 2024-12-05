@@ -101,9 +101,9 @@ export default function TaleGameshopHeader() {
                     {
                         !keycloak.authenticated ? (
                             <React.Fragment>
-                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button"
+                                <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button  cursor-pointer"
                                    onClick={login}>Login</a>
-                                <a className="px-4 py-2 bg-black text-white animated-button"
+                                <a className="px-4 py-2 bg-black text-white animated-button cursor-pointer"
                                    onClick={register}>Sign Up</a>
                             </React.Fragment>
                         ) : (
