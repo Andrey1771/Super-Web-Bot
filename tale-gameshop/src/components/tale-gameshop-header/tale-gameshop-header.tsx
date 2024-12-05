@@ -6,10 +6,12 @@ import IDENTIFIERS from "../../constants/identifiers";
 import LogOutButton from "../logout-button/logout-button";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
 import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
-import { useKeycloak } from "@react-keycloak/web";
+import {useKeycloak} from "@react-keycloak/web";
+import {faShoppingCart, faStar} from "@fortawesome/free-solid-svg-icons";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
 export default function TaleGameshopHeader() {
-    const { keycloak } = useKeycloak();
+    const {keycloak} = useKeycloak();
 
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
@@ -108,8 +110,11 @@ export default function TaleGameshopHeader() {
                             </React.Fragment>
                         ) : (
                             <React.Fragment>
-                            <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between">
                                     <div className="mr-2">{email}</div>
+                                    <a className="cursor-pointer">
+                                        <FontAwesomeIcon className="fas text-2xl mr-3 ml-2" icon={faShoppingCart} />
+                                    </a>
                                     {isAdmin && (
                                         <Link className="px-4 py-2 bg-red-500 text-white transition"
                                               to="/admin">Open Admin Panel</Link>
