@@ -7,7 +7,6 @@ export function CartPage() {
     return (
         <CartProvider>
             <div className="container mx-auto p-4">
-                <h1 className="text-3xl font-bold mb-4">React Shop</h1>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <ProductCard id={1} name="Product 1" price={29.99} />
                     <ProductCard id={2} name="Product 2" price={49.99} />
