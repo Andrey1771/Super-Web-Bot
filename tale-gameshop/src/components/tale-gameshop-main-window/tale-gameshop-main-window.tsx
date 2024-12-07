@@ -15,6 +15,7 @@ import PrivateRoute from "../utils/private-route/private-route";
 import BotChangerPage from "../admin-panel/bot-changer-page/bot-changer-page";
 import SiteChangerPage from "../admin-panel/site-changer-page/site-changer-page";
 import CardAdderPage from "../admin-panel/card-adder-page/card-adder-page";
+import {CartPage} from "../cart/cart-page/cart-page";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -32,6 +33,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/admin/siteChanger" element={<PrivateRoute><SiteChangerPage/></PrivateRoute>}/>
                     <Route path="/admin/cardAdder" element={<PrivateRoute><CardAdderPage/></PrivateRoute>}/>
                     <Route path="/callback" element={<CallbackPage/>}/>
+                    <Route path="/cart" element={<CartPage/>}/>
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>
             <ChatBot></ChatBot>

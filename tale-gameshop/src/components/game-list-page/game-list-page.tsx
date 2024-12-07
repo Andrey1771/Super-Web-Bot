@@ -6,6 +6,9 @@ import { Game } from "../../models/game";
 import type { IGameService } from "../../iterfaces/i-game-service";
 import type { ISettingsService } from "../../iterfaces/i-settings-service";
 import GameCard from '../game-card/game-card';
+import { CartProvider } from '../../context/cart-context';
+import ProductCard from '../cart/product-card/product-card';
+import Cart from '../cart/cart/cart';
 
 interface State {
     games: Game[];
@@ -60,7 +63,7 @@ class TaleGameshopGameList extends Component<{}, State> {
 
         return (
             <div className="w-screen bg-gray-100">
-                <main className="container mx-auto px-4 py-8 ">
+                {<main className="container mx-auto px-4 py-8 ">
                     <h1 className="text-3xl font-bold text-center mb-4">Game List</h1>
                     <p className="text-center text-gray-600 mb-8">
                         Browse our extensive collection of computer games, carefully curated to cater to every player's taste.
@@ -87,7 +90,7 @@ class TaleGameshopGameList extends Component<{}, State> {
                             Load More
                         </button>
                     )}
-                </main>
+                </main>}
             </div>
         );
     }

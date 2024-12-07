@@ -102,6 +102,7 @@ export default function TaleGameshopHeader() {
                 <div className="flex space-x-4">
                     {
                         !keycloak.authenticated ? (
+
                             <React.Fragment>
                                 <a className="px-4 py-2 border border-gray-700 text-gray-700 animated-button  cursor-pointer"
                                    onClick={login}>Login</a>
@@ -112,9 +113,10 @@ export default function TaleGameshopHeader() {
                             <React.Fragment>
                                 <div className="flex items-center justify-between">
                                     <div className="mr-2">{email}</div>
-                                    <a className="cursor-pointer">
+                                    <Link className="cursor-pointer"
+                                    to="/cart">
                                         <FontAwesomeIcon className="fas text-2xl mr-3 ml-2" icon={faShoppingCart} />
-                                    </a>
+                                    </Link>
                                     {isAdmin && (
                                         <Link className="px-4 py-2 bg-red-500 text-white transition"
                                               to="/admin">Open Admin Panel</Link>
