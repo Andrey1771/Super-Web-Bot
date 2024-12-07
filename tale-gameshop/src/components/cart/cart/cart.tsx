@@ -1,5 +1,6 @@
-import { useCart } from "../../../context/cart-context";
-import React from "react";
+import React from 'react';
+import { useCart } from '../../../context/cart-context';
+import {Link} from "react-router-dom";
 
 const Cart: React.FC = () => {
     const { state, dispatch } = useCart();
@@ -57,16 +58,24 @@ const Cart: React.FC = () => {
                             </button>
                         </div>
                     ))}
-                    <div className="mt-4 text-lg font-bold flex justify-between">
+                    <div className="mt-4 text-lg font-bold flex justify-between border-t pt-2">
                         <span>Total:</span>
                         <span>${totalPrice.toFixed(2)}</span>
                     </div>
-                    <button
-                        onClick={() => dispatch({ type: 'CLEAR_CART' })}
-                        className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700"
-                    >
-                        Clear Cart
-                    </button>
+                    <div className="mt-4 flex gap-4">
+                        <button
+                            onClick={() => dispatch({ type: 'CLEAR_CART' })}
+                            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700"
+                        >
+                            Clear Cart
+                        </button>
+                        <Link
+                            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-700"
+                            to="/checkout"
+                        >
+                            Proceed to Checkout
+                        </Link>
+                    </div>
                 </>
             )}
         </div>
