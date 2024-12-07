@@ -1,4 +1,3 @@
-// src/components/ProductCard.tsx
 import React from 'react';
 import { useCart } from '../../../context/cart-context';
 
@@ -6,20 +5,22 @@ interface ProductProps {
     id: number;
     name: string;
     price: number;
+    image: string;
 }
 
-const ProductCard: React.FC<ProductProps> = ({ id, name, price }) => {
+const ProductCard: React.FC<ProductProps> = ({ id, name, price, image }) => {
     const { dispatch } = useCart();
 
     const handleAddToCart = () => {
         dispatch({
             type: 'ADD_TO_CART',
-            payload: { id, name, price, quantity: 1 },
+            payload: { id, name, price, quantity: 1, image },
         });
     };
 
     return (
         <div className="border p-4 rounded shadow-md">
+            <img src={image} alt={name} className="w-full h-40 object-cover rounded mb-2" />
             <h2 className="text-lg font-bold">{name}</h2>
             <p className="text-gray-600">${price.toFixed(2)}</p>
             <button

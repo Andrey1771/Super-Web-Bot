@@ -1,9 +1,9 @@
-// src/reducers/cartReducer.ts
 export interface Product {
     id: number;
     name: string;
     price: number;
     quantity: number;
+    image: string;
 }
 
 export interface CartState {
@@ -13,8 +13,8 @@ export interface CartState {
 export type CartAction =
     | { type: 'ADD_TO_CART'; payload: Product }
     | { type: 'REMOVE_FROM_CART'; payload: number }
-    | { type: 'INCREASE_QUANTITY'; payload: number } // Новое действие
-    | { type: 'DECREASE_QUANTITY'; payload: number } // Новое действие
+    | { type: 'INCREASE_QUANTITY'; payload: number }
+    | { type: 'DECREASE_QUANTITY'; payload: number }
     | { type: 'CLEAR_CART' };
 
 export const initialState: CartState = {

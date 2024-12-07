@@ -1,5 +1,5 @@
-import React from 'react';
-import {useCart} from "../../../context/cart-context";
+import { useCart } from "../../../context/cart-context";
+import React from "react";
 
 const Cart: React.FC = () => {
     const { state, dispatch } = useCart();
@@ -22,8 +22,15 @@ const Cart: React.FC = () => {
             ) : (
                 <>
                     {state.items.map((item) => (
-                        <div key={item.id} className="flex justify-between items-center p-2 border-b">
-                            <span className="flex-1">{item.name}</span>
+                        <div key={item.id} className="flex items-center p-2 border-b gap-4">
+                            <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-16 h-16 object-cover rounded"
+                            />
+                            <div className="flex-1">
+                                <span className="font-bold">{item.name}</span>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => handleDecreaseQuantity(item.id)}
