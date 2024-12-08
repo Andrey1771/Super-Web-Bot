@@ -1,5 +1,5 @@
 export interface Product {
-    id: number;
+    id: string;
     name: string;
     price: number;
     quantity: number;
@@ -12,9 +12,10 @@ export interface CartState {
 
 export type CartAction =
     | { type: 'ADD_TO_CART'; payload: Product }
-    | { type: 'REMOVE_FROM_CART'; payload: number }
-    | { type: 'INCREASE_QUANTITY'; payload: number }
-    | { type: 'DECREASE_QUANTITY'; payload: number }
+    | { type: 'REMOVE_FROM_CART'; payload: string }
+    | { type: 'INCREASE_QUANTITY'; payload: string }
+    | { type: 'DECREASE_QUANTITY'; payload: string }
+    | { type: 'SET_CART'; payload: Product[] }
     | { type: 'CLEAR_CART' };
 
 export const initialState: CartState = {
@@ -65,6 +66,9 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
                     )
                     .filter((item) => item.quantity > 0), // Удаляем товары с количеством 0
             };
+
+        case 'SET_CART':
+            return { ...state, items: action.payload };
 
         case 'CLEAR_CART':
             return { ...state, items: [] };

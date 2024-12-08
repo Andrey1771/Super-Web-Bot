@@ -1,18 +1,18 @@
 import React from 'react';
-import { useCart } from '../../../context/cart-context';
+import {useCart} from '../../../context/cart-context';
 import {Link} from "react-router-dom";
 
 const Cart: React.FC = () => {
-    const { state, dispatch } = useCart();
+    const {state, dispatch} = useCart();
 
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
 
-    const handleIncreaseQuantity = (id: number) => {
-        dispatch({ type: 'INCREASE_QUANTITY', payload: id });
+    const handleIncreaseQuantity = (id: string) => {
+        dispatch({type: 'INCREASE_QUANTITY', payload: id});
     };
 
-    const handleDecreaseQuantity = (id: number) => {
-        dispatch({ type: 'DECREASE_QUANTITY', payload: id });
+    const handleDecreaseQuantity = (id: string) => {
+        dispatch({type: 'DECREASE_QUANTITY', payload: id});
     };
 
     return (
@@ -25,7 +25,7 @@ const Cart: React.FC = () => {
                     {state.items.map((item) => (
                         <div key={item.id} className="flex items-center p-2 border-b gap-4">
                             <img
-                                src={item.image}
+                                src={`https://localhost:7117/${item.image}`}
                                 alt={item.name}
                                 className="w-16 h-16 object-cover rounded"
                             />
@@ -51,7 +51,7 @@ const Cart: React.FC = () => {
                 ${(item.price * item.quantity).toFixed(2)}
               </span>
                             <button
-                                onClick={() => dispatch({ type: 'REMOVE_FROM_CART', payload: item.id })}
+                                onClick={() => dispatch({type: 'REMOVE_FROM_CART', payload: item.id})}
                                 className="ml-4 text-red-500 hover:underline"
                             >
                                 Remove
@@ -64,7 +64,7 @@ const Cart: React.FC = () => {
                     </div>
                     <div className="mt-4 flex gap-4">
                         <button
-                            onClick={() => dispatch({ type: 'CLEAR_CART' })}
+                            onClick={() => dispatch({type: 'CLEAR_CART'})}
                             className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700"
                         >
                             Clear Cart

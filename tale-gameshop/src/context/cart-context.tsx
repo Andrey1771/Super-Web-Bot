@@ -1,23 +1,77 @@
 // src/context/CartContext.tsx
-import React, { createContext, useContext, useReducer } from 'react';
-import {CartAction, initialState, CartState, cartReducer } from '../reducers/cart-reducer';
+import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import {CartAction, initialState, CartState, cartReducer, Product} from '../reducers/cart-reducer';
+import container from "../inversify.config";
+import type {IApiClient} from "../iterfaces/i-api-client";
+import IDENTIFIERS from "../constants/identifiers";
 
 const CartContext = createContext<{
     state: CartState;
     dispatch: React.Dispatch<CartAction>;
+    syncCartWithServer: (userId: string) => Promise<void>;
 }>({
     state: initialState,
     dispatch: () => null,
+    syncCartWithServer: async () => {},
 });
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [state, dispatch] = useReducer(cartReducer, initialState);
+    const [state, dispatch] = useReducer(cartReducer, initialState, (initial) => {
+        const storedCart = localStorage.getItem('cart');
+        return storedCart ? JSON.parse(storedCart) : initial;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('cart', JSON.stringify(state));
+    }, [state]);
+
+    // Функция объединения двух корзин
+    const mergeCarts = (localCart: Product[], serverCart: Product[]) => {
+        const mergedCart: Product[] = [...serverCart];
+
+        localCart.forEach((localItem) => {
+            const existingItem = mergedCart.find((item) => item.id === localItem.id);
+            if (existingItem) {
+                existingItem.quantity += localItem.quantity;
+            } else {
+                mergedCart.push(localItem);
+            }
+        });
+
+        return mergedCart;
+    };
+
+    // Функция синхронизации корзины с сервером
+    const syncCartWithServer = async (userId: string) => {
+        try {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+
+            // Получаем корзину с сервера
+            const response = await apiClient.api.get(`/api/cart/${userId}`);
+            const serverCart: Product[] = response.data;
+
+            // Сливаем локальную корзину и серверную
+            const mergedCart = mergeCarts(state.items, serverCart);
+
+            // Отправляем объединённую корзину на сервер
+            await apiClient.api.post(`/api/cart/${userId}`, { items: mergedCart });
+
+            // Устанавливаем итоговую корзину в состояние
+            dispatch({ type: 'SET_CART', payload: mergedCart });
+
+            // Очищаем локальную корзину
+            localStorage.removeItem('cart');
+        } catch (error) {
+            console.error('Failed to sync cart with server:', error);
+        }
+    };
 
     return (
-        <CartContext.Provider value={{ state, dispatch }}>
+        <CartContext.Provider value={{ state, dispatch, syncCartWithServer }}>
             {children}
         </CartContext.Provider>
     );
 };
+
 
 export const useCart = () => useContext(CartContext);
