@@ -1,0 +1,39 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
+
+namespace SuperBot.WebApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class CartController : ControllerBase
+    {
+        private readonly ICartRepository _cartRepository;
+
+        public CartController(ICartRepository cartRepository)
+        {
+            _cartRepository = cartRepository;
+        }
+
+        [HttpGet("{userId}")]
+        public async Task<IActionResult> GetCart(string userId) 
+        {
+            var cart = await _cartRepository.GetCartAsync(userId);
+            return Ok(cart);
+        }
+
+        [HttpPost("{userId}")]
+        public async Task<IActionResult> UpdateCart(string userId, [FromBody] List<CartItem> items)
+        {
+            await _cartRepository.UpdateCartAsync(userId, items);
+            return Ok();
+        }
+
+        [HttpDelete("{userId}")]
+        public async Task<IActionResult> ClearCart(string userId)
+        {
+            await _cartRepository.ClearCartAsync(userId);
+            return NoContent();
+        }
+    }
+}

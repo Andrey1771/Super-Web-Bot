@@ -27,6 +27,7 @@ using SuperBot.Core.Entities;
 using AutoMapper;
 using SuperBot.Common.Auth;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -115,7 +116,7 @@ builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
-
+builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 
 builder.Services.AddTransient<IPayService, YooKassaService>();
 
