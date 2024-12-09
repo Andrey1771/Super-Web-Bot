@@ -4,6 +4,7 @@ import {CartAction, initialState, CartState, cartReducer, Product} from '../redu
 import container from "../inversify.config";
 import type {IApiClient} from "../iterfaces/i-api-client";
 import IDENTIFIERS from "../constants/identifiers";
+import {IKeycloakService} from "../iterfaces/i-keycloak-service";
 
 const CartContext = createContext<{
     state: CartState;
@@ -23,6 +24,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         localStorage.setItem('cart', JSON.stringify(state));
+        const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
+        keycloakService.stateChangedEmitter.on('onAuthSuccess', async () => {
+            // @ts-ignore Keycloak содержит
+            await syncCartWithServer(keycloakService.keycloak.tokenParsed.email);
+        })
     }, [state]);
 
     // Функция объединения двух корзин
@@ -54,7 +60,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const mergedCart = mergeCarts(state.items, serverCart);
 
             // Отправляем объединённую корзину на сервер
-            await apiClient.api.post(`/api/cart/${userId}`, { items: mergedCart });
+            await apiClient.api.post(`/api/cart/${userId}`, mergedCart.map(product => ({
+                userEmail: userId,
+                gameId: product.id,
+                userId: userId,
+                name: product.name,
+                price: product.price,
+                quantity: product.quantity,
+                image: "TODO Лишнее"
+            })));
 
             // Устанавливаем итоговую корзину в состояние
             dispatch({ type: 'SET_CART', payload: mergedCart });

@@ -15,8 +15,8 @@ function CallbackPage() {
             const s = keycloakService.keycloak;
             //await syncCartWithServer(userId);
             try {
-                const profile = await keycloakService.keycloak.loadUserProfile();
-                console.log('Retrieved user profile:', profile);
+                //const profile = await keycloakService.keycloak.loadUserProfile();
+                //console.log('Retrieved user profile:', profile);
             } catch (error) {
                 console.error('Failed to load user profile:', error);
             }

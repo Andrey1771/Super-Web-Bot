@@ -9,6 +9,8 @@ namespace SuperBot.Infrastructure.Data
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } // Уникальный идентификатор (для MongoDB)
 
+        public string UserEmail { get; set; } // Уникальная почта, принадлежащая пользователю
+
         [BsonRepresentation(BsonType.ObjectId)]
         public string GameId { get; set; } // GameId, которому принадлежит товар
 

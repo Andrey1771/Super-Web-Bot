@@ -2,7 +2,7 @@
 {
     public class CartItem
     {
-        public string Id { get; set; } // Уникальный идентификатор (для MongoDB)
+        public string UserEmail { get; set; } // Уникальная почта, принадлежащая пользователю
 
         public string GameId { get; set; } // GameId, которому принадлежит товар
 

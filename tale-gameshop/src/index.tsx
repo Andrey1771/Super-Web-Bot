@@ -20,7 +20,7 @@ const root = ReactDOM.createRoot(
 const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
 
 root.render(
-    <ReactKeycloakProvider authClient={keycloakService.keycloak} initOptions={keycloakService.initOptions}>
+    <ReactKeycloakProvider authClient={keycloakService.keycloak} initOptions={keycloakService.initOptions} onEvent={keycloakService.eventHandlers.bind(keycloakService)}>
         <ReduxProvider store={store}>
             <InversifyProvider container={container}>
                 <React.StrictMode>
