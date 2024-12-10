@@ -27,48 +27,22 @@ export const initialState: CartState = {
     items: [],
 };
 
-// Функция объединения двух корзин
-const mergeCarts = (localCart: Product[], serverCart: { userId: string, cartGames: Product[]}) => {
-    const mergedCart: Product[] = [...serverCart.cartGames];
-
-    localCart.forEach((localItem) => {
-        const existingItem = mergedCart.find((item) => item.gameId === localItem.gameId);
-        if (existingItem) {
-            existingItem.quantity = localItem.quantity;
-        } else {
-            mergedCart.push(localItem);
-        }
-    });
-
-    return mergedCart;
-};
-
 // Функция синхронизации корзины с сервером
 const syncCartWithServer = async (userId: string, state: CartState) => {
     try {
         const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
 
-        // Получаем корзину с сервера
-        const response = await apiClient.api.get(`/api/cart/${userId}`);
-        const serverCart: { userId: string, cartGames: Product[]} = response.data;
-
-        // Сливаем локальную корзину и серверную
-        const mergedCart = serverCart?.cartGames != null ? mergeCarts(state.items, serverCart) : state.items;
-
         // Отправляем объединённую корзину на сервер
         await apiClient.api.post(`/api/cart/${userId}`, {
             userId: userId,
-            cartGames: [...mergedCart.map(product => ({
+            cartGames: state.items.map(product => ({
                 gameId: product.gameId,
                 name: product.name,
                 price: product.price,
                 quantity: product.quantity,
                 image: product.image
-            }))]
+            }))
         });
-
-        // Очищаем локальную корзину
-        localStorage.removeItem('cart');
     } catch (error) {
         console.error('Failed to sync cart with server:', error);
     }
