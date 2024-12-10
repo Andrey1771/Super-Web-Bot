@@ -34,7 +34,7 @@ const mergeCarts = (localCart: Product[], serverCart: { userId: string, cartGame
     localCart.forEach((localItem) => {
         const existingItem = mergedCart.find((item) => item.gameId === localItem.gameId);
         if (existingItem) {
-            existingItem.quantity += localItem.quantity;
+            existingItem.quantity = localItem.quantity;
         } else {
             mergedCart.push(localItem);
         }

@@ -4,7 +4,7 @@ using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Models
 {
-    class CartGameProfile : Profile
+    public class CartGameProfile : Profile
     {
         public CartGameProfile()
         {

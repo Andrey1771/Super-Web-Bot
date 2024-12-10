@@ -32,9 +32,12 @@ namespace SuperBot.Infrastructure.Repositories
                 .Find(i => i.UserId == userId)
                 .FirstOrDefaultAsync());
 
+            var cartDb = _mapper.Map<CartDb>(cart);
+
             if (existingItem != null)
             {
-                await _cartCollection.ReplaceOneAsync(i => i.Id == existingItem.Id, existingItem);
+                cartDb.Id = existingItem.Id;
+                await _cartCollection.ReplaceOneAsync(i => i.Id == existingItem.Id, cartDb);
             }
             else
             {

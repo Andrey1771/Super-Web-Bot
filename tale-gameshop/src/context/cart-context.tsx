@@ -26,6 +26,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
     useEffect(() => {
         localStorage.setItem('cart', JSON.stringify(state));
         const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
+        keycloakService.stateChangedEmitter.off('onAuthSuccess');
         keycloakService.stateChangedEmitter.on('onAuthSuccess', async () => {
             // @ts-ignore Keycloak содержит
             await syncCartWithServer(keycloakService.keycloak.tokenParsed.email);
@@ -39,7 +40,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
         localCart.forEach((localItem) => {
             const existingItem = mergedCart.find((item) => item.gameId === localItem.gameId);
             if (existingItem) {
-                existingItem.quantity += localItem.quantity;
+                existingItem.quantity = localItem.quantity;
             } else {
                 mergedCart.push(localItem);
             }

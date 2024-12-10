@@ -124,6 +124,7 @@ builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
 
 //builder.Configu.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(GameProfile));
+builder.Services.AddAutoMapper(typeof(CartGameProfile));
 //builder.Services.AddAutoMapper(typeof(OrderProfile));
 //builder.Services.AddAutoMapper(typeof(SettingsProfile));
 //builder.Services.AddAutoMapper(typeof(SteamOrderProfile));
