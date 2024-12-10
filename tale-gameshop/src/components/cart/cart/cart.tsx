@@ -23,7 +23,7 @@ const Cart: React.FC = () => {
             ) : (
                 <>
                     {state.items.map((item) => (
-                        <div key={item.id} className="flex items-center p-2 border-b gap-4">
+                        <div key={item.gameId} className="flex items-center p-2 border-b gap-4">
                             <img
                                 src={`https://localhost:7117/${item.image}`}
                                 alt={item.name}
@@ -34,14 +34,14 @@ const Cart: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => handleDecreaseQuantity(item.id)}
+                                    onClick={() => handleDecreaseQuantity(item.gameId)}
                                     className="px-2 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
                                 >
                                     -
                                 </button>
                                 <span>{item.quantity}</span>
                                 <button
-                                    onClick={() => handleIncreaseQuantity(item.id)}
+                                    onClick={() => handleIncreaseQuantity(item.gameId)}
                                     className="px-2 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
                                 >
                                     +
@@ -51,7 +51,7 @@ const Cart: React.FC = () => {
                 ${(item.price * item.quantity).toFixed(2)}
               </span>
                             <button
-                                onClick={() => dispatch({type: 'REMOVE_FROM_CART', payload: item.id})}
+                                onClick={() => dispatch({type: 'REMOVE_FROM_CART', payload: item.gameId})}
                                 className="ml-4 text-red-500 hover:underline"
                             >
                                 Remove

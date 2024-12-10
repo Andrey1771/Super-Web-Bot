@@ -13,7 +13,7 @@ const GameCard: React.FC<GameCardProps> = ({game}) => {
     const handleAddToCart = () => {
         dispatch({
             type: 'ADD_TO_CART',
-            payload: {id: game.id ?? "", name: game.name, price: game.price, quantity: 1, image: game.imagePath} as Product,
+            payload: {gameId: game.id ?? "", name: game.name, price: game.price, quantity: 1, image: game.imagePath} as Product,
         });
     };
 

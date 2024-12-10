@@ -96,7 +96,7 @@ const CheckoutPage: React.FC = () => {
             <div className="mb-6">
                 {state.items.map((item) => (
                     <div
-                        key={item.id}
+                        key={item.gameId}
                         className="flex justify-between items-center p-2 border-b"
                     >
                         <div className="flex items-center gap-4">

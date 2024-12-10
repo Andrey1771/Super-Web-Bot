@@ -18,7 +18,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetCart(string userId) 
         {
-            var cart = await _cartRepository.GetCartAsync(userId);
+            var cart = (await _cartRepository.GetCartAsync(userId)).FirstOrDefault();
             return Ok(cart);
         }
 
