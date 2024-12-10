@@ -4,11 +4,11 @@ using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Models
 {
-    public class CartProfile : Profile
+    class CartGameProfile : Profile
     {
-        public CartProfile()
+        public CartGameProfile()
         {
-            CreateMap<Cart, CartDb>().ReverseMap();
+            CreateMap<CartGame, CartGameDb>().ReverseMap();
         }
     }
 }

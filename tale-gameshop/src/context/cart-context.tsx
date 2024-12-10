@@ -1,5 +1,5 @@
 // src/context/CartContext.tsx
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import React, {createContext, useContext, useEffect, useReducer} from 'react';
 import {CartAction, initialState, CartState, cartReducer, Product} from '../reducers/cart-reducer';
 import container from "../inversify.config";
 import type {IApiClient} from "../iterfaces/i-api-client";
@@ -13,10 +13,11 @@ const CartContext = createContext<{
 }>({
     state: initialState,
     dispatch: () => null,
-    syncCartWithServer: async () => {},
+    syncCartWithServer: async () => {
+    },
 });
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
     const [state, dispatch] = useReducer(cartReducer, initialState, (initial) => {
         const storedCart = localStorage.getItem('cart');
         return storedCart ? JSON.parse(storedCart) : initial;
@@ -60,18 +61,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const mergedCart = mergeCarts(state.items, serverCart);
 
             // Отправляем объединённую корзину на сервер
-            await apiClient.api.post(`/api/cart/${userId}`, mergedCart.map(product => ({
-                userEmail: userId,
-                gameId: product.id,
+            await apiClient.api.post(`/api/cart/${userId}`, {
                 userId: userId,
-                name: product.name,
-                price: product.price,
-                quantity: product.quantity,
-                image: "TODO Лишнее"
-            })));
+                cartGames: [...mergedCart.map(product => ({
+                    gameId: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: product.quantity,
+                    image: "TODO Лишнее"
+                }))]
+            });
 
             // Устанавливаем итоговую корзину в состояние
-            dispatch({ type: 'SET_CART', payload: mergedCart });
+            dispatch({type: 'SET_CART', payload: mergedCart});
 
             // Очищаем локальную корзину
             localStorage.removeItem('cart');
@@ -81,7 +83,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <CartContext.Provider value={{ state, dispatch, syncCartWithServer }}>
+        <CartContext.Provider value={{state, dispatch, syncCartWithServer}}>
             {children}
         </CartContext.Provider>
     );

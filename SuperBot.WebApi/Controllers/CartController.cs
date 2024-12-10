@@ -23,9 +23,9 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpPost("{userId}")]
-        public async Task<IActionResult> UpdateCart(string userId, [FromBody] List<CartItem> items)
+        public async Task<IActionResult> UpdateCart(string userId, [FromBody] Cart cart)
         {
-            await _cartRepository.UpdateCartAsync(userId, items);
+            await _cartRepository.UpdateCartAsync(userId, cart);
             return Ok();
         }
 
