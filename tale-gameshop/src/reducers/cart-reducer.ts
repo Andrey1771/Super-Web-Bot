@@ -107,6 +107,9 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
     const newState = execute();
     const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
     // @ts-ignore Keycloak возвращает email TODO
-    syncCartWithServer(keycloakService.keycloak.tokenParsed.email, newState);
+    if (keycloakService.keycloak.tokenParsed?.email) {
+        // @ts-ignore Keycloak возвращает email TODO
+        syncCartWithServer(keycloakService.keycloak.tokenParsed.email, newState);
+    }
     return newState
 };
