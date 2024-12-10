@@ -25,7 +25,7 @@ export class KeycloakService implements IKeycloakService {
     private _initOptions = {
         onLoad: 'check-sso',
         redirectUri: "http://localhost:3000/callback",
-        silentCheckSsoRedirectUri: "http://localhost:3000/callback"
+        silentCheckSsoRedirectUri: "http://localhost:3000/silent-check-sso.html"
     }
 
     get initOptions(): AuthClientInitOptions {
