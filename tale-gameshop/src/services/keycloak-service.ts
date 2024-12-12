@@ -6,7 +6,6 @@ import EventEmitter from 'eventemitter3';
 
 @injectable()
 export class KeycloakService implements IKeycloakService {
-
     public _keycloak: KeycloakInstance = new (Keycloak as any)({
         url: "http://localhost:8088/",
         realm: "TaleShop",

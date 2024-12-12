@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../../context/cart-context';
+import StripeContainer from "../../payments/stripe-container/stripe-container";
 
 const paymentMethods = [
     {
@@ -165,6 +166,7 @@ const CheckoutPage: React.FC = () => {
             >
                 Place Order
             </button>
+            <StripeContainer></StripeContainer>
         </div>
     );
 };

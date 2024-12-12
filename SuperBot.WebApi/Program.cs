@@ -28,6 +28,7 @@ using AutoMapper;
 using SuperBot.Common.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +84,8 @@ builder.Services.AddCors(options =>
                    .AllowCredentials(); // Если необходимы куки/учетные данные
         });
 });
+
+builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
 
 builder.Services.AddControllers();
 
@@ -182,6 +185,8 @@ builder.Services.AddLogging(logging =>
 });
 
 var app = builder.Build();
+
+StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -15,9 +15,9 @@
       <list>
         <option value="package.json" />
         <option value="TypeScript File" />
-        <option value="TypeScript JSX File" />
         <option value="CSS File" />
         <option value="HTML File" />
+        <option value="TypeScript JSX File" />
       </list>
     </option>
   </component>
@@ -90,7 +90,7 @@
       <workItem from="1733360963135" duration="5442000" />
       <workItem from="1733417634851" duration="3903000" />
       <workItem from="1733433993099" duration="4918000" />
-      <workItem from="1733596212140" duration="42464000" />
+      <workItem from="1733596212140" duration="52199000" />
     </task>
     <servers />
   </component>

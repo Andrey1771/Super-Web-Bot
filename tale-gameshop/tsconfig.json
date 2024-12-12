@@ -22,10 +22,9 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "noEmit": true,
+    "outDir": "./dist",
     "jsx": "react-jsx"
   },
-  "include": [
-    "src"
-  ],
+  "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }
