@@ -12,6 +12,7 @@ import {ReactKeycloakProvider} from "@react-keycloak/web";
 import {IKeycloakService} from "./iterfaces/i-keycloak-service";
 import IDENTIFIERS from "./constants/identifiers";
 import {CartProvider} from './context/cart-context';
+import StripeProvider from './context/stripe-provider';
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
@@ -20,7 +21,8 @@ const root = ReactDOM.createRoot(
 const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
 
 root.render(
-    <ReactKeycloakProvider authClient={keycloakService.keycloak} initOptions={keycloakService.initOptions} onEvent={keycloakService.eventHandlers.bind(keycloakService)}>
+    <ReactKeycloakProvider authClient={keycloakService.keycloak} initOptions={keycloakService.initOptions}
+                           onEvent={keycloakService.eventHandlers.bind(keycloakService)}>
         <ReduxProvider store={store}>
             <InversifyProvider container={container}>
                 <React.StrictMode>

@@ -1,7 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useCart } from '../../../context/cart-context';
+import React, {useState, useRef, useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {useCart} from '../../../context/cart-context';
 import StripeContainer from "../../payments/stripe-container/stripe-container";
+import CheckoutForm from '../../payments/stripe-container/checkout-form';
+import StripeProvider from "../../../context/stripe-provider";
+import axios from "axios";
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 
 const paymentMethods = [
     {
@@ -32,7 +37,7 @@ const paymentMethods = [
 ];
 
 const CheckoutPage: React.FC = () => {
-    const { state } = useCart();
+    const {state} = useCart();
     const navigate = useNavigate();
     const [paymentMethod, setPaymentMethod] = useState<string>(paymentMethods[0].id);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -41,9 +46,23 @@ const CheckoutPage: React.FC = () => {
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
     const carouselRef = useRef<HTMLDivElement>(null);
 
+
+    const [clientSecret, setClientSecret] = useState(null);
+    useEffect(() => {
+        (async () => {
+            // Запрос на сервер для получения clientSecret TODO
+            const {data} = await axios.post("https://localhost:7117/api/payments/create-payment-intent", {
+                amount: 1000, // сумма в центах
+            });
+            console.log(data);
+            setClientSecret(data.clientSecret);
+        })();
+    }, []);
+
+
     const updateScrollButtons = () => {
         if (carouselRef.current) {
-            const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+            const {scrollLeft, scrollWidth, clientWidth} = carouselRef.current;
             setCanScrollLeft(scrollLeft > 0);
             setCanScrollRight(scrollLeft + clientWidth < scrollWidth);
         }
@@ -89,6 +108,15 @@ const CheckoutPage: React.FC = () => {
         navigate('/');
     };
 
+    const stripePromise = loadStripe('pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW');
+
+    const options = {
+        // passing the client secret obtained in step 3
+        clientSecret: clientSecret,
+        // Fully customizable with appearance API.
+        appearance: {/*...*/},
+    };
+
     return (
         <div className="p-4 max-w-3xl mx-auto">
             <h1 className="text-3xl font-bold mb-6">Checkout</h1>
@@ -131,7 +159,7 @@ const CheckoutPage: React.FC = () => {
                 <div
                     ref={carouselRef}
                     className="flex gap-4 overflow-x-hidden scrollbar-hide px-10"
-                    style={{ scrollBehavior: 'smooth' }}
+                    style={{scrollBehavior: 'smooth'}}
                 >
                     {paymentMethods.map((method) => (
                         <div
@@ -166,7 +194,12 @@ const CheckoutPage: React.FC = () => {
             >
                 Place Order
             </button>
-            <StripeContainer></StripeContainer>
+
+            {clientSecret &&
+                <Elements stripe={stripePromise} options={options} mode={'payment'}>
+                    <CheckoutForm clientSecret={clientSecret}/>
+                </Elements>
+            }
         </div>
     );
 };
