@@ -1,12 +1,10 @@
 import React, {useState, useRef, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useCart} from '../../../context/cart-context';
-import StripeContainer from "../../payments/stripe-container/stripe-container";
 import CheckoutForm from '../../payments/stripe-container/checkout-form';
-import StripeProvider from "../../../context/stripe-provider";
 import axios from "axios";
-import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
+import {Elements} from '@stripe/react-stripe-js';
+import {loadStripe} from '@stripe/stripe-js';
 
 const paymentMethods = [
     {
@@ -45,7 +43,6 @@ const CheckoutPage: React.FC = () => {
 
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
     const carouselRef = useRef<HTMLDivElement>(null);
-
 
     const [clientSecret, setClientSecret] = useState(null);
     useEffect(() => {
@@ -115,6 +112,8 @@ const CheckoutPage: React.FC = () => {
         clientSecret: clientSecret,
         // Fully customizable with appearance API.
         appearance: {/*...*/},
+        requestPayerName: true,
+        requestPayerEmail: true,
     };
 
     return (
@@ -122,32 +121,34 @@ const CheckoutPage: React.FC = () => {
             <h1 className="text-3xl font-bold mb-6">Checkout</h1>
 
             <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-            <div className="mb-6">
-                {state.items.map((item) => (
-                    <div
-                        key={item.gameId}
-                        className="flex justify-between items-center p-2 border-b"
-                    >
-                        <div className="flex items-center gap-4">
-                            <img
-                                src={`https://localhost:7117/${item.image}`}
-                                alt={item.name}
-                                className="w-16 h-16 object-cover rounded"
-                            />
-                            <span>{item.name}</span>
+            <div className="flex flex-row items-center">
+                <div className="mb-6">
+                    {state.items.map((item) => (
+                        <div
+                            key={item.gameId}
+                            className="flex justify-between items-center p-2 border-b"
+                        >
+                            <div className="flex items-center gap-4">
+                                <img
+                                    src={`https://localhost:7117/${item.image}`}
+                                    alt={item.name}
+                                    className="w-16 h-16 object-cover rounded"
+                                />
+                                <span>{item.name}</span>
+                            </div>
+                            <span>{item.quantity} x ${item.price.toFixed(2)}</span>
+                            <span>${(item.price * item.quantity).toFixed(2)}</span>
                         </div>
-                        <span>{item.quantity} x ${item.price.toFixed(2)}</span>
-                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    ))}
+                    <div className="text-lg font-bold flex justify-between mt-4">
+                        <span>Total:</span>
+                        <span>${totalPrice.toFixed(2)}</span>
                     </div>
-                ))}
-                <div className="text-lg font-bold flex justify-between mt-4">
-                    <span>Total:</span>
-                    <span>${totalPrice.toFixed(2)}</span>
                 </div>
-            </div>
 
-            <h2 className="text-xl font-bold mb-4">Payment Method</h2>
-            <div className="relative flex items-center mb-6">
+                <div>
+                    <h2 className="text-xl font-bold mb-4">Payment Method</h2>
+                    {/*<div className="relative flex items-center mb-6">
                 {canScrollLeft && (
                     <button
                         onClick={() => scrollCarousel('left')}
@@ -186,20 +187,15 @@ const CheckoutPage: React.FC = () => {
                         ▶
                     </button>
                 )}
+            </div>*/}
+
+                    {clientSecret &&
+                        <Elements stripe={stripePromise} options={options} mode={'payment'}>
+                            <CheckoutForm clientSecret={clientSecret}/>
+                        </Elements>
+                    }
+                </div>
             </div>
-
-            <button
-                onClick={handlePlaceOrder}
-                className="w-full px-4 py-2 bg-green-500 text-white font-bold rounded hover:bg-green-700"
-            >
-                Place Order
-            </button>
-
-            {clientSecret &&
-                <Elements stripe={stripePromise} options={options} mode={'payment'}>
-                    <CheckoutForm clientSecret={clientSecret}/>
-                </Elements>
-            }
         </div>
     );
 };

@@ -20,7 +20,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigin",
         builder =>
         {
-            builder.WithOrigins("http://localhost:3000") // Замените на URL вашего клиента
+            builder.WithOrigins("https://localhost:3000") // Замените на URL вашего клиента
                    .AllowAnyHeader()
                    .AllowAnyMethod()
                    .AllowCredentials(); // Если необходимы куки/учетные данные
@@ -42,7 +42,7 @@ builder.Services.AddIdentityServer(options =>
 {
     options.UserInteraction.LoginUrl = "/Account/Login"; // Указываем путь к странице логина
     options.UserInteraction.LogoutUrl = "/Account/Logout"; // Указываем путь к странице выхода
-    options.UserInteraction.ErrorUrl = "http://localhost:3000/error"; // URL страницы ошибок в React
+    options.UserInteraction.ErrorUrl = "https://localhost:3000/error"; // URL страницы ошибок в React
     options.UserInteraction.LoginReturnUrlParameter = "returnUrl"; // Имя параметра возвратного URL
 })
 .AddDeveloperSigningCredential() // для разработки

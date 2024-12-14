@@ -78,7 +78,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigin",
         builder =>
         {
-            builder.WithOrigins("http://localhost:3000") // Замените на URL вашего клиента
+            builder.WithOrigins("https://localhost:3000") // TODO!!!!!!
                    .AllowAnyHeader()
                    .AllowAnyMethod()
                    .AllowCredentials(); // Если необходимы куки/учетные данные
