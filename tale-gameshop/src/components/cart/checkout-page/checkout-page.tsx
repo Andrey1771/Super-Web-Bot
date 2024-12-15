@@ -41,23 +41,37 @@ const CheckoutPage: React.FC = () => {
                 <h1 className="text-3xl font-bold mb-6">Checkout</h1>
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>
                 <div className="checkout-page-cart-elements mb-6">
-                    {state.items.map((item) => (
-                        <div
-                            key={item.gameId}
-                            className="flex justify-between items-center p-2 border-b"
-                        >
-                            <div className="flex items-center gap-4">
-                                <img
-                                    src={`https://localhost:7117/${item.image}`}
-                                    alt={item.name}
-                                    className="w-16 h-16 object-cover rounded"
-                                />
-                                <span>{item.name}</span>
+                    <div className="w-full">
+                        {state.items.map((item) => (
+                            <div
+                                key={item.gameId}
+                                className="grid grid-cols-3 items-center p-2 border-b gap-4 text-center"
+                            >
+                                {/* Колонка с изображением и названием */}
+                                <div className="flex items-center gap-4">
+                                    <img
+                                        src={`https://localhost:7117/${item.image}`}
+                                        alt={item.name}
+                                        className="w-16 h-16 object-cover rounded"
+                                    />
+                                    <span className="truncate">{item.name}</span>
+                                </div>
+
+                                {/* Колонка с количеством и ценой */}
+                                <div>
+                                    <span>
+                                        {item.quantity} x ${item.price.toFixed(2)}
+                                    </span>
+                                </div>
+
+                                {/* Колонка с общей ценой */}
+                                <div className="text-right">
+                                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
                             </div>
-                            <span>{item.quantity} x ${item.price.toFixed(2)}</span>
-                            <span>${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
+
                     <div className="text-lg font-bold flex justify-between mt-4">
                         <span>Total:</span>
                         <span>${totalPrice.toFixed(2)}</span>
