@@ -13,8 +13,11 @@ namespace SuperBot.WebApi.Controllers
             var options = new PaymentIntentCreateOptions
             {
                 Amount = request.Amount,
-                Currency = "usd",
-                PaymentMethodTypes = new List<string> { "card" },
+                Currency = "USD",
+                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                {
+                    Enabled = true,
+                },
             };
 
             var service = new PaymentIntentService();
