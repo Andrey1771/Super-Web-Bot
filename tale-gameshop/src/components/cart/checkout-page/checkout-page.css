@@ -1,0 +1,23 @@
+.checkout-page-cart-elements {
+    border-color: #e5e7eb;
+    border-radius: 5px;
+    border-width: 1px;
+    padding: 16px;
+}
+
+.checkout-page-left-elements-container {
+    flex-grow: 3;
+    margin-right: 24px;
+}
+
+.checkout-page-right-elements-container {
+    flex-grow: 1;
+}
+
+.margin-bottom-60px {
+    margin-bottom: 60px;
+}
+
+.checkout-page-container {
+    max-width: 90%;
+}

@@ -110,7 +110,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             <PaymentElement options={paymentElementOptions}/>
             <button
                 disabled={!stripe}
-                className="w-full px-4 py-2 bg-green-500 text-white font-bold rounded hover:bg-green-700"
+                className="w-full px-4 py-2 bg-green-500 text-white font-bold rounded hover:bg-green-700 mt-3"
             >
                 Place Order
             </button>

@@ -1,45 +1,13 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {useNavigate} from 'react-router-dom';
 import {useCart} from '../../../context/cart-context';
 import CheckoutForm from '../../payments/stripe-container/checkout-form';
 import axios from "axios";
 import {Elements} from '@stripe/react-stripe-js';
 import {loadStripe} from '@stripe/stripe-js';
-
-const paymentMethods = [
-    {
-        id: 'credit_card',
-        name: 'Credit Card',
-        image: 'https://via.placeholder.com/100?text=Credit+Card',
-    },
-    {
-        id: 'paypal',
-        name: 'PayPal',
-        image: 'https://via.placeholder.com/100?text=PayPal',
-    },
-    {
-        id: 'cash_on_delivery',
-        name: 'Cash on Delivery',
-        image: 'https://via.placeholder.com/100?text=Cash',
-    },
-    {
-        id: 'apple_pay',
-        name: 'Apple Pay',
-        image: 'https://via.placeholder.com/100?text=Apple+Pay',
-    },
-    {
-        id: 'google_pay',
-        name: 'Google Pay',
-        image: 'https://via.placeholder.com/100?text=Google+Pay',
-    },
-];
+import './checkout-page.css';
 
 const CheckoutPage: React.FC = () => {
     const {state} = useCart();
-    const navigate = useNavigate();
-    const [paymentMethod, setPaymentMethod] = useState<string>(paymentMethods[0].id);
-    const [canScrollLeft, setCanScrollLeft] = useState(false);
-    const [canScrollRight, setCanScrollRight] = useState(true);
 
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
     const carouselRef = useRef<HTMLDivElement>(null);
@@ -49,61 +17,12 @@ const CheckoutPage: React.FC = () => {
         (async () => {
             // Запрос на сервер для получения clientSecret TODO
             const {data} = await axios.post("https://localhost:7117/api/payments/create-payment-intent", {
-                amount: 1000, // сумма в центах
+                amount: totalPrice, // сумма в центах
             });
             console.log(data);
             setClientSecret(data.clientSecret);
         })();
     }, []);
-
-
-    const updateScrollButtons = () => {
-        if (carouselRef.current) {
-            const {scrollLeft, scrollWidth, clientWidth} = carouselRef.current;
-            setCanScrollLeft(scrollLeft > 0);
-            setCanScrollRight(scrollLeft + clientWidth < scrollWidth);
-        }
-    };
-
-    const scrollCarousel = (direction: 'left' | 'right') => {
-        if (carouselRef.current) {
-            const scrollAmount = 150; // Adjust scroll amount as needed
-            carouselRef.current.scrollBy({
-                left: direction === 'right' ? scrollAmount : -scrollAmount,
-                behavior: 'smooth',
-            });
-        }
-    };
-
-    useEffect(() => {
-        updateScrollButtons();
-        const handleScroll = () => updateScrollButtons();
-        const carousel = carouselRef.current;
-
-        if (carousel) {
-            carousel.addEventListener('scroll', handleScroll);
-        }
-
-        const resizeObserver = new ResizeObserver(() => {
-            updateScrollButtons();
-        });
-
-        if (carousel) {
-            resizeObserver.observe(carousel);
-        }
-
-        return () => {
-            if (carousel) {
-                carousel.removeEventListener('scroll', handleScroll);
-                resizeObserver.disconnect();
-            }
-        };
-    }, []);
-
-    const handlePlaceOrder = () => {
-        alert(`Order placed successfully with ${paymentMethod} payment method!`);
-        navigate('/');
-    };
 
     const stripePromise = loadStripe('pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW');
 
@@ -117,12 +36,11 @@ const CheckoutPage: React.FC = () => {
     };
 
     return (
-        <div className="p-4 max-w-3xl mx-auto">
-            <h1 className="text-3xl font-bold mb-6">Checkout</h1>
-
-            <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-            <div className="flex flex-row items-center">
-                <div className="mb-6">
+        <div className="checkout-page-container p-4 mx-auto flex justify-center w-full items-stretch">
+            <div className="checkout-page-left-elements-container h-full flex justify-start flex-col">
+                <h1 className="text-3xl font-bold mb-6">Checkout</h1>
+                <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+                <div className="checkout-page-cart-elements mb-6">
                     {state.items.map((item) => (
                         <div
                             key={item.gameId}
@@ -145,56 +63,15 @@ const CheckoutPage: React.FC = () => {
                         <span>${totalPrice.toFixed(2)}</span>
                     </div>
                 </div>
-
-                <div>
-                    <h2 className="text-xl font-bold mb-4">Payment Method</h2>
-                    {/*<div className="relative flex items-center mb-6">
-                {canScrollLeft && (
-                    <button
-                        onClick={() => scrollCarousel('left')}
-                        className="absolute left-0 z-10 bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400"
-                    >
-                        ◀
-                    </button>
-                )}
-                <div
-                    ref={carouselRef}
-                    className="flex gap-4 overflow-x-hidden scrollbar-hide px-10"
-                    style={{scrollBehavior: 'smooth'}}
-                >
-                    {paymentMethods.map((method) => (
-                        <div
-                            key={method.id}
-                            className={`flex flex-col items-center gap-2 cursor-pointer min-w-max ${
-                                paymentMethod === method.id ? 'border-2 border-blue-500 rounded' : ''
-                            }`}
-                            onClick={() => setPaymentMethod(method.id)}
-                        >
-                            <img
-                                src={method.image}
-                                alt={method.name}
-                                className="w-20 h-20 object-cover"
-                            />
-                            <span className="text-sm">{method.name}</span>
-                        </div>
-                    ))}
-                </div>
-                {canScrollRight && (
-                    <button
-                        onClick={() => scrollCarousel('right')}
-                        className="absolute right-0 z-10 bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400"
-                    >
-                        ▶
-                    </button>
-                )}
-            </div>*/}
-
-                    {clientSecret &&
-                        <Elements stripe={stripePromise} options={options} mode={'payment'}>
-                            <CheckoutForm clientSecret={clientSecret}/>
-                        </Elements>
-                    }
-                </div>
+            </div>
+            <div className="checkout-page-right-elements-container">
+                <div className="margin-bottom-60px"></div>
+                <h2 className="text-xl font-bold mb-4">Payment Method</h2>
+                {clientSecret &&
+                    <Elements stripe={stripePromise} options={options} mode={'payment'}>
+                        <CheckoutForm clientSecret={clientSecret}/>
+                    </Elements>
+                }
             </div>
         </div>
     );
