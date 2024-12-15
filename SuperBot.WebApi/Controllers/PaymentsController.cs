@@ -12,7 +12,7 @@ namespace SuperBot.WebApi.Controllers
         {
             var options = new PaymentIntentCreateOptions
             {
-                Amount = request.Amount,
+                Amount = request.Amount * 100, // Так как сумма идет в центах
                 Currency = "USD",
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                 {
