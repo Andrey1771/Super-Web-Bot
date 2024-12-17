@@ -22,6 +22,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "noEmit": true,
+    "sourceMap": true,
     "outDir": "./dist",
     "jsx": "react-jsx"
   },

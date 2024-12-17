@@ -6,6 +6,9 @@ import path from 'path';
 
 export default {
     mode: 'development',
+    optimization: {
+        minimize: false, // Отключить минификацию
+    },
     entry: './src/index.tsx', // Точка входа для React-компонентов
     output: {
         path: path.resolve(import.meta.url, 'dist'),
@@ -20,16 +23,22 @@ export default {
             {
                 test: /\.tsx?$/,
                 use: [
-                    'babel-loader',
+                    {
+                        loader: 'babel-loader',
+                        options: {
+                            presets: [],
+                            plugins: [],
+                        },
+                    },
                     {
                         loader: 'ts-loader',
                         options: {
                             transpileOnly: true,
-                            experimentalWatchApi: true
-                        }
-                    }
+                            experimentalWatchApi: true,
+                        },
+                    },
                 ],
-                exclude: /node_modules/
+                exclude: /node_modules/,
             },
             {
                 test: /\.css$/,
@@ -37,8 +46,16 @@ export default {
             },
             {
                 test: /\.html$/,
-                use: ['html-loader'],
-            }
+                use: [
+                    {
+                        loader: 'html-loader',
+                        options: {
+                            sources: false,
+                            minimize: false,
+                        },
+                    },
+                ],
+            },
         ],
     },
     plugins: [
@@ -48,13 +65,21 @@ export default {
         }),
         new MiniCssExtractPlugin({
             filename: 'styles.css',
-        })
+        }),
     ],
     devServer: {
         historyApiFallback: true,
-        compress: true,
+        compress: false,
         port: 3000,
-        server: 'https',
+        server: {
+            type: 'https',
+            options: {
+                key: './public/private.key',
+                cert: './public/private.crt',
+                passphrase: 'webpack-dev-server',
+                requestCert: false,
+            },
+        },
     },
-    devtool: 'source-map',
+    devtool: 'source-map', // Включить карты исходников
 };

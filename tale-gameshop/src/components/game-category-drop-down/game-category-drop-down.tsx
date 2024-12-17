@@ -1,6 +1,7 @@
 import React from "react";
 import GameCategoryInternalDropDownItem
     from "../game-category-internal-drop-down/game-category-internal-drop-down";
+import { Link } from "react-router-dom";
 
 interface GameCategory {
     name: string;
@@ -17,9 +18,9 @@ const GameCategoryDropDown: React.FC<GameCategoryDropDownProps> = ({ categories 
         <ul className="absolute left-0 mt-2 w-64 bg-white border border-gray-200 shadow-lg hidden dropdown-menu p-4">
             {categories.map((category, index) => (
                 <li className="font-bold accordion-item mt-4" key={index}>
-                    <a className="text-gray-700 menu-item" href="#">
+                    <Link to={`/games?filterCategory=${category.name}`} className="text-gray-700 menu-item">
                         {category.name}
-                    </a>
+                    </Link>
                     <GameCategoryInternalDropDownItem subgenres={category.subgenres} />
                 </li>
             ))}

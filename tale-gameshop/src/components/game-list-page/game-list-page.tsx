@@ -10,7 +10,7 @@ import GameCard from '../game-card/game-card';
 interface State {
     games: Game[];
     visibleGamesCount: number;
-    gamesByCategory: any;
+    gamesByCategory: Map<string, Game[]>;
 }
 
 class TaleGameshopGameList extends Component<{}, State> {
@@ -24,13 +24,22 @@ class TaleGameshopGameList extends Component<{}, State> {
         this.state = {
             games: [],
             visibleGamesCount: this.loadMoreStep,
-            gamesByCategory: {},
+            gamesByCategory: new Map<string, Game[]>,
         };
     }
 
     async componentDidMount() {
         const games = await this._gameService.getAllGames();
-        const gamesByCategory = await this.groupGamesByCategory();
+        this.setState({ games });
+        let gamesByCategory = await this.groupGamesByCategory();
+        const url = new URL(window.location.href); // Получаем текущий URL
+        const filterCategory = url.searchParams.get("filterCategory");
+        if (filterCategory) {
+            gamesByCategory = new Map<string, Game[]>(
+                Array.from(gamesByCategory.entries())
+                    .filter((game: any) => game[0] === filterCategory.trim())//TODO!!!!!!!
+            );
+        }
         this.setState({ games, gamesByCategory });
     }
 
@@ -45,14 +54,14 @@ class TaleGameshopGameList extends Component<{}, State> {
         const settings = allSettings.shift();
 
         const { games } = this.state;
-        return games.reduce((acc: any, game) => {
+        return games.reduce((acc, game) => {
             const category = settings?.gameCategories[game.gameType] ?? "";
-            if (!acc[category]) {
-                acc[category] = [];
+            if (!acc.has(category)) {
+                acc.set(category, []);
             }
-            acc[category].push(game);
+            acc.get(category)!.push(game);
             return acc;
-        }, {});
+        }, new Map<string, Game[]>());
     };
 
     render() {
@@ -66,12 +75,12 @@ class TaleGameshopGameList extends Component<{}, State> {
                         Browse our extensive collection of computer games, carefully curated to cater to every player's taste.
                     </p>
 
-                    {Object.keys(this.state.gamesByCategory).map((category) => (
+                    {Array.from(this.state.gamesByCategory.keys()).map((category) => (
                         <section key={category}>
                             <h2 className="text-2xl font-bold mb-4">{category}</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                                {this.state.gamesByCategory[category]
-                                    .slice(0, visibleGamesCount)
+                                {this.state.gamesByCategory.get(category)
+                                    ?.slice(0, visibleGamesCount)
                                     .map((game: Game) => (
                                         <GameCard key={game.id} game={game} /> // Используем GameCard
                                     ))}
