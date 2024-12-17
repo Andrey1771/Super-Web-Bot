@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import IDENTIFIERS from "../../constants/identifiers";
 import './game-list-page.css';
-import { resolve } from "inversify-react";
+import container from "../../inversify.config";
 import { Game } from "../../models/game";
 import type { IGameService } from "../../iterfaces/i-game-service";
 import type { ISettingsService } from "../../iterfaces/i-settings-service";
 import GameCard from '../game-card/game-card';
-import container from "../../inversify.config";
 
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
@@ -81,6 +80,12 @@ const TaleGameshopGameList: React.FC = () => {
         setVisibleGamesCount(prevCount => prevCount + loadMoreStep);
     };
 
+    // Функция очистки инпута
+    const clearSearch = () => {
+        setSearchQuery('');
+        updateSearchParams(''); // Очистка фильтрации в URL
+    };
+
     const filteredGamesByCategory = new Map(
         Array.from(gamesByCategory.entries()).filter(([category, games]) => {
             const categoryMatch = category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -100,14 +105,22 @@ const TaleGameshopGameList: React.FC = () => {
                 </p>
 
                 {/* Инпут для поиска */}
-                <div className="mb-4">
+                <div className="relative mb-4">
                     <input
                         type="text"
-                        className="border p-2 w-full"
+                        className="border p-2 w-full pr-10" // pr-10 добавляем для крестика
                         placeholder="Search games..."
                         value={searchQuery}
                         onChange={handleSearchChange}
                     />
+                    {searchQuery && (
+                        <button
+                            onClick={clearSearch}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                        >
+                            &times;
+                        </button>
+                    )}
                 </div>
 
                 {/* Выпадающий список для выбора категории */}
