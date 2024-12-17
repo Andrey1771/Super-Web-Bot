@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
 import './tale-gameshop-main-page.css'
 import '../../font-awesome.ts';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,8 +12,46 @@ import {
     faPuzzlePiece, faStar
 } from "@fortawesome/free-solid-svg-icons";
 import Iframe from "react-iframe";
+import container from "../../inversify.config";
+import type {IApiClient} from "../../iterfaces/i-api-client";
+import IDENTIFIERS from "../../constants/identifiers";
+import {Game} from "../../models/game";
+import { Link } from "react-router-dom";
 
 export default function TaleGameshopMainPage() {
+    const [latestGame, setLatestGame] = useState<Game | null>(null);
+
+    useEffect(() => {
+        const fetchLatestGame = async () => {
+            try {
+                const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+                const response = await apiClient.api.get('https://localhost:7117/api/game');
+                const items: Game[] = response.data;
+
+                if (!items || items.length === 0) {
+                    throw new Error('No games found');
+                }
+
+                // Найти последнюю игру
+                const latestGame = items.reduce((latest: Game | null, current) => {
+                    return !latest || new Date(current.releaseDate) > new Date(latest.releaseDate)
+                        ? current
+                        : latest;
+                }, null);
+
+                setLatestGame(latestGame);
+            } catch (err) {
+                //setError(err instanceof Error ? err.message : 'An unknown error occurred');
+            } finally {
+                //setIsLoading(false);
+            }
+        };
+
+        fetchLatestGame();
+    }, []); // Пустой массив зависимостей, чтобы выполнить только один раз при монтировании
+
+
+
     return (
         <div className="main-page-down-header-padding">
             <div className="bg-gray-100 py-10">
@@ -161,8 +199,8 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </div>
                             <div className="bg-gray-200 p-4 flex items-center">
-                                <img alt="Placeholder image" className="mr-4" height="50"
-                                     src="https://storage.googleapis.com/a1aa/image/We1VGIYWP9xoWyMyBh6WbeoFDyZSn0PCWW3X19MKNwHOvXqTA.jpg"
+                                <img alt={latestGame?.title} className="mr-4" height="50"
+                                     src={`https://localhost:7117/${latestGame?.imagePath}`}
                                      width="50"/>
                                 <div>
                                     <h3 className="font-bold">
@@ -170,9 +208,9 @@ export default function TaleGameshopMainPage() {
                                     </h3>
                                     <p>
                                         Get the latest updates on new releases.
-                                        <a className="text-blue-500" href="#">
+                                        <Link to={`/games?filterCategory=${latestGame?.title}`} className="text-blue-500">
                                             Read more
-                                        </a>
+                                        </Link>
                                     </p>
                                 </div>
                             </div>

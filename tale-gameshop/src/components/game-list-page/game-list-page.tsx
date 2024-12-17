@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import IDENTIFIERS from "../../constants/identifiers";
 import './game-list-page.css';
 import container from "../../inversify.config";
@@ -15,6 +15,7 @@ const TaleGameshopGameList: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Получаем зависимости через контейнер
     const _gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
@@ -23,6 +24,17 @@ const TaleGameshopGameList: React.FC = () => {
     const loadMoreStep = 9;
 
     useEffect(() => {
+        loadGamesAndUpdateFilterCategory();
+    }, []);
+
+    useEffect(() => {
+        loadGamesAndUpdateFilterCategory()
+    }, [location.search]);
+
+    const loadGamesAndUpdateFilterCategory = () => {
+        const filterCategory = searchParams.get("filterCategory");
+        setSearchQuery(filterCategory ?? "");
+
         // Загружаем игры при монтировании компонента
         const fetchGames = async () => {
             const fetchedGames = await _gameService.getAllGames();
@@ -30,7 +42,7 @@ const TaleGameshopGameList: React.FC = () => {
             await updateGamesByCategory(fetchedGames);
         };
         fetchGames();
-    }, []);
+    }
 
     // Обновление списка игр по категориям
     const updateGamesByCategory = async (gamesList: Game[]) => {
