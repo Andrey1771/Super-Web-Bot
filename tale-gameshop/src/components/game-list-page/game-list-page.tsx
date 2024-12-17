@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import IDENTIFIERS from "../../constants/identifiers";
 import './game-list-page.css';
 import { resolve } from "inversify-react";
@@ -13,7 +14,16 @@ interface State {
     gamesByCategory: Map<string, Game[]>;
 }
 
-class TaleGameshopGameList extends Component<{}, State> {
+// Хук для обработки параметра filterCategory из URL
+function withFilterCategory(Component: any) {
+    return function WrappedComponent(props: any) {
+        const [searchParams] = useSearchParams();
+        const filterCategory = searchParams.get("filterCategory");
+        return <Component {...props} filterCategory={filterCategory} />;
+    };
+}
+
+class TaleGameshopGameList extends Component<{ filterCategory?: string }, State> {
     @resolve(IDENTIFIERS.IGameService) private readonly _gameService!: IGameService;
     @resolve(IDENTIFIERS.ISettingsService) private readonly _settingsService!: ISettingsService;
 
@@ -24,24 +34,37 @@ class TaleGameshopGameList extends Component<{}, State> {
         this.state = {
             games: [],
             visibleGamesCount: this.loadMoreStep,
-            gamesByCategory: new Map<string, Game[]>,
+            gamesByCategory: new Map<string, Game[]>(),
         };
     }
 
     async componentDidMount() {
         const games = await this._gameService.getAllGames();
         this.setState({ games });
-        let gamesByCategory = await this.groupGamesByCategory();
-        const url = new URL(window.location.href); // Получаем текущий URL
-        const filterCategory = url.searchParams.get("filterCategory");
+        await this.updateGamesByCategory();
+    }
+
+    componentDidUpdate(prevProps: Readonly<{ filterCategory?: string }>) {
+        if (prevProps.filterCategory !== this.props.filterCategory) {
+            this.updateGamesByCategory();
+        }
+    }
+
+    updateGamesByCategory = async () => {
+        const gamesByCategory = await this.groupGamesByCategory();
+        const { filterCategory } = this.props;
+
+        let filteredGamesByCategory = gamesByCategory;
         if (filterCategory) {
-            gamesByCategory = new Map<string, Game[]>(
-                Array.from(gamesByCategory.entries())
-                    .filter((game: any) => game[0] === filterCategory.trim())//TODO!!!!!!!
+            filteredGamesByCategory = new Map(
+                Array.from(gamesByCategory.entries()).filter(([category]) =>
+                    category.replace(/\s+/g, "") === filterCategory.replace(/\s+/g, "")
+                )
             );
         }
-        this.setState({ games, gamesByCategory });
-    }
+
+        this.setState({ gamesByCategory: filteredGamesByCategory });
+    };
 
     loadMoreGames = () => {
         this.setState((prevState) => ({
@@ -69,7 +92,7 @@ class TaleGameshopGameList extends Component<{}, State> {
 
         return (
             <div className="w-screen bg-gray-100">
-                {<main className="container mx-auto px-4 py-8 ">
+                <main className="container mx-auto px-4 py-8">
                     <h1 className="text-3xl font-bold text-center mb-4">Game List</h1>
                     <p className="text-center text-gray-600 mb-8">
                         Browse our extensive collection of computer games, carefully curated to cater to every player's taste.
@@ -82,7 +105,7 @@ class TaleGameshopGameList extends Component<{}, State> {
                                 {this.state.gamesByCategory.get(category)
                                     ?.slice(0, visibleGamesCount)
                                     .map((game: Game) => (
-                                        <GameCard key={game.id} game={game} /> // Используем GameCard
+                                        <GameCard key={game.id} game={game} />
                                     ))}
                             </div>
                         </section>
@@ -96,10 +119,10 @@ class TaleGameshopGameList extends Component<{}, State> {
                             Load More
                         </button>
                     )}
-                </main>}
+                </main>
             </div>
         );
     }
 }
 
-export default TaleGameshopGameList;
+export default withFilterCategory(TaleGameshopGameList);
