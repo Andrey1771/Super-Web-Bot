@@ -1,5 +1,5 @@
-import React, { Component } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import IDENTIFIERS from "../../constants/identifiers";
 import './game-list-page.css';
 import { resolve } from "inversify-react";
@@ -7,122 +7,150 @@ import { Game } from "../../models/game";
 import type { IGameService } from "../../iterfaces/i-game-service";
 import type { ISettingsService } from "../../iterfaces/i-settings-service";
 import GameCard from '../game-card/game-card';
+import container from "../../inversify.config";
 
-interface State {
-    games: Game[];
-    visibleGamesCount: number;
-    gamesByCategory: Map<string, Game[]>;
-}
+const TaleGameshopGameList: React.FC = () => {
+    const [games, setGames] = useState<Game[]>([]);
+    const [visibleGamesCount, setVisibleGamesCount] = useState<number>(9);
+    const [gamesByCategory, setGamesByCategory] = useState<Map<string, Game[]>>(new Map());
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
 
-// Хук для обработки параметра filterCategory из URL
-function withFilterCategory(Component: any) {
-    return function WrappedComponent(props: any) {
-        const [searchParams] = useSearchParams();
-        const filterCategory = searchParams.get("filterCategory");
-        return <Component {...props} filterCategory={filterCategory} />;
-    };
-}
+    // Получаем зависимости через контейнер
+    const _gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
+    const _settingsService = container.get<ISettingsService>(IDENTIFIERS.ISettingsService);
 
-class TaleGameshopGameList extends Component<{ filterCategory?: string }, State> {
-    @resolve(IDENTIFIERS.IGameService) private readonly _gameService!: IGameService;
-    @resolve(IDENTIFIERS.ISettingsService) private readonly _settingsService!: ISettingsService;
+    const loadMoreStep = 9;
 
-    private readonly loadMoreStep = 9;
-
-    constructor(props: any) {
-        super(props);
-        this.state = {
-            games: [],
-            visibleGamesCount: this.loadMoreStep,
-            gamesByCategory: new Map<string, Game[]>(),
+    useEffect(() => {
+        // Загружаем игры при монтировании компонента
+        const fetchGames = async () => {
+            const fetchedGames = await _gameService.getAllGames();
+            setGames(fetchedGames);
+            await updateGamesByCategory(fetchedGames);
         };
-    }
+        fetchGames();
+    }, []);
 
-    async componentDidMount() {
-        const games = await this._gameService.getAllGames();
-        this.setState({ games });
-        await this.updateGamesByCategory();
-    }
-
-    componentDidUpdate(prevProps: Readonly<{ filterCategory?: string }>) {
-        if (prevProps.filterCategory !== this.props.filterCategory) {
-            this.updateGamesByCategory();
-        }
-    }
-
-    updateGamesByCategory = async () => {
-        const gamesByCategory = await this.groupGamesByCategory();
-        const { filterCategory } = this.props;
-
-        let filteredGamesByCategory = gamesByCategory;
-        if (filterCategory) {
-            filteredGamesByCategory = new Map(
-                Array.from(gamesByCategory.entries()).filter(([category]) =>
-                    category.replace(/\s+/g, "") === filterCategory.replace(/\s+/g, "")
-                )
-            );
-        }
-
-        this.setState({ gamesByCategory: filteredGamesByCategory });
-    };
-
-    loadMoreGames = () => {
-        this.setState((prevState) => ({
-            visibleGamesCount: prevState.visibleGamesCount + this.loadMoreStep,
-        }));
-    };
-
-    groupGamesByCategory = async () => {
-        const allSettings = await this._settingsService.getAllSettings();
+    // Обновление списка игр по категориям
+    const updateGamesByCategory = async (gamesList: Game[]) => {
+        const allSettings = await _settingsService.getAllSettings();
         const settings = allSettings.shift();
 
-        const { games } = this.state;
-        return games.reduce((acc, game) => {
-            const category = settings?.gameCategories[game.gameType] ?? "";
+        const gamesByCategory = gamesList.reduce((acc, game) => {
+            const category = settings?.gameCategories[game.gameType] ?? '';
             if (!acc.has(category)) {
                 acc.set(category, []);
             }
             acc.get(category)!.push(game);
             return acc;
         }, new Map<string, Game[]>());
+
+        setGamesByCategory(gamesByCategory);
     };
 
-    render() {
-        const { games, visibleGamesCount } = this.state;
+    useEffect(() => {
+        // Фильтрация игр при изменении searchQuery или filterCategory
+        updateGamesByCategory(games);
+    }, [searchQuery]);
 
-        return (
-            <div className="w-screen bg-gray-100">
-                <main className="container mx-auto px-4 py-8">
-                    <h1 className="text-3xl font-bold text-center mb-4">Game List</h1>
-                    <p className="text-center text-gray-600 mb-8">
-                        Browse our extensive collection of computer games, carefully curated to cater to every player's taste.
-                    </p>
+    // Обновление searchParams в URL
+    const updateSearchParams = (value: string) => {
+        searchParams.set('filterCategory', value);
+        setSearchParams(searchParams);
+        navigate(`?${searchParams.toString()}`, { replace: true });
+    };
 
-                    {Array.from(this.state.gamesByCategory.keys()).map((category) => (
-                        <section key={category}>
-                            <h2 className="text-2xl font-bold mb-4">{category}</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                                {this.state.gamesByCategory.get(category)
-                                    ?.slice(0, visibleGamesCount)
-                                    .map((game: Game) => (
-                                        <GameCard key={game.id} game={game} />
-                                    ))}
-                            </div>
-                        </section>
-                    ))}
+    // Обработчик изменения текста в инпуте
+    const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const value = event.target.value;
+        setSearchQuery(value);
+        updateSearchParams(value); // Обновление параметра фильтрации в URL
+    };
 
-                    {games.length > visibleGamesCount && (
-                        <button
-                            onClick={this.loadMoreGames}
-                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mx-auto block"
-                        >
-                            Load More
-                        </button>
-                    )}
-                </main>
-            </div>
-        );
-    }
-}
+    // Обработчик изменения категории из выпадающего списка
+    const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = event.target.value;
+        setSearchQuery(value);
+        updateSearchParams(value); // Обновление параметра фильтрации в URL
+    };
 
-export default withFilterCategory(TaleGameshopGameList);
+    // Загрузка дополнительных игр
+    const loadMoreGames = () => {
+        setVisibleGamesCount(prevCount => prevCount + loadMoreStep);
+    };
+
+    const filteredGamesByCategory = new Map(
+        Array.from(gamesByCategory.entries()).filter(([category, games]) => {
+            const categoryMatch = category.toLowerCase().includes(searchQuery.toLowerCase());
+            const gamesMatch = games.some((game) =>
+                game.title.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            return categoryMatch || gamesMatch;
+        })
+    );
+
+    return (
+        <div className="w-screen bg-gray-100">
+            <main className="container mx-auto px-4 py-8">
+                <h1 className="text-3xl font-bold text-center mb-4">Game List</h1>
+                <p className="text-center text-gray-600 mb-8">
+                    Browse our extensive collection of computer games, carefully curated to cater to every player's taste.
+                </p>
+
+                {/* Инпут для поиска */}
+                <div className="mb-4">
+                    <input
+                        type="text"
+                        className="border p-2 w-full"
+                        placeholder="Search games..."
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                    />
+                </div>
+
+                {/* Выпадающий список для выбора категории */}
+                <div className="mb-4">
+                    <select
+                        className="border p-2 w-full"
+                        value={searchQuery}
+                        onChange={handleCategoryChange}
+                    >
+                        <option value="">All Categories</option>
+                        {Array.from(gamesByCategory.keys()).map((category) => (
+                            <option key={category} value={category}>
+                                {category}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Отображаем игры по категориям */}
+                {Array.from(filteredGamesByCategory.keys()).map((category) => (
+                    <section key={category}>
+                        <h2 className="text-2xl font-bold mb-4">{category}</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                            {filteredGamesByCategory.get(category)
+                                ?.slice(0, visibleGamesCount)
+                                .map((game: Game) => (
+                                    <GameCard key={game.id} game={game} />
+                                ))}
+                        </div>
+                    </section>
+                ))}
+
+                {games.length > visibleGamesCount && (
+                    <button
+                        onClick={loadMoreGames}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mx-auto block"
+                    >
+                        Load More
+                    </button>
+                )}
+            </main>
+        </div>
+    );
+};
+
+export default TaleGameshopGameList;
