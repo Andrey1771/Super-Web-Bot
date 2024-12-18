@@ -17,9 +17,13 @@ import type {IApiClient} from "../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../constants/identifiers";
 import {Game} from "../../models/game";
 import { Link } from "react-router-dom";
+import {useKeycloak} from "@react-keycloak/web";
+import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
 
 export default function TaleGameshopMainPage() {
     const [latestGame, setLatestGame] = useState<Game | null>(null);
+    const {keycloak} = useKeycloak();
+    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
     useEffect(() => {
         const fetchLatestGame = async () => {
@@ -50,7 +54,13 @@ export default function TaleGameshopMainPage() {
         fetchLatestGame();
     }, []); // Пустой массив зависимостей, чтобы выполнить только один раз при монтировании
 
-
+    const register = async () => {
+        try {
+            await keycloakAuthService.registerWithRedirect(keycloak, window.location.href);
+        } catch (error) {
+            console.error('Ошибка инициализации приложения:', error);
+        }
+    }
 
     return (
         <div className="main-page-down-header-padding">
@@ -302,8 +312,10 @@ export default function TaleGameshopMainPage() {
                         className="bg-transparent border border-gray-800 text-gray-800 py-2 px-6 rounded-full mr-4">Learn
                         More
                     </button>
-                    <button className="bg-transparent text-gray-800 py-2 px-6 rounded-full">Sign Up <i
-                        className="fas fa-arrow-right"></i></button>
+                    { !keycloak.authenticated &&
+                        <a className="bg-transparent text-gray-800 py-2 px-6 rounded-full cursor-pointer" onClick={register}>Sign Up<i
+                            className="fas fa-arrow-right"></i></a>
+                    }
                 </div>
                 <div className="mt-16">
                     <div className="flex justify-center">
