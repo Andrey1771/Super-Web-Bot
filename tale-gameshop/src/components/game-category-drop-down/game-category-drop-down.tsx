@@ -21,7 +21,7 @@ const GameCategoryDropDown: React.FC<GameCategoryDropDownProps> = ({ categories 
                     <Link to={`/games?filterCategory=${category.name}`} className="text-gray-700 menu-item">
                         {category.name}
                     </Link>
-                    <GameCategoryInternalDropDownItem subgenres={category.subgenres} />
+                    {/*<GameCategoryInternalDropDownItem subgenres={category.subgenres} />*/}
                 </li>
             ))}
         </ul>

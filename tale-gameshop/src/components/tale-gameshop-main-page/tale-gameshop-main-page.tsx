@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import './tale-gameshop-main-page.css'
 import '../../font-awesome.ts';
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faChess, faCube,
     faDiceD20, faFileAlt,
@@ -16,7 +16,7 @@ import container from "../../inversify.config";
 import type {IApiClient} from "../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../constants/identifiers";
 import {Game} from "../../models/game";
-import { Link } from "react-router-dom";
+import {Link} from "react-router-dom";
 import {useKeycloak} from "@react-keycloak/web";
 import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
 
@@ -78,7 +78,7 @@ export default function TaleGameshopMainPage() {
                         </h2>
                         <ul className="space-y-4">
                             <li className="flex items-start">
-                                    <FontAwesomeIcon className="fas text-xl mr-3" icon={faGamepad} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faGamepad}/>
                                 <div>
                                     <h3 className="font-bold">
                                         <Link to={`/games?filterCategory=Action`} className="text-gray-700 menu-item">
@@ -91,7 +91,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faPuzzlePiece} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faPuzzlePiece}/>
                                 <div>
                                     <h3 className="font-bold">
                                         <Link to={`/games?filterCategory=Puzzle`} className="text-gray-700 menu-item">
@@ -104,10 +104,11 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faDiceD20} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faDiceD20}/>
                                 <div>
                                     <h3 className="font-bold">
-                                        <Link to={`/games?filterCategory=Role-Playing Games (RPGs)`} className="text-gray-700 menu-item">
+                                        <Link to={`/games?filterCategory=Role-Playing Games (RPGs)`}
+                                              className="text-gray-700 menu-item">
                                             RPG Games
                                         </Link>
                                     </h3>
@@ -117,7 +118,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faChess} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faChess}/>
                                 <div>
                                     <h3 className="font-bold">
                                         <Link to={`/games?filterCategory=Strategy`} className="text-gray-700 menu-item">
@@ -138,7 +139,7 @@ export default function TaleGameshopMainPage() {
                         </h2>
                         <ul className="space-y-4">
                             <li className="flex items-start">
-                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faPenNib} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faPenNib}/>
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -151,7 +152,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faNewspaper} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faNewspaper}/>
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -164,7 +165,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faLightbulb} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faLightbulb}/>
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -177,7 +178,7 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </li>
                             <li className="flex items-start">
-                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faFileAlt} />
+                                <FontAwesomeIcon className="fas text-xl mr-3" icon={faFileAlt}/>
                                 <div>
                                     <h3 className="font-bold">
                                         <a className="text-gray-700 menu-item" href="#">
@@ -207,7 +208,8 @@ export default function TaleGameshopMainPage() {
                                     </h3>
                                     <p>
                                         Check out our random game picks for you.
-                                        <Link to={`/games?filterCategory=${latestGame?.title}`} className="text-blue-500">
+                                        <Link to={`/games?filterCategory=${latestGame?.title}`}
+                                              className="text-blue-500">
                                             Read more
                                         </Link>
                                     </p>
@@ -223,19 +225,24 @@ export default function TaleGameshopMainPage() {
                                     </h3>
                                     <p>
                                         Get the latest updates on new releases.
-                                        <Link to={`/games?filterCategory=${latestGame?.title}`} className="text-blue-500">
+                                        <Link to={`/games?filterCategory=${latestGame?.title}`}
+                                              className="text-blue-500">
                                             Read more
                                         </Link>
                                     </p>
                                 </div>
                             </div>
                         </div>
-                        <button
-                            className="mt-4 px-4 py-2 border border-gray-700 text-gray-700 flex items-center animated-button">
-                            Let's Go
-                            <i className="fas fa-chevron-right ml-2">
-                            </i>
-                        </button>
+                        <div className="flex mt-4">
+                            <Link to={`/games?filterCategory`}>
+                                <button
+                                    className="px-4 py-2 border border-gray-700 text-gray-700 flex items-center animated-button">
+                                    Let's Go
+                                    <i className="fas fa-chevron-right ml-2">
+                                    </i>
+                                </button>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -252,12 +259,12 @@ export default function TaleGameshopMainPage() {
                         experience unforgettable.
                     </p>
                     <div className="flex justify-center space-x-4">
-                        <button className="px-6 py-3 bg-white text-black animated-button">
+                        <Link to={`/games?filterCategory`} className="px-6 py-3 bg-white text-black animated-button">
                             Shop
-                        </button>
-                        <button className="px-6 py-3 border border-white animated-button">
+                        </Link>
+                        <Link to="/about" className="px-6 py-3 border border-white animated-button">
                             Learn More
-                        </button>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -295,40 +302,41 @@ export default function TaleGameshopMainPage() {
                 </p>
                 <div className="flex justify-center mt-12 space-x-8">
                     <div className="text-center">
-                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube} />
+                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube}/>
                         <h3 className="text-xl font-bold mt-4">Intuitive and Easy-to-Navigate Interface</h3>
                         <p className="mt-2 text-gray-600">Our user-friendly design ensures a seamless browsing
                             experience.</p>
                     </div>
                     <div className="text-center">
-                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube} />
+                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube}/>
                         <h3 className="text-xl font-bold mt-4">Safe and Secure Payment Options</h3>
                         <p className="mt-2 text-gray-600">Shop with confidence knowing your transactions are
                             protected.</p>
                     </div>
                     <div className="text-center">
-                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube} />
+                        <FontAwesomeIcon className="fas text-4xl text-gray-700" icon={faCube}/>
                         <h3 className="text-xl font-bold mt-4">Join Our Gaming Community Today</h3>
                         <p className="mt-2 text-gray-600">Connect with fellow gamers and share your experiences.</p>
                     </div>
                 </div>
                 <div className="mt-12">
-                    <button
+                    <Link to="/about"
                         className="bg-transparent border border-gray-800 text-gray-800 py-2 px-6 rounded-full mr-4">Learn
                         More
-                    </button>
-                    { !keycloak.authenticated &&
-                        <a className="bg-transparent text-gray-800 py-2 px-6 rounded-full cursor-pointer" onClick={register}>Sign Up<i
+                    </Link>
+                    {!keycloak.authenticated &&
+                        <a className="bg-transparent text-gray-800 py-2 px-6 rounded-full cursor-pointer"
+                           onClick={register}>Sign Up<i
                             className="fas fa-arrow-right"></i></a>
                     }
                 </div>
                 <div className="mt-16">
                     <div className="flex justify-center">
-                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
-                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
-                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
-                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
-                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar} />
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar}/>
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar}/>
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar}/>
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar}/>
+                        <FontAwesomeIcon className="fas text-2xl text-yellow-500" icon={faStar}/>
                     </div>
                     <p className="text-xl font-semibold mt-4">
                         "The service provided exceeded my expectations, and the selection of games is fantastic! I

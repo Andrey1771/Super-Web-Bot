@@ -168,7 +168,7 @@ const TaleGameshopGameList: React.FC = () => {
                 {games.length > visibleGamesCount && (
                     <button
                         onClick={loadMoreGames}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mx-auto block"
+                        className="px-6 py-3 bg-white text-black animated-button mx-auto block"
                     >
                         Load More
                     </button>
