@@ -22,37 +22,42 @@ import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service
 
 export default function TaleGameshopMainPage() {
     const [latestGame, setLatestGame] = useState<Game | null>(null);
+    const [randomGame, setRandomGame] = useState<Game | null>(null);
+
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
     useEffect(() => {
-        const fetchLatestGame = async () => {
-            try {
-                const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-                const response = await apiClient.api.get('https://localhost:7117/api/game');
-                const items: Game[] = response.data;
-
-                if (!items || items.length === 0) {
-                    throw new Error('No games found');
-                }
-
-                // Найти последнюю игру
-                const latestGame = items.reduce((latest: Game | null, current) => {
-                    return !latest || new Date(current.releaseDate) > new Date(latest.releaseDate)
-                        ? current
-                        : latest;
-                }, null);
-
-                setLatestGame(latestGame);
-            } catch (err) {
-                //setError(err instanceof Error ? err.message : 'An unknown error occurred');
-            } finally {
-                //setIsLoading(false);
-            }
-        };
-
         fetchLatestGame();
     }, []); // Пустой массив зависимостей, чтобы выполнить только один раз при монтировании
+
+    const fetchLatestGame = async () => {
+        try {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+            const response = await apiClient.api.get('https://localhost:7117/api/game');
+            const items: Game[] = response.data;
+
+            if (!items || items.length === 0) {
+                throw new Error('No games found');
+            }
+
+            // Найти последнюю игру
+            const latestGame = items.reduce((latest: Game | null, current) => {
+                return !latest || new Date(current.releaseDate) > new Date(latest.releaseDate)
+                    ? current
+                    : latest;
+            }, null);
+
+            const randomGame = items[Math.floor(Math.random() * items.length)];
+
+            setRandomGame(randomGame);
+            setLatestGame(latestGame);
+        } catch (err) {
+            //setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        } finally {
+            //setIsLoading(false);
+        }
+    };
 
     const register = async () => {
         try {
@@ -76,9 +81,9 @@ export default function TaleGameshopMainPage() {
                                     <FontAwesomeIcon className="fas text-xl mr-3" icon={faGamepad} />
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to={`/games?filterCategory=Action`} className="text-gray-700 menu-item">
                                             Action Games
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Discover thrilling action-packed adventures.
@@ -89,9 +94,9 @@ export default function TaleGameshopMainPage() {
                                 <FontAwesomeIcon className="fas text-xl mr-3" icon={faPuzzlePiece} />
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to={`/games?filterCategory=Puzzle`} className="text-gray-700 menu-item">
                                             Puzzle Games
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Challenge your mind with engaging puzzles.
@@ -102,9 +107,9 @@ export default function TaleGameshopMainPage() {
                                 <FontAwesomeIcon className="fas text-xl mr-3" icon={faDiceD20} />
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to={`/games?filterCategory=Role-Playing Games (RPGs)`} className="text-gray-700 menu-item">
                                             RPG Games
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Immerse yourself in epic role-playing adventures.
@@ -115,9 +120,9 @@ export default function TaleGameshopMainPage() {
                                 <FontAwesomeIcon className="fas text-xl mr-3" icon={faChess} />
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to={`/games?filterCategory=Strategy`} className="text-gray-700 menu-item">
                                             Strategy Games
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Plan and conquer with strategic gameplay.
@@ -193,18 +198,18 @@ export default function TaleGameshopMainPage() {
                         </h2>
                         <div className="space-y-4">
                             <div className="bg-gray-200 p-4 flex items-center">
-                                <img alt="Placeholder image" className="mr-4" height="50"
-                                     src="https://storage.googleapis.com/a1aa/image/We1VGIYWP9xoWyMyBh6WbeoFDyZSn0PCWW3X19MKNwHOvXqTA.jpg"
+                                <img alt={randomGame?.title} className="mr-4" height="50"
+                                     src={`https://localhost:7117/${randomGame?.imagePath}`}
                                      width="50"/>
                                 <div>
                                     <h3 className="font-bold">
-                                        Top Picks
+                                        Random Picks
                                     </h3>
                                     <p>
-                                        Check out our top game picks for you.
-                                        <a className="text-blue-500" href="#">
+                                        Check out our random game picks for you.
+                                        <Link to={`/games?filterCategory=${latestGame?.title}`} className="text-blue-500">
                                             Read more
-                                        </a>
+                                        </Link>
                                     </p>
                                 </div>
                             </div>
@@ -257,7 +262,7 @@ export default function TaleGameshopMainPage() {
                 </div>
             </div>
 
-            <div className="flex items-start justify-start bg-white p-8 mb-28">
+            <div className="container mx-auto flex items-start justify-start bg-white p-8 mb-28">
                 <div className="flex items-start space-x-8 w-full">
                     <div className="w-1/2">
                         <h1 className="text-3xl font-bold glow-text">

@@ -88,11 +88,11 @@ export default function TaleGameshopHeader() {
                         </li>
 
                         <li className="relative dropdown">
-                            <a className="text-gray-700 menu-item" href="#">
+                            <Link to={`/games`} className="text-gray-700 menu-item">
                                 More Games
                                 <i className="fas fa-chevron-down">
                                 </i>
-                            </a>
+                            </Link>
 
                             <GameCategoryDropDown categories={[]}></GameCategoryDropDown>
                         </li>
