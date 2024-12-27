@@ -3,9 +3,8 @@ import './about-us.css'
 
 export default function AboutUs() {
     return (
-        <div>
-
-            <div className="bg-gray-100 p-8">
+        <div className="bg-gray-100 p-8">
+            <div className="container mx-auto">
                 <h1 className="text-3xl font-bold text-center mb-4">About Us</h1>
                 <p className="text-center mb-8">Welcome to our gaming paradise! We are dedicated to connecting gamers
                     with
@@ -102,17 +101,17 @@ export default function AboutUs() {
                     <h2 className="text-2xl font-bold mb-4">Our Achievements</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                            <img src="https://placehold.co/100x100" alt="Award Icon" className="mx-auto mb-4"/>
+                            <img src="/best-gaming-platform.jpg" alt="Award Icon" className="mx-auto mb-4 about-us-awards-image"/>
                             <h3 className="text-xl font-bold mb-2">Best Gaming Platform 2021</h3>
                             <p>Recognized as the best gaming platform by the Global Gaming Awards.</p>
                         </div>
                         <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                            <img src="https://placehold.co/100x100" alt="Community Icon" className="mx-auto mb-4"/>
+                            <img src="/one-million-users.jpg" alt="Community Icon" className="mx-auto mb-4 about-us-awards-image"/>
                             <h3 className="text-xl font-bold mb-2">1 Million Users</h3>
                             <p>Our community reached a milestone of 1 million active users in 2022.</p>
                         </div>
                         <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                            <img src="https://placehold.co/100x100" alt="Innovation Icon" className="mx-auto mb-4"/>
+                            <img src="/virtual.jpg" alt="Innovation Icon" className="mx-auto mb-4 about-us-awards-image"/>
                             <h3 className="text-xl font-bold mb-2">Innovation in VR</h3>
                             <p>Leading the way in virtual reality gaming experiences since 2023.</p>
                         </div>

@@ -7,6 +7,7 @@ import { Game } from "../../models/game";
 import type { IGameService } from "../../iterfaces/i-game-service";
 import type { ISettingsService } from "../../iterfaces/i-settings-service";
 import GameCard from '../game-card/game-card';
+import type {IApiClient} from "../../iterfaces/i-api-client";
 
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
@@ -24,14 +25,25 @@ const TaleGameshopGameList: React.FC = () => {
     const loadMoreStep = 9;
 
     useEffect(() => {
-        loadGamesAndUpdateFilterCategory();
+        (async () => {
+            await loadGamesAndUpdateFilterCategory();
+        })();
     }, []);
 
     useEffect(() => {
-        loadGamesAndUpdateFilterCategory()
+        (async () => {
+            await loadGamesAndUpdateFilterCategory();
+        })();
     }, [location.search]);
 
-    const loadGamesAndUpdateFilterCategory = () => {
+    useEffect(() => {
+        (async () => {
+            // Фильтрация игр при изменении searchQuery или filterCategory
+            await updateGamesByCategory(games);
+        })();
+    }, [searchQuery]);
+
+    const loadGamesAndUpdateFilterCategory = async () => {
         const filterCategory = searchParams.get("filterCategory");
         setSearchQuery(filterCategory ?? "");
 
@@ -41,7 +53,7 @@ const TaleGameshopGameList: React.FC = () => {
             setGames(fetchedGames);
             await updateGamesByCategory(fetchedGames);
         };
-        fetchGames();
+        await fetchGames();
     }
 
     // Обновление списка игр по категориям
@@ -60,11 +72,6 @@ const TaleGameshopGameList: React.FC = () => {
 
         setGamesByCategory(gamesByCategory);
     };
-
-    useEffect(() => {
-        // Фильтрация игр при изменении searchQuery или filterCategory
-        updateGamesByCategory(games);
-    }, [searchQuery]);
 
     // Обновление searchParams в URL
     const updateSearchParams = (value: string) => {

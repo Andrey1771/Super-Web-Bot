@@ -4,6 +4,10 @@ import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 
 import path from 'path';
 
+import fs from 'fs';
+const cert = fs.readFileSync('./public/private.crt');
+const key = fs.readFileSync('./public/private.key');
+
 export default {
     mode: 'development',
     optimization: {
@@ -74,8 +78,8 @@ export default {
         server: {
             type: 'https',
             options: {
-                key: './public/private.key',
-                cert: './public/private.crt',
+                key: key,
+                cert: cert,
                 passphrase: 'webpack-dev-server',
                 requestCert: false,
             },
