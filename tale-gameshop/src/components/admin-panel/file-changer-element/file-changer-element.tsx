@@ -19,7 +19,7 @@ const FileChangerElement: React.FC = () => {
 
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.post('https://localhost:7117/api/image/upload', formData, {
+            const response = await apiClient.api.post('/api/image/upload', formData, {
                 headers: {'Content-Type': 'multipart/form-data'},
             });
             return getFilePath(response.data.filePath);

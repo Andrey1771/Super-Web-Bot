@@ -5,7 +5,7 @@ import IDENTIFIERS from "../constants/identifiers";
 import type {IApiClient} from "../iterfaces/i-api-client";
 import container from '../inversify.config';
 
-const API_URL = 'https://localhost:7117/api/Game'; // Замените на ваш URL
+const API_URL = '/api/Game'; // Замените на ваш URL
 
 @injectable()
 export class GameService implements IGameService {

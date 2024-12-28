@@ -5,7 +5,7 @@ import container from "../inversify.config";
 import type {IApiClient} from "../iterfaces/i-api-client";
 import IDENTIFIERS from "../constants/identifiers";
 
-const API_URL = 'https://localhost:7117/api/Settings'; // Замените на ваш URL
+const API_URL = '/api/Settings'; // Замените на ваш URL
 
 @injectable()
 export class SettingsService implements ISettingsService {

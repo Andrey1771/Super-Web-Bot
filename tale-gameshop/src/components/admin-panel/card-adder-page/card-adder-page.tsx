@@ -25,7 +25,7 @@ const CardAdderPage: React.FC = () => {
     const fetchItems = async (page: number, reset: boolean = false) => {
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.get(`https://localhost:7117/api/game?page=${page}&limit=20`);
+            const response = await apiClient.api.get(`/api/game?page=${page}&limit=20`);
             const newItems = response.data;
 
             setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
@@ -73,7 +73,7 @@ const CardAdderPage: React.FC = () => {
 
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.post('https://localhost:7117/api/image/upload', formData, {
+            const response = await apiClient.api.post('/api/image/upload', formData, {
                 headers: {'Content-Type': 'multipart/form-data'},
             });
             return getFilePath(response.data.filePath);
@@ -104,9 +104,9 @@ const CardAdderPage: React.FC = () => {
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
             if (mode === 'edit') {
-                await apiClient.api.put(`https://localhost:7117/api/game/${selectedItem.id}`, updatedItem);
+                await apiClient.api.put(`/api/game/${selectedItem.id}`, updatedItem);
             } else {
-                await apiClient.api.post('https://localhost:7117/api/game', updatedItem);
+                await apiClient.api.post('/api/game', updatedItem);
             }
             setPage(1);
             setHasMore(true);
@@ -147,7 +147,7 @@ const CardAdderPage: React.FC = () => {
         if (window.confirm("Are you sure you want to delete this object?")) {
             try {
                 const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-                await apiClient.api.delete(`https://localhost:7117/api/game/${itemId}`);
+                await apiClient.api.delete(`/api/game/${itemId}`);
                 setItems((prev) => prev.filter((item) => item.id !== itemId)); // Удаляем объект из локального состояния
                 setSelectedItem(null);
                 resetForm();

@@ -5,6 +5,8 @@ import axios from "axios";
 import {Elements} from '@stripe/react-stripe-js';
 import {loadStripe} from '@stripe/stripe-js';
 import './checkout-page.css';
+import webSettings from '../../../webSettings.json';
+
 
 const CheckoutPage: React.FC = () => {
     const {state} = useCart();
@@ -16,7 +18,7 @@ const CheckoutPage: React.FC = () => {
     useEffect(() => {
         (async () => {
             // Запрос на сервер для получения clientSecret TODO
-            const {data} = await axios.post("https://localhost:7117/api/payments/create-payment-intent", {
+            const {data} = await axios.post(`${webSettings.apiBaseUrl}/api/payments/create-payment-intent`, {
                 amount: totalPrice, // сумма в центах
             });
             console.log(data);
@@ -50,7 +52,7 @@ const CheckoutPage: React.FC = () => {
                                 {/* Колонка с изображением и названием */}
                                 <div className="flex items-center gap-4">
                                     <img
-                                        src={`https://localhost:7117/${item.image}`}
+                                        src={`${webSettings.apiBaseUrl}/${item.image}`}
                                         alt={item.name}
                                         className="w-16 h-16 object-cover rounded"
                                     />

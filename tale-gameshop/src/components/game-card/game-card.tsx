@@ -2,6 +2,7 @@ import React from 'react';
 import {Game} from '../../models/game';
 import {CartProvider, useCart} from "../../context/cart-context";
 import { Product } from '../../reducers/cart-reducer';
+import webSettings from '../../webSettings.json';
 
 interface GameCardProps {
     game: Game;
@@ -23,7 +24,7 @@ const GameCard: React.FC<GameCardProps> = ({game}) => {
                     alt={game.title}
                     className="mb-4"
                     height="100"
-                    src={`https://localhost:7117/${game.imagePath}`}
+                    src={`${webSettings.apiBaseUrl}/${game.imagePath}`}
                     width="100"
                 />
                 <h2 className="text-xl font-bold mb-2">{game.title}</h2>

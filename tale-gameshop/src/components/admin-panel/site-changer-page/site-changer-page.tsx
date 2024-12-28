@@ -2,6 +2,7 @@ import React, {useEffect, useState} from "react";
 import container from "../../../inversify.config";
 import type {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
+import webSettings from '../../../webSettings.json';
 
 type Data = string[];
 
@@ -24,7 +25,7 @@ const SiteChangerPage: React.FC = () => {
 
     const updateImages = async () => {
         const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-        const response = (await apiClient.api.get<Data>('https://localhost:7117/api/Image/list')).data;
+        const response = (await apiClient.api.get<Data>('/api/Image/list')).data;
         setImages(response);
     }
 
@@ -33,7 +34,7 @@ const SiteChangerPage: React.FC = () => {
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
             const fileName = images.at(index)?.split('/')?.pop() ?? "";
-            await apiClient.api.delete(`https://localhost:7117/api/Image/delete?fileName=${encodeURIComponent(fileName)}`);
+            await apiClient.api.delete(`/api/Image/delete?fileName=${encodeURIComponent(fileName)}`);
         } catch (error) {
             console.error('Error getting data:', error);
         }
@@ -59,7 +60,7 @@ const SiteChangerPage: React.FC = () => {
 
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.post("https://localhost:7117/api/Image/upload", formData, {
+            const response = await apiClient.api.post("/api/Image/upload", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data"
                 },
@@ -84,7 +85,7 @@ const SiteChangerPage: React.FC = () => {
                 {images.map((image, index) => (
                     <div key={index} className="relative p-2 border rounded shadow bg-white">
                         <img
-                            src={`https://localhost:7117${image}`}
+                            src={`${webSettings.apiBaseUrl}${image}`}
                             alt={`Image ${index + 1}`}
                             className="w-full h-32 object-fill rounded"
                         />

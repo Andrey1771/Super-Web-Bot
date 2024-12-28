@@ -108,7 +108,7 @@ const ChatBot: React.FC = () => {
         event.preventDefault();
         setShowForm(false);
         const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-        await apiClient.api.post(`https://localhost:7117/api/ChatBot`, {
+        await apiClient.api.post(`/api/ChatBot`, {
             question: messages.at(messages.length - 2)?.text,
             email: formData.email,
             name: formData.name,

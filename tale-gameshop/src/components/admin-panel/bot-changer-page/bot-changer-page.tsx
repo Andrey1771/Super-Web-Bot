@@ -37,7 +37,7 @@ const BotChangerPage: React.FC = () => {
         (async () => {
             try {
                 const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-                const response = (await apiClient.api.get<Data>('https://localhost:7117/api/Admin')).data;
+                const response = (await apiClient.api.get<Data>('/api/Admin')).data;
                 setEditableData(response);
             } catch (error) {
                 console.error('Error getting data:', error);
@@ -92,7 +92,7 @@ const BotChangerPage: React.FC = () => {
 
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.post('https://localhost:7117/api/Admin', editableData);
+            const response = await apiClient.api.post('/api/Admin', editableData);
             console.log('Server response:', response.data);
         } catch (err) {
             console.error('Error sending data:', err);
