@@ -4,6 +4,9 @@ import MessageInput from '../message-input/message-input';
 import MessageList from '../message-list/message-list';
 import './chat-bot.css'
 import { faGripLines } from '@fortawesome/free-solid-svg-icons';
+import container from "../../../inversify.config";
+import type {IApiClient} from "../../../iterfaces/i-api-client";
+import IDENTIFIERS from "../../../constants/identifiers";
 
 const ChatBot: React.FC = () => {
     const [messages, setMessages] = useState<{ sender: string; text: string }[]>([
@@ -98,9 +101,12 @@ const ChatBot: React.FC = () => {
         setIsOpen(!isOpen);
     };
 
-    const handleFormSubmit = (event: React.FormEvent) => {
+    const handleFormSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         setShowForm(false);
+        const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+        await apiClient.api.put(`https://localhost:7117/api/chatBot`);
+
         setMessages((prev) => [...prev, { sender: 'bot', text: 'Спасибо за предоставленные данные! В ближайшее время с вами свяжутся.' }]);
     };
 

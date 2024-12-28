@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -21,15 +22,14 @@ namespace SuperBot.Application.Handlers.Telegram
 
         public async Task<Message> Handle(NotifyAdminCommand request, CancellationToken cancellationToken)
         {
-            await NotifyAdmin(user.Username, steamLogin, request.Amount, totalAmount);
+            return await NotifyAdminAsync(request.Phone, request.Name, request.Email, request.Question);
         }
 
-        // Уведомление администратора о пополнении
-        private async Task NotifyAdmin(string username, string steamLogin, decimal amount, decimal totalAmount)
+        // Уведомление администратора
+        private Task<Message> NotifyAdminAsync(string phone, string name, string email, string question)
         {
-            string adminMessage = string.Format(_translationsService.Translation.NotifyTopUpSteam, username, steamLogin, amount, totalAmount, "Нет");
-            // Отправка уведомления админу (укажите здесь ID чата админа)
-            await _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);
+            string adminMessage = string.Format(_translationsService.Translation.NotifyAdmin, phone, name, email, question);
+            return _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);
         }
     }
 }

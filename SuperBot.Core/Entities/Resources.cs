@@ -44,6 +44,7 @@ namespace SuperBot.Core.Entities
         public string TopUpAmount { get; set; }
         public string TopUpSteam { get; set; }
         public string NotifyTopUpSteam { get; set; }
+        public string NotifyAdmin { get; set; }
         public string EnterSteamLogin { get; set; }
         public string TransitionForThisCommandIsNotImplemented { get; set; }
         public string RequestAccepted { get; set; }

@@ -9,5 +9,9 @@ namespace SuperBot.Application.Commands.Telegram
 {
     public class NotifyAdminCommand : BaseMessageCommand
     {
+        public string Phone { get; set; }
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string Question { get; set; }
     }
 }
