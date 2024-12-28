@@ -22,6 +22,8 @@ const ChatBot: React.FC = () => {
     const [startMousePosition, setStartMousePosition] = useState({ x: 0, y: 0 });
     const [initialSize, setInitialSize] = useState({ width: 360, height: 480 });
     const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+
 
     const MIN_WIDTH = initialSize.width;
     const MIN_HEIGHT = initialSize.height;
@@ -105,9 +107,20 @@ const ChatBot: React.FC = () => {
         event.preventDefault();
         setShowForm(false);
         const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-        await apiClient.api.put(`https://localhost:7117/api/chatBot`);
+        await apiClient.api.post(`https://localhost:7117/api/ChatBot`, {
+            question: messages.at(messages.length - 2).text,
+            email: formData.email,
+            name: formData.name,
+            phone: formData.phone
+        });
+
 
         setMessages((prev) => [...prev, { sender: 'bot', text: 'Спасибо за предоставленные данные! В ближайшее время с вами свяжутся.' }]);
+    };
+
+    const handleFormChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = event.target;
+        setFormData((prevData) => ({ ...prevData, [name]: value }));
     };
 
     return (
@@ -154,15 +167,36 @@ const ChatBot: React.FC = () => {
                             <form onSubmit={handleFormSubmit} className="bg-gray-100 p-3 rounded mt-2">
                                 <div className="mb-2">
                                     <label className="block text-sm font-medium">Имя</label>
-                                    <input type="text" required className="w-full p-2 border border-gray-300 rounded mt-1" />
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleFormChange}
+                                        required
+                                        className="w-full p-2 border border-gray-300 rounded mt-1"
+                                    />
                                 </div>
                                 <div className="mb-2">
                                     <label className="block text-sm font-medium">Электронная почта</label>
-                                    <input type="email" required className="w-full p-2 border border-gray-300 rounded mt-1" />
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleFormChange}
+                                        required
+                                        className="w-full p-2 border border-gray-300 rounded mt-1"
+                                    />
                                 </div>
                                 <div className="mb-2">
                                     <label className="block text-sm font-medium">Телефонный номер</label>
-                                    <input type="tel" required className="w-full p-2 border border-gray-300 rounded mt-1" />
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleFormChange}
+                                        required
+                                        className="w-full p-2 border border-gray-300 rounded mt-1"
+                                    />
                                 </div>
                                 <button
                                     type="submit"
