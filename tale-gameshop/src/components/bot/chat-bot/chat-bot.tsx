@@ -23,7 +23,7 @@ const ChatBot: React.FC = () => {
     const [initialSize, setInitialSize] = useState({ width: 360, height: 480 });
     const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
     const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
-
+    const [shouldGlow, setShouldGlow] = useState(true);
 
     const MIN_WIDTH = initialSize.width;
     const MIN_HEIGHT = initialSize.height;
@@ -101,6 +101,7 @@ const ChatBot: React.FC = () => {
 
     const toggleChat = () => {
         setIsOpen(!isOpen);
+        setShouldGlow(false); // Убираем мерцание после открытия
     };
 
     const handleFormSubmit = async (event: React.FormEvent) => {
@@ -108,7 +109,7 @@ const ChatBot: React.FC = () => {
         setShowForm(false);
         const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
         await apiClient.api.post(`https://localhost:7117/api/ChatBot`, {
-            question: messages.at(messages.length - 2).text,
+            question: messages.at(messages.length - 2)?.text,
             email: formData.email,
             name: formData.name,
             phone: formData.phone
@@ -128,7 +129,9 @@ const ChatBot: React.FC = () => {
             {!isOpen && (
                 <button
                     onClick={toggleChat}
-                    className="fixed bottom-4 right-4 chat-background-color text-white p-3 rounded-full shadow-lg transition duration-200"
+                    className={`fixed bottom-4 right-4 chat-background-color text-white p-3 rounded-full shadow-lg transition duration-200 ${
+                        shouldGlow ? 'glow' : ''
+                    }`}
                 >
                     Чат
                 </button>

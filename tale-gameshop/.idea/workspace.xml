@@ -94,7 +94,7 @@
       <workItem from="1734050097206" duration="19270000" />
       <workItem from="1734252084916" duration="13066000" />
       <workItem from="1734323355085" duration="31308000" />
-      <workItem from="1734518786272" duration="27624000" />
+      <workItem from="1734518786272" duration="28850000" />
     </task>
     <servers />
   </component>
@@ -106,7 +106,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/bot/chat-bot/chat-bot.tsx</url>
-          <line>164</line>
+          <line>167</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
