@@ -73,7 +73,7 @@ export default function TaleGameshopHeader() {
         <nav className="bg-white border-b border-gray-200 header-nav">
             <div className="container mx-auto flex justify-between items-center py-4">
                 <div className="flex items-center">
-                    <img className="text-2xl font-bold" src="../../../public/shop_tale_logo.svg">
+                    <img className="text-2xl font-bold w-14 h-14" src="/tale-shop-logo.jpeg">
 
                     </img>
                     <ul className="flex space-x-6 ml-10">
