@@ -10,7 +10,7 @@ import IDENTIFIERS from "../../../constants/identifiers";
 
 const ChatBot: React.FC = () => {
     const [messages, setMessages] = useState<{ sender: string; text: string }[]>([
-        { sender: 'bot', text: 'Привет! Опишите какой у вас вопрос?' },
+        { sender: 'bot', text: 'Hello! Describe what question you have?' },
     ]);
     const [isOpen, setIsOpen] = useState(false);
     const [hasResponded, setHasResponded] = useState(false);
@@ -93,7 +93,7 @@ const ChatBot: React.FC = () => {
     const handleUserMessage = (text: string) => {
         setMessages((prev) => [...prev, { sender: 'user', text }]);
         if (!hasResponded) {
-            setMessages((prev) => [...prev, { sender: 'bot', text: 'Пожалуйста, заполните форму ниже, чтобы мы могли с вами связаться' }]);
+            setMessages((prev) => [...prev, { sender: 'bot', text: 'Please fill out the form below so we can contact you.' }]);
             setHasResponded(true);
             setShowForm(true);
         }
@@ -116,7 +116,7 @@ const ChatBot: React.FC = () => {
         });
 
 
-        setMessages((prev) => [...prev, { sender: 'bot', text: 'Спасибо за предоставленные данные! В ближайшее время с вами свяжутся.' }]);
+        setMessages((prev) => [...prev, { sender: 'bot', text: 'Thank you for the information you provided! You will be contacted shortly.' }]);
     };
 
     const handleFormChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,11 +129,11 @@ const ChatBot: React.FC = () => {
             {!isOpen && (
                 <button
                     onClick={toggleChat}
-                    className={`fixed bottom-4 right-4 chat-background-color text-white p-3 rounded-full shadow-lg transition duration-200 ${
+                    className={`fixed w-14 h-14 bottom-4 right-4 chat-background-color text-white p-3 rounded-full shadow-lg transition duration-200 ${
                         shouldGlow ? 'glow' : ''
                     }`}
                 >
-                    Чат
+                    Chat
                 </button>
             )}
 
@@ -154,7 +154,7 @@ const ChatBot: React.FC = () => {
                         onMouseDown={handleMouseDown}
                         onTouchStart={handleMouseDown}
                     >
-                        <span className="font-semibold">Чат-бот</span>
+                        <span className="font-semibold">Chat bot</span>
                         <button
                             onClick={toggleChat}
                             className="text-2xl text-white hover:text-gray-200"
@@ -169,7 +169,7 @@ const ChatBot: React.FC = () => {
                         {showForm && (
                             <form onSubmit={handleFormSubmit} className="bg-gray-100 p-3 rounded mt-2">
                                 <div className="mb-2">
-                                    <label className="block text-sm font-medium">Имя</label>
+                                    <label className="block text-sm font-medium">Name</label>
                                     <input
                                         type="text"
                                         name="name"
@@ -180,7 +180,7 @@ const ChatBot: React.FC = () => {
                                     />
                                 </div>
                                 <div className="mb-2">
-                                    <label className="block text-sm font-medium">Электронная почта</label>
+                                    <label className="block text-sm font-medium">E-mail</label>
                                     <input
                                         type="email"
                                         name="email"
@@ -191,7 +191,7 @@ const ChatBot: React.FC = () => {
                                     />
                                 </div>
                                 <div className="mb-2">
-                                    <label className="block text-sm font-medium">Телефонный номер</label>
+                                    <label className="block text-sm font-medium">Phone number</label>
                                     <input
                                         type="tel"
                                         name="phone"
@@ -205,7 +205,7 @@ const ChatBot: React.FC = () => {
                                     type="submit"
                                     className="w-full chat-background-color animated-button text-white py-2 rounded hover:bg-blue-600 transition duration-200"
                                 >
-                                    Отправить
+                                    Send
                                 </button>
                             </form>
                         )}

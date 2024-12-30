@@ -15,7 +15,7 @@ interface GameCategoryDropDownProps {
 const GameCategoryDropDown: React.FC<GameCategoryDropDownProps> = ({ categories }) => {
     categories = gameCategories; //TODO Временная заглушка, в планах получение с сервера
     return (
-        <ul className="absolute left-0 mt-2 w-64 bg-white border border-gray-200 shadow-lg hidden dropdown-menu p-4">
+        <ul className="text-left absolute left-0 mt-2 w-64 bg-white border border-gray-200 shadow-lg hidden dropdown-menu p-4">
             {categories.map((category, index) => (
                 <li className="font-bold accordion-item mt-4" key={index}>
                     <Link to={`/games?filterCategory=${category.name}`} className="text-gray-700 menu-item">
