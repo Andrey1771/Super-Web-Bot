@@ -60,7 +60,7 @@ export default function TaleGameshopHeader() {
 
                 {/* Меню */}
                 <ul
-                    className={`flex-col lg:flex-row flex lg:flex items-center space-y-4 lg:space-y-0 lg:space-x-6 absolute lg:static left-0 top-16 lg:top-auto bg-white lg:bg-transparent w-full lg:w-auto z-50 transition-transform duration-300 ${
+                    className={`text-center flex-col lg:flex-row flex lg:flex items-center space-y-4 lg:space-y-0 lg:space-x-6 absolute lg:static left-0 top-16 lg:top-auto bg-white lg:bg-transparent w-full lg:w-auto z-50 transition-transform duration-300 ${
                         isMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
                     }`}
                 >
@@ -93,22 +93,35 @@ export default function TaleGameshopHeader() {
                     {/* Кнопки корзины, входа и регистрации */}
                     <div className="flex flex-col space-y-4 lg:hidden">
                         <Link to="/cart" className="cursor-pointer">
-                            <FontAwesomeIcon className="text-2xl" icon={faShoppingCart} />
+                            <FontAwesomeIcon className="hidden lg:flex text-2xl" icon={faShoppingCart} />
+                            <div className="lg:hidden text-gray-700 menu-item cursor-pointer">Cart</div>
                         </Link>
                         {!keycloak.authenticated ? (
                             <>
                                 <button
-                                    className="px-4 py-2 border border-gray-700 text-gray-700 animated-button cursor-pointer"
+                                    className="hidden lg:flex px-4 py-2 border border-gray-700 text-gray-700 animated-button cursor-pointer"
                                     onClick={login}
                                 >
                                     Login
                                 </button>
+                                <div
+                                    className="lg:hidden text-gray-700 menu-item cursor-pointer"
+                                    onClick={login}>
+                                    Login
+                                </div>
+
                                 <button
-                                    className="px-4 py-2 bg-black text-white animated-button cursor-pointer"
+                                    className="hidden lg:flex px-4 py-2 bg-black text-white animated-button cursor-pointer"
                                     onClick={register}
                                 >
                                     Sign Up
                                 </button>
+                                <div
+                                    className="lg:hidden text-gray-700 menu-item cursor-pointer"
+                                    onClick={register}>
+                                    Sign Up
+                                </div>
+                                <div className="lg:hidden h-0"></div>
                             </>
                         ) : (
                             <>
