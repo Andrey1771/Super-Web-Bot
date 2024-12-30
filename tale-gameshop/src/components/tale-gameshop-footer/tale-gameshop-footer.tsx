@@ -1,5 +1,6 @@
 import React from "react";
 import './tale-gameshop-footer.css'
+import { Link } from "react-router-dom";
 
 export default function TaleGameshopFooter() {
     return (
@@ -7,11 +8,11 @@ export default function TaleGameshopFooter() {
             <div className="container mx-auto flex items-center justify-between">
                 <div className="text-2xl font-bold">Tale Shop</div>
                 <div className="flex items-center space-x-4">
-                    <a href="#" className="text-gray-500">Game Store</a>
-                    <a href="#" className="text-gray-500">About Us</a>
-                    <a href="#" className="text-gray-500">Contact Us</a>
-                    <a href="#" className="text-gray-500">Help Centre</a>
-                    <a href="#" className="text-gray-500">FAQs</a>
+                    <Link to="/games" className="text-gray-500">Game Store</Link>
+                    <Link to="/about" className="text-gray-500">About Us</Link>
+                    <Link to="/apologyPage" className="text-gray-500">Contact Us</Link>
+                    <Link to="/apologyPage" className="text-gray-500">Help Centre</Link>
+                    <Link to="/apologyPage" className="text-gray-500">FAQs</Link>
                 </div>
                 <div className="flex items-center space-x-4">
                     <a href="#" className="text-black"><i className="fab fa-facebook"></i></a>

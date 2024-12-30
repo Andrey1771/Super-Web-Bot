@@ -143,9 +143,9 @@ export default function TaleGameshopMainPage() {
                                 <FontAwesomeIcon className="fas text-xl mr-3" icon={faPenNib}/>
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to="/apologyPage" className="text-gray-700 menu-item">
                                             Game Reviews
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Read our latest game reviews and insights.
@@ -156,9 +156,9 @@ export default function TaleGameshopMainPage() {
                                 <FontAwesomeIcon className="fas text-xl mr-3" icon={faNewspaper}/>
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to="/apologyPage" className="text-gray-700 menu-item">
                                             Gaming News
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Stay updated with the latest gaming news.
@@ -169,9 +169,9 @@ export default function TaleGameshopMainPage() {
                                 <FontAwesomeIcon className="fas text-xl mr-3" icon={faLightbulb}/>
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to="/apologyPage" className="text-gray-700 menu-item">
                                             Tips &amp; Tricks
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Enhance your gameplay with expert tips.
@@ -182,9 +182,9 @@ export default function TaleGameshopMainPage() {
                                 <FontAwesomeIcon className="fas text-xl mr-3" icon={faFileAlt}/>
                                 <div>
                                     <h3 className="font-bold">
-                                        <a className="text-gray-700 menu-item" href="#">
+                                        <Link to="/apologyPage" className="text-gray-700 menu-item">
                                             Featured Articles
-                                        </a>
+                                        </Link>
                                     </h3>
                                     <p>
                                         Explore our featured articles for insights.
