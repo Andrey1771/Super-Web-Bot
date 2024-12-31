@@ -8,10 +8,11 @@ import type { IGameService } from "../../iterfaces/i-game-service";
 import type { ISettingsService } from "../../iterfaces/i-settings-service";
 import GameCard from '../game-card/game-card';
 import type {IApiClient} from "../../iterfaces/i-api-client";
+import { FixedSizeList as List } from 'react-window';
+import GameListItem from "../game-list-item/game-list-item";
 
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
-    const [visibleGamesCount, setVisibleGamesCount] = useState<number>(9);
     const [gamesByCategory, setGamesByCategory] = useState<Map<string, Game[]>>(new Map());
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
@@ -94,11 +95,6 @@ const TaleGameshopGameList: React.FC = () => {
         updateSearchParams(value); // Обновление параметра фильтрации в URL
     };
 
-    // Загрузка дополнительных игр
-    const loadMoreGames = () => {
-        setVisibleGamesCount(prevCount => prevCount + loadMoreStep);
-    };
-
     // Функция очистки инпута
     const clearSearch = () => {
         setSearchQuery('');
@@ -160,26 +156,10 @@ const TaleGameshopGameList: React.FC = () => {
 
                 {/* Отображаем игры по категориям */}
                 {Array.from(filteredGamesByCategory.keys()).map((category) => (
-                    <section key={category}>
-                        <h2 className="text-2xl font-bold mb-4">{category}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                            {filteredGamesByCategory.get(category)
-                                ?.slice(0, visibleGamesCount)
-                                .map((game: Game) => (
-                                    <GameCard key={game.id} game={game} />
-                                ))}
-                        </div>
-                    </section>
+                    <GameListItem
+                        filteredGamesByCategory={filteredGamesByCategory}
+                        category={category}></GameListItem>
                 ))}
-
-                {games.length > visibleGamesCount && (
-                    <button
-                        onClick={loadMoreGames}
-                        className="px-6 py-3 bg-white text-black animated-button mx-auto block"
-                    >
-                        Load More
-                    </button>
-                )}
             </main>
         </div>
     );
