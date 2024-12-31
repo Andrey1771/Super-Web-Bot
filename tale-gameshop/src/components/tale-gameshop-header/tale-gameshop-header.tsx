@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, {useState, useEffect} from "react";
+import {Link} from "react-router-dom";
 import "./tale-gameshop-header.css";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import LogOutButton from "../logout-button/logout-button";
 import GameCategoryDropDown from "../game-category-drop-down/game-category-drop-down";
-import type { IKeycloakAuthService } from "../../iterfaces/i-keycloak-auth-service";
-import { useKeycloak } from "@react-keycloak/web";
-import { faBars, faTimes, faShoppingCart } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
+import {useKeycloak} from "@react-keycloak/web";
+import {faBars, faTimes, faShoppingCart} from "@fortawesome/free-solid-svg-icons";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
 export default function TaleGameshopHeader() {
-    const { keycloak } = useKeycloak();
+    const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -48,14 +48,14 @@ export default function TaleGameshopHeader() {
         <nav className="bg-white border-b border-gray-200 header-nav">
             <div className="container mx-auto flex justify-between items-center py-4">
                 {/* Логотип */}
-                <img className="lg:hidden w-14 h-14" src="/tale-shop-logo.jpeg" alt="Logo" />
+                <img className="lg:hidden w-14 h-14" src="/tale-shop-logo.jpeg" alt="Logo"/>
 
                 {/* Бургер-иконка */}
                 <button
                     className="lg:hidden text-gray-700 text-2xl"
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                 >
-                    <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} />
+                    <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars}/>
                 </button>
 
                 {/* Меню */}
@@ -66,7 +66,7 @@ export default function TaleGameshopHeader() {
                 >
                     <li className="hidden lg:flex">
                         {/* Логотип */}
-                        <img className="w-14 h-14" src="/tale-shop-logo.jpeg" alt="Logo" />
+                        <img className="w-14 h-14" src="/tale-shop-logo.jpeg" alt="Logo"/>
                     </li>
                     <li>
                         <Link className="text-gray-700 menu-item" to="/">
@@ -87,13 +87,13 @@ export default function TaleGameshopHeader() {
                         <Link to={`/games`} className="text-gray-700 menu-item">
                             More Games
                         </Link>
-                        <GameCategoryDropDown categories={[]} />
+                        <GameCategoryDropDown categories={[]}/>
                     </li>
 
                     {/* Кнопки корзины, входа и регистрации */}
                     <div className="flex flex-col space-y-4 lg:hidden">
                         <Link to="/cart" className="cursor-pointer">
-                            <FontAwesomeIcon className="hidden lg:flex text-2xl" icon={faShoppingCart} />
+                            <FontAwesomeIcon className="hidden lg:flex text-2xl" icon={faShoppingCart}/>
                             <div className="lg:hidden text-gray-700 menu-item cursor-pointer">Cart</div>
                         </Link>
                         {!keycloak.authenticated ? (
@@ -127,11 +127,16 @@ export default function TaleGameshopHeader() {
                             <>
                                 <span className="text-gray-700">{email}</span>
                                 {isAdmin && (
-                                    <Link className="px-4 py-2 bg-red-500 text-white" to="/admin">
-                                        Open Admin Panel
-                                    </Link>
+                                    <>
+                                        <Link className="hidden lg:flex px-4 py-2 bg-red-500 text-white" to="/admin">
+                                            Open Admin Panel
+                                        </Link>
+                                        <Link className="lg:hidden text-gray-700 menu-item cursor-pointer" to="/admin">
+                                            Open Admin Panel
+                                        </Link>
+                                    </>
                                 )}
-                                <LogOutButton />
+                                <LogOutButton/>
                             </>
                         )}
                     </div>
@@ -140,32 +145,47 @@ export default function TaleGameshopHeader() {
                 {/* Корзина и кнопки для больших экранов */}
                 <div className="hidden lg:flex space-x-4 items-center">
                     <Link to="/cart" className="cursor-pointer">
-                        <FontAwesomeIcon className="text-2xl" icon={faShoppingCart} />
+                        <FontAwesomeIcon className="text-2xl" icon={faShoppingCart}/>
                     </Link>
                     {!keycloak.authenticated ? (
                         <>
                             <button
-                                className="px-4 py-2 border border-gray-700 text-gray-700 animated-button cursor-pointer"
+                                className="hidden lg:flex px-4 py-2 border border-gray-700 text-gray-700 animated-button cursor-pointer"
                                 onClick={login}
                             >
                                 Login
                             </button>
+                            <div
+                                className="lg:hidden text-gray-700 menu-item cursor-pointer"
+                                onClick={login}>
+                                Login
+                            </div>
                             <button
-                                className="px-4 py-2 bg-black text-white animated-button cursor-pointer"
+                                className="hidden lg:flex px-4 py-2 bg-black text-white animated-button cursor-pointer"
                                 onClick={register}
                             >
                                 Sign Up
                             </button>
+                            <div
+                                className="lg:hidden text-gray-700 menu-item cursor-pointer"
+                                onClick={register}>
+                                Sign Up
+                            </div>
                         </>
                     ) : (
                         <>
                             <span className="mr-2">{email}</span>
                             {isAdmin && (
-                                <Link className="px-4 py-2 bg-red-500 text-white" to="/admin">
-                                    Open Admin Panel
-                                </Link>
+                                <>
+                                    <Link className="hidden lg:flex px-4 py-2 bg-red-500 text-white" to="/admin">
+                                        Open Admin Panel
+                                    </Link>
+                                    <Link className="lg:hidden text-gray-700 menu-item cursor-pointer" to="/admin">
+                                        Open Admin Panel
+                                    </Link>
+                                </>
                             )}
-                            <LogOutButton />
+                            <LogOutButton/>
                         </>
                     )}
                 </div>
