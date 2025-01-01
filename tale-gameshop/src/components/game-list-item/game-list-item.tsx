@@ -24,12 +24,9 @@ const GameListItem: React.FC<GameListItemProps> = ({ filteredGamesByCategory, ca
         const handleResize = () => {
             if (containerRef.current) {
                 const width = containerRef.current.offsetWidth > MAX_WIDTH ? MAX_WIDTH : containerRef.current.offsetWidth;
-
-                setColumnCount(Math.max(1, Math.floor(width / (ITEM_WIDTH + GAP))));
-                console.log(MAX_WIDTH);
-                console.log(containerRef.current.offsetWidth);
-                console.log(columnCount * (ITEM_WIDTH + GAP) + GAP/*Отступ от скролла*/);
-                setContainerWidth(columnCount * (ITEM_WIDTH + GAP) + GAP/*Отступ от скролла*/);
+                const newColumnCount = Math.max(1, Math.floor(width / (ITEM_WIDTH + GAP)));
+                setColumnCount(newColumnCount);
+                setContainerWidth(newColumnCount * (ITEM_WIDTH + GAP) + GAP/*Отступ от скролла*/);
             }
         };
 
