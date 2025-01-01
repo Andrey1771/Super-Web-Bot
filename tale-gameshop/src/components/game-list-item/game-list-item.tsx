@@ -50,13 +50,16 @@ const GameListItem: React.FC<GameListItemProps> = ({ filteredGamesByCategory, ca
         }
 
         const game = games[gameIndex];
+        const adjustedLeft = columnIndex === 0 ? Number(style.left) : Number(style.left) + GAP;
+        const adjustedWidth = style.width ? Number(style.width) - (columnIndex === 0 ? 0 : GAP) : undefined;
+
         return (
             <div
                 style={{
                     ...style,
                     top: Number(style.top) + GAP,
-                    left: Number(style.left) + GAP,
-                    width: style.width ? Number(style.width) - GAP : undefined,
+                    left: adjustedLeft,
+                    width: adjustedWidth,
                     height: style.height ? Number(style.height) - GAP : undefined,
                 }}
             >
