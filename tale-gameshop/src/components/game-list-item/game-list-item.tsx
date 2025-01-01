@@ -15,7 +15,7 @@ const GameListItem: React.FC<GameListItemProps> = ({ filteredGamesByCategory, ca
     const [containerWidth, setContainerWidth] = useState(0);
     const [columnCount, setColumnCount] = useState(3);
 
-    const ITEM_WIDTH = 400; // Ширина карточки игры
+    const ITEM_WIDTH = 469; // Ширина карточки игры
     const ITEM_HEIGHT = 265; // Высота карточки игры
     const GAP = 24; // Отступы между элементами
     const MAX_WIDTH = 1504;
@@ -68,19 +68,21 @@ const GameListItem: React.FC<GameListItemProps> = ({ filteredGamesByCategory, ca
     return (
         <section className="flex justify-center flex-col" key={category}>
             <div className="flex flex-col items-start container">
-                <h2 className="text-2xl font-bold mb-4">{category}</h2>
                 <div ref={containerRef} className="w-full mb-8 flex justify-center" style={{overflow: 'hidden'}}>
                     {containerWidth > 0 && (
-                        <Grid
-                            columnCount={columnCount}
-                            columnWidth={ITEM_WIDTH + GAP}
-                            rowCount={rowCount}
-                            rowHeight={ITEM_HEIGHT + GAP}
-                            height={500}
-                            width={containerWidth}
-                        >
-                            {Cell}
-                        </Grid>
+                        <div className="flex flex-col items-start ">
+                            <h2 className="text-2xl font-bold mb-4">{category}</h2>
+                            <Grid
+                                columnCount={columnCount}
+                                columnWidth={ITEM_WIDTH + GAP}
+                                rowCount={rowCount}
+                                rowHeight={ITEM_HEIGHT + GAP}
+                                height={500}
+                                width={containerWidth}
+                            >
+                                {Cell}
+                            </Grid>
+                        </div>
                     )}
                 </div>
             </div>
