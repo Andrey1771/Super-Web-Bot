@@ -80,7 +80,7 @@ const GameListItem: React.FC<GameListItemProps> = ({ filteredGamesByCategory, ca
                                 columnWidth={ITEM_WIDTH + GAP}
                                 rowCount={rowCount}
                                 rowHeight={ITEM_HEIGHT + GAP}
-                                height={500}
+                                height={rowCount == 1 ? (ITEM_HEIGHT + GAP) : 2 * (ITEM_HEIGHT + GAP)}
                                 width={containerWidth}
                             >
                                 {Cell}
