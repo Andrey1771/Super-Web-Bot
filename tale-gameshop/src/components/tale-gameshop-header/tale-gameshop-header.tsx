@@ -9,11 +9,15 @@ import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service
 import {useKeycloak} from "@react-keycloak/web";
 import {faBars, faTimes, faShoppingCart} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import { useCart } from "../../context/cart-context";
 
 export default function TaleGameshopHeader() {
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { state } = useCart();
+    const totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0); // Сумма количества товаров
+
 
     useEffect(() => {
         const handleScroll = () => {
@@ -144,8 +148,13 @@ export default function TaleGameshopHeader() {
 
                 {/* Корзина и кнопки для больших экранов */}
                 <div className="hidden lg:flex space-x-4 items-center">
-                    <Link to="/cart" className="cursor-pointer">
-                        <FontAwesomeIcon className="text-2xl" icon={faShoppingCart}/>
+                    <Link to="/cart" className="cursor-pointer relative">
+                        <FontAwesomeIcon className="text-2xl" icon={faShoppingCart} />
+                        {totalItems > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                {totalItems}
+                            </span>
+                        )}
                     </Link>
                     {!keycloak.authenticated ? (
                         <>
