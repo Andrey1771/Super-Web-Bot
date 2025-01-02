@@ -18,7 +18,7 @@ export default {
     },
     entry: './src/index.tsx', // Точка входа для React-компонентов
     output: {
-        path: path.resolve(import.meta.url, 'dist'),
+        path: path.resolve('dist'),
         filename: isProduction ? 'bundle.[contenthash].js' : 'bundle.js', // Разные имена для продакшн
         publicPath: '/', // или другой путь
     },
