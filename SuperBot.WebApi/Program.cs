@@ -145,7 +145,16 @@ using (var scope = builder.Services.BuildServiceProvider().CreateScope())
         var newSettings = new Settings
         {
             Id = Guid.NewGuid(),
-            GameCategories = gameCategories.ToArray(),
+            GameCategories = gameCategories.Select((category, index) =>
+            {
+                var description = "";
+                GameTypeMapper.DescriptionsCategories.TryGetValue((GameType)index, out description);
+                return new GameCategory
+                {
+                    Tag = category,
+                    Title = description
+                };
+            }).ToArray(),
         };
         await repository.CreateAsync(newSettings);
     }

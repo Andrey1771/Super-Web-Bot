@@ -9,6 +9,7 @@ namespace SuperBot.Infrastructure.Models
         public SettingsProfile()
         {
             CreateMap<Settings, SettingsDb>().ReverseMap();
+            CreateMap<GameCategory, GameCategoryDb>().ReverseMap();
         }
     }
 }

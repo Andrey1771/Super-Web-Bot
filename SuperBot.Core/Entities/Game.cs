@@ -16,6 +16,25 @@
         EducationalGames
     }
 
+    public static class GameTypeMapper //TODO
+    {
+        public static readonly Dictionary<GameType, string> DescriptionsCategories = new Dictionary<GameType, string>
+        {
+            { GameType.Action, "Action" },
+            { GameType.Adventure, "Adventure" },
+            { GameType.RolePlayingGames, "Role-Playing Games (RPGs)" },
+            { GameType.Simulation, "Simulation" },
+            { GameType.Strategy, "Strategy" },
+            { GameType.Puzzle, "Puzzle" },
+            { GameType.Sports, "Sports" },
+            { GameType.CardAndBoardGames, "Card and Board Games" },
+            { GameType.MassivelyMultiplayerOnline, "Massively Multiplayer Online (MMO)" },
+            { GameType.Horror, "Horror" },
+            { GameType.CasualGames, "Casual Games" },
+            { GameType.EducationalGames, "Educational Games" }
+        };
+    }
+
     public class Game
     {
         public string Id { get; set; }

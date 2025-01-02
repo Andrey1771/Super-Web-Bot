@@ -6,30 +6,34 @@ import container from "../../inversify.config";
 import { Game } from "../../models/game";
 import type { IGameService } from "../../iterfaces/i-game-service";
 import type { ISettingsService } from "../../iterfaces/i-settings-service";
-import GameCard from '../game-card/game-card';
-import type {IApiClient} from "../../iterfaces/i-api-client";
-import { FixedSizeList as List } from 'react-window';
 import GameListItem from "../game-list-item/game-list-item";
+import {Settings} from "../../models/settings";
 
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
     const [gamesByCategory, setGamesByCategory] = useState<Map<string, Game[]>>(new Map());
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [settings, setSettings] = useState<Settings | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Получаем зависимости через контейнер
     const _gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const _settingsService = container.get<ISettingsService>(IDENTIFIERS.ISettingsService);
 
-    const loadMoreStep = 9;
+    useEffect(() => {
+        (async () => {
+            const allSettings = await _settingsService.getAllSettings();
+            const settings = allSettings.shift() ?? null;
+            setSettings(settings);
+        })();
+    }, []);
 
     useEffect(() => {
         (async () => {
             await loadGamesAndUpdateFilterCategory();
         })();
-    }, []);
+    }, [settings]);
 
     useEffect(() => {
         (async () => {
@@ -59,15 +63,16 @@ const TaleGameshopGameList: React.FC = () => {
 
     // Обновление списка игр по категориям
     const updateGamesByCategory = async (gamesList: Game[]) => {
-        const allSettings = await _settingsService.getAllSettings();
-        const settings = allSettings.shift();
-
         const gamesByCategory = gamesList.reduce((acc, game) => {
-            const category = settings?.gameCategories[game.gameType] ?? '';
-            if (!acc.has(category)) {
-                acc.set(category, []);
+            const category = settings?.gameCategories[game.gameType] ?? null;
+            if (category === null) {
+                return acc
+            };
+
+            if (!acc.has(category.title)) {
+                acc.set(category.title, []);
             }
-            acc.get(category)!.push(game);
+            acc.get(category.title)!.push(game);
             return acc;
         }, new Map<string, Game[]>());
 
