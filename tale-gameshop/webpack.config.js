@@ -1,22 +1,25 @@
 import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-
 import path from 'path';
-
 import fs from 'fs';
+
+// Чтение сертификатов для HTTPS
 const cert = fs.readFileSync('./public/private.crt');
 const key = fs.readFileSync('./public/private.key');
 
+// Определяем режим (dev или prod) через переменную окружения
+const isProduction = process.env.NODE_ENV === 'production';
+
 export default {
-    mode: 'development',
+    mode: isProduction ? 'production' : 'development', // Устанавливаем режим
     optimization: {
-        minimize: false, // Отключить минификацию
+        minimize: isProduction, // Минификация в продакшн-режиме
     },
     entry: './src/index.tsx', // Точка входа для React-компонентов
     output: {
         path: path.resolve(import.meta.url, 'dist'),
-        filename: 'bundle.js',
+        filename: isProduction ? 'bundle.[contenthash].js' : 'bundle.js', // Разные имена для продакшн
         publicPath: '/', // или другой путь
     },
     resolve: {
@@ -46,7 +49,11 @@ export default {
             },
             {
                 test: /\.css$/,
-                use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader'],
+                use: [
+                    isProduction ? MiniCssExtractPlugin.loader : 'style-loader', // Разные загрузчики для dev и prod
+                    'css-loader',
+                    'postcss-loader',
+                ],
             },
             {
                 test: /\.html$/,
@@ -55,7 +62,7 @@ export default {
                         loader: 'html-loader',
                         options: {
                             sources: false,
-                            minimize: false,
+                            minimize: isProduction, // Минификация HTML в продакшн
                         },
                     },
                 ],
@@ -67,9 +74,13 @@ export default {
         new HtmlWebpackPlugin({
             template: './public/index.html',
         }),
-        new MiniCssExtractPlugin({
-            filename: 'styles.css',
-        }),
+        ...(isProduction
+            ? [
+                new MiniCssExtractPlugin({
+                    filename: 'styles.[contenthash].css', // Добавляем хеши в продакшн-режиме
+                }),
+            ]
+            : []), // В dev не нужен MiniCssExtractPlugin
     ],
     devServer: {
         historyApiFallback: true,
@@ -85,5 +96,5 @@ export default {
             },
         },
     },
-    devtool: 'source-map', // Включить карты исходников
+    devtool: isProduction ? 'source-map' : 'cheap-module-source-map', // Разные карты исходников для разных режимов
 };

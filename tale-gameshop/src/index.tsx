@@ -12,7 +12,6 @@ import {ReactKeycloakProvider} from "@react-keycloak/web";
 import {IKeycloakService} from "./iterfaces/i-keycloak-service";
 import IDENTIFIERS from "./constants/identifiers";
 import {CartProvider} from './context/cart-context';
-import StripeProvider from './context/stripe-provider';
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement

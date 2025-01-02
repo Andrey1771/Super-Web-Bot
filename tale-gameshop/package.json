@@ -35,7 +35,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "webpack serve --open --config webpack.config.js",
+    "start-dev": "webpack serve --open --config webpack.config.js --mode development",
+    "start-prod": "webpack serve --open --config webpack.config.js --mode production",
     "build": "webpack --config webpack.config.js",
     "dev": "webpack --config webpack.config.js --mode development",
     "lint": "tslint --project tsconfig.json",
