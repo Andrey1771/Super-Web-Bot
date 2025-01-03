@@ -20,7 +20,7 @@ const ApologyPage: React.FC = () => {
                 </Link>
                 <div className="mt-6">
                     <img
-                        src="/tale-shop-under-construction.png"
+                        src="/src/assets/images/tale-shop-under-construction.png"
                         alt="Under Construction"
                         className="w-48 mx-auto"
                     />
