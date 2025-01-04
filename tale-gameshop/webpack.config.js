@@ -10,21 +10,17 @@ import { fileURLToPath } from 'url';
 const cert = fs.readFileSync('./public/private.crt');
 const key = fs.readFileSync('./public/private.key');
 
-// Определяем режим (dev или prod) через переменную окружения
-const isProduction = process.env.NODE_ENV === 'production';
-console.log(process.env.NODE_ENV);
-// Получаем абсолютный путь до текущей директории через import.meta.url
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default {
-    mode: isProduction ? 'production' : 'development',
+export default (env, { mode }) => ({
+    mode: mode === 'production' ? 'production' : 'development',
     optimization: {
-        minimize: isProduction,
+        minimize: mode === 'production',
     },
     entry: './src/index.tsx', // Точка входа для React-компонентов
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: isProduction ? 'bundle.[contenthash].js' : 'bundle.js', // Разные имена для продакшн
+        filename: (mode === 'production') ? 'bundle.[contenthash].js' : 'bundle.js', // Разные имена для продакшн
         publicPath: '/',
         assetModuleFilename: 'images/[hash][ext][query]'
     },
@@ -56,7 +52,7 @@ export default {
             {
                 test: /\.css$/,
                 use: [
-                    isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
+                    (mode === 'production') ? MiniCssExtractPlugin.loader : 'style-loader',
                     'css-loader',
                     'postcss-loader',
                 ],
@@ -68,7 +64,7 @@ export default {
                         loader: 'html-loader',
                         options: {
                             sources: false,
-                            minimize: isProduction, // Минификация HTML в продакшн
+                            minimize: (mode === 'production'), // Минификация HTML в продакшн
                         },
                     },
                 ],
@@ -96,7 +92,7 @@ export default {
                 { from: 'public/favicon.ico', to: 'favicon.ico' },
             ],
         }),
-        ...(isProduction
+        ...((mode === 'production')
             ? [
                 new MiniCssExtractPlugin({
                     filename: 'styles.[contenthash].css', // Добавляем хеши в продакшн-режиме
@@ -118,5 +114,5 @@ export default {
             },
         },
     },
-    devtool: isProduction ? 'source-map' : 'cheap-module-source-map', // Разные карты исходников для разных режимов
-};
+    devtool: (mode === 'production') ? 'source-map' : 'cheap-module-source-map', // Разные карты исходников для разных режимов
+});
