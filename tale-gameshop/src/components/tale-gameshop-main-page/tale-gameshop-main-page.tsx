@@ -285,11 +285,11 @@ export default function TaleGameshopMainPage() {
                         </p>
                     </div>
                     <div className="w-1/2 bg-gray-200 flex items-center justify-center iframe-aspect">
-                        {/*<Iframe url="https://www.youtube.com/embed/vBZrLkD659Y"
+                        {<Iframe url="https://www.youtube.com/embed/kNAoc6acHH8?si=LB96pJk1Aj3tNc3t"
                                 width="100%"
                                 height="100%"
                                 display="block"
-                                position="relative"/>*/}
+                                position="relative"/>}
                     </div>
                 </div>
             </div>
