@@ -22,7 +22,7 @@ export default (env, { mode }) => ({
         path: path.resolve(__dirname, 'dist'),
         filename: (mode === 'production') ? 'bundle.[contenthash].js' : 'bundle.js', // Разные имена для продакшн
         publicPath: '/',
-        assetModuleFilename: 'images/[hash][ext][query]'
+        assetModuleFilename: 'images/[hash][ext][query]',
     },
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
@@ -70,26 +70,28 @@ export default (env, { mode }) => ({
                 ],
             },
             {
-                test: /\.(png|jpe?g|gif|svg|ico|webp)$/i,
-                type: 'asset/resource',
-                generator: {
-                    filename: 'assets/images/[name].[contenthash][ext]', // Настроим хэширование картинок
-                },
-                include: path.resolve(__dirname, 'src/assets/images'), // Путь с использованием import.meta.url
-            },
+                test: /\.(png|jpe?g|gif|svg|ico|webp|jpg)$/i,
+                use: [
+                    {
+                        loader: 'file-loader',
+                        options: {
+                            regExp: /\/([a-z0-9]+)\/[a-z0-9]+\.png$/i,
+                            name: 'assets/images/[name].[contenthash].[ext]',
+                        },
+                    },
+                ],
+            }
         ],
     },
     plugins: [
         new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
             template: './public/index.html',
-            favicon: './public/favicon.ico',
+            favicon: './public/favicon.svg',
         }),
         new CopyWebpackPlugin({
             patterns: [
                 { from: 'public/silent-check-sso.html', to: '' },
-                // Копирование favicon, если нужно
-                { from: 'public/favicon.ico', to: 'favicon.ico' },
             ],
         }),
         ...((mode === 'production')

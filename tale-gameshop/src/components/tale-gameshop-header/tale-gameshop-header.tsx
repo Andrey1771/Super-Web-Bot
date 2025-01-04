@@ -11,6 +11,8 @@ import {faBars, faTimes, faShoppingCart} from "@fortawesome/free-solid-svg-icons
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { useCart } from "../../context/cart-context";
 
+import logo from '../../assets/images/tale-shop-logo.jpeg';
+
 export default function TaleGameshopHeader() {
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
@@ -52,7 +54,7 @@ export default function TaleGameshopHeader() {
         <nav className="bg-white border-b border-gray-200 header-nav">
             <div className="container mx-auto flex justify-between items-center py-4">
                 {/* Логотип */}
-                <img className="lg:hidden w-14 h-14" src="/src/assets/images/tale-shop-logo.jpeg" alt="Logo"/>
+                <img className="lg:hidden w-14 h-14" src={logo} alt="Logo"/>
 
                 {/* Бургер-иконка */}
                 <button
@@ -70,7 +72,7 @@ export default function TaleGameshopHeader() {
                 >
                     <li className="hidden lg:flex">
                         {/* Логотип */}
-                        <img className="w-14 h-14" src="/src/assets/images/tale-shop-logo.jpeg" alt="Logo"/>
+                        <img className="w-14 h-14" src={logo} alt="Logo"/>
                     </li>
                     <li>
                         <Link className="text-gray-700 menu-item" to="/">

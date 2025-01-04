@@ -1,5 +1,8 @@
 import React from "react";
 import './about-us.css'
+import bestGamingPlatform from "../../assets/images/best-gaming-platform.jpg"
+import oneMillionUsers from "../../assets/images/one-million-users.jpg"
+import virtual from "../../assets/images/virtual.jpg"
 
 export default function AboutUs() {
     return (
@@ -101,17 +104,17 @@ export default function AboutUs() {
                     <h2 className="text-2xl font-bold mb-4">Our Achievements</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                            <img src="/src/assets/images/best-gaming-platform.jpg" alt="Award Icon" className="mx-auto mb-4 about-us-awards-image"/>
+                            <img src={bestGamingPlatform} alt="Award Icon" className="mx-auto mb-4 about-us-awards-image"/>
                             <h3 className="text-xl font-bold mb-2">Best Gaming Platform 2021</h3>
                             <p>Recognized as the best gaming platform by the Global Gaming Awards.</p>
                         </div>
                         <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                            <img src="/src/assets/images/one-million-users.jpg" alt="Community Icon" className="mx-auto mb-4 about-us-awards-image"/>
+                            <img src={oneMillionUsers} alt="Community Icon" className="mx-auto mb-4 about-us-awards-image"/>
                             <h3 className="text-xl font-bold mb-2">1 Million Users</h3>
                             <p>Our community reached a milestone of 1 million active users in 2022.</p>
                         </div>
                         <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                            <img src="/src/assets/images/virtual.jpg" alt="Innovation Icon" className="mx-auto mb-4 about-us-awards-image"/>
+                            <img src={virtual} alt="Innovation Icon" className="mx-auto mb-4 about-us-awards-image"/>
                             <h3 className="text-xl font-bold mb-2">Innovation in VR</h3>
                             <p>Leading the way in virtual reality gaming experiences since 2023.</p>
                         </div>

@@ -1,6 +1,8 @@
 import React from 'react';
 import {Link} from "react-router-dom";
 
+import taleShopUnderConstruction from "../../assets/images/tale-shop-under-construction.png"
+
 const ApologyPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
@@ -20,7 +22,7 @@ const ApologyPage: React.FC = () => {
                 </Link>
                 <div className="mt-6">
                     <img
-                        src="/src/assets/images/tale-shop-under-construction.png"
+                        src={taleShopUnderConstruction}
                         alt="Under Construction"
                         className="w-48 mx-auto"
                     />
