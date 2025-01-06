@@ -13,6 +13,7 @@ const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
     const [gamesByCategory, setGamesByCategory] = useState<Map<string, Game[]>>(new Map());
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [searchNameQuery, setSearchNameQuery] = useState<string>('');
     const [settings, setSettings] = useState<Settings | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -79,6 +80,12 @@ const TaleGameshopGameList: React.FC = () => {
         setGamesByCategory(gamesByCategory);
     };
 
+    const updateSearchNameParams = (value: string) => {
+        searchParams.set('filterName', value);
+        setSearchParams(searchParams);
+        navigate(`?${searchParams.toString()}`, { replace: true });
+    };
+
     // Обновление searchParams в URL
     const updateSearchParams = (value: string) => {
         searchParams.set('filterCategory', value);
@@ -89,8 +96,8 @@ const TaleGameshopGameList: React.FC = () => {
     // Обработчик изменения текста в инпуте
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
-        setSearchQuery(value);
-        updateSearchParams(value); // Обновление параметра фильтрации в URL
+        setSearchNameQuery(value);
+        updateSearchNameParams(value); // Обновление параметра фильтрации в URL
     };
 
     // Обработчик изменения категории из выпадающего списка
@@ -109,10 +116,9 @@ const TaleGameshopGameList: React.FC = () => {
     const filteredGamesByCategory = new Map(
         Array.from(gamesByCategory.entries()).filter(([category, games]) => {
             const categoryMatch = category.toLowerCase().includes(searchQuery.toLowerCase());
-            const gamesMatch = games.some((game) =>
-                game.title.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            return categoryMatch || gamesMatch;
+            return categoryMatch;
+        }).map((value: [string, Game[]]) => {
+            return [value.at(0), (value.at(1) as Game[]).filter(game => game.title.includes(searchNameQuery))];
         })
     );
 
@@ -130,7 +136,7 @@ const TaleGameshopGameList: React.FC = () => {
                         type="text"
                         className="border p-2 w-full pr-10" // pr-10 добавляем для крестика
                         placeholder="Search games..."
-                        value={searchQuery}
+                        value={searchNameQuery}
                         onChange={handleSearchChange}
                     />
                     {searchQuery && (
