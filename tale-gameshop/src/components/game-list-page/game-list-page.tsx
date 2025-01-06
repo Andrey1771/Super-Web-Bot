@@ -67,7 +67,7 @@ const TaleGameshopGameList: React.FC = () => {
         const gamesByCategory = gamesList.reduce((acc, game) => {
             const category = settings?.gameCategories[game.gameType] ?? null;
             if (category === null) {
-                return acc
+                return acc;
             };
 
             if (!acc.has(category.title)) {

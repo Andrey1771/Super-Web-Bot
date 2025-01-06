@@ -10,9 +10,7 @@ import webSettings from '../../../webSettings.json';
 
 const CheckoutPage: React.FC = () => {
     const {state} = useCart();
-
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
-    const carouselRef = useRef<HTMLDivElement>(null);
 
     const [clientSecret, setClientSecret] = useState(null);
     useEffect(() => {
@@ -21,7 +19,6 @@ const CheckoutPage: React.FC = () => {
             const {data} = await axios.post(`${webSettings.apiBaseUrl}/api/payments/create-payment-intent`, {
                 amount: totalPrice, // сумма в центах
             });
-            console.log(data);
             setClientSecret(data.clientSecret);
         })();
     }, []);

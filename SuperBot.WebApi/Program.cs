@@ -29,6 +29,7 @@ using SuperBot.Common.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Stripe;
+using MongoDB.Driver.Core.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -225,19 +226,30 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowSpecificOrigin");
 
+var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
+
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads")),
+    FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/wwwroot/uploads"
 });
 
 app.MapControllers();
 
-// Периодическая задача
-RecurringJob.AddOrUpdate<IBackgroundTaskService>(
-                "clear-old-order-records",
-                x => x.ScheduleClearOutdatedDataJob(),
-                Cron.Daily);
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    // Периодическая задача
+    recurringJobManager.AddOrUpdate(
+        "clear-old-order-records",
+        () => scope.ServiceProvider.GetRequiredService<IBackgroundTaskService>().ScheduleClearOutdatedDataJob(),
+        Cron.Daily);
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
