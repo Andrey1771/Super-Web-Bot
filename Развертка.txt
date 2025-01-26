@@ -8,3 +8,19 @@ sudo dnf install -y https://packages.microsoft.com/config/rhel/8/prod.repo
 //sudo dnf install -y dotnet-sdk-8.0.11 - Для разработки
 
 sudo dnf install -y dotnet-runtime-7.0.11 - только для выполнения
+
+
+
+
+
+
+
+
+0) Команды для линукса (Дополнительные)
+
+[root@tale-shop ~]# ps aux | grep dnf
+root        1326  0.0  0.1 221940  1196 pts/0    R+   12:58   0:00 grep --color=auto dnf
+
+ sudo kill -9 1312
+
+[root@tale-shop ~]# dnf list installed
