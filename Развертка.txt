@@ -1,3 +1,6 @@
+-1) Компиляция проекта
+dotnet publish -c Release -o ./publish
+
 1) Подключение по ssh к серверу
 ssh root@185.103.254.12 (ssh <name>@<adress>
 Введи пароль
@@ -9,10 +12,101 @@ sudo dnf install -y https://packages.microsoft.com/config/rhel/8/prod.repo
 
 sudo dnf install -y dotnet-runtime-7.0.11 - только для выполнения
 
+sudo dnf install dotnet-sdk-9.0
+
+*!->*sudo dnf install -y dotnet-sdk-8.0
+
+3) Копирование файлов проекта scp -r C:\projects\Super-Bot\publish root@159.255.34.79:/superbot
+
+4) Настройка сервера nginx
+
+5) Настройка MongoDb
+
+Добавьте репозиторий MongoDB
+MongoDB не доступен в стандартных репозиториях CentOS/AlmaLinux, поэтому нужно добавить официальный репозиторий MongoDB.
+
+Создайте файл репозитория MongoDB:
+
+bash
+Копировать
+Редактировать
+sudo vim /etc/yum.repos.d/mongodb-org.repo
+Вставьте следующий текст для версии MongoDB 6.0 (последняя на момент 2025 года):
+
+ini
+Копировать
+Редактировать
+[mongodb-org-6.0]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/6.0/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://www.mongodb.org/static/pgp/server-6.0.asc
+
+
+sudo dnf install -y mongodb-org
+
+После установки включите и запустите службу MongoDB:
+//sudo systemctl stop mongod
+sudo systemctl enable mongod
+sudo systemctl start mongod --replSet rs0 --bind_ip localhost
+
+Проверьте статус службы:
+sudo systemctl status mongod
 
 
 
+cd /superbot
+dotnet SuperBot.WebApi.dll
 
+
+Запуск приложения в фоновом режиме (опционально):
+
+
+
+Включение репликации:
+sudo vim /etc/mongod.conf
+
+Найдите секцию replication (или создайте её, если она отсутствует) и добавьте следующие строки:
+
+replication:
+  replSetName: rs0
+net:
+  bindIp: localhost // МБ лишнее
+Если секция net уже существует, просто измените или добавьте строку bindIp: localhost.
+
+
+Чтобы ваше приложение работало в фоновом режиме и не завершалось после выхода из сессии SSH, используйте systemd для создания службы.
+
+Создайте файл для вашей службы, например, /etc/systemd/system/myapp.service:
+
+bash
+Копировать
+Редактировать
+sudo nano /etc/systemd/system/myapp.service
+Вставьте следующее содержание:
+
+ini
+Копировать
+Редактировать
+[Unit]
+Description=My ASP.NET Core App
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/myapp
+ExecStart=/usr/bin/dotnet /var/www/myapp/MyApp.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=dotnet-myapp
+User=youruser
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+[Install]
+WantedBy=multi-user.target
+Замените youruser на имя пользователя, под которым вы хотите запускать приложение.
 
 
 
@@ -24,3 +118,7 @@ root        1326  0.0  0.1 221940  1196 pts/0    R+   12:58   0:00 grep --color=
  sudo kill -9 1312
 
 [root@tale-shop ~]# dnf list installed
+
+cd - перемещение
+
+ls - просмотр данных в папке
