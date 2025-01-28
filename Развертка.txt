@@ -80,15 +80,9 @@ net:
 
 Создайте файл для вашей службы, например, /etc/systemd/system/myapp.service:
 
-bash
-Копировать
-Редактировать
 sudo nano /etc/systemd/system/myapp.service
 Вставьте следующее содержание:
 
-ini
-Копировать
-Редактировать
 [Unit]
 Description=My ASP.NET Core App
 After=network.target
@@ -122,3 +116,85 @@ root        1326  0.0  0.1 221940  1196 pts/0    R+   12:58   0:00 grep --color=
 cd - перемещение
 
 ls - просмотр данных в папке
+
+Установка пакетов операционки AlmaLinux
+
+Убедитесь, что у вас включены все стандартные репозитории:
+
+bash
+Копировать
+Редактировать
+sudo dnf repolist
+Если отсутствуют EPEL (Extra Packages for Enterprise Linux), установите их:
+
+bash
+Копировать
+Редактировать
+sudo dnf install epel-release -y
+После этого обновите кеш репозиториев:
+
+bash
+Копировать
+Редактировать
+sudo dnf makecache
+Попробуйте снова установить sshguard:
+
+bash
+Копировать
+Редактировать
+sudo dnf install sshguard
+
+Установка файла подкачки в 2 гига
+
+[root@vm ~]# sudo fallocate -l 2G /swapfile
+[root@vm ~]# sudo chmod 600 /swapfile
+[root@vm ~]# sudo mkswap /swapfile
+Setting up swapspace version 1, size = 2 GiB (2147479552 bytes)
+no label, UUID=6b2baf8d-f04a-4118-9045-74a57f1902b7
+[root@vm ~]# sudo swapon /swapfile
+[root@vm ~]# sudo swapon --show
+NAME      TYPE SIZE USED PRIO
+/swapfile file   2G   0B   -2
+
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+Проверка свободной оперативки
+
+[root@vm ~]# free -h
+               total        used        free      shared  buff/cache   available
+Mem:           757Mi       325Mi       459Mi        15Mi        73Mi       431Mi
+Swap:             0B          0B          0B
+[root@vm ~]# top
+
+
+SSHGuard
+SSHGuard — лёгкий инструмент для защиты от атак методом подбора, который работает с различными демонами (например, SSH, Exim и т.д.).
+
+Установка и настройка:
+Установите SSHGuard:
+
+
+sudo dnf install sshguard
+Настройте FirewallD для интеграции:
+
+Включите использование sshguard в iptables:
+sudo firewall-cmd --permanent --new-service=sshguard
+sudo firewall-cmd --permanent --add-service=sshguard
+sudo firewall-cmd --reload
+Запустите SSHGuard:
+
+sudo systemctl enable --now sshguard
+Проверка работы:
+
+sudo systemctl status sshguard
+SSHGuard автоматически блокирует IP-адреса, которые совершают подозрительные попытки подключения.
+
+
+Открыть порт mongodb в фаерволе
+[root@vm superbot]# sudo firewall-cmd --add-port=27017/tcp --permanent
+success
+[root@vm superbot]# sudo firewall-cmd --reload
+success
+
+Удаление файлов в папке
+rm -f /path/to/directory/*
