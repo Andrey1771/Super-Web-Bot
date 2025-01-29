@@ -54,6 +54,12 @@ sudo systemctl start mongod --replSet rs0 --bind_ip localhost
 Проверьте статус службы:
 sudo systemctl status mongod
 
+Инициализация монгоДБ
+mongosh
+
+rs.initiate()
+
+rs.status()
 
 
 cd /superbot
@@ -61,6 +67,30 @@ dotnet SuperBot.WebApi.dll
 
 
 Запуск приложения в фоновом режиме (опционально):
+//////// Неправильно для aspdotnet nohup dotnet SuperBot.WebApi.dll --urls http://0.0.0.0:5000 > output.log 2>&1 &
+///////////cat output.log - просмотр его логов
+
+sudo nano /etc/systemd/system/superbot.service
+Добавьте в файл:
+
+ini
+Копировать
+Редактировать
+[Unit]
+Description=SuperBot Web API
+After=network.target
+
+[Service]
+WorkingDirectory=/superbot
+ExecStart=/usr/bin/dotnet /superbot/SuperBot.WebApi.dll --urls http://0.0.0.0:5000
+Restart=always
+User=root
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+[Install]
+WantedBy=multi-user.target
+
 
 
 
