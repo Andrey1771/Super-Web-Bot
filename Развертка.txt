@@ -211,6 +211,117 @@ server {
     }
 }
 
+
+Keycloak)
+
+//1) sudo yum install -y docker
+//sudo systemctl enable --now docker
+//docker network create keycloak-network
+
+Логин: admin
+Пароль: #DG%hWZqIe
+
+-1)
+
+curl -fsSL https://github.com/keycloak/keycloak/releases/latest/download/keycloak-22.0.5.tar.gz -o keycloak.tar.gz
+tar -xvzf keycloak.tar.gz
+mv keycloak-22.0.5 /opt/keycloak) Установка PostgreSQL
+
+sudo yum install -y postgresql-server postgresql-contrib
+sudo postgresql-setup --initdb
+sudo systemctl enable --now postgresql
+
+
+sudo -u postgres psql
+
+CREATE DATABASE keycloak;
+CREATE USER keycloak_user WITH PASSWORD '#DG%hWZqIe';
+ALTER ROLE keycloak_user SET client_encoding TO 'utf8';
+ALTER ROLE keycloak_user SET default_transaction_isolation TO 'read committed';
+ALTER ROLE keycloak_user SET timezone TO 'UTC';
+GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak_user;
+\q
+
+0)
+
+curl -fsSL https://github.com/keycloak/keycloak/releases/download/26.1.0/keycloak-26.1.0.tar.gz -o keycloak.tar.gz
+tar -xvzf keycloak.tar.gz
+mv keycloak-26.1.0 /opt/keycloak
+
+
+curl -L https://jdbc.postgresql.org/download/postgresql-42.5.1.jar -o /opt/keycloak/providers/postgresql.jar
+
+
+1) sudo nano /opt/keycloak/conf/keycloak.conf
+
+# Production-режим
+hostname=auth.yourdomain.com
+http-enabled=false
+https-port=8443
+proxy=edge
+
+# Подключение к PostgreSQL
+db=postgres
+db-url=jdbc:postgresql://localhost:5432/keycloak
+db-username=keycloak_user
+db-password=your_password
+
+# Production
+spi-truststore-file=/opt/keycloak/conf/keystore.jks
+spi-truststore-password=changeit
+
+
+
+
+1. Установка OpenJDK
+Keycloak требует Java 17 или новее. Установим:
+
+sudo yum install -y java-17-openjdk
+Проверяем версию:
+java -version
+
+
+
+cd /opt/keycloak
+bin/kc.sh build
+
+
+
+4. Автозапуск Keycloak через systemd
+Создаём сервис:
+
+bash
+Копировать
+Редактировать
+sudo nano /etc/systemd/system/keycloak.service
+Добавляем:
+
+ini
+Копировать
+Редактировать
+[Unit]
+Description=Keycloak Server
+After=network.target postgresql.service
+
+[Service]
+User=root
+ExecStart=/opt/keycloak/bin/kc.sh start --optimized
+Restart=always
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+Сохраняем и выполняем:
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable keycloak
+sudo systemctl start keycloak
+Проверяем статус:
+
+sudo systemctl status keycloak
+
+
 ////////////////////////////////////
 0) Команды для линукса (Дополнительные)
 
