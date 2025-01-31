@@ -2,11 +2,7 @@ using Hangfire;
 using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies.Backup;
 using Hangfire.Mongo.Migration.Strategies;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Localization;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
@@ -15,23 +11,27 @@ using SuperBot.Core.Services;
 using SuperBot.Infrastructure.ExternalServices;
 using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
-using SuperBot.WebApi;
 using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Types;
 using System.Globalization;
 using Telegram.Bot;
-using System.Diagnostics;
 using SuperBot.Application.Commands.Telegram;
 using Microsoft.Extensions.FileProviders;
 using SuperBot.Core.Entities;
-using AutoMapper;
 using SuperBot.Common.Auth;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 using Stripe;
-using MongoDB.Driver.Core.Configuration;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// !!! Конфигурируем обработку пересылаемых заголовков запросов
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
+// !!! Конфигурируем обработку пересылаемых заголовков запросов
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -195,6 +195,10 @@ builder.Services.AddLogging(logging =>
 });
 
 var app = builder.Build();
+
+// !!! Добавляем в конвеер обработки HTTP-запроса компонент работы с пересылаемыми заголовками
+app.UseForwardedHeaders();
+// !!! Добавляем в конвеер обработки HTTP-запроса компонент работы с пересылаемыми заголовками
 
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
