@@ -212,6 +212,11 @@ server {
 }
 
 
+
+sudo firewall-cmd --add-port=5000/tcp --permanent
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-ports
+
 Keycloak)
 
 //1) sudo yum install -y docker
@@ -255,16 +260,16 @@ curl -L https://jdbc.postgresql.org/download/postgresql-42.5.1.jar -o /opt/keycl
 1) sudo nano /opt/keycloak/conf/keycloak.conf
 
 # Production-режим
-hostname=auth.yourdomain.com
-http-enabled=false
-https-port=8443
-proxy=edge
+hostname=127.0.0.1
+http-enabled=true
+https-port=8088
+proxy=none
 
 # Подключение к PostgreSQL
 db=postgres
 db-url=jdbc:postgresql://localhost:5432/keycloak
 db-username=keycloak_user
-db-password=your_password
+db-password=#DG%hWZqIe
 
 # Production
 spi-truststore-file=/opt/keycloak/conf/keystore.jks
@@ -320,6 +325,46 @@ sudo systemctl start keycloak
 Проверяем статус:
 
 sudo systemctl status keycloak
+
+
+
+
+
+
+Принятие PostgreSQL TCP/IP соединения
+Откройте файл конфигурации:
+
+bash
+Копировать
+Редактировать
+sudo nano /var/lib/pgsql/data/postgresql.conf
+Найдите параметр listen_addresses и убедитесь, что он не закомментирован и настроен на localhost или *:
+
+ini
+Копировать
+Редактировать
+listen_addresses = 'localhost'
+Если вы используете удаленные подключения, замените на: (Я не использую его)
+
+listen_addresses = '*'
+Проверьте файл настроек доступа:
+
+bash
+Копировать
+Редактировать
+sudo nano /var/lib/pgsql/data/pg_hba.conf
+Добавьте строку для разрешения локальных подключений:
+
+css
+Копировать
+Редактировать
+host    all             all             127.0.0.1/32            trust
+Перезапустите PostgreSQL:
+
+bash
+Копировать
+Редактировать
+sudo systemctl restart postgresql
 
 
 ////////////////////////////////////
@@ -417,3 +462,13 @@ success
 
 Удаление файлов в папке
 rm -f /path/to/directory/*
+
+
+. curl — для HTTP-запросов
+Если ваш сервис работает через HTTP (например, на портах 80, 8080 и т. д.), можно использовать команду curl для теста:
+
+Пример:
+bash
+Копировать
+Редактировать
+curl http://localhost:8080
