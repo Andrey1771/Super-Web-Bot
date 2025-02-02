@@ -7,8 +7,8 @@ namespace SuperBot.Infrastructure.ExternalServices
 {
     public class YooKassaService : IPayService
     {
-        private readonly string _shopId = "480101"; // Замените на ваш Shop ID
-        private readonly string _secretKey = "test_LVSntgkuA9-hBJjYWWpFaXCS1db3sm-RW6OcHiZswO0"; // Замените на ваш Secret Key
+        private readonly string _shopId = "480101";
+        private readonly string _secretKey = "test_LVSntgkuA9-hBJjYWWpFaXCS1db3sm-RW6OcHiZswO0";
         private readonly HttpClient _httpClient;
 
         public YooKassaService(HttpClient httpClient)

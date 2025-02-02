@@ -76,10 +76,11 @@ builder.Services
 // Добавление CORS с конкретной политикой
 builder.Services.AddCors(options =>
 {
+    var frontendConfigSection = builder.Configuration.GetSection("FrontendConfiguration");
     options.AddPolicy("AllowSpecificOrigin",
         builder =>
         {
-            builder.WithOrigins("https://localhost:3000") // TODO!!!!!!
+            builder.WithOrigins(frontendConfigSection.GetValue<string>("Uri") ?? "") // TODO!!!!!!
                    .AllowAnyHeader()
                    .AllowAnyMethod()
                    .AllowCredentials(); // Если необходимы куки/учетные данные
