@@ -4,12 +4,14 @@ import {injectable} from "inversify";
 import {AuthClientEvent, AuthClientInitOptions} from "@react-keycloak/core/lib/types";
 import EventEmitter from 'eventemitter3';
 
+import webSettings from '../webSettings.json';
+
 @injectable()
 export class KeycloakService implements IKeycloakService {
     public _keycloak: KeycloakInstance = new (Keycloak as any)({
-        url: "http://localhost:8088/",
-        realm: "TaleShop",
-        clientId: 'tale-shop-app'
+        url: webSettings.keycloak.url,
+        realm: webSettings.keycloak.realm,
+        clientId: webSettings.keycloak.clientId
     });
 
     get keycloak(): KeycloakInstance {
@@ -22,9 +24,9 @@ export class KeycloakService implements IKeycloakService {
     };
 
     private _initOptions = {
-        onLoad: 'check-sso',
-        redirectUri: "http://localhost:3000/callback",
-        silentCheckSsoRedirectUri: "http://localhost:3000/silent-check-sso.html"
+        onLoad: webSettings.keycloak.onLoad,
+        redirectUri: webSettings.keycloak.redirectUri,
+        silentCheckSsoRedirectUri: webSettings.keycloak.silentCheckSsoRedirectUri
     }
 
     get initOptions(): AuthClientInitOptions {
@@ -39,7 +41,6 @@ export class KeycloakService implements IKeycloakService {
                 break;
             case "onAuthSuccess":
                 this.stateChangedEmitter.emit('onAuthSuccess');
-                debugger;
                 break;
             case "onAuthError":
                 break;
@@ -58,14 +59,14 @@ export class KeycloakService implements IKeycloakService {
         try {
             console.log('Initializing keycloak service...');
             this._keycloak = new (Keycloak as any)({
-                url: "http://localhost:8088/",
-                realm: "TaleShop",
-                clientId: 'tale-shop-app',
+                url: webSettings.keycloak.url,
+                realm: webSettings.keycloak.realm,
+                clientId: webSettings.keycloak.clientId
             });
-            this._keycloak.redirectUri = 'http://localhost:3000/callback';
+            this._keycloak.redirectUri = webSettings.keycloak.redirectUri;
 
             const authenticated = await this._keycloak.init({
-                onLoad: 'check-sso',
+                onLoad: webSettings.keycloak.onLoad
             });
             if (authenticated) {
                 console.log('User is authenticated');

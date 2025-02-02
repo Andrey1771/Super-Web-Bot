@@ -472,3 +472,21 @@ bash
 Копировать
 Редактировать
 curl http://localhost:8080
+
+
+
+
+
+
+
+
+MONGOD DB Не работает -> ОЧИЩАТЬ ПАПКУ МОНГО ПОСЛЕ ОБНОВЛЕНИЯ
+sudo rm -rf /var/lib/mongo/*
+
+sudo rm /tmp/mongodb-27017.sock
+
+sudo systemctl restart mongod
+
+
++Проблема в replicaSet была
+

@@ -199,7 +199,7 @@ export default function TaleGameshopMainPage() {
                             Highlights from Blog
                         </h2>
                         <div className="space-y-4">
-                            <div className="bg-gray-200 p-4 flex items-center">
+                            <div className="bg-gray-200 p-4 flex items-center break-all">
                                 <img alt={randomGame?.title} className="mr-4" height="50"
                                      src={`${webSettings.apiBaseUrl}/${randomGame?.imagePath}`}
                                      width="50"/>
@@ -216,7 +216,7 @@ export default function TaleGameshopMainPage() {
                                     </p>
                                 </div>
                             </div>
-                            <div className="bg-gray-200 p-4 flex items-center">
+                            <div className="bg-gray-200 p-4 flex items-center break-all">
                                 <img alt={latestGame?.title} className="mr-4" height="50"
                                      src={`${webSettings.apiBaseUrl}/${latestGame?.imagePath}`}
                                      width="50"/>
