@@ -58,6 +58,10 @@ export default (env, { mode }) => ({
                 ],
             },
             {
+                test: /\.json$/,
+                type: 'json'
+            },
+            {
                 test: /\.html$/,
                 use: [
                     {

@@ -139,6 +139,13 @@ bash
 sudo firewall-cmd --add-service=http --permanent
 sudo firewall-cmd --reload
 
+//Открытие любого другого порта
+//sudo firewall-cmd --add-port=8088/tcp --permanent
+//sudo firewall-cmd --reload
+//
+
+// просмотр открытых портов
+sudo firewall-cmd --list-ports
 
 Включение репликации:
 sudo vim /etc/mongod.conf
@@ -260,10 +267,11 @@ curl -L https://jdbc.postgresql.org/download/postgresql-42.5.1.jar -o /opt/keycl
 1) sudo nano /opt/keycloak/conf/keycloak.conf
 
 # Production-режим
-hostname=127.0.0.1
+hostname=159.255.34.79
 http-enabled=true
 https-port=8088
-proxy=none
+http-relative-path=/keycloak
+proxy=true
 
 # Подключение к PostgreSQL
 db=postgres
@@ -366,6 +374,37 @@ bash
 Редактировать
 sudo systemctl restart postgresql
 
+Добавление сервера nginx для keycloak)
+
+server {
+    listen 80;
+    server_name 159.255.34.79;
+
+    root /superbot_frontend;
+
+    index index.html;
+
+    location / {
+        try_files $uri /index.html;  # Это гарантирует, что SPA приложение будет работать корректно
+        #proxy_pass http://127.0.0.1:5000;
+    }
+
+    # Прокси для backend API
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection keep-alive;
+		proxy_cache_bypass $http_upgrade;
+    }
+	
+	location /keycloak/ {
+        proxy_pass http://127.0.0.1:8088/keycloak/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 
 ////////////////////////////////////
 0) Команды для линукса (Дополнительные)

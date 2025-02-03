@@ -1,11 +1,11 @@
 {
-  "apiBaseUrl": "https://localhost:7117",
+  "apiBaseUrl": "http://159.255.34.79",
   "keycloak": {
-    "url": "http://localhost:8088/",
+    "url": "http://159.255.34.79/keycloak/",
     "realm": "TaleShop",
     "clientId": "tale-shop-app",
-    "redirectUri": "http://localhost:3000/callback",
-    "silentCheckSsoRedirectUri": "http://localhost:3000/silent-check-sso.html",
+    "redirectUri": "http://159.255.34.79/callback",
+    "silentCheckSsoRedirectUri": "http://159.255.34.79/silent-check-sso.html",
     "onLoad": "check-sso"
   }
 }
