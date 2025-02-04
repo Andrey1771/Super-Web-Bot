@@ -59,7 +59,10 @@ export default (env, { mode }) => ({
             },
             {
                 test: /\.json$/,
-                type: 'json'
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/resources/[name].[contenthash].json',
+                }
             },
             {
                 test: /\.html$/,
@@ -96,7 +99,7 @@ export default (env, { mode }) => ({
         new CopyWebpackPlugin({
             patterns: [
                 { from: 'public/silent-check-sso.html', to: '' },
-            ],
+                ],
         }),
         ...((mode === 'production')
             ? [

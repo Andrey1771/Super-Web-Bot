@@ -2,7 +2,9 @@ import React from 'react';
 import { Game } from '../../models/game';
 import { useCart } from "../../context/cart-context";
 import { Product } from '../../reducers/cart-reducer';
-import webSettings from '../../webSettings.json';
+import container from "../../inversify.config";
+import {IUrlService} from "../../iterfaces/i-url-service";
+import IDENTIFIERS from "../../constants/identifiers";
 
 interface GameCardProps {
     game: Game;
@@ -10,6 +12,8 @@ interface GameCardProps {
 
 const GameCard: React.FC<GameCardProps> = ({ game }) => {
     const { dispatch } = useCart();
+
+    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     const handleAddToCart = () => {
         dispatch({
@@ -31,7 +35,7 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                 style={{ height: '100px', width: '100px' }}
                 className="mb-4"
                 height="100px"
-                src={`${webSettings.apiBaseUrl}/${game.imagePath}`}
+                src={`${urlService.apiBaseUrl}/${game.imagePath}`}
                 width="100px"
             />
             <h2

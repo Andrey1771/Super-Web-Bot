@@ -19,7 +19,7 @@ import {Game} from "../../models/game";
 import {Link} from "react-router-dom";
 import {useKeycloak} from "@react-keycloak/web";
 import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
-import webSettings from '../../webSettings.json';
+import {IUrlService} from "../../iterfaces/i-url-service";
 
 export default function TaleGameshopMainPage() {
     const [latestGame, setLatestGame] = useState<Game | null>(null);
@@ -27,6 +27,8 @@ export default function TaleGameshopMainPage() {
 
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
+
+    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     useEffect(() => {
         fetchLatestGame();
@@ -201,7 +203,7 @@ export default function TaleGameshopMainPage() {
                         <div className="space-y-4">
                             <div className="bg-gray-200 p-4 flex items-center break-all">
                                 <img alt={randomGame?.title} className="mr-4" height="50"
-                                     src={`${webSettings.apiBaseUrl}/${randomGame?.imagePath}`}
+                                     src={`${urlService.apiBaseUrl}/${randomGame?.imagePath}`}
                                      width="50"/>
                                 <div>
                                     <h3 className="font-bold">
@@ -218,7 +220,7 @@ export default function TaleGameshopMainPage() {
                             </div>
                             <div className="bg-gray-200 p-4 flex items-center break-all">
                                 <img alt={latestGame?.title} className="mr-4" height="50"
-                                     src={`${webSettings.apiBaseUrl}/${latestGame?.imagePath}`}
+                                     src={`${urlService.apiBaseUrl}/${latestGame?.imagePath}`}
                                      width="50"/>
                                 <div>
                                     <h3 className="font-bold">

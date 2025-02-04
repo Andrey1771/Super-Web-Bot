@@ -4,14 +4,25 @@ import {injectable} from "inversify";
 import {AuthClientEvent, AuthClientInitOptions} from "@react-keycloak/core/lib/types";
 import EventEmitter from 'eventemitter3';
 
-import webSettings from '../webSettings.json';
+import {IUrlService} from "../iterfaces/i-url-service";
+import container from "../inversify.config";
+import IDENTIFIERS from "../constants/identifiers";
+
 
 @injectable()
 export class KeycloakService implements IKeycloakService {
+    private readonly _urlService: IUrlService;
+
+    constructor() {
+        //TODO Почему-то не resolve по нормальному, Проблема в том, что действие в сервисе, а не в компоненте?
+        this._urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    }
+
+
     public _keycloak: KeycloakInstance = new (Keycloak as any)({
-        url: webSettings.keycloak.url,
-        realm: webSettings.keycloak.realm,
-        clientId: webSettings.keycloak.clientId
+        url: container.get<IUrlService>(IDENTIFIERS.IUrlService).keycloak.url,// TODO вынести в конструктор
+        realm: container.get<IUrlService>(IDENTIFIERS.IUrlService).keycloak.realm,
+        clientId: container.get<IUrlService>(IDENTIFIERS.IUrlService).keycloak.clientId
     });
 
     get keycloak(): KeycloakInstance {
@@ -24,9 +35,9 @@ export class KeycloakService implements IKeycloakService {
     };
 
     private _initOptions = {
-        onLoad: webSettings.keycloak.onLoad,
-        redirectUri: webSettings.keycloak.redirectUri,
-        silentCheckSsoRedirectUri: webSettings.keycloak.silentCheckSsoRedirectUri
+        onLoad: container.get<IUrlService>(IDENTIFIERS.IUrlService).keycloak.onLoad,// TODO вынести в конструктор
+        redirectUri: container.get<IUrlService>(IDENTIFIERS.IUrlService).keycloak.redirectUri,
+        silentCheckSsoRedirectUri: container.get<IUrlService>(IDENTIFIERS.IUrlService).keycloak.silentCheckSsoRedirectUri
     }
 
     get initOptions(): AuthClientInitOptions {
@@ -59,14 +70,14 @@ export class KeycloakService implements IKeycloakService {
         try {
             console.log('Initializing keycloak service...');
             this._keycloak = new (Keycloak as any)({
-                url: webSettings.keycloak.url,
-                realm: webSettings.keycloak.realm,
-                clientId: webSettings.keycloak.clientId
+                url: this._urlService.keycloak.url,
+                realm: this._urlService.keycloak.realm,
+                clientId: this._urlService.keycloak.clientId
             });
-            this._keycloak.redirectUri = webSettings.keycloak.redirectUri;
+            this._keycloak.redirectUri = this._urlService.keycloak.redirectUri;
 
             const authenticated = await this._keycloak.init({
-                onLoad: webSettings.keycloak.onLoad
+                onLoad: this._urlService.keycloak.onLoad
             });
             if (authenticated) {
                 console.log('User is authenticated');

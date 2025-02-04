@@ -15,10 +15,10 @@
       <list>
         <option value="package.json" />
         <option value="HTML File" />
-        <option value="TypeScript File" />
         <option value="TypeScript JSX File" />
         <option value="CSS File" />
         <option value="JavaScript File" />
+        <option value="TypeScript File" />
       </list>
     </option>
   </component>
@@ -107,7 +107,8 @@
       <workItem from="1738322094572" duration="687000" />
       <workItem from="1738340089944" duration="305000" />
       <workItem from="1738345345679" duration="11206000" />
-      <workItem from="1738584617108" duration="4128000" />
+      <workItem from="1738584617108" duration="10951000" />
+      <workItem from="1738656291196" duration="3535000" />
     </task>
     <servers />
   </component>
@@ -137,42 +138,42 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>262</line>
+          <line>264</line>
           <option name="timeStamp" value="7" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>263</line>
+          <line>265</line>
           <option name="timeStamp" value="8" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>264</line>
+          <line>266</line>
           <option name="timeStamp" value="9" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>265</line>
+          <line>267</line>
           <option name="timeStamp" value="10" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>266</line>
+          <line>268</line>
           <option name="timeStamp" value="11" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>145</line>
+          <line>147</line>
           <option name="timeStamp" value="12" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>146</line>
+          <line>148</line>
           <option name="timeStamp" value="13" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>147</line>
+          <line>149</line>
           <option name="timeStamp" value="14" />
         </line-breakpoint>
       </breakpoints>

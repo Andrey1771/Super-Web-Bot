@@ -529,3 +529,12 @@ sudo systemctl restart mongod
 
 +Проблема в replicaSet была
 
+mongod --replSet "rs0" --bind_ip localhost,159.255.34.79
+
+sudo journalctl -xeu mongod
+
+journalctl -u <название_сервиса> --no-pager --lines=50
+sudo journalctl -u superbot.service
+
+sudo journalctl --rotate
+sudo journalctl --vacuum-time=1s

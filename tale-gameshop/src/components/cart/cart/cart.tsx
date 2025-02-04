@@ -1,12 +1,16 @@
 import React from 'react';
 import {useCart} from '../../../context/cart-context';
 import {Link} from "react-router-dom";
-import webSettings from "../../../webSettings.json";
+import container from "../../../inversify.config";
+import {IUrlService} from "../../../iterfaces/i-url-service";
+import IDENTIFIERS from "../../../constants/identifiers";
 
 const Cart: React.FC = () => {
     const {state, dispatch} = useCart();
 
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
+
+    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     const handleIncreaseQuantity = (id: string) => {
         dispatch({type: 'INCREASE_QUANTITY', payload: id});
@@ -26,7 +30,7 @@ const Cart: React.FC = () => {
                     {state.items.map((item) => (
                         <div key={item.gameId} className="flex items-center p-2 border-b gap-4">
                             <img
-                                src={`${webSettings.apiBaseUrl}/${item.image}`}
+                                src={`${urlService.apiBaseUrl}/${item.image}`}
                                 alt={item.name}
                                 className="w-16 h-16 object-cover rounded"
                             />
