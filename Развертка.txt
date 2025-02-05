@@ -538,3 +538,56 @@ sudo journalctl -u superbot.service
 
 sudo journalctl --rotate
 sudo journalctl --vacuum-time=1s
+
+
+
+
+1. Остановите MongoDB
+Остановите сервис MongoDB, если он запущен:
+
+bash
+Копировать
+Редактировать
+sudo systemctl stop mongod
+2. Удалите текущую установку MongoDB
+Удалите MongoDB вместе с его конфигурацией:
+
+bash
+Копировать
+Редактировать
+sudo yum remove mongodb-org
+Удалите связанные данные и конфигурацию:
+
+bash
+Копировать
+Редактировать
+sudo rm -rf /var/lib/mongo
+sudo rm -rf /etc/mongod.conf
+sudo rm -rf /var/log/mongodb
+3. Очистите кеши и пакеты
+Убедитесь, что кеш менеджера пакетов очищен:
+
+bash
+Копировать
+Редактировать
+sudo yum clean all
+
+
+
+sudo yum install -y mongodb-org
+
+
+
+6. Запустите MongoDB
+Запустите сервис MongoDB:
+
+bash
+Копировать
+Редактировать
+sudo systemctl start mongod
+Убедитесь, что сервис работает:
+
+bash
+Копировать
+Редактировать
+sudo systemctl status mongod
