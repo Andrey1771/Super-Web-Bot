@@ -73,7 +73,7 @@ export default function TaleGameshopMainPage() {
     return (
         <div className="main-page-down-header-padding">
             <div className="bg-gray-100 py-10">
-                <div className="container mx-auto grid grid-cols-3 gap-8">
+                <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
 
                     <div>
                         <h2 className="text-lg font-bold mb-4">
@@ -196,7 +196,7 @@ export default function TaleGameshopMainPage() {
                         </ul>
                     </div>
 
-                    <div>
+                    <div className="sm:col-span-2 md:col-span-1">
                         <h2 className="text-lg font-bold mb-4">
                             Highlights from Blog
                         </h2>

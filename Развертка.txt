@@ -591,3 +591,70 @@ bash
 Копировать
 Редактировать
 sudo systemctl status mongod
+
+
+
+
+Установка https)
+
+sudo nano /etc/nginx/conf.d/superbot.conf
+
+server {
+    listen 80;
+    server_name 159.255.34.79;
+
+    location / {
+        return 301 https://$host$request_uri;  # Редирект HTTP → HTTPS
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name 159.255.34.79;
+
+    root /superbot_frontend;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    index index.html;
+
+    location / {
+        try_files $uri /index.html;  # Это гарантирует, что SPA приложение будет работать корректно
+        #proxy_pass http://127.0.0.1:5000;
+    }
+
+    # Прокси для backend API
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection keep-alive;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /keycloak/ {
+        proxy_pass http://127.0.0.1:8088/keycloak/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-Ip $remote_addr;
+    }
+}
+
+
+
+
+Установить бесплатный SSL-сертификат Let's Encrypt
+Устанавливаем Certbot:
+
+
+sudo dnf install certbot python3-certbot-nginx -y
+Запускаем автоматическую настройку HTTPS:
+
+sudo certbot --nginx -d 159.255.34.79
+➡️ Если все прошло успешно, сертификаты сохранятся в /etc/letsencrypt/live/example.com/.
+
+Обновляем сертификаты автоматически:
+
+echo "0 3 * * * root certbot renew --quiet" | sudo tee -a /etc/crontab
+Это обновит сертификат раз в день в 03:00.

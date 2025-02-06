@@ -105,8 +105,5 @@
       "require": "./dist/keycloak.js"
     }
   },
-  "type": "module",
-  "browser": {
-    "process": false
-  }
+  "type": "module"
 }

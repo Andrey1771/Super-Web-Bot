@@ -5,11 +5,9 @@ import CopyWebpackPlugin from 'copy-webpack-plugin';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import webpack from 'webpack';
 
 // Получаем полный путь к `node_modules`
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const nodeModules = path.resolve(__dirname, 'node_modules');
 
 export default (env, { mode }) => ({
     mode: mode === 'production' ? 'production' : 'development',
@@ -25,14 +23,6 @@ export default (env, { mode }) => ({
     },
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
-        fallback: {
-            "crypto": path.resolve(nodeModules, "crypto-browserify"),
-            "stream": path.resolve(nodeModules, "stream-browserify"),
-            "buffer": path.resolve(nodeModules, "buffer"),
-            "vm": path.resolve(nodeModules, "vm-browserify"),
-            "process": path.resolve(nodeModules, "process"),
-            "util": path.resolve(nodeModules, "util")
-        }
     },
     module: {
         rules: [
@@ -107,10 +97,6 @@ export default (env, { mode }) => ({
             patterns: [
                 { from: 'public/silent-check-sso.html', to: '' },
             ],
-        }),
-        new webpack.ProvidePlugin({
-            Buffer: ["buffer", "Buffer"],
-            process: "process"
         }),
         ...((mode === 'production')
             ? [

@@ -13,15 +13,6 @@ import {IKeycloakService} from "./iterfaces/i-keycloak-service";
 import IDENTIFIERS from "./constants/identifiers";
 import {CartProvider} from './context/cart-context';
 
-import { Buffer } from "buffer"; // Принудительно импортируем Buffer
-global.Buffer = Buffer; // Делаем Buffer глобальным
-
-import crypto from "crypto-browserify";
-
-if (!global.crypto) {
-    global["crypto"] = crypto;
-}
-
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
 );
