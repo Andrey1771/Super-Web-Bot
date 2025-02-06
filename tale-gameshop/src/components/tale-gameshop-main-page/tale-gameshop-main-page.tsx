@@ -72,7 +72,7 @@ export default function TaleGameshopMainPage() {
 
     return (
         <div className="main-page-down-header-padding">
-            <div className="bg-gray-100 py-10">
+            <div className="bg-gray-100 py-10 pl-4 pr-4">
                 <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
 
                     <div>
@@ -250,7 +250,7 @@ export default function TaleGameshopMainPage() {
                 </div>
             </div>
 
-            <div className="bg-black text-white py-20">
+            <div className="bg-black text-white py-20 pl-4 pr-4">
                 <div className="container mx-auto text-center">
                     <h1 className="text-4xl font-bold mb-6">
                         Discover Your Next Favourite Computer Game
@@ -295,7 +295,7 @@ export default function TaleGameshopMainPage() {
                     </div>
                 </div>
             </div>
-            <div className="container mx-auto text-center py-16">
+            <div className="container mx-auto text-center py-16 pl-4 pr-4">
                 <h2 className="text-sm uppercase tracking-wider text-gray-500">Explore</h2>
                 <h1 className="text-4xl font-bold mt-2">Discover Your Next Favourite Game</h1>
                 <p className="text-lg mt-4 max-w-2xl mx-auto">
