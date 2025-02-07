@@ -155,7 +155,7 @@ sudo vim /etc/mongod.conf
 replication:
   replSetName: rs0
 net:
-  bindIp: localhost // МБ лишнее
+  bindIp: localhost,159.255.34.79 // МБ лишнее
 Если секция net уже существует, просто измените или добавьте строку bindIp: localhost.
 
 
@@ -285,7 +285,36 @@ spi-truststore-password=changeit
 
 
 
+// https
+// keytool -genkeypair -v -keystore /opt/keycloak/conf/keystore.jks -keyalg RSA -keysize 2048 -validity 3650 -alias keycloak
+//
 
+# Production-режим
+hostname=159.255.34.79
+http-enabled=false
+https-port=8088
+http-relative-path=/keycloak
+http-port=8087
+proxy=none
+
+# Подключение к PostgreSQL
+db=postgres
+db-url=jdbc:postgresql://localhost:5432/keycloak
+db-username=keycloak_user
+db-password=#DG%hWZqIe
+
+# Production
+spi-truststore-file=/opt/keycloak/conf/keystore.jks
+spi-truststore-password=changeit
+
+
+location /keycloak/ {
+        proxy_pass https://127.0.0.1:8088/keycloak/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+//
 1. Установка OpenJDK
 Keycloak требует Java 17 или новее. Установим:
 
@@ -405,6 +434,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
+
+
+// НЕ ЗАБУДЬ ОТПРАВИТЬ ТЕМУ ДЛЯ KEYCLOAK в папку themes, просто отправить с именем tale-shop
 
 ////////////////////////////////////
 0) Команды для линукса (Дополнительные)
@@ -601,7 +633,7 @@ sudo nano /etc/nginx/conf.d/superbot.conf
 
 server {
     listen 80;
-    server_name 159.255.34.79;
+    server_name kimyashka.ru;#159.255.34.79;
 
     location / {
         return 301 https://$host$request_uri;  # Редирект HTTP → HTTPS
@@ -610,12 +642,12 @@ server {
 
 server {
     listen 443 ssl;
-    server_name 159.255.34.79;
+    server_name kimyashka.ru;#159.255.34.79;
 
     root /superbot_frontend;
 
-    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/kimyashka.ru/fullchain.pem;#Нужно будет менять с тестового
+    ssl_certificate_key /etc/letsencrypt/live/kimyashka.ru/privkey.pem;#Нужно будет менять с тестового
 
     index index.html;
 
@@ -651,10 +683,46 @@ server {
 sudo dnf install certbot python3-certbot-nginx -y
 Запускаем автоматическую настройку HTTPS:
 
-sudo certbot --nginx -d 159.255.34.79
+sudo certbot --nginx -d kimyashka.ru //TODO СМОТРИ, что тут тестовый ДОМЕН
 ➡️ Если все прошло успешно, сертификаты сохранятся в /etc/letsencrypt/live/example.com/.
 
 Обновляем сертификаты автоматически:
 
 echo "0 3 * * * root certbot renew --quiet" | sudo tee -a /etc/crontab
 Это обновит сертификат раз в день в 03:00.
+
+
+///////////////////////
+
+создать сертификаты вручную (standalone)
+Остановите Nginx, чтобы Certbot смог занять порт 80:
+
+bash
+Копировать
+Редактировать
+sudo systemctl stop nginx
+Создайте сертификаты вручную с помощью Certbot:
+
+bash
+Копировать
+Редактировать
+sudo certbot certonly --standalone -d kimyashka.ru
+Если все пройдет успешно, Certbot должен создать сертификаты в /etc/letsencrypt/live/kimyashka.ru/. Если ошибка повторяется, убедитесь, что порт 80 не занят другими процессами:
+
+bash
+Копировать
+Редактировать
+sudo ss -tuln | grep :80
+
+sudo firewall-cmd --add-service=https --permanent
+sudo firewall-cmd --reload
+
+//Открытие любого другого порта
+//sudo firewall-cmd --add-port=8088/tcp --permanent
+//sudo firewall-cmd --reload
+//
+
+// просмотр открытых портов
+sudo firewall-cmd --list-ports
+
+

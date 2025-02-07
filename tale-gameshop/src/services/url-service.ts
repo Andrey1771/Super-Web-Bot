@@ -4,16 +4,16 @@ import { IUrlService, KeycloakSettings } from "../iterfaces/i-url-service";
 @injectable()
 export class UrlService implements IUrlService {
     public get apiBaseUrl(): string {
-        return "http://159.255.34.79";
+        return "https://kimyashka.ru/";
     }
 
     public get keycloak(): KeycloakSettings {
         return {
-            "url": "http://159.255.34.79/keycloak/",
+            "url": "https://kimyashka.ru/keycloak/",
             "realm": "TaleShop",
             "clientId": "tale-shop-app",
-            "redirectUri": "http://159.255.34.79/callback",
-            "silentCheckSsoRedirectUri": "http://159.255.34.79/silent-check-sso.html",
+            "redirectUri": "https://kimyashka.ru/callback",
+            "silentCheckSsoRedirectUri": "https://kimyashka.ru/silent-check-sso.html",
             "onLoad": "check-sso"
         } as KeycloakSettings;
     }
