@@ -55,6 +55,22 @@ sudo systemctl start mongod --replSet rs0 --bind_ip localhost
 sudo systemctl status mongod
 
 Инициализация монгоДБ
+sudo vi /etc/mongod.conf
+
+storage:
+  dbPath: /var/lib/mongo
+  journal:
+    enabled: true
+
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+
+net:
+  port: 27017
+  bindIp: 127.0.0.1
+
 mongosh
 
 rs.initiate()
@@ -155,7 +171,7 @@ sudo vim /etc/mongod.conf
 replication:
   replSetName: rs0
 net:
-  bindIp: localhost,159.255.34.79 // МБ лишнее
+  bindIp: localhost,159.255.34.79,kimyashka.ru // МБ лишнее
 Если секция net уже существует, просто измените или добавьте строку bindIp: localhost.
 
 
@@ -561,7 +577,7 @@ sudo systemctl restart mongod
 
 +Проблема в replicaSet была
 
-mongod --replSet "rs0" --bind_ip localhost,159.255.34.79
+mongod --replSet "rs0" --bind_ip localhost,159.255.34.79,kimyashka.ru
 
 sudo journalctl -xeu mongod
 
@@ -572,7 +588,7 @@ sudo journalctl --rotate
 sudo journalctl --vacuum-time=1s
 
 
-
+sudo journalctl --vacuum-size=1
 
 1. Остановите MongoDB
 Остановите сервис MongoDB, если он запущен:
@@ -725,4 +741,62 @@ sudo firewall-cmd --reload
 // просмотр открытых портов
 sudo firewall-cmd --list-ports
 
+////Установка сертификата для keycloak
 
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /opt/keycloak/conf/server.key.pem \
+    -out /opt/keycloak/conf/server.crt.pem \
+    -subj "/CN=kimyashka.ru"
+
+
+
+
+
+ sudo vi /opt/keycloak/conf/keycloak.conf
+
+
+http-relative-path=/keycloak
+http-port=8088
+proxy=none
+
+# Подключение к PostgreSQL
+db=postgres
+db-url=jdbc:postgresql://localhost:5432/keycloak
+db-username=keycloak_user
+db-password=#DG%hWZqIe
+
+# Production
+spi-truststore-file=/opt/keycloak/conf/keystore.jks
+spi-truststore-password=changeit
+
+# Basic settings for running in production. Change accordingly before deploying the server.
+
+# Database
+
+# The database vendor.
+#db=postgres
+
+# The username of the database user.
+#db-username=keycloak
+
+# The password of the database user.
+#db-password=password
+
+# The full database JDBC URL. If not provided, a default URL is set based on the selected database vendor.
+#db-url=jdbc:postgresql://localhost/keycloak
+
+# Observability
+
+# If the server should expose healthcheck endpoints.
+#health-enabled=true
+
+# If the server should expose metrics endpoints.
+#metrics-enabled=true
+
+# HTTP
+
+# The file path to a server certificate or certificate chain in PEM format.
+https-certificate-file=/opt/keycloak/conf/server.crt.pem
+
+# The file path to a private key in PEM format.
+https-certificate-key-file=/opt/keycloak/conf/server.key.pem
