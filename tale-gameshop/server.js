@@ -10,6 +10,17 @@ const key = fs.readFileSync('./public/private.key');
 
 const buildPath = path.resolve('dist');
 
+// Middleware для проверки корректности URL
+app.use((req, res, next) => {
+    try {
+        decodeURIComponent(req.url);
+    } catch (e) {
+        console.error('Malformed URL:', req.url);
+        return res.status(400).send('Bad Request: Malformed URL');
+    }
+    next();
+});
+
 app.use(express.static(buildPath));
 
 app.get('*', (req, res) => {
