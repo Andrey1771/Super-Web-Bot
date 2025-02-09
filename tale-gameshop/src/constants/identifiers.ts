@@ -5,6 +5,7 @@ const IDENTIFIERS = {
     IApiClient: Symbol.for("IApiClient"),
     IKeycloakAuthService: Symbol.for("IKeycloakAuthService"),
     IKeycloakService: Symbol.for("IKeycloakService"),
+    IUrlService: Symbol.for("IUrlService"),
 };
 
 export default IDENTIFIERS;

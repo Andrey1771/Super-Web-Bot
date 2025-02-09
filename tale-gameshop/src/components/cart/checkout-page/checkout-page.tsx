@@ -5,18 +5,22 @@ import axios from "axios";
 import {Elements} from '@stripe/react-stripe-js';
 import {loadStripe} from '@stripe/stripe-js';
 import './checkout-page.css';
-import webSettings from '../../../webSettings.json';
+import container from "../../../inversify.config";
+import {IUrlService} from "../../../iterfaces/i-url-service";
+import IDENTIFIERS from "../../../constants/identifiers";
 
 
 const CheckoutPage: React.FC = () => {
     const {state} = useCart();
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
 
+    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+
     const [clientSecret, setClientSecret] = useState(null);
     useEffect(() => {
         (async () => {
             // Запрос на сервер для получения clientSecret TODO
-            const {data} = await axios.post(`${webSettings.apiBaseUrl}/api/payments/create-payment-intent`, {
+            const {data} = await axios.post(`${urlService.apiBaseUrl}/api/payments/create-payment-intent`, {
                 amount: totalPrice, // сумма в центах
             });
             setClientSecret(data.clientSecret);
@@ -49,7 +53,7 @@ const CheckoutPage: React.FC = () => {
                                 {/* Колонка с изображением и названием */}
                                 <div className="flex items-center gap-4">
                                     <img
-                                        src={`${webSettings.apiBaseUrl}/${item.image}`}
+                                        src={`${urlService.apiBaseUrl}/${item.image}`}
                                         alt={item.name}
                                         className="w-16 h-16 object-cover rounded"
                                     />

@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import container from "../../../inversify.config";
 import type {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
-import webSettings from '../../../webSettings.json';
+import {IUrlService} from "../../../iterfaces/i-url-service";
 
 type Data = string[];
 
@@ -11,6 +11,8 @@ const SiteChangerPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [file, setFile] = useState(null);
 
+
+    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     useEffect(() => {
         (async () => {
@@ -85,7 +87,7 @@ const SiteChangerPage: React.FC = () => {
                 {images.map((image, index) => (
                     <div key={index} className="relative p-2 border rounded shadow bg-white">
                         <img
-                            src={`${webSettings.apiBaseUrl}${image}`}
+                            src={`${urlService.apiBaseUrl}${image}`}
                             alt={`Image ${index + 1}`}
                             className="w-full h-32 object-fill rounded"
                         />

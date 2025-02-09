@@ -19,7 +19,7 @@ import {Game} from "../../models/game";
 import {Link} from "react-router-dom";
 import {useKeycloak} from "@react-keycloak/web";
 import type {IKeycloakAuthService} from "../../iterfaces/i-keycloak-auth-service";
-import webSettings from '../../webSettings.json';
+import {IUrlService} from "../../iterfaces/i-url-service";
 
 export default function TaleGameshopMainPage() {
     const [latestGame, setLatestGame] = useState<Game | null>(null);
@@ -27,6 +27,8 @@ export default function TaleGameshopMainPage() {
 
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
+
+    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     useEffect(() => {
         fetchLatestGame();
@@ -70,8 +72,8 @@ export default function TaleGameshopMainPage() {
 
     return (
         <div className="main-page-down-header-padding">
-            <div className="bg-gray-100 py-10">
-                <div className="container mx-auto grid grid-cols-3 gap-8">
+            <div className="bg-gray-100 py-10 pl-4 pr-4">
+                <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
 
                     <div>
                         <h2 className="text-lg font-bold mb-4">
@@ -194,14 +196,14 @@ export default function TaleGameshopMainPage() {
                         </ul>
                     </div>
 
-                    <div>
+                    <div className="sm:col-span-2 md:col-span-1">
                         <h2 className="text-lg font-bold mb-4">
                             Highlights from Blog
                         </h2>
                         <div className="space-y-4">
                             <div className="bg-gray-200 p-4 flex items-center break-all">
                                 <img alt={randomGame?.title} className="mr-4" height="50"
-                                     src={`${webSettings.apiBaseUrl}/${randomGame?.imagePath}`}
+                                     src={`${urlService.apiBaseUrl}/${randomGame?.imagePath}`}
                                      width="50"/>
                                 <div>
                                     <h3 className="font-bold">
@@ -218,7 +220,7 @@ export default function TaleGameshopMainPage() {
                             </div>
                             <div className="bg-gray-200 p-4 flex items-center break-all">
                                 <img alt={latestGame?.title} className="mr-4" height="50"
-                                     src={`${webSettings.apiBaseUrl}/${latestGame?.imagePath}`}
+                                     src={`${urlService.apiBaseUrl}/${latestGame?.imagePath}`}
                                      width="50"/>
                                 <div>
                                     <h3 className="font-bold">
@@ -248,7 +250,7 @@ export default function TaleGameshopMainPage() {
                 </div>
             </div>
 
-            <div className="bg-black text-white py-20">
+            <div className="bg-black text-white py-20 pl-4 pr-4">
                 <div className="container mx-auto text-center">
                     <h1 className="text-4xl font-bold mb-6">
                         Discover Your Next Favourite Computer Game
@@ -293,7 +295,7 @@ export default function TaleGameshopMainPage() {
                     </div>
                 </div>
             </div>
-            <div className="container mx-auto text-center py-16">
+            <div className="container mx-auto text-center py-16 pl-4 pr-4">
                 <h2 className="text-sm uppercase tracking-wider text-gray-500">Explore</h2>
                 <h1 className="text-4xl font-bold mt-2">Discover Your Next Favourite Game</h1>
                 <p className="text-lg mt-4 max-w-2xl mx-auto">

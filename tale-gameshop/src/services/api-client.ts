@@ -3,8 +3,8 @@ import {injectable} from "inversify";
 import IDENTIFIERS from "../constants/identifiers";
 import { IApiClient } from '../iterfaces/i-api-client';
 import container from "../inversify.config";
-import webSettings from '../webSettings.json';
 import { IKeycloakService } from '../iterfaces/i-keycloak-service';
+import {IUrlService} from "../iterfaces/i-url-service";
 
 @injectable()
 export class ApiClient implements IApiClient {
@@ -17,7 +17,7 @@ export class ApiClient implements IApiClient {
         this._keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
 
         this._api = axios.create({
-            baseURL: webSettings.apiBaseUrl,
+            baseURL: container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl,
             headers: {
                 'Content-Type': 'application/json',
             },

@@ -13,6 +13,8 @@ import {IKeycloakAuthService} from "./iterfaces/i-keycloak-auth-service";
 import {KeycloakAuthService} from "./services/keycloak-auth-service";
 import { KeycloakService } from "./services/keycloak-service";
 import { IKeycloakService } from "./iterfaces/i-keycloak-service";
+import {IUrlService} from "./iterfaces/i-url-service";
+import { UrlService } from "./services/url-service";
 
 const container = new Container();
 
@@ -25,5 +27,6 @@ container.bind<IApiClient>(IDENTIFIERS.IApiClient).to(ApiClient);
 container.bind<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService).to(KeycloakAuthService);
 
 container.bind<IKeycloakService>(IDENTIFIERS.IKeycloakService).to(KeycloakService).inSingletonScope();
+container.bind<IUrlService>(IDENTIFIERS.IUrlService).to(UrlService).inSingletonScope();
 
 export default container;

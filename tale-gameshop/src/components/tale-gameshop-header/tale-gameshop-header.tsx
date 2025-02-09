@@ -52,13 +52,13 @@ export default function TaleGameshopHeader() {
 
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
-            <div className="container mx-auto flex justify-between items-center py-4">
+            <div className="container mx-auto flex justify-between items-center py-4 px-4 sm:px-0">
                 {/* Логотип */}
-                <img className="lg:hidden w-14 h-14" src={logo} alt="Logo"/>
+                <img className="lg:hidden w-14 h-14 ml-4 sm:ml-0" src={logo} alt="Logo"/>
 
                 {/* Бургер-иконка */}
                 <button
-                    className="lg:hidden text-gray-700 text-2xl"
+                    className="lg:hidden text-gray-700 text-2xl w-14 h-14"
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                 >
                     <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars}/>

@@ -6,10 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-// Чтение сертификатов для HTTPS
-const cert = fs.readFileSync('./public/private.crt');
-const key = fs.readFileSync('./public/private.key');
-
+// Получаем полный путь к `node_modules`
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default (env, { mode }) => ({
@@ -17,10 +14,10 @@ export default (env, { mode }) => ({
     optimization: {
         minimize: mode === 'production',
     },
-    entry: './src/index.tsx', // Точка входа для React-компонентов
+    entry: './src/index.tsx',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: (mode === 'production') ? 'bundle.[contenthash].js' : 'bundle.js', // Разные имена для продакшн
+        filename: (mode === 'production') ? 'bundle.[contenthash].js' : 'bundle.js',
         publicPath: '/',
         assetModuleFilename: 'images/[hash][ext][query]',
     },
@@ -58,13 +55,20 @@ export default (env, { mode }) => ({
                 ],
             },
             {
+                test: /\.json$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/resources/[name].[contenthash].json',
+                }
+            },
+            {
                 test: /\.html$/,
                 use: [
                     {
                         loader: 'html-loader',
                         options: {
                             sources: false,
-                            minimize: (mode === 'production'), // Минификация HTML в продакшн
+                            minimize: (mode === 'production'),
                         },
                     },
                 ],
@@ -97,10 +101,10 @@ export default (env, { mode }) => ({
         ...((mode === 'production')
             ? [
                 new MiniCssExtractPlugin({
-                    filename: 'styles.[contenthash].css', // Добавляем хеши в продакшн-режиме
+                    filename: 'styles.[contenthash].css',
                 }),
             ]
-            : []), // В dev не нужен MiniCssExtractPlugin
+            : []),
     ],
     devServer: {
         historyApiFallback: true,
@@ -109,12 +113,12 @@ export default (env, { mode }) => ({
         server: {
             type: 'https',
             options: {
-                key: key,
-                cert: cert,
+                key: fs.readFileSync('./public/private.key'),
+                cert: fs.readFileSync('./public/private.crt'),
                 passphrase: 'webpack-dev-server',
                 requestCert: false,
             },
         },
     },
-    devtool: (mode === 'production') ? 'source-map' : 'cheap-module-source-map', // Разные карты исходников для разных режимов
+    devtool: (mode === 'production') ? 'source-map' : 'cheap-module-source-map',
 });
