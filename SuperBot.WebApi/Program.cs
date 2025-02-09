@@ -2,26 +2,24 @@ using Hangfire;
 using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies.Backup;
 using Hangfire.Mongo.Migration.Strategies;
-using Microsoft.AspNetCore.Localization;
 using MongoDB.Driver;
 using SuperBot.Core.Interfaces;
-using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
 using SuperBot.Infrastructure.ExternalServices;
 using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
 using SuperBot.WebApi.Services;
-using SuperBot.WebApi.Types;
-using System.Globalization;
-using Telegram.Bot;
-using SuperBot.Application.Commands.Telegram;
 using Microsoft.Extensions.FileProviders;
 using SuperBot.Core.Entities;
 using SuperBot.Common.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Stripe;
 using Microsoft.AspNetCore.HttpOverrides;
+using SuperBot.Application.Commands.Telegram;
+using Telegram.Bot;
+using SuperBot.WebApi.Types;
+using SuperBot.Core.Interfaces.IBotStateService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,37 +40,6 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 
-// Добавляем поддержку локализации
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    var supportedCultures = new[]
-    {
-            new CultureInfo("en-US"),
-            new CultureInfo("ru-RU")
-        };
-
-    options.DefaultRequestCulture = new RequestCulture("en-US");
-    options.SupportedCultures = supportedCultures;
-    options.SupportedUICultures = supportedCultures;
-});
-
-// Setup bot configuration
-var botConfigSection = builder.Configuration.GetSection("BotConfiguration");
-builder.Services.Configure<BotConfiguration>(botConfigSection);
-builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<ITelegramBotClient>(
-    httpClient => new TelegramBotClient(botConfigSection.Get<BotConfiguration>()!.BotToken, httpClient));
-builder.Services.AddSingleton<UpdateHandler>();
-
-builder.Services.ConfigureTelegramBotMvc();
-
-var domainAssembly = typeof(GetMainMenuCommand).Assembly;
-builder.Services
-    .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
-
-
-
 // Добавление CORS с конкретной политикой
 builder.Services.AddCors(options =>
 {
@@ -91,15 +58,27 @@ builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Str
 
 builder.Services.AddControllers();
 
+var domainAssembly = typeof(GetMainMenuCommand).Assembly;
+builder.Services
+    .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
+
+// Setup bot configuration
+var botConfigSection = builder.Configuration.GetSection("BotConfiguration");
+builder.Services.Configure<BotConfiguration>(botConfigSection);
+builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<ITelegramBotClient>(
+    httpClient => new TelegramBotClient(botConfigSection.Get<BotConfiguration>()!.BotToken, httpClient));
+
 builder.Services.AddTransient<IResourceService, JsonResourceService>();
-builder.Services.AddTransient<ITranslationsService, TranslationsService>();
 builder.Services.AddSingleton<IUrlService, UrlProvider>();
 
+builder.Services.AddTransient<ITranslationsService, TranslationsService>();
+builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
 
 builder.Services.AddSingleton<BotStateService>();
 builder.Services.AddSingleton<IBotStateReaderService>(provider => provider.GetRequiredService<BotStateService>());
 builder.Services.AddSingleton<IBotStateWriterService>(provider => provider.GetRequiredService<BotStateService>());
 
+builder.Services.AddTransient<IPayService, YooKassaService>();
 
 builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>
 {
@@ -123,17 +102,10 @@ builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>()
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 
-builder.Services.AddTransient<IPayService, YooKassaService>();
 
-builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
 
-//builder.Configu.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
-//builder.Services.AddAutoMapper(typeof(OrderProfile));
-//builder.Services.AddAutoMapper(typeof(SettingsProfile));
-//builder.Services.AddAutoMapper(typeof(SteamOrderProfile));
-//builder.Services.AddAutoMapper(typeof(UserProfile));
 
 //TODO Заготовка на динамические жанры игр, если у нас нет настроек, то добавляем их
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
