@@ -15,10 +15,10 @@
       <list>
         <option value="package.json" />
         <option value="HTML File" />
-        <option value="TypeScript JSX File" />
-        <option value="CSS File" />
         <option value="JavaScript File" />
         <option value="TypeScript File" />
+        <option value="TypeScript JSX File" />
+        <option value="CSS File" />
       </list>
     </option>
   </component>
@@ -49,11 +49,11 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\header" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\public" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\assets\images" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\context" />
       <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\cart\cart-context" />
-      <recent name="C:\projects\Super-Bot\tale-gameshop\src\components\admin-panel" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -179,6 +179,11 @@
           <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
           <line>149</line>
           <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/src/components/cart/cart-icon/cart-icon.tsx</url>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="15" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
