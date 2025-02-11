@@ -10,6 +10,7 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import logo from '../../../assets/images/tale-shop-logo.jpeg';
 import CartIcon from "../../cart/cart-icon/cart-icon";
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
+import AdminPanelSection from "../admin-panel-section/admin-panel-section";
 
 export default function TaleGameshopHeader() {
     const {keycloak} = useKeycloak();
@@ -88,16 +89,8 @@ export default function TaleGameshopHeader() {
                             <LoginAndRegisterSection></LoginAndRegisterSection>
                         ) : (
                             <>
-                                <span className="text-gray-700">{email}</span>
                                 {isAdmin && (
-                                    <>
-                                        <Link className="hidden lg:flex px-4 py-2 bg-red-500 text-white" to="/admin">
-                                            Open Admin Panel
-                                        </Link>
-                                        <Link className="lg:hidden text-gray-700 menu-item cursor-pointer" to="/admin">
-                                            Open Admin Panel
-                                        </Link>
-                                    </>
+                                    <AdminPanelSection></AdminPanelSection>
                                 )}
                                 <LogOutButton/>
                             </>
@@ -114,14 +107,7 @@ export default function TaleGameshopHeader() {
                         <>
                             <span className="mr-2">{email}</span>
                             {isAdmin && (
-                                <>
-                                    <Link className="hidden lg:flex px-4 py-2 bg-red-500 text-white" to="/admin">
-                                        Open Admin Panel
-                                    </Link>
-                                    <Link className="lg:hidden text-gray-700 menu-item cursor-pointer" to="/admin">
-                                        Open Admin Panel
-                                    </Link>
-                                </>
+                                <AdminPanelSection></AdminPanelSection>
                             )}
                             <LogOutButton/>
                         </>

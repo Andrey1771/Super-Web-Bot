@@ -4,10 +4,7 @@ import container from "../../../inversify.config";
 import type {IKeycloakAuthService} from "../../../iterfaces/i-keycloak-auth-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 
-interface LoginAndRegisterSectionProps {
-}
-
-const LoginAndRegisterSection: React.FC<LoginAndRegisterSectionProps> = ({}) => {
+const LoginAndRegisterSection: React.FC = ({}) => {
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
