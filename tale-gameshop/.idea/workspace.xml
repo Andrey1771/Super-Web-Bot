@@ -113,6 +113,7 @@
       <workItem from="1738922884306" duration="2007000" />
       <workItem from="1739014765874" duration="1964000" />
       <workItem from="1739093565415" duration="2348000" />
+      <workItem from="1739613812892" duration="6748000" />
     </task>
     <servers />
   </component>
@@ -182,7 +183,6 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/cart/cart-icon/cart-icon.tsx</url>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="15" />
         </line-breakpoint>
       </breakpoints>

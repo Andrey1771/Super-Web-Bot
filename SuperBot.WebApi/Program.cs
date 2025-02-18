@@ -156,6 +156,13 @@ builder.Services.AddHangfire(config =>
 builder.Services.AddHangfireServer();
 
 
+builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>((httpClient) =>
+{
+    var uri = builder.Configuration["Keycloak:Uri"];
+    httpClient.BaseAddress = new Uri(uri);
+    return new KeycloakClient(httpClient, uri);
+});
+
 builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);

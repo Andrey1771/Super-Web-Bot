@@ -1,5 +1,5 @@
-FROM node:18
+FROM node:latest
 WORKDIR /app
 COPY . .
 RUN npm install && npm run build
-CMD ["npm", "start"]
+CMD ["npm", "run", "start-prod"]
