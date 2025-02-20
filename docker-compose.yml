@@ -4,7 +4,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.webapi
     container_name: backend
     restart: always
     env_file:
@@ -17,10 +17,14 @@ services:
     networks:
       - app_network
 
+  #botapi:
+  #  build:
+  #   context: .
+  #    dockerfile: Dockerfile.botapi
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: tale-gameshop/Dockerfile
     container_name: frontend
     restart: always
     ports:

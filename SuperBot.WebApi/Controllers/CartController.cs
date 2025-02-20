@@ -9,10 +9,12 @@ namespace SuperBot.WebApi.Controllers
     public class CartController : ControllerBase
     {
         private readonly ICartRepository _cartRepository;
+        private readonly IKeycloakClient _keycloakClient;
 
-        public CartController(ICartRepository cartRepository)
+        public CartController(ICartRepository cartRepository, IKeycloakClient keycloakClient)
         {
             _cartRepository = cartRepository;
+            _keycloakClient = keycloakClient;
         }
 
         [HttpGet("{userId}")]
