@@ -3,7 +3,7 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile.webapi
     container_name: backend
     restart: always
@@ -23,8 +23,8 @@ services:
   #    dockerfile: Dockerfile.botapi
   frontend:
     build:
-      context: ./frontend
-      dockerfile: tale-gameshop/Dockerfile
+      context: ./tale-gameshop
+      dockerfile: Dockerfile
     container_name: frontend
     restart: always
     ports:
