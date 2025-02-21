@@ -1,13 +1,9 @@
 ﻿using MediatR;
-using SuperBot.Application.Commands.Investment;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using SuperBot.Application.Commands.InternationalTransfers;
-using SuperBot.Core.Entities;
-using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types.Enums;
 using SuperBot.Core.Interfaces;
-using SuperBot.WebApi.Services;
 using SuperBot.Application.Handlers.Telegram.Base;
 
 namespace SuperBot.Application.Handlers.Telegram.InternationalTransfers

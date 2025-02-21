@@ -1,4 +1,4 @@
-﻿namespace SuperBot.WebApi.Services
+﻿namespace SuperBot.Core.Interfaces
 {
     public interface IAdminSettingsProvider
     {

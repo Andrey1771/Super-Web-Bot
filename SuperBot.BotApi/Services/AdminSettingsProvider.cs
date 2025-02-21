@@ -1,6 +1,6 @@
 ﻿using SuperBot.Core.Interfaces;
 
-namespace SuperBot.WebApi.Services
+namespace SuperBot.BotApi.Services
 {
     public class AdminSettingsProvider : IAdminSettingsProvider
     {

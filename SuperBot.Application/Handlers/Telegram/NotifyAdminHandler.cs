@@ -1,15 +1,6 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands.Telegram;
-using SuperBot.Application.Commands.Telegram.Base;
-using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
-using SuperBot.WebApi.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;

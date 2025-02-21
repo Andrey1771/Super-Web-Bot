@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
-using SuperBot.WebApi.Services;
-using SuperBot.WebApi.Types;
+using SuperBot.BotApi.Services;
+using SuperBot.BotApi.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 

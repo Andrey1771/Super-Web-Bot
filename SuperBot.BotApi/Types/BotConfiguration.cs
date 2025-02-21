@@ -1,4 +1,4 @@
-﻿namespace SuperBot.WebApi.Types
+﻿namespace SuperBot.BotApi.Types
 {
     public class BotConfiguration
     {

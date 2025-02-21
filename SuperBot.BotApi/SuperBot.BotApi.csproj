@@ -11,7 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SuperBot.WebApi\SuperBot.WebApi.csproj" />
+    <ProjectReference Include="..\SuperBot.Application\SuperBot.Application.csproj" />
+    <ProjectReference Include="..\SuperBot.Common.Auth\SuperBot.Common.Auth.csproj" />
+    <ProjectReference Include="..\SuperBot.Core\SuperBot.Core.csproj" />
+    <ProjectReference Include="..\SuperBot.Infrastructure\SuperBot.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

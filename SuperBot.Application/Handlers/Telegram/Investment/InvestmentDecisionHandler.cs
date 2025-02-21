@@ -1,17 +1,9 @@
 ﻿using MediatR;
 using SuperBot.Application.Commands.Investment;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using SuperBot.Core.Interfaces;
-using SuperBot.Application.Commands.TopUp;
-using Microsoft.AspNetCore.Components;
 using Telegram.Bot.Types.Enums;
-using SuperBot.WebApi.Services;
 using SuperBot.Application.Handlers.Telegram.Base;
 
 namespace SuperBot.Application.Handlers.Telegram.Investment

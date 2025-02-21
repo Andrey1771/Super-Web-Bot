@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Localization;
 using SuperBot.Application.Commands.Telegram;
+using SuperBot.BotApi.Services;
+using SuperBot.BotApi.Types;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Services;
 using SuperBot.Infrastructure.ExternalServices;
-using SuperBot.WebApi.Services;
-using SuperBot.WebApi.Types;
 using System.Globalization;
 using Telegram.Bot;
 

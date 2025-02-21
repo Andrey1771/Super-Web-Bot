@@ -8,7 +8,6 @@ using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IBotStateService;
-using SuperBot.WebApi.Services;
 using SuperBot.Application.Handlers.Telegram.Base;
 
 namespace SuperBot.Application.Handlers.Telegram.TopUp

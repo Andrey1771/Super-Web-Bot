@@ -14,7 +14,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 
-namespace SuperBot.WebApi.Services;
+namespace SuperBot.BotApi.Services;
 
 public class UpdateHandler(ITelegramBotClient _bot, ILogger<UpdateHandler> _logger, IMediator _mediator,
     ITranslationsService _translationsService, IBotStateReaderService _botStateReaderService) : IUpdateHandler

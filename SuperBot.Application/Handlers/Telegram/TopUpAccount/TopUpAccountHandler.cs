@@ -3,11 +3,7 @@ using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
-using Microsoft.Extensions.DependencyInjection;
-using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Application.Commands.TopUp;
-using SuperBot.Core.Services;
-using SuperBot.WebApi.Services;
 using SuperBot.Application.Handlers.Telegram.Base;
 
 namespace SuperBot.Application.Handlers.Telegram.TopUpAccount
