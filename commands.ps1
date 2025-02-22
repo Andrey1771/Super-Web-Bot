@@ -1,6 +1,6 @@
 #### Setup webhook for telegram
 $botToken = "7767915896:AAGxdVts4Lp-jboxYsiivChZYeGAKoKkfgo"
-$webhookUrl = "https://0fef-109-252-87-130.ngrok-free.app/api/Telegram"
+$webhookUrl = "https://185.105.91.233/api/Telegram"
 $telegramApiUrl = "https://api.telegram.org/bot$botToken/setWebhook"
 
 Invoke-RestMethod -Uri $telegramApiUrl -Method Post -Body @{url = $webhookUrl}

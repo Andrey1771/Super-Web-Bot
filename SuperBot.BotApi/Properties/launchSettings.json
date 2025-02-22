@@ -43,6 +43,7 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "launchUrl": "api/telegram/setWebhook",
+      "applicationUrl": "https://185.105.91.233;http://185.105.91.233",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

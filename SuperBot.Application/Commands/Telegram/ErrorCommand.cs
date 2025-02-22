@@ -11,6 +11,5 @@ namespace SuperBot.Application.Commands.Telegram
     {
         public long ChatId { get; set; }
         public string ErrorMessage { get; set; }
-
     }
 }

@@ -1,0 +1,37 @@
+scp -r C:\projects\Super-Bot\SuperBot.BotApi\publish root@185.105.91.233:/superbot-bot
+
+
+
+sudo dnf install -y dotnet-runtime-8.0 aspnetcore-runtime-8.0
+
+
+sudo yum install dotnet-sdk-6.0
+
+
+
+sudo vi /etc/systemd/system/telegram-bot.service
+
+[Unit]
+Description=Telegram Bot Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/superbot-bot
+ExecStart=/usr/bin/dotnet /superbot-bot/SuperBot.BotApi.dll
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=telegram-bot
+
+[Install]
+WantedBy=multi-user.target
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable telegram-bot
+sudo systemctl start telegram-bot
+
+sudo systemctl status telegram-bot
+
+journalctl -u telegram-bot.service --no-pager
