@@ -1,9 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands.TopUp;
-using SuperBot.Core.Interfaces.IRepositories;
-using System;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -30,7 +27,7 @@ namespace SuperBot.WebApi.Controllers
 
                 return Ok();
             }
-            else
+            else // TODO Обработать остальные варианты
             {
                 return Ok();
             }
@@ -48,6 +45,5 @@ namespace SuperBot.WebApi.Controllers
     {
         public string Id { get; set; }
         public string Status { get; set; }
-        // Вы можете добавить другие поля в зависимости от того, какие данные вам нужны
     }
 }

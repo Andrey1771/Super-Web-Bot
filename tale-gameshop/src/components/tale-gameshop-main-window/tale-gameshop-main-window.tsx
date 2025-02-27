@@ -19,6 +19,7 @@ import {CartPage} from "../cart/cart-page/cart-page";
 import CheckoutPage from "../cart/checkout-page/checkout-page";
 import SuccessPurchasePage from "../cart/success-purchase-page/success-purchase-page";
 import ApologyPage from "../apology-page/apology-page";
+import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -35,6 +36,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/admin/botChanger" element={<PrivateRoute><BotChangerPage/></PrivateRoute>}/>
                     <Route path="/admin/siteChanger" element={<PrivateRoute><SiteChangerPage/></PrivateRoute>}/>
                     <Route path="/admin/cardAdder" element={<PrivateRoute><CardAdderPage/></PrivateRoute>}/>
+                    <Route path="admin/userInfo" element={<PrivateRoute><UserInfoPage/></PrivateRoute>}/>
                     <Route path="/callback" element={<CallbackPage/>}/>
                     <Route path="/cart" element={<CartPage/>}/>
                     <Route path="/checkout" element={<CheckoutPage/>}/>

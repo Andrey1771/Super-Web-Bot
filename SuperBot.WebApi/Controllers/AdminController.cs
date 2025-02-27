@@ -2,19 +2,35 @@
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
+using SuperBot.WebApi.Services;
 
 
 namespace SuperBot.WebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AdminController(IResourceService _resourceService) : Controller
+    public class AdminController(IResourceService _resourceService, IKeycloakClient _keycloakClient) : Controller
     {
         [HttpGet]
         [Authorize(Roles = "admin")]
         public ActionResult<IEnumerable<Resources>> GetResources()
         {
             return Ok(_resourceService.Resources);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult<IEnumerable<LoginEventRepresentation>>> GetAllMappedLoginEventsAsync()
+        {
+            // Получаем access-токен из заголовка Authorization
+            var accessToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                return Unauthorized("Access token is missing");
+            }
+
+            var allLoginEvents = await _keycloakClient.GetAllLoginEventsAsync("TaleShop", accessToken); // TODO Вынести TaleShop
+            return Ok(allLoginEvents);
         }
 
         [HttpPost]

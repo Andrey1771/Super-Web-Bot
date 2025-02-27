@@ -6,21 +6,13 @@ namespace SuperBot.WebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class CartController : ControllerBase
+    public class CartController(ICartRepository _cartRepository) : ControllerBase
     {
-        private readonly ICartRepository _cartRepository;
-        private readonly IKeycloakClient _keycloakClient;
-
-        public CartController(ICartRepository cartRepository, IKeycloakClient keycloakClient)
-        {
-            _cartRepository = cartRepository;
-            _keycloakClient = keycloakClient;
-        }
-
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetCart(string userId) 
         {
             var cart = (await _cartRepository.GetCartAsync(userId)).FirstOrDefault();
+
             return Ok(cart);
         }
 
