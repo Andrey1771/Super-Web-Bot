@@ -1,8 +1,12 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 
 import 'devextreme/dist/css/dx.light.css';
 import {DataGrid} from "devextreme-react";
 import {Column, FilterRow, Paging, Sorting} from "devextreme-react/data-grid";
+import container from "../../../inversify.config";
+import type {IApiClient} from "../../../iterfaces/i-api-client";
+import IDENTIFIERS from "../../../constants/identifiers";
+import { IAdminService } from "../../../iterfaces/i-admin-service";
 
 const UserInfoPage: React.FC = () => {
     const [data, setData] = useState([
@@ -12,7 +16,21 @@ const UserInfoPage: React.FC = () => {
         { id: 4, name: 'David', age: 28, city: 'Chicago' }
     ]);
 
+    const adminService = container.get<IAdminService>(IDENTIFIERS.IAdminService);
 
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await adminService.getAllMappedLoginEvents();
+                console.log(res);
+                setData(res);
+            } catch (error) {
+                console.error("Error load data of table:", error);
+            }
+        };
+
+        fetchData();
+    }, []);
 
     return (
         <div>

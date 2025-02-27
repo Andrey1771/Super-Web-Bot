@@ -19,8 +19,9 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpGet]
+        [Route("data")]
         [Authorize(Roles = "admin")]
-        public async Task<ActionResult<IEnumerable<LoginEventRepresentation>>> GetAllMappedLoginEventsAsync()
+        public async Task<ActionResult<IEnumerable<LoginEventRepresentation>>> GetAllMappedLoginEvents()
         {
             // Получаем access-токен из заголовка Authorization
             var accessToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
