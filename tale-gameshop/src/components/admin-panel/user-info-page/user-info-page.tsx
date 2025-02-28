@@ -20,8 +20,8 @@ const UserInfoPage: React.FC = () => {
 
                 // Преобразуем данные, добавляя поля из details
                 const transformedData = res.map((item: any) => ({
-                    ...item, // Копируем основные поля
-                    ...item.details, // Добавляем поля из details
+                    ...item,
+                    ...item.details,
                 }));
 
                 setData(transformedData);
@@ -34,14 +34,14 @@ const UserInfoPage: React.FC = () => {
     }, []);
 
     return (
-        <div className="p-2">
-            <h2>Список логинов пользователей</h2>
+        <div className="p-8">
+            <h2>List of user logins</h2>
             <DataGrid
                 dataSource={data}
                 showBorders={true}
                 showRowLines={true}
                 showColumnLines={true}
-                height="600px"
+                height="750px"
                 width="100%"
                 keyExpr="userId"
                 allowColumnResizing={true}
@@ -50,6 +50,7 @@ const UserInfoPage: React.FC = () => {
                 columnAutoWidth={true}
                 wordWrapEnabled={true}
                 scrolling={{ mode: "virtual" }}
+                pager={{ visible: false }}
             >
                 <Sorting mode="multiple" />
                 <Paging pageSize={10} />
