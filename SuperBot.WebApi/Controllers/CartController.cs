@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 
@@ -14,6 +15,15 @@ namespace SuperBot.WebApi.Controllers
             var cart = (await _cartRepository.GetCartAsync(userId)).FirstOrDefault();
 
             return Ok(cart);
+        }
+
+        [HttpGet()]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetAllCarts()
+        {
+            var carts = await _cartRepository.GetAllCartsAsync();
+
+            return Ok(carts);
         }
 
         [HttpPost("{userId}")]

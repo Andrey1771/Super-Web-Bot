@@ -4,6 +4,8 @@ namespace SuperBot.Core.Interfaces
 {
     public interface ICartRepository
     {
+        public Task<List<Cart>> GetAllCartsAsync();
+
         public Task<List<Cart>> GetCartAsync(string userId);
 
         // Обновить или объединить корзину

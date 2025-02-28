@@ -16,8 +16,6 @@ const UserInfoPage: React.FC = () => {
         const fetchData = async () => {
             try {
                 const res = await adminService.getAllMappedLoginEvents();
-                console.log("Fetched Data:", res);
-
                 // Преобразуем данные, добавляя поля из details
                 const transformedData = res.map((item: any) => ({
                     ...item,

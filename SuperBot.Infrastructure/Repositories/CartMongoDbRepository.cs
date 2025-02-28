@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Infrastructure.Data;
@@ -15,6 +17,13 @@ namespace SuperBot.Infrastructure.Repositories
         {
             _mapper = mapper;
             _cartCollection = database.GetCollection<CartDb>("Cart");
+        }
+
+        // Получить корзины всех пользователей
+        public async Task<List<Cart>> GetAllCartsAsync()
+        {
+            var carts = await _cartCollection.AsQueryable().ToListAsync(); // Получаем все записи
+            return _mapper.Map<List<Cart>>(carts);
         }
 
         // Получить корзину для пользователя
