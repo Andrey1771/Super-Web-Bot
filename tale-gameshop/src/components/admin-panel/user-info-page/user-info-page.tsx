@@ -1,20 +1,14 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 
-import 'devextreme/dist/css/dx.light.css';
-import {DataGrid} from "devextreme-react";
-import {Column, FilterRow, Paging, Sorting} from "devextreme-react/data-grid";
+import "devextreme/dist/css/dx.light.css";
+import { DataGrid } from "devextreme-react";
+import { Column, FilterRow, Paging, Sorting } from "devextreme-react/data-grid";
 import container from "../../../inversify.config";
-import type {IApiClient} from "../../../iterfaces/i-api-client";
-import IDENTIFIERS from "../../../constants/identifiers";
 import { IAdminService } from "../../../iterfaces/i-admin-service";
+import IDENTIFIERS from "../../../constants/identifiers";
 
 const UserInfoPage: React.FC = () => {
-    const [data, setData] = useState([
-        { id: 1, name: 'Alice', age: 25, city: 'New York' },
-        { id: 2, name: 'Bob', age: 30, city: 'San Francisco' },
-        { id: 3, name: 'Charlie', age: 35, city: 'Los Angeles' },
-        { id: 4, name: 'David', age: 28, city: 'Chicago' }
-    ]);
+    const [data, setData] = useState([]);
 
     const adminService = container.get<IAdminService>(IDENTIFIERS.IAdminService);
 
@@ -22,10 +16,17 @@ const UserInfoPage: React.FC = () => {
         const fetchData = async () => {
             try {
                 const res = await adminService.getAllMappedLoginEvents();
-                console.log(res);
-                setData(res);
+                console.log("Fetched Data:", res);
+
+                // Преобразуем данные, добавляя поля из details
+                const transformedData = res.map((item: any) => ({
+                    ...item, // Копируем основные поля
+                    ...item.details, // Добавляем поля из details
+                }));
+
+                setData(transformedData);
             } catch (error) {
-                console.error("Error load data of table:", error);
+                console.error("Error loading table data:", error);
             }
         };
 
@@ -33,21 +34,41 @@ const UserInfoPage: React.FC = () => {
     }, []);
 
     return (
-        <div>
-            <h2>DevExtreme DataGrid Example</h2>
+        <div className="p-2">
+            <h2>Список логинов пользователей</h2>
             <DataGrid
                 dataSource={data}
+                showBorders={true}
                 showRowLines={true}
                 showColumnLines={true}
-                height={"auto"}
+                height="600px"
+                width="100%"
+                keyExpr="userId"
+                allowColumnResizing={true}
+                columnResizingMode="widget"
+                columnChooser={{ enabled: true }}
+                columnAutoWidth={true}
+                wordWrapEnabled={true}
+                scrolling={{ mode: "virtual" }}
             >
                 <Sorting mode="multiple" />
                 <Paging pageSize={10} />
                 <FilterRow visible={true} />
-                <Column dataField="id" caption="ID" />
-                <Column dataField="name" caption="Name" />
-                <Column dataField="age" caption="Age" />
-                <Column dataField="city" caption="City" />
+
+                <Column dataField="userId" caption="User ID" />
+                <Column dataField="username" caption="Username" />
+                <Column dataField="clientId" caption="Client ID" />
+                <Column dataField="auth_method" caption="Auth Method" />
+                <Column dataField="auth_type" caption="Auth Type" />
+                <Column dataField="code_id" caption="Code ID" />
+                <Column dataField="consent" caption="Consent" />
+                <Column dataField="redirect_uri" caption="Redirect URI" />
+                <Column dataField="response_mode" caption="Response Mode" />
+                <Column dataField="response_type" caption="Response Type" />
+                <Column dataField="ipAddress" caption="IP Address" />
+                <Column dataField="realmId" caption="Realm ID" />
+                <Column dataField="time" caption="Timestamp" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" />
+                <Column dataField="type" caption="Event Type" />
             </DataGrid>
         </div>
     );
