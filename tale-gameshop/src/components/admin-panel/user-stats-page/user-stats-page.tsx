@@ -1,9 +1,11 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
-import {IApiClient} from "../../../iterfaces/i-api-client";
+import { IApiClient } from "../../../iterfaces/i-api-client";
 import HighchartsReact from "highcharts-react-official";
 import Highcharts from "highcharts";
+import { DataGrid } from "devextreme-react";
+import { Column, MasterDetail, GroupPanel } from "devextreme-react/cjs/data-grid";
 
 //TODO Вынести в отдельный файл и следить за тем, чтобы не было повторного вызова
 import Drilldown from 'highcharts/modules/drilldown';
@@ -79,7 +81,7 @@ const UserStatsPage: React.FC = () => {
     // Формируем данные для drilldown
     const drilldownData = groupedGames.map(({ name, games }) => ({
         id: name,
-        name: `Number of games with this name: '${name}' and ID`,
+        name: `Number of games with this name: ${name} and ID`,
         data: games.map(({ gameId, count }) => [gameId, count]),
     }));
 
@@ -115,13 +117,59 @@ const UserStatsPage: React.FC = () => {
         },
     };
 
+    const DetailTemplate = (props: any) => {
+        const { games } = props.data.data;
+
+        return (
+            <React.Fragment>
+                <DataGrid
+                    dataSource={games}
+                    showBorders={true}
+                    keyExpr="gameId"
+                >
+                    <Column dataField="gameId" caption="Game ID" />
+                    <Column dataField="count" caption="Количество" />
+                </DataGrid>
+            </React.Fragment>
+        );
+    };
+
     return (
-        <div className="p-8">
-            <h2 className="text-xl font-bold mb-4">Statistics of games in user carts</h2>
-            <HighchartsReact highcharts={Highcharts} options={options} />
+        <div className="p-8 flex gap-4">
+            {/* Блок с таблицей */}
+            <div className="w-1/2">
+                <h2 className="text-xl font-bold mb-4">📋 Table of games</h2>
+                <DataGrid
+                    dataSource={groupedGames.map(gGames => {
+                        return {
+                            name: gGames.name,
+                            totalCount: gGames.totalCount,
+                            games: gGames.games.map(games => `Game: ${games.gameId} Count: ${games.count}`)
+                        };
+                    })}
+
+                    keyExpr="name"
+                    showBorders={true}
+                    allowColumnReordering={true}
+                    allowColumnResizing={true}
+                >
+                    <GroupPanel visible={true} />
+                    <Column dataField="name" caption="Категория игр" />
+                    <Column dataField="totalCount" caption="Всего игр" />
+                    <Column dataField="games" caption="Игры подробнее" />
+
+                    {/* Разворачиваем ячейки для подробностей */}
+                    {/*<MasterDetail enabled={true} component={DetailTemplate} />*/}
+                </DataGrid>
+            </div>
+
+            {/* Блок с диаграммой */}
+            <div className="w-1/2">
+                <h2 className="text-xl font-bold mb-4">📊 Game statistics</h2>
+                <HighchartsReact highcharts={Highcharts} options={options} />
+            </div>
         </div>
     );
 };
 
 export default UserStatsPage;
-
