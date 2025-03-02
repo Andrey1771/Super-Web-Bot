@@ -10,7 +10,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "7002:7002"
     depends_on:
       - mongo
       - keycloak
@@ -62,7 +62,7 @@ services:
       DB_USER: ${KEYCLOAK_DB_USER}
       DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
     ports:
-      - "8080:8080"
+      - "8088:8088"
     depends_on:
       - postgres
     networks:
