@@ -52,7 +52,7 @@ export default function TaleGameshopHeader() {
 
                 {/* Меню */}
                 <ul
-                    className={`text-center flex-col lg:flex-row flex lg:flex items-center space-y-4 lg:space-y-0 lg:space-x-6 absolute lg:static left-0 top-16 lg:top-auto bg-white lg:bg-transparent w-full lg:w-auto z-50 transition-transform duration-300 ${
+                    className={`text-center flex-col lg:flex-row flex lg:flex items-center space-y-4 lg:space-y-0 lg:space-x-6 absolute lg:static left-0 top-16 lg:top-auto bg-white lg:bg-transparent w-full lg:w-auto z-50 lg:transition-transform lg:duration-300 ${
                         isMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
                     }`}
                 >
