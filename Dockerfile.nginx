@@ -1,0 +1,23 @@
+# Первый этап: сборка фронтенда
+FROM node:18 as frontend
+
+WORKDIR /app
+COPY ./tale-gameshop/package*.json ./
+RUN npm install
+COPY ./tale-gameshop .
+RUN npm run build
+
+# Второй этап: настройка Nginx
+FROM nginx:latest
+
+# Копируем конфиг для Nginx в контейнер
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Копируем собранные фронтенд-ресурсы из первого этапа
+COPY --from=frontend /app/dist /usr/share/nginx/html
+
+# Открываем порт 80 для Nginx
+EXPOSE 80
+
+# Запускаем Nginx
+CMD ["nginx", "-g", "daemon off;"]

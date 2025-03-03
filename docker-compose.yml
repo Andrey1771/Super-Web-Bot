@@ -1,107 +1,26 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.webapi
-    container_name: backend
-    restart: always
-    env_file:
-      - .env
-    ports:
-      - "7002:7002"
-    depends_on:
-      - mongo
-      - keycloak
-    networks:
-      - app_network
-
-  #botapi:
-  #  build:
-  #   context: .
-  #    dockerfile: Dockerfile.botapi
   frontend:
     build:
       context: ./tale-gameshop
       dockerfile: Dockerfile
-    container_name: frontend
-    restart: always
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    networks:
-      - app_network
-
-  mongo:
-    image: mongo:latest
-    container_name: mongo
-    restart: always
     volumes:
-      - mongo_data:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-    ports:
-      - "27017:27017"
+      - ./tale-gameshop/dist:/frontend_build
     networks:
-      - app_network
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    container_name: keycloak
-    restart: always
-    command: ["start-dev"]
-    environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      DB_VENDOR: postgres
-      DB_ADDR: postgres
-      DB_DATABASE: ${KEYCLOAK_DB}
-      DB_USER: ${KEYCLOAK_DB_USER}
-      DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-    ports:
-      - "8088:8088"
-    depends_on:
-      - postgres
-    networks:
-      - app_network
-
-  postgres:
-    image: postgres:latest
-    container_name: postgres
-    restart: always
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: ${KEYCLOAK_DB}
-      POSTGRES_USER: ${KEYCLOAK_DB_USER}
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-    ports:
-      - "5432:5432"
-    networks:
-      - app_network
+      - frontend_network
 
   nginx:
-    image: nginx:latest
-    container_name: nginx
-    restart: always
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
     ports:
       - "80:80"
-      - "443:443"
     depends_on:
       - frontend
-      - backend
     networks:
-      - app_network
+      - frontend_network
 
 networks:
-  app_network:
+  frontend_network:
     driver: bridge
-
-volumes:
-  mongo_data:
-  postgres_data:
