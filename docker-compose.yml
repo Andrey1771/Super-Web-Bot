@@ -10,6 +10,66 @@ services:
     networks:
       - frontend_network
 
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - ASPNETCORE_URLS=http://+:7002
+      - MONGO_CONNECTION_STRING=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/mydatabase?replicaSet=rs0
+    ports:
+      - "7002:7002"
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - app_network
+
+  mongo1:
+    image: mongo:latest
+    restart: always
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb_data1:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - app_network
+
+  mongo2:
+    image: mongo:latest
+    restart: always
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb_data2:/data/db
+    networks:
+      - app_network
+
+  mongo3:
+    image: mongo:latest
+    restart: always
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb_data3:/data/db
+    networks:
+      - app_network
+
+  mongo-init:
+    image: mongo:latest
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - app_network
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      mongosh --host mongo1:27017 --eval 'rs.initiate({_id: \"rs0\", members: [{ _id: 0, host: \"mongo1:27017\" }, { _id: 1, host: \"mongo2:27017\" }, { _id: 2, host: \"mongo3:27017\" }]})';
+      exit 0;
+      "
+
   nginx:
     build:
       context: .
@@ -18,9 +78,18 @@ services:
       - "80:80"
     depends_on:
       - frontend
+      - backend
     networks:
-      - frontend_network
+      - app_network
 
 networks:
+  app_network:
+    driver: bridge
   frontend_network:
     driver: bridge
+
+volumes:
+  mongodb_data1:
+  mongodb_data2:
+  mongodb_data3:
+

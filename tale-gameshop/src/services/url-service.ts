@@ -4,7 +4,7 @@ import { IUrlService, KeycloakSettings } from "../iterfaces/i-url-service";
 @injectable()
 export class UrlService implements IUrlService {
     public get apiBaseUrl(): string {
-        return "https://localhost:7002";
+        return "http://localhost:7002";
     }
 
     public get keycloak(): KeycloakSettings {
