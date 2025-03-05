@@ -82,6 +82,44 @@ services:
     networks:
       - app_network
 
+  keycloak:
+    image: jboss/keycloak:latest
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - DB_VENDOR=postgres
+      - DB_ADDR=postgres:5432
+      - DB_DATABASE=keycloak
+      - DB_USER=keycloak
+      - DB_PASSWORD=keycloak_password
+      - KEYCLOAK_HTTP_PORT=8088
+      - KEYCLOAK_HTTPS_PORT=8443
+    ports:
+      - "8088:8088"
+    depends_on:
+      - postgres
+    entrypoint: >
+      /bin/sh -c "
+      while ! nc -z postgres 5432; do
+        echo 'Waiting for postgres to be ready...';
+        sleep 2;
+      done;
+      /opt/jboss/keycloak/bin/standalone.sh -b 0.0.0.0
+      "
+    networks:
+      - app_network
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=keycloak_password
+      - POSTGRES_DB=keycloak
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
 networks:
   app_network:
     driver: bridge
@@ -92,4 +130,4 @@ volumes:
   mongodb_data1:
   mongodb_data2:
   mongodb_data3:
-
+  postgres_data:
