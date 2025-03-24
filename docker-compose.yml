@@ -5,6 +5,7 @@ services:
     build:
       context: ./tale-gameshop
       dockerfile: Dockerfile
+    restart: always
     volumes:
       - ./tale-gameshop/dist:/frontend_build
     networks:
@@ -14,6 +15,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    restart: always
     environment:
       - ASPNETCORE_URLS=http://+:7002
       - MONGO_CONNECTION_STRING=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/mydatabase?replicaSet=rs0
@@ -70,53 +72,67 @@ services:
       exit 0;
       "
 
+  #postgres:
+  #  image: postgres:latest
+  #  container_name: postgres
+  #  restart: always
+  #  ports:
+  #    - "5432:5432"
+  #  volumes:
+  #    - ./data:/var/lib/postgresql/data
+  #  networks:
+  #    - keycloak-network
+  #  environment:
+  #    POSTGRES_USER: $POSTGRES_USER
+  #    POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+  #    POSTGRES_DB: $POSTGRES_DB
+  #    
+  #keycloak:
+  #  image: quay.io/keycloak/keycloak:latest
+  #  container_name: keycloak
+  #  restart: always
+  #  ports:
+  #    - "8088:8088"
+  #    - "8443:8443"
+  #  depends_on:
+  #    - postgres
+  #  command: ["start", "--optimized"]
+  #  networks:
+  #    - keycloak-network
+  #  environment:
+  #    KC_DB: postgres
+  #    KC_DB_URL_HOST: postgres
+  #    KC_DB_URL_DATABSE: $POSTGRES_USER
+  #    KC_DB_USERNAME: $POSTGRES_DB
+  #    KC_DB_PASSWORD: $POSTGRES_PASSWORD
+  #    KC_HOSTNAME_URL: $KC_HOSTNAME_URL
+  #    KC_HOSTNAME_STRICT_HTTPS: "true"
+  #    KC_HOSTNAME_STRICT_BACKCHANNEL: "true"
+  #    KC_PROXY: edge
+  #    KEYCLOAK_ADMIN: admin
+  #    KEYCLOAK_ADMIN_PASSWORD: $KEYCLOAK_ADMIN_PASSWORD
+  #    KEYCLOAK_FRONTEND_URL: $KEYCLOAK_FRONTEND_URL
+      # SMTP Configuration
+      #KC_MAIL_SMTP_SERVER: $SMTP_SERVER
+      #KC_MAIL_SMTP_PORT: $SMTP_PORT
+      #KC_MAIL_SMTP_FROM: $SMTP_FROM
+      #KC_MAIL_SMTP_USER: $SMTP_USER
+      #KC_MAIL_SMTP_PASSWORD: $SMTP_PASSWORD
+      #KC_MAIL_SMTP_AUTH: true
+      #KC_MAIL_SMTP_SSL: true
+
+
   nginx:
     build:
       context: .
       dockerfile: Dockerfile.nginx
+    restart: always
     ports:
       - "80:80"
     depends_on:
       - frontend
       - backend
-    networks:
-      - app_network
-
-  keycloak:
-    image: jboss/keycloak:latest
-    environment:
-      - KEYCLOAK_USER=admin
-      - KEYCLOAK_PASSWORD=admin
-      - DB_VENDOR=postgres
-      - DB_ADDR=postgres:5432
-      - DB_DATABASE=keycloak
-      - DB_USER=keycloak
-      - DB_PASSWORD=keycloak_password
-      - KEYCLOAK_HTTP_PORT=8088
-      - KEYCLOAK_HTTPS_PORT=8443
-    ports:
-      - "8088:8088"
-    depends_on:
-      - postgres
-    entrypoint: >
-      /bin/sh -c "
-      while ! nc -z postgres 5432; do
-        echo 'Waiting for postgres to be ready...';
-        sleep 2;
-      done;
-      /opt/jboss/keycloak/bin/standalone.sh -b 0.0.0.0
-      "
-    networks:
-      - app_network
-
-  postgres:
-    image: postgres:latest
-    environment:
-      - POSTGRES_USER=keycloak
-      - POSTGRES_PASSWORD=keycloak_password
-      - POSTGRES_DB=keycloak
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    #  - keycloak
     networks:
       - app_network
 
@@ -125,9 +141,10 @@ networks:
     driver: bridge
   frontend_network:
     driver: bridge
+  #keycloak-network:
+  #  driver: bridge
 
 volumes:
   mongodb_data1:
   mongodb_data2:
   mongodb_data3:
-  postgres_data:
