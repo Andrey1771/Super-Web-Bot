@@ -3,7 +3,7 @@
 
 1) docker-compose up --build
 
-# Примечание: пока не работает до конца keycloak в prod из под docker (проблема с сертификатами), альтернативный способ его запуска
+## Примечание: пока не работает до конца keycloak в prod из под docker (проблема с сертификатами), альтернативный способ его запуска
 2) скачать keycloak https://drive.google.com/drive/folders/1ibd1OYW1uvTO3xLvmvBEuFm9hBY-LEP2?usp=sharing
 3) В папке keycloak-26.0.6\bin выполнить: ./start_keycloak.bat
 
@@ -17,7 +17,7 @@ Project Launch:
 
 1) docker-compose up --build
 
-# Note: Keycloak is not fully functional in production under Docker yet (certificate issues). Here is an alternative way to run it:
+## Note: Keycloak is not fully functional in production under Docker yet (certificate issues). Here is an alternative way to run it:
 2) Download Keycloak: Google Drive Link
 
 3) In the keycloak-26.0.6\bin folder, run: ./start_keycloak.bat
