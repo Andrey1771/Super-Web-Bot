@@ -22,7 +22,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Infrastructure", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.Common.Auth", "SuperBot.Common.Auth\SuperBot.Common.Auth.csproj", "{1967DABA-CC2C-4D78-9D4B-A4F07892FE93}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBot.BotApi", "SuperBot.BotApi\SuperBot.BotApi.csproj", "{293170BD-5882-41B1-B188-E92574C5E030}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBot.BotApi", "SuperBot.BotApi\SuperBot.BotApi.csproj", "{293170BD-5882-41B1-B188-E92574C5E030}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{51E6048D-3934-4B7F-8320-2CEB888D60F6}"
+	ProjectSection(SolutionItems) = preProject
+		docker-compose.yml = docker-compose.yml
+		Dockerfile.backend = Dockerfile.backend
+		Dockerfile.nginx = Dockerfile.nginx
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +76,7 @@ Global
 		{BCD68989-2D2D-44A2-8CF9-FC2BF59703ED} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
 		{7D4FD53B-2F45-419F-BA9A-A71A5B1FFF45} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
 		{1967DABA-CC2C-4D78-9D4B-A4F07892FE93} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
+		{293170BD-5882-41B1-B188-E92574C5E030} = {F4850650-2678-4F1C-ADBA-ED1C809390A9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {18BAA4A1-F904-4368-8A7A-AA45DF3BE327}
