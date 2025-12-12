@@ -9,6 +9,12 @@ const cert = fs.readFileSync('./public/private.crt');
 const key = fs.readFileSync('./public/private.key');
 
 const buildPath = path.resolve('dist');
+const indexPath = path.join(buildPath, 'index.html');
+
+if (!fs.existsSync(indexPath)) {
+    console.error('Build output not found. Run "npm run build" before starting the server.');
+    process.exit(1);
+}
 
 // Middleware для проверки корректности URL
 app.use((req, res, next) => {
