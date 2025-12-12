@@ -1,28 +1,63 @@
-# Super-Web-Bot
-Запуск проекта:
+# Super-Web-Bot / Tale Shop
 
-1) docker-compose up --build
+Демо-магазин компьютерных игр с Keycloak (OIDC), телеграм-ботом и админ-панелью. Репозиторий представляет монорепо с фронтом Tale Shop, API, ботом и конфигурацией Keycloak/Docker.
 
-### Примечание: пока не работает до конца keycloak в prod из под docker (проблема с сертификатами), альтернативный способ его запуска
-2) скачать keycloak [Google Drive Link](https://drive.google.com/drive/folders/1ibd1OYW1uvTO3xLvmvBEuFm9hBY-LEP2?usp=sharing)
-3) В папке keycloak-26.0.6\bin выполнить: ./start_keycloak.bat
+## Быстрый запуск (Docker)
+1. Установите Docker и Docker Compose.
+2. В корне репозитория выполните:
+   ```bash
+   docker-compose up --build
+   ```
+3. После сборки фронт будет доступен на `http://localhost:3000`, API — на `http://localhost:7002`, Keycloak — на `http://localhost:8088`.
+4. Для работы административных функций импортируйте realm из директории `keyckoak settings (temp)` и создайте пользователя с ролью `admin` в клиенте `tale-shop-app` (realm `TaleShop`).
 
-4) перейти http://localhost/
+### Локальный запуск Keycloak (если сертификаты мешают в Docker)
+1. Скачайте Keycloak из папки `keyckoak settings (temp)` или используйте существующую установку 26.0.6.
+2. В каталоге `keycloak-26.0.6/bin` запустите:
+   ```bash
+   ./start_keycloak.bat
+   ```
+3. Откройте `http://localhost:8088/` и импортируйте realm-экспорт из `keyckoak settings (temp)`.
 
-PS необходимо настроить пользователей в keycloak и импортировать realm-export из "keyckoak settings (temp)"
-В дальнейшем необходимо создать пользователя с tale-shop-app "admin" в "TaleShop" (realm) для появления возможностей редактирования карточек товаров и добавления их, настроек бота и сайта
+## Разработка фронтенда Tale Shop
+1. Перейдите в каталог `tale-gameshop`.
+2. Установите зависимости:
+   ```bash
+   npm install
+   ```
+3. Запустите дев-сервер:
+   ```bash
+   npm run start-dev
+   ```
+4. Продакшн-сборка:
+   ```bash
+   npm run build
+   ```
 
-# Super-Web-Bot
-Project Launch:
+## English Version
 
-1) docker-compose up --build
+Super-Web-Bot is a monorepo with the Tale Shop game store frontend, backend API, Telegram bot, and Keycloak (OIDC) setup.
 
-### Note: Keycloak is not fully functional in production under Docker yet (certificate issues). Here is an alternative way to run it:
-2) Download Keycloak: [Google Drive Link](https://drive.google.com/drive/folders/1ibd1OYW1uvTO3xLvmvBEuFm9hBY-LEP2?usp=sharing)
+### Quick start (Docker)
+1. Ensure Docker and Docker Compose are installed.
+2. From the repository root run:
+   ```bash
+   docker-compose up --build
+   ```
+3. After the build the frontend is served at `http://localhost:3000`, the API at `http://localhost:7002`, and Keycloak at `http://localhost:8088`.
+4. Import the realm from `keyckoak settings (temp)` and create an `admin` user in client `tale-shop-app` (realm `TaleShop`) to enable admin features.
 
-3) In the keycloak-26.0.6\bin folder, run: ./start_keycloak.bat
+### Local Keycloak (when Docker certificates are an issue)
+1. Download or reuse Keycloak 26.0.6 from `keyckoak settings (temp)`.
+2. Start it from `keycloak-26.0.6/bin`:
+   ```bash
+   ./start_keycloak.bat
+   ```
+3. Open `http://localhost:8088/` and import the realm export from `keyckoak settings (temp)`.
 
-4) Open http://localhost/ in your browser.
+### Frontend development
+1. Go to `tale-gameshop`.
+2. Install dependencies: `npm install`.
+3. Run dev server: `npm run start-dev`.
+4. Build for production: `npm run build`.
 
-PS: You need to configure users in Keycloak and import the realm-export from "keycloak settings (temp)"
-In the future, you must create a user with the tale-shop-app role "admin" in the "TaleShop" (realm) to enable editing product cards, adding new products, and configuring the bot and website.

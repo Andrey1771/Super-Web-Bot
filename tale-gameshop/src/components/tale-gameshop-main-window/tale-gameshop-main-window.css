@@ -1,4 +1,12 @@
-/* Отступ для основного контента, чтобы компенсировать фиксированную высоту навигации */
-.main-page-down-header-padding {
-    margin-top: 88px;
+.page-frame {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    background: #f7f7f7;
+}
+
+.page-content {
+    flex: 1 0 auto;
+    min-height: 0;
+    padding: 0 0 32px 0;
 }

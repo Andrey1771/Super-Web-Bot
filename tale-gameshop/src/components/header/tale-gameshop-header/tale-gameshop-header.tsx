@@ -33,62 +33,75 @@ export default function TaleGameshopHeader() {
     const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(
         (role) => role === "admin"
     );
-    const email = keycloak.tokenParsed?.email;
 
+    const accountLabel = keycloak.authenticated ? "Profile" : "";
+
+    const closeMenu = () => setIsMenuOpen(false);
 
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
-            <div className="container mx-auto flex justify-between items-center py-4 px-4 sm:px-0">
-                {/* Логотип */}
-                <img className="lg:hidden w-14 h-14 ml-4 sm:ml-0" src={logo} alt="Logo"/>
+            <div className="max-w-6xl mx-auto px-4 lg:px-6 flex items-center justify-between h-20">
+                <Link to="/" className="flex items-center space-x-3 min-w-0" onClick={closeMenu}>
+                    <img className="w-12 h-12 rounded-lg border" src={logo} alt="Logo"/>
+                    <span className="text-xl font-bold text-gray-900 truncate">Tale Shop</span>
+                </Link>
 
-                {/* Бургер-иконка */}
                 <button
-                    className="lg:hidden text-gray-700 text-2xl w-14 h-14"
+                    className="lg:hidden text-gray-700 text-2xl w-12 h-12 flex items-center justify-center"
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    aria-label="Toggle navigation"
                 >
                     <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars}/>
                 </button>
 
-                {/* Меню */}
-                <ul
-                    className={`text-center flex-col lg:flex-row flex lg:flex items-center space-y-4 lg:space-y-0 lg:space-x-6 absolute lg:static left-0 top-16 lg:top-auto bg-white lg:bg-transparent w-full lg:w-auto z-50 lg:transition-transform lg:duration-300 ${
-                        isMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-                    }`}
+                <div
+                    className={`nav-links ${isMenuOpen ? 'flex' : 'hidden'} lg:flex flex-col lg:flex-row items-center lg:items-center lg:justify-between w-full lg:w-auto`}
                 >
-                    <li className="hidden lg:flex">
-                        {/* Логотип */}
-                        <img className="w-14 h-14" src={logo} alt="Logo"/>
-                    </li>
-                    <li>
-                        <Link className="text-gray-700 menu-item" to="/">
-                            Home Page
-                        </Link>
-                    </li>
-                    <li>
-                        <Link className="text-gray-700 menu-item" to="/games">
-                            Game List
-                        </Link>
-                    </li>
-                    <li>
-                        <Link className="text-gray-700 menu-item" to="/about">
-                            About Us
-                        </Link>
-                    </li>
-                    <li className="relative dropdown">
-                        <Link to={`/games`} className="text-gray-700 menu-item">
-                            More Games
-                        </Link>
-                        <GameCategoryDropDown categories={[]}/>
-                    </li>
-
-                    {/* Кнопки корзины, входа и регистрации */}
-                    <div className="flex flex-col space-y-4 lg:hidden">
-                        <CartIcon  isText={true}></CartIcon>
+                    <ul className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6 text-center lg:text-left px-2 lg:px-0">
+                        <li>
+                            <Link className="text-gray-700 menu-item" to="/" onClick={closeMenu}>
+                                Home Page
+                            </Link>
+                        </li>
+                        <li>
+                            <Link className="text-gray-700 menu-item" to="/games" onClick={closeMenu}>
+                                Game List
+                            </Link>
+                        </li>
+                        <li>
+                            <Link className="text-gray-700 menu-item" to="/about" onClick={closeMenu}>
+                                About Us
+                            </Link>
+                        </li>
+                        <li className="relative dropdown">
+                            <Link to={`/games`} className="text-gray-700 menu-item" onClick={closeMenu}>
+                                Game Store
+                            </Link>
+                            <GameCategoryDropDown categories={[]}/>
+                        </li>
+                        <li>
+                            <Link className="text-gray-700 menu-item" to="/apologyPage" onClick={closeMenu}>
+                                Help Centre
+                            </Link>
+                        </li>
+                        <li>
+                            <Link className="text-gray-700 menu-item" to="/apologyPage" onClick={closeMenu}>
+                                FAQs
+                            </Link>
+                        </li>
+                        <li>
+                            <Link className="text-gray-700 menu-item" to="/apologyPage" onClick={closeMenu}>
+                                Contact Us
+                            </Link>
+                        </li>
+                    </ul>
+                    <div className="flex flex-col lg:flex-row items-center gap-3 lg:gap-4 w-full lg:w-auto py-4 lg:py-0 border-t lg:border-0">
+                        <CartIcon isText={false}></CartIcon>
                         {!keycloak.authenticated ? (
                             <LoginAndRegisterSection></LoginAndRegisterSection>
                         ) : (
                             <>
+                                <span className="text-gray-700 font-semibold whitespace-nowrap">{accountLabel}</span>
                                 {isAdmin && (
                                     <AdminPanelSection></AdminPanelSection>
                                 )}
@@ -96,22 +109,6 @@ export default function TaleGameshopHeader() {
                             </>
                         )}
                     </div>
-                </ul>
-
-                {/* Корзина и кнопки для больших экранов */}
-                <div className="hidden lg:flex space-x-4 items-center">
-                    <CartIcon  isText={false}></CartIcon>
-                    {!keycloak.authenticated ? (
-                        <LoginAndRegisterSection></LoginAndRegisterSection>
-                    ) : (
-                        <>
-                            <span className="mr-2">{email}</span>
-                            {isAdmin && (
-                                <AdminPanelSection></AdminPanelSection>
-                            )}
-                            <LogOutButton/>
-                        </>
-                    )}
                 </div>
             </div>
         </nav>

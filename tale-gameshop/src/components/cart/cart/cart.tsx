@@ -11,6 +11,20 @@ const Cart: React.FC = () => {
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const placeholder = '/images/game-placeholder.svg';
+
+    const resolveImage = (imagePath?: string) => {
+        if (!imagePath) {
+            return placeholder;
+        }
+        if (imagePath.startsWith('http')) {
+            return imagePath;
+        }
+        if (imagePath.startsWith('/')) {
+            return imagePath;
+        }
+        return `${urlService.apiBaseUrl}/${imagePath}`;
+    };
 
     const handleIncreaseQuantity = (id: string) => {
         dispatch({type: 'INCREASE_QUANTITY', payload: id});
@@ -21,18 +35,29 @@ const Cart: React.FC = () => {
     };
 
     return (
-        <div className="p-4 border-t mt-4">
-            <h2 className="text-xl font-bold">Your Cart</h2>
+        <div className="p-4 border-t mt-4 bg-white rounded-lg shadow-sm">
+            <h2 className="text-xl font-bold mb-4">Your Cart</h2>
             {state.items.length === 0 ? (
-                <p className="text-gray-600">Cart is empty.</p>
+                <div className="text-gray-600 flex flex-col gap-4 items-start">
+                    <p>Cart is empty.</p>
+                    <Link className="px-4 py-2 bg-black text-white rounded hover:text-purple-500" to="/games">
+                        Back to store
+                    </Link>
+                </div>
             ) : (
                 <>
                     {state.items.map((item) => (
                         <div key={item.gameId} className="flex items-center p-2 border-b gap-4">
                             <img
-                                src={`${urlService.apiBaseUrl}/${item.image}`}
+                                src={resolveImage(item.image)}
                                 alt={item.name}
                                 className="w-16 h-16 object-cover rounded"
+                                onError={(event) => {
+                                    const target = event.target as HTMLImageElement;
+                                    if (target.src !== placeholder) {
+                                        target.src = placeholder;
+                                    }
+                                }}
                             />
                             <div className="flex-1">
                                 <span className="font-bold">{item.name}</span>
@@ -52,9 +77,7 @@ const Cart: React.FC = () => {
                                     +
                                 </button>
                             </div>
-                            <span className="flex-1 text-right">
-                ${(item.price * item.quantity).toFixed(2)}
-              </span>
+                            <span className="flex-1 text-right">${(item.price * item.quantity).toFixed(2)}</span>
                             <button
                                 onClick={() => dispatch({type: 'REMOVE_FROM_CART', payload: item.gameId})}
                                 className="ml-4 text-red-500 hover:underline"
@@ -67,7 +90,7 @@ const Cart: React.FC = () => {
                         <span>Total:</span>
                         <span>${totalPrice.toFixed(2)}</span>
                     </div>
-                    <div className="mt-4 flex gap-4">
+                    <div className="mt-4 flex gap-4 flex-wrap">
                         <button
                             onClick={() => dispatch({type: 'CLEAR_CART'})}
                             className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700"
