@@ -61,7 +61,7 @@ export default function TaleGameshopHeader() {
 
     return (
         <nav className="bg-white border-b border-gray-200 header-nav">
-            <div className="container mx-auto flex justify-between items-center py-4 px-4 sm:px-0">
+            <div className="header-inner flex justify-between items-center py-4">
                 <div className="flex items-center gap-3">
                     <button
                         className="lg:hidden text-gray-700 text-2xl w-12 h-12"
