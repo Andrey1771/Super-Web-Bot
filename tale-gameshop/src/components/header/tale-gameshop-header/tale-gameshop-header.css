@@ -1,62 +1,24 @@
-.menu-item:hover {
-    color: #8a2be2;
-    transition: color 0.3s ease-in-out;
-    text-shadow: 0 0 5px #8a2be2;
+.nav-link {
+    text-transform: none;
 }
 
-/* Изменения в логике появления dropdown-menu */
-.dropdown:hover .dropdown-menu,
-.dropdown-menu:hover {
-    display: block;
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-}
-
-/* Начальные стили для скрытого меню */
-.dropdown-menu {
-    display: block;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-}
-
-.accordion-item {
-    cursor: pointer;
-}
-.accordion-content {
+.mobile-only {
     display: none;
-    overflow: hidden;
-}
-.accordion-item:hover .accordion-content {
-    display: block;
 }
 
-
-.accordion-item.open .accordion-content {
-    display: block;
+.header-actions .btn,
+.header-actions button {
+    height: 40px;
 }
 
-.animated-button {
-    transition: all 0.3s ease-in-out;
-}
-.animated-button:hover {
-    background-color: #8a2be2;
-    color: white;
-    border-color: #8a2be2;
+.header-auth {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.header-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    background-color: white;
-    transition: all 0.3s ease-in-out; /* Плавный переход */
-}
-
-.header-nav.scrolled {
-    background-color: rgba(255, 255, 255, 1);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Более заметная тень */
+@media (max-width: 900px) {
+    .mobile-only {
+        display: block;
+    }
 }

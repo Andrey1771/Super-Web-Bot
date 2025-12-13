@@ -1,0 +1,17 @@
+.game-list-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.game-list-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
