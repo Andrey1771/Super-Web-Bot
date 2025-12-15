@@ -1,642 +1,280 @@
-<html>
- <head>
-  <script src="https://cdn.tailwindcss.com">
-  </script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&amp;display=swap" rel="stylesheet"/>
-  <style>
-   .menu-item:hover {
-    color: #8a2be2;
-    transition: color 0.3s ease-in-out;
-    text-shadow: 0 0 5px #8a2be2;
-   }
-   .dropdown:hover .dropdown-menu {
-    display: block;
-   }
-   .accordion-item {
-    cursor: pointer;
-   }
-   .accordion-content {
-    display: none;
-    overflow: hidden;
-   }
-   .accordion-item.open .accordion-content {
-    display: block;
-   }
-   .animated-button {
-    transition: all 0.3s ease-in-out;
-   }
-   .animated-button:hover {
-    background-color: #8a2be2;
-    color: white;
-    border-color: #8a2be2;
-   }
-  </style>
-  <script>
-   document.addEventListener('DOMContentLoaded', function () {
-    const accordionItems = document.querySelectorAll('.accordion-item');
-    accordionItems.forEach(item => {
-     item.addEventListener('click', function () {
-      this.classList.toggle('open');
-     });
-    });
-   });
-  </script>
- </head>
- <body class="font-roboto">
-  <!-- Navbar -->
-  <nav class="bg-white border-b border-gray-200">
-   <div class="container mx-auto flex justify-between items-center py-4">
-    <div class="flex items-center">
-     <div class="text-2xl font-bold">
-      Logo
-     </div>
-     <ul class="flex space-x-6 ml-10">
-      <li>
-       <a class="text-gray-700 menu-item" href="#">
-        Home Page
-       </a>
-      </li>
-      <li>
-       <a class="text-gray-700 menu-item" href="#">
-        Game List
-       </a>
-      </li>
-      <li>
-       <a class="text-gray-700 menu-item" href="#">
-        About Us
-       </a>
-      </li>
-      <li class="relative dropdown">
-       <a class="text-gray-700 menu-item" href="#">
-        More Games
-        <i class="fas fa-chevron-down">
-        </i>
-       </a>
-       <!-- Dropdown menu -->
-       <ul class="absolute left-0 mt-2 w-64 bg-white border border-gray-200 shadow-lg hidden dropdown-menu p-4">
-        <li class="font-bold accordion-item">
-         <a class="text-gray-700 menu-item" href="#">
-          Action
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Platformers
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Fighting
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Shooter
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Stealth
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Adventure
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Graphic Adventure
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Text Adventure
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Interactive Fiction
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Role-Playing Games (RPGs)
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Western RPG
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Japanese RPG
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Tactical RPG
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Action RPG
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Simulation
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Life Simulation
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Flight Simulation
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Vehicle Simulation
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Farming Simulation
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Strategy
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Real-Time Strategy (RTS)
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Turn-Based Strategy (TBS)
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Tower Defense
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Puzzle
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Logic Puzzles
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Match-3
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Word Puzzles
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Sports
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Team Sports
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Racing
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Fitness
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Card and Board Games
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Trading Card Games (TCGs)
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Board Games
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Dice Games
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Massively Multiplayer Online (MMO)
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            MMORPG
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            MMOFPS
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            MMORTS
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Horror
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Survival Horror
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Psychological Horror
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Casual Games
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Mobile Games
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Party Games
-           </a>
-          </li>
-         </ul>
-        </li>
-        <li class="font-bold accordion-item mt-4">
-         <a class="text-gray-700 menu-item" href="#">
-          Educational Games
-         </a>
-         <ul class="accordion-content">
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Trivia
-           </a>
-          </li>
-          <li>
-           <a class="block px-4 py-2 text-gray-700 menu-item" href="#">
-            Language Learning
-           </a>
-          </li>
-         </ul>
-        </li>
-       </ul>
-      </li>
-     </ul>
-    </div>
-    <div class="flex space-x-4">
-     <button class="px-4 py-2 border border-gray-700 text-gray-700 animated-button">
-      Login
-     </button>
-     <button class="px-4 py-2 bg-black text-white animated-button">
-      Sign In
-     </button>
-    </div>
-   </div>
-  </nav>
-  <!-- Main Content -->
-  <div class="bg-gray-100 py-10">
-   <div class="container mx-auto grid grid-cols-3 gap-8">
-    <!-- Explore Our Games -->
-    <div>
-     <h2 class="text-lg font-bold mb-4">
-      Explore Our Games
-     </h2>
-     <ul class="space-y-4">
-      <li class="flex items-start">
-       <i class="fas fa-gamepad text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          Action Games
-         </a>
-        </h3>
-        <p>
-         Discover thrilling action-packed adventures.
-        </p>
-       </div>
-      </li>
-      <li class="flex items-start">
-       <i class="fas fa-puzzle-piece text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          Puzzle Games
-         </a>
-        </h3>
-        <p>
-         Challenge your mind with engaging puzzles.
-        </p>
-       </div>
-      </li>
-      <li class="flex items-start">
-       <i class="fas fa-dice-d20 text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          RPG Games
-         </a>
-        </h3>
-        <p>
-         Immerse yourself in epic role-playing adventures.
-        </p>
-       </div>
-      </li>
-      <li class="flex items-start">
-       <i class="fas fa-chess text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          Strategy Games
-         </a>
-        </h3>
-        <p>
-         Plan and conquer with strategic gameplay.
-        </p>
-       </div>
-      </li>
-     </ul>
-    </div>
-    <!-- Latest Blog Posts -->
-    <div>
-     <h2 class="text-lg font-bold mb-4">
-      Latest Blog Posts
-     </h2>
-     <ul class="space-y-4">
-      <li class="flex items-start">
-       <i class="fas fa-pen-nib text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          Game Reviews
-         </a>
-        </h3>
-        <p>
-         Read our latest game reviews and insights.
-        </p>
-       </div>
-      </li>
-      <li class="flex items-start">
-       <i class="fas fa-newspaper text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          Gaming News
-         </a>
-        </h3>
-        <p>
-         Stay updated with the latest gaming news.
-        </p>
-       </div>
-      </li>
-      <li class="flex items-start">
-       <i class="fas fa-lightbulb text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          Tips &amp; Tricks
-         </a>
-        </h3>
-        <p>
-         Enhance your gameplay with expert tips.
-        </p>
-       </div>
-      </li>
-      <li class="flex items-start">
-       <i class="fas fa-file-alt text-xl mr-3">
-       </i>
-       <div>
-        <h3 class="font-bold">
-         <a class="text-gray-700 menu-item" href="#">
-          Featured Articles
-         </a>
-        </h3>
-        <p>
-         Explore our featured articles for insights.
-        </p>
-       </div>
-      </li>
-     </ul>
-    </div>
-    <!-- Highlights from Blog -->
-    <div>
-     <h2 class="text-lg font-bold mb-4">
-      Highlights from Blog
-     </h2>
-     <div class="space-y-4">
-      <div class="bg-gray-200 p-4 flex items-center">
-       <img alt="Placeholder image" class="mr-4" height="50" src="https://storage.googleapis.com/a1aa/image/We1VGIYWP9xoWyMyBh6WbeoFDyZSn0PCWW3X19MKNwHOvXqTA.jpg" width="50"/>
-       <div>
-        <h3 class="font-bold">
-         Top Picks
-        </h3>
-        <p>
-         Check out our top game picks for you.
-         <a class="text-blue-500" href="#">
-          Read more
-         </a>
-        </p>
-       </div>
-      </div>
-      <div class="bg-gray-200 p-4 flex items-center">
-       <img alt="Placeholder image" class="mr-4" height="50" src="https://storage.googleapis.com/a1aa/image/We1VGIYWP9xoWyMyBh6WbeoFDyZSn0PCWW3X19MKNwHOvXqTA.jpg" width="50"/>
-       <div>
-        <h3 class="font-bold">
-         Latest Updates
-        </h3>
-        <p>
-         Get the latest updates on new releases.
-         <a class="text-blue-500" href="#">
-          Read more
-         </a>
-        </p>
-       </div>
-      </div>
-     </div>
-     <button class="mt-4 px-4 py-2 border border-gray-700 text-gray-700 flex items-center animated-button">
-      Let's Go
-      <i class="fas fa-chevron-right ml-2">
-      </i>
-     </button>
-    </div>
-   </div>
-  </div>
-  <!-- Hero Section -->
-  <div class="bg-black text-white py-20">
-   <div class="container mx-auto text-center">
-    <h1 class="text-4xl font-bold mb-6">
-     Discover Your Next Favourite Computer Game
-    </h1>
-    <p class="mb-8">
-     Welcome to our gaming paradise, where you can explore a vast selection of computer games tailored to your interests. Our mission is to connect gamers with the titles they love, making every gaming experience unforgettable.
-    </p>
-    <div class="flex justify-center space-x-4">
-     <button class="px-6 py-3 bg-white text-black animated-button">
-      Shop
-     </button>
-     <button class="px-6 py-3 border border-white animated-button">
-      Learn More
-     </button>
-    </div>
-   </div>
-  </div>
-  <!-- New Section -->
-  <div class="flex items-start justify-start min-h-screen bg-white p-8">
- <div class="flex items-start space-x-8 w-full">
-  <div class="w-1/2">
-   <h1 class="text-3xl font-bold glow-text">
-    Welcome to the future of gaming: where passion meets innovation.
-   </h1>
-   <p class="mt-4 glow-text" style="font-family: 'Dancing Script', cursive;">
-    At our core, we strive to revolutionise the gaming experience by providing an extensive catalogue of titles that cater to every player's taste. Our vision is to create a vibrant community where gamers can discover, connect, and thrive.
-   </p>
-  </div>
-  <div class="w-1/2 bg-gray-200 flex items-center justify-center" style="aspect-ratio: 16/9;">
-   <iframe class="w-full h-full" src="https://www.youtube.com/embed/vBZrLkD659Y" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-  </div>
- </div>
-</div>
- <div class="container mx-auto text-center py-16">
-    <h2 class="text-sm uppercase tracking-wider text-gray-500">Explore</h2>
-    <h1 class="text-4xl font-bold mt-2">Discover Your Next Favourite Game</h1>
-    <p class="text-lg mt-4 max-w-2xl mx-auto">
-      With a vast library of titles, we cater to every gaming preference. Dive into our extensive collection and find your perfect match.
-    </p>
-    <div class="flex justify-center mt-12 space-x-8">
-      <div class="text-center">
-        <i class="fas fa-cube text-4xl text-gray-700"></i>
-        <h3 class="text-xl font-bold mt-4">Intuitive and Easy-to-Navigate Interface</h3>
-        <p class="mt-2 text-gray-600">Our user-friendly design ensures a seamless browsing experience.</p>
-      </div>
-      <div class="text-center">
-        <i class="fas fa-cube text-4xl text-gray-700"></i>
-        <h3 class="text-xl font-bold mt-4">Safe and Secure Payment Options</h3>
-        <p class="mt-2 text-gray-600">Shop with confidence knowing your transactions are protected.</p>
-      </div>
-      <div class="text-center">
-        <i class="fas fa-cube text-4xl text-gray-700"></i>
-        <h3 class="text-xl font-bold mt-4">Join Our Gaming Community Today</h3>
-        <p class="mt-2 text-gray-600">Connect with fellow gamers and share your experiences.</p>
-      </div>
-    </div>
-    <div class="mt-12">
-      <button class="bg-transparent border border-gray-800 text-gray-800 py-2 px-6 rounded-full mr-4">Learn More</button>
-      <button class="bg-transparent text-gray-800 py-2 px-6 rounded-full">Sign Up <i class="fas fa-arrow-right"></i></button>
-    </div>
-    <div class="mt-16">
-      <div class="flex justify-center">
-        <i class="fas fa-star text-2xl text-yellow-500"></i>
-        <i class="fas fa-star text-2xl text-yellow-500"></i>
-        <i class="fas fa-star text-2xl text-yellow-500"></i>
-        <i class="fas fa-star text-2xl text-yellow-500"></i>
-        <i class="fas fa-star text-2xl text-yellow-500"></i>
-      </div>
-      <p class="text-xl font-semibold mt-4">
-        "The service provided exceeded my expectations, and the selection of games is fantastic! I highly recommend them to any gaming enthusiast."
-      </p>
-      <div class="flex items-center justify-center mt-6">
-        <img alt="Profile picture of John Doe" class="rounded-full" height="50" src="https://storage.googleapis.com/a1aa/image/eNdfm3dg3usfeSvmgxUlX7qSa3fYTqZgqV4G1VRcqiSlfAm6E.jpg" width="50"/>
-        <div class="ml-4 text-left">
-          <p class="font-bold">John Doe</p>
-          <p class="text-gray-600">Game Reviewer, Tech Magazine</p>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tale Gameshop</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+  </head>
+  <body>
+    <header class="header">
+      <div class="container nav">
+        <div class="nav-left" style="display: flex; align-items: center; gap: 16px">
+          <div style="font-weight: 800; font-size: 20px">Logo</div>
+          <nav class="nav-links">
+            <a href="#">Home Page</a>
+            <a href="Game List.html">Game List</a>
+            <a href="About us.html">About Us</a>
+          </nav>
+        </div>
+        <div class="nav-actions">
+          <button class="btn btn-outline">Login</button>
+          <button class="btn btn-primary">Sign Up</button>
         </div>
       </div>
-    </div>
-  </div>
-   <footer class="w-full bg-white py-8 px-8 border-t mt-auto">
-        <div class="w-full flex justify-between items-center pb-4 border-b">
-            <div class="text-4xl font-pacifico">
-                <span class="font-pacifico">Logo</span>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="container hero">
+          <div>
+            <div class="badge">GAMESTORE</div>
+            <h1>Play the best games anytime <br />& anywhere</h1>
+            <p>
+              Join a universe of curated titles, unbeatable deals, and fresh releases.
+              Build your collection, discover hidden gems, and keep playing on every device.
+            </p>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: var(--space-6)">
+              <button class="btn btn-primary">Sign Up</button>
+              <button class="btn btn-ghost">
+                Explore games
+                <i class="fas fa-arrow-right"></i>
+              </button>
             </div>
-            <nav class="flex space-x-8">
-                <a href="#" class="text-black hover:text-gray-600">Game Store</a>
-                <a href="#" class="text-black hover:text-gray-600">About Us</a>
-                <a href="#" class="text-black hover:text-gray-600">Contact Us</a>
-                <a href="#" class="text-black hover:text-gray-600">Help Centre</a>
-                <a href="#" class="text-black hover:text-gray-600">FAQs</a>
-            </nav>
-            <div class="flex space-x-4">
-                <a href="#" class="text-black hover:text-gray-600"><i class="fab fa-facebook-f"></i></a>
-                <a href="#" class="text-black hover:text-gray-600"><i class="fab fa-instagram"></i></a>
-                <a href="#" class="text-black hover:text-gray-600"><i class="fab fa-twitter"></i></a>
-                <a href="#" class="text-black hover:text-gray-600"><i class="fab fa-linkedin-in"></i></a>
-                <a href="#" class="text-black hover:text-gray-600"><i class="fab fa-youtube"></i></a>
+            <div class="stats">
+              <div class="stat">
+                <strong>1000+</strong>
+                <span class="muted">games available</span>
+              </div>
+              <div class="stat">
+                <strong>4.8★</strong>
+                <span class="muted">player ratings</span>
+              </div>
+              <div class="stat">
+                <strong>200+</strong>
+                <span class="muted">daily deals</span>
+              </div>
+              <div class="stat">
+                <strong>24/7</strong>
+                <span class="muted">support</span>
+              </div>
             </div>
+          </div>
+          <div class="card with-media" style="box-shadow: var(--shadow-lg)">
+            <div class="card-media">
+              <img
+                src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80"
+                alt="Featured game"
+              />
+            </div>
+            <div class="card-body">
+              <div class="badge">New release</div>
+              <h3 style="margin-top: var(--space-3); margin-bottom: var(--space-2)">Cyber Quest</h3>
+              <p style="margin-bottom: var(--space-4)">
+                Dive into neon streets, craft your build, and conquer nightly raids with your squad.
+              </p>
+              <button class="btn btn-primary" style="width: 100%">Play now</button>
+            </div>
+          </div>
         </div>
-        <div class="flex justify-between items-center pt-4">
-            <span class="text-sm text-gray-600">© 2024 Relume. All rights reserved.</span>
-            <div class="flex space-x-4 text-sm">
-                <a href="#" class="text-gray-600 hover:text-black">Privacy Policy</a>
-                <a href="#" class="text-gray-600 hover:text-black">Terms of Service</a>
-                <a href="#" class="text-gray-600 hover:text-black">Cookies Settings</a>
+      </section>
+
+      <section class="section" style="padding-top: 24px">
+        <div class="container">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap">
+            <div>
+              <div class="badge badge-muted" style="margin-bottom: 8px">EXPLORE</div>
+              <h2>Something for every interest</h2>
+              <p style="max-width: 640px">
+                Discover action-packed adventures, indie darlings, and family-friendly hits. Build collections with just a click
+                and jump back into your favorites instantly.
+              </p>
             </div>
+            <div class="list-inline">
+              <button class="btn btn-outline" style="height: 40px; padding: 0 14px">Action</button>
+              <button class="btn btn-outline" style="height: 40px; padding: 0 14px">Adventure</button>
+              <button class="btn btn-outline" style="height: 40px; padding: 0 14px">Simulation</button>
+              <button class="btn btn-outline" style="height: 40px; padding: 0 14px">RPG</button>
+            </div>
+          </div>
+
+          <div class="grid grid-3" style="margin-top: var(--space-6)">
+            <div class="card with-media">
+              <div class="card-media">
+                <img
+                  src="https://images.unsplash.com/photo-1546443046-ed1ce6ffd1a5?auto=format&fit=crop&w=900&q=80"
+                  alt="Action"
+                />
+              </div>
+              <div class="card-body">
+                <div class="badge badge-muted">ACTION</div>
+                <h3>High-Octane Heroes</h3>
+                <p>Fast-paced shooters and brawlers with endless replay value.</p>
+                <button class="btn btn-ghost">View collection</button>
+              </div>
+            </div>
+            <div class="card with-media">
+              <div class="card-media">
+                <img
+                  src="https://images.unsplash.com/photo-1472457897821-70d3819a0e24?auto=format&fit=crop&w=900&q=80"
+                  alt="Adventure"
+                />
+              </div>
+              <div class="card-body">
+                <div class="badge badge-muted">ADVENTURE</div>
+                <h3>Worlds to explore</h3>
+                <p>Story-rich journeys, mysteries, and puzzle-packed expeditions.</p>
+                <button class="btn btn-ghost">View collection</button>
+              </div>
+            </div>
+            <div class="card with-media">
+              <div class="card-media">
+                <img
+                  src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80"
+                  alt="Strategy"
+                />
+              </div>
+              <div class="card-body">
+                <div class="badge badge-muted">STRATEGY</div>
+                <h3>Lead your squad</h3>
+                <p>Plan, build, and outsmart rivals in tactical sims and builders.</p>
+                <button class="btn btn-ghost">View collection</button>
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
+
+      <section class="section" style="padding-top: 0">
+        <div class="container">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+            <div>
+              <div class="badge badge-muted" style="margin-bottom: 8px">LATEST DEALS</div>
+              <h2 style="margin-bottom: 8px">Fresh picks & exclusive drops</h2>
+              <p style="margin: 0">Limited offers that refresh daily. Grab them before they’re gone.</p>
+            </div>
+            <button class="btn btn-outline">See all</button>
+          </div>
+
+          <div class="grid grid-4" style="margin-top: var(--space-5)">
+            <div class="card with-media">
+              <div class="card-media">
+                <img
+                  src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+                  alt="Headset"
+                />
+              </div>
+              <div class="card-body">
+                <div class="badge">Popular</div>
+                <h3 style="margin-top: 12px">Neon Rally</h3>
+                <p style="margin-bottom: 12px">Futuristic racing with cinematic tracks.</p>
+                <div style="display: flex; align-items: center; justify-content: space-between">
+                  <strong>$19.99</strong>
+                  <button class="btn btn-primary" style="height: 40px; padding: 0 16px">Buy</button>
+                </div>
+              </div>
+            </div>
+            <div class="card with-media">
+              <div class="card-media">
+                <img
+                  src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80"
+                  alt="Adventure"
+                />
+              </div>
+              <div class="card-body">
+                <div class="badge badge-muted">New</div>
+                <h3 style="margin-top: 12px">Skyward</h3>
+                <p style="margin-bottom: 12px">Discover floating isles and hidden lore.</p>
+                <div style="display: flex; align-items: center; justify-content: space-between">
+                  <strong>$24.99</strong>
+                  <button class="btn btn-primary" style="height: 40px; padding: 0 16px">Buy</button>
+                </div>
+              </div>
+            </div>
+            <div class="card with-media">
+              <div class="card-media">
+                <img
+                  src="https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80"
+                  alt="Strategy"
+                />
+              </div>
+              <div class="card-body">
+                <div class="badge badge-muted">Top</div>
+                <h3 style="margin-top: 12px">Kingdom Forge</h3>
+                <p style="margin-bottom: 12px">Build, trade, and defend in co-op mode.</p>
+                <div style="display: flex; align-items: center; justify-content: space-between">
+                  <strong>$17.49</strong>
+                  <button class="btn btn-primary" style="height: 40px; padding: 0 16px">Buy</button>
+                </div>
+              </div>
+            </div>
+            <div class="card with-media">
+              <div class="card-media">
+                <img
+                  src="https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80"
+                  alt="Simulator"
+                />
+              </div>
+              <div class="card-body">
+                <div class="badge badge-muted">Editor’s pick</div>
+                <h3 style="margin-top: 12px">Stellar Fields</h3>
+                <p style="margin-bottom: 12px">Harvest, craft, and chill with friends.</p>
+                <div style="display: flex; align-items: center; justify-content: space-between">
+                  <strong>$14.99</strong>
+                  <button class="btn btn-primary" style="height: 40px; padding: 0 16px">Buy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 0">
+        <div class="container">
+          <div class="card" style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); align-items: center">
+            <div>
+              <div class="badge badge-muted" style="margin-bottom: 8px">NEWSLETTER</div>
+              <h2>Never miss a drop</h2>
+              <p>Get early access to deals, new releases, and curated recommendations.</p>
+              <div style="display: flex; gap: 12px; margin-top: var(--space-4); flex-wrap: wrap">
+                <input class="input" type="email" placeholder="Enter your email" style="max-width: 320px" />
+                <button class="btn btn-primary" style="height: 46px">Subscribe</button>
+              </div>
+            </div>
+            <div class="card with-media" style="box-shadow: none; border: 1px dashed var(--color-border);">
+              <div class="card-body" style="text-align: center">
+                <div class="badge">Weekly drops</div>
+                <h3 style="margin-top: 16px">Stay ahead of the curve</h3>
+                <p>Exclusive bundles, community events, and beta keys straight to your inbox.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container" style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap">
+        <div style="font-weight: 800; font-size: 18px">Logo</div>
+        <div class="nav-links" style="gap: 12px">
+          <a href="#">Game Store</a>
+          <a href="About us.html">About Us</a>
+          <a href="#">Contact Us</a>
+          <a href="#">Help Centre</a>
+          <a href="#">FAQs</a>
+        </div>
+        <div class="nav-actions" style="gap: 12px">
+          <a class="icon-button" href="#"><i class="fab fa-facebook-f"></i></a>
+          <a class="icon-button" href="#"><i class="fab fa-instagram"></i></a>
+          <a class="icon-button" href="#"><i class="fab fa-twitter"></i></a>
+          <a class="icon-button" href="#"><i class="fab fa-linkedin-in"></i></a>
+          <a class="icon-button" href="#"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
     </footer>
- </body>
+  </body>
 </html>
