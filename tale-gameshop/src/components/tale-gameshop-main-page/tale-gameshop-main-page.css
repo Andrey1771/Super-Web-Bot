@@ -879,6 +879,59 @@
   font-size: 15px;
 }
 
+.section-bridge {
+  padding: 32px 0 16px;
+}
+
+.bridge-copy {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.store-prefooter {
+  padding: 56px 0 96px;
+}
+
+.store-prefooter-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: clamp(24px, 3vw, 36px);
+  background: radial-gradient(circle at 85% 20%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 45%),
+    linear-gradient(135deg, #0f1322 0%, #121a2f 65%, #0f1322 100%);
+  color: #f4f6ff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  grid-template-columns: 1.2fr auto;
+  gap: var(--space-24);
+  align-items: center;
+}
+
+.store-prefooter-copy h3 {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: clamp(26px, 2.6vw, 34px);
+}
+
+.store-prefooter-copy p {
+  margin: 0;
+  color: color-mix(in srgb, #ffffff 70%, transparent);
+}
+
+.store-prefooter-actions {
+  display: flex;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.store-prefooter-actions .btn {
+  height: 48px;
+  padding-inline: var(--space-24);
+  font-weight: 700;
+}
+
 @media (max-width: 1200px) {
   .hero-grid {
     grid-template-columns: 1fr;
@@ -916,6 +969,10 @@
 
   .testimonial-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .store-prefooter-card {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -975,6 +1032,10 @@
     width: 100%;
     height: 44px;
   }
+
+  .store-prefooter-card {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1021,5 +1082,13 @@
 
   .trust-items {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .store-prefooter {
+    padding: 48px 0 72px;
+  }
+
+  .store-prefooter-card {
+    align-items: flex-start;
   }
 }

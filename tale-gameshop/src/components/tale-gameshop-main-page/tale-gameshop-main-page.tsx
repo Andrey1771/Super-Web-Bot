@@ -516,6 +516,28 @@ export default function TaleGameshopMainPage() {
                     </div>
                 </div>
             </section>
+
+            <div className="section-bridge">
+                <div className="container">
+                    <div className="divider" />
+                    <p className="muted bridge-copy">Next: Ready to explore the Store?</p>
+                </div>
+            </div>
+
+            <section className="store-prefooter">
+                <div className="container">
+                    <div className="store-prefooter-card">
+                        <div className="store-prefooter-copy">
+                            <h3>Find your next game today</h3>
+                            <p className="muted">Step into the full catalog with weekly deals and curated picks.</p>
+                        </div>
+                        <div className="store-prefooter-actions">
+                            <Link to="/games" className="btn btn-primary">Go to Store</Link>
+                            <Link to={`/games?filterCategory`} className="btn btn-outline">Browse genres</Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
