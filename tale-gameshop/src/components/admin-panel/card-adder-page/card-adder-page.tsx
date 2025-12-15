@@ -182,7 +182,7 @@ const CardAdderPage: React.FC = () => {
                         resetForm();
                         setMode(mode === 'edit' ? 'add' : 'edit');
                     }}
-                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                    className="btn btn-primary"
                 >
                     {mode === 'edit' ? 'Add new object' : 'Go to edit'}
                 </button>
@@ -195,7 +195,7 @@ const CardAdderPage: React.FC = () => {
                             <li
                                 key={item.id}
                                 className={`p-2 flex justify-between items-center cursor-pointer rounded ${
-                                    selectedItem?.id === item.id ? 'bg-blue-100' : 'hover:bg-gray-100'
+                                    selectedItem?.id === item.id ? 'selected-row' : 'hover:bg-gray-100'
                                 }`}
                             >
                                 <span onClick={() => handleSelect(item)} className="flex-1">
@@ -259,7 +259,7 @@ const CardAdderPage: React.FC = () => {
                     <input
                         type="file"
                         onChange={handleFileChange}
-                        className="w-full p-2 border rounded"
+                        className="input"
                     />
 
                     {form.imagePath && (
@@ -280,7 +280,7 @@ const CardAdderPage: React.FC = () => {
                     >
                         Clear File
                     </button>
-                    <button type="submit" className="px-4 ml-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    <button type="submit" className="btn btn-primary ml-3">
                         {mode === 'edit' ? 'Save changes' : 'Add object'}
                     </button>
                 </form>

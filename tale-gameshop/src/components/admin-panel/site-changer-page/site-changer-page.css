@@ -1,0 +1,15 @@
+.upload-dropzone {
+    padding: var(--space-16);
+    border: 2px dashed var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.upload-dropzone:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+    box-shadow: var(--shadow-sm);
+}

@@ -104,7 +104,7 @@ const SiteChangerPage: React.FC = () => {
                 ))}
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="p-4 border-dashed border-2 border-blue-500 flex items-center justify-center rounded hover:bg-blue-100"
+                    className="upload-dropzone"
                 >
                     Загрузить еще
                 </button>
@@ -113,7 +113,7 @@ const SiteChangerPage: React.FC = () => {
             {/* Модальное окно */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded shadow-lg">
+                    <div className="card w-full max-w-lg">
                         <h2 className="text-lg font-semibold mb-4">Add image</h2>
                         <input
                             type="file"
@@ -123,13 +123,13 @@ const SiteChangerPage: React.FC = () => {
                         <div className="flex justify-end">
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="mr-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                                className="mr-4 btn btn-outline"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleUpload}
-                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                className="btn btn-primary"
                             >
                                 Load
                             </button>

@@ -18,10 +18,10 @@ const LogOutButton: React.FC<LogOutButtonProps> = ({}) => {
 
     return (
         <>
-            <button className="hidden lg:flex px-4 py-2 bg-black text-white animated-button" onClick={handleLogOut}>
+            <button className="hidden lg:inline-flex btn btn-outline" onClick={handleLogOut}>
                 Sign Out
             </button>
-            <button className="lg:hidden text-gray-700 menu-item cursor-pointer" onClick={handleLogOut}>
+            <button className="lg:hidden btn btn-ghost w-full justify-center" onClick={handleLogOut}>
                 Sign Out
             </button>
             <div className="lg:hidden h-0"></div>
