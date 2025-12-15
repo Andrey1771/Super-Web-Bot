@@ -7,9 +7,13 @@ import {
     faBolt,
     faCheckCircle,
     faChessKnight,
+    faChevronDown,
+    faEnvelope,
     faHatWizard,
     faLeaf,
     faPuzzlePiece,
+    faShieldAlt,
+    faStar,
     faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import container from "../../inversify.config";
@@ -124,6 +128,64 @@ export default function TaleGameshopMainPage() {
         {label: 'Pay securely', helper: 'Checkout with verified payments.'},
         {label: 'Get your key / download', helper: 'Instant email delivery and quick access.'}
     ];
+
+    const testimonials = [
+        {
+            quote: 'Instant delivery and great picks. Every purchase has been smooth and fast.',
+            name: 'Alex P.',
+            role: 'Verified buyer',
+            badge: 'Verified purchase'
+        },
+        {
+            quote: 'Love the curated lists—found hidden gems I never would have tried.',
+            name: 'Maria K.',
+            role: 'Longtime customer',
+            badge: 'Verified purchase'
+        },
+        {
+            quote: 'Checkout feels secure and the keys arrive immediately. Support is friendly too.',
+            name: 'Samir L.',
+            role: 'Verified buyer',
+            badge: 'Verified purchase'
+        }
+    ];
+
+    const trustPoints = [
+        {icon: faShieldAlt, title: 'Secure checkout'},
+        {icon: faBolt, title: 'Instant email delivery'},
+        {icon: faCheckCircle, title: 'Refund policy'},
+        {icon: faUsers, title: 'Friendly support'},
+        {icon: faHatWizard, title: 'Verified payments'},
+    ];
+
+    const faqs = [
+        {
+            question: 'How do I receive my key?',
+            answer: 'Keys are delivered instantly to your email and visible in your account after checkout.'
+        },
+        {
+            question: 'What payment methods do you support?',
+            answer: 'We support major cards and verified processors for secure payments.'
+        },
+        {
+            question: 'Can I request a refund?',
+            answer: 'Yes. If you experience an issue with your key or access, reach out and we will help.'
+        },
+        {
+            question: 'Is the delivery instant?',
+            answer: 'Delivery is typically instant. Most purchases reach your inbox within seconds.'
+        },
+        {
+            question: 'Do you support EN/RU?',
+            answer: 'We provide support in EN and RU, and the catalog lists language availability per game.'
+        }
+    ];
+
+    const [openFaqIndex, setOpenFaqIndex] = useState(0);
+
+    const toggleFaq = (index: number) => {
+        setOpenFaqIndex((prev) => (prev === index ? -1 : index));
+    };
 
     const renderGameCard = (game: Game, size: 'large' | 'small') => (
         <div className={`hero-card ${size}`}>
@@ -353,6 +415,104 @@ export default function TaleGameshopMainPage() {
                                 Browse genres
                             </Link>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="testimonials-section">
+                <div className="container">
+                    <div className="section-heading">
+                        <h2>Loved by players</h2>
+                        <p className="muted">Trusted by thousands for fast delivery and curated picks.</p>
+                    </div>
+                    <div className="testimonials-grid">
+                        <div className="rating-card">
+                            <div className="stars" aria-label="4.8 out of 5 stars">
+                                {[...Array(5)].map((_, idx) => (
+                                    <FontAwesomeIcon key={idx} icon={faStar} />
+                                ))}
+                            </div>
+                            <div className="rating-score">4.8/5</div>
+                            <div className="rating-helper muted">based on 2,300 reviews</div>
+                        </div>
+
+                        <div className="testimonial-cards">
+                            {testimonials.map((item) => (
+                                <div className="testimonial-card" key={item.name}>
+                                    <p className="testimonial-quote">{item.quote}</p>
+                                    <div className="testimonial-footer">
+                                        <div className="avatar" aria-hidden="true">{item.name.charAt(0)}</div>
+                                        <div className="testimonial-meta">
+                                            <div className="testimonial-name">{item.name}</div>
+                                            <div className="testimonial-role muted">{item.role}</div>
+                                        </div>
+                                        <span className="badge subtle">{item.badge}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="trust-section">
+                <div className="container">
+                    <div className="trust-heading">
+                        <h3>Trusted payment & delivery</h3>
+                    </div>
+                    <div className="trust-items">
+                        {trustPoints.map((point) => (
+                            <div className="trust-item" key={point.title}>
+                                <FontAwesomeIcon icon={point.icon} />
+                                <span>{point.title}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="newsletter-section">
+                <div className="container">
+                    <div className="newsletter-card">
+                        <div className="newsletter-copy">
+                            <h3>Get weekly deals & rare picks</h3>
+                            <p className="muted">No spam. Unsubscribe anytime.</p>
+                        </div>
+                        <form className="newsletter-form" onSubmit={(e) => e.preventDefault()}>
+                            <div className="input-row">
+                                <div className="input-icon">
+                                    <FontAwesomeIcon icon={faEnvelope} />
+                                </div>
+                                <input type="email" placeholder="Enter your email" required />
+                                <button className="btn btn-primary" type="submit">Subscribe</button>
+                            </div>
+                            <label className="checkbox-row">
+                                <input type="checkbox" defaultChecked />
+                                <span>Notify me about price drops</span>
+                            </label>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section className="faq-section">
+                <div className="container">
+                    <div className="section-heading">
+                        <h3>Quick FAQ</h3>
+                        <p className="muted">Answers to common questions about delivery and payments.</p>
+                    </div>
+                    <div className="faq-list">
+                        {faqs.map((item, index) => (
+                            <div className={`faq-item ${openFaqIndex === index ? 'open' : ''}`} key={item.question}>
+                                <button className="faq-trigger" onClick={() => toggleFaq(index)}>
+                                    <span>{item.question}</span>
+                                    <FontAwesomeIcon icon={faChevronDown} />
+                                </button>
+                                {openFaqIndex === index && (
+                                    <div className="faq-answer muted">{item.answer}</div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>
