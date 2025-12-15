@@ -24,9 +24,9 @@ import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 
 export default function TaleGameshopMainWindow() {
     return (
-        <div>
+        <div className="app-layout">
             <TaleGameshopHeader></TaleGameshopHeader>
-            <div className="main-page-down-header-padding"></div>
+            <main className="app-content">
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
@@ -45,6 +45,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/successPurchasePage" element={<SuccessPurchasePage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                 </Routes>
+            </main>
             <TaleGameshopFooter></TaleGameshopFooter>
             <ChatBot></ChatBot>
         </div>
