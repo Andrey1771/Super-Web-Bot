@@ -54,9 +54,26 @@
     z-index: 1000;
     background-color: white;
     transition: all 0.3s ease-in-out; /* Плавный переход */
+    box-sizing: border-box;
 }
 
 .header-nav.scrolled {
     background-color: rgba(255, 255, 255, 1);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Более заметная тень */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.nav-links {
+    align-items: center;
+    gap: 16px;
+}
+
+@media (max-width: 1023px) {
+    .nav-links {
+        width: 100%;
+        margin-top: 12px;
+        padding: 12px 8px;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.05);
+    }
 }

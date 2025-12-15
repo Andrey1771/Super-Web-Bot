@@ -28,24 +28,50 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
         });
     };
 
+    const placeholder = '/images/game-placeholder.svg';
+    const buildImageSrc = () => {
+        if (!game.imagePath) {
+            return placeholder;
+        }
+
+        if (game.imagePath.startsWith('http')) {
+            return game.imagePath;
+        }
+
+        if (game.imagePath.startsWith('/')) {
+            return game.imagePath;
+        }
+
+        return `${urlService.apiBaseUrl}/${game.imagePath}`;
+    };
+
+    const imageSrc = buildImageSrc();
+
     return (
-        <div key={game.id} className="bg-white p-4 rounded-lg shadow">
-            <img
-                alt={game.title}
-                style={{ height: '100px', width: '100px' }}
-                className="mb-4"
-                height="100px"
-                src={`${urlService.apiBaseUrl}/${game.imagePath}`}
-                width="100px"
-            />
-            <h2
-                className="text-xl font-bold mb-2 overflow-hidden text-ellipsis whitespace-nowrap"
-                style={{ maxWidth: '200px' }} // Ограничиваем ширину блока
-                title={game.title} // Всплывающая подсказка
-            >
-                {game.title.length > 44 ? `${game.title.slice(0, 44)}...` : game.title}
-            </h2>
-            <p className="text-gray-600 mb-4">${game.price}</p>
+        <div key={game.id} className="bg-white p-4 rounded-lg shadow flex flex-col h-full">
+            <div className="w-full h-48 mb-4 overflow-hidden rounded-lg bg-gray-100">
+                <img
+                    alt={game.title}
+                    className="w-full h-full object-cover"
+                    src={imageSrc}
+                    onError={(event) => {
+                        const target = event.target as HTMLImageElement;
+                        if (target.src !== placeholder) {
+                            target.src = placeholder;
+                        }
+                    }}
+                />
+            </div>
+            <div className="flex-1">
+                <h2
+                    className="text-xl font-bold mb-2 overflow-hidden text-ellipsis whitespace-nowrap"
+                    style={{ maxWidth: '100%' }}
+                    title={game.title}
+                >
+                    {game.title.length > 44 ? `${game.title.slice(0, 44)}...` : game.title}
+                </h2>
+                <p className="text-gray-600 mb-4">${game.price.toFixed(2)}</p>
+            </div>
             <button
                 className="w-full bg-black text-white py-2 rounded hover:text-purple-600"
                 onClick={handleAddToCart}
