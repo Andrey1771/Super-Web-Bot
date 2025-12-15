@@ -16,7 +16,7 @@ const ApologyPage: React.FC = () => {
                 </p>
                 <Link
                     to="/"
-                    className="inline-block px-4 py-2 border rounded-lg border-gray-700 text-gray-700 animated-button cursor-pointer"
+                    className="inline-flex btn btn-outline w-full sm:w-auto justify-center"
                 >
                     Go Back to Home
                 </Link>

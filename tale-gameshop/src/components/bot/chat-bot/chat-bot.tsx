@@ -176,7 +176,7 @@ const ChatBot: React.FC = () => {
                                         value={formData.name}
                                         onChange={handleFormChange}
                                         required
-                                        className="w-full p-2 border border-gray-300 rounded mt-1"
+                                        className="input mt-1"
                                     />
                                 </div>
                                 <div className="mb-2">
@@ -187,7 +187,7 @@ const ChatBot: React.FC = () => {
                                         value={formData.email}
                                         onChange={handleFormChange}
                                         required
-                                        className="w-full p-2 border border-gray-300 rounded mt-1"
+                                        className="input mt-1"
                                     />
                                 </div>
                                 <div className="mb-2">
@@ -198,12 +198,12 @@ const ChatBot: React.FC = () => {
                                         value={formData.phone}
                                         onChange={handleFormChange}
                                         required
-                                        className="w-full p-2 border border-gray-300 rounded mt-1"
+                                        className="input mt-1"
                                     />
                                 </div>
                                 <button
                                     type="submit"
-                                    className="w-full chat-background-color animated-button text-white py-2 rounded hover:bg-blue-600 transition duration-200"
+                                    className="btn btn-primary w-full justify-center"
                                 >
                                     Send
                                 </button>

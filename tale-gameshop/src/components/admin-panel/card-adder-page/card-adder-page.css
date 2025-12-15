@@ -1,0 +1,5 @@
+.selected-row {
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+    box-shadow: var(--shadow-sm);
+}

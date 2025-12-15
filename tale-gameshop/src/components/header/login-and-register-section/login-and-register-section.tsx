@@ -4,7 +4,11 @@ import container from "../../../inversify.config";
 import type {IKeycloakAuthService} from "../../../iterfaces/i-keycloak-auth-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 
-const LoginAndRegisterSection: React.FC = ({}) => {
+interface LoginAndRegisterSectionProps {
+    stacked?: boolean;
+}
+
+const LoginAndRegisterSection: React.FC<LoginAndRegisterSectionProps> = ({stacked = false}) => {
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
@@ -19,32 +23,20 @@ const LoginAndRegisterSection: React.FC = ({}) => {
     };
 
 
-    return <>
+    return <div className={`auth-buttons ${stacked ? 'stacked' : ''}`}>
         <button
-            className="hidden lg:flex px-4 py-2 border border-gray-700 text-gray-700 animated-button cursor-pointer"
+            className="btn btn-outline"
             onClick={login}
         >
             Login
         </button>
-        <div
-            className="lg:hidden text-gray-700 menu-item cursor-pointer"
-            onClick={login}>
-            Login
-        </div>
-
         <button
-            className="hidden lg:flex px-4 py-2 bg-black text-white animated-button cursor-pointer"
+            className="btn btn-primary"
             onClick={register}
         >
             Sign Up
         </button>
-        <div
-            className="lg:hidden text-gray-700 menu-item cursor-pointer"
-            onClick={register}>
-            Sign Up
-        </div>
-        <div className="lg:hidden h-0"></div>
-    </>
+    </div>
 }
 
 export default LoginAndRegisterSection;
