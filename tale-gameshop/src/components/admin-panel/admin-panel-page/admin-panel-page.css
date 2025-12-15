@@ -1,0 +1,23 @@
+.admin-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.admin-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}

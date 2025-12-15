@@ -4,12 +4,12 @@ import {Link} from "react-router-dom";
 import container from "../../../inversify.config";
 import {IUrlService} from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
+import './cart.css';
+import placeholderOne from "../../../assets/images/placeholder-1.svg";
 
 const Cart: React.FC = () => {
     const {state, dispatch} = useCart();
-
     const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
-
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     const handleIncreaseQuantity = (id: string) => {
@@ -20,69 +20,72 @@ const Cart: React.FC = () => {
         dispatch({type: 'DECREASE_QUANTITY', payload: id});
     };
 
+    if (state.items.length === 0) {
+        return (
+            <div className="card cart-empty">
+                <h2>Your cart is empty</h2>
+                <p className="section-subtitle">Add some games to see them here.</p>
+                <Link className="btn btn-primary" to="/games">Back to store</Link>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-4 border-t mt-4">
-            <h2 className="text-xl font-bold">Your Cart</h2>
-            {state.items.length === 0 ? (
-                <p className="text-gray-600">Cart is empty.</p>
-            ) : (
-                <>
-                    {state.items.map((item) => (
-                        <div key={item.gameId} className="flex items-center p-2 border-b gap-4">
+        <div className="cart-layout">
+            <div className="card cart-items">
+                <h2 className="section-title">Your Cart</h2>
+                {state.items.map((item) => (
+                    <div key={item.gameId} className="cart-row">
+                        <div className="cart-row__image">
                             <img
                                 src={`${urlService.apiBaseUrl}/${item.image}`}
                                 alt={item.name}
-                                className="w-16 h-16 object-cover rounded"
+                                onError={(event) => event.currentTarget.src = placeholderOne}
                             />
-                            <div className="flex-1">
-                                <span className="font-bold">{item.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => handleDecreaseQuantity(item.gameId)}
-                                    className="px-2 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                                >
-                                    -
-                                </button>
-                                <span>{item.quantity}</span>
-                                <button
-                                    onClick={() => handleIncreaseQuantity(item.gameId)}
-                                    className="px-2 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                                >
-                                    +
-                                </button>
-                            </div>
-                            <span className="flex-1 text-right">
-                ${(item.price * item.quantity).toFixed(2)}
-              </span>
-                            <button
-                                onClick={() => dispatch({type: 'REMOVE_FROM_CART', payload: item.gameId})}
-                                className="ml-4 text-red-500 hover:underline"
-                            >
-                                Remove
-                            </button>
                         </div>
-                    ))}
-                    <div className="mt-4 text-lg font-bold flex justify-between border-t pt-2">
-                        <span>Total:</span>
-                        <span>${totalPrice.toFixed(2)}</span>
-                    </div>
-                    <div className="mt-4 flex gap-4">
+                        <div className="cart-row__info">
+                            <span className="cart-row__title">{item.name}</span>
+                            <span className="cart-row__price">${item.price.toFixed(2)}</span>
+                        </div>
+                        <div className="cart-row__quantity">
+                            <button onClick={() => handleDecreaseQuantity(item.gameId)}>-</button>
+                            <span>{item.quantity}</span>
+                            <button onClick={() => handleIncreaseQuantity(item.gameId)}>+</button>
+                        </div>
+                        <div className="cart-row__total">
+                            ${(item.price * item.quantity).toFixed(2)}
+                        </div>
                         <button
-                            onClick={() => dispatch({type: 'CLEAR_CART'})}
-                            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700"
+                            onClick={() => dispatch({type: 'REMOVE_FROM_CART', payload: item.gameId})}
+                            className="cart-row__remove"
                         >
-                            Clear Cart
+                            Remove
                         </button>
-                        <Link
-                            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-700"
-                            to="/checkout"
-                        >
-                            Proceed to Checkout
-                        </Link>
                     </div>
-                </>
-            )}
+                ))}
+            </div>
+
+            <div className="card cart-summary">
+                <h3>Order Summary</h3>
+                <div className="cart-summary__row">
+                    <span>Total</span>
+                    <span className="cart-summary__price">${totalPrice.toFixed(2)}</span>
+                </div>
+                <div className="cart-summary__actions">
+                    <button
+                        onClick={() => dispatch({type: 'CLEAR_CART'})}
+                        className="btn btn-outline"
+                    >
+                        Clear Cart
+                    </button>
+                    <Link
+                        className="btn btn-primary"
+                        to="/checkout"
+                    >
+                        Proceed to Checkout
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 };
