@@ -2,7 +2,16 @@ import React, {useEffect, useMemo, useState} from "react";
 import './tale-gameshop-main-page.css'
 import '../../font-awesome.ts';
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faArrowRight, faCheckCircle} from "@fortawesome/free-solid-svg-icons";
+import {
+    faArrowRight,
+    faBolt,
+    faCheckCircle,
+    faChessKnight,
+    faHatWizard,
+    faLeaf,
+    faPuzzlePiece,
+    faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import container from "../../inversify.config";
 import type {IApiClient} from "../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../constants/identifiers";
@@ -55,6 +64,36 @@ export default function TaleGameshopMainPage() {
         "Shop se payments",
         "Instant delivery",
         "Curated picks"
+    ];
+
+    const genres = [
+        {title: 'Action', description: 'High-impact firefights and fast pacing.', icon: faBolt},
+        {title: 'Puzzle', description: 'Brain-teasing challenges to unwind.', icon: faPuzzlePiece},
+        {title: 'RPG', description: 'Deep stories with character growth.', icon: faHatWizard},
+        {title: 'Strategy', description: 'Command, conquer, and outthink.', icon: faChessKnight},
+        {title: 'Indie', description: 'Curated gems from small teams.', icon: faLeaf},
+        {title: 'Co-op', description: 'Jump in together and beat the odds.', icon: faUsers},
+    ];
+
+    const blogPosts = [
+        {title: 'Top strategy releases to try this month', snippet: 'Quick picks across tactics, city-builders, and RTS.', link: '/blog'},
+        {title: 'Why cozy sims are perfect for weekends', snippet: 'Slow-life games that help you unwind and reset.', link: '/blog'},
+        {title: 'Essential RPGs for story-first players', snippet: 'Narrative-driven worlds with unforgettable casts.', link: '/blog'},
+    ];
+
+    const highlights = [
+        {
+            title: 'Weekly spotlight: Atmospheric adventures',
+            snippet: 'Lose yourself in moody worlds with strong art direction.',
+            badge: 'Weekly',
+            link: '/blog'
+        },
+        {
+            title: 'New: Building the perfect co-op night',
+            snippet: 'Snackable missions, balanced roles, and low-friction lobbies.',
+            badge: 'New',
+            link: '/blog'
+        }
     ];
 
     const renderGameCard = (game: Game, size: 'large' | 'small') => (
@@ -136,6 +175,91 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             </Link>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="explore-blog-section">
+                <div className="container">
+                    <div className="explore-grid">
+                        <div className="explore-column">
+                            <div className="column-header">
+                                <h3>Explore our games</h3>
+                                <p className="muted">Genres curated for every kind of player.</p>
+                            </div>
+                            <div className="genre-grid">
+                                {genres.map((genre) => (
+                                    <div className="genre-card" key={genre.title}>
+                                        <div className="genre-icon">
+                                            <FontAwesomeIcon icon={genre.icon} />
+                                        </div>
+                                        <div className="genre-copy">
+                                            <div className="genre-title">{genre.title}</div>
+                                            <div className="genre-description muted">{genre.description}</div>
+                                        </div>
+                                        <Link className="genre-link" to={`/games?filterCategory=${genre.title}`}>
+                                            View
+                                        </Link>
+                                    </div>
+                                ))}
+                            </div>
+                            <Link className="btn btn-outline full-width" to={`/games`}>
+                                Browse all genres
+                            </Link>
+                        </div>
+
+                        <div className="explore-column">
+                            <div className="column-header">
+                                <h3>Latest blog posts</h3>
+                                <p className="muted">Fresh drops from our editorial team.</p>
+                            </div>
+                            <div className="blog-list">
+                                {blogPosts.map((post) => (
+                                    <div className="blog-item" key={post.title}>
+                                        <div className="blog-thumb" aria-hidden="true" />
+                                        <div className="blog-copy">
+                                            <div className="blog-title">{post.title}</div>
+                                            <div className="blog-snippet muted">{post.snippet}</div>
+                                        </div>
+                                        <Link className="text-link" to={post.link}>
+                                            Read
+                                        </Link>
+                                    </div>
+                                ))}
+                            </div>
+                            <Link className="btn btn-ghost" to="/blog">
+                                Go to blog
+                            </Link>
+                        </div>
+
+                        <div className="explore-column">
+                            <div className="column-header">
+                                <h3>Highlights from blog</h3>
+                                <p className="muted">Hand-picked stories worth reading.</p>
+                            </div>
+                            <div className="highlight-stack">
+                                {highlights.map((item) => (
+                                    <div className="highlight-card" key={item.title}>
+                                        <div className="highlight-media" aria-hidden="true" />
+                                        <div className="highlight-body">
+                                            <div className="highlight-header">
+                                                <span className="badge">{item.badge}</span>
+                                                <Link className="text-link" to={item.link}>
+                                                    Read more
+                                                </Link>
+                                            </div>
+                                            <div className="highlight-title">{item.title}</div>
+                                            <div className="highlight-snippet muted">{item.snippet}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bridge">
+                        <div className="divider" />
+                        <div className="bridge-label muted">Next: Why choose us</div>
                     </div>
                 </div>
             </section>
