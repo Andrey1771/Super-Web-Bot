@@ -96,6 +96,35 @@ export default function TaleGameshopMainPage() {
         }
     ];
 
+    const reasons = [
+        {
+            title: 'Secure payments',
+            description: 'Protected checkout with trusted partners.',
+            icon: faCheckCircle
+        },
+        {
+            title: 'Instant delivery',
+            description: 'Receive your key moments after purchase.',
+            icon: faBolt
+        },
+        {
+            title: 'Curated picks',
+            description: 'Hand-selected games for every mood.',
+            icon: faHatWizard
+        },
+        {
+            title: 'Friendly support',
+            description: 'Here to help with installs and access.',
+            icon: faUsers
+        }
+    ];
+
+    const steps = [
+        {label: 'Choose a game', helper: 'Browse curated genres and picks.'},
+        {label: 'Pay securely', helper: 'Checkout with verified payments.'},
+        {label: 'Get your key / download', helper: 'Instant email delivery and quick access.'}
+    ];
+
     const renderGameCard = (game: Game, size: 'large' | 'small') => (
         <div className={`hero-card ${size}`}>
             {game?.imagePath && (
@@ -260,6 +289,70 @@ export default function TaleGameshopMainPage() {
                     <div className="bridge">
                         <div className="divider" />
                         <div className="bridge-label muted">Next: Why choose us</div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="why-section">
+                <div className="container">
+                    <div className="section-heading">
+                        <h2>Why choose us</h2>
+                        <p className="muted">Curated games, secure payments, and delivery in moments.</p>
+                    </div>
+                    <div className="why-grid">
+                        {reasons.map((reason) => (
+                            <div className="why-card" key={reason.title}>
+                                <div className="why-icon">
+                                    <FontAwesomeIcon icon={reason.icon} />
+                                </div>
+                                <div className="why-copy">
+                                    <div className="why-title">{reason.title}</div>
+                                    <div className="why-description muted">{reason.description}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="how-section">
+                <div className="container">
+                    <div className="section-heading">
+                        <h2>How it works</h2>
+                        <p className="muted">Three simple steps from browsing to playing.</p>
+                    </div>
+                    <div className="steps-grid">
+                        {steps.map((step, index) => (
+                            <div className="step-card" key={step.label}>
+                                <div className="step-marker">{index + 1}</div>
+                                <div className="step-body">
+                                    <div className="step-title">{step.label}</div>
+                                    <div className="step-helper muted">{step.helper}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="trust-row muted">
+                        Refund policy • Verified payments • Instant email delivery
+                    </div>
+                </div>
+            </section>
+
+            <section className="cta-section">
+                <div className="container">
+                    <div className="cta-card">
+                        <div className="cta-copy">
+                            <h3>Ready to explore the Store?</h3>
+                            <p className="muted">Discover the full catalog and weekly deals.</p>
+                        </div>
+                        <div className="cta-actions">
+                            <Link to="/games" className="btn btn-primary">
+                                Go to Store
+                            </Link>
+                            <Link to={`/games?filterCategory`} className="btn btn-outline">
+                                Browse genres
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </section>

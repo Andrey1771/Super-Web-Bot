@@ -450,6 +450,174 @@
   max-width: 320px;
 }
 
+.why-section,
+.how-section {
+  background: var(--color-bg);
+  padding: 80px 0 84px;
+}
+
+.section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--space-32);
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-16);
+}
+
+.why-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-20, var(--space-24));
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.why-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-primary) 14%, #f2ecff);
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.why-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+
+.why-description {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.how-section {
+  padding-top: 12px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-16);
+  margin-bottom: var(--space-24);
+}
+
+.step-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-12);
+  align-items: center;
+  position: relative;
+}
+
+.step-card::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  width: 20px;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.step-card:last-child::after {
+  display: none;
+}
+
+.step-marker {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-primary) 12%, #f2ecff);
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.step-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+
+.step-helper {
+  font-size: 14px;
+}
+
+.trust-row {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  font-size: 14px;
+}
+
+.cta-section {
+  background: var(--color-bg);
+  padding: 72px 0 96px;
+}
+
+.cta-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: var(--space-32);
+  background: radial-gradient(circle at 90% 30%, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 45%),
+    linear-gradient(135deg, #0e1220 0%, #131a2f 70%, #0e1220 100%);
+  color: #f4f6ff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-24);
+}
+
+.cta-copy h3 {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: clamp(28px, 3vw, 34px);
+}
+
+.cta-copy p {
+  margin: 0;
+  color: color-mix(in srgb, #ffffff 70%, transparent);
+  font-size: 16px;
+}
+
+.cta-actions {
+  display: flex;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.cta-actions .btn {
+  height: 48px;
+  padding-inline: var(--space-24);
+  font-weight: 700;
+}
+
 @media (max-width: 1200px) {
   .hero-grid {
     grid-template-columns: 1fr;
@@ -476,6 +644,10 @@
   .genre-grid {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
+
+  .why-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 992px) {
@@ -497,6 +669,23 @@
 
   .blog-item {
     grid-template-columns: 80px 1fr auto;
+  }
+
+  .why-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .step-card::after {
+    display: none;
+  }
+
+  .cta-card {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
@@ -524,5 +713,13 @@
 
   .highlight-card {
     grid-template-columns: 1fr;
+  }
+
+  .why-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cta-card {
+    padding: var(--space-24);
   }
 }
