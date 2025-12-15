@@ -1,0 +1,56 @@
+:root {
+  /* Color palette */
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-muted: #4b5563;
+  --color-border: #e5e7eb;
+  --color-shadow: rgba(17, 24, 39, 0.08);
+  --color-primary: #7c3aed;
+
+  /* Radius scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Shadow scale */
+  --shadow-sm: 0 6px 18px rgba(17, 24, 39, 0.06);
+  --shadow-md: 0 10px 30px rgba(17, 24, 39, 0.08);
+  --shadow-lg: 0 18px 48px rgba(17, 24, 39, 0.12);
+
+  /* Spacing scale */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --space-64: 64px;
+
+  /* Layout */
+  --container-max-width: 1280px;
+  --container-padding: 28px;
+
+  /* Typography */
+  --font-family-base: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --container-padding: 24px;
+  }
+}
+
+@media (max-width: 992px) {
+  :root {
+    --container-max-width: 100%;
+    --container-padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --container-padding: 16px;
+  }
+}

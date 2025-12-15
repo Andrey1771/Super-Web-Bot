@@ -72,8 +72,8 @@ export default function TaleGameshopMainPage() {
 
     return (
         <div className="main-page-down-header-padding">
-            <div className="bg-gray-100 py-10 pl-4 pr-4">
-                <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+            <div className="section">
+                <div className="container grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
 
                     <div>
                         <h2 className="text-lg font-bold mb-4">
@@ -201,7 +201,7 @@ export default function TaleGameshopMainPage() {
                             Highlights from Blog
                         </h2>
                         <div className="space-y-4">
-                            <div className="bg-gray-200 p-4 flex items-center break-all">
+                            <div className="surface p-4 flex items-center break-all">
                                 <img alt={randomGame?.title} className="mr-4" height="50"
                                      src={`${urlService.apiBaseUrl}/${randomGame?.imagePath}`}
                                      width="50"/>
@@ -212,13 +212,13 @@ export default function TaleGameshopMainPage() {
                                     <p>
                                         Check out our random game picks for you.
                                         <Link to={`/games?filterCategory=${latestGame?.title}`}
-                                              className="text-blue-500">
+                                              className="link-primary">
                                             Read more
                                         </Link>
                                     </p>
                                 </div>
                             </div>
-                            <div className="bg-gray-200 p-4 flex items-center break-all">
+                            <div className="surface p-4 flex items-center break-all">
                                 <img alt={latestGame?.title} className="mr-4" height="50"
                                      src={`${urlService.apiBaseUrl}/${latestGame?.imagePath}`}
                                      width="50"/>
@@ -229,7 +229,7 @@ export default function TaleGameshopMainPage() {
                                     <p>
                                         Get the latest updates on new releases.
                                         <Link to={`/games?filterCategory=${latestGame?.title}`}
-                                              className="text-blue-500">
+                                              className="link-primary">
                                             Read more
                                         </Link>
                                     </p>
@@ -238,11 +238,8 @@ export default function TaleGameshopMainPage() {
                         </div>
                         <div className="flex mt-4">
                             <Link to={`/games?filterCategory`}>
-                                <button
-                                    className="px-4 py-2 border border-gray-700 text-gray-700 flex items-center animated-button">
-                                    Let's Go
-                                    <i className="fas fa-chevron-right ml-2">
-                                    </i>
+                                <button className="btn btn-outline gap-2">
+                                    Let's Go <i className="fas fa-chevron-right"></i>
                                 </button>
                             </Link>
                         </div>
@@ -250,29 +247,30 @@ export default function TaleGameshopMainPage() {
                 </div>
             </div>
 
-            <div className="bg-black text-white py-20 pl-4 pr-4">
-                <div className="container mx-auto text-center">
-                    <h1 className="text-4xl font-bold mb-6">
+            <div className="section">
+                <div className="container">
+                    <div className="hero-panel text-center">
+                        <h1 className="text-4xl font-bold mb-6">
                         Discover Your Next Favourite Computer Game
-                    </h1>
-                    <p className="mb-8">
-                        Welcome to our gaming paradise, where you can explore a vast selection of computer games
-                        tailored to
-                        your interests. Our mission is to connect gamers with the titles they love, making every gaming
-                        experience unforgettable.
-                    </p>
-                    <div className="flex justify-center space-x-4">
-                        <Link to={`/games?filterCategory`} className="px-6 py-3 bg-white text-black animated-button">
-                            Shop
-                        </Link>
-                        <Link to="/about" className="px-6 py-3 border border-white animated-button">
-                            Learn More
-                        </Link>
+                        </h1>
+                        <p className="mb-8">
+                            Welcome to our gaming paradise, where you can explore a vast selection of computer games
+                            tailored to your interests. Our mission is to connect gamers with the titles they love,
+                            making every gaming experience unforgettable.
+                        </p>
+                        <div className="flex justify-center space-x-4 flex-wrap gap-4">
+                            <Link to={`/games?filterCategory`} className="btn btn-primary">
+                                Shop
+                            </Link>
+                            <Link to="/about" className="btn btn-outline">
+                                Learn More
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="container mx-auto flex items-start justify-start bg-white p-8 mb-28">
+            <div className="container surface flex items-start justify-start p-8 mb-28">
                 <div className="flex items-start space-x-8 w-full">
                     <div className="w-1/2">
                         <h1 className="text-3xl font-bold glow-text">
@@ -286,7 +284,7 @@ export default function TaleGameshopMainPage() {
                             can discover, connect, and thrive.
                         </p>
                     </div>
-                    <div className="w-1/2 bg-gray-200 flex items-center justify-center iframe-aspect">
+                    <div className="w-1/2 media-panel iframe-aspect">
                         {<Iframe url="https://www.youtube.com/embed/kNAoc6acHH8?si=LB96pJk1Aj3tNc3t"
                                 width="100%"
                                 height="100%"
@@ -295,7 +293,7 @@ export default function TaleGameshopMainPage() {
                     </div>
                 </div>
             </div>
-            <div className="container mx-auto text-center py-16 pl-4 pr-4">
+            <div className="container text-center section">
                 <h2 className="text-sm uppercase tracking-wider text-gray-500">Explore</h2>
                 <h1 className="text-4xl font-bold mt-2">Discover Your Next Favourite Game</h1>
                 <p className="text-lg mt-4 max-w-2xl mx-auto">
@@ -324,13 +322,12 @@ export default function TaleGameshopMainPage() {
                 </div>
                 <div className="mt-12">
                     <Link to="/about"
-                        className="bg-transparent border border-gray-800 text-gray-800 py-2 px-6 rounded-full mr-4">Learn
+                        className="btn btn-outline mr-4">Learn
                         More
                     </Link>
                     {!keycloak.authenticated &&
-                        <a className="bg-transparent text-gray-800 py-2 px-6 rounded-full cursor-pointer"
-                           onClick={register}>Sign Up<i
-                            className="fas fa-arrow-right"></i></a>
+                        <a className="btn btn-primary" onClick={register}>Sign Up<i
+                            className="fas fa-arrow-right ml-2"></i></a>
                     }
                 </div>
                 <div className="mt-16">

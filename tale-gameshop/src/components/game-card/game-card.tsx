@@ -29,29 +29,31 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
     };
 
     return (
-        <div key={game.id} className="bg-white p-4 rounded-lg shadow">
-            <img
-                alt={game.title}
-                style={{ height: '100px', width: '100px' }}
-                className="mb-4"
-                height="100px"
-                src={`${urlService.apiBaseUrl}/${game.imagePath}`}
-                width="100px"
-            />
-            <h2
-                className="text-xl font-bold mb-2 overflow-hidden text-ellipsis whitespace-nowrap"
-                style={{ maxWidth: '200px' }} // Ограничиваем ширину блока
-                title={game.title} // Всплывающая подсказка
-            >
-                {game.title.length > 44 ? `${game.title.slice(0, 44)}...` : game.title}
-            </h2>
-            <p className="text-gray-600 mb-4">${game.price}</p>
-            <button
-                className="w-full bg-black text-white py-2 rounded hover:text-purple-600"
-                onClick={handleAddToCart}
-            >
-                Add to Cart
-            </button>
+        <div key={game.id} className="card h-full flex flex-col">
+            <div className="card-media" style={{ height: '180px' }}>
+                <img
+                    alt={game.title}
+                    height="180"
+                    src={`${urlService.apiBaseUrl}/${game.imagePath}`}
+                    width="100%"
+                />
+            </div>
+            <div className="flex-1 flex flex-col">
+                <h2
+                    className="text-xl font-bold mb-2 overflow-hidden text-ellipsis whitespace-nowrap"
+                    style={{ maxWidth: '100%' }}
+                    title={game.title}
+                >
+                    {game.title.length > 44 ? `${game.title.slice(0, 44)}...` : game.title}
+                </h2>
+                <p className="muted mb-4">${game.price}</p>
+                <button
+                    className="btn btn-primary w-full justify-center mt-auto"
+                    onClick={handleAddToCart}
+                >
+                    Add to Cart
+                </button>
+            </div>
         </div>
     );
 };

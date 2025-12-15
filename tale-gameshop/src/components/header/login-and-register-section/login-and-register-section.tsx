@@ -21,29 +21,26 @@ const LoginAndRegisterSection: React.FC = ({}) => {
 
     return <>
         <button
-            className="hidden lg:flex px-4 py-2 border border-gray-700 text-gray-700 animated-button cursor-pointer"
+            className="hidden lg:inline-flex btn btn-outline"
             onClick={login}
         >
             Login
         </button>
-        <div
-            className="lg:hidden text-gray-700 menu-item cursor-pointer"
-            onClick={login}>
-            Login
-        </div>
-
         <button
-            className="hidden lg:flex px-4 py-2 bg-black text-white animated-button cursor-pointer"
+            className="hidden lg:inline-flex btn btn-primary"
             onClick={register}
         >
             Sign Up
         </button>
-        <div
-            className="lg:hidden text-gray-700 menu-item cursor-pointer"
-            onClick={register}>
-            Sign Up
+
+        <div className="lg:hidden space-y-2 w-full">
+            <button className="btn btn-ghost w-full justify-center" onClick={login}>
+                Login
+            </button>
+            <button className="btn btn-primary w-full justify-center" onClick={register}>
+                Sign Up
+            </button>
         </div>
-        <div className="lg:hidden h-0"></div>
     </>
 }
 

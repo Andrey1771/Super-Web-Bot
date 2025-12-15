@@ -1,3 +1,27 @@
+.hero-panel {
+    padding: var(--space-48) var(--space-32);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 8%, #ffffff), #ffffff);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+.hero-panel p {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.media-panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
 .iframe-aspect {
     aspect-ratio: calc(16/9);
 }
