@@ -7,6 +7,9 @@
   --color-border: #e5e7eb;
   --color-shadow: rgba(17, 24, 39, 0.08);
   --color-primary: #7c3aed;
+  --color-hero: #0c0f1a;
+  --color-hero-surface: #161b2c;
+  --color-hero-muted: #d3d7e3;
 
   /* Radius scale */
   --radius-sm: 8px;
@@ -29,8 +32,8 @@
   --space-64: 64px;
 
   /* Layout */
-  --container-max-width: 1280px;
-  --container-padding: 28px;
+  --container-max-width: 1320px;
+  --container-padding: 32px;
 
   /* Typography */
   --font-family-base: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;

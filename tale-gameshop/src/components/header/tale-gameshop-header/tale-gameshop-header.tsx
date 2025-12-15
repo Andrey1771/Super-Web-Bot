@@ -35,83 +35,90 @@ export default function TaleGameshopHeader() {
     );
     const email = keycloak.tokenParsed?.email;
 
+    const navLinks = [
+        {label: "Home", to: "/"},
+        {label: "Store", to: "/games"},
+        {label: "Blog", to: "/apologyPage"},
+        {label: "About", to: "/about"},
+        {label: "Support", to: "/apologyPage"}
+    ];
 
     return (
         <nav className="header-nav">
-            <div className="container flex justify-between items-center py-4">
-                {/* Логотип */}
-                <img className="lg:hidden w-14 h-14 ml-4 sm:ml-0" src={logo} alt="Logo"/>
+            <div className="container header-bar">
+                <div className="brand">
+                    <img src={logo} alt="Tale Shop logo"/>
+                    <span className="menu-item">Tale Shop</span>
+                </div>
 
-                {/* Бургер-иконка */}
-                <button
-                    className="lg:hidden text-gray-700 text-2xl w-14 h-14"
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                >
-                    <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars}/>
-                </button>
-
-                {/* Меню */}
-                <ul
-                    className={`text-center flex-col lg:flex-row flex lg:flex items-center space-y-4 lg:space-y-0 lg:space-x-6 absolute lg:static left-0 top-16 lg:top-auto bg-white lg:bg-transparent w-full lg:w-auto z-50 lg:transition-transform lg:duration-300 ${
-                        isMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-                    }`}
-                >
-                    <li className="hidden lg:flex">
-                        {/* Логотип */}
-                        <img className="w-14 h-14" src={logo} alt="Logo"/>
-                    </li>
-                    <li>
-                        <Link className="text-gray-700 menu-item" to="/">
-                            Home Page
-                        </Link>
-                    </li>
-                    <li>
-                        <Link className="text-gray-700 menu-item" to="/games">
-                            Game List
-                        </Link>
-                    </li>
-                    <li>
-                        <Link className="text-gray-700 menu-item" to="/about">
-                            About Us
-                        </Link>
-                    </li>
+                <ul className="nav-links">
+                    {navLinks.map((link) => (
+                        <li key={link.label}>
+                            <Link className="menu-item" to={link.to}>
+                                {link.label}
+                            </Link>
+                        </li>
+                    ))}
                     <li className="relative dropdown">
-                        <Link to={`/games`} className="text-gray-700 menu-item">
-                            More Games
+                        <Link to={`/games`} className="menu-item">
+                            More
                         </Link>
                         <GameCategoryDropDown categories={[]}/>
                     </li>
-
-                    {/* Кнопки корзины, входа и регистрации */}
-                    <div className="flex flex-col space-y-4 lg:hidden">
-                        <CartIcon  isText={true}></CartIcon>
-                        {!keycloak.authenticated ? (
-                            <LoginAndRegisterSection></LoginAndRegisterSection>
-                        ) : (
-                            <>
-                                {isAdmin && (
-                                    <AdminPanelSection></AdminPanelSection>
-                                )}
-                                <LogOutButton/>
-                            </>
-                        )}
-                    </div>
                 </ul>
 
-                {/* Корзина и кнопки для больших экранов */}
-                <div className="hidden lg:flex space-x-4 items-center">
-                    <CartIcon  isText={false}></CartIcon>
+                <div className="header-actions">
+                    <CartIcon isText={false}></CartIcon>
                     {!keycloak.authenticated ? (
                         <LoginAndRegisterSection></LoginAndRegisterSection>
                     ) : (
                         <>
-                            <span className="mr-2">{email}</span>
+                            <span className="email">{email}</span>
                             {isAdmin && (
                                 <AdminPanelSection></AdminPanelSection>
                             )}
                             <LogOutButton/>
                         </>
                     )}
+                </div>
+
+                <button
+                    className="menu-toggle"
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    aria-label="Toggle menu"
+                >
+                    <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars}/>
+                </button>
+
+                <div className={`nav-drawer ${isMenuOpen ? 'open' : ''}`}>
+                    <ul>
+                        {navLinks.map((link) => (
+                            <li key={link.label}>
+                                <Link className="menu-item" to={link.to} onClick={() => setIsMenuOpen(false)}>
+                                    {link.label}
+                                </Link>
+                            </li>
+                        ))}
+                        <li>
+                            <Link to={`/games`} className="menu-item" onClick={() => setIsMenuOpen(false)}>
+                                More Games
+                            </Link>
+                            <GameCategoryDropDown categories={[]}/>
+                        </li>
+                    </ul>
+                    <div className="drawer-actions">
+                        <CartIcon isText={true}></CartIcon>
+                        {!keycloak.authenticated ? (
+                            <LoginAndRegisterSection stacked></LoginAndRegisterSection>
+                        ) : (
+                            <div className="auth-buttons stacked">
+                                {isAdmin && (
+                                    <AdminPanelSection></AdminPanelSection>
+                                )}
+                                <LogOutButton/>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </nav>
