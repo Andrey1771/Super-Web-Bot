@@ -21,6 +21,7 @@ import SuccessPurchasePage from "../cart/success-purchase-page/success-purchase-
 import ApologyPage from "../apology-page/apology-page";
 import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
+import BlogPage from "../blog-page/blog-page";
 
 export default function TaleGameshopMainWindow() {
     return (
@@ -44,6 +45,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/checkout" element={<CheckoutPage/>}/>
                     <Route path="/successPurchasePage" element={<SuccessPurchasePage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
+                    <Route path="/blog" element={<BlogPage/>}/>
                 </Routes>
             <TaleGameshopFooter></TaleGameshopFooter>
             <ChatBot></ChatBot>
