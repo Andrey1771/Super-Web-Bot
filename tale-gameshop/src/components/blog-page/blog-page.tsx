@@ -1,6 +1,14 @@
 import React, {useMemo, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faArrowRightLong, faMagnifyingGlass} from "@fortawesome/free-solid-svg-icons";
+import {
+    faArrowRightLong,
+    faCompass,
+    faGamepad,
+    faMagnifyingGlass,
+    faShieldHalved,
+    faTags,
+    faUserGroup
+} from "@fortawesome/free-solid-svg-icons";
 import {Link} from "react-router-dom";
 import "./blog-page.css";
 
@@ -132,6 +140,72 @@ const popularPosts: BlogPost[] = [
         image: "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1200&q=80"
     }
 ];
+
+const topicFilters = ["Steam", "RPG", "Co-op", "Indie", "Under $20", "Key safety"];
+
+const topicCards = [
+    {
+        title: "Buying guides",
+        description: "Builds, bundles, and platform picks tailored to your play style.",
+        icon: faCompass
+    },
+    {
+        title: "Deals",
+        description: "Fresh discounts on games, DLC, and hardware worth bookmarking.",
+        icon: faTags
+    },
+    {
+        title: "Reviews",
+        description: "Hands-on impressions that focus on feel, pacing, and replayability.",
+        icon: faGamepad
+    },
+    {
+        title: "Security & refunds",
+        description: "Stay safe with keys, receipts, and store policies that protect you.",
+        icon: faShieldHalved
+    },
+    {
+        title: "Updates",
+        description: "Patch notes, quality-of-life fixes, and roadmap highlights.",
+        icon: faUserGroup
+    },
+    {
+        title: "Community",
+        description: "Spotlights on co-op nights, fan creations, and friendly servers.",
+        icon: faArrowRightLong
+    }
+];
+
+const editorsPicks = {
+    featured: {
+        title: "Worldbuilding on a budget: standout indie RPGs",
+        description: "Explore rich narratives, flexible builds, and co-op friendly quests without breaking the bank.",
+        tag: "RPG",
+        date: "May 2",
+        readTime: "6 min read",
+        image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1600&q=80"
+    },
+    list: [
+        {
+            title: "Fresh co-op arrivals for weekend raids",
+            date: "May 1",
+            readTime: "4 min read",
+            image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80"
+        },
+        {
+            title: "Indie dev diaries: crafting meaningful choices",
+            date: "April 30",
+            readTime: "5 min read",
+            image: "https://images.unsplash.com/photo-1527443224154-d27e43401652?auto=format&fit=crop&w=900&q=80"
+        },
+        {
+            title: "Accessibility wins we loved this month",
+            date: "April 28",
+            readTime: "6 min read",
+            image: "https://images.unsplash.com/photo-1523966211575-eb4a017e3cc5?auto=format&fit=crop&w=900&q=80"
+        }
+    ]
+};
 
 export default function BlogPage() {
     const [activeFilter, setActiveFilter] = useState<typeof filters[number]>("All");
@@ -322,6 +396,115 @@ export default function BlogPage() {
                                 </div>
                             </article>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="browse-topics section">
+                <div className="container">
+                    <div className="section-header">
+                        <div>
+                            <h2>Browse by topic</h2>
+                            <p className="section-subtitle">
+                                Find what you need faster: guides, deals, reviews and updates.
+                            </p>
+                        </div>
+                        <div className="chip-row topic-chips" role="list">
+                            {topicFilters.map((topic) => (
+                                <button key={topic} className="chip" type="button" role="listitem">
+                                    {topic}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="topic-grid">
+                        {topicCards.map((topic) => (
+                            <article className="topic-card" key={topic.title}>
+                                <div className="topic-icon" aria-hidden="true">
+                                    <FontAwesomeIcon icon={topic.icon} />
+                                </div>
+                                <div className="topic-body">
+                                    <h3>{topic.title}</h3>
+                                    <p>{topic.description}</p>
+                                    <Link className="link-primary" to="#">
+                                        Explore
+                                        <FontAwesomeIcon icon={faArrowRightLong} />
+                                    </Link>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="editors-picks section">
+                <div className="container editors-layout">
+                    <div className="editors-featured">
+                        <div className="post-media" aria-hidden="true">
+                            <span className="badge category-badge">{editorsPicks.featured.tag}</span>
+                            <div className="media-overlay" />
+                            <img src={editorsPicks.featured.image} alt="" />
+                        </div>
+                        <div className="post-body">
+                            <h3>{editorsPicks.featured.title}</h3>
+                            <p>{editorsPicks.featured.description}</p>
+                            <div className="meta-row">
+                                <span>{editorsPicks.featured.date}</span>
+                                <span className="divider-dot" aria-hidden="true">•</span>
+                                <span>{editorsPicks.featured.readTime}</span>
+                            </div>
+                            <Link className="link-primary" to="#">
+                                Read more
+                                <FontAwesomeIcon icon={faArrowRightLong} />
+                            </Link>
+                        </div>
+                    </div>
+                    <div className="editors-list">
+                        <div className="editors-list-header">
+                            <h2>Editor&apos;s picks</h2>
+                            <Link className="link-primary" to="#">
+                                View all
+                                <FontAwesomeIcon icon={faArrowRightLong} />
+                            </Link>
+                        </div>
+                        <div className="editors-list-items">
+                            {editorsPicks.list.map((item) => (
+                                <article className="mini-post" key={item.title}>
+                                    <div className="mini-thumb" aria-hidden="true">
+                                        <img src={item.image} alt="" />
+                                    </div>
+                                    <div>
+                                        <h4>{item.title}</h4>
+                                        <div className="meta-row">
+                                            <span>{item.date}</span>
+                                            <span className="divider-dot" aria-hidden="true">•</span>
+                                            <span>{item.readTime}</span>
+                                        </div>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                        <div className="editors-dots" aria-hidden="true">
+                            <span className="dot active" />
+                            <span className="dot" />
+                            <span className="dot" />
+                            <span className="dot" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="cta-strip section">
+                <div className="container">
+                    <div className="cta-card">
+                        <div className="cta-copy">
+                            <h2>Looking for this week’s best prices?</h2>
+                            <p>One email per week. No spam. Unsubscribe anytime.</p>
+                        </div>
+                        <div className="cta-actions">
+                            <button className="btn btn-primary" type="button">Go to Store</button>
+                            <button className="btn btn-secondary" type="button">Browse deals</button>
+                        </div>
                     </div>
                 </div>
             </section>
