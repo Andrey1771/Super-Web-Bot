@@ -5,6 +5,8 @@ import {
     faCompass,
     faGamepad,
     faMagnifyingGlass,
+    faChevronLeft,
+    faChevronRight,
     faShieldHalved,
     faTags,
     faUserGroup
@@ -147,31 +149,37 @@ const topicCards = [
     {
         title: "Buying guides",
         description: "Builds, bundles, and platform picks tailored to your play style.",
+        highlights: ["Budget builds", "Platform picks"],
         icon: faCompass
     },
     {
         title: "Deals",
         description: "Fresh discounts on games, DLC, and hardware worth bookmarking.",
+        highlights: ["Fresh cuts", "Bundles"],
         icon: faTags
     },
     {
         title: "Reviews",
         description: "Hands-on impressions that focus on feel, pacing, and replayability.",
+        highlights: ["Feel & pacing", "Replayability"],
         icon: faGamepad
     },
     {
         title: "Security & refunds",
         description: "Stay safe with keys, receipts, and store policies that protect you.",
+        highlights: ["Receipts & protection", "Key safety"],
         icon: faShieldHalved
     },
     {
         title: "Updates",
         description: "Patch notes, quality-of-life fixes, and roadmap highlights.",
+        highlights: ["Roadmaps", "QoL fixes"],
         icon: faUserGroup
     },
     {
         title: "Community",
         description: "Spotlights on co-op nights, fan creations, and friendly servers.",
+        highlights: ["Co-op events", "Player tips"],
         icon: faArrowRightLong
     }
 ];
@@ -426,6 +434,11 @@ export default function BlogPage() {
                                 <div className="topic-body">
                                     <h3>{topic.title}</h3>
                                     <p>{topic.description}</p>
+                                    <ul className="topic-bullets">
+                                        {topic.highlights.map((item) => (
+                                            <li key={item}>{item}</li>
+                                        ))}
+                                    </ul>
                                     <Link className="link-primary" to="#">
                                         Explore
                                         <FontAwesomeIcon icon={faArrowRightLong} />
@@ -485,10 +498,18 @@ export default function BlogPage() {
                             ))}
                         </div>
                         <div className="editors-dots" aria-hidden="true">
-                            <span className="dot active" />
-                            <span className="dot" />
-                            <span className="dot" />
-                            <span className="dot" />
+                            <button className="dot-btn" type="button">
+                                <FontAwesomeIcon icon={faChevronLeft} />
+                            </button>
+                            <div className="dot-track">
+                                <span className="dot active" />
+                                <span className="dot" />
+                                <span className="dot" />
+                                <span className="dot" />
+                            </div>
+                            <button className="dot-btn" type="button">
+                                <FontAwesomeIcon icon={faChevronRight} />
+                            </button>
                         </div>
                     </div>
                 </div>
