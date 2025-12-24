@@ -4,7 +4,7 @@
   background: linear-gradient(160deg, #0f1221 0%, #0c1020 60%, #0f1221 100%);
   color: #e7ebf5;
   margin-top: 0;
-  padding: 72px 0 48px;
+  padding: 72px 0 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -37,6 +37,8 @@
 .footer-column {
   display: grid;
   gap: 8px;
+  grid-template-rows: min-content min-content;
+  grid-template-columns: min-content;
 }
 
 .footer-title {
@@ -81,7 +83,7 @@
 .footer-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
-  margin: 40px 0 28px;
+  margin: 40px 0 10px;
 }
 
 .footer-bottom {

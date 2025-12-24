@@ -38,7 +38,7 @@ export default function TaleGameshopHeader() {
     const navLinks = [
         {label: "Home", to: "/"},
         {label: "Store", to: "/games"},
-        {label: "Blog", to: "/apologyPage"},
+        {label: "Blog", to: "/blog"},
         {label: "About", to: "/about"},
         {label: "Support", to: "/apologyPage"}
     ];

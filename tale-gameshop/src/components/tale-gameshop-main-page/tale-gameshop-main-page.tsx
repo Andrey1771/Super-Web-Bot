@@ -347,11 +347,6 @@ export default function TaleGameshopMainPage() {
                             </div>
                         </div>
                     </div>
-
-                    <div className="bridge">
-                        <div className="divider" />
-                        <div className="bridge-label muted">Next: Why choose us</div>
-                    </div>
                 </div>
             </section>
 
@@ -516,13 +511,6 @@ export default function TaleGameshopMainPage() {
                     </div>
                 </div>
             </section>
-
-            <div className="section-bridge">
-                <div className="container">
-                    <div className="divider" />
-                    <p className="muted bridge-copy">Next: Ready to explore the Store?</p>
-                </div>
-            </div>
 
             <section className="store-prefooter">
                 <div className="container">

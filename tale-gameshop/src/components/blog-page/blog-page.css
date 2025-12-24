@@ -514,7 +514,6 @@
   position: absolute;
   inset: 10px;
   border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
   pointer-events: none;
 }
 
