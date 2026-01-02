@@ -7,7 +7,7 @@ import {useKeycloak} from "@react-keycloak/web";
 import {faBars, faTimes} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
-import {ReactComponent as TaleLogo} from "../../../assets/images/tale-shop-logo.svg";
+import TaleGameshopLogo from "../tale-gameshop-logo/tale-gameshop-logo";
 import CartIcon from "../../cart/cart-icon/cart-icon";
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
 import AdminPanelSection from "../admin-panel-section/admin-panel-section";
@@ -44,7 +44,7 @@ export default function TaleGameshopHeader() {
         <nav className={`header-nav ${isTop ? "header--top" : "scrolled"}`}>
             <div className="container header-bar">
                 <div className="brand">
-                    <TaleLogo className="brand-logo" role="img" aria-label="Tale Shop logo"/>
+                    <TaleGameshopLogo className="brand-logo" role="img" aria-label="Tale Shop logo"/>
                     <span className="menu-item">Tale Shop</span>
                 </div>
 
