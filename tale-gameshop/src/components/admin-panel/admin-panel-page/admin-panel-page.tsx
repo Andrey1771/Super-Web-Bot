@@ -12,20 +12,21 @@ const AdminPanelPage: React.FC = () => {
                 <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.35)_1px,transparent_1px)] [background-size:120px_120px] opacity-40" />
             </div>
 
-            <header className="relative z-20 border-b border-white/40 bg-white/40 px-6 py-4 shadow-[0_18px_40px_rgba(77,45,141,0.25)] backdrop-blur">
-                <div className="mx-auto flex max-w-[1200px] items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 text-[#5f3fd1] shadow-inner">
-                            <span className="text-2xl font-semibold">T</span>
+            <header className="relative z-20 border-b border-white/40 bg-gradient-to-r from-white/45 via-white/35 to-white/30 px-6 py-4 shadow-[0_18px_40px_rgba(77,45,141,0.25)] backdrop-blur">
+                <div className="mx-auto flex max-w-[1180px] items-center justify-between">
+                    <div className="flex items-center gap-4 text-[#3b2966]">
+                        <div className="flex h-12 w-16 items-center justify-center rounded-2xl bg-white/80 px-2 shadow-inner">
+                            <span className="text-2xl font-semibold italic tracking-wide">Tale</span>
                         </div>
-                        <div className="text-[#3b2966]">
-                            <p className="text-lg font-semibold leading-none">Tale Shop</p>
-                            <p className="text-xs uppercase tracking-[0.25em] text-[#6b58a5]">Admin Panel</p>
+                        <div className="flex items-center gap-3 text-lg font-semibold">
+                            <span>Tale Shop</span>
+                            <span className="text-[#8a79be]">|</span>
+                            <span className="font-medium text-[#7055b0]">Admin Panel</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 text-[#5f3fd1]">
+                    <div className="flex items-center gap-3 text-[#6b45d9]">
                         <div className="relative">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/70">
+                            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70 shadow-[0_12px_25px_rgba(77,45,141,0.2)]">
                                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
                                     <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                     <path d="M10 21a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -33,7 +34,7 @@ const AdminPanelPage: React.FC = () => {
                             </span>
                             <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#6b45d9] text-[10px] font-semibold text-white">3</span>
                         </div>
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/70">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70 shadow-[0_12px_25px_rgba(77,45,141,0.2)]">
                             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
                                 <path d="M12 3v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                 <path d="M12 19v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -46,7 +47,7 @@ const AdminPanelPage: React.FC = () => {
                                 <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
                             </svg>
                         </span>
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/70">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70 shadow-[0_12px_25px_rgba(77,45,141,0.2)]">
                             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
                                 <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
@@ -56,50 +57,36 @@ const AdminPanelPage: React.FC = () => {
             </header>
 
             <div className="relative z-10 flex min-h-[calc(100vh-88px)] flex-col lg:flex-row">
-                <aside className="relative w-full border-b border-white/30 bg-gradient-to-b from-[#5c3bb4] via-[#4b2f93] to-[#3b2474] px-6 py-8 text-white lg:w-[260px] lg:border-b-0 lg:border-r lg:border-white/20">
+                <aside className="relative w-full border-b border-white/30 bg-gradient-to-b from-[#5c3bb4] via-[#4b2f93] to-[#3b2474] px-5 py-6 text-white lg:w-[240px] lg:border-b-0 lg:border-r lg:border-white/20">
                     <div className="pointer-events-none absolute inset-0 opacity-50">
                         <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.3)_1px,transparent_1px)] [background-size:120px_120px]" />
                     </div>
                     <div className="relative">
-                        <div className="flex items-center gap-3 rounded-2xl bg-white/15 p-4 shadow-[0_18px_40px_rgba(29,13,82,0.35)] backdrop-blur">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#5b3bb7] shadow-inner">
-                                <span className="text-2xl font-semibold">T</span>
-                            </div>
-                            <div>
-                                <p className="text-lg font-semibold tracking-wide">Tale Shop</p>
-                                <p className="text-xs uppercase tracking-[0.2em] text-white/70">Admin Panel</p>
-                            </div>
-                        </div>
-
-                        <nav className="mt-8 space-y-2 text-sm font-medium">
-                            <button className="flex w-full items-center gap-3 rounded-xl border border-white/40 bg-white/20 px-4 py-3 text-white shadow-[0_14px_30px_rgba(36,16,98,0.35)]">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/30 text-white">
-                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                        <rect x="4" y="4" width="6" height="6" rx="1.5" fill="currentColor" />
-                                        <rect x="14" y="4" width="6" height="6" rx="1.5" fill="currentColor" />
-                                        <rect x="4" y="14" width="6" height="6" rx="1.5" fill="currentColor" />
-                                        <rect x="14" y="14" width="6" height="6" rx="1.5" fill="currentColor" />
-                                    </svg>
-                                </span>
+                        <nav className="space-y-1 text-sm font-medium">
+                            <button className="flex w-full items-center gap-3 rounded-lg border border-white/40 bg-white/20 px-4 py-2 text-white shadow-[0_10px_24px_rgba(36,16,98,0.35)]">
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                    <rect x="4" y="4" width="6" height="6" rx="1.5" fill="currentColor" />
+                                    <rect x="14" y="4" width="6" height="6" rx="1.5" fill="currentColor" />
+                                    <rect x="4" y="14" width="6" height="6" rx="1.5" fill="currentColor" />
+                                    <rect x="14" y="14" width="6" height="6" rx="1.5" fill="currentColor" />
+                                </svg>
                                 Anim Home
                             </button>
                             {[
-                                { label: "Dashboard", icon: "M5 12h14" },
-                                { label: "Games", icon: "M7 7h10" },
-                                { label: "Orders", icon: "M5 16h14" },
-                                { label: "Analytics", icon: "M6 16l2-2 3 3 4-6 3 5" },
+                                { label: "Dashboard", icon: "M4 12h16" },
+                                { label: "Games", icon: "M6 9h12" },
+                                { label: "Orders", icon: "M6 15h12" },
+                                { label: "Analytics", icon: "M6 15l3-3 3 2 4-5" },
                                 { label: "Users", icon: "M12 6a4 4 0 1 1-4 4" },
                                 { label: "Settings", icon: "M12 8v8" },
                             ].map((item) => (
                                 <button
                                     key={item.label}
-                                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-white/55 transition hover:bg-white/10 hover:text-white"
+                                    className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-white/55 transition hover:bg-white/10 hover:text-white"
                                 >
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
-                                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                            <path d={item.icon} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                    </span>
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                        <path d={item.icon} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
                                     {item.label}
                                 </button>
                             ))}
@@ -112,10 +99,10 @@ const AdminPanelPage: React.FC = () => {
                         <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.4)_1px,transparent_1px)] [background-size:140px_140px]" />
                     </div>
 
-                    <div className="relative mx-auto max-w-[1080px] space-y-6">
-                        <div className="rounded-[28px] border border-white/60 bg-white/55 p-6 shadow-[0_24px_60px_rgba(92,64,170,0.25)] backdrop-blur">
+                    <div className="relative mx-auto max-w-[1060px] space-y-6">
+                        <div className="rounded-[26px] border border-white/70 bg-white/60 p-6 shadow-[0_22px_55px_rgba(92,64,170,0.24)] backdrop-blur">
                             <div className="flex items-center gap-4">
-                                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e8ddff] text-[#6b45d9]">
+                                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#e6dbff] text-[#6b45d9]">
                                     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none">
                                         <path d="M12 3v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                         <path d="M12 18v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -134,7 +121,7 @@ const AdminPanelPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-6 rounded-2xl border border-white/70 bg-white/60 px-5 py-4 shadow-[0_14px_30px_rgba(90,60,150,0.15)]">
+                            <div className="mt-5 rounded-2xl border border-white/70 bg-white/65 px-5 py-4 shadow-[0_14px_30px_rgba(90,60,150,0.15)]">
                                 <div className="grid gap-4 text-sm text-[#3a2965] sm:grid-cols-2">
                                     <div className="flex items-center gap-3">
                                         <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#efe7ff] text-[#6b45d9]">
@@ -227,8 +214,11 @@ const AdminPanelPage: React.FC = () => {
                             ].map((card) => (
                                 <div
                                     key={card.title}
-                                    className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-white/60 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur"
+                                    className="relative flex min-h-[168px] flex-col justify-between overflow-hidden rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur"
                                 >
+                                    <div className="pointer-events-none absolute inset-0 opacity-30">
+                                        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:120px_120px]" />
+                                    </div>
                                     <div className="flex items-center gap-3 text-[#6b45d9]">
                                         <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#efe7ff]">
                                             {card.icon}
@@ -239,14 +229,17 @@ const AdminPanelPage: React.FC = () => {
                                         </div>
                                     </div>
                                     <Link
-                                        className="mx-auto mt-4 inline-flex w-24 items-center justify-center rounded-xl bg-[#6b45d9] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(93,66,180,0.45)]"
+                                        className="relative mx-auto mt-4 inline-flex h-8 w-20 items-center justify-center rounded-lg bg-[#6b45d9] text-sm font-semibold text-white shadow-[0_10px_20px_rgba(93,66,180,0.45)]"
                                         to={card.to}
                                     >
                                         Open
                                     </Link>
                                 </div>
                             ))}
-                            <div className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-white/60 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
+                            <div className="relative flex min-h-[168px] flex-col justify-between overflow-hidden rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
+                                <div className="pointer-events-none absolute inset-0 opacity-30">
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:120px_120px]" />
+                                </div>
                                 <div className="flex items-center gap-3 text-[#6b45d9]">
                                     <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#efe7ff]">
                                         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -258,14 +251,14 @@ const AdminPanelPage: React.FC = () => {
                                         <p className="text-xs text-[#6b58a5]">Shortcuts for admin tasks</p>
                                     </div>
                                 </div>
-                                <button className="mx-auto mt-4 inline-flex w-24 items-center justify-center rounded-xl bg-[#6b45d9] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(93,66,180,0.45)]">
+                                <button className="relative mx-auto mt-4 inline-flex h-8 w-20 items-center justify-center rounded-lg bg-[#6b45d9] text-sm font-semibold text-white shadow-[0_10px_20px_rgba(93,66,180,0.45)]">
                                     Open
                                 </button>
                             </div>
                         </div>
 
                         <div className="grid gap-4 lg:grid-cols-2">
-                            <div className="rounded-2xl border border-white/60 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
+                            <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">Quick Stats</h3>
                                     <span className="text-lg text-[#6b45d9]">›</span>
@@ -274,12 +267,12 @@ const AdminPanelPage: React.FC = () => {
                                     {[
                                         { label: "Total users", value: "34,210", icon: "M12 8a4 4 0 1 1-4 4" },
                                         { label: "Active today", value: "1,240", icon: "M13 2L4 14h7l-1 8 9-12h-7l1-8Z" },
-                                        { label: "Orders today", value: "56", icon: "M3 7h18" },
+                                        { label: "Orders today", value: "56", icon: "M4 7h16" },
                                         { label: "System warnings", value: "3", icon: "M12 8v5" },
                                     ].map((item, index) => (
-                                        <div key={item.label} className="flex items-center justify-between rounded-xl bg-white/60 px-4 py-3">
+                                        <div key={item.label} className="flex items-center justify-between rounded-xl bg-white/65 px-4 py-3">
                                             <div className="flex items-center gap-3 text-[#6b45d9]">
-                                                <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${index === 3 ? "bg-[#ffe1e1] text-[#d85959]" : "bg-[#efe7ff]"}`}>
+                                                <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${index === 3 ? "bg-[#ffe1e1] text-[#d85959]" : "bg-[#efe7ff]"}`}>
                                                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
                                                         <path d={item.icon} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
@@ -292,26 +285,69 @@ const AdminPanelPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-white/60 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
+                            <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">Recent Activity</h3>
                                     <span className="text-lg text-[#6b45d9]">›</span>
                                 </div>
                                 <div className="mt-4 space-y-3">
                                     {[
-                                        { label: "User #1090 logged in", time: "2 min ago" },
-                                        { label: "Bot config updated", time: "15 min ago" },
-                                        { label: "New image uploaded", time: "1 hour ago" },
-                                        { label: "Card added", time: "2 hours ago" },
-                                        { label: "User #1087 banned", time: "Yesterday" },
+                                        {
+                                            label: "User #1090 logged in",
+                                            time: "2 min ago",
+                                            icon: (
+                                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                    <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="2" />
+                                                    <path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                </svg>
+                                            ),
+                                        },
+                                        {
+                                            label: "Bot config updated",
+                                            time: "15 min ago",
+                                            icon: (
+                                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                    <rect x="5" y="7" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
+                                                    <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+                                                </svg>
+                                            ),
+                                        },
+                                        {
+                                            label: "New image uploaded",
+                                            time: "1 hour ago",
+                                            icon: (
+                                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                    <rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+                                                    <path d="M7 14l3-3 3 3 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            ),
+                                        },
+                                        {
+                                            label: "Card added",
+                                            time: "2 hours ago",
+                                            icon: (
+                                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                    <rect x="5" y="7" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
+                                                    <path d="M8 10h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                    <path d="M8 14h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                </svg>
+                                            ),
+                                        },
+                                        {
+                                            label: "User #1087 banned",
+                                            time: "Yesterday",
+                                            icon: (
+                                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                    <circle cx="12" cy="12" r="6" stroke="currentColor" strokeWidth="2" />
+                                                    <path d="M8.5 8.5l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                </svg>
+                                            ),
+                                        },
                                     ].map((item) => (
-                                        <div key={item.label} className="flex items-center justify-between rounded-xl bg-white/60 px-4 py-3">
+                                        <div key={item.label} className="flex items-center justify-between rounded-xl bg-white/65 px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#efe7ff] text-[#6b45d9]">
-                                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                                        <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="2" />
-                                                        <path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                                    </svg>
+                                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#efe7ff] text-[#6b45d9]">
+                                                    {item.icon}
                                                 </span>
                                                 <span className="text-sm text-[#3a2965]">{item.label}</span>
                                             </div>
@@ -323,15 +359,15 @@ const AdminPanelPage: React.FC = () => {
                         </div>
 
                         <div className="grid gap-4 lg:grid-cols-2">
-                            <div className="rounded-2xl border border-white/60 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
+                            <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">System Tools</h3>
                                     <span className="text-lg text-[#6b45d9]">›</span>
                                 </div>
                                 <div className="mt-4 space-y-3">
-                                    <div className="flex items-center justify-between rounded-xl bg-white/60 px-4 py-3">
+                                    <div className="flex items-center justify-between rounded-xl bg-white/65 px-4 py-3">
                                         <div className="flex items-center gap-3">
-                                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#efe7ff] text-[#6b45d9]">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#efe7ff] text-[#6b45d9]">
                                                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
                                                     <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
                                                     <path d="M7 9h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -341,9 +377,9 @@ const AdminPanelPage: React.FC = () => {
                                         </div>
                                         <span className="rounded-full bg-[#dff7ec] px-3 py-1 text-xs font-semibold text-[#3aa774]">Production</span>
                                     </div>
-                                    <div className="flex items-center justify-between rounded-xl bg-white/60 px-4 py-3">
+                                    <div className="flex items-center justify-between rounded-xl bg-white/65 px-4 py-3">
                                         <div className="flex items-center gap-3">
-                                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#efe7ff] text-[#6b45d9]">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#efe7ff] text-[#6b45d9]">
                                                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
                                                     <path d="M4 12h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                                     <path d="M8 8l4-4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -352,28 +388,55 @@ const AdminPanelPage: React.FC = () => {
                                             </span>
                                             <span className="text-sm font-medium text-[#3a2965]">API status</span>
                                         </div>
-                                        <span className="rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold text-[#6b45d9]">Operational ›</span>
+                                        <span className="rounded-full bg-[#efe7ff] px-3 py-1 text-xs font-semibold text-[#6b45d9]">Operational &gt;</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-white/60 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
+                            <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">Recent Activity</h3>
                                     <span className="text-lg text-[#6b45d9]">›</span>
                                 </div>
                                 <div className="mt-4 grid grid-cols-2 gap-3">
                                     {[
-                                        "Clear cache",
-                                        "Udpn cache",
-                                        "Reindex data",
-                                        "Upgrade log",
-                                    ].map((label) => (
+                                        {
+                                            label: "Clear cache",
+                                            icon: (
+                                                <path d="M4 7h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                            ),
+                                        },
+                                        {
+                                            label: "Udpn cache",
+                                            icon: (
+                                                <path d="M8 6h8v12H8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                            ),
+                                        },
+                                        {
+                                            label: "Reindex data",
+                                            icon: (
+                                                <path d="M6 12a6 6 0 1 1 2 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                            ),
+                                        },
+                                        {
+                                            label: "Upgrade log",
+                                            icon: (
+                                                <path d="M6 18V6h6l6 6v6H6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                            ),
+                                        },
+                                    ].map((item) => (
                                         <button
-                                            key={label}
-                                            className="flex items-center justify-between rounded-xl bg-white/70 px-4 py-3 text-xs font-semibold text-[#6b45d9] shadow"
+                                            key={item.label}
+                                            className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-3 text-xs font-semibold text-[#6b45d9] shadow"
                                         >
-                                            {label}
+                                            <span className="flex items-center gap-2">
+                                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#efe7ff] text-[#6b45d9]">
+                                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                        {item.icon}
+                                                    </svg>
+                                                </span>
+                                                {item.label}
+                                            </span>
                                             <span className="text-sm">›</span>
                                         </button>
                                     ))}
