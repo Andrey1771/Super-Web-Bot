@@ -1,7 +1,48 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from "react-router-dom";
 
 const AdminPanelPage: React.FC = () => {
+    const [toast, setToast] = useState<string | null>(null);
+    const [modal, setModal] = useState<null | "details" | "updateLog">(null);
+    const [isReindexing, setIsReindexing] = useState(false);
+    const [returnTo, setReturnTo] = useState("/");
+
+    useEffect(() => {
+        const lastPublic = localStorage.getItem("admin:returnTo");
+        if (lastPublic) {
+            setReturnTo(lastPublic);
+        }
+    }, []);
+
+    useEffect(() => {
+        const referrer = document.referrer;
+        if (referrer && !referrer.includes("/admin")) {
+            localStorage.setItem("admin:returnTo", referrer);
+            setReturnTo(referrer);
+        }
+    }, []);
+
+    const showToast = (message: string) => {
+        setToast(message);
+        window.setTimeout(() => setToast(null), 2200);
+    };
+
+    const handleSoon = () => showToast("Coming soon");
+    const handleClearCache = () => {
+        Object.keys(localStorage)
+            .filter((key) => key.startsWith("admin:"))
+            .forEach((key) => localStorage.removeItem(key));
+        showToast("Cache cleared");
+    };
+    const handleUdpnCache = () => showToast("Udpn cache refreshed");
+    const handleReindex = () => {
+        setIsReindexing(true);
+        showToast("Reindex started");
+        window.setTimeout(() => setIsReindexing(false), 1500);
+    };
+    const handleViewSite = () => {
+        window.location.href = returnTo || "/";
+    };
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#7c59ef] via-[#b08bf7] to-[#caa2ff] text-[#2d1b54]">
@@ -14,17 +55,28 @@ const AdminPanelPage: React.FC = () => {
 
             <header className="relative z-20 border-b border-white/40 bg-gradient-to-r from-white/45 via-white/35 to-white/30 px-6 py-4 shadow-[0_18px_40px_rgba(77,45,141,0.25)] backdrop-blur">
                 <div className="mx-auto flex max-w-[1180px] items-center justify-between">
-                    <div className="flex items-center gap-4 text-[#3b2966]">
+                    <div className="flex flex-wrap items-center gap-4 text-[#3b2966]">
                         <div className="flex h-12 w-16 items-center justify-center rounded-2xl bg-white/80 px-2 shadow-inner">
                             <span className="text-2xl font-semibold italic tracking-wide">Tale</span>
                         </div>
                         <div className="flex items-center gap-3 text-lg font-semibold">
                             <span>Tale Shop</span>
-                            <span className="text-[#8a79be]">|</span>
+                            <span className="text-[#8a79be]">/</span>
                             <span className="font-medium text-[#7055b0]">Admin Panel</span>
                         </div>
+                        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#6b45d9] shadow">Admin mode</span>
                     </div>
                     <div className="flex items-center gap-3 text-[#6b45d9]">
+                        <button
+                            className="hidden items-center gap-2 rounded-xl bg-white/70 px-4 py-2 text-sm font-semibold text-[#6b45d9] shadow-[0_12px_25px_rgba(77,45,141,0.2)] md:flex"
+                            onClick={handleViewSite}
+                        >
+                            View site
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                <path d="M7 17L17 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M10 7h7v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
+                        </button>
                         <div className="relative">
                             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70 shadow-[0_12px_25px_rgba(77,45,141,0.2)]">
                                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -82,15 +134,85 @@ const AdminPanelPage: React.FC = () => {
                             ].map((item) => (
                                 <button
                                     key={item.label}
-                                    className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-white/55 transition hover:bg-white/10 hover:text-white"
+                                    className="flex w-full cursor-not-allowed items-center justify-between rounded-lg px-4 py-2 text-white/45 transition hover:bg-white/10 hover:text-white"
+                                    onClick={handleSoon}
+                                    aria-disabled="true"
                                 >
-                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                        <path d={item.icon} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    {item.label}
+                                    <span className="flex items-center gap-3">
+                                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                            <path d={item.icon} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        {item.label}
+                                    </span>
+                                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                                        Soon
+                                    </span>
                                 </button>
                             ))}
                         </nav>
+                        <div className="mt-6 space-y-2 border-t border-white/10 pt-4 text-sm">
+                            <Link
+                                className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-white/75 transition hover:bg-white/10 hover:text-white"
+                                to="/admin/botChanger"
+                            >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                    <rect x="4" y="7" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="1.7" />
+                                    <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+                                </svg>
+                                Bot Config
+                            </Link>
+                            <Link
+                                className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-white/75 transition hover:bg-white/10 hover:text-white"
+                                to="/admin/siteChanger"
+                            >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                    <rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.7" />
+                                    <path d="M7 14l3-3 3 3 4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                Media Manager
+                            </Link>
+                            <Link
+                                className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-white/75 transition hover:bg-white/10 hover:text-white"
+                                to="/admin/cardAdder"
+                            >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                    <rect x="5" y="7" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.7" />
+                                    <path d="M8 10h6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                                </svg>
+                                Cards & Content
+                            </Link>
+                            <Link
+                                className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-white/75 transition hover:bg-white/10 hover:text-white"
+                                to="/admin/userInfo"
+                            >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.7" />
+                                    <path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                                </svg>
+                                User Info
+                            </Link>
+                            <Link
+                                className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-white/75 transition hover:bg-white/10 hover:text-white"
+                                to="/admin/userStats"
+                            >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                    <path d="M6 16v-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                                    <path d="M12 16V8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                                    <path d="M18 16V4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                                </svg>
+                                User Stats
+                            </Link>
+                        </div>
+                        <button
+                            className="mt-6 flex w-full items-center gap-3 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(36,16,98,0.35)] transition hover:bg-white/20"
+                            onClick={handleViewSite}
+                        >
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                <path d="M7 17L17 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M10 7h7v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
+                            View site
+                        </button>
                     </div>
                 </aside>
 
@@ -261,7 +383,7 @@ const AdminPanelPage: React.FC = () => {
                             <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">Quick Stats</h3>
-                                    <span className="text-lg text-[#6b45d9]">›</span>
+                                    <button className="text-lg text-[#6b45d9]" onClick={() => setModal("details")}>›</button>
                                 </div>
                                 <div className="mt-4 space-y-3">
                                     {[
@@ -288,7 +410,7 @@ const AdminPanelPage: React.FC = () => {
                             <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">Recent Activity</h3>
-                                    <span className="text-lg text-[#6b45d9]">›</span>
+                                    <button className="text-lg text-[#6b45d9]" onClick={() => setModal("details")}>›</button>
                                 </div>
                                 <div className="mt-4 space-y-3">
                                     {[
@@ -362,7 +484,7 @@ const AdminPanelPage: React.FC = () => {
                             <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">System Tools</h3>
-                                    <span className="text-lg text-[#6b45d9]">›</span>
+                                    <button className="text-lg text-[#6b45d9]" onClick={() => setModal("details")}>›</button>
                                 </div>
                                 <div className="mt-4 space-y-3">
                                     <div className="flex items-center justify-between rounded-xl bg-white/65 px-4 py-3">
@@ -396,7 +518,7 @@ const AdminPanelPage: React.FC = () => {
                             <div className="rounded-2xl border border-white/70 bg-white/60 p-5 shadow-[0_18px_40px_rgba(92,64,170,0.2)] backdrop-blur">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base font-semibold text-[#3a2965]">Recent Activity</h3>
-                                    <span className="text-lg text-[#6b45d9]">›</span>
+                                    <button className="text-lg text-[#6b45d9]" onClick={() => setModal("details")}>›</button>
                                 </div>
                                 <div className="mt-4 grid grid-cols-2 gap-3">
                                     {[
@@ -428,6 +550,21 @@ const AdminPanelPage: React.FC = () => {
                                         <button
                                             key={item.label}
                                             className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-3 text-xs font-semibold text-[#6b45d9] shadow"
+                                            onClick={() => {
+                                                if (item.label === "Clear cache") {
+                                                    handleClearCache();
+                                                    return;
+                                                }
+                                                if (item.label === "Udpn cache") {
+                                                    handleUdpnCache();
+                                                    return;
+                                                }
+                                                if (item.label === "Reindex data") {
+                                                    handleReindex();
+                                                    return;
+                                                }
+                                                setModal("updateLog");
+                                            }}
                                         >
                                             <span className="flex items-center gap-2">
                                                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#efe7ff] text-[#6b45d9]">
@@ -437,7 +574,11 @@ const AdminPanelPage: React.FC = () => {
                                                 </span>
                                                 {item.label}
                                             </span>
-                                            <span className="text-sm">›</span>
+                                            {item.label === "Reindex data" && isReindexing ? (
+                                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#6b45d9] border-t-transparent" />
+                                            ) : (
+                                                <span className="text-sm">›</span>
+                                            )}
                                         </button>
                                     ))}
                                 </div>
@@ -446,6 +587,40 @@ const AdminPanelPage: React.FC = () => {
                     </div>
                 </main>
             </div>
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-white/90 px-4 py-3 text-sm font-semibold text-[#6b45d9] shadow-[0_18px_40px_rgba(77,45,141,0.25)] backdrop-blur">
+                    {toast}
+                </div>
+            )}
+            {modal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+                    <div className="w-full max-w-md rounded-2xl border border-white/40 bg-white/90 p-6 shadow-[0_20px_50px_rgba(77,45,141,0.3)] backdrop-blur">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-[#3a2965]">
+                                {modal === "details" ? "Details" : "Update log"}
+                            </h3>
+                            <button className="text-[#6b45d9]" onClick={() => setModal(null)}>✕</button>
+                        </div>
+                        {modal === "details" ? (
+                            <p className="mt-3 text-sm text-[#6b58a5]">
+                                This section shows additional context, alerts, and quick summaries tailored for admin workflows.
+                            </p>
+                        ) : (
+                            <ul className="mt-4 space-y-2 text-sm text-[#6b58a5]">
+                                <li>• Updated content moderation rules.</li>
+                                <li>• Added new bot response templates.</li>
+                                <li>• Improved analytics snapshots for admins.</li>
+                            </ul>
+                        )}
+                        <button
+                            className="mt-5 w-full rounded-xl bg-[#6b45d9] py-2 text-sm font-semibold text-white"
+                            onClick={() => setModal(null)}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
 
     );
