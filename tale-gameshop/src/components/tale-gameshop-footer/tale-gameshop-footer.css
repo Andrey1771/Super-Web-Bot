@@ -1,11 +1,11 @@
 @import '../../styles/tokens.css';
 
 .footer {
-  background: linear-gradient(160deg, #0f1221 0%, #0c1020 60%, #0f1221 100%);
+  background: linear-gradient(160deg, #0f1224 0%, #0d1022 60%, #0f1224 100%);
   color: #e7ebf5;
   margin-top: 0;
-  padding: 72px 0 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 64px 0 56px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .footer-top {
@@ -48,7 +48,7 @@
 }
 
 .footer-column a {
-  color: #cdd2e1;
+  color: #c9cce1;
   font-size: 15px;
   transition: color 0.2s ease;
 }
@@ -61,10 +61,10 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   padding: 6px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .lang {
@@ -72,11 +72,11 @@
   border-radius: 999px;
   font-weight: 700;
   font-size: 14px;
-  color: #cdd2e1;
+  color: #c9cce1;
 }
 
 .lang.active {
-  background: rgba(124, 58, 237, 0.18);
+  background: rgba(124, 58, 237, 0.22);
   color: #ffffff;
 }
 

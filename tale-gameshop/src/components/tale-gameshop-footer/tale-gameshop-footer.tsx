@@ -45,27 +45,6 @@ export default function TaleGameshopFooter() {
                     </div>
                 </div>
             </div>
-
-            <div className="footer-divider" />
-
-            <div className="container">
-                <div className="footer-bottom">
-                    <span className="muted">© 2025 Tale Shop</span>
-                    <div className="footer-meta">
-                        <div className="footer-payments" aria-label="Payment methods">
-                            <span className="pill">Pay</span>
-                            <span className="pill">Card</span>
-                            <span className="pill">Wallet</span>
-                            <span className="pill">Secure</span>
-                        </div>
-                        <div className="footer-social" aria-label="Social links">
-                            <a href="/apologyPage" aria-label="Discord" className="icon-circle">D</a>
-                            <a href="/apologyPage" aria-label="Twitter" className="icon-circle">T</a>
-                            <a href="/apologyPage" aria-label="YouTube" className="icon-circle">Y</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </footer>
     );
 }

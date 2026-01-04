@@ -8,7 +8,6 @@ import {faBars, faTimes} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
 import logo from '../../../assets/images/tale-shop-logo.jpeg';
-import CartIcon from "../../cart/cart-icon/cart-icon";
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
 import AdminPanelSection from "../admin-panel-section/admin-panel-section";
 
@@ -60,15 +59,17 @@ export default function TaleGameshopHeader() {
                         </li>
                     ))}
                     <li className="relative dropdown">
-                        <Link to={`/games`} className="menu-item">
+                        <Link to={`/games`} className="menu-item more-link">
                             More
+                            <svg aria-hidden="true" viewBox="0 0 24 24">
+                                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                            </svg>
                         </Link>
                         <GameCategoryDropDown categories={[]}/>
                     </li>
                 </ul>
 
                 <div className="header-actions">
-                    <CartIcon isText={false}></CartIcon>
                     {!keycloak.authenticated ? (
                         <LoginAndRegisterSection></LoginAndRegisterSection>
                     ) : (
@@ -97,17 +98,16 @@ export default function TaleGameshopHeader() {
                                 <Link className="menu-item" to={link.to} onClick={() => setIsMenuOpen(false)}>
                                     {link.label}
                                 </Link>
-                            </li>
-                        ))}
-                        <li>
-                            <Link to={`/games`} className="menu-item" onClick={() => setIsMenuOpen(false)}>
-                                More Games
-                            </Link>
-                            <GameCategoryDropDown categories={[]}/>
                         </li>
+                    ))}
+                    <li>
+                        <Link to={`/games`} className="menu-item" onClick={() => setIsMenuOpen(false)}>
+                            More Games
+                        </Link>
+                        <GameCategoryDropDown categories={[]}/>
+                    </li>
                     </ul>
                     <div className="drawer-actions">
-                        <CartIcon isText={true}></CartIcon>
                         {!keycloak.authenticated ? (
                             <LoginAndRegisterSection stacked></LoginAndRegisterSection>
                         ) : (
