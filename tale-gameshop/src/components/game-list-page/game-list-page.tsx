@@ -25,6 +25,7 @@ const TaleGameshopGameList: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [searchNameQuery, setSearchNameQuery] = useState<string>('');
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -149,6 +150,19 @@ const TaleGameshopGameList: React.FC = () => {
         const remaining = availableCategories.filter((category) => !categoryOrder.includes(category));
         return [...ordered, ...remaining];
     }, [settingsCategories, categoryOptions]);
+
+    useEffect(() => {
+        const defaultCollapsed = new Set(['Strategy', 'Sports']);
+        setCollapsedMap((prev) => {
+            const next = { ...prev };
+            categoriesForDisplay.forEach((category) => {
+                if (next[category] === undefined) {
+                    next[category] = defaultCollapsed.has(category);
+                }
+            });
+            return next;
+        });
+    }, [categoriesForDisplay]);
 
     const handleAddToCart = (game: Game) => {
         dispatch({
@@ -275,30 +289,32 @@ const TaleGameshopGameList: React.FC = () => {
         );
     };
 
-    const categoryMeta: Record<string, { description: string; icon: React.ReactNode }> = {
+    const categoryMeta: Record<string, { icon: React.ReactNode }> = {
         'Educational Games': {
-            description: 'Engaging and educational titles for kids and adults.',
             icon: <CategoryIcon variant="cap" />
         },
         Action: {
-            description: 'Fast-paced adventures and adrenaline-packed battles.',
             icon: <CategoryIcon variant="bolt" />
         },
         'Role-Playing Games (RPGs)': {
-            description: 'Story-driven worlds where every choice matters.',
             icon: <CategoryIcon variant="rpg" />
         },
         Strategy: {
-            description: 'Plan, build, and outsmart your opponents.',
             icon: <CategoryIcon variant="strategy" />
         },
         Sports: {
-            description: 'Competitive titles for every arena and season.',
             icon: <CategoryIcon variant="sports" />
         }
     };
-
-    const collapsedCategories = new Set(['Strategy', 'Sports']);
+    const categoryDescriptions = useMemo(() => {
+        const descriptions = new Map<string, string>();
+        settings?.gameCategories?.forEach((category) => {
+            if (category.description) {
+                descriptions.set(category.title, category.description);
+            }
+        });
+        return descriptions;
+    }, [settings]);
 
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
@@ -428,7 +444,8 @@ const TaleGameshopGameList: React.FC = () => {
                 <div className="mt-10 space-y-6">
                     {categoriesForDisplay.map((category, index) => {
                         const meta = categoryMeta[category];
-                        const isCollapsed = collapsedCategories.has(category);
+                        const isCollapsed = collapsedMap[category] ?? false;
+                        const description = categoryDescriptions.get(category);
                         const displayGames = filteredGamesByCategory.get(category) ?? [];
                         const isFirstSection = index === 0;
 
@@ -444,17 +461,31 @@ const TaleGameshopGameList: React.FC = () => {
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-semibold text-[#2b2350]">{category}</h2>
-                                            <p className="mt-1 text-sm text-[#6f64a8]">{meta?.description}</p>
+                                            {description && (
+                                                <p className="mt-1 text-sm text-[#6f64a8]">{description}</p>
+                                            )}
                                         </div>
                                     </div>
-                                    {isCollapsed && (
-                                        <button className="flex items-center gap-2 rounded-full border border-[#e6e1ff] bg-white px-4 py-2 text-xs font-semibold text-[#6b64a8]">
-                                            Collapsed
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                                                <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                            </svg>
-                                        </button>
-                                    )}
+                                    <button
+                                        className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e6e1ff] bg-white text-[#6b64a8] shadow-sm transition hover:border-[#cfc6ff]"
+                                        onClick={() =>
+                                            setCollapsedMap((prev) => ({ ...prev, [category]: !isCollapsed }))
+                                        }
+                                        aria-label={isCollapsed ? 'Expand category' : 'Collapse category'}
+                                    >
+                                        <svg
+                                            className={`h-3 w-3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="m6 9 6 6 6-6"
+                                                stroke="currentColor"
+                                                strokeWidth="1.6"
+                                                strokeLinecap="round"
+                                            />
+                                        </svg>
+                                    </button>
                                 </div>
 
                                 {!isCollapsed && (
