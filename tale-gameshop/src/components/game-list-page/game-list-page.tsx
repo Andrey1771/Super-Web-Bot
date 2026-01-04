@@ -19,37 +19,6 @@ const categoryOrder = [
     'Sports'
 ];
 
-const mockGame = (overrides: Partial<Game>): Game => ({
-    id: overrides.id ?? `mock-${Math.random()}`,
-    name: overrides.name ?? 'string tretrexhexe',
-    title: overrides.title ?? 'string tretrexhexe',
-    description: overrides.description ?? 'Placeholder description',
-    price: overrides.price ?? 46,
-    gameType: overrides.gameType ?? 0,
-    imagePath: overrides.imagePath ?? '',
-    releaseDate: overrides.releaseDate ?? ''
-});
-
-const mockGamesByCategory: Record<string, Game[]> = {
-    'Educational Games': [
-        mockGame({ title: 'Elden Ring', name: 'Elden Ring', price: 59.99 }),
-        mockGame({ title: 'string tretrexhexe', price: 46 }),
-        mockGame({ title: 'string tre', price: 0 })
-    ],
-    Action: [
-        mockGame({ title: 'string tretrexhexe', price: 20.44 }),
-        mockGame({ title: 'stringtre', price: 46 }),
-        mockGame({ title: 'string', price: 0 }),
-        mockGame({ title: 'string', price: 0 })
-    ],
-    'Role-Playing Games (RPGs)': [
-        mockGame({ title: 'string tretrexhexe', price: 20.44 }),
-        mockGame({ title: 'stringtre', price: 46 }),
-        mockGame({ title: 'tx4341', price: 0 }),
-        mockGame({ title: 'string', price: 11 })
-    ]
-};
-
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
     const [gamesByCategory, setGamesByCategory] = useState<Map<string, Game[]>>(new Map());
@@ -173,6 +142,13 @@ const TaleGameshopGameList: React.FC = () => {
     }, [gamesByCategory, searchQuery, searchNameQuery]);
 
     const categoryOptions = Array.from(gamesByCategory.keys());
+    const settingsCategories = settings?.gameCategories?.map((category) => category.title) ?? [];
+    const categoriesForDisplay = useMemo(() => {
+        const availableCategories = settingsCategories.length > 0 ? settingsCategories : categoryOptions;
+        const ordered = categoryOrder.filter((category) => availableCategories.includes(category));
+        const remaining = availableCategories.filter((category) => !categoryOrder.includes(category));
+        return [...ordered, ...remaining];
+    }, [settingsCategories, categoryOptions]);
 
     const handleAddToCart = (game: Game) => {
         dispatch({
@@ -450,12 +426,10 @@ const TaleGameshopGameList: React.FC = () => {
                 </div>
 
                 <div className="mt-10 space-y-6">
-                    {categoryOrder.map((category, index) => {
+                    {categoriesForDisplay.map((category, index) => {
                         const meta = categoryMeta[category];
                         const isCollapsed = collapsedCategories.has(category);
-                        const categoryGames = filteredGamesByCategory.get(category) ?? [];
-                        const fallbackGames = mockGamesByCategory[category] ?? [];
-                        const displayGames = categoryGames.length > 0 ? categoryGames : fallbackGames;
+                        const displayGames = filteredGamesByCategory.get(category) ?? [];
                         const isFirstSection = index === 0;
 
                         return (
@@ -503,6 +477,11 @@ const TaleGameshopGameList: React.FC = () => {
                                                 </div>
                                             );
                                         })}
+                                        {displayGames.length === 0 && (
+                                            <div className="col-span-full rounded-[16px] border border-dashed border-[#e6e1ff] bg-white/70 py-8 text-center text-sm text-[#8a81b5]">
+                                                No games available yet.
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </section>
