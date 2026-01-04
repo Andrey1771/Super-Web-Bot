@@ -536,6 +536,232 @@ const TaleGameshopGameList: React.FC = () => {
                         Load More
                     </button>
                 </div>
+
+                <section className="mt-12 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0b0d1f_0%,#1a1634_45%,#3b1d78_100%)] px-8 py-12 text-white shadow-[0_28px_60px_rgba(29,20,64,0.35)]">
+                    <div className="mx-auto max-w-3xl text-center">
+                        <h2 className="text-3xl font-semibold md:text-4xl">Discover your next favourite game</h2>
+                        <p className="mt-3 text-sm text-white/70 md:text-base">
+                            Explore collections &amp; discover new favorites with our curated recommendations.
+                        </p>
+                    </div>
+                    <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+                        {[
+                            {
+                                title: 'Best Deals',
+                                subtitle: 'of the Week',
+                                action: 'View Deals',
+                                badge: '25% OFF',
+                                buttonClass: 'bg-[#6b3ff2] text-white shadow-[0_12px_24px_rgba(107,63,242,0.4)]',
+                                imageClass: 'bg-[linear-gradient(135deg,#2f2b56_0%,#6041a8_50%,#f2a674_100%)]'
+                            },
+                            {
+                                title: 'Newly Added',
+                                subtitle: 'Games',
+                                action: 'See New',
+                                badge: null,
+                                buttonClass: 'bg-white text-[#3c2b78] shadow-[0_12px_24px_rgba(255,255,255,0.16)]',
+                                imageClass: 'bg-[linear-gradient(135deg,#1a213f_0%,#4e6dc8_45%,#99c4ff_100%)]'
+                            },
+                            {
+                                title: 'Top Rated',
+                                subtitle: 'Picks',
+                                action: 'Browse Top Rated',
+                                badge: null,
+                                buttonClass: 'bg-[#6b3ff2] text-white shadow-[0_12px_24px_rgba(107,63,242,0.4)]',
+                                imageClass: 'bg-[linear-gradient(135deg,#231c3a_0%,#5a4b8a_45%,#f0b07a_100%)]'
+                            },
+                            {
+                                title: 'Your Personal',
+                                subtitle: 'Picks',
+                                action: 'See For You',
+                                badge: null,
+                                buttonClass: 'bg-white text-[#3c2b78] shadow-[0_12px_24px_rgba(255,255,255,0.16)]',
+                                imageClass: 'bg-[linear-gradient(135deg,#1c2544_0%,#5b69b2_40%,#b7c9f1_100%)]'
+                            }
+                        ].map((card) => (
+                            <div
+                                key={card.title}
+                                className="relative flex min-h-[250px] flex-col justify-end overflow-hidden rounded-[22px] border border-white/10 bg-white/5 px-5 py-5 shadow-[0_20px_40px_rgba(10,8,30,0.45)]"
+                            >
+                                <div className={`absolute inset-0 opacity-95 ${card.imageClass}`} />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d1f]/80 via-[#0b0d1f]/30 to-transparent" />
+                                {card.badge && (
+                                    <span className="relative z-10 inline-flex w-max rounded-full bg-[#6b3ff2] px-3 py-1 text-xs font-semibold shadow-sm">
+                                        {card.badge}
+                                    </span>
+                                )}
+                                <div className="relative z-10 mt-3 space-y-1">
+                                    <h3 className="text-xl font-semibold">{card.title}</h3>
+                                    <p className="text-base text-white/85">{card.subtitle}</p>
+                                </div>
+                                <button className={`relative z-10 mt-5 w-max rounded-[12px] px-4 py-2 text-sm font-semibold ${card.buttonClass}`}>
+                                    {card.action}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                <section className="mt-12">
+                    <div className="max-w-2xl">
+                        <h2 className="text-2xl font-semibold text-[#2b2350]">Loved by players,</h2>
+                        <p className="mt-1 text-lg text-[#6f64a8]">trusted by hundreds of thousands</p>
+                    </div>
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {[
+                            {
+                                title: 'Secure payments',
+                                description: 'Safe payment methods you can trust.',
+                                icon: (
+                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
+                                        <path d="M6 10V7a6 6 0 1 1 12 0v3" stroke="currentColor" strokeWidth="1.6" />
+                                        <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                                    </svg>
+                                )
+                            },
+                            {
+                                title: 'Instant delivery',
+                                description: 'Get your purchased games instantly.',
+                                icon: (
+                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
+                                        <path d="M5 12h6l-2-3m2 3-2 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                                        <path d="M13 7h5l1 5h-6V7Z" stroke="currentColor" strokeWidth="1.6" />
+                                    </svg>
+                                )
+                            },
+                            {
+                                title: 'Curated picks',
+                                description: 'Hand-picked collections & recommendations.',
+                                icon: (
+                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
+                                        <path d="m6 12 4 4 8-8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                                        <path d="M8 6h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                                    </svg>
+                                )
+                            },
+                            {
+                                title: 'Friendly support',
+                                description: "We’re here to help you 24/7.",
+                                icon: (
+                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
+                                        <path d="M4 11a8 8 0 1 1 16 0v5a3 3 0 0 1-3 3h-2" stroke="currentColor" strokeWidth="1.6" />
+                                        <path d="M7 11h2v4H7a3 3 0 0 1-3-3v-1a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="1.6" />
+                                    </svg>
+                                )
+                            }
+                        ].map((feature) => (
+                            <div
+                                key={feature.title}
+                                className="rounded-[18px] border border-[#efeaff] bg-white/90 p-4 shadow-[0_12px_24px_rgba(108,85,164,0.12)]"
+                            >
+                                <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#f0ebff]">
+                                    {feature.icon}
+                                </div>
+                                <h3 className="mt-4 text-base font-semibold text-[#2b2350]">{feature.title}</h3>
+                                <p className="mt-2 text-sm text-[#6f64a8]">{feature.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                <section className="mt-10 rounded-[22px] border border-[#ece8ff] bg-white/80 p-6 shadow-[0_18px_36px_rgba(108,85,164,0.14)]">
+                    <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl font-semibold text-[#2b2350]">4.8</span>
+                                <div className="flex items-center gap-1 text-[#6b3ff2]">
+                                    {Array.from({ length: 5 }).map((_, index) => (
+                                        <svg key={`rating-star-${index}`} viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
+                                            <path d="m10 15-5.878 3.09 1.122-6.545L.488 6.91 6.06 6.1 10 0l3.94 6.1 5.572.81-4.756 4.635 1.122 6.545L10 15Z" />
+                                        </svg>
+                                    ))}
+                                </div>
+                                <span className="text-sm text-[#6f64a8]">8,536 reviews</span>
+                            </div>
+                            <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                {[
+                                    {
+                                        name: 'Mat S.',
+                                        initial: 'M',
+                                        review: 'Awesome selection of PC games and super fast delivery!'
+                                    },
+                                    {
+                                        name: 'Alex R.',
+                                        initial: 'A',
+                                        review: 'Great deals and instant keys, perfect for hassle-free gaming.'
+                                    }
+                                ].map((review) => (
+                                    <div key={review.name} className="rounded-[16px] border border-[#efeaff] bg-white px-4 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6b3ff2] text-sm font-semibold text-white">
+                                                {review.initial}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-[#2b2350]">{review.name}</p>
+                                                <div className="flex items-center gap-0.5 text-[#6b3ff2]">
+                                                    {Array.from({ length: 5 }).map((_, index) => (
+                                                        <svg key={`${review.name}-star-${index}`} viewBox="0 0 20 20" className="h-3 w-3" fill="currentColor">
+                                                            <path d="m10 15-5.878 3.09 1.122-6.545L.488 6.91 6.06 6.1 10 0l3.94 6.1 5.572.81-4.756 4.635 1.122 6.545L10 15Z" />
+                                                        </svg>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="mt-3 text-sm text-[#6f64a8]">{review.review}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="rounded-[16px] border border-[#efeaff] bg-[#fbf9ff] p-4">
+                            <div className="space-y-2">
+                                {[
+                                    { label: '5', value: 78 },
+                                    { label: '4', value: 15 },
+                                    { label: '3', value: 5 },
+                                    { label: '2', value: 1 },
+                                    { label: '1', value: 1 }
+                                ].map((rating) => (
+                                    <div key={rating.label} className="flex items-center gap-3 text-sm text-[#6f64a8]">
+                                        <span className="w-4 text-right font-semibold text-[#2b2350]">{rating.label}</span>
+                                        <div className="flex flex-1 items-center gap-2">
+                                            <div className="h-2 flex-1 rounded-full bg-[#e6e1ff]">
+                                                <div
+                                                    className="h-2 rounded-full bg-[#6b3ff2]"
+                                                    style={{ width: `${rating.value}%` }}
+                                                />
+                                            </div>
+                                            <span className="w-8 text-right text-xs text-[#6f64a8]">{rating.value}%</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#e6e1ff] bg-white px-4 py-2 text-xs font-semibold text-[#6b64a8]">
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#6b3ff2] text-[10px] font-bold text-white">
+                                    ★
+                                </span>
+                                Trustpilot
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mt-12 overflow-hidden rounded-[26px]">
+                    <div className="relative flex min-h-[260px] flex-col items-center justify-center rounded-[26px] bg-[linear-gradient(135deg,#141b33_0%,#3b2a69_55%,#2b1a49_100%)] px-6 py-12 text-center text-white shadow-[0_24px_48px_rgba(20,15,50,0.3)]">
+                        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,16,40,0.35)_0%,rgba(54,38,100,0.55)_60%,rgba(20,16,40,0.85)_100%)]" />
+                        <div className="relative z-10 max-w-2xl">
+                            <h2 className="text-3xl font-semibold md:text-4xl">Ready to explore the store?</h2>
+                            <p className="mt-3 text-base text-white/80">Discover the full catalog with weekly deals.</p>
+                            <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                <button className="rounded-[12px] bg-[#6b3ff2] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(107,63,242,0.35)]">
+                                    Go to Store
+                                </button>
+                                <button className="rounded-[12px] border border-white/30 bg-white/90 px-6 py-2.5 text-sm font-semibold text-[#3d2f74] shadow-[0_12px_24px_rgba(12,10,30,0.2)]">
+                                    Browse genres
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </main>
         </div>
     );
