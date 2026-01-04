@@ -7,7 +7,7 @@ import {useKeycloak} from "@react-keycloak/web";
 import {faBars, faTimes} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
-import logo from '../../../assets/images/tale-shop-logo.jpeg';
+import TaleGameshopLogo from "../tale-gameshop-logo/tale-gameshop-logo";
 import CartIcon from "../../cart/cart-icon/cart-icon";
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
 import AdminPanelSection from "../admin-panel-section/admin-panel-section";
@@ -15,18 +15,15 @@ import AdminPanelSection from "../admin-panel-section/admin-panel-section";
 export default function TaleGameshopHeader() {
     const {keycloak} = useKeycloak();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isTop, setIsTop] = useState(true);
 
     useEffect(() => {
         const handleScroll = () => {
-            const header = document.querySelector(".header-nav");
-            if (window.scrollY > 0) {
-                header?.classList.add("scrolled");
-            } else {
-                header?.classList.remove("scrolled");
-            }
+            setIsTop(window.scrollY === 0);
         };
 
-        window.addEventListener("scroll", handleScroll);
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, {passive: true});
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
@@ -44,10 +41,10 @@ export default function TaleGameshopHeader() {
     ];
 
     return (
-        <nav className="header-nav">
+        <nav className={`header-nav ${isTop ? "header--top" : "scrolled"}`}>
             <div className="container header-bar">
                 <div className="brand">
-                    <img src={logo} alt="Tale Shop logo"/>
+                    <TaleGameshopLogo className="brand-logo" role="img" aria-label="Tale Shop logo"/>
                     <span className="menu-item">Tale Shop</span>
                 </div>
 
