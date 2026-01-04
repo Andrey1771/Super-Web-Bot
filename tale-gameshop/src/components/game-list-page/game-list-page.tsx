@@ -145,24 +145,34 @@ const TaleGameshopGameList: React.FC = () => {
     const categoryOptions = Array.from(gamesByCategory.keys());
     const settingsCategories = settings?.gameCategories?.map((category) => category.title) ?? [];
     const categoriesForDisplay = useMemo(() => {
-        const availableCategories = settingsCategories.length > 0 ? settingsCategories : categoryOptions;
-        const ordered = categoryOrder.filter((category) => availableCategories.includes(category));
-        const remaining = availableCategories.filter((category) => !categoryOrder.includes(category));
-        return [...ordered, ...remaining];
+        if (settingsCategories.length > 0) {
+            const remaining = categoryOptions.filter((category) => !settingsCategories.includes(category));
+            return [...settingsCategories, ...remaining];
+        }
+
+        return categoryOptions.length > 0 ? categoryOptions : categoryOrder;
     }, [settingsCategories, categoryOptions]);
 
+    const settingsCategoryByTitle = useMemo(() => {
+        const map = new Map<string, Settings['gameCategories'][number]>();
+        settings?.gameCategories?.forEach((category) => {
+            map.set(category.title, category);
+        });
+        return map;
+    }, [settings]);
+
     useEffect(() => {
-        const defaultCollapsed = new Set(['Strategy', 'Sports']);
         setCollapsedMap((prev) => {
             const next = { ...prev };
             categoriesForDisplay.forEach((category) => {
                 if (next[category] === undefined) {
-                    next[category] = defaultCollapsed.has(category);
+                    const settingsCategory = settingsCategoryByTitle.get(category);
+                    next[category] = settingsCategory?.collapsed ?? true;
                 }
             });
             return next;
         });
-    }, [categoriesForDisplay]);
+    }, [categoriesForDisplay, settingsCategoryByTitle]);
 
     const handleAddToCart = (game: Game) => {
         dispatch({
@@ -289,23 +299,27 @@ const TaleGameshopGameList: React.FC = () => {
         );
     };
 
-    const categoryMeta: Record<string, { icon: React.ReactNode }> = {
-        'Educational Games': {
-            icon: <CategoryIcon variant="cap" />
-        },
-        Action: {
-            icon: <CategoryIcon variant="bolt" />
-        },
-        'Role-Playing Games (RPGs)': {
-            icon: <CategoryIcon variant="rpg" />
-        },
-        Strategy: {
-            icon: <CategoryIcon variant="strategy" />
-        },
-        Sports: {
-            icon: <CategoryIcon variant="sports" />
-        }
+    const iconFallbackMap: Record<string, 'cap' | 'bolt' | 'rpg' | 'strategy' | 'sports'> = {
+        'Educational Games': 'cap',
+        Action: 'bolt',
+        'Role-Playing Games (RPGs)': 'rpg',
+        Strategy: 'strategy',
+        Sports: 'sports'
     };
+    const iconKeyMap: Record<string, 'cap' | 'bolt' | 'rpg' | 'strategy' | 'sports'> = {
+        cap: 'cap',
+        bolt: 'bolt',
+        rpg: 'rpg',
+        strategy: 'strategy',
+        sports: 'sports'
+    };
+    const resolveIcon = (category: string) => {
+        const settingsIconKey = settingsCategoryByTitle.get(category)?.icon;
+        const mappedKey = settingsIconKey ? iconKeyMap[settingsIconKey.toLowerCase()] : undefined;
+        const fallbackKey = mappedKey ?? iconFallbackMap[category] ?? 'cap';
+        return <CategoryIcon variant={fallbackKey} />;
+    };
+
     const categoryDescriptions = useMemo(() => {
         const descriptions = new Map<string, string>();
         settings?.gameCategories?.forEach((category) => {
@@ -443,7 +457,6 @@ const TaleGameshopGameList: React.FC = () => {
 
                 <div className="mt-10 space-y-6">
                     {categoriesForDisplay.map((category, index) => {
-                        const meta = categoryMeta[category];
                         const isCollapsed = collapsedMap[category] ?? false;
                         const description = categoryDescriptions.get(category);
                         const displayGames = filteredGamesByCategory.get(category) ?? [];
@@ -457,13 +470,11 @@ const TaleGameshopGameList: React.FC = () => {
                                 <div className="flex flex-wrap items-center justify-between gap-4">
                                     <div className="flex items-start gap-3">
                                         <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#f0ebff]">
-                                            {meta?.icon}
+                                            {resolveIcon(category)}
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-semibold text-[#2b2350]">{category}</h2>
-                                            {description && (
-                                                <p className="mt-1 text-sm text-[#6f64a8]">{description}</p>
-                                            )}
+                                            {description && <p className="mt-1 text-sm text-[#6f64a8]">{description}</p>}
                                         </div>
                                     </div>
                                     <button
