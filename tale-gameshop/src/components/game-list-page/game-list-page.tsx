@@ -749,14 +749,14 @@ const TaleGameshopGameList: React.FC = () => {
                     <div className="relative flex min-h-[260px] flex-col items-center justify-center rounded-[26px] bg-[linear-gradient(135deg,#141b33_0%,#3b2a69_55%,#2b1a49_100%)] px-6 py-12 text-center text-white shadow-[0_24px_48px_rgba(20,15,50,0.3)]">
                         <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,16,40,0.35)_0%,rgba(54,38,100,0.55)_60%,rgba(20,16,40,0.85)_100%)]" />
                         <div className="relative z-10 max-w-2xl">
-                            <h2 className="text-3xl font-semibold md:text-4xl">Ready to explore the store?</h2>
-                            <p className="mt-3 text-base text-white/80">Discover the full catalog with weekly deals.</p>
+                            <h2 className="text-3xl font-semibold md:text-4xl">Not sure what to play?</h2>
+                            <p className="mt-3 text-base text-white/80">Try curated picks based on genre and ratings.</p>
                             <div className="mt-6 flex flex-wrap justify-center gap-3">
                                 <button className="rounded-[12px] bg-[#6b3ff2] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(107,63,242,0.35)]">
-                                    Go to Store
+                                    See Top Rated
                                 </button>
                                 <button className="rounded-[12px] border border-white/30 bg-white/90 px-6 py-2.5 text-sm font-semibold text-[#3d2f74] shadow-[0_12px_24px_rgba(12,10,30,0.2)]">
-                                    Browse genres
+                                    View Deals
                                 </button>
                             </div>
                         </div>
