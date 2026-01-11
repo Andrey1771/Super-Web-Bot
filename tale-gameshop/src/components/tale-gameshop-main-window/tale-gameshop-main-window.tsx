@@ -3,7 +3,7 @@ import TaleGameshopHeader from "../header/tale-gameshop-header/tale-gameshop-hea
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
 import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-page";
 import './tale-gameshop-main-window.css'
-import {Navigate, Route, Routes, useLocation} from "react-router-dom";
+import {Route, Routes, useLocation} from "react-router-dom";
 import TaleGameshopGameList from "../game-list-page/game-list-page";
 import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
@@ -18,6 +18,7 @@ import CardAdderPage from "../admin-panel/card-adder-page/card-adder-page";
 import {CartPage} from "../cart/cart-page/cart-page";
 import CheckoutPage from "../cart/checkout-page/checkout-page";
 import SuccessPurchasePage from "../cart/success-purchase-page/success-purchase-page";
+import ApologyPage from "../apology-page/apology-page";
 import SupportPage from "../support-page/support-page";
 import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
@@ -48,7 +49,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/checkout" element={<CheckoutPage/>}/>
                     <Route path="/successPurchasePage" element={<SuccessPurchasePage/>}/>
                     <Route path="/support" element={<SupportPage/>}/>
-                    <Route path="/apologyPage" element={<Navigate to="/support" replace/>}/>
+                    <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
                 </Routes>
             {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
