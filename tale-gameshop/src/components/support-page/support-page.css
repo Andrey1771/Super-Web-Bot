@@ -124,6 +124,16 @@
   box-shadow: var(--shadow-sm);
 }
 
+.support-chip-clear {
+  color: var(--color-primary);
+  border-style: dashed;
+}
+
+.support-chip-clear:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
 .support-faq-grid {
   column-count: 2;
   column-gap: var(--space-20);

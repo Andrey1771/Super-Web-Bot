@@ -207,7 +207,7 @@ const SupportPage: React.FC = () => {
             }
             return;
         }
-        if (!filteredFaqs.find((item) => item.id === openFaqId)) {
+        if (openFaqId !== null && !filteredFaqs.find((item) => item.id === openFaqId)) {
             setOpenFaqId(filteredFaqs[0].id);
         }
     }, [filteredFaqs, openFaqId]);
@@ -286,6 +286,18 @@ const SupportPage: React.FC = () => {
                                 {chip.label}
                             </button>
                         ))}
+                        {(searchTerm.trim() !== '' || activeCategory !== 'All') && (
+                            <button
+                                type="button"
+                                className="support-chip support-chip-clear"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setActiveCategory('All');
+                                }}
+                            >
+                                Clear filters
+                            </button>
+                        )}
                     </div>
                 </div>
             </section>
