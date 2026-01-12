@@ -264,6 +264,19 @@
     margin: 0;
 }
 
+.drawer-links .drawer-divider {
+    height: 1px;
+    background: #e9e3ff;
+    margin: var(--space-4) 0;
+}
+
+.drawer-admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
 .nav-drawer .menu-item {
     display: block;
     width: 100%;
@@ -335,11 +348,39 @@
     display: grid;
     gap: var(--space-8);
     text-align: center;
+    padding: var(--space-12);
+    border-radius: var(--radius-md);
+    border: 1px solid #ece6ff;
+    background: #ffffff;
+}
+
+.drawer-account-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
 }
 
 .drawer-account-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-weight: 600;
     color: #3b324f;
+}
+
+.drawer-account-caret {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.drawer-account-trigger.open .drawer-account-caret {
+    transform: rotate(180deg);
 }
 
 .drawer-account-email {
@@ -348,13 +389,30 @@
 }
 
 .drawer-account-links {
-    display: grid;
+    display: none;
     gap: var(--space-8);
 }
 
+.drawer-account-links.open {
+    display: grid;
+}
+
 .drawer-sign-out {
+    align-self: center;
     border: 1px solid #e1d9ff;
     background: #ffffff;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.drawer-sign-out:hover,
+.drawer-sign-out:focus-visible {
+    border-color: #6b3ff2;
+    color: #6b3ff2;
+    box-shadow: 0 8px 18px rgba(107, 63, 242, 0.12);
 }
 
 @media (max-width: 1180px) {
