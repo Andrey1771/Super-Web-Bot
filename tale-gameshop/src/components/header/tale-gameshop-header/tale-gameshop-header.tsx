@@ -82,11 +82,6 @@ export default function TaleGameshopHeader() {
                             </Link>
                         </li>
                     ))}
-                    {isAdmin && (
-                        <li>
-                            <AdminPanelSection></AdminPanelSection>
-                        </li>
-                    )}
                     <li className="relative dropdown">
                         <Link to={`/games`} className="menu-item more-link">
                             More
@@ -103,6 +98,9 @@ export default function TaleGameshopHeader() {
                         <LoginAndRegisterSection></LoginAndRegisterSection>
                     ) : (
                         <>
+                            {isAdmin && (
+                                <AdminPanelSection></AdminPanelSection>
+                            )}
                             <div className="account-menu" ref={accountMenuRef}>
                                 <button
                                     className="account-trigger"
