@@ -56,6 +56,18 @@ export default function TaleGameshopHeader() {
         }
     }, [isMenuOpen]);
 
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth > 1180) {
+                setIsMenuOpen(false);
+                setIsDrawerAccountOpen(false);
+            }
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
     const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(
         (role) => role === "admin"
     );
