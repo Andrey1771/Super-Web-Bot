@@ -114,13 +114,126 @@
     background: transparent;
 }
 
-.header-actions .email {
-    color: #4a3c7a;
-    font-weight: 600;
+.admin-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
 }
 
-.header-nav.scrolled .email {
+.admin-link::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 4px;
+    height: 2px;
+    border-radius: 999px;
+    background: transparent;
+    transition: background-color 0.2s ease;
+}
+
+.admin-link:hover::after,
+.admin-link:focus-visible::after {
+    background: #6b3ff2;
+}
+
+.account-menu {
+    position: relative;
+}
+
+.account-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid #e1d9ff;
+    background: #ffffff;
+    color: #3b324f;
+    font-weight: 600;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.account-trigger .caret {
+    font-size: 12px;
+}
+
+.account-trigger:hover,
+.account-trigger:focus-visible {
+    border-color: #6b3ff2;
+    color: #6b3ff2;
+    box-shadow: 0 10px 22px rgba(107, 63, 242, 0.16);
+}
+
+.account-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    width: min(320px, 90vw);
+    background: #ffffff;
+    border: 1px solid #e9e3ff;
+    border-radius: var(--radius-md);
+    box-shadow: 0 18px 40px rgba(87, 68, 144, 0.18);
+    padding: var(--space-12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    z-index: 5;
+}
+
+.account-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.account-signed-in {
+    font-size: 13px;
+    color: #8a7fb4;
+    margin-bottom: var(--space-12);
+}
+
+.account-signed-in span {
     color: #4a3c7a;
+}
+
+.account-links {
+    display: grid;
+    gap: 6px;
+    margin-bottom: var(--space-12);
+}
+
+.account-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    color: #3b324f;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.account-link:hover,
+.account-link:focus-visible {
+    background: rgba(107, 63, 242, 0.08);
+    color: #6b3ff2;
+}
+
+.account-link.sign-out {
+    width: 100%;
+    border-top: 1px solid #ece6ff;
+    margin-top: var(--space-8);
+    padding-top: 14px;
+    justify-content: flex-start;
 }
 
 .nav-drawer {
@@ -149,6 +262,19 @@
     gap: var(--space-12);
     padding: 0;
     margin: 0;
+}
+
+.drawer-links .drawer-divider {
+    height: 1px;
+    background: #e9e3ff;
+    margin: var(--space-4) 0;
+}
+
+.drawer-admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
 }
 
 .nav-drawer .menu-item {
@@ -216,6 +342,77 @@
 .more-link svg {
     width: 14px;
     height: 14px;
+}
+
+.drawer-account {
+    display: grid;
+    gap: var(--space-8);
+    text-align: center;
+    padding: var(--space-12);
+    border-radius: var(--radius-md);
+    border: 1px solid #ece6ff;
+    background: #ffffff;
+}
+
+.drawer-account-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.drawer-account-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #3b324f;
+}
+
+.drawer-account-caret {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.drawer-account-trigger.open .drawer-account-caret {
+    transform: rotate(180deg);
+}
+
+.drawer-account-email {
+    font-size: 14px;
+    color: #8a7fb4;
+}
+
+.drawer-account-links {
+    display: none;
+    gap: var(--space-8);
+}
+
+.drawer-account-links.open {
+    display: grid;
+}
+
+.drawer-sign-out {
+    align-self: center;
+    border: 1px solid #e1d9ff;
+    background: #ffffff;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.drawer-sign-out:hover,
+.drawer-sign-out:focus-visible {
+    border-color: #6b3ff2;
+    color: #6b3ff2;
+    box-shadow: 0 8px 18px rgba(107, 63, 242, 0.12);
 }
 
 @media (max-width: 1180px) {

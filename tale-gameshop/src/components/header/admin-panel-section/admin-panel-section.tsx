@@ -1,15 +1,20 @@
 import React from "react";
 import {Link} from "react-router-dom";
+import {faGear} from "@fortawesome/free-solid-svg-icons";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
-const AdminPanelSection: React.FC = ({}) => {
-    return <>
-        <Link className="hidden lg:flex px-4 py-2 bg-red-500 text-white" to="/admin">
-            Open Admin Panel
-        </Link>
-        <Link className="lg:hidden text-gray-700 menu-item cursor-pointer" to="/admin">
-            Open Admin Panel
-        </Link>
-    </>
+interface AdminPanelSectionProps {
+    className?: string;
+    onClick?: () => void;
 }
+
+const AdminPanelSection: React.FC<AdminPanelSectionProps> = ({className = "menu-item admin-link", onClick}) => {
+    return (
+        <Link className={className} to="/admin" onClick={onClick}>
+            <FontAwesomeIcon icon={faGear}/>
+            Admin
+        </Link>
+    );
+};
 
 export default AdminPanelSection;
