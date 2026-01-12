@@ -39,7 +39,7 @@ export default function TaleGameshopHeader() {
         {label: "Store", to: "/games"},
         {label: "Blog", to: "/blog"},
         {label: "About", to: "/about"},
-        {label: "Support", to: "/apologyPage"}
+        {label: "Support", to: "/support"}
     ];
 
     return (

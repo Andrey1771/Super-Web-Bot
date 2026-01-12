@@ -25,7 +25,7 @@ export default function TaleGameshopFooter() {
                             <div className="footer-title">Company</div>
                             <Link to="/about">About</Link>
                             <Link to="/blog">Blog</Link>
-                            <Link to="/apologyPage">Support</Link>
+                            <Link to="/support">Support</Link>
                         </div>
 
                         <div className="footer-column">
