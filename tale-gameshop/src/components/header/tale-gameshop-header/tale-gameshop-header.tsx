@@ -1,19 +1,24 @@
-import React, {useState, useEffect} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import "./tale-gameshop-header.css";
-import LogOutButton from "../../logout-button/logout-button";
 import GameCategoryDropDown from "../../game-category-drop-down/game-category-drop-down";
 import {useKeycloak} from "@react-keycloak/web";
-import {faBars, faTimes} from "@fortawesome/free-solid-svg-icons";
+import {faBars, faChevronDown, faCircleUser, faTimes} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
 import logo from '../../../assets/images/tale-shop-logo.jpeg';
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
 import AdminPanelSection from "../admin-panel-section/admin-panel-section";
+import container from "../../../inversify.config";
+import type {IKeycloakAuthService} from "../../../iterfaces/i-keycloak-auth-service";
+import IDENTIFIERS from "../../../constants/identifiers";
 
 export default function TaleGameshopHeader() {
     const {keycloak} = useKeycloak();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isAccountOpen, setIsAccountOpen] = useState(false);
+    const accountMenuRef = useRef<HTMLDivElement | null>(null);
+    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -29,10 +34,29 @@ export default function TaleGameshopHeader() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
+    useEffect(() => {
+        if (!isAccountOpen) {
+            return;
+        }
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+                setIsAccountOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isAccountOpen]);
+
     const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(
         (role) => role === "admin"
     );
     const email = keycloak.tokenParsed?.email;
+
+    const handleLogout = async () => {
+        await keycloakAuthService.logoutWithRedirect(keycloak, window.location.href);
+    };
 
     const navLinks = [
         {label: "Home", to: "/"},
@@ -58,6 +82,11 @@ export default function TaleGameshopHeader() {
                             </Link>
                         </li>
                     ))}
+                    {isAdmin && (
+                        <li>
+                            <AdminPanelSection></AdminPanelSection>
+                        </li>
+                    )}
                     <li className="relative dropdown">
                         <Link to={`/games`} className="menu-item more-link">
                             More
@@ -74,11 +103,41 @@ export default function TaleGameshopHeader() {
                         <LoginAndRegisterSection></LoginAndRegisterSection>
                     ) : (
                         <>
-                            <span className="email">{email}</span>
-                            {isAdmin && (
-                                <AdminPanelSection></AdminPanelSection>
-                            )}
-                            <LogOutButton/>
+                            <div className="account-menu" ref={accountMenuRef}>
+                                <button
+                                    className="account-trigger"
+                                    type="button"
+                                    onClick={() => setIsAccountOpen((prev) => !prev)}
+                                    aria-expanded={isAccountOpen}
+                                    aria-haspopup="true"
+                                >
+                                    <FontAwesomeIcon icon={faCircleUser}/>
+                                    <span>My account</span>
+                                    <FontAwesomeIcon className="caret" icon={faChevronDown}/>
+                                </button>
+                                <div className={`account-dropdown ${isAccountOpen ? 'open' : ''}`}>
+                                    <div className="account-signed-in">
+                                        Signed in as <span>{email}</span>
+                                    </div>
+                                    <div className="account-links">
+                                        <Link to="/account/profile" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                            Profile
+                                        </Link>
+                                        <Link to="/account/orders" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                            Orders
+                                        </Link>
+                                        <Link to="/account/keys" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                            Keys
+                                        </Link>
+                                        <Link to="/account/settings" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                            Settings
+                                        </Link>
+                                    </div>
+                                    <button className="account-link sign-out" type="button" onClick={handleLogout}>
+                                        Sign out
+                                    </button>
+                                </div>
+                            </div>
                         </>
                     )}
                 </div>
@@ -100,6 +159,11 @@ export default function TaleGameshopHeader() {
                                 </Link>
                         </li>
                     ))}
+                    {isAdmin && (
+                        <li>
+                            <AdminPanelSection onClick={() => setIsMenuOpen(false)} className="menu-item"></AdminPanelSection>
+                        </li>
+                    )}
                     <li>
                         <Link to={`/games`} className="menu-item" onClick={() => setIsMenuOpen(false)}>
                             More Games
@@ -111,11 +175,26 @@ export default function TaleGameshopHeader() {
                         {!keycloak.authenticated ? (
                             <LoginAndRegisterSection stacked></LoginAndRegisterSection>
                         ) : (
-                            <div className="auth-buttons stacked">
-                                {isAdmin && (
-                                    <AdminPanelSection></AdminPanelSection>
-                                )}
-                                <LogOutButton/>
+                            <div className="drawer-account">
+                                <div className="drawer-account-title">My account</div>
+                                <div className="drawer-account-email">Signed in as {email}</div>
+                                <div className="drawer-account-links">
+                                    <Link to="/account/profile" className="menu-item" onClick={() => setIsMenuOpen(false)}>
+                                        Profile
+                                    </Link>
+                                    <Link to="/account/orders" className="menu-item" onClick={() => setIsMenuOpen(false)}>
+                                        Orders
+                                    </Link>
+                                    <Link to="/account/keys" className="menu-item" onClick={() => setIsMenuOpen(false)}>
+                                        Keys
+                                    </Link>
+                                    <Link to="/account/settings" className="menu-item" onClick={() => setIsMenuOpen(false)}>
+                                        Settings
+                                    </Link>
+                                    <button className="menu-item drawer-sign-out" type="button" onClick={handleLogout}>
+                                        Sign out
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
