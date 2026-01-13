@@ -23,6 +23,8 @@ import SupportPage from "../support-page/support-page";
 import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
+import AccountRoutes from "../../features/account/routes/AccountRoutes";
+import AuthenticatedRoute from "../utils/authenticated-route/authenticated-route";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -51,6 +53,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/support" element={<SupportPage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
+                    <Route path="/account/*" element={<AuthenticatedRoute><AccountRoutes/></AuthenticatedRoute>}/>
                 </Routes>
             {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
             <ChatBot></ChatBot>

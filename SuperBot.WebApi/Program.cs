@@ -23,24 +23,24 @@ using SuperBot.Core.Interfaces.IBotStateService;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// !!! Конфигурируем обработку пересылаемых заголовков запросов
+// !!! ГЉГ®Г­ГґГЁГЈГіГ°ГЁГ°ГіГҐГ¬ Г®ГЎГ°Г ГЎГ®ГІГЄГі ГЇГҐГ°ГҐГ±Г»Г«Г ГҐГ¬Г»Гµ Г§Г ГЈГ®Г«Г®ГўГЄГ®Гў Г§Г ГЇГ°Г®Г±Г®Гў
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
         ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 });
-// !!! Конфигурируем обработку пересылаемых заголовков запросов
+// !!! ГЉГ®Г­ГґГЁГЈГіГ°ГЁГ°ГіГҐГ¬ Г®ГЎГ°Г ГЎГ®ГІГЄГі ГЇГҐГ°ГҐГ±Г»Г«Г ГҐГ¬Г»Гµ Г§Г ГЈГ®Г«Г®ГўГЄГ®Гў Г§Г ГЇГ°Г®Г±Г®Гў
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.CustomSchemaIds(type => type.FullName); // Используем полное имя типа
+    options.CustomSchemaIds(type => type.FullName); // Г€Г±ГЇГ®Г«ГјГ§ГіГҐГ¬ ГЇГ®Г«Г­Г®ГҐ ГЁГ¬Гї ГІГЁГЇГ 
 });
 
 
-// Добавление CORS с конкретной политикой
+// Г„Г®ГЎГ ГўГ«ГҐГ­ГЁГҐ CORS Г± ГЄГ®Г­ГЄГ°ГҐГІГ­Г®Г© ГЇГ®Г«ГЁГІГЁГЄГ®Г©
 builder.Services.AddCors(options =>
 {
     var frontendConfigSection = builder.Configuration.GetSection("FrontendConfiguration");
@@ -50,7 +50,8 @@ builder.Services.AddCors(options =>
             builder.WithOrigins(frontendConfigSection.GetValue<string>("Uri") ?? "") // TODO!!!!!!
                    .AllowAnyHeader()
                    .AllowAnyMethod()
-                   .AllowCredentials(); // Если необходимы куки/учетные данные
+builder.Services.AddScoped<AccountOverviewService>();
+                   .AllowCredentials(); // Г…Г±Г«ГЁ Г­ГҐГ®ГЎГµГ®Г¤ГЁГ¬Г» ГЄГіГЄГЁ/ГіГ·ГҐГІГ­Г»ГҐ Г¤Г Г­Г­Г»ГҐ
         });
 });
 
@@ -85,13 +86,13 @@ builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>
     var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
     return new MongoClient(connectionString);
 });
-// Регистрация MongoDatabase
+// ГђГҐГЈГЁГ±ГІГ°Г Г¶ГЁГї MongoDatabase
 builder.Services.AddScoped<IMongoDatabase>(sp =>
 {
     var mongoClient = sp.GetRequiredService<IMongoClient>();
 
     var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
-    return mongoClient.GetDatabase(mongoName);  // Укажите имя вашей базы данных
+    return mongoClient.GetDatabase(mongoName);  // Г“ГЄГ Г¦ГЁГІГҐ ГЁГ¬Гї ГўГ ГёГҐГ© ГЎГ Г§Г» Г¤Г Г­Г­Г»Гµ
 });
 builder.Services.AddScoped<MongoDbInitializer>();
 
@@ -107,7 +108,7 @@ builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
 
-//TODO Заготовка на динамические жанры игр, если у нас нет настроек, то добавляем их
+//TODO Г‡Г ГЈГ®ГІГ®ГўГЄГ  Г­Г  Г¤ГЁГ­Г Г¬ГЁГ·ГҐГ±ГЄГЁГҐ Г¦Г Г­Г°Г» ГЁГЈГ°, ГҐГ±Г«ГЁ Гі Г­Г Г± Г­ГҐГІ Г­Г Г±ГІГ°Г®ГҐГЄ, ГІГ® Г¤Г®ГЎГ ГўГ«ГїГҐГ¬ ГЁГµ
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
 {
     var repository = scope.ServiceProvider.GetRequiredService<ISettingsRepository>();
@@ -134,7 +135,7 @@ using (var scope = builder.Services.BuildServiceProvider().CreateScope())
     }
 }
 
-// Добавление Hangfire с использованием MongoDB
+// Г„Г®ГЎГ ГўГ«ГҐГ­ГЁГҐ Hangfire Г± ГЁГ±ГЇГ®Г«ГјГ§Г®ГўГ Г­ГЁГҐГ¬ MongoDB
 builder.Services.AddHangfire(config =>
 {
     var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
@@ -152,7 +153,7 @@ builder.Services.AddHangfire(config =>
     });
 });
 
-// Добавление Dashboard и серверов Hangfire
+// Г„Г®ГЎГ ГўГ«ГҐГ­ГЁГҐ Dashboard ГЁ Г±ГҐГ°ГўГҐГ°Г®Гў Hangfire
 builder.Services.AddHangfireServer();
 
 
@@ -176,9 +177,9 @@ builder.Services.AddLogging(logging =>
 
 var app = builder.Build();
 
-// !!! Добавляем в конвеер обработки HTTP-запроса компонент работы с пересылаемыми заголовками
+// !!! Г„Г®ГЎГ ГўГ«ГїГҐГ¬ Гў ГЄГ®Г­ГўГҐГҐГ° Г®ГЎГ°Г ГЎГ®ГІГЄГЁ HTTP-Г§Г ГЇГ°Г®Г±Г  ГЄГ®Г¬ГЇГ®Г­ГҐГ­ГІ Г°Г ГЎГ®ГІГ» Г± ГЇГҐГ°ГҐГ±Г»Г«Г ГҐГ¬Г»Г¬ГЁ Г§Г ГЈГ®Г«Г®ГўГЄГ Г¬ГЁ
 app.UseForwardedHeaders();
-// !!! Добавляем в конвеер обработки HTTP-запроса компонент работы с пересылаемыми заголовками
+// !!! Г„Г®ГЎГ ГўГ«ГїГҐГ¬ Гў ГЄГ®Г­ГўГҐГҐГ° Г®ГЎГ°Г ГЎГ®ГІГЄГЁ HTTP-Г§Г ГЇГ°Г®Г±Г  ГЄГ®Г¬ГЇГ®Г­ГҐГ­ГІ Г°Г ГЎГ®ГІГ» Г± ГЇГҐГ°ГҐГ±Г»Г«Г ГҐГ¬Г»Г¬ГЁ Г§Г ГЈГ®Г«Г®ГўГЄГ Г¬ГЁ
 
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
@@ -190,14 +191,14 @@ if (app.Environment.IsDevelopment())
     app.UseHangfireDashboard();
 }
 
-// Получаем инициализатор из DI-контейнера и выполняем инициализацию
+// ГЏГ®Г«ГіГ·Г ГҐГ¬ ГЁГ­ГЁГ¶ГЁГ Г«ГЁГ§Г ГІГ®Г° ГЁГ§ DI-ГЄГ®Г­ГІГҐГ©Г­ГҐГ°Г  ГЁ ГўГ»ГЇГ®Г«Г­ГїГҐГ¬ ГЁГ­ГЁГ¶ГЁГ Г«ГЁГ§Г Г¶ГЁГѕ
 using (var scope = app.Services.CreateScope())
 {
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
-    await mongoDbInitializer.InitializeAsync(); // Инициализация базы данных
+    await mongoDbInitializer.InitializeAsync(); // Г€Г­ГЁГ¶ГЁГ Г«ГЁГ§Г Г¶ГЁГї ГЎГ Г§Г» Г¤Г Г­Г­Г»Гµ
 }
 
-// Поддержка локализации
+// ГЏГ®Г¤Г¤ГҐГ°Г¦ГЄГ  Г«Г®ГЄГ Г«ГЁГ§Г Г¶ГЁГЁ
 var supportedCultures = new[] { "en-US", "ru-RU" };
 var localizationOptions = new RequestLocalizationOptions()
     .SetDefaultCulture("ru-RU")
@@ -228,7 +229,7 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    // Периодическая задача
+    // ГЏГҐГ°ГЁГ®Г¤ГЁГ·ГҐГ±ГЄГ Гї Г§Г Г¤Г Г·Г 
     recurringJobManager.AddOrUpdate(
         "clear-old-order-records",
         () => scope.ServiceProvider.GetRequiredService<IBackgroundTaskService>().ScheduleClearOutdatedDataJob(),
