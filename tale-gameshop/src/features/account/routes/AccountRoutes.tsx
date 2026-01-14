@@ -2,6 +2,7 @@ import React from 'react';
 import {Navigate, Route, Routes} from 'react-router-dom';
 import AccountOverviewPage from '../pages/AccountOverviewPage';
 import AccountOrdersPage from '../pages/AccountOrdersPage';
+import AccountKeysPage from '../pages/AccountKeysPage';
 import AccountBillingPage from '../pages/AccountBillingPage';
 import AccountPlaceholderPage from '../pages/AccountPlaceholderPage';
 
@@ -10,7 +11,7 @@ const AccountRoutes: React.FC = () => {
         <Routes>
             <Route index element={<AccountOverviewPage />} />
             <Route path="orders" element={<AccountOrdersPage />} />
-            <Route path="keys" element={<AccountPlaceholderPage title="Keys & activation" />} />
+            <Route path="keys" element={<AccountKeysPage />} />
             <Route path="saved" element={<AccountPlaceholderPage title="Saved items" />} />
             <Route path="settings" element={<AccountPlaceholderPage title="Settings" />} />
             <Route path="billing" element={<AccountBillingPage />} />
