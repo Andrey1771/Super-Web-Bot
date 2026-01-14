@@ -6,7 +6,8 @@ import './account-shell.css';
 interface AccountShellProps {
     title: string;
     sectionLabel: string;
-    subtitle?: string;
+    subtitle?: React.ReactNode;
+    actions?: React.ReactNode;
     children: React.ReactNode;
 }
 
@@ -21,7 +22,19 @@ const navItems = [
     {label: 'Help', to: '/account/help'}
 ];
 
-const AccountShell: React.FC<AccountShellProps> = ({title, sectionLabel, subtitle, children}) => {
+const AccountShell: React.FC<AccountShellProps> = ({
+    title,
+    sectionLabel,
+    subtitle,
+    actions,
+    children
+}) => {
+    const subtitleContent = subtitle
+        ? typeof subtitle === 'string'
+            ? <p className="account-subtitle">{subtitle}</p>
+            : subtitle
+        : null;
+
     return (
         <div className="account-page">
             <div className="container account-layout">
@@ -60,15 +73,19 @@ const AccountShell: React.FC<AccountShellProps> = ({title, sectionLabel, subtitl
                     <div className="account-header">
                         <div>
                             <h1>{title}</h1>
-                            {subtitle && <p className="account-subtitle">{subtitle}</p>}
+                            {subtitleContent}
                         </div>
                         <div className="account-header-actions">
-                            <Link to="/account/settings" className="btn btn-outline account-action-btn">
-                                Edit profile
-                            </Link>
-                            <Link to="/support" className="btn btn-outline account-action-btn">
-                                Support
-                            </Link>
+                            {actions ?? (
+                                <>
+                                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
+                                        Edit profile
+                                    </Link>
+                                    <Link to="/support" className="btn btn-outline account-action-btn">
+                                        Support
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                     {children}
