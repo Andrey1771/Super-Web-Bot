@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using System;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using Telegram.Bot;
@@ -38,6 +39,8 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
             // Создаем заказ
             var newOrder = new Order
             {
+                Id = Guid.NewGuid(),
+                GameId = game.Id,
                 GameName = game.Name,
                 UserName = userName,
                 OrderDate = DateTime.UtcNow

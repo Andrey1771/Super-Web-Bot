@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using System;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Application.Commands.TopUp;
@@ -59,6 +60,10 @@ namespace SuperBot.WebApi.Controllers
             }
 
             var order = _mapper.Map<Order>(orderDto);
+            if (order.Id == Guid.Empty)
+            {
+                order.Id = Guid.NewGuid();
+            }
             await _orderRepository.CreateOrderAsync(order);
 
             return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, orderDto);
