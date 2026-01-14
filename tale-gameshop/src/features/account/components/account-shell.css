@@ -1,0 +1,134 @@
+.account-page {
+    background: #ffffff;
+    padding: var(--space-32) 0 var(--space-64);
+}
+
+.account-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: var(--space-32);
+    align-items: start;
+}
+
+.account-sidebar {
+    position: sticky;
+    top: 110px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+    align-self: start;
+}
+
+.account-profile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    padding: var(--space-16);
+}
+
+.account-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.account-profile-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.account-email {
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.account-nav {
+    display: grid;
+    gap: 6px;
+}
+
+.account-nav-link {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    color: #423561;
+    background: transparent;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.account-nav-link:hover,
+.account-nav-link:focus-visible {
+    color: var(--color-primary);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.account-nav-link.active {
+    color: var(--color-primary);
+    background: rgba(124, 58, 237, 0.12);
+}
+
+.account-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-24);
+}
+
+.account-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--color-muted);
+}
+
+.account-breadcrumbs a {
+    color: inherit;
+}
+
+.account-breadcrumbs span:last-child {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.account-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-24);
+    flex-wrap: wrap;
+}
+
+.account-subtitle {
+    margin: var(--space-8) 0 0;
+}
+
+.account-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    flex-wrap: wrap;
+}
+
+.account-action-btn {
+    height: 40px;
+    font-size: 14px;
+    padding-inline: var(--space-16);
+}
+
+@media (max-width: 1024px) {
+    .account-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .account-sidebar {
+        position: static;
+    }
+}

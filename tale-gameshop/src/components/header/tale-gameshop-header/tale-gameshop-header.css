@@ -185,6 +185,19 @@
     z-index: 5;
 }
 
+.account-dropdown::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    right: 18px;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    border-left: 1px solid #e9e3ff;
+    border-top: 1px solid #e9e3ff;
+    transform: rotate(45deg);
+}
+
 .account-dropdown.open {
     opacity: 1;
     visibility: visible;
