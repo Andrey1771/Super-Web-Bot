@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using System;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -19,6 +20,10 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task CreateOrderAsync(Order order)
         {
+            if (order.Id == Guid.Empty)
+            {
+                order.Id = Guid.NewGuid();
+            }
             var newOrder = _mapper.Map<OrderDb>(order);
             await _orders.InsertOneAsync(newOrder);
         }
