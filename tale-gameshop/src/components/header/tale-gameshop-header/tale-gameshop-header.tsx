@@ -19,6 +19,7 @@ export default function TaleGameshopHeader() {
     const [isAccountOpen, setIsAccountOpen] = useState(false);
     const [isDrawerAccountOpen, setIsDrawerAccountOpen] = useState(false);
     const accountMenuRef = useRef<HTMLDivElement | null>(null);
+    const accountButtonRef = useRef<HTMLButtonElement | null>(null);
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
 
     useEffect(() => {
@@ -46,8 +47,19 @@ export default function TaleGameshopHeader() {
             }
         };
 
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsAccountOpen(false);
+                accountButtonRef.current?.focus();
+            }
+        };
+
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
     }, [isAccountOpen]);
 
     useEffect(() => {
@@ -127,6 +139,7 @@ export default function TaleGameshopHeader() {
                                     onClick={() => setIsAccountOpen((prev) => !prev)}
                                     aria-expanded={isAccountOpen}
                                     aria-haspopup="true"
+                                    ref={accountButtonRef}
                                 >
                                     <FontAwesomeIcon icon={faCircleUser}/>
                                     <span>My account</span>
@@ -137,7 +150,7 @@ export default function TaleGameshopHeader() {
                                         Signed in as <span>{email}</span>
                                     </div>
                                     <div className="account-links">
-                                        <Link to="/account/profile" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                        <Link to="/account" className="account-link" onClick={() => setIsAccountOpen(false)}>
                                             Profile
                                         </Link>
                                         <Link to="/account/orders" className="account-link" onClick={() => setIsAccountOpen(false)}>
@@ -210,7 +223,7 @@ export default function TaleGameshopHeader() {
                                 </button>
                                 <div className="drawer-account-email">Signed in as {email}</div>
                                 <div className={`drawer-account-links ${isDrawerAccountOpen ? 'open' : ''}`}>
-                                    <Link to="/account/profile" className="menu-item" onClick={() => setIsMenuOpen(false)}>
+                                    <Link to="/account" className="menu-item" onClick={() => setIsMenuOpen(false)}>
                                         Profile
                                     </Link>
                                     <Link to="/account/orders" className="menu-item" onClick={() => setIsMenuOpen(false)}>
