@@ -1,0 +1,307 @@
+.account-page {
+    background: #ffffff;
+    padding: var(--space-32) 0 var(--space-64);
+    min-height: calc(100vh - 160px);
+}
+
+.account-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: 14px;
+    color: var(--color-muted);
+    margin-bottom: var(--space-24);
+}
+
+.account-breadcrumbs a {
+    color: inherit;
+}
+
+.account-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: var(--space-32);
+    align-items: start;
+}
+
+.account-sidebar {
+    position: sticky;
+    top: 96px;
+    padding: var(--space-20);
+}
+
+.account-nav {
+    display: grid;
+    gap: var(--space-8);
+}
+
+.account-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.account-nav-link svg {
+    color: #7d6ab0;
+}
+
+.account-nav-link:hover,
+.account-nav-link:focus-visible {
+    background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+    color: var(--color-primary);
+}
+
+.account-nav-link.active {
+    background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.account-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-24);
+}
+
+.account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-24);
+    flex-wrap: wrap;
+}
+
+.account-subtitle {
+    margin-bottom: 0;
+    color: var(--color-muted);
+}
+
+.account-header-actions {
+    display: flex;
+    gap: var(--space-12);
+    flex-wrap: wrap;
+}
+
+.account-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-24);
+}
+
+.account-profile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-24);
+    flex-wrap: wrap;
+}
+
+.account-profile-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+}
+
+.account-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-primary) 20%, #ffffff);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.account-meta {
+    display: grid;
+    gap: var(--space-8);
+}
+
+.account-meta span {
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.account-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-20);
+}
+
+.account-action-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-16);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: #ffffff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.account-action-card:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+    box-shadow: var(--shadow-sm);
+}
+
+.account-action-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.account-action-count {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2f2544;
+}
+
+.account-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    margin-bottom: var(--space-16);
+}
+
+.account-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.account-table th,
+.account-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.account-table th {
+    color: var(--color-muted);
+    font-weight: 600;
+}
+
+.account-table td:last-child {
+    text-align: right;
+}
+
+.account-table .btn {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+
+.account-keys-list {
+    display: grid;
+    gap: var(--space-12);
+}
+
+.account-key-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-16);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: #ffffff;
+}
+
+.account-muted {
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.account-empty {
+    padding: var(--space-24);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--color-border);
+    color: var(--color-muted);
+    background: #faf9ff;
+    text-align: center;
+}
+
+.account-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-16);
+    border-radius: var(--radius-md);
+    border: 1px solid #f3c4c4;
+    background: #fff7f7;
+    color: #9b1c1c;
+}
+
+.account-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: #f1eefb;
+    border-radius: var(--radius-md);
+}
+
+.account-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    transform: translateX(-100%);
+    animation: shimmer 1.4s infinite;
+}
+
+.account-skeleton-line {
+    height: 14px;
+    margin-bottom: var(--space-8);
+}
+
+.account-skeleton-card {
+    height: 96px;
+}
+
+.account-skeleton-row {
+    height: 18px;
+    margin-bottom: var(--space-12);
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@media (max-width: 1024px) {
+    .account-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .account-sidebar {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .account-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-profile {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .account-table th,
+    .account-table td {
+        padding: 10px;
+    }
+}
