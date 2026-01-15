@@ -5,6 +5,7 @@ using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using System.Linq;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -45,6 +46,22 @@ namespace SuperBot.WebApi.Controllers
         {
             var orders = await _orderRepository.GetAllOrdersAsync();
             var orderDtos = _mapper.Map<IEnumerable<Order>>(orders);
+
+            return Ok(orderDtos);
+        }
+
+        // GET: api/order/user/{userName}
+        [HttpGet("user/{userName}")]
+        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersByUserName(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return BadRequest("User name is required.");
+            }
+
+            var orders = await _orderRepository.GetOrdersByUserNameAsync(userName);
+            var orderDtos = _mapper.Map<IEnumerable<Order>>(orders)
+                .OrderByDescending(order => order.OrderDate);
 
             return Ok(orderDtos);
         }

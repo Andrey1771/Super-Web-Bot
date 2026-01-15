@@ -15,7 +15,7 @@ namespace SuperBot.WebApi.Services
         public async Task InitializeAsync()
         {
             // Список коллекций, которые нужно проверить/создать
-            var collectionsToEnsure = new[] { "Users", "Games", "Orders" };
+            var collectionsToEnsure = new[] { "Users", "Games", "Orders", "Wishlist" };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
 
