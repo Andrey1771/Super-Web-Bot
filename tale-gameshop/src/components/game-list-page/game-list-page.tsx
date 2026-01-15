@@ -8,6 +8,7 @@ import type { IGameService } from '../../iterfaces/i-game-service';
 import type { ISettingsService } from '../../iterfaces/i-settings-service';
 import { Settings } from '../../models/settings';
 import { useCart } from '../../context/cart-context';
+import { useWishlist } from '../../context/wishlist-context';
 import { Product } from '../../reducers/cart-reducer';
 import type { IUrlService } from '../../iterfaces/i-url-service';
 
@@ -30,6 +31,7 @@ const TaleGameshopGameList: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { dispatch } = useCart();
+    const { state: wishlistState, toggleWishlist } = useWishlist();
 
     const _gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const _settingsService = container.get<ISettingsService>(IDENTIFIERS.ISettingsService);
@@ -262,6 +264,7 @@ const TaleGameshopGameList: React.FC = () => {
     const CatalogCard = ({ game, variant, showBadge }: { game: Game; variant: 'large' | 'small'; showBadge?: boolean }) => {
         const isLarge = variant === 'large';
         const price = Number.isFinite(game.price) ? `$${Number(game.price).toFixed(2)}` : '$0';
+        const isWishlisted = wishlistState.items.some((item) => item.gameId === (game.id ?? ''));
 
         return (
             <div
@@ -275,6 +278,30 @@ const TaleGameshopGameList: React.FC = () => {
                     }`}
                 >
                     {renderImage(game)}
+                    <button
+                        type="button"
+                        className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-lg shadow-sm transition ${
+                            isWishlisted ? 'text-[#e2438c]' : 'text-[#b3a8dc]'
+                        }`}
+                        onClick={() =>
+                            toggleWishlist({
+                                gameId: game.id ?? '',
+                                name: game.title,
+                                price: game.price,
+                                image: game.imagePath
+                            })
+                        }
+                        aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'}>
+                            <path
+                                d="M12 20.5c-4.5-3.7-7.5-6.4-7.5-10a4.5 4.5 0 0 1 8-2.8 4.5 4.5 0 0 1 8 2.8c0 3.6-3 6.3-7.5 10l-0.5 0.4-0.5-0.4Z"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    </button>
                     {showBadge && (
                         <span className="absolute left-3 top-3 rounded-full bg-[#6b3ff2] px-3 py-1 text-xs font-semibold text-white shadow-sm">
                             New

@@ -35,6 +35,12 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<IEnumerable<Order>>(ordersDb);
         }
 
+        public async Task<IEnumerable<Order>> GetOrdersByUserNameAsync(string userName)
+        {
+            var ordersDb = await _orders.Find(o => o.UserName == userName).ToListAsync();
+            return _mapper.Map<IEnumerable<Order>>(ordersDb);
+        }
+
         public async Task UpdateOrderAsync(Order order)
         {
             var orderDb = _mapper.Map<OrderDb>(order);

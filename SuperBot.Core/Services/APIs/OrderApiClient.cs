@@ -1,6 +1,7 @@
 ﻿using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.APIs;
+using System;
 using System.Net.Http.Json;
 
 namespace SuperBot.Core.Services.APIs
@@ -10,6 +11,13 @@ namespace SuperBot.Core.Services.APIs
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {
             var response = await _httpClient.GetAsync($"{_urlService.MainUrl}/api/order");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<IEnumerable<Order>>();
+        }
+
+        public async Task<IEnumerable<Order>> GetOrdersByUserNameAsync(string userName)
+        {
+            var response = await _httpClient.GetAsync($"{_urlService.MainUrl}/api/order/user/{Uri.EscapeDataString(userName)}");
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<IEnumerable<Order>>();
         }
