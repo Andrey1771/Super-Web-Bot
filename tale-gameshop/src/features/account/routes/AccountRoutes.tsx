@@ -7,6 +7,7 @@ import AccountSettingsPage from '../pages/AccountSettingsPage';
 import AccountBillingPage from '../pages/AccountBillingPage';
 import AccountPlaceholderPage from '../pages/AccountPlaceholderPage';
 import AccountSavedItemsPage from '../pages/AccountSavedItemsPage';
+import AccountSecurityPage from '../pages/AccountSecurityPage';
 
 const AccountRoutes: React.FC = () => {
     return (
@@ -17,7 +18,7 @@ const AccountRoutes: React.FC = () => {
             <Route path="saved" element={<AccountSavedItemsPage />} />
             <Route path="settings" element={<AccountSettingsPage />} />
             <Route path="billing" element={<AccountBillingPage />} />
-            <Route path="security" element={<AccountPlaceholderPage title="Security" />} />
+            <Route path="security" element={<AccountSecurityPage />} />
             <Route path="help" element={<AccountPlaceholderPage title="Help" />} />
             <Route path="*" element={<Navigate to="/account" replace />} />
         </Routes>
