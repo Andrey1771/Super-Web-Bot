@@ -8,6 +8,7 @@ interface AccountShellProps {
     sectionLabel: string;
     subtitle?: React.ReactNode;
     actions?: React.ReactNode;
+    headerTestId?: string;
     children: React.ReactNode;
 }
 
@@ -27,6 +28,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
     sectionLabel,
     subtitle,
     actions,
+    headerTestId,
     children
 }) => {
     const subtitleContent = subtitle
@@ -70,7 +72,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
                         <span>/</span>
                         <span>{sectionLabel}</span>
                     </div>
-                    <div className="account-header">
+                    <div className="account-header" data-testid={headerTestId}>
                         <div>
                             <h1>{title}</h1>
                             {subtitleContent}
