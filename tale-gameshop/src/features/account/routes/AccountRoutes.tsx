@@ -5,9 +5,9 @@ import AccountOrdersPage from '../pages/AccountOrdersPage';
 import AccountKeysPage from '../pages/AccountKeysPage';
 import AccountSettingsPage from '../pages/AccountSettingsPage';
 import AccountBillingPage from '../pages/AccountBillingPage';
-import AccountPlaceholderPage from '../pages/AccountPlaceholderPage';
 import AccountSavedItemsPage from '../pages/AccountSavedItemsPage';
 import AccountSecurityPage from '../pages/AccountSecurityPage';
+import AccountHelpPage from '../pages/AccountHelpPage';
 
 const AccountRoutes: React.FC = () => {
     return (
@@ -19,7 +19,7 @@ const AccountRoutes: React.FC = () => {
             <Route path="settings" element={<AccountSettingsPage />} />
             <Route path="billing" element={<AccountBillingPage />} />
             <Route path="security" element={<AccountSecurityPage />} />
-            <Route path="help" element={<AccountPlaceholderPage title="Help" />} />
+            <Route path="help" element={<AccountHelpPage />} />
             <Route path="*" element={<Navigate to="/account" replace />} />
         </Routes>
     );
