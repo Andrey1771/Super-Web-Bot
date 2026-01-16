@@ -4,20 +4,17 @@ import {
     faChevronDown,
     faChevronRight,
     faEye,
-    faShieldHalved
+    faShieldHalved,
+    faShieldVirus,
+    faGlobe,
+    faChevronLeft
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import './account-security-page.css';
 
-const AccountSecurityPage: React.FC = () => {
+const SecurityTopSection: React.FC = () => {
     return (
-        <AccountShell
-            title="Security"
-            sectionLabel="Security"
-            subtitle="Manage password, email verification and 2FA."
-            actions={<></>}
-            headerTestId="security-header"
-        >
+        <>
             <section className="card security-alert" data-testid="security-alert">
                 <div className="security-alert-icon" aria-hidden="true">
                     <FontAwesomeIcon icon={faShieldHalved} />
@@ -131,6 +128,120 @@ const AccountSecurityPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+        </>
+    );
+};
+
+const SecurityBottomSection: React.FC = () => {
+    const recommendations = [
+        {id: 'rec-1', title: 'Dying Light 2', price: '$19.99'},
+        {id: 'rec-2', title: 'Dark Souls', price: '$59.99'},
+        {id: 'rec-3', title: 'The Witcher 3', price: '$59.99'},
+        {id: 'rec-4', title: 'Slac', price: '$29.99'},
+        {id: 'rec-5', title: 'God of War', price: '$49.99'},
+        {id: 'rec-6', title: 'Hades', price: '$49.99'}
+    ];
+
+    return (
+        <>
+            <div className="security-bottom-grid">
+                <div className="security-section" data-testid="security-sessions">
+                    <h3>Active sessions</h3>
+                    <div className="card security-sessions-card">
+                        <div className="security-session-row">
+                            <div className="security-session-icon" aria-hidden="true">
+                                <FontAwesomeIcon icon={faShieldVirus} />
+                            </div>
+                            <div className="security-session-details">
+                                <strong>Firefox on Windows</strong>
+                                <span>Kyiv - 11 hours ago - IP 123.345.67.89</span>
+                            </div>
+                            <button type="button" className="btn btn-outline security-secondary-btn">
+                                Log out
+                                <FontAwesomeIcon icon={faChevronRight} />
+                            </button>
+                        </div>
+                        <div className="security-session-row">
+                            <div className="security-session-icon" aria-hidden="true">
+                                <FontAwesomeIcon icon={faGlobe} />
+                            </div>
+                            <div className="security-session-details">
+                                <strong>Chrome on Windows</strong>
+                                <span>United States - Yesterday at 21:12 - IP 34.123.45.67</span>
+                            </div>
+                            <button type="button" className="btn btn-outline security-secondary-btn">
+                                Log out
+                                <FontAwesomeIcon icon={faChevronRight} />
+                            </button>
+                        </div>
+                        <button type="button" className="btn btn-outline security-logout-all">
+                            Log out all sessions
+                        </button>
+                    </div>
+                </div>
+
+                <div className="security-section" data-testid="security-danger">
+                    <h3>Danger zone</h3>
+                    <div className="card security-danger-card">
+                        <div className="security-danger-actions">
+                            <button type="button" className="btn btn-outline security-danger-btn">
+                                Delete account
+                            </button>
+                            <button type="button" className="btn btn-outline security-secondary-btn">
+                                Download security report
+                            </button>
+                        </div>
+                        <div className="security-danger-text">
+                            <p>Permanently delete your account and data.</p>
+                            <p>Download a copy of your account security report for your records.</p>
+                            <p>Proceed with caution.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <section className="security-recommendations" data-testid="security-recommendations">
+                <div className="security-recommendations-header">
+                    <h3>Recommendations based on your wishlist</h3>
+                    <div className="security-recommendations-actions">
+                        <button type="button" className="btn btn-outline security-arrow-btn" aria-label="Scroll left">
+                            <FontAwesomeIcon icon={faChevronLeft} />
+                        </button>
+                        <button type="button" className="btn btn-outline security-arrow-btn" aria-label="Scroll right">
+                            <FontAwesomeIcon icon={faChevronRight} />
+                        </button>
+                    </div>
+                </div>
+                <div className="security-recommendations-list">
+                    {recommendations.map((item) => (
+                        <div key={item.id} className="card security-recommendation-card">
+                            <div className="security-recommendation-media" aria-hidden="true" />
+                            <div className="security-recommendation-body">
+                                <strong>{item.title}</strong>
+                                <span className="security-recommendation-price">{item.price}</span>
+                            </div>
+                            <button type="button" className="btn btn-primary security-recommendation-btn">
+                                Add to cart
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        </>
+    );
+};
+
+const AccountSecurityPage: React.FC = () => {
+    return (
+        <AccountShell
+            title="Security"
+            sectionLabel="Security"
+            subtitle="Manage password, email verification and 2FA."
+            actions={<></>}
+            headerTestId="security-header"
+        >
+            <SecurityTopSection />
+            <SecurityBottomSection />
         </AccountShell>
     );
 };
