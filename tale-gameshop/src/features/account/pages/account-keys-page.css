@@ -1,0 +1,334 @@
+.keys-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.keys-title {
+    margin: 0;
+    font-size: clamp(22px, 2vw, 28px);
+    color: var(--color-text);
+}
+
+.keys-description {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 15px;
+    color: var(--color-muted);
+}
+
+.keys-description p {
+    margin: 0;
+}
+
+.keys-link {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.keys-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.keys-toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-search {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    min-width: 240px;
+}
+
+.keys-search input {
+    border: none;
+    background: transparent;
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+}
+
+.keys-search input:focus {
+    outline: none;
+}
+
+.keys-search svg {
+    color: var(--color-muted);
+}
+
+.keys-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-sort {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.keys-select {
+    border: 1px solid var(--color-border);
+    background: #fff;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    min-width: 140px;
+}
+
+.keys-toolbar-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.keys-clear-btn {
+    height: 36px;
+    padding-inline: var(--space-14);
+    font-size: 13px;
+}
+
+.keys-table-card {
+    padding: 0;
+}
+
+.keys-table-wrapper {
+    overflow-x: auto;
+}
+
+.keys-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+}
+
+.keys-table th,
+.keys-table td {
+    text-align: left;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+}
+
+.keys-table th {
+    color: var(--color-muted);
+    font-weight: 600;
+    background: rgba(124, 58, 237, 0.04);
+}
+
+.keys-game-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    font-weight: 600;
+}
+
+.keys-game-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(236, 72, 153, 0.35));
+    flex-shrink: 0;
+}
+
+.keys-type-badge {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.keys-key-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-10);
+    flex-wrap: wrap;
+}
+
+.keys-key-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: #f7f5ff;
+    font-weight: 600;
+    color: #4b3a72;
+    font-size: 13px;
+}
+
+.keys-copy-btn,
+.keys-activation-btn {
+    height: 34px;
+    font-size: 13px;
+    padding-inline: var(--space-14);
+}
+
+.keys-activation-btn {
+    border-color: rgba(124, 58, 237, 0.35);
+    color: var(--color-primary);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.keys-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.keys-page-btn {
+    height: 36px;
+    min-width: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+}
+
+.keys-page-btn.is-active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+}
+
+.keys-pagination-note {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.keys-recommendations,
+.keys-recent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+}
+
+.keys-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-section-arrows {
+    display: flex;
+    gap: 8px;
+}
+
+.keys-arrow-btn {
+    height: 36px;
+    width: 36px;
+    padding: 0;
+}
+
+.keys-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+.keys-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-16);
+}
+
+.keys-card-media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(59, 130, 246, 0.35));
+}
+
+.keys-card-media--wide {
+    aspect-ratio: 3 / 2;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.45), rgba(14, 116, 144, 0.35));
+}
+
+.keys-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.keys-card-price {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.keys-card-date {
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.keys-card-btn {
+    height: 40px;
+    font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+    .keys-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .keys-toolbar-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .keys-filters {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .keys-select {
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .keys-toolbar-footer {
+        justify-content: flex-start;
+    }
+
+    .keys-pagination {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .keys-card-grid {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: var(--space-8);
+        gap: var(--space-16);
+        scroll-snap-type: x mandatory;
+    }
+
+    .keys-card {
+        min-width: 220px;
+        scroll-snap-align: start;
+    }
+}

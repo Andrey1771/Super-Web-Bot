@@ -36,14 +36,14 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "javascript.nodejs.core.library.configured.version": "20.15.0",
     "javascript.nodejs.core.library.typings.version": "20.15.0",
-    "last_opened_file_path": "C:/projects/2/9/1/Super-Web-Bot/tale-gameshop",
+    "last_opened_file_path": "C:/projects/2/9/1/2/3/4/5/4/Super-Web-Bot/tale-gameshop",
     "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "C:\\projects\\2\\9\\1\\Super-Web-Bot\\tale-gameshop\\node_modules\\typescript\\lib",
+    "ts.external.directory.path": "C:\\projects\\2\\9\\1\\2\\3\\4\\5\\4\\Super-Web-Bot\\tale-gameshop\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -126,6 +126,7 @@
       <workItem from="1766550457769" duration="6443000" />
       <workItem from="1768358442185" duration="26000" />
       <workItem from="1768358470421" duration="910000" />
+      <workItem from="1768521360185" duration="253000" />
     </task>
     <servers />
   </component>
