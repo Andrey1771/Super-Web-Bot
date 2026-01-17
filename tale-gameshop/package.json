@@ -42,7 +42,7 @@
   "scripts": {
     "start-dev": "webpack serve --open --config webpack.config.js --mode development",
     "start-prod": "node server.js",
-    "build": "webpack --mode production",
+    "build": "NODE_OPTIONS=--max_old_space_size=4096 webpack --mode production",
     "dev": "webpack --config webpack.config.js --mode development",
     "lint": "tslint --project tsconfig.json",
     "test": "echo \"Error: no test specified\" && exit 1"
