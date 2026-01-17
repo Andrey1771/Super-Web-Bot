@@ -309,7 +309,7 @@ const TaleGameshopGameList: React.FC = () => {
             return (
                 <img
                     alt={game.title}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover pointer-events-none"
                     src={resolveImageUrl(game.imagePath)}
                     onError={() => handleImageError(imageKey)}
                 />
@@ -402,7 +402,7 @@ const TaleGameshopGameList: React.FC = () => {
                     )}
                     <button
                         type="button"
-                        className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition ${
+                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition ${
                             isWishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
                         }`}
                         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
