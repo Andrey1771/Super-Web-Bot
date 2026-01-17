@@ -10,6 +10,8 @@ import { Settings } from '../../models/settings';
 import { useCart } from '../../context/cart-context';
 import { Product } from '../../reducers/cart-reducer';
 import type { IUrlService } from '../../iterfaces/i-url-service';
+import type { IWishlistService } from '../../iterfaces/i-wishlist-service';
+import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 
 const categoryOrder = [
     'Educational Games',
@@ -26,6 +28,8 @@ const TaleGameshopGameList: React.FC = () => {
     const [searchNameQuery, setSearchNameQuery] = useState<string>('');
     const [settings, setSettings] = useState<Settings | null>(null);
     const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
+    const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+    const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -34,6 +38,8 @@ const TaleGameshopGameList: React.FC = () => {
     const _gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const _settingsService = container.get<ISettingsService>(IDENTIFIERS.ISettingsService);
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
+    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
 
     useEffect(() => {
         (async () => {
@@ -42,6 +48,21 @@ const TaleGameshopGameList: React.FC = () => {
             setSettings(currentSettings);
         })();
     }, []);
+
+    useEffect(() => {
+        const syncUser = () => {
+            const parsedToken = keycloakService.keycloak?.tokenParsed as { email?: string } | undefined;
+            setWishlistUserId(parsedToken?.email ?? '');
+        };
+
+        syncUser();
+        keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+        keycloakService.stateChangedEmitter.on('onAuthSuccess', syncUser);
+
+        return () => {
+            keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+        };
+    }, [keycloakService]);
 
     useEffect(() => {
         (async () => {
@@ -60,6 +81,34 @@ const TaleGameshopGameList: React.FC = () => {
             await updateGamesByCategory(games);
         })();
     }, [searchQuery]);
+
+    useEffect(() => {
+        if (!wishlistUserId) {
+            setWishlistIds(new Set());
+            return;
+        }
+
+        let isMounted = true;
+
+        const loadWishlist = async () => {
+            try {
+                const wishlistGames = await wishlistService.getWishlist(wishlistUserId);
+                if (!isMounted) {
+                    return;
+                }
+                const ids = wishlistGames.map((game) => game.id).filter(Boolean) as string[];
+                setWishlistIds(new Set(ids));
+            } catch (error) {
+                console.error('Failed to load wishlist:', error);
+            }
+        };
+
+        loadWishlist();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [wishlistUserId, wishlistService]);
 
     const loadGamesAndUpdateFilterCategory = async () => {
         const filterCategory = searchParams.get('filterCategory');
@@ -187,6 +236,43 @@ const TaleGameshopGameList: React.FC = () => {
         });
     };
 
+    const handleToggleWishlist = async (game: Game) => {
+        if (!wishlistUserId || !game.id) {
+            return;
+        }
+
+        const isWishlisted = wishlistIds.has(game.id);
+
+        setWishlistIds((prev) => {
+            const next = new Set(prev);
+            if (isWishlisted) {
+                next.delete(game.id);
+            } else {
+                next.add(game.id);
+            }
+            return next;
+        });
+
+        try {
+            if (isWishlisted) {
+                await wishlistService.removeFromWishlist(wishlistUserId, game.id);
+            } else {
+                await wishlistService.addToWishlist(wishlistUserId, game.id);
+            }
+        } catch (error) {
+            console.error('Failed to update wishlist:', error);
+            setWishlistIds((prev) => {
+                const next = new Set(prev);
+                if (isWishlisted) {
+                    next.add(game.id);
+                } else {
+                    next.delete(game.id);
+                }
+                return next;
+            });
+        }
+    };
+
     const renderImage = (game: Game) => {
         if (game.imagePath) {
             return (
@@ -262,6 +348,7 @@ const TaleGameshopGameList: React.FC = () => {
     const CatalogCard = ({ game, variant, showBadge }: { game: Game; variant: 'large' | 'small'; showBadge?: boolean }) => {
         const isLarge = variant === 'large';
         const price = Number.isFinite(game.price) ? `$${Number(game.price).toFixed(2)}` : '$0';
+        const isWishlisted = game.id ? wishlistIds.has(game.id) : false;
 
         return (
             <div
@@ -280,6 +367,24 @@ const TaleGameshopGameList: React.FC = () => {
                             New
                         </span>
                     )}
+                    <button
+                        type="button"
+                        className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition ${
+                            isWishlisted ? 'text-[#ef4444]' : 'hover:text-[#6b3ff2]'
+                        }`}
+                        aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                        aria-pressed={isWishlisted}
+                        onClick={() => handleToggleWishlist(game)}
+                    >
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill={isWishlisted ? 'currentColor' : 'none'}>
+                            <path
+                                d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    </button>
                 </div>
                 <div className="flex flex-1 flex-col">
                     <h3 className={`${isLarge ? 'text-lg' : 'text-sm'} font-semibold text-[#2c2354]`}>

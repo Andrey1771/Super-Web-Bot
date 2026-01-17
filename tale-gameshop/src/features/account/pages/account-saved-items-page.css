@@ -101,6 +101,15 @@
     gap: var(--space-20);
 }
 
+.saved-empty-state {
+    grid-column: 1 / -1;
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-border);
+    padding: var(--space-24);
+    text-align: center;
+    color: var(--color-muted);
+}
+
 .saved-item-card {
     display: flex;
     flex-direction: column;

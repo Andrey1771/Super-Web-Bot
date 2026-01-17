@@ -17,6 +17,8 @@ import {IUrlService} from "./iterfaces/i-url-service";
 import { UrlService } from "./services/url-service";
 import {IAdminService} from "./iterfaces/i-admin-service";
 import { AdminService } from "./services/admin-service";
+import { IWishlistService } from "./iterfaces/i-wishlist-service";
+import { WishlistService } from "./services/wishlist-service";
 
 const container = new Container();
 
@@ -31,5 +33,6 @@ container.bind<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService).to(Keyclo
 container.bind<IKeycloakService>(IDENTIFIERS.IKeycloakService).to(KeycloakService).inSingletonScope();
 container.bind<IUrlService>(IDENTIFIERS.IUrlService).to(UrlService).inSingletonScope();
 container.bind<IAdminService>(IDENTIFIERS.IAdminService).to(AdminService).inSingletonScope();
+container.bind<IWishlistService>(IDENTIFIERS.IWishlistService).to(WishlistService).inSingletonScope();
 
 export default container;

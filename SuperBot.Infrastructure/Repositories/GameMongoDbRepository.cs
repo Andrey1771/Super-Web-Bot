@@ -1,4 +1,6 @@
 ﻿using AutoMapper;
+using System.Collections.Generic;
+using System.Linq;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
@@ -36,6 +38,18 @@ namespace SuperBot.Infrastructure.Repositories
                 throw new Exception("Коллекция не найдена");
             }
             return _mapper.Map<Game>(gamesDb.FirstOrDefault());
+        }
+
+        public async Task<List<Game>> GetByIdsAsync(IEnumerable<string> ids)
+        {
+            var idList = ids?.ToList() ?? new List<string>();
+            if (!idList.Any())
+            {
+                return new List<Game>();
+            }
+
+            var gamesDb = await _games.Find(game => idList.Contains(game.Id)).ToListAsync();
+            return _mapper.Map<List<Game>>(gamesDb);
         }
 
         public async Task CreateAsync(Game game)
