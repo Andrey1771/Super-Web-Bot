@@ -75,6 +75,7 @@ const recentlyViewed: RecentlyViewed[] = [
 const AccountSavedItemsPage: React.FC = () => {
     const viewMode: 'comfortable' | 'compact' = 'comfortable';
     const [wishlistGames, setWishlistGames] = useState<Game[]>([]);
+    const [brokenImageKeys, setBrokenImageKeys] = useState<Set<string>>(new Set());
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
     const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
@@ -165,20 +166,20 @@ const AccountSavedItemsPage: React.FC = () => {
         });
     };
 
-    const resolveCoverStyle = (game: Game) => {
-        if (!game.imagePath) {
-            return undefined;
+    const resolveCoverUrl = (imagePath: string) => {
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
         }
 
-        const resolvedImagePath = game.imagePath.startsWith('http://') || game.imagePath.startsWith('https://')
-            ? game.imagePath
-            : `${urlService.apiBaseUrl}/${game.imagePath}`;
+        if (imagePath.startsWith('/')) {
+            return `${urlService.apiBaseUrl}${imagePath}`;
+        }
 
-        return {
-            backgroundImage: `url(${resolvedImagePath})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-        };
+        return `${urlService.apiBaseUrl}/${imagePath}`;
+    };
+
+    const handleCoverError = (imageKey: string) => {
+        setBrokenImageKeys((prev) => new Set(prev).add(imageKey));
     };
 
     return (
@@ -231,7 +232,19 @@ const AccountSavedItemsPage: React.FC = () => {
                     {viewMode === 'comfortable'
                         ? wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card">
-                                <div className="saved-item-cover" style={resolveCoverStyle(item)} aria-hidden="true" />
+                                <div className="saved-item-cover" aria-hidden="true">
+                                    {item.imagePath
+                                        && item.imagePath !== 'string'
+                                        && !brokenImageKeys.has(item.id ?? item.title)
+                                        && (
+                                            <img
+                                                alt=""
+                                                className="saved-item-image"
+                                                src={resolveCoverUrl(item.imagePath)}
+                                                onError={() => handleCoverError(item.id ?? item.title)}
+                                            />
+                                        )}
+                                </div>
                                 <div className="saved-item-body">
                                     <div className="saved-item-title-row">
                                         <div>
@@ -268,7 +281,19 @@ const AccountSavedItemsPage: React.FC = () => {
                         ))
                         : wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card compact">
-                                <div className="saved-item-compact-cover" style={resolveCoverStyle(item)} aria-hidden="true" />
+                                <div className="saved-item-compact-cover" aria-hidden="true">
+                                    {item.imagePath
+                                        && item.imagePath !== 'string'
+                                        && !brokenImageKeys.has(item.id ?? item.title)
+                                        && (
+                                            <img
+                                                alt=""
+                                                className="saved-item-image"
+                                                src={resolveCoverUrl(item.imagePath)}
+                                                onError={() => handleCoverError(item.id ?? item.title)}
+                                            />
+                                        )}
+                                </div>
                                 <div className="saved-item-compact-body">
                                     <div className="saved-item-compact-header">
                                         <div>

@@ -220,6 +220,15 @@
     height: 72px;
     border-radius: var(--radius-md);
     background: linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(59, 130, 246, 0.45));
+    overflow: hidden;
+    position: relative;
+}
+
+.saved-item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .saved-item-compact-body {

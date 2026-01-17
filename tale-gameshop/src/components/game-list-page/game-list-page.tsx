@@ -284,21 +284,16 @@ const TaleGameshopGameList: React.FC = () => {
             }
         } catch (error) {
             console.error('Failed to update wishlist:', error);
-            setWishlistIds((prev) => {
-                const next = new Set(prev);
-                if (isWishlisted) {
-                    next.add(game.id);
-                } else {
-                    next.delete(game.id);
-                }
-                return next;
-            });
         }
     };
 
     const resolveImageUrl = (imagePath: string) => {
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
+        }
+
+        if (imagePath.startsWith('/')) {
+            return `${urlService.apiBaseUrl}${imagePath}`;
         }
 
         return `${urlService.apiBaseUrl}/${imagePath}`;
@@ -310,7 +305,7 @@ const TaleGameshopGameList: React.FC = () => {
 
     const renderImage = (game: Game) => {
         const imageKey = resolveWishlistKey(game);
-        if (game.imagePath && imageKey && !brokenImageKeys.has(imageKey)) {
+        if (game.imagePath && game.imagePath !== 'string' && imageKey && !brokenImageKeys.has(imageKey)) {
             return (
                 <img
                     alt={game.title}
