@@ -170,8 +170,12 @@ const AccountSavedItemsPage: React.FC = () => {
             return undefined;
         }
 
+        const resolvedImagePath = game.imagePath.startsWith('http://') || game.imagePath.startsWith('https://')
+            ? game.imagePath
+            : `${urlService.apiBaseUrl}/${game.imagePath}`;
+
         return {
-            backgroundImage: `url(${urlService.apiBaseUrl}/${game.imagePath})`,
+            backgroundImage: `url(${resolvedImagePath})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
         };

@@ -29,6 +29,7 @@ const TaleGameshopGameList: React.FC = () => {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
     const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+    const [brokenImageKeys, setBrokenImageKeys] = useState<Set<string>>(new Set());
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -248,19 +249,22 @@ const TaleGameshopGameList: React.FC = () => {
         });
     };
 
+    const resolveWishlistKey = (game: Game) => game.id ?? game.name ?? game.title;
+
     const handleToggleWishlist = async (game: Game) => {
-        if (!game.id) {
+        const wishlistKey = resolveWishlistKey(game);
+        if (!wishlistKey) {
             return;
         }
 
-        const isWishlisted = wishlistIds.has(game.id);
+        const isWishlisted = wishlistIds.has(wishlistKey);
 
         setWishlistIds((prev) => {
             const next = new Set(prev);
             if (isWishlisted) {
-                next.delete(game.id);
+                next.delete(wishlistKey);
             } else {
-                next.add(game.id);
+                next.add(wishlistKey);
             }
             if (!wishlistUserId) {
                 localStorage.setItem('wishlist', JSON.stringify(Array.from(next)));
@@ -268,7 +272,7 @@ const TaleGameshopGameList: React.FC = () => {
             return next;
         });
 
-        if (!wishlistUserId) {
+        if (!wishlistUserId || !game.id) {
             return;
         }
 
@@ -292,13 +296,27 @@ const TaleGameshopGameList: React.FC = () => {
         }
     };
 
+    const resolveImageUrl = (imagePath: string) => {
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+        }
+
+        return `${urlService.apiBaseUrl}/${imagePath}`;
+    };
+
+    const handleImageError = (imageKey: string) => {
+        setBrokenImageKeys((prev) => new Set(prev).add(imageKey));
+    };
+
     const renderImage = (game: Game) => {
-        if (game.imagePath) {
+        const imageKey = resolveWishlistKey(game);
+        if (game.imagePath && imageKey && !brokenImageKeys.has(imageKey)) {
             return (
                 <img
                     alt={game.title}
                     className="h-full w-full object-cover"
-                    src={`${urlService.apiBaseUrl}/${game.imagePath}`}
+                    src={resolveImageUrl(game.imagePath)}
+                    onError={() => handleImageError(imageKey)}
                 />
             );
         }
@@ -367,7 +385,8 @@ const TaleGameshopGameList: React.FC = () => {
     const CatalogCard = ({ game, variant, showBadge }: { game: Game; variant: 'large' | 'small'; showBadge?: boolean }) => {
         const isLarge = variant === 'large';
         const price = Number.isFinite(game.price) ? `$${Number(game.price).toFixed(2)}` : '$0';
-        const isWishlisted = game.id ? wishlistIds.has(game.id) : false;
+        const wishlistKey = resolveWishlistKey(game);
+        const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
 
         return (
             <div
