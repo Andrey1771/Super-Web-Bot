@@ -84,7 +84,18 @@ const TaleGameshopGameList: React.FC = () => {
 
     useEffect(() => {
         if (!wishlistUserId) {
-            setWishlistIds(new Set());
+            const storedWishlist = localStorage.getItem('wishlist');
+            if (storedWishlist) {
+                try {
+                    const parsed = JSON.parse(storedWishlist) as string[];
+                    setWishlistIds(new Set(parsed));
+                } catch (error) {
+                    console.error('Failed to parse wishlist from storage:', error);
+                    setWishlistIds(new Set());
+                }
+            } else {
+                setWishlistIds(new Set());
+            }
             return;
         }
 
@@ -98,6 +109,7 @@ const TaleGameshopGameList: React.FC = () => {
                 }
                 const ids = wishlistGames.map((game) => game.id).filter(Boolean) as string[];
                 setWishlistIds(new Set(ids));
+                localStorage.removeItem('wishlist');
             } catch (error) {
                 console.error('Failed to load wishlist:', error);
             }
@@ -237,7 +249,7 @@ const TaleGameshopGameList: React.FC = () => {
     };
 
     const handleToggleWishlist = async (game: Game) => {
-        if (!wishlistUserId || !game.id) {
+        if (!game.id) {
             return;
         }
 
@@ -250,8 +262,15 @@ const TaleGameshopGameList: React.FC = () => {
             } else {
                 next.add(game.id);
             }
+            if (!wishlistUserId) {
+                localStorage.setItem('wishlist', JSON.stringify(Array.from(next)));
+            }
             return next;
         });
+
+        if (!wishlistUserId) {
+            return;
+        }
 
         try {
             if (isWishlisted) {
@@ -370,7 +389,7 @@ const TaleGameshopGameList: React.FC = () => {
                     <button
                         type="button"
                         className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition ${
-                            isWishlisted ? 'text-[#ef4444]' : 'hover:text-[#6b3ff2]'
+                            isWishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
                         }`}
                         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                         aria-pressed={isWishlisted}
