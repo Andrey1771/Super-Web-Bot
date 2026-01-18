@@ -6,13 +6,33 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
 // Получаем полный путь к `node_modules`
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = path.dirname(__filename);
 
 export default (env, { mode }) => ({
     mode: mode === 'production' ? 'production' : 'development',
+    cache: mode === 'production'
+        ? false
+        : {
+            type: 'filesystem',
+            buildDependencies: {
+                config: [__filename],
+            },
+        },
+    experiments: mode === 'production'
+        ? undefined
+        : {
+            lazyCompilation: true,
+        },
+    infrastructureLogging: {
+        level: 'warn',
+    },
+    stats: 'errors-warnings',
     optimization: {
         minimize: mode === 'production',
+        moduleIds: mode === 'production' ? 'deterministic' : 'named',
+        chunkIds: mode === 'production' ? 'deterministic' : 'named',
     },
     entry: './src/index.tsx',
     output: {
@@ -110,6 +130,16 @@ export default (env, { mode }) => ({
         historyApiFallback: true,
         compress: false,
         port: 3000,
+        hot: true,
+        devMiddleware: {
+            writeToDisk: false,
+        },
+        client: {
+            overlay: {
+                errors: true,
+                warnings: false,
+            },
+        },
         server: {
             type: 'https',
             options: {
@@ -120,5 +150,5 @@ export default (env, { mode }) => ({
             },
         },
     },
-    devtool: (mode === 'production') ? 'source-map' : 'cheap-module-source-map',
+    devtool: (mode === 'production') ? 'source-map' : 'eval-cheap-module-source-map',
 });
