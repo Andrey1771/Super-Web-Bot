@@ -63,8 +63,10 @@ const TaleGameshopGameList: React.FC = () => {
 
     useEffect(() => {
         const syncUser = () => {
-            const parsedToken = services.keycloakService.keycloak?.tokenParsed as { email?: string } | undefined;
-            setWishlistUserId(parsedToken?.email ?? '');
+            const parsedToken = services.keycloakService.keycloak?.tokenParsed as
+                | { email?: string; preferred_username?: string; sub?: string }
+                | undefined;
+            setWishlistUserId(parsedToken?.email ?? parsedToken?.preferred_username ?? parsedToken?.sub ?? '');
         };
 
         syncUser();

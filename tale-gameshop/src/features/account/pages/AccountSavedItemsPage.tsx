@@ -91,8 +91,10 @@ const AccountSavedItemsPage: React.FC = () => {
 
     useEffect(() => {
         const syncUser = () => {
-            const parsedToken = keycloakService.keycloak?.tokenParsed as { email?: string } | undefined;
-            setWishlistUserId(parsedToken?.email ?? '');
+            const parsedToken = keycloakService.keycloak?.tokenParsed as
+                | { email?: string; preferred_username?: string; sub?: string }
+                | undefined;
+            setWishlistUserId(parsedToken?.email ?? parsedToken?.preferred_username ?? parsedToken?.sub ?? '');
         };
 
         syncUser();
