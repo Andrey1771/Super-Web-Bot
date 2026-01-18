@@ -29,7 +29,7 @@ const TaleGameshopGameList: React.FC = () => {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
     const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
-    const [brokenImageKeys, setBrokenImageKeys] = useState<Set<string>>(new Set());
+    const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -284,33 +284,55 @@ const TaleGameshopGameList: React.FC = () => {
         }
     };
 
+    const fallbackImage =
+        'data:image/svg+xml;utf8,' +
+        encodeURIComponent(
+            '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"360\">' +
+                '<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">' +
+                '<stop offset=\"0%\" stop-color=\"#c7bfff\"/><stop offset=\"100%\" stop-color=\"#f7f4ff\"/>' +
+                '</linearGradient></defs>' +
+                '<rect width=\"100%\" height=\"100%\" fill=\"url(#g)\"/>' +
+                '<text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-size=\"24\" fill=\"#6f64a8\">No image</text>' +
+            '</svg>'
+        );
+
+    const normalizeImagePath = (imagePath: string) =>
+        imagePath.replace(/^\/?wwwroot\//, '/');
+
     const resolveImageUrl = (imagePath: string) => {
-        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-            return imagePath;
+        const normalizedPath = normalizeImagePath(imagePath);
+
+        if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+            return normalizedPath;
         }
 
-        if (imagePath.startsWith('/')) {
-            return `${urlService.apiBaseUrl}${imagePath}`;
+        if (normalizedPath.startsWith('/')) {
+            return `${urlService.apiBaseUrl}${normalizedPath}`;
         }
 
-        return `${urlService.apiBaseUrl}/${imagePath}`;
+        return `${urlService.apiBaseUrl}/${normalizedPath}`;
     };
 
-    const handleImageError = (imageKey: string) => {
-        setBrokenImageKeys((prev) => new Set(prev).add(imageKey));
+    const handleImageError = (src: string, event: React.SyntheticEvent<HTMLImageElement>) => {
+        const target = event.currentTarget;
+        target.onerror = null;
+        target.src = fallbackImage;
+        setBrokenImageUrls((prev) => new Set(prev).add(src));
     };
 
     const renderImage = (game: Game) => {
-        const imageKey = resolveWishlistKey(game);
-        if (game.imagePath && game.imagePath !== 'string' && imageKey && !brokenImageKeys.has(imageKey)) {
-            return (
-                <img
-                    alt={game.title}
-                    className="h-full w-full object-cover pointer-events-none"
-                    src={resolveImageUrl(game.imagePath)}
-                    onError={() => handleImageError(imageKey)}
-                />
-            );
+        if (game.imagePath && game.imagePath !== 'string') {
+            const src = resolveImageUrl(game.imagePath);
+            if (!brokenImageUrls.has(src)) {
+                return (
+                    <img
+                        alt={game.title}
+                        className="h-full w-full object-cover pointer-events-none"
+                        src={src}
+                        onError={(event) => handleImageError(src, event)}
+                    />
+                );
+            }
         }
 
         return (

@@ -1,99 +1,92 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace SuperBot.WebApi.Controllers
+namespace SuperBot.WebApi.Controllers;
+
+[Route("api/images")]
+[ApiController]
+public class ImageController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ImageController : ControllerBase
+    private readonly string _uploadFolder;
+
+    public ImageController(IWebHostEnvironment env)
     {
-        private readonly string _uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot\\uploads");
-
-        public ImageController()
+        _uploadFolder = Path.Combine(env.WebRootPath, "uploads");
+        if (!Directory.Exists(_uploadFolder))
         {
-            // Проверка, что папка для загрузки существует
-            if (!Directory.Exists(_uploadFolder))
-            {
-                Directory.CreateDirectory(_uploadFolder);
-            }
+            Directory.CreateDirectory(_uploadFolder);
+        }
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "admin")]
+    [RequestSizeLimit(20_000_000)]
+    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest("No file provided or file is empty.");
         }
 
-        [HttpPost("upload")]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UploadImage(IFormFile file)
+        var originalName = Path.GetFileName(file.FileName);
+        var safeExt = Path.GetExtension(originalName).ToLowerInvariant();
+
+        var allowed = new HashSet<string> { ".jpg", ".jpeg", ".png", ".webp" };
+        if (!allowed.Contains(safeExt))
         {
-            if (file == null || file.Length == 0)
-            {
-                return BadRequest("No file provided or file is empty.");
-            }
-
-            // Генерация уникального имени файла, чтобы избежать конфликтов
-            var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
-            var filePath = Path.Combine(_uploadFolder, uniqueFileName);
-
-            try
-            {
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(stream);
-                }
-
-                return Ok(new { FilePath = filePath });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            return BadRequest("Unsupported image format.");
         }
 
-        [HttpDelete("delete")]
-        [Authorize(Roles = "admin")]
-        public IActionResult DeleteImage(string fileName)
+        var uniqueFileName = $"{Guid.NewGuid():N}{safeExt}";
+        var physicalPath = Path.Combine(_uploadFolder, uniqueFileName);
+
+        await using (var stream = System.IO.File.Create(physicalPath))
         {
-            if (string.IsNullOrEmpty(fileName))
-            {
-                return BadRequest("File name is not provided.");
-            }
-
-            // Полный путь к файлу
-            var filePath = Path.Combine(_uploadFolder, fileName);
-
-            try
-            {
-                if (System.IO.File.Exists(filePath))
-                {
-                    System.IO.File.Delete(filePath);
-                    return Ok(new { Message = "File deleted successfully." });
-                }
-                else
-                {
-                    return NotFound("File not found.");
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            await file.CopyToAsync(stream, ct);
         }
 
-        [HttpGet("list")]
-        [Authorize(Roles = "admin")]
-        public IActionResult GetImagePaths()
-        {
-            try
-            {
-                // Получаем все файлы в папке загрузок
-                var files = Directory.GetFiles(_uploadFolder)
-                                     .Select(Path.GetFileName) // Получаем только имена файлов
-                                     .Select(fileName => Url.Content($"~/wwwroot/uploads/{fileName}")) // Создаем URL для файла
-                                     .ToList();
+        var relativeUrl = $"/uploads/{uniqueFileName}";
+        var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativeUrl}";
 
-                return Ok(files);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+        return Ok(new
+        {
+            fileName = uniqueFileName,
+            relativeUrl,
+            url = absoluteUrl
+        });
+    }
+
+    [HttpDelete("{fileName}")]
+    [Authorize(Roles = "admin")]
+    public IActionResult DeleteImage([FromRoute] string fileName)
+    {
+        var safeFileName = Path.GetFileName(fileName);
+        var physicalPath = Path.Combine(_uploadFolder, safeFileName);
+
+        if (!System.IO.File.Exists(physicalPath))
+        {
+            return NotFound("File not found.");
         }
+
+        System.IO.File.Delete(physicalPath);
+        return Ok(new { message = "File deleted successfully." });
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "admin")]
+    public IActionResult ListImages()
+    {
+        var files = Directory.GetFiles(_uploadFolder)
+            .Select(Path.GetFileName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(fileName => new
+            {
+                fileName,
+                relativeUrl = $"/uploads/{fileName}",
+                url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}"
+            })
+            .ToList();
+
+        return Ok(files);
     }
 }

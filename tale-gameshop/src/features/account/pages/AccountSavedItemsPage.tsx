@@ -75,7 +75,7 @@ const recentlyViewed: RecentlyViewed[] = [
 const AccountSavedItemsPage: React.FC = () => {
     const viewMode: 'comfortable' | 'compact' = 'comfortable';
     const [wishlistGames, setWishlistGames] = useState<Game[]>([]);
-    const [brokenImageKeys, setBrokenImageKeys] = useState<Set<string>>(new Set());
+    const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
     const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
@@ -166,20 +166,40 @@ const AccountSavedItemsPage: React.FC = () => {
         });
     };
 
+    const fallbackImage =
+        'data:image/svg+xml;utf8,' +
+        encodeURIComponent(
+            '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"360\">' +
+                '<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">' +
+                '<stop offset=\"0%\" stop-color=\"#c7bfff\"/><stop offset=\"100%\" stop-color=\"#f7f4ff\"/>' +
+                '</linearGradient></defs>' +
+                '<rect width=\"100%\" height=\"100%\" fill=\"url(#g)\"/>' +
+                '<text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-size=\"24\" fill=\"#6f64a8\">No image</text>' +
+            '</svg>'
+        );
+
+    const normalizeImagePath = (imagePath: string) =>
+        imagePath.replace(/^\/?wwwroot\//, '/');
+
     const resolveCoverUrl = (imagePath: string) => {
-        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-            return imagePath;
+        const normalizedPath = normalizeImagePath(imagePath);
+
+        if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+            return normalizedPath;
         }
 
-        if (imagePath.startsWith('/')) {
-            return `${urlService.apiBaseUrl}${imagePath}`;
+        if (normalizedPath.startsWith('/')) {
+            return `${urlService.apiBaseUrl}${normalizedPath}`;
         }
 
-        return `${urlService.apiBaseUrl}/${imagePath}`;
+        return `${urlService.apiBaseUrl}/${normalizedPath}`;
     };
 
-    const handleCoverError = (imageKey: string) => {
-        setBrokenImageKeys((prev) => new Set(prev).add(imageKey));
+    const handleCoverError = (src: string, event: React.SyntheticEvent<HTMLImageElement>) => {
+        const target = event.currentTarget;
+        target.onerror = null;
+        target.src = fallbackImage;
+        setBrokenImageUrls((prev) => new Set(prev).add(src));
     };
 
     return (
@@ -233,17 +253,20 @@ const AccountSavedItemsPage: React.FC = () => {
                         ? wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card">
                                 <div className="saved-item-cover" aria-hidden="true">
-                                    {item.imagePath
-                                        && item.imagePath !== 'string'
-                                        && !brokenImageKeys.has(item.id ?? item.title)
-                                        && (
+                                    {item.imagePath && item.imagePath !== 'string' && (() => {
+                                        const src = resolveCoverUrl(item.imagePath);
+                                        if (brokenImageUrls.has(src)) {
+                                            return null;
+                                        }
+                                        return (
                                             <img
                                                 alt=""
                                                 className="saved-item-image"
-                                                src={resolveCoverUrl(item.imagePath)}
-                                                onError={() => handleCoverError(item.id ?? item.title)}
+                                                src={src}
+                                                onError={(event) => handleCoverError(src, event)}
                                             />
-                                        )}
+                                        );
+                                    })()}
                                 </div>
                                 <div className="saved-item-body">
                                     <div className="saved-item-title-row">
@@ -282,17 +305,20 @@ const AccountSavedItemsPage: React.FC = () => {
                         : wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card compact">
                                 <div className="saved-item-compact-cover" aria-hidden="true">
-                                    {item.imagePath
-                                        && item.imagePath !== 'string'
-                                        && !brokenImageKeys.has(item.id ?? item.title)
-                                        && (
+                                    {item.imagePath && item.imagePath !== 'string' && (() => {
+                                        const src = resolveCoverUrl(item.imagePath);
+                                        if (brokenImageUrls.has(src)) {
+                                            return null;
+                                        }
+                                        return (
                                             <img
                                                 alt=""
                                                 className="saved-item-image"
-                                                src={resolveCoverUrl(item.imagePath)}
-                                                onError={() => handleCoverError(item.id ?? item.title)}
+                                                src={src}
+                                                onError={(event) => handleCoverError(src, event)}
                                             />
-                                        )}
+                                        );
+                                    })()}
                                 </div>
                                 <div className="saved-item-compact-body">
                                     <div className="saved-item-compact-header">
