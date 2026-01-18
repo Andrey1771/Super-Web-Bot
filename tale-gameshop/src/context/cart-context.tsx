@@ -26,11 +26,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
     useEffect(() => {
         localStorage.setItem('cart', JSON.stringify(state));
         const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
-        keycloakService.stateChangedEmitter.off('onAuthSuccess');
-        keycloakService.stateChangedEmitter.on('onAuthSuccess', async () => {
+        const handleAuthSuccess = async () => {
             // @ts-ignore Keycloak содержит
             await syncCartWithServer(keycloakService.keycloak.tokenParsed.email);
-        });
+        };
+
+        keycloakService.stateChangedEmitter.off('onAuthSuccess', handleAuthSuccess);
+        keycloakService.stateChangedEmitter.on('onAuthSuccess', handleAuthSuccess);
+
+        return () => {
+            keycloakService.stateChangedEmitter.off('onAuthSuccess', handleAuthSuccess);
+        };
     }, [state]);
 
     // Функция объединения двух корзин
