@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import IDENTIFIERS from '../../constants/identifiers';
 import './game-list-page.css';
@@ -20,6 +20,8 @@ const categoryOrder = [
     'Strategy',
     'Sports'
 ];
+const WISHLIST_GUEST_KEY = 'wishlist_guest';
+const WISHLIST_LEGACY_KEY = 'wishlist';
 
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
@@ -45,6 +47,7 @@ const TaleGameshopGameList: React.FC = () => {
     const filterCategory = searchParams.get('filterCategory') ?? '';
     const filterName = searchParams.get('filterName') ?? '';
     const [searchNameDraft, setSearchNameDraft] = useState(filterName);
+    const didMergeRef = useRef(false);
 
     useEffect(() => {
         setSearchNameDraft(filterName);
@@ -80,36 +83,76 @@ const TaleGameshopGameList: React.FC = () => {
         })();
     }, [services.gameService]);
 
+    const readGuestWishlist = useCallback(() => {
+        const storedGuest = localStorage.getItem(WISHLIST_GUEST_KEY);
+        if (storedGuest) {
+            try {
+                return (JSON.parse(storedGuest) as string[]).filter(Boolean);
+            } catch (error) {
+                console.error('Failed to parse guest wishlist from storage:', error);
+                return [];
+            }
+        }
+
+        const legacy = localStorage.getItem(WISHLIST_LEGACY_KEY);
+        if (!legacy) {
+            return [];
+        }
+
+        try {
+            const parsed = (JSON.parse(legacy) as string[]).filter(Boolean);
+            localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(parsed));
+            localStorage.removeItem(WISHLIST_LEGACY_KEY);
+            return parsed;
+        } catch (error) {
+            console.error('Failed to parse legacy wishlist from storage:', error);
+            localStorage.removeItem(WISHLIST_LEGACY_KEY);
+            return [];
+        }
+    }, []);
+
+    const writeGuestWishlist = useCallback((ids: Set<string>) => {
+        localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(Array.from(ids)));
+    }, []);
+
     useEffect(() => {
         if (!wishlistUserId) {
-            const storedWishlist = localStorage.getItem('wishlist');
-            if (storedWishlist) {
-                try {
-                    const parsed = JSON.parse(storedWishlist) as string[];
-                    setWishlistIds(new Set(parsed));
-                } catch (error) {
-                    console.error('Failed to parse wishlist from storage:', error);
-                    setWishlistIds(new Set());
-                }
-            } else {
-                setWishlistIds(new Set());
-            }
+            didMergeRef.current = false;
+            const guestIds = readGuestWishlist();
+            setWishlistIds(new Set(guestIds));
             return;
         }
 
+        if (didMergeRef.current) {
+            return;
+        }
+
+        didMergeRef.current = true;
         let isMounted = true;
 
         const loadWishlist = async () => {
+            const guestIds = readGuestWishlist();
             try {
-                const wishlistGames = await services.wishlistService.getWishlist(wishlistUserId);
+                if (guestIds.length > 0) {
+                    const mergedIds = await services.wishlistService.merge(guestIds);
+                    if (!isMounted) {
+                        return;
+                    }
+                    setWishlistIds(new Set(mergedIds));
+                    localStorage.removeItem(WISHLIST_GUEST_KEY);
+                    return;
+                }
+
+                const serverIds = await services.wishlistService.getWishlist();
                 if (!isMounted) {
                     return;
                 }
-                const ids = wishlistGames.map((game) => game.id).filter(Boolean) as string[];
-                setWishlistIds(new Set(ids));
-                localStorage.removeItem('wishlist');
+                setWishlistIds(new Set(serverIds));
             } catch (error) {
                 console.error('Failed to load wishlist:', error);
+                if (isMounted) {
+                    setWishlistIds(new Set(guestIds));
+                }
             }
         };
 
@@ -118,7 +161,7 @@ const TaleGameshopGameList: React.FC = () => {
         return () => {
             isMounted = false;
         };
-    }, [wishlistUserId, services.wishlistService]);
+    }, [wishlistUserId, readGuestWishlist, services.wishlistService]);
 
     const patchSearchParams = useCallback(
         (patchFn: (params: URLSearchParams) => void) => {
@@ -251,30 +294,43 @@ const TaleGameshopGameList: React.FC = () => {
             return;
         }
 
+        let nextIds: Set<string> | null = null;
         let wasWishlisted = false;
 
         setWishlistIds((prev) => {
             const next = new Set(prev);
             wasWishlisted = next.has(wishlistKey);
             wasWishlisted ? next.delete(wishlistKey) : next.add(wishlistKey);
-            if (!wishlistUserId) {
-                localStorage.setItem('wishlist', JSON.stringify(Array.from(next)));
-            }
+            nextIds = next;
             return next;
         });
 
+        if (!nextIds) {
+            return;
+        }
+
         if (!wishlistUserId || !game.id) {
+            writeGuestWishlist(nextIds);
             return;
         }
 
         try {
             if (wasWishlisted) {
-                await services.wishlistService.removeFromWishlist(wishlistUserId, wishlistKey);
+                await services.wishlistService.removeItem(wishlistKey);
             } else {
-                await services.wishlistService.addToWishlist(wishlistUserId, wishlistKey);
+                await services.wishlistService.addItem(wishlistKey);
             }
         } catch (error) {
             console.error('Failed to update wishlist:', error);
+            setWishlistIds((prev) => {
+                const rollback = new Set(prev);
+                if (wasWishlisted) {
+                    rollback.add(wishlistKey);
+                } else {
+                    rollback.delete(wishlistKey);
+                }
+                return rollback;
+            });
         }
     };
 
@@ -434,6 +490,8 @@ const TaleGameshopGameList: React.FC = () => {
                         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                         aria-pressed={isWishlisted}
                         onClick={() => handleToggleWishlist(game)}
+                        disabled={!wishlistKey}
+                        aria-disabled={!wishlistKey}
                     >
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill={isWishlisted ? 'currentColor' : 'none'}>
                             <path
