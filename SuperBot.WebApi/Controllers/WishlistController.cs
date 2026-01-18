@@ -1,49 +1,91 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Interfaces.IRepositories;
+using System.Linq;
+using System.Security.Claims;
 
 namespace SuperBot.WebApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class WishlistController(IUserRepository _userRepository, IGameRepository _gameRepository) : ControllerBase
+    [Authorize]
+    [Route("api/wishlist")]
+    public class WishlistController(IWishlistRepository _wishlistRepository) : ControllerBase
     {
-        [HttpGet("{userId}")]
-        public async Task<IActionResult> GetWishlist(string userId)
+        [HttpGet]
+        public async Task<IActionResult> GetWishlist()
         {
-            var wishlistIds = await _userRepository.GetWishlistAsync(userId);
-            var games = await _gameRepository.GetByIdsAsync(wishlistIds);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized();
+            }
 
-            return Ok(games);
+            var wishlistIds = await _wishlistRepository.GetGameIdsAsync(currentUserId);
+            return Ok(wishlistIds);
         }
 
-        [HttpPost("{userId}/items")]
-        public async Task<IActionResult> AddToWishlist(string userId, [FromBody] WishlistItemRequest request)
+        [HttpPost("items")]
+        public async Task<IActionResult> AddToWishlist([FromBody] WishlistItemRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.GameId))
             {
                 return BadRequest("GameId is required.");
             }
 
-            var game = await _gameRepository.GetByIdAsync(request.GameId);
-            if (game == null)
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId))
             {
-                return NotFound();
+                return Unauthorized();
             }
 
-            await _userRepository.AddToWishlistAsync(userId, request.GameId);
-            return NoContent();
+            await _wishlistRepository.AddAsync(currentUserId, request.GameId);
+            return Ok();
         }
 
-        [HttpDelete("{userId}/items/{gameId}")]
-        public async Task<IActionResult> RemoveFromWishlist(string userId, string gameId)
+        [HttpDelete("items/{gameId}")]
+        public async Task<IActionResult> RemoveFromWishlist(string gameId)
         {
-            await _userRepository.RemoveFromWishlistAsync(userId, gameId);
-            return NoContent();
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            await _wishlistRepository.RemoveAsync(currentUserId, gameId);
+            return Ok();
+        }
+
+        [HttpPost("merge")]
+        public async Task<IActionResult> MergeWishlist([FromBody] MergeWishlistRequest request)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var mergedIds = await _wishlistRepository.MergeAsync(currentUserId, request.GameIds ?? Enumerable.Empty<string>());
+            return Ok(new { gameIds = mergedIds });
+        }
+
+        private string GetCurrentUserId()
+        {
+            return User?.FindFirst("email")?.Value
+                ?? User?.FindFirst(ClaimTypes.Email)?.Value
+                ?? User?.FindFirst("preferred_username")?.Value
+                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User?.FindFirst("sub")?.Value
+                ?? string.Empty;
         }
     }
 
     public class WishlistItemRequest
     {
         public string GameId { get; set; }
+    }
+
+    public class MergeWishlistRequest
+    {
+        public List<string> GameIds { get; set; } = new();
     }
 }

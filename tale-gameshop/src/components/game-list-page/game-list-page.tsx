@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import IDENTIFIERS from '../../constants/identifiers';
 import './game-list-page.css';
 import container from '../../inversify.config';
@@ -20,99 +20,141 @@ const categoryOrder = [
     'Strategy',
     'Sports'
 ];
+const WISHLIST_GUEST_KEY = 'wishlist_guest';
+const WISHLIST_LEGACY_KEY = 'wishlist';
 
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
-    const [gamesByCategory, setGamesByCategory] = useState<Map<string, Game[]>>(new Map());
-    const [searchQuery, setSearchQuery] = useState<string>('');
-    const [searchNameQuery, setSearchNameQuery] = useState<string>('');
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
     const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
     const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
+    const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const location = useLocation();
     const { dispatch } = useCart();
 
-    const _gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
-    const _settingsService = container.get<ISettingsService>(IDENTIFIERS.ISettingsService);
-    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
-    const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
-    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
+    const services = useMemo(
+        () => ({
+            gameService: container.get<IGameService>(IDENTIFIERS.IGameService),
+            settingsService: container.get<ISettingsService>(IDENTIFIERS.ISettingsService),
+            urlService: container.get<IUrlService>(IDENTIFIERS.IUrlService),
+            wishlistService: container.get<IWishlistService>(IDENTIFIERS.IWishlistService),
+            keycloakService: container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService)
+        }),
+        []
+    );
+
+    const filterCategory = searchParams.get('filterCategory') ?? '';
+    const filterName = searchParams.get('filterName') ?? '';
+    const [searchNameDraft, setSearchNameDraft] = useState(filterName);
+    const didMergeRef = useRef(false);
+
+    useEffect(() => {
+        setSearchNameDraft(filterName);
+    }, [filterName]);
 
     useEffect(() => {
         (async () => {
-            const allSettings = await _settingsService.getAllSettings();
+            const allSettings = await services.settingsService.getAllSettings();
             const currentSettings = allSettings.shift() ?? null;
             setSettings(currentSettings);
         })();
-    }, []);
+    }, [services.settingsService]);
 
     useEffect(() => {
         const syncUser = () => {
-            const parsedToken = keycloakService.keycloak?.tokenParsed as { email?: string } | undefined;
-            setWishlistUserId(parsedToken?.email ?? '');
+            const parsedToken = services.keycloakService.keycloak?.tokenParsed as
+                | { email?: string; preferred_username?: string; sub?: string }
+                | undefined;
+            setWishlistUserId(parsedToken?.email ?? parsedToken?.preferred_username ?? parsedToken?.sub ?? '');
         };
 
         syncUser();
-        keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
-        keycloakService.stateChangedEmitter.on('onAuthSuccess', syncUser);
+        services.keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+        services.keycloakService.stateChangedEmitter.on('onAuthSuccess', syncUser);
 
         return () => {
-            keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+            services.keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
         };
-    }, [keycloakService]);
+    }, [services.keycloakService]);
 
     useEffect(() => {
         (async () => {
-            await loadGamesAndUpdateFilterCategory();
+            const fetchedGames = await services.gameService.getAllGames();
+            setGames(fetchedGames);
         })();
-    }, [settings]);
+    }, [services.gameService]);
 
-    useEffect(() => {
-        (async () => {
-            await loadGamesAndUpdateFilterCategory();
-        })();
-    }, [location.search]);
+    const readGuestWishlist = useCallback(() => {
+        const storedGuest = localStorage.getItem(WISHLIST_GUEST_KEY);
+        if (storedGuest) {
+            try {
+                return (JSON.parse(storedGuest) as string[]).filter(Boolean);
+            } catch (error) {
+                console.error('Failed to parse guest wishlist from storage:', error);
+                return [];
+            }
+        }
 
-    useEffect(() => {
-        (async () => {
-            await updateGamesByCategory(games);
-        })();
-    }, [searchQuery]);
+        const legacy = localStorage.getItem(WISHLIST_LEGACY_KEY);
+        if (!legacy) {
+            return [];
+        }
+
+        try {
+            const parsed = (JSON.parse(legacy) as string[]).filter(Boolean);
+            localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(parsed));
+            localStorage.removeItem(WISHLIST_LEGACY_KEY);
+            return parsed;
+        } catch (error) {
+            console.error('Failed to parse legacy wishlist from storage:', error);
+            localStorage.removeItem(WISHLIST_LEGACY_KEY);
+            return [];
+        }
+    }, []);
+
+    const writeGuestWishlist = useCallback((ids: Set<string>) => {
+        localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(Array.from(ids)));
+    }, []);
 
     useEffect(() => {
         if (!wishlistUserId) {
-            const storedWishlist = localStorage.getItem('wishlist');
-            if (storedWishlist) {
-                try {
-                    const parsed = JSON.parse(storedWishlist) as string[];
-                    setWishlistIds(new Set(parsed));
-                } catch (error) {
-                    console.error('Failed to parse wishlist from storage:', error);
-                    setWishlistIds(new Set());
-                }
-            } else {
-                setWishlistIds(new Set());
-            }
+            didMergeRef.current = false;
+            const guestIds = readGuestWishlist();
+            setWishlistIds(new Set(guestIds));
             return;
         }
 
+        if (didMergeRef.current) {
+            return;
+        }
+
+        didMergeRef.current = true;
         let isMounted = true;
 
         const loadWishlist = async () => {
+            const guestIds = readGuestWishlist();
             try {
-                const wishlistGames = await wishlistService.getWishlist(wishlistUserId);
+                if (guestIds.length > 0) {
+                    const mergedIds = await services.wishlistService.merge(guestIds);
+                    if (!isMounted) {
+                        return;
+                    }
+                    setWishlistIds(new Set(mergedIds));
+                    localStorage.removeItem(WISHLIST_GUEST_KEY);
+                    return;
+                }
+
+                const serverIds = await services.wishlistService.getWishlist();
                 if (!isMounted) {
                     return;
                 }
-                const ids = wishlistGames.map((game) => game.id).filter(Boolean) as string[];
-                setWishlistIds(new Set(ids));
-                localStorage.removeItem('wishlist');
+                setWishlistIds(new Set(serverIds));
             } catch (error) {
                 console.error('Failed to load wishlist:', error);
+                if (isMounted) {
+                    setWishlistIds(new Set(guestIds));
+                }
             }
         };
 
@@ -121,99 +163,47 @@ const TaleGameshopGameList: React.FC = () => {
         return () => {
             isMounted = false;
         };
-    }, [wishlistUserId, wishlistService]);
+    }, [wishlistUserId, readGuestWishlist, services.wishlistService]);
 
-    const loadGamesAndUpdateFilterCategory = async () => {
-        const filterCategory = searchParams.get('filterCategory');
-        setSearchQuery(filterCategory ?? '');
-
-        const fetchedGames = await _gameService.getAllGames();
-        setGames(fetchedGames);
-        await updateGamesByCategory(fetchedGames);
-    };
-
-    const updateGamesByCategory = async (gamesList: Game[]) => {
-        const updatedGamesByCategory = gamesList.reduce((acc, game) => {
-            const category = settings?.gameCategories[game.gameType] ?? null;
-            if (category === null) {
-                return acc;
-            }
-
-            if (!acc.has(category.title)) {
-                acc.set(category.title, []);
-            }
-            acc.get(category.title)!.push(game);
-            return acc;
-        }, new Map<string, Game[]>());
-
-        setGamesByCategory(updatedGamesByCategory);
-    };
-
-    const updateSearchNameParams = (value: string) => {
-        const params = new URLSearchParams(searchParams);
-        if (value) {
-            params.set('filterName', value);
-        } else {
-            params.delete('filterName');
-        }
-        setSearchParams(params);
-        navigate(`?${params.toString()}`, { replace: true });
-    };
-
-    const updateSearchParams = (value: string) => {
-        const params = new URLSearchParams(searchParams);
-        if (value) {
-            params.set('filterCategory', value);
-        } else {
-            params.delete('filterCategory');
-        }
-        setSearchParams(params);
-        navigate(`?${params.toString()}`, { replace: true });
-    };
+    const patchSearchParams = useCallback(
+        (patchFn: (params: URLSearchParams) => void) => {
+            const params = new URLSearchParams(searchParams);
+            patchFn(params);
+            setSearchParams(params);
+        },
+        [searchParams, setSearchParams]
+    );
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
-        setSearchNameQuery(value);
-        updateSearchNameParams(value);
+        setSearchNameDraft(value);
+        patchSearchParams((params) => {
+            if (value) {
+                params.set('filterName', value);
+            } else {
+                params.delete('filterName');
+            }
+        });
     };
 
     const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const value = event.target.value;
-        setSearchQuery(value);
-        updateSearchParams(value);
+        patchSearchParams((params) => {
+            if (value) {
+                params.set('filterCategory', value);
+            } else {
+                params.delete('filterCategory');
+            }
+        });
     };
 
     const clearAllFilters = () => {
-        setSearchQuery('');
-        setSearchNameQuery('');
-        const params = new URLSearchParams(searchParams);
-        params.delete('filterCategory');
-        params.delete('filterName');
-        setSearchParams(params);
-        navigate(`?${params.toString()}`, { replace: true });
+        setSearchNameDraft('');
+        patchSearchParams((params) => {
+            params.delete('filterCategory');
+            params.delete('filterName');
+        });
     };
-
-    const filteredGamesByCategory = useMemo(() => {
-        return new Map(
-            Array.from(gamesByCategory.entries())
-                .filter(([category]) => category.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((value: [string, Game[]]) => [
-                    value.at(0),
-                    (value.at(1) as Game[]).filter((game) => game.title.includes(searchNameQuery))
-                ])
-        );
-    }, [gamesByCategory, searchQuery, searchNameQuery]);
-
-    const categoryOptions = Array.from(gamesByCategory.keys());
-    const settingsCategories = settings?.gameCategories?.map((category) => category.title) ?? [];
-    const categoriesForDisplay = useMemo(() => {
-        if (settingsCategories.length > 0) {
-            const remaining = categoryOptions.filter((category) => !settingsCategories.includes(category));
-            return [...settingsCategories, ...remaining];
-        }
-
-        return categoryOptions.length > 0 ? categoryOptions : categoryOrder;
-    }, [settingsCategories, categoryOptions]);
 
     const settingsCategoryByTitle = useMemo(() => {
         const map = new Map<string, Settings['gameCategories'][number]>();
@@ -223,18 +213,67 @@ const TaleGameshopGameList: React.FC = () => {
         return map;
     }, [settings]);
 
-    useEffect(() => {
-        setCollapsedMap((prev) => {
-            const next = { ...prev };
-            categoriesForDisplay.forEach((category) => {
-                if (next[category] === undefined) {
-                    const settingsCategory = settingsCategoryByTitle.get(category);
-                    next[category] = settingsCategory?.collapsed ?? true;
-                }
-            });
-            return next;
+    const gamesByCategory = useMemo(() => {
+        return games.reduce((acc, game) => {
+            const category = settings?.gameCategories[game.gameType] ?? null;
+            if (!category) {
+                return acc;
+            }
+
+            if (!acc.has(category.title)) {
+                acc.set(category.title, []);
+            }
+            acc.get(category.title)!.push(game);
+            return acc;
+        }, new Map<string, Game[]>());
+    }, [games, settings]);
+
+    const filteredGamesByCategory = useMemo(() => {
+        const normalizedCategoryFilter = filterCategory.toLowerCase();
+        const normalizedNameFilter = filterName.toLowerCase();
+
+        return new Map(
+            Array.from(gamesByCategory.entries())
+                .filter(([category]) => category.toLowerCase().includes(normalizedCategoryFilter))
+                .map(([category, categoryGames]) => [
+                    category,
+                    categoryGames.filter((game) =>
+                        normalizedNameFilter ? game.title.toLowerCase().includes(normalizedNameFilter) : true
+                    )
+                ])
+        );
+    }, [gamesByCategory, filterCategory, filterName]);
+
+    const categoryOptions = useMemo(() => Array.from(gamesByCategory.keys()), [gamesByCategory]);
+    const settingsCategories = useMemo(
+        () => settings?.gameCategories?.map((category) => category.title) ?? [],
+        [settings]
+    );
+    const categoriesForDisplay = useMemo(() => {
+        if (settingsCategories.length > 0) {
+            const remaining = categoryOptions.filter((category) => !settingsCategories.includes(category));
+            return [...settingsCategories, ...remaining];
+        }
+
+        return categoryOptions.length > 0 ? categoryOptions : categoryOrder;
+    }, [settingsCategories, categoryOptions]);
+
+    const getCollapsed = useCallback(
+        (category: string) => {
+            if (collapsedOverrides[category] !== undefined) {
+                return collapsedOverrides[category];
+            }
+            return settingsCategoryByTitle.get(category)?.collapsed ?? true;
+        },
+        [collapsedOverrides, settingsCategoryByTitle]
+    );
+
+    const toggleCollapsed = useCallback((category: string) => {
+        setCollapsedOverrides((prev) => {
+            const current = prev[category] ?? (settingsCategoryByTitle.get(category)?.collapsed ?? true);
+            return { ...prev, [category]: !current };
         });
-    }, [categoriesForDisplay, settingsCategoryByTitle]);
+    }, [settingsCategoryByTitle]);
 
     const handleAddToCart = (game: Game) => {
         dispatch({
@@ -257,30 +296,43 @@ const TaleGameshopGameList: React.FC = () => {
             return;
         }
 
+        let nextIds: Set<string> | null = null;
         let wasWishlisted = false;
 
         setWishlistIds((prev) => {
             const next = new Set(prev);
             wasWishlisted = next.has(wishlistKey);
             wasWishlisted ? next.delete(wishlistKey) : next.add(wishlistKey);
-            if (!wishlistUserId) {
-                localStorage.setItem('wishlist', JSON.stringify(Array.from(next)));
-            }
+            nextIds = next;
             return next;
         });
 
+        if (!nextIds) {
+            return;
+        }
+
         if (!wishlistUserId || !game.id) {
+            writeGuestWishlist(nextIds);
             return;
         }
 
         try {
             if (wasWishlisted) {
-                await wishlistService.removeFromWishlist(wishlistUserId, wishlistKey);
+                await services.wishlistService.removeItem(wishlistKey);
             } else {
-                await wishlistService.addToWishlist(wishlistUserId, wishlistKey);
+                await services.wishlistService.addItem(wishlistKey);
             }
         } catch (error) {
             console.error('Failed to update wishlist:', error);
+            setWishlistIds((prev) => {
+                const rollback = new Set(prev);
+                if (wasWishlisted) {
+                    rollback.add(wishlistKey);
+                } else {
+                    rollback.delete(wishlistKey);
+                }
+                return rollback;
+            });
         }
     };
 
@@ -296,8 +348,7 @@ const TaleGameshopGameList: React.FC = () => {
             '</svg>'
         );
 
-    const normalizeImagePath = (imagePath: string) =>
-        imagePath.replace(/^\/?wwwroot\//, '/');
+    const normalizeImagePath = (imagePath: string) => imagePath.replace(/^\/?wwwroot\//, '/');
 
     const resolveImageUrl = (imagePath: string) => {
         const normalizedPath = normalizeImagePath(imagePath);
@@ -306,11 +357,10 @@ const TaleGameshopGameList: React.FC = () => {
             return normalizedPath;
         }
 
-        if (normalizedPath.startsWith('/')) {
-            return `${urlService.apiBaseUrl}${normalizedPath}`;
-        }
+        const baseUrl = services.urlService.apiBaseUrl.replace(/\/$/, '');
+        const urlPath = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
 
-        return `${urlService.apiBaseUrl}/${normalizedPath}`;
+        return `${baseUrl}${urlPath}`;
     };
 
     const handleImageError = (src: string, event: React.SyntheticEvent<HTMLImageElement>) => {
@@ -321,22 +371,37 @@ const TaleGameshopGameList: React.FC = () => {
     };
 
     const renderImage = (game: Game) => {
-        if (game.imagePath && game.imagePath !== 'string') {
-            const src = resolveImageUrl(game.imagePath);
-            if (!brokenImageUrls.has(src)) {
-                return (
-                    <img
-                        alt={game.title}
-                        className="h-full w-full object-cover pointer-events-none"
-                        src={src}
-                        onError={(event) => handleImageError(src, event)}
-                    />
-                );
-            }
+        if (!game.imagePath || game.imagePath === 'string') {
+            return (
+                <img
+                    alt={`${game.title} placeholder`}
+                    className="h-full w-full object-cover pointer-events-none"
+                    src={fallbackImage}
+                    loading="lazy"
+                />
+            );
+        }
+
+        const src = resolveImageUrl(game.imagePath);
+        if (brokenImageUrls.has(src)) {
+            return (
+                <img
+                    alt={`${game.title} placeholder`}
+                    className="h-full w-full object-cover pointer-events-none"
+                    src={fallbackImage}
+                    loading="lazy"
+                />
+            );
         }
 
         return (
-            <div className="h-full w-full bg-[linear-gradient(135deg,#c7bfff_0%,#e8e1ff_45%,#f7f4ff_100%)]" />
+            <img
+                alt={game.title}
+                className="h-full w-full object-cover pointer-events-none"
+                src={src}
+                onError={(event) => handleImageError(src, event)}
+                loading="lazy"
+            />
         );
     };
 
@@ -427,6 +492,8 @@ const TaleGameshopGameList: React.FC = () => {
                         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                         aria-pressed={isWishlisted}
                         onClick={() => handleToggleWishlist(game)}
+                        disabled={!wishlistKey}
+                        aria-disabled={!wishlistKey}
                     >
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill={isWishlisted ? 'currentColor' : 'none'}>
                             <path
@@ -513,7 +580,7 @@ const TaleGameshopGameList: React.FC = () => {
                                     type="text"
                                     className="w-full bg-transparent text-sm text-[#5a5286] placeholder:text-[#b0a7d4] focus:outline-none"
                                     placeholder="Search games..."
-                                    value={searchNameQuery}
+                                    value={searchNameDraft}
                                     onChange={handleSearchChange}
                                 />
                             </label>
@@ -521,7 +588,7 @@ const TaleGameshopGameList: React.FC = () => {
                             <div className="relative">
                                 <select
                                     className="h-10 rounded-[14px] border border-[#e6e1ff] bg-white px-4 pr-8 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none"
-                                    value={searchQuery}
+                                    value={filterCategory}
                                     onChange={handleCategoryChange}
                                 >
                                     <option value="">All categories</option>
@@ -614,7 +681,7 @@ const TaleGameshopGameList: React.FC = () => {
 
                 <div className="mt-10 space-y-6">
                     {categoriesForDisplay.map((category, index) => {
-                        const isCollapsed = collapsedMap[category] ?? false;
+                        const isCollapsed = getCollapsed(category);
                         const description = categoryDescriptions.get(category);
                         const displayGames = filteredGamesByCategory.get(category) ?? [];
                         const isFirstSection = index === 0;
@@ -636,9 +703,7 @@ const TaleGameshopGameList: React.FC = () => {
                                     </div>
                                     <button
                                         className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e6e1ff] bg-white text-[#6b64a8] shadow-sm transition hover:border-[#cfc6ff]"
-                                        onClick={() =>
-                                            setCollapsedMap((prev) => ({ ...prev, [category]: !isCollapsed }))
-                                        }
+                                        onClick={() => toggleCollapsed(category)}
                                         aria-label={isCollapsed ? 'Expand category' : 'Collapse category'}
                                     >
                                         <svg

@@ -1,7 +1,6 @@
-import { Game } from '../models/game';
-
 export interface IWishlistService {
-    getWishlist(userId: string): Promise<Game[]>;
-    addToWishlist(userId: string, gameId: string): Promise<void>;
-    removeFromWishlist(userId: string, gameId: string): Promise<void>;
+    getWishlist(): Promise<string[]>;
+    addItem(gameId: string): Promise<void>;
+    removeItem(gameId: string): Promise<void>;
+    merge(gameIds: string[]): Promise<string[]>;
 }

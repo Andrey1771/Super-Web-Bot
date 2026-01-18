@@ -15,7 +15,7 @@ namespace SuperBot.WebApi.Services
         public async Task InitializeAsync()
         {
             // Список коллекций, которые нужно проверить/создать
-            var collectionsToEnsure = new[] { "Users", "Games", "Orders" };
+            var collectionsToEnsure = new[] { "Users", "Games", "Orders", "WishlistItems" };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
 
@@ -28,6 +28,16 @@ namespace SuperBot.WebApi.Services
                     await _database.CreateCollectionAsync(collectionName);
                 }
             }
+
+            var wishlistCollection = _database.GetCollection<SuperBot.Infrastructure.Data.WishlistItemDb>("WishlistItems");
+            var wishlistIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.WishlistItemDb>(
+                Builders<SuperBot.Infrastructure.Data.WishlistItemDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Ascending(item => item.GameId),
+                new CreateIndexOptions { Unique = true, Name = "ix_wishlist_user_game" }
+            );
+
+            await wishlistCollection.Indexes.CreateOneAsync(wishlistIndex);
         }
     }
 }

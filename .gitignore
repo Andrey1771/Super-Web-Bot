@@ -403,3 +403,6 @@ testem.log
 Thumbs.db
 
 .angular
+
+# Local dev TLS certificates (mkcert)
+/tale-gameshop/certs/
