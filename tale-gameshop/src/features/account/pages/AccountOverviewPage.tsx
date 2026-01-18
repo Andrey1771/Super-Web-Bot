@@ -11,19 +11,30 @@ import AccountShell from '../components/AccountShell';
 import {
     accountProfile,
     accountQuickStats,
-    getRecentKeys,
-    getRecentOrders,
-    getRecommendations
+    getRecentOrders
 } from '../mockAccountData';
 import {useCart} from '../../../context/cart-context';
+import { useRecommendations } from '../../../hooks/use-recommendations';
+import { useGameKeys } from '../../../hooks/use-game-keys';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-overview-page.css';
 
 const AccountOverviewPage: React.FC = () => {
     const orders = getRecentOrders();
-    const keys = getRecentKeys();
-    const recommendations = getRecommendations();
     const {dispatch} = useCart();
     const navigate = useNavigate();
+    const {
+        items: recommendations,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(4);
+    const {
+        items: keys,
+        isLoading: isKeysLoading,
+        error: keysError,
+        reload: reloadKeys
+    } = useGameKeys(3);
 
     const handleInvoiceView = (orderId: string) => {
         console.log(`TODO: open invoice for ${orderId}`);
@@ -171,25 +182,64 @@ const AccountOverviewPage: React.FC = () => {
                     <Link to="/account/keys">View all</Link>
                 </div>
                 <div className="account-key-list">
-                    {keys.map((key) => (
-                        <div key={key.id} className="account-key-item">
+                    {isKeysLoading && (
+                        <div className="account-key-item">
                             <div>
-                                <strong>{key.game}</strong>
+                                <strong>Loading keys...</strong>
                                 <div className="account-key-meta">
-                                    <span>{key.platform}</span>
-                                    <span>-</span>
-                                    <span>{key.date}</span>
+                                    <span>Please wait</span>
                                 </div>
                             </div>
-                            <button
-                                type="button"
-                                className="btn btn-outline account-action-btn"
-                                onClick={() => handleViewKeys(key.id)}
-                            >
-                                View keys
-                            </button>
                         </div>
-                    ))}
+                    )}
+                    {!isKeysLoading && keysError && (
+                        <div className="account-key-item">
+                            <div>
+                                <strong>{keysError}</strong>
+                                <div className="account-key-meta">
+                                    <button type="button" className="btn btn-outline account-action-btn" onClick={reloadKeys}>
+                                        Retry
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {!isKeysLoading && !keysError && keys.length === 0 && (
+                        <div className="account-key-item">
+                            <div>
+                                <strong>No keys yet</strong>
+                                <div className="account-key-meta">
+                                    <span>Complete a purchase to receive keys.</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {!isKeysLoading && !keysError && keys.map((keyItem, index) => {
+                        const title = keyItem.game?.title ?? keyItem.game?.name ?? 'Unknown game';
+                        const dateLabel = keyItem.issuedAt
+                            ? new Date(keyItem.issuedAt).toLocaleDateString()
+                            : 'Pending';
+
+                        return (
+                            <div key={`${keyItem.key}-${index}`} className="account-key-item">
+                                <div>
+                                    <strong>{title}</strong>
+                                    <div className="account-key-meta">
+                                        <span>{keyItem.keyType ?? 'Key'}</span>
+                                        <span>-</span>
+                                        <span>{dateLabel}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline account-action-btn"
+                                    onClick={() => handleViewKeys(keyItem.game?.id)}
+                                >
+                                    View keys
+                                </button>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -197,26 +247,50 @@ const AccountOverviewPage: React.FC = () => {
                 <div className="account-section-header">
                     <h3>Recommendations based on your wishlist</h3>
                 </div>
-                <div className="account-recommendations">
-                    {recommendations.map((item) => (
-                        <div key={item.id} className="account-recommendation-card">
+                <RecommendationsSection
+                    items={recommendations}
+                    isLoading={isRecommendationsLoading}
+                    error={recommendationsError}
+                    onRetry={reloadRecommendations}
+                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    listClassName="account-recommendations"
+                    stateClassName="account-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`rec-skeleton-${index}`} className="account-recommendation-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="account-recommendation-card">
                             <div className="account-recommendation-media">
-                                <img src={item.image} alt={item.title} />
+                                {item.game.imagePath ? (
+                                    <img src={item.game.imagePath} alt={item.game.title} />
+                                ) : (
+                                    <div className="account-recommendation-fallback" aria-hidden="true" />
+                                )}
                             </div>
                             <div className="account-recommendation-body">
-                                <strong>{item.title}</strong>
-                                <span className="account-recommendation-price">${item.price.toFixed(2)}</span>
+                                <strong>{item.game.title}</strong>
+                                <span className="account-recommendation-price">
+                                    ${Number(item.game.price).toFixed(2)}
+                                </span>
                             </div>
                             <button
                                 type="button"
                                 className="btn btn-primary account-recommendation-btn"
-                                onClick={() => handleAddToCart(item.id, item.title, item.price, item.image)}
+                                onClick={() =>
+                                    handleAddToCart(
+                                        item.game.id ?? '',
+                                        item.game.title,
+                                        Number(item.game.price),
+                                        item.game.imagePath
+                                    )
+                                }
+                                disabled={!item.game.id}
                             >
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </div>
         </AccountShell>
     );

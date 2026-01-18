@@ -12,6 +12,7 @@ import { Product } from '../../reducers/cart-reducer';
 import type { IUrlService } from '../../iterfaces/i-url-service';
 import type { IWishlistService } from '../../iterfaces/i-wishlist-service';
 import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
+import type { IRecommendationsService } from '../../iterfaces/i-recommendations-service';
 
 const categoryOrder = [
     'Educational Games',
@@ -39,7 +40,8 @@ const TaleGameshopGameList: React.FC = () => {
             settingsService: container.get<ISettingsService>(IDENTIFIERS.ISettingsService),
             urlService: container.get<IUrlService>(IDENTIFIERS.IUrlService),
             wishlistService: container.get<IWishlistService>(IDENTIFIERS.IWishlistService),
-            keycloakService: container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService)
+            keycloakService: container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService),
+            recommendationsService: container.get<IRecommendationsService>(IDENTIFIERS.IRecommendationsService)
         }),
         []
     );
@@ -288,6 +290,25 @@ const TaleGameshopGameList: React.FC = () => {
         });
     };
 
+    const handleRecordViewed = useCallback(
+        async (game: Game) => {
+            if (!game.id) {
+                return;
+            }
+
+            if (!services.keycloakService.keycloak?.authenticated) {
+                return;
+            }
+
+            try {
+                await services.recommendationsService.postViewed(game.id, 'catalog');
+            } catch (error) {
+                console.error('Failed to record viewed game:', error);
+            }
+        },
+        [services.recommendationsService]
+    );
+
     const resolveWishlistKey = (game: Game) => game.id;
 
     const handleToggleWishlist = async (game: Game) => {
@@ -477,6 +498,7 @@ const TaleGameshopGameList: React.FC = () => {
                     className={`relative mb-4 overflow-hidden rounded-[16px] ${
                         isLarge ? 'h-[190px]' : 'h-[120px]'
                     }`}
+                    onClick={() => handleRecordViewed(game)}
                 >
                     {renderImage(game)}
                     {showBadge && (

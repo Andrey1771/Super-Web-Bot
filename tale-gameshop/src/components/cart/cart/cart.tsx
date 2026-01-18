@@ -1,9 +1,11 @@
-import React, {useMemo, useState} from 'react';
+import React, {useState} from 'react';
 import {useCart} from '../../../context/cart-context';
 import {Link} from "react-router-dom";
 import container from "../../../inversify.config";
 import {IUrlService} from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
+import { useRecommendations } from '../../../hooks/use-recommendations';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import {
     faArrowRotateLeft,
     faBolt,
@@ -182,36 +184,12 @@ const PromoCodeCard: React.FC = () => {
 };
 
 const RecommendedRow: React.FC = () => {
-    const recommended = useMemo(() => ([
-        {
-            id: 'rec-1',
-            title: 'Cyber Realm',
-            price: 19.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1580128637428-81f51be9a1a6?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 'rec-2',
-            title: 'Mythic Odyssey',
-            price: 24.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 'rec-3',
-            title: 'Neon Runner',
-            price: 14.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 'rec-4',
-            title: 'Solar Frontier',
-            price: 29.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80'
-        }
-    ]), []);
+    const {
+        items: recommended,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(4);
 
     return (
         <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
@@ -219,17 +197,42 @@ const RecommendedRow: React.FC = () => {
                 <h2 className="text-xl font-semibold text-gray-900">Recommended for you</h2>
                 <button className="text-sm font-semibold text-purple-700 hover:text-purple-900">View all →</button>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {recommended.map((game) => (
-                    <div key={game.id} className="group flex flex-col overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm shadow-purple-100 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-100/80">
+            <RecommendationsSection
+                items={recommended}
+                isLoading={isRecommendationsLoading}
+                error={recommendationsError}
+                onRetry={reloadRecommendations}
+                emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                listClassName="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                renderSkeleton={(index) => (
+                    <div
+                        key={`rec-skeleton-${index}`}
+                        className="h-64 rounded-2xl border border-dashed border-purple-100 bg-purple-50"
+                    />
+                )}
+                renderItem={(item) => (
+                    <div
+                        key={item.game.id ?? item.game.title}
+                        className="group flex flex-col overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm shadow-purple-100 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-100/80"
+                    >
                         <div className="relative h-40 overflow-hidden bg-purple-50">
-                            <img src={game.image} alt={game.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                            {item.game.imagePath ? (
+                                <img
+                                    src={item.game.imagePath}
+                                    alt={item.game.title}
+                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                />
+                            ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-purple-100 to-purple-50" />
+                            )}
                         </div>
                         <div className="space-y-2 p-4">
-                            <h3 className="text-base font-semibold text-gray-900">{game.title}</h3>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">{game.platform}</p>
+                            <h3 className="text-base font-semibold text-gray-900">{item.game.title}</h3>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Steam</p>
                             <div className="flex items-center justify-between">
-                                <span className="text-lg font-bold text-gray-900">{formatPrice(game.price)}</span>
+                                <span className="text-lg font-bold text-gray-900">
+                                    {formatPrice(Number(item.game.price))}
+                                </span>
                                 <button className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition hover:border-purple-300 hover:bg-purple-100">
                                     <FontAwesomeIcon icon={faCartPlus} />
                                     Add to cart
@@ -237,8 +240,8 @@ const RecommendedRow: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                ))}
-            </div>
+                )}
+            />
             <div className="mt-6 flex items-center justify-center gap-2">
                 {[0, 1, 2].map((dot) => (
                     <span
