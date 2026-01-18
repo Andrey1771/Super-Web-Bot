@@ -39,6 +39,8 @@ builder.Services.AddSwaggerGen(options =>
     options.CustomSchemaIds(type => type.FullName); //    
 });
 
+builder.Services.AddMemoryCache();
+
 
 //  CORS   
 builder.Services.AddCors(options =>
@@ -110,6 +112,9 @@ builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
+builder.Services.AddScoped<IViewedGameRepository, ViewedGameMongoDbRepository>();
+builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
+builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();

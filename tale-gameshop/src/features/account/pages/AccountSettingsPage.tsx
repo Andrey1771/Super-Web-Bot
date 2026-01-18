@@ -3,16 +3,18 @@ import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faArrowLeft, faArrowRight, faChevronRight} from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import { useRecommendations } from '../../../hooks/use-recommendations';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-settings-page.css';
 
-const recommendations = [
-    {id: 'rec-1', title: 'Dying Light 2', price: '$19.99'},
-    {id: 'rec-2', title: 'Dark Souls', price: '$59.99'},
-    {id: 'rec-3', title: 'The Witcher 3', price: '$29.99'},
-    {id: 'rec-4', title: 'God of War', price: '$49.99'}
-];
-
 const AccountSettingsPage: React.FC = () => {
+    const {
+        items: recommendations,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(6);
+
     return (
         <AccountShell
             title="My account"
@@ -153,20 +155,42 @@ const AccountSettingsPage: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <div className="settings-recommendations-list">
-                    {recommendations.map((item) => (
-                        <div key={item.id} className="card settings-recommendation-card">
-                            <div className="settings-recommendation-media" aria-hidden="true" />
-                            <div className="settings-recommendation-body">
-                                <strong>{item.title}</strong>
-                                <span className="settings-recommendation-price">{item.price}</span>
+                <RecommendationsSection
+                    items={recommendations}
+                    isLoading={isRecommendationsLoading}
+                    error={recommendationsError}
+                    onRetry={reloadRecommendations}
+                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    listClassName="settings-recommendations-list"
+                    stateClassName="settings-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`rec-skeleton-${index}`} className="card settings-recommendation-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card settings-recommendation-card">
+                            <div className="settings-recommendation-media">
+                                {item.game.imagePath ? (
+                                    <img src={item.game.imagePath} alt={item.game.title} />
+                                ) : (
+                                    <div className="settings-recommendation-fallback" aria-hidden="true" />
+                                )}
                             </div>
-                            <button type="button" className="btn btn-primary settings-recommendation-btn">
+                            <div className="settings-recommendation-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="settings-recommendation-price">
+                                    ${Number(item.game.price).toFixed(2)}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-primary settings-recommendation-btn"
+                                disabled={!item.game.id}
+                            >
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </section>
         </AccountShell>
     );
