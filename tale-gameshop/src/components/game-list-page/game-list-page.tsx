@@ -249,7 +249,7 @@ const TaleGameshopGameList: React.FC = () => {
         });
     };
 
-    const resolveWishlistKey = (game: Game) => game.id ?? game.name ?? game.title;
+    const resolveWishlistKey = (game: Game) => game.id;
 
     const handleToggleWishlist = async (game: Game) => {
         const wishlistKey = resolveWishlistKey(game);
@@ -257,15 +257,12 @@ const TaleGameshopGameList: React.FC = () => {
             return;
         }
 
-        const isWishlisted = wishlistIds.has(wishlistKey);
+        let wasWishlisted = false;
 
         setWishlistIds((prev) => {
             const next = new Set(prev);
-            if (isWishlisted) {
-                next.delete(wishlistKey);
-            } else {
-                next.add(wishlistKey);
-            }
+            wasWishlisted = next.has(wishlistKey);
+            wasWishlisted ? next.delete(wishlistKey) : next.add(wishlistKey);
             if (!wishlistUserId) {
                 localStorage.setItem('wishlist', JSON.stringify(Array.from(next)));
             }
@@ -277,10 +274,10 @@ const TaleGameshopGameList: React.FC = () => {
         }
 
         try {
-            if (isWishlisted) {
-                await wishlistService.removeFromWishlist(wishlistUserId, game.id);
+            if (wasWishlisted) {
+                await wishlistService.removeFromWishlist(wishlistUserId, wishlistKey);
             } else {
-                await wishlistService.addToWishlist(wishlistUserId, game.id);
+                await wishlistService.addToWishlist(wishlistUserId, wishlistKey);
             }
         } catch (error) {
             console.error('Failed to update wishlist:', error);
@@ -402,7 +399,7 @@ const TaleGameshopGameList: React.FC = () => {
                     )}
                     <button
                         type="button"
-                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition ${
+                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
                             isWishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
                         }`}
                         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
