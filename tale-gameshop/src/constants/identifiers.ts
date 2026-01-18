@@ -8,6 +8,8 @@ const IDENTIFIERS = {
     IUrlService: Symbol.for("IUrlService"),
     IAdminService: Symbol.for("IAdminService"),
     IWishlistService: Symbol.for("IWishlistService"),
+    IRecommendationsService: Symbol.for("IRecommendationsService"),
+    IGameKeysService: Symbol.for("IGameKeysService"),
 };
 
 export default IDENTIFIERS;

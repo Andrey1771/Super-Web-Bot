@@ -10,7 +10,15 @@ const __filename = fileURLToPath(import.meta.url);
 // Получаем полный путь к `node_modules`
 const __dirname = path.dirname(__filename);
 
-export default (env, { mode }) => ({
+export default (env, { mode }) => {
+    const appConfigEnv = env?.appConfigEnv ?? (mode === 'production' ? 'prod' : 'dev');
+    const appConfigFile = `public/app-config.${appConfigEnv}.js`;
+
+    if (!fs.existsSync(path.resolve(__dirname, appConfigFile))) {
+        throw new Error(`[webpack] Missing ${appConfigFile}.`);
+    }
+
+    return ({
     mode: mode === 'production' ? 'production' : 'development',
     cache: mode === 'production'
         ? false
@@ -116,6 +124,7 @@ export default (env, { mode }) => ({
         new CopyWebpackPlugin({
             patterns: [
                 { from: 'public/silent-check-sso.html', to: '' },
+                { from: appConfigFile, to: 'app-config.js' },
             ],
         }),
         ...((mode === 'production')
@@ -174,3 +183,4 @@ export default (env, { mode }) => ({
     },
     devtool: (mode === 'production') ? 'source-map' : 'eval-cheap-module-source-map',
 });
+};

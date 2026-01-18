@@ -15,7 +15,7 @@ namespace SuperBot.WebApi.Services
         public async Task InitializeAsync()
         {
             // Список коллекций, которые нужно проверить/создать
-            var collectionsToEnsure = new[] { "Users", "Games", "Orders", "WishlistItems" };
+            var collectionsToEnsure = new[] { "Users", "Games", "Orders", "WishlistItems", "ViewedGames", "GameKeys" };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
 
@@ -38,6 +38,32 @@ namespace SuperBot.WebApi.Services
             );
 
             await wishlistCollection.Indexes.CreateOneAsync(wishlistIndex);
+
+            var viewedCollection = _database.GetCollection<SuperBot.Infrastructure.Data.ViewedGameDb>("ViewedGames");
+            var viewedUserGameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.ViewedGameDb>(
+                Builders<SuperBot.Infrastructure.Data.ViewedGameDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Ascending(item => item.GameId),
+                new CreateIndexOptions { Unique = true, Name = "ix_viewed_user_game" }
+            );
+            var viewedUserDateIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.ViewedGameDb>(
+                Builders<SuperBot.Infrastructure.Data.ViewedGameDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Descending(item => item.LastViewedAt),
+                new CreateIndexOptions { Name = "ix_viewed_user_last_viewed" }
+            );
+
+            await viewedCollection.Indexes.CreateOneAsync(viewedUserGameIndex);
+            await viewedCollection.Indexes.CreateOneAsync(viewedUserDateIndex);
+
+            var gameKeyCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameKeyDb>("GameKeys");
+            var gameKeyUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(
+                Builders<SuperBot.Infrastructure.Data.GameKeyDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Descending(item => item.IssuedAt),
+                new CreateIndexOptions { Name = "ix_game_keys_user_issued" }
+            );
+            await gameKeyCollection.Indexes.CreateOneAsync(gameKeyUserIndex);
         }
     }
 }

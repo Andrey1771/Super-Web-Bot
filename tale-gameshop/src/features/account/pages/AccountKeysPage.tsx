@@ -9,53 +9,51 @@ import {
     faMagnifyingGlass
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import { useRecommendations } from '../../../hooks/use-recommendations';
+import { useViewedGames } from '../../../hooks/use-viewed-games';
+import { useGameKeys } from '../../../hooks/use-game-keys';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-keys-page.css';
 
-const keyRows = [
-    {
-        id: 'key-1',
-        game: 'Elden Ring',
-        type: 'CD Key',
-        date: 'April 15, 2024',
-        key: 'XXXX-XXXX-XX…'
-    },
-    {
-        id: 'key-2',
-        game: 'Hades II',
-        type: 'CD Key',
-        date: 'April 5, 2024',
-        key: 'XXXX-XXXX-XX…'
-    },
-    {
-        id: 'key-3',
-        game: 'Hades II',
-        type: 'CD Key',
-        date: 'March 28, 2023',
-        key: 'XXXX-XXXX-XX…'
-    },
-    {
-        id: 'key-4',
-        game: 'Cyberpunk 2077',
-        type: 'Activation',
-        date: 'March 22, 2024'
-    }
-];
-
-const recommendations = [
-    {id: 'rec-1', title: 'Dying Light 2', price: '$19.99'},
-    {id: 'rec-2', title: 'Dark Souls', price: '$59.99'},
-    {id: 'rec-3', title: 'The Witcher 3', price: '$29.99'},
-    {id: 'rec-4', title: 'God of War', price: '$49.99'}
-];
-
-const recentlyViewed = [
-    {id: 'recent-1', title: 'Baldur\'s Gate 3', date: 'March 25, 2023'},
-    {id: 'recent-2', title: 'Elden Ring', date: 'Recomn Ding'},
-    {id: 'recent-3', title: 'Resident Evil', date: 'Assisted in Vintage'},
-    {id: 'recent-4', title: 'Lies of P', date: 'B832a 225'}
-];
-
 const AccountKeysPage: React.FC = () => {
+    const {
+        items: recommendations,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(6);
+    const {
+        items: viewedItems,
+        isLoading: isViewedLoading,
+        error: viewedError,
+        reload: reloadViewed
+    } = useViewedGames(6);
+    const {
+        items: keyRows,
+        isLoading: isKeysLoading,
+        error: keysError,
+        reload: reloadKeys
+    } = useGameKeys(50);
+    const paginationLabel = isKeysLoading
+        ? 'Loading...'
+        : keysError
+            ? 'Unable to load keys'
+            : keyRows.length === 0
+                ? 'No keys yet'
+                : `Showing 1-${Math.min(keyRows.length, 4)} of ${keyRows.length}`;
+
+    const handleCopyKey = async (keyValue: string) => {
+        if (!keyValue) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard?.writeText(keyValue);
+        } catch (error) {
+            console.error('Failed to copy key:', error);
+        }
+    };
+
     return (
         <AccountShell
             title="My account"
@@ -127,34 +125,70 @@ const AccountKeysPage: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {keyRows.map((row) => (
-                                <tr key={row.id}>
-                                    <td>
-                                        <div className="keys-game-cell">
-                                            <div className="keys-game-cover" aria-hidden="true" />
-                                            <span>{row.game}</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className="badge keys-type-badge">{row.type}</span>
-                                    </td>
-                                    <td>{row.date}</td>
-                                    <td>
-                                        {row.type === 'Activation' ? (
-                                            <button type="button" className="btn btn-outline keys-activation-btn">
-                                                Go to activation
-                                            </button>
-                                        ) : (
-                                            <div className="keys-key-actions">
-                                                <span className="keys-key-pill">{row.key}</span>
-                                                <button type="button" className="btn btn-outline keys-copy-btn">
-                                                    Copy
-                                                </button>
-                                            </div>
-                                        )}
+                            {isKeysLoading && (
+                                <tr>
+                                    <td colSpan={4} className="keys-table-state">
+                                        Loading keys...
                                     </td>
                                 </tr>
-                            ))}
+                            )}
+                            {!isKeysLoading && keysError && (
+                                <tr>
+                                    <td colSpan={4} className="keys-table-state">
+                                        <div className="keys-table-state-content">
+                                            <span>{keysError}</span>
+                                            <button type="button" className="btn btn-outline keys-copy-btn" onClick={reloadKeys}>
+                                                Retry
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            {!isKeysLoading && !keysError && keyRows.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="keys-table-state">
+                                        No keys yet. Complete a purchase to receive activation keys.
+                                    </td>
+                                </tr>
+                            )}
+                            {!isKeysLoading && !keysError && keyRows.map((row, index) => {
+                                const title = row.game?.title ?? row.game?.name ?? 'Unknown game';
+                                const dateLabel = row.issuedAt ? new Date(row.issuedAt).toLocaleDateString() : 'Pending';
+                                const keyType = row.keyType ?? 'Key';
+
+                                return (
+                                    <tr key={`${row.key}-${index}`}>
+                                        <td>
+                                            <div className="keys-game-cell">
+                                                <div className="keys-game-cover" aria-hidden="true" />
+                                                <span>{title}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className="badge keys-type-badge">{keyType}</span>
+                                        </td>
+                                        <td>{dateLabel}</td>
+                                        <td>
+                                            {row.key ? (
+                                                <div className="keys-key-actions">
+                                                    <span className="keys-key-pill">{row.key}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline keys-copy-btn"
+                                                        onClick={() => handleCopyKey(row.key)}
+                                                    >
+                                                        Copy
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button type="button" className="btn btn-outline keys-activation-btn">
+                                                    Go to activation
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -178,7 +212,7 @@ const AccountKeysPage: React.FC = () => {
                         <FontAwesomeIcon icon={faChevronRight} />
                     </button>
                 </div>
-                <span className="keys-pagination-note">Showing 1-4 of 42</span>
+                <span className="keys-pagination-note">{paginationLabel}</span>
             </div>
 
             <section className="keys-recommendations">
@@ -193,20 +227,36 @@ const AccountKeysPage: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <div className="keys-card-grid">
-                    {recommendations.map((item) => (
-                        <div key={item.id} className="card keys-card">
-                            <div className="keys-card-media" aria-hidden="true" />
-                            <div className="keys-card-body">
-                                <strong>{item.title}</strong>
-                                <span className="keys-card-price">{item.price}</span>
+                <RecommendationsSection
+                    items={recommendations}
+                    isLoading={isRecommendationsLoading}
+                    error={recommendationsError}
+                    onRetry={reloadRecommendations}
+                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    listClassName="keys-card-grid"
+                    stateClassName="keys-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`rec-skeleton-${index}`} className="card keys-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card keys-card">
+                            <div className="keys-card-media">
+                                {item.game.imagePath ? (
+                                    <img src={item.game.imagePath} alt={item.game.title} />
+                                ) : (
+                                    <div className="keys-card-fallback" aria-hidden="true" />
+                                )}
                             </div>
-                            <button type="button" className="btn btn-primary keys-card-btn">
+                            <div className="keys-card-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="keys-card-price">${Number(item.game.price).toFixed(2)}</span>
+                            </div>
+                            <button type="button" className="btn btn-primary keys-card-btn" disabled={!item.game.id}>
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </section>
 
             <section className="keys-recent">
@@ -221,20 +271,38 @@ const AccountKeysPage: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <div className="keys-card-grid keys-card-grid--recent">
-                    {recentlyViewed.map((item) => (
-                        <div key={item.id} className="card keys-card">
-                            <div className="keys-card-media keys-card-media--wide" aria-hidden="true" />
-                            <div className="keys-card-body">
-                                <strong>{item.title}</strong>
-                                <span className="keys-card-date">{item.date}</span>
+                <RecommendationsSection
+                    items={viewedItems}
+                    isLoading={isViewedLoading}
+                    error={viewedError}
+                    onRetry={reloadViewed}
+                    emptyMessage="Browse a few games to see them here."
+                    listClassName="keys-card-grid keys-card-grid--recent"
+                    stateClassName="keys-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`viewed-skeleton-${index}`} className="card keys-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card keys-card">
+                            <div className="keys-card-media keys-card-media--wide">
+                                {item.game.imagePath ? (
+                                    <img src={item.game.imagePath} alt={item.game.title} />
+                                ) : (
+                                    <div className="keys-card-fallback" aria-hidden="true" />
+                                )}
                             </div>
-                            <button type="button" className="btn btn-primary keys-card-btn">
+                            <div className="keys-card-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="keys-card-date">
+                                    {new Date(item.lastViewedAt).toLocaleDateString()}
+                                </span>
+                            </div>
+                            <button type="button" className="btn btn-primary keys-card-btn" disabled={!item.game.id}>
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </section>
         </AccountShell>
     );

@@ -18,60 +18,10 @@ import type { IUrlService } from '../../../iterfaces/i-url-service';
 import type { IGameService } from '../../../iterfaces/i-game-service';
 import { useCart } from '../../../context/cart-context';
 import { Product } from '../../../reducers/cart-reducer';
+import { useRecommendations } from '../../../hooks/use-recommendations';
+import { useViewedGames } from '../../../hooks/use-viewed-games';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-saved-items-page.css';
-
-type Recommendation = {
-    id: string;
-    title: string;
-    price: string;
-    coverClass: string;
-};
-
-type RecentlyViewed = {
-    id: string;
-    title: string;
-    subtitle: string;
-    price: string;
-    coverClass: string;
-};
-
-const recommendations: Recommendation[] = [
-    {id: 'rec-1', title: 'Dying Light 2', price: '$19.99', coverClass: 'saved-cover-dying-light'},
-    {id: 'rec-2', title: 'Dark Souls', price: '$59.99', coverClass: 'saved-cover-dark-souls'},
-    {id: 'rec-3', title: 'The Witcher 3', price: '$29.99', coverClass: 'saved-cover-witcher'},
-    {id: 'rec-4', title: 'God of War', price: '$49.99', coverClass: 'saved-cover-god-of-war'}
-];
-
-const recentlyViewed: RecentlyViewed[] = [
-    {
-        id: 'recent-1',
-        title: "Baldur's Gate 3",
-        subtitle: 'March 25, 2023',
-        price: '$59.99',
-        coverClass: 'saved-cover-baldurs'
-    },
-    {
-        id: 'recent-2',
-        title: 'Elden Ring',
-        subtitle: 'Elden Ring',
-        price: '$59.99',
-        coverClass: 'saved-cover-elden'
-    },
-    {
-        id: 'recent-3',
-        title: 'Resident Evil',
-        subtitle: 'Assessed with vintage',
-        price: '$39.99',
-        coverClass: 'saved-cover-resident'
-    },
-    {
-        id: 'recent-4',
-        title: 'Lies of P',
-        subtitle: 'BB2 25',
-        price: '$49.99',
-        coverClass: 'saved-cover-lies'
-    }
-];
 
 const WISHLIST_GUEST_KEY = 'wishlist_guest';
 const WISHLIST_LEGACY_KEY = 'wishlist';
@@ -88,6 +38,18 @@ const AccountSavedItemsPage: React.FC = () => {
     const gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const { dispatch } = useCart();
     const didMergeRef = useRef(false);
+    const {
+        items: recommendations,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(6);
+    const {
+        items: viewedItems,
+        isLoading: isViewedLoading,
+        error: viewedError,
+        reload: reloadViewed
+    } = useViewedGames(6);
 
     useEffect(() => {
         const syncUser = () => {
@@ -479,20 +441,38 @@ const AccountSavedItemsPage: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <div className="saved-horizontal-list">
-                    {recommendations.map((item) => (
-                        <div key={item.id} className="card saved-horizontal-card">
-                            <div className={`saved-horizontal-cover ${item.coverClass}`} aria-hidden="true" />
-                            <div className="saved-horizontal-body">
-                                <strong>{item.title}</strong>
-                                <span className="saved-horizontal-price">{item.price}</span>
+                <RecommendationsSection
+                    items={recommendations}
+                    isLoading={isRecommendationsLoading}
+                    error={recommendationsError}
+                    onRetry={reloadRecommendations}
+                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    listClassName="saved-horizontal-list"
+                    stateClassName="saved-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`rec-skeleton-${index}`} className="card saved-horizontal-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card">
+                            <div className="saved-horizontal-cover">
+                                {item.game.imagePath && item.game.imagePath !== 'string' ? (
+                                    <img src={resolveCoverUrl(item.game.imagePath)} alt={item.game.title} />
+                                ) : (
+                                    <div className="saved-horizontal-fallback" aria-hidden="true" />
+                                )}
                             </div>
-                            <button type="button" className="btn btn-primary saved-horizontal-btn">
+                            <div className="saved-horizontal-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="saved-horizontal-price">
+                                    ${Number(item.game.price).toFixed(2)}
+                                </span>
+                            </div>
+                            <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </section>
 
             <section className="saved-recently-viewed" data-testid="saved-recently-viewed">
@@ -507,21 +487,41 @@ const AccountSavedItemsPage: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <div className="saved-horizontal-list">
-                    {recentlyViewed.map((item) => (
-                        <div key={item.id} className="card saved-horizontal-card">
-                            <div className={`saved-horizontal-cover ${item.coverClass}`} aria-hidden="true" />
-                            <div className="saved-horizontal-body">
-                                <strong>{item.title}</strong>
-                                <span className="saved-horizontal-subtitle">{item.subtitle}</span>
-                                <span className="saved-horizontal-price">{item.price}</span>
+                <RecommendationsSection
+                    items={viewedItems}
+                    isLoading={isViewedLoading}
+                    error={viewedError}
+                    onRetry={reloadViewed}
+                    emptyMessage="Browse a few games to see them here."
+                    listClassName="saved-horizontal-list"
+                    stateClassName="saved-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`viewed-skeleton-${index}`} className="card saved-horizontal-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card">
+                            <div className="saved-horizontal-cover">
+                                {item.game.imagePath && item.game.imagePath !== 'string' ? (
+                                    <img src={resolveCoverUrl(item.game.imagePath)} alt={item.game.title} />
+                                ) : (
+                                    <div className="saved-horizontal-fallback" aria-hidden="true" />
+                                )}
                             </div>
-                            <button type="button" className="btn btn-primary saved-horizontal-btn">
+                            <div className="saved-horizontal-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="saved-horizontal-subtitle">
+                                    {new Date(item.lastViewedAt).toLocaleDateString()}
+                                </span>
+                                <span className="saved-horizontal-price">
+                                    ${Number(item.game.price).toFixed(2)}
+                                </span>
+                            </div>
+                            <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </section>
         </AccountShell>
     );

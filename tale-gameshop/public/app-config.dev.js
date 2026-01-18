@@ -1,5 +1,5 @@
 window.__APP_CONFIG__ = window.__APP_CONFIG__ || {
-  apiBaseUrl: "http://localhost:7002",
+  apiBaseUrl: "https://localhost:7002",
   keycloak: {
     url: "http://localhost:8088/",
     realm: "TaleShop",

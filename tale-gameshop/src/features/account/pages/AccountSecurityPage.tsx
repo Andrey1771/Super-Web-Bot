@@ -10,6 +10,8 @@ import {
     faChevronLeft
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import { useRecommendations } from '../../../hooks/use-recommendations';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-security-page.css';
 
 const SecurityTopSection: React.FC = () => {
@@ -133,14 +135,12 @@ const SecurityTopSection: React.FC = () => {
 };
 
 const SecurityBottomSection: React.FC = () => {
-    const recommendations = [
-        {id: 'rec-1', title: 'Dying Light 2', price: '$19.99'},
-        {id: 'rec-2', title: 'Dark Souls', price: '$59.99'},
-        {id: 'rec-3', title: 'The Witcher 3', price: '$59.99'},
-        {id: 'rec-4', title: 'Slac', price: '$29.99'},
-        {id: 'rec-5', title: 'God of War', price: '$49.99'},
-        {id: 'rec-6', title: 'Hades', price: '$49.99'}
-    ];
+    const {
+        items: recommendations,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(6);
 
     return (
         <>
@@ -212,20 +212,42 @@ const SecurityBottomSection: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <div className="security-recommendations-list">
-                    {recommendations.map((item) => (
-                        <div key={item.id} className="card security-recommendation-card">
-                            <div className="security-recommendation-media" aria-hidden="true" />
-                            <div className="security-recommendation-body">
-                                <strong>{item.title}</strong>
-                                <span className="security-recommendation-price">{item.price}</span>
+                <RecommendationsSection
+                    items={recommendations}
+                    isLoading={isRecommendationsLoading}
+                    error={recommendationsError}
+                    onRetry={reloadRecommendations}
+                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    listClassName="security-recommendations-list"
+                    stateClassName="security-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`rec-skeleton-${index}`} className="card security-recommendation-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card security-recommendation-card">
+                            <div className="security-recommendation-media">
+                                {item.game.imagePath ? (
+                                    <img src={item.game.imagePath} alt={item.game.title} />
+                                ) : (
+                                    <div className="security-recommendation-fallback" aria-hidden="true" />
+                                )}
                             </div>
-                            <button type="button" className="btn btn-primary security-recommendation-btn">
+                            <div className="security-recommendation-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="security-recommendation-price">
+                                    ${Number(item.game.price).toFixed(2)}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-primary security-recommendation-btn"
+                                disabled={!item.game.id}
+                            >
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </section>
         </>
     );
