@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using System.Collections.Generic;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -53,6 +54,7 @@ namespace SuperBot.Infrastructure.Repositories
                 .Set(u => u.CountOfInvited, user.CountOfInvited)
                 .Set(u => u.Discount, user.Discount)
                 .Set(u => u.QuantityBeforeIncrease, user.QuantityBeforeIncrease)
+                .Set(u => u.WishlistGameIds, user.WishlistGameIds)
                 .Set(u => u.UpdatedAt, DateTime.UtcNow);
 
             await _usersCollection.UpdateOneAsync(filter, update);
@@ -70,6 +72,36 @@ namespace SuperBot.Infrastructure.Repositories
         {
             var count = await _usersCollection.CountDocumentsAsync(u => u.UserId == userId);
             return count > 0;
+        }
+
+        public async Task<List<string>> GetWishlistAsync(string userId)
+        {
+            var user = await _usersCollection.Find(u => u.UserId == userId).FirstOrDefaultAsync();
+            return user?.WishlistGameIds ?? new List<string>();
+        }
+
+        public async Task AddToWishlistAsync(string userId, string gameId)
+        {
+            var filter = Builders<UserDb>.Filter.Eq(u => u.UserId, userId);
+            var update = Builders<UserDb>.Update
+                .AddToSet(u => u.WishlistGameIds, gameId)
+                .Set(u => u.UpdatedAt, DateTime.UtcNow)
+                .SetOnInsert(u => u.UserId, userId)
+                .SetOnInsert(u => u.Name, userId)
+                .SetOnInsert(u => u.Username, userId)
+                .SetOnInsert(u => u.CreatedAt, DateTime.UtcNow);
+
+            await _usersCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+        }
+
+        public async Task RemoveFromWishlistAsync(string userId, string gameId)
+        {
+            var filter = Builders<UserDb>.Filter.Eq(u => u.UserId, userId);
+            var update = Builders<UserDb>.Update
+                .Pull(u => u.WishlistGameIds, gameId)
+                .Set(u => u.UpdatedAt, DateTime.UtcNow);
+
+            await _usersCollection.UpdateOneAsync(filter, update);
         }
 
 

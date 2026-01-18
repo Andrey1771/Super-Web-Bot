@@ -10,6 +10,8 @@ import { Settings } from '../../models/settings';
 import { useCart } from '../../context/cart-context';
 import { Product } from '../../reducers/cart-reducer';
 import type { IUrlService } from '../../iterfaces/i-url-service';
+import type { IWishlistService } from '../../iterfaces/i-wishlist-service';
+import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 
 const categoryOrder = [
     'Educational Games',
@@ -26,6 +28,9 @@ const TaleGameshopGameList: React.FC = () => {
     const [searchNameQuery, setSearchNameQuery] = useState<string>('');
     const [settings, setSettings] = useState<Settings | null>(null);
     const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
+    const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+    const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
+    const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -34,6 +39,8 @@ const TaleGameshopGameList: React.FC = () => {
     const _gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const _settingsService = container.get<ISettingsService>(IDENTIFIERS.ISettingsService);
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
+    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
 
     useEffect(() => {
         (async () => {
@@ -42,6 +49,21 @@ const TaleGameshopGameList: React.FC = () => {
             setSettings(currentSettings);
         })();
     }, []);
+
+    useEffect(() => {
+        const syncUser = () => {
+            const parsedToken = keycloakService.keycloak?.tokenParsed as { email?: string } | undefined;
+            setWishlistUserId(parsedToken?.email ?? '');
+        };
+
+        syncUser();
+        keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+        keycloakService.stateChangedEmitter.on('onAuthSuccess', syncUser);
+
+        return () => {
+            keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+        };
+    }, [keycloakService]);
 
     useEffect(() => {
         (async () => {
@@ -60,6 +82,46 @@ const TaleGameshopGameList: React.FC = () => {
             await updateGamesByCategory(games);
         })();
     }, [searchQuery]);
+
+    useEffect(() => {
+        if (!wishlistUserId) {
+            const storedWishlist = localStorage.getItem('wishlist');
+            if (storedWishlist) {
+                try {
+                    const parsed = JSON.parse(storedWishlist) as string[];
+                    setWishlistIds(new Set(parsed));
+                } catch (error) {
+                    console.error('Failed to parse wishlist from storage:', error);
+                    setWishlistIds(new Set());
+                }
+            } else {
+                setWishlistIds(new Set());
+            }
+            return;
+        }
+
+        let isMounted = true;
+
+        const loadWishlist = async () => {
+            try {
+                const wishlistGames = await wishlistService.getWishlist(wishlistUserId);
+                if (!isMounted) {
+                    return;
+                }
+                const ids = wishlistGames.map((game) => game.id).filter(Boolean) as string[];
+                setWishlistIds(new Set(ids));
+                localStorage.removeItem('wishlist');
+            } catch (error) {
+                console.error('Failed to load wishlist:', error);
+            }
+        };
+
+        loadWishlist();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [wishlistUserId, wishlistService]);
 
     const loadGamesAndUpdateFilterCategory = async () => {
         const filterCategory = searchParams.get('filterCategory');
@@ -187,15 +249,90 @@ const TaleGameshopGameList: React.FC = () => {
         });
     };
 
+    const resolveWishlistKey = (game: Game) => game.id;
+
+    const handleToggleWishlist = async (game: Game) => {
+        const wishlistKey = resolveWishlistKey(game);
+        if (!wishlistKey) {
+            return;
+        }
+
+        let wasWishlisted = false;
+
+        setWishlistIds((prev) => {
+            const next = new Set(prev);
+            wasWishlisted = next.has(wishlistKey);
+            wasWishlisted ? next.delete(wishlistKey) : next.add(wishlistKey);
+            if (!wishlistUserId) {
+                localStorage.setItem('wishlist', JSON.stringify(Array.from(next)));
+            }
+            return next;
+        });
+
+        if (!wishlistUserId || !game.id) {
+            return;
+        }
+
+        try {
+            if (wasWishlisted) {
+                await wishlistService.removeFromWishlist(wishlistUserId, wishlistKey);
+            } else {
+                await wishlistService.addToWishlist(wishlistUserId, wishlistKey);
+            }
+        } catch (error) {
+            console.error('Failed to update wishlist:', error);
+        }
+    };
+
+    const fallbackImage =
+        'data:image/svg+xml;utf8,' +
+        encodeURIComponent(
+            '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"360\">' +
+                '<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">' +
+                '<stop offset=\"0%\" stop-color=\"#c7bfff\"/><stop offset=\"100%\" stop-color=\"#f7f4ff\"/>' +
+                '</linearGradient></defs>' +
+                '<rect width=\"100%\" height=\"100%\" fill=\"url(#g)\"/>' +
+                '<text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-size=\"24\" fill=\"#6f64a8\">No image</text>' +
+            '</svg>'
+        );
+
+    const normalizeImagePath = (imagePath: string) =>
+        imagePath.replace(/^\/?wwwroot\//, '/');
+
+    const resolveImageUrl = (imagePath: string) => {
+        const normalizedPath = normalizeImagePath(imagePath);
+
+        if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+            return normalizedPath;
+        }
+
+        if (normalizedPath.startsWith('/')) {
+            return `${urlService.apiBaseUrl}${normalizedPath}`;
+        }
+
+        return `${urlService.apiBaseUrl}/${normalizedPath}`;
+    };
+
+    const handleImageError = (src: string, event: React.SyntheticEvent<HTMLImageElement>) => {
+        const target = event.currentTarget;
+        target.onerror = null;
+        target.src = fallbackImage;
+        setBrokenImageUrls((prev) => new Set(prev).add(src));
+    };
+
     const renderImage = (game: Game) => {
-        if (game.imagePath) {
-            return (
-                <img
-                    alt={game.title}
-                    className="h-full w-full object-cover"
-                    src={`${urlService.apiBaseUrl}/${game.imagePath}`}
-                />
-            );
+        if (game.imagePath && game.imagePath !== 'string') {
+            const src = resolveImageUrl(game.imagePath);
+            if (!brokenImageUrls.has(src)) {
+                return (
+                    <img
+                        alt={game.title}
+                        className="h-full w-full object-cover pointer-events-none"
+                        src={src}
+                        onError={(event) => handleImageError(src, event)}
+                    />
+                );
+            }
         }
 
         return (
@@ -262,6 +399,8 @@ const TaleGameshopGameList: React.FC = () => {
     const CatalogCard = ({ game, variant, showBadge }: { game: Game; variant: 'large' | 'small'; showBadge?: boolean }) => {
         const isLarge = variant === 'large';
         const price = Number.isFinite(game.price) ? `$${Number(game.price).toFixed(2)}` : '$0';
+        const wishlistKey = resolveWishlistKey(game);
+        const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
 
         return (
             <div
@@ -280,6 +419,24 @@ const TaleGameshopGameList: React.FC = () => {
                             New
                         </span>
                     )}
+                    <button
+                        type="button"
+                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
+                            isWishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
+                        }`}
+                        aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                        aria-pressed={isWishlisted}
+                        onClick={() => handleToggleWishlist(game)}
+                    >
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill={isWishlisted ? 'currentColor' : 'none'}>
+                            <path
+                                d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    </button>
                 </div>
                 <div className="flex flex-1 flex-col">
                     <h3 className={`${isLarge ? 'text-lg' : 'text-sm'} font-semibold text-[#2c2354]`}>

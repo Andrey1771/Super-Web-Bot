@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
@@ -9,17 +9,15 @@ import {
     faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import IDENTIFIERS from '../../../constants/identifiers';
+import container from '../../../inversify.config';
+import { Game } from '../../../models/game';
+import type { IWishlistService } from '../../../iterfaces/i-wishlist-service';
+import type { IKeycloakService } from '../../../iterfaces/i-keycloak-service';
+import type { IUrlService } from '../../../iterfaces/i-url-service';
+import { useCart } from '../../../context/cart-context';
+import { Product } from '../../../reducers/cart-reducer';
 import './account-saved-items-page.css';
-
-type SavedItem = {
-    id: string;
-    title: string;
-    date: string;
-    price: string;
-    oldPrice?: string;
-    badge?: {label: string; variant: 'new' | 'sale'};
-    coverClass: string;
-};
 
 type Recommendation = {
     id: string;
@@ -35,55 +33,6 @@ type RecentlyViewed = {
     price: string;
     coverClass: string;
 };
-
-const savedItems: SavedItem[] = [
-    {
-        id: 'saved-1',
-        title: 'Hades II',
-        date: 'April 15, 2024',
-        price: '$29.99',
-        badge: {label: 'New', variant: 'new'},
-        coverClass: 'saved-cover-hades'
-    },
-    {
-        id: 'saved-2',
-        title: 'Elden Ring',
-        date: 'April 15, 2024',
-        price: '$59.99',
-        coverClass: 'saved-cover-elden'
-    },
-    {
-        id: 'saved-3',
-        title: 'Hogwarts Legacy',
-        date: 'March 21, 2024',
-        price: '$39.99',
-        oldPrice: '$59.99',
-        badge: {label: 'Sale: 26%', variant: 'sale'},
-        coverClass: 'saved-cover-hogwarts'
-    },
-    {
-        id: 'saved-4',
-        title: 'Remnant II',
-        date: 'July 28, 2023',
-        price: '$49.99',
-        coverClass: 'saved-cover-remnant'
-    },
-    {
-        id: 'saved-5',
-        title: 'Control',
-        date: 'Ultimate Edition',
-        price: '$14.99',
-        oldPrice: '$59.99',
-        coverClass: 'saved-cover-control'
-    },
-    {
-        id: 'saved-6',
-        title: 'Sekiro',
-        date: 'December 10, 2023',
-        price: '$59.99',
-        coverClass: 'saved-cover-sekiro'
-    }
-];
 
 const recommendations: Recommendation[] = [
     {id: 'rec-1', title: 'Dying Light 2', price: '$19.99', coverClass: 'saved-cover-dying-light'},
@@ -123,85 +72,139 @@ const recentlyViewed: RecentlyViewed[] = [
     }
 ];
 
-const SavedItemCardComfortable: React.FC<{item: SavedItem; showShortcut?: boolean}> = ({
-    item,
-    showShortcut
-}) => (
-    <div className="card saved-item-card">
-        <div className={`saved-item-cover ${item.coverClass}`} aria-hidden="true">
-            {item.badge && (
-                <span className={`badge saved-badge saved-badge-${item.badge.variant}`}>
-                    {item.badge.label}
-                </span>
-            )}
-        </div>
-        <div className="saved-item-body">
-            <div className="saved-item-title-row">
-                <div>
-                    <h3>{item.title}</h3>
-                    <p className="saved-item-date">{item.date}</p>
-                </div>
-                <div className="saved-item-price">
-                    {item.oldPrice && <span className="saved-item-old-price">{item.oldPrice}</span>}
-                    <span>{item.price}</span>
-                </div>
-            </div>
-            <div className="saved-item-actions">
-                <button type="button" className="btn btn-primary saved-item-btn">
-                    Add to cart
-                </button>
-                <button type="button" className="btn btn-outline saved-item-btn">
-                    Remove
-                </button>
-                {showShortcut && (
-                    <button type="button" className="btn btn-outline saved-item-icon-btn" aria-label="Open item">
-                        <FontAwesomeIcon icon={faChevronRight} />
-                    </button>
-                )}
-            </div>
-        </div>
-    </div>
-);
-
-const SavedItemCardCompact: React.FC<{item: SavedItem}> = ({item}) => (
-    <div className="card saved-item-card compact">
-        <div className={`saved-item-compact-cover ${item.coverClass}`} aria-hidden="true" />
-        <div className="saved-item-compact-body">
-            <div className="saved-item-compact-header">
-                <div>
-                    <strong>{item.title}</strong>
-                    <span className="saved-item-date">{item.date}</span>
-                </div>
-                <div className="saved-item-price">
-                    {item.oldPrice && <span className="saved-item-old-price">{item.oldPrice}</span>}
-                    <span>{item.price}</span>
-                </div>
-            </div>
-            <div className="saved-item-compact-badges">
-                {item.badge && (
-                    <span className={`badge saved-badge saved-badge-${item.badge.variant}`}>
-                        {item.badge.label}
-                    </span>
-                )}
-            </div>
-            <div className="saved-item-actions">
-                <button type="button" className="btn btn-primary saved-item-btn">
-                    Add to cart
-                </button>
-                <button type="button" className="btn btn-outline saved-item-btn">
-                    Remove
-                </button>
-            </div>
-        </div>
-    </div>
-);
-
 const AccountSavedItemsPage: React.FC = () => {
     const viewMode: 'comfortable' | 'compact' = 'comfortable';
+    const [wishlistGames, setWishlistGames] = useState<Game[]>([]);
+    const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
+    const [wishlistUserId, setWishlistUserId] = useState<string>('');
+    const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
+    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
+    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const { dispatch } = useCart();
+
+    useEffect(() => {
+        const syncUser = () => {
+            const parsedToken = keycloakService.keycloak?.tokenParsed as { email?: string } | undefined;
+            setWishlistUserId(parsedToken?.email ?? '');
+        };
+
+        syncUser();
+        keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+        keycloakService.stateChangedEmitter.on('onAuthSuccess', syncUser);
+
+        return () => {
+            keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
+        };
+    }, [keycloakService]);
+
+    useEffect(() => {
+        if (!wishlistUserId) {
+            setWishlistGames([]);
+            return;
+        }
+
+        let isMounted = true;
+
+        const loadWishlist = async () => {
+            try {
+                const wishlist = await wishlistService.getWishlist(wishlistUserId);
+                if (isMounted) {
+                    setWishlistGames(wishlist);
+                }
+            } catch (error) {
+                console.error('Failed to load wishlist:', error);
+            }
+        };
+
+        loadWishlist();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [wishlistUserId, wishlistService]);
+
+    const totalWishlistItems = wishlistGames.length;
+    const visibleItems = Math.min(totalWishlistItems, 9);
+    const visibleLabel = totalWishlistItems === 0 ? 'Showing 0 of 0' : `Showing 1-${visibleItems} of ${totalWishlistItems}`;
+
+    const wishlistCards = useMemo(() => wishlistGames.slice(0, 9), [wishlistGames]);
+
+    const formatPrice = (price: number) => (Number.isFinite(price) ? `$${price.toFixed(2)}` : '$0');
+
+    const formatDate = (releaseDate: string) => {
+        const date = new Date(releaseDate);
+        return Number.isNaN(date.valueOf()) ? 'Release date TBD' : date.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    };
+
+    const handleRemove = async (gameId?: string) => {
+        if (!wishlistUserId || !gameId) {
+            return;
+        }
+
+        try {
+            await wishlistService.removeFromWishlist(wishlistUserId, gameId);
+            setWishlistGames((prev) => prev.filter((game) => game.id !== gameId));
+        } catch (error) {
+            console.error('Failed to remove wishlist item:', error);
+        }
+    };
+
+    const handleAddToCart = (game: Game) => {
+        dispatch({
+            type: 'ADD_TO_CART',
+            payload: {
+                gameId: game.id ?? '',
+                name: game.name,
+                price: game.price,
+                quantity: 1,
+                image: game.imagePath
+            } as Product
+        });
+    };
+
+    const fallbackImage =
+        'data:image/svg+xml;utf8,' +
+        encodeURIComponent(
+            '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"360\">' +
+                '<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">' +
+                '<stop offset=\"0%\" stop-color=\"#c7bfff\"/><stop offset=\"100%\" stop-color=\"#f7f4ff\"/>' +
+                '</linearGradient></defs>' +
+                '<rect width=\"100%\" height=\"100%\" fill=\"url(#g)\"/>' +
+                '<text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-size=\"24\" fill=\"#6f64a8\">No image</text>' +
+            '</svg>'
+        );
+
+    const normalizeImagePath = (imagePath: string) =>
+        imagePath.replace(/^\/?wwwroot\//, '/');
+
+    const resolveCoverUrl = (imagePath: string) => {
+        const normalizedPath = normalizeImagePath(imagePath);
+
+        if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+            return normalizedPath;
+        }
+
+        if (normalizedPath.startsWith('/')) {
+            return `${urlService.apiBaseUrl}${normalizedPath}`;
+        }
+
+        return `${urlService.apiBaseUrl}/${normalizedPath}`;
+    };
+
+    const handleCoverError = (src: string, event: React.SyntheticEvent<HTMLImageElement>) => {
+        const target = event.currentTarget;
+        target.onerror = null;
+        target.src = fallbackImage;
+        setBrokenImageUrls((prev) => new Set(prev).add(src));
+    };
 
     return (
         <AccountShell
-            title="Saved items (48)"
+            title={`Saved items (${totalWishlistItems})`}
             sectionLabel="Saved items"
             subtitle="Items saved to your wishlist for future purchase."
             actions={(
@@ -240,23 +243,117 @@ const AccountSavedItemsPage: React.FC = () => {
                             Compact
                         </button>
                     </div>
-                    <span className="saved-toolbar-note">Showing 1-9 of 48</span>
+                    <span className="saved-toolbar-note">{visibleLabel}</span>
                 </div>
             </div>
 
             <div className="card saved-items-panel" data-testid="saved-grid">
                 <div className={`saved-items-grid view-${viewMode}`}>
                     {viewMode === 'comfortable'
-                        ? savedItems.map((item, index) => (
-                            <SavedItemCardComfortable
-                                key={item.id}
-                                item={item}
-                                showShortcut={index === 2}
-                            />
+                        ? wishlistCards.map((item, index) => (
+                            <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card">
+                                <div className="saved-item-cover" aria-hidden="true">
+                                    {item.imagePath && item.imagePath !== 'string' && (() => {
+                                        const src = resolveCoverUrl(item.imagePath);
+                                        if (brokenImageUrls.has(src)) {
+                                            return null;
+                                        }
+                                        return (
+                                            <img
+                                                alt=""
+                                                className="saved-item-image"
+                                                src={src}
+                                                onError={(event) => handleCoverError(src, event)}
+                                            />
+                                        );
+                                    })()}
+                                </div>
+                                <div className="saved-item-body">
+                                    <div className="saved-item-title-row">
+                                        <div>
+                                            <h3>{item.title}</h3>
+                                            <p className="saved-item-date">{formatDate(item.releaseDate)}</p>
+                                        </div>
+                                        <div className="saved-item-price">
+                                            <span>{formatPrice(item.price)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="saved-item-actions">
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary saved-item-btn"
+                                            onClick={() => handleAddToCart(item)}
+                                        >
+                                            Add to cart
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline saved-item-btn"
+                                            onClick={() => handleRemove(item.id)}
+                                        >
+                                            Remove
+                                        </button>
+                                        {index === 2 && (
+                                            <button type="button" className="btn btn-outline saved-item-icon-btn" aria-label="Open item">
+                                                <FontAwesomeIcon icon={faChevronRight} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         ))
-                        : savedItems.map((item) => (
-                            <SavedItemCardCompact key={item.id} item={item} />
+                        : wishlistCards.map((item, index) => (
+                            <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card compact">
+                                <div className="saved-item-compact-cover" aria-hidden="true">
+                                    {item.imagePath && item.imagePath !== 'string' && (() => {
+                                        const src = resolveCoverUrl(item.imagePath);
+                                        if (brokenImageUrls.has(src)) {
+                                            return null;
+                                        }
+                                        return (
+                                            <img
+                                                alt=""
+                                                className="saved-item-image"
+                                                src={src}
+                                                onError={(event) => handleCoverError(src, event)}
+                                            />
+                                        );
+                                    })()}
+                                </div>
+                                <div className="saved-item-compact-body">
+                                    <div className="saved-item-compact-header">
+                                        <div>
+                                            <strong>{item.title}</strong>
+                                            <span className="saved-item-date">{formatDate(item.releaseDate)}</span>
+                                        </div>
+                                        <div className="saved-item-price">
+                                            <span>{formatPrice(item.price)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="saved-item-actions">
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary saved-item-btn"
+                                            onClick={() => handleAddToCart(item)}
+                                        >
+                                            Add to cart
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline saved-item-btn"
+                                            onClick={() => handleRemove(item.id)}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         ))}
+                    {wishlistCards.length === 0 && (
+                        <div className="saved-empty-state">
+                            <p>Your wishlist is empty for now.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -282,7 +379,7 @@ const AccountSavedItemsPage: React.FC = () => {
                         <FontAwesomeIcon icon={faChevronRight} />
                     </button>
                 </div>
-                <span className="saved-pagination-note">Showing 1-9 of 48</span>
+                <span className="saved-pagination-note">{visibleLabel}</span>
             </div>
 
             <section className="saved-recommendations" data-testid="saved-recommendations">

@@ -23,24 +23,24 @@ using SuperBot.Core.Interfaces.IBotStateService;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// !!! Конфигурируем обработку пересылаемых заголовков запросов
+// !!!     
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
         ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 });
-// !!! Конфигурируем обработку пересылаемых заголовков запросов
+// !!!     
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.CustomSchemaIds(type => type.FullName); // Используем полное имя типа
+    options.CustomSchemaIds(type => type.FullName); //    
 });
 
 
-// Добавление CORS с конкретной политикой
+//  CORS   
 builder.Services.AddCors(options =>
 {
     var frontendConfigSection = builder.Configuration.GetSection("FrontendConfiguration");
@@ -50,7 +50,7 @@ builder.Services.AddCors(options =>
             builder.WithOrigins(frontendConfigSection.GetValue<string>("Uri") ?? "") // TODO!!!!!!
                    .AllowAnyHeader()
                    .AllowAnyMethod()
-                   .AllowCredentials(); // Если необходимы куки/учетные данные
+                   .AllowCredentials(); //   / 
         });
 });
 
@@ -85,13 +85,13 @@ builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>
     var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
     return new MongoClient(connectionString);
 });
-// Регистрация MongoDatabase
+//  MongoDatabase
 builder.Services.AddScoped<IMongoDatabase>(sp =>
 {
     var mongoClient = sp.GetRequiredService<IMongoClient>();
 
     var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
-    return mongoClient.GetDatabase(mongoName);  // Укажите имя вашей базы данных
+    return mongoClient.GetDatabase(mongoName);  //     
 });
 builder.Services.AddScoped<MongoDbInitializer>();
 
@@ -107,7 +107,7 @@ builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
 
-//TODO Заготовка на динамические жанры игр, если у нас нет настроек, то добавляем их
+//TODO     ,     ,   
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
 {
     var repository = scope.ServiceProvider.GetRequiredService<ISettingsRepository>();
@@ -134,7 +134,7 @@ using (var scope = builder.Services.BuildServiceProvider().CreateScope())
     }
 }
 
-// Добавление Hangfire с использованием MongoDB
+//  Hangfire   MongoDB
 builder.Services.AddHangfire(config =>
 {
     var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
@@ -152,7 +152,7 @@ builder.Services.AddHangfire(config =>
     });
 });
 
-// Добавление Dashboard и серверов Hangfire
+//  Dashboard   Hangfire
 builder.Services.AddHangfireServer();
 
 
@@ -176,9 +176,9 @@ builder.Services.AddLogging(logging =>
 
 var app = builder.Build();
 
-// !!! Добавляем в конвеер обработки HTTP-запроса компонент работы с пересылаемыми заголовками
+// !!!     HTTP-     
 app.UseForwardedHeaders();
-// !!! Добавляем в конвеер обработки HTTP-запроса компонент работы с пересылаемыми заголовками
+// !!!     HTTP-     
 
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
@@ -190,14 +190,14 @@ if (app.Environment.IsDevelopment())
     app.UseHangfireDashboard();
 }
 
-// Получаем инициализатор из DI-контейнера и выполняем инициализацию
+//    DI-   
 using (var scope = app.Services.CreateScope())
 {
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
-    await mongoDbInitializer.InitializeAsync(); // Инициализация базы данных
+    await mongoDbInitializer.InitializeAsync(); //   
 }
 
-// Поддержка локализации
+//  
 var supportedCultures = new[] { "en-US", "ru-RU" };
 var localizationOptions = new RequestLocalizationOptions()
     .SetDefaultCulture("ru-RU")
@@ -210,6 +210,8 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowSpecificOrigin");
 
+app.UseStaticFiles();
+
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
 
 if (!Directory.Exists(uploadsPath))
@@ -220,7 +222,7 @@ if (!Directory.Exists(uploadsPath))
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/wwwroot/uploads"
+    RequestPath = "/uploads"
 });
 
 app.MapControllers();
@@ -228,7 +230,7 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    // Периодическая задача
+    //  
     recurringJobManager.AddOrUpdate(
         "clear-old-order-records",
         () => scope.ServiceProvider.GetRequiredService<IBackgroundTaskService>().ScheduleClearOutdatedDataJob(),
