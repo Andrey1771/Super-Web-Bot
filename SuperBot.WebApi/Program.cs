@@ -47,7 +47,18 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigin",
         builder =>
         {
-            builder.WithOrigins(frontendConfigSection.GetValue<string>("Uri") ?? "") // TODO!!!!!!
+            var configuredOrigin = frontendConfigSection.GetValue<string>("Uri");
+            var allowedOrigins = new List<string>
+            {
+                "https://localhost:3000",
+                "http://localhost:3000"
+            };
+            if (!string.IsNullOrWhiteSpace(configuredOrigin))
+            {
+                allowedOrigins.Add(configuredOrigin);
+            }
+
+            builder.WithOrigins(allowedOrigins.Distinct().ToArray()) // TODO!!!!!!
                    .AllowAnyHeader()
                    .AllowAnyMethod()
                    .AllowCredentials(); //   / 
