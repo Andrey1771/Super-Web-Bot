@@ -146,14 +146,31 @@ export default (env, { mode }) => ({
                 pathname: '/ws',
             },
         },
-        server: {
-            type: 'https',
-            options: {
-                key: fs.readFileSync('./certs/localhost-key.pem'),
-                cert: fs.readFileSync('./certs/localhost.pem'),
-                requestCert: false,
-            },
-        },
+        server: (() => {
+            const mkcertKeyPath = path.resolve(__dirname, 'certs/localhost-key.pem');
+            const mkcertCertPath = path.resolve(__dirname, 'certs/localhost.pem');
+            const legacyKeyPath = path.resolve(__dirname, 'public/private.key');
+            const legacyCertPath = path.resolve(__dirname, 'public/private.crt');
+            const hasMkcert = fs.existsSync(mkcertKeyPath) && fs.existsSync(mkcertCertPath);
+
+            if (!hasMkcert) {
+                console.warn(
+                    '[webpack-dev-server] mkcert files not found. Run `npm run cert:dev` to generate trusted localhost certs.'
+                );
+            }
+
+            const keyPath = hasMkcert ? mkcertKeyPath : legacyKeyPath;
+            const certPath = hasMkcert ? mkcertCertPath : legacyCertPath;
+
+            return {
+                type: 'https',
+                options: {
+                    key: fs.readFileSync(keyPath),
+                    cert: fs.readFileSync(certPath),
+                    requestCert: false,
+                },
+            };
+        })(),
     },
     devtool: (mode === 'production') ? 'source-map' : 'eval-cheap-module-source-map',
 });
