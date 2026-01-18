@@ -139,13 +139,18 @@ export default (env, { mode }) => ({
                 errors: true,
                 warnings: false,
             },
+            webSocketURL: {
+                protocol: 'wss',
+                hostname: 'localhost',
+                port: 3000,
+                pathname: '/ws',
+            },
         },
         server: {
             type: 'https',
             options: {
-                key: fs.readFileSync('./public/private.key'),
-                cert: fs.readFileSync('./public/private.crt'),
-                passphrase: 'webpack-dev-server',
+                key: fs.readFileSync('./certs/localhost-key.pem'),
+                cert: fs.readFileSync('./certs/localhost.pem'),
                 requestCert: false,
             },
         },
