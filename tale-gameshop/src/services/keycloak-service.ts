@@ -47,6 +47,9 @@ export class KeycloakService implements IKeycloakService {
     eventHandlers(e: AuthClientEvent): void {
         switch (e) {
             case "onReady":
+                if (this._keycloak?.authenticated) {
+                    this.stateChangedEmitter.emit('onAuthSuccess');
+                }
                 break;
             case "onInitError":
                 break;
@@ -56,6 +59,7 @@ export class KeycloakService implements IKeycloakService {
             case "onAuthError":
                 break;
             case "onAuthRefreshSuccess":
+                this.stateChangedEmitter.emit('onAuthSuccess');
                 break;
             case "onAuthRefreshError":
                 break;

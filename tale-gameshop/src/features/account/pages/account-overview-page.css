@@ -163,6 +163,33 @@
     font-size: 14px;
 }
 
+.account-recommendation-card.is-skeleton {
+    min-height: 190px;
+    border-style: dashed;
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: account-recommendation-shimmer 1.5s infinite;
+}
+
+.account-recommendation-fallback {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ded7ff 0%, #f6f4ff 100%);
+}
+
+.account-recommendations-state {
+    padding: var(--space-16);
+}
+
+@keyframes account-recommendation-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
 @media (max-width: 1024px) {
     .account-quick-actions,
     .account-recommendations {

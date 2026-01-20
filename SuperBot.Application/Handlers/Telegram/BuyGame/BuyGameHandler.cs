@@ -38,6 +38,7 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
             // Создаем заказ
             var newOrder = new Order
             {
+                GameId = game.Id,
                 GameName = game.Name,
                 UserName = userName,
                 OrderDate = DateTime.UtcNow

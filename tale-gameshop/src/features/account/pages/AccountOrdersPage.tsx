@@ -10,6 +10,8 @@ import {
     faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import { useRecommendations } from '../../../hooks/use-recommendations';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-orders-page.css';
 
 const orders = [
@@ -47,14 +49,14 @@ const orders = [
     }
 ];
 
-const recommendations = [
-    {id: 'rec-1', title: 'Moonlighter 2', price: '$19.99'},
-    {id: 'rec-2', title: 'Prince of Persia: The Lost Crown', price: '$29.99'},
-    {id: 'rec-3', title: 'Sable', price: '$14.99'},
-    {id: 'rec-4', title: 'Chants of Sennaar', price: '$17.50'}
-];
-
 const AccountOrdersPage: React.FC = () => {
+    const {
+        items: recommendations,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(6);
+
     return (
         <AccountShell
             title="My account"
@@ -187,20 +189,42 @@ const AccountOrdersPage: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <div className="orders-recommendations-list">
-                    {recommendations.map((item) => (
-                        <div key={item.id} className="card orders-recommendation-card">
-                            <div className="orders-recommendation-media" aria-hidden="true" />
-                            <div className="orders-recommendation-body">
-                                <strong>{item.title}</strong>
-                                <span className="orders-recommendation-price">{item.price}</span>
+                <RecommendationsSection
+                    items={recommendations}
+                    isLoading={isRecommendationsLoading}
+                    error={recommendationsError}
+                    onRetry={reloadRecommendations}
+                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    listClassName="orders-recommendations-list"
+                    stateClassName="orders-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`rec-skeleton-${index}`} className="card orders-recommendation-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card orders-recommendation-card">
+                            <div className="orders-recommendation-media">
+                                {item.game.imagePath ? (
+                                    <img src={item.game.imagePath} alt={item.game.title} />
+                                ) : (
+                                    <div className="orders-recommendation-fallback" aria-hidden="true" />
+                                )}
                             </div>
-                            <button type="button" className="btn btn-primary orders-recommendation-btn">
+                            <div className="orders-recommendation-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="orders-recommendation-price">
+                                    ${Number(item.game.price).toFixed(2)}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-primary orders-recommendation-btn"
+                                disabled={!item.game.id}
+                            >
                                 Add to cart
                             </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                />
             </section>
         </AccountShell>
     );
