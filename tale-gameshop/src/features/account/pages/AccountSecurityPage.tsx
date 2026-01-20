@@ -9,43 +9,28 @@ import ActiveSessionsCard from '../security/components/ActiveSessionsCard';
 import DangerZoneCard from '../security/components/DangerZoneCard';
 import RecommendationsRow from '../security/components/RecommendationsRow';
 import ChangeEmailModal from '../security/modals/ChangeEmailModal';
-import Enable2FAModal from '../security/modals/Enable2FAModal';
-import Manage2FAModal from '../security/modals/Manage2FAModal';
 import DeleteAccountModal from '../security/modals/DeleteAccountModal';
-import container from '../../../inversify.config';
-import IDENTIFIERS from '../../../constants/identifiers';
-import type {IUrlService} from '../../../iterfaces/i-url-service';
 import {
     changeEmail,
     changePassword,
     deleteAccount,
-    disableTwoFactor,
     downloadSecurityReport,
-    enableTwoFactor,
-    fetchTwoFactorSetup,
-    getAccountSecurityProfile,
-    getActiveSessions,
-    regenerateBackupCodes,
+    getAccountSecurityStatus,
     resendVerificationEmail,
     revokeAllSessions,
-    revokeSession
+    revokeSession,
+    sendResetPasswordEmail,
+    setupTwoFactor
 } from '../security/api/securityApi';
-import type {AccountSecurityProfile, AccountSession, TwoFactorSetup} from '../security/types';
+import type {AccountSecurityStatus} from '../security/types';
 import './account-security-page.css';
 
 const AccountSecurityPage: React.FC = () => {
-    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
-    const [profile, setProfile] = useState<AccountSecurityProfile | null>(null);
-    const [sessions, setSessions] = useState<AccountSession[]>([]);
+    const [status, setStatus] = useState<AccountSecurityStatus | null>(null);
     const [toast, setToast] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isSessionLoading, setIsSessionLoading] = useState(true);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-    const [isEnable2faOpen, setIsEnable2faOpen] = useState(false);
-    const [isManage2faOpen, setIsManage2faOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [twoFactorSetup, setTwoFactorSetup] = useState<TwoFactorSetup | null>(null);
-    const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
     const [isActionLoading, setIsActionLoading] = useState(false);
 
     const showToast = useCallback((message: string) => {
@@ -53,11 +38,11 @@ const AccountSecurityPage: React.FC = () => {
         setTimeout(() => setToast(null), 3000);
     }, []);
 
-    const fetchProfile = useCallback(async () => {
+    const fetchStatus = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await getAccountSecurityProfile();
-            setProfile(data);
+            const data = await getAccountSecurityStatus();
+            setStatus(data);
         } catch (error) {
             showToast('Unable to load account profile.');
         } finally {
@@ -65,99 +50,49 @@ const AccountSecurityPage: React.FC = () => {
         }
     }, [showToast]);
 
-    const fetchSessions = useCallback(async () => {
-        setIsSessionLoading(true);
-        try {
-            const data = await getActiveSessions();
-            setSessions(data);
-        } catch (error) {
-            showToast('Unable to load sessions.');
-        } finally {
-            setIsSessionLoading(false);
-        }
-    }, [showToast]);
-
     useEffect(() => {
-        fetchProfile();
-        fetchSessions();
-    }, [fetchProfile, fetchSessions]);
+        fetchStatus();
+    }, [fetchStatus]);
 
     const requiresBanner = useMemo(() => {
-        if (!profile) {
+        if (!status) {
             return false;
         }
-        return !profile.emailVerified || !profile.isTwoFactorEnabled;
-    }, [profile]);
+        return !status.emailVerified || !status.twoFactorEnabled;
+    }, [status]);
 
-    const backupGenerated = useMemo(
-        () => Boolean(profile?.hasBackupCodes || (backupCodes && backupCodes.length > 0)),
-        [backupCodes, profile]
-    );
+    const backupGenerated = useMemo(() => Boolean(status?.backupCodesGenerated), [status]);
 
     const passwordUpdatedLabel = useMemo(() => {
-        if (!profile?.lastPasswordChangeAt) {
+        if (!status?.passwordUpdatedAt) {
             return 'over 6 months ago';
         }
-        const last = new Date(profile.lastPasswordChangeAt).getTime();
+        const last = new Date(status.passwordUpdatedAt).getTime();
         const diffMonths = Math.max(1, Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24 * 30)));
         return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
-    }, [profile]);
+    }, [status]);
 
     const handleSetup2fa = async () => {
-        setIsEnable2faOpen(true);
-        setBackupCodes(null);
-        try {
-            const setup = await fetchTwoFactorSetup();
-            setTwoFactorSetup(setup);
-        } catch (error) {
-            showToast('Unable to prepare 2FA setup.');
-        }
-    };
-
-    const handleEnable2fa = async (payload: { code: string; password: string }) => {
         setIsActionLoading(true);
         try {
-            const response = await enableTwoFactor(payload);
-            setBackupCodes(response.backupCodes);
-            await fetchProfile();
-            showToast('Two-factor authentication enabled.');
+            const response = await setupTwoFactor();
+            showToast(response.message || 'Check your email to finish setting up 2FA.');
+            if (response.redirectUrl) {
+                window.open(response.redirectUrl, '_blank');
+            }
         } catch (error) {
-            showToast('Unable to enable 2FA.');
+            showToast('Unable to prepare 2FA setup.');
         } finally {
             setIsActionLoading(false);
         }
     };
 
     const handleManage2fa = () => {
-        setIsManage2faOpen(true);
-        setBackupCodes(null);
-    };
-
-    const handleRegenerateCodes = async (payload: { code: string; password: string }) => {
-        setIsActionLoading(true);
-        try {
-            const response = await regenerateBackupCodes(payload);
-            setBackupCodes(response.backupCodes);
-            showToast('Backup codes regenerated.');
-        } catch (error) {
-            showToast('Unable to regenerate backup codes.');
-        } finally {
-            setIsActionLoading(false);
+        if (status?.accountConsoleUrl) {
+            window.open(status.accountConsoleUrl, '_blank');
+            return;
         }
-    };
-
-    const handleDisable2fa = async (payload: { code: string; password: string }) => {
-        setIsActionLoading(true);
-        try {
-            await disableTwoFactor(payload);
-            await fetchProfile();
-            setIsManage2faOpen(false);
-            showToast('Two-factor authentication disabled.');
-        } catch (error) {
-            showToast('Unable to disable 2FA.');
-        } finally {
-            setIsActionLoading(false);
-        }
+        handleSetup2fa();
     };
 
     const handleResendEmail = async () => {
@@ -177,7 +112,7 @@ const AccountSecurityPage: React.FC = () => {
         try {
             await changeEmail(payload);
             setIsEmailModalOpen(false);
-            await fetchProfile();
+            await fetchStatus();
             showToast('Email updated. Please verify your new email.');
         } catch (error) {
             showToast('Unable to update email.');
@@ -193,11 +128,15 @@ const AccountSecurityPage: React.FC = () => {
         }
         setIsActionLoading(true);
         try {
-            await changePassword({currentPassword: payload.currentPassword, newPassword: payload.newPassword});
-            await fetchProfile();
-            showToast('Password updated.');
+            const response = await changePassword({currentPassword: payload.currentPassword, newPassword: payload.newPassword});
+            showToast(response.message || 'Password updated. Please sign in again.');
+            if (response.mode === 'logout') {
+                window.location.href = '/logIn';
+                return;
+            }
+            await fetchStatus();
         } catch (error) {
-            showToast('Unable to update password.');
+            showToast('Unable to update password. Please request a reset email.');
         } finally {
             setIsActionLoading(false);
         }
@@ -220,7 +159,7 @@ const AccountSecurityPage: React.FC = () => {
         }
     };
 
-    const handleDeleteAccount = async (payload: { confirmation: string; password: string; twoFactorCode?: string }) => {
+    const handleDeleteAccount = async (payload: { confirmation: string; password: string }) => {
         setIsActionLoading(true);
         try {
             await deleteAccount(payload);
@@ -237,7 +176,7 @@ const AccountSecurityPage: React.FC = () => {
         setIsActionLoading(true);
         try {
             await revokeSession(id);
-            await fetchSessions();
+            await fetchStatus();
             showToast('Session revoked.');
         } catch (error) {
             showToast('Unable to revoke session.');
@@ -250,8 +189,8 @@ const AccountSecurityPage: React.FC = () => {
         setIsActionLoading(true);
         try {
             await revokeAllSessions();
-            await fetchSessions();
-            showToast('All sessions revoked.');
+            showToast('All sessions revoked. Please sign in again.');
+            window.location.href = '/logIn';
         } catch (error) {
             showToast('Unable to revoke sessions.');
         } finally {
@@ -260,9 +199,11 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handleResetPassword = () => {
-        const redirect = encodeURIComponent(window.location.origin + '/account/security');
-        const resetUrl = `${urlService.keycloak.url}realms/${urlService.keycloak.realm}/login-actions/reset-credentials?client_id=${urlService.keycloak.clientId}&redirect_uri=${redirect}`;
-        window.location.href = resetUrl;
+        setIsActionLoading(true);
+        sendResetPasswordEmail()
+            .then(() => showToast('Reset password email sent.'))
+            .catch(() => showToast('Unable to send reset email.'))
+            .finally(() => setIsActionLoading(false));
     };
 
     return (
@@ -285,13 +226,13 @@ const AccountSecurityPage: React.FC = () => {
             <SecurityBanner show={requiresBanner} onSetup2fa={handleSetup2fa} />
             <div className="security-grid">
                 <TwoFactorCard
-                    isEnabled={Boolean(profile?.isTwoFactorEnabled)}
+                    isEnabled={Boolean(status?.twoFactorEnabled)}
                     backupCodesGenerated={backupGenerated}
                     isLoading={isLoading}
-                    onPrimaryAction={profile?.isTwoFactorEnabled ? handleManage2fa : handleSetup2fa}
+                    onPrimaryAction={status?.twoFactorEnabled ? handleManage2fa : handleSetup2fa}
                 />
                 <EmailVerificationCard
-                    emailVerified={Boolean(profile?.emailVerified)}
+                    emailVerified={Boolean(status?.emailVerified)}
                     isLoading={isActionLoading || isLoading}
                     onResend={handleResendEmail}
                     onChangeEmail={() => setIsEmailModalOpen(true)}
@@ -305,8 +246,8 @@ const AccountSecurityPage: React.FC = () => {
             />
             <div className="security-bottom-grid">
                 <ActiveSessionsCard
-                    sessions={sessions}
-                    isLoading={isSessionLoading}
+                    sessions={status?.sessions ?? []}
+                    isLoading={isLoading}
                     onLogoutSession={handleLogoutSession}
                     onLogoutAll={handleLogoutAllSessions}
                 />
@@ -323,26 +264,9 @@ const AccountSecurityPage: React.FC = () => {
                 onClose={() => setIsEmailModalOpen(false)}
                 onSubmit={handleChangeEmail}
             />
-            <Enable2FAModal
-                isOpen={isEnable2faOpen}
-                isLoading={isActionLoading}
-                setup={twoFactorSetup}
-                backupCodes={backupCodes}
-                onClose={() => setIsEnable2faOpen(false)}
-                onConfirm={handleEnable2fa}
-            />
-            <Manage2FAModal
-                isOpen={isManage2faOpen}
-                isLoading={isActionLoading}
-                backupCodes={backupCodes}
-                onClose={() => setIsManage2faOpen(false)}
-                onRegenerate={handleRegenerateCodes}
-                onDisable={handleDisable2fa}
-            />
             <DeleteAccountModal
                 isOpen={isDeleteOpen}
                 isSubmitting={isActionLoading}
-                requiresTwoFactor={Boolean(profile?.isTwoFactorEnabled)}
                 onClose={() => setIsDeleteOpen(false)}
                 onConfirm={handleDeleteAccount}
             />

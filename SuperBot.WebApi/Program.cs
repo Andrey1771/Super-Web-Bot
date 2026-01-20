@@ -9,7 +9,6 @@ using SuperBot.Core.Services;
 using SuperBot.Infrastructure.ExternalServices;
 using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
-using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.WebApi.Services;
 using Microsoft.Extensions.FileProviders;
 using SuperBot.Core.Entities;
@@ -119,8 +118,6 @@ builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
-builder.Services.AddScoped<IAccountSecurityProfileRepository, AccountSecurityProfileMongoDbRepository>();
-builder.Services.AddScoped<IAccountSessionRepository, AccountSessionMongoDbRepository>();
 
 
 
@@ -182,7 +179,7 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>((httpClient) =>
     httpClient.BaseAddress = new Uri(uri);
     return new KeycloakClient(httpClient, uri);
 });
-builder.Services.AddHttpClient<KeycloakAccountService>();
+builder.Services.AddHttpClient<KeycloakAdminClient>();
 
 builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
 

@@ -1,28 +1,23 @@
-export type AccountSecurityProfile = {
-    displayName: string;
-    email: string;
-    emailVerified: boolean;
-    memberSince: string;
-    isTwoFactorEnabled: boolean;
-    lastPasswordChangeAt?: string | null;
-    backupCodesGeneratedAt?: string | null;
-    hasBackupCodes?: boolean;
-};
-
-export type TwoFactorSetup = {
-    otpauthUri: string;
-    qrPngBase64: string;
-    manualKey: string;
-};
-
-export type TwoFactorEnableResponse = {
-    backupCodes: string[];
-};
-
 export type AccountSession = {
     id: string;
-    deviceName: string;
     ipAddress: string;
-    location: string;
-    lastSeenAt: string;
+    start: number;
+    lastAccess: number;
+    device: string;
+};
+
+export type AccountSecurityStatus = {
+    email: string;
+    emailVerified: boolean;
+    twoFactorEnabled: boolean;
+    backupCodesGenerated: boolean;
+    passwordUpdatedAt?: string | null;
+    accountConsoleUrl?: string | null;
+    sessions: AccountSession[];
+};
+
+export type SecurityActionResponse = {
+    mode: string;
+    message: string;
+    redirectUrl?: string | null;
 };

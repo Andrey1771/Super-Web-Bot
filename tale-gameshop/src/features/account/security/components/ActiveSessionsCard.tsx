@@ -10,7 +10,7 @@ type ActiveSessionsCardProps = {
     onLogoutAll: () => void;
 };
 
-const formatLastSeen = (value: string) => new Date(value).toLocaleString();
+const formatTimestamp = (value: number) => new Date(value).toLocaleString();
 
 const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
     sessions,
@@ -32,9 +32,9 @@ const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
                             <FontAwesomeIcon icon={faDesktop} />
                         </div>
                         <div className="security-session-details">
-                            <strong>{session.deviceName}</strong>
+                            <strong>{session.device}</strong>
                             <span>
-                                {session.location} · {formatLastSeen(session.lastSeenAt)} · IP {session.ipAddress}
+                                {formatTimestamp(session.lastAccess)} · IP {session.ipAddress}
                             </span>
                         </div>
                         <button

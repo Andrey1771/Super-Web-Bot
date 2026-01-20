@@ -1,69 +1,50 @@
 import container from '../../../../inversify.config';
 import IDENTIFIERS from '../../../../constants/identifiers';
 import type { IApiClient } from '../../../../iterfaces/i-api-client';
-import type {
-    AccountSecurityProfile,
-    AccountSession,
-    TwoFactorEnableResponse,
-    TwoFactorSetup
-} from '../types';
+import type {AccountSecurityStatus, SecurityActionResponse} from '../types';
 
 const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 
-export const getAccountSecurityProfile = async (): Promise<AccountSecurityProfile> => {
-    const response = await apiClient().get('/api/account/me');
+export const getAccountSecurityStatus = async (): Promise<AccountSecurityStatus> => {
+    const response = await apiClient().get('/api/account/security/status');
     return response.data;
 };
 
 export const resendVerificationEmail = async (): Promise<void> => {
-    await apiClient().post('/api/account/email/resend-verification');
+    await apiClient().post('/api/account/security/email/resend');
 };
 
 export const changeEmail = async (payload: { newEmail: string; password: string }): Promise<void> => {
-    await apiClient().post('/api/account/email/change', payload);
+    await apiClient().post('/api/account/security/email/change', payload);
 };
 
-export const changePassword = async (payload: { currentPassword: string; newPassword: string }): Promise<void> => {
-    await apiClient().post('/api/account/password/change', payload);
-};
-
-export const fetchTwoFactorSetup = async (): Promise<TwoFactorSetup> => {
-    const response = await apiClient().get('/api/account/2fa/setup');
+export const changePassword = async (payload: { currentPassword: string; newPassword: string }): Promise<SecurityActionResponse> => {
+    const response = await apiClient().post('/api/account/security/password/change', payload);
     return response.data;
 };
 
-export const enableTwoFactor = async (payload: { code: string; password: string }): Promise<TwoFactorEnableResponse> => {
-    const response = await apiClient().post('/api/account/2fa/enable', payload);
+export const setupTwoFactor = async (): Promise<SecurityActionResponse> => {
+    const response = await apiClient().post('/api/account/security/2fa/setup');
     return response.data;
 };
 
-export const disableTwoFactor = async (payload: { code: string; password: string }): Promise<void> => {
-    await apiClient().post('/api/account/2fa/disable', payload);
-};
-
-export const regenerateBackupCodes = async (payload: { code: string; password: string }): Promise<TwoFactorEnableResponse> => {
-    const response = await apiClient().post('/api/account/2fa/backup/regenerate', payload);
-    return response.data;
-};
-
-export const getActiveSessions = async (): Promise<AccountSession[]> => {
-    const response = await apiClient().get('/api/account/sessions');
-    return response.data;
+export const sendResetPasswordEmail = async (): Promise<void> => {
+    await apiClient().post('/api/account/security/password/reset-email');
 };
 
 export const revokeSession = async (sessionId: string): Promise<void> => {
-    await apiClient().post(`/api/account/sessions/${sessionId}/revoke`);
+    await apiClient().delete(`/api/account/security/sessions/${sessionId}`);
 };
 
 export const revokeAllSessions = async (): Promise<void> => {
-    await apiClient().post('/api/account/sessions/revoke-all');
+    await apiClient().post('/api/account/security/sessions/logout-all');
 };
 
 export const downloadSecurityReport = async (): Promise<Blob> => {
-    const response = await apiClient().get('/api/account/security-report', { responseType: 'blob' });
+    const response = await apiClient().post('/api/account/security/report', undefined, { responseType: 'blob' });
     return response.data;
 };
 
-export const deleteAccount = async (payload: { confirmation: string; password: string; twoFactorCode?: string }): Promise<void> => {
-    await apiClient().post('/api/account/delete', payload);
+export const deleteAccount = async (payload: { confirmation: string; password: string }): Promise<void> => {
+    await apiClient().post('/api/account/security/delete-account', payload);
 };

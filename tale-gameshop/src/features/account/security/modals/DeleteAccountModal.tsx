@@ -3,21 +3,18 @@ import React, {useState} from 'react';
 type DeleteAccountModalProps = {
     isOpen: boolean;
     isSubmitting: boolean;
-    requiresTwoFactor: boolean;
     onClose: () => void;
-    onConfirm: (payload: { confirmation: string; password: string; twoFactorCode?: string }) => void;
+    onConfirm: (payload: { confirmation: string; password: string }) => void;
 };
 
 const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     isOpen,
     isSubmitting,
-    requiresTwoFactor,
     onClose,
     onConfirm
 }) => {
     const [confirmation, setConfirmation] = useState('');
     const [password, setPassword] = useState('');
-    const [twoFactorCode, setTwoFactorCode] = useState('');
     const [error, setError] = useState('');
 
     if (!isOpen) {
@@ -33,12 +30,8 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             setError('Enter your password.');
             return;
         }
-        if (requiresTwoFactor && !twoFactorCode) {
-            setError('Enter your 2FA code.');
-            return;
-        }
         setError('');
-        onConfirm({confirmation, password, twoFactorCode: requiresTwoFactor ? twoFactorCode : undefined});
+        onConfirm({confirmation, password});
     };
 
     return (
@@ -71,17 +64,6 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                             placeholder="••••••••"
                         />
                     </label>
-                    {requiresTwoFactor && (
-                        <label className="security-field">
-                            <span>2FA code</span>
-                            <input
-                                className="input"
-                                value={twoFactorCode}
-                                onChange={(event) => setTwoFactorCode(event.target.value)}
-                                placeholder="123456"
-                            />
-                        </label>
-                    )}
                     {error && <p className="security-error">{error}</p>}
                 </div>
                 <div className="security-modal-footer">
