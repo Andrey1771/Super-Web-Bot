@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
@@ -10,59 +10,176 @@ import {
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import AddPaymentMethodModal from '../billing/components/AddPaymentMethodModal';
+import {
+    createSetupIntent,
+    deletePaymentMethod,
+    downloadInvoicePdf,
+    downloadMyData,
+    getBillingSummary,
+    getInvoices,
+    makeDefaultPaymentMethod
+} from '../api/accountBillingApi';
+import type {BillingSummaryDto, InvoiceDto, PagedResult, PaymentMethodDto} from '../api/accountBillingApi';
 import './account-billing-page.css';
 
-const paymentMethods = [
-    {
-        id: 'visa-4242',
-        brand: 'Visa',
-        ending: '4242',
-        label: 'Primary card',
-        expiry: '04/26'
-    },
-    {
-        id: 'mc-1121',
-        brand: 'Mastercard',
-        ending: '1121',
-        label: 'Business card',
-        expiry: '09/25'
-    }
-];
-
-const invoices = [
-    {
-        order: '#170582',
-        id: '#70762',
-        date: 'April 15, 2024',
-        amount: '$59.99'
-    },
-    {
-        order: '#169741',
-        id: '#169741',
-        date: 'April 5, 2024',
-        amount: '$29.99'
-    },
-    {
-        order: '#165320',
-        id: '#165320',
-        date: 'March 28, 2023',
-        amount: '$29.99'
-    },
-    {
-        order: '#154879',
-        id: '#154879',
-        date: 'March 22, 2024',
-        amount: '$39.99'
-    }
-];
-
 const AccountBillingPage: React.FC = () => {
+    const [summary, setSummary] = useState<BillingSummaryDto | null>(null);
+    const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
+    const [pagination, setPagination] = useState<PagedResult<InvoiceDto> | null>(null);
+    const [page, setPage] = useState(1);
+    const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+    const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isAddMethodOpen, setIsAddMethodOpen] = useState(false);
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [isActionLoading, setIsActionLoading] = useState(false);
+    const [deletingMethodId, setDeletingMethodId] = useState<string | null>(null);
+
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
         error: recommendationsError,
         reload: reloadRecommendations
     } = useRecommendations(6);
+
+    const fetchSummary = useCallback(async () => {
+        setIsLoadingSummary(true);
+        setErrorMessage(null);
+        try {
+            const data = await getBillingSummary();
+            setSummary(data);
+        } catch (error) {
+            setErrorMessage('Unable to load billing summary.');
+        } finally {
+            setIsLoadingSummary(false);
+        }
+    }, []);
+
+    const fetchInvoices = useCallback(async () => {
+        setIsLoadingInvoices(true);
+        setErrorMessage(null);
+        try {
+            const data = await getInvoices(page, 4);
+            setInvoices(data.items);
+            setPagination(data);
+        } catch (error) {
+            setErrorMessage('Unable to load invoices.');
+        } finally {
+            setIsLoadingInvoices(false);
+        }
+    }, [page]);
+
+    useEffect(() => {
+        fetchSummary();
+    }, [fetchSummary]);
+
+    useEffect(() => {
+        fetchInvoices();
+    }, [fetchInvoices]);
+
+    const totalPages = useMemo(() => {
+        if (!pagination) {
+            return 1;
+        }
+        return Math.max(1, Math.ceil(pagination.total / pagination.pageSize));
+    }, [pagination]);
+
+    const handleRequestIntent = useCallback(async () => {
+        try {
+            const response = await createSetupIntent();
+            setClientSecret(response.clientSecret);
+        } catch (error) {
+            setErrorMessage('Unable to start Stripe setup.');
+        }
+    }, []);
+
+    const handleOpenAddMethod = useCallback(() => {
+        setClientSecret(null);
+        setIsAddMethodOpen(true);
+    }, []);
+
+    const handleCloseAddMethod = useCallback(() => {
+        setClientSecret(null);
+        setIsAddMethodOpen(false);
+    }, []);
+
+    const handleSaveMethod = useCallback(async () => {
+        setIsActionLoading(true);
+        try {
+            await fetchSummary();
+            handleCloseAddMethod();
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [fetchSummary, handleCloseAddMethod]);
+
+    const handleMakeDefault = async (methodId: string) => {
+        setIsActionLoading(true);
+        try {
+            await makeDefaultPaymentMethod(methodId);
+            await fetchSummary();
+        } catch (error) {
+            setErrorMessage('Unable to update default method.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+
+    const handleRemoveMethod = async (methodId: string) => {
+        const confirmRemove = window.confirm('Remove this payment method?');
+        if (!confirmRemove) {
+            return;
+        }
+        setDeletingMethodId(methodId);
+        try {
+            await deletePaymentMethod(methodId);
+            await fetchSummary();
+        } catch (error) {
+            setErrorMessage('Unable to remove payment method.');
+        } finally {
+            setDeletingMethodId(null);
+        }
+    };
+
+    const handleDownloadInvoice = async (invoiceId: string) => {
+        setIsActionLoading(true);
+        try {
+            const file = await downloadInvoicePdf(invoiceId);
+            const url = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `invoice-${invoiceId}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            setErrorMessage('Unable to download invoice PDF.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+
+    const handleDownloadData = async () => {
+        setIsActionLoading(true);
+        try {
+            const file = await downloadMyData();
+            const url = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'account-data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            setErrorMessage('Unable to download data export.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+
+    const filteredRecommendations = useMemo(
+        () => recommendations.filter((item) => item.game?.title && item.game?.price),
+        [recommendations]
+    );
 
     return (
         <AccountShell
@@ -87,7 +204,12 @@ const AccountBillingPage: React.FC = () => {
                 <div className="billing-form-grid">
                     <label className="billing-field">
                         <span>Display name</span>
-                        <input className="billing-input" type="text" defaultValue="Alex R." />
+                        <input
+                            className="billing-input"
+                            type="text"
+                            value={summary?.displayName ?? ''}
+                            readOnly
+                        />
                     </label>
                     <label className="billing-field">
                         <span>Email address</span>
@@ -95,35 +217,62 @@ const AccountBillingPage: React.FC = () => {
                             <input
                                 className="billing-input"
                                 type="email"
-                                defaultValue="hohlov908@gmail.com"
+                                value={summary?.email ?? ''}
+                                readOnly
                             />
                             <FontAwesomeIcon icon={faChevronRight} />
                         </div>
                     </label>
                 </div>
                 <div className="billing-methods">
-                    {paymentMethods.map((method) => (
+                    {isLoadingSummary && <div className="billing-method-empty">Loading payment methods…</div>}
+                    {!isLoadingSummary && summary?.paymentMethods.length === 0 && (
+                        <div className="billing-method-empty">
+                            <p>No payment methods yet.</p>
+                            <button type="button" className="btn btn-primary" onClick={handleOpenAddMethod}>
+                                Add method
+                            </button>
+                        </div>
+                    )}
+                    {!isLoadingSummary && summary?.paymentMethods.map((method: PaymentMethodDto) => (
                         <div key={method.id} className="billing-method-card">
                             <div>
                                 <span className="billing-method-brand">{method.brand}</span>
-                                <p>•••• {method.ending}</p>
+                                <p>•••• {method.last4}</p>
                             </div>
                             <div className="billing-method-meta">
-                                <span className="billing-method-label">{method.label}</span>
-                                <span>Expires {method.expiry}</span>
+                                {method.isDefault && <span className="billing-method-label">Primary</span>}
+                                <span>Expires {method.expMonth}/{method.expYear}</span>
+                            </div>
+                            <div className="billing-method-actions">
+                                {!method.isDefault && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline billing-method-btn"
+                                        onClick={() => handleMakeDefault(method.id)}
+                                        disabled={isActionLoading}
+                                    >
+                                        Make default
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    className="btn btn-outline billing-method-btn"
+                                    onClick={() => handleRemoveMethod(method.id)}
+                                    disabled={deletingMethodId === method.id}
+                                >
+                                    Remove
+                                </button>
                             </div>
                         </div>
                     ))}
-                    <button type="button" className="btn btn-outline billing-add-btn">
+                    <button type="button" className="btn btn-outline billing-add-btn" onClick={handleOpenAddMethod}>
                         Add method
                     </button>
                 </div>
                 <div className="billing-card-footer">
-                    <button type="button" className="billing-link-btn">
+                    <button type="button" className="billing-link-btn" onClick={handleOpenAddMethod}>
                         Manage payment methods
-                    </button>
-                    <button type="button" className="btn btn-primary billing-save-btn" disabled>
-                        Save changes
                     </button>
                 </div>
             </div>
@@ -131,16 +280,9 @@ const AccountBillingPage: React.FC = () => {
             <div className="card billing-card">
                 <div className="billing-card-header">
                     <h3>Billing details</h3>
-                    <button type="button" className="billing-link-btn">
-                        Edit
-                    </button>
                 </div>
                 <div className="billing-details">
-                    <p>Alex R.</p>
-                    <p>1234 Main St, Apt 56</p>
-                    <p>Kyiv</p>
-                    <p>Ukraine, UA 01001</p>
-                    <p>+380 11 234 5678</p>
+                    <p>Billing details are collected securely during checkout.</p>
                 </div>
             </div>
 
@@ -160,14 +302,31 @@ const AccountBillingPage: React.FC = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {invoices.map((invoice) => (
-                            <tr key={invoice.order}>
-                                <td>{invoice.order}</td>
-                                <td>{invoice.id}</td>
-                                <td>{invoice.date}</td>
-                                <td>{invoice.amount}</td>
+                        {isLoadingInvoices && (
+                            <tr>
+                                <td colSpan={5}>Loading invoices...</td>
+                            </tr>
+                        )}
+                        {!isLoadingInvoices && invoices.length === 0 && (
+                            <tr>
+                                <td colSpan={5}>No invoices available.</td>
+                            </tr>
+                        )}
+                        {!isLoadingInvoices && invoices.map((invoice) => (
+                            <tr key={invoice.invoiceId}>
+                                <td>{invoice.orderNumber}</td>
+                                <td>{invoice.invoiceId}</td>
+                                <td>{new Date(invoice.date).toLocaleDateString()}</td>
                                 <td>
-                                    <button type="button" className="btn btn-outline billing-download-btn">
+                                    {invoice.amount.toFixed(2)} {invoice.currency}
+                                </td>
+                                <td>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline billing-download-btn"
+                                        onClick={() => handleDownloadInvoice(invoice.invoiceId)}
+                                        disabled={isActionLoading}
+                                    >
                                         Download PDF
                                     </button>
                                 </td>
@@ -178,23 +337,41 @@ const AccountBillingPage: React.FC = () => {
                 </div>
                 <div className="billing-pagination">
                     <div className="billing-pagination-controls">
-                        <button type="button" className="btn btn-outline billing-page-btn" aria-label="Previous page">
+                        <button
+                            type="button"
+                            className="btn btn-outline billing-page-btn"
+                            aria-label="Previous page"
+                            onClick={() => setPage((current) => Math.max(1, current - 1))}
+                            disabled={page <= 1}
+                        >
                             <FontAwesomeIcon icon={faChevronLeft} />
                         </button>
-                        <button type="button" className="btn btn-outline billing-page-btn is-active">
-                            1
-                        </button>
-                        <button type="button" className="btn btn-outline billing-page-btn">
-                            2
-                        </button>
-                        <button type="button" className="btn btn-outline billing-page-btn">
-                            3
-                        </button>
-                        <button type="button" className="btn btn-outline billing-page-btn" aria-label="Next page">
+                        {Array.from({length: totalPages}).map((_, index) => {
+                            const pageNumber = index + 1;
+                            return (
+                                <button
+                                    key={pageNumber}
+                                    type="button"
+                                    className={`btn btn-outline billing-page-btn${pageNumber === page ? ' is-active' : ''}`}
+                                    onClick={() => setPage(pageNumber)}
+                                >
+                                    {pageNumber}
+                                </button>
+                            );
+                        })}
+                        <button
+                            type="button"
+                            className="btn btn-outline billing-page-btn"
+                            aria-label="Next page"
+                            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                            disabled={page >= totalPages}
+                        >
                             <FontAwesomeIcon icon={faChevronRight} />
                         </button>
                     </div>
-                    <span className="billing-pagination-note">Showing 1-4 of 22</span>
+                    <span className="billing-pagination-note">
+                        Showing {invoices.length} of {pagination?.total ?? 0}
+                    </span>
                 </div>
             </div>
 
@@ -203,11 +380,7 @@ const AccountBillingPage: React.FC = () => {
                     <h3>Privacy &amp; data</h3>
                 </div>
                 <div className="billing-privacy-row">
-                    <label className="billing-checkbox">
-                        <input type="checkbox" />
-                        Hide owned games in profile
-                    </label>
-                    <button type="button" className="btn btn-outline billing-download-btn">
+                    <button type="button" className="btn btn-outline billing-download-btn" onClick={handleDownloadData}>
                         Download my data
                     </button>
                 </div>
@@ -226,7 +399,7 @@ const AccountBillingPage: React.FC = () => {
                     </div>
                 </div>
                 <RecommendationsSection
-                    items={recommendations}
+                    items={filteredRecommendations}
                     isLoading={isRecommendationsLoading}
                     error={recommendationsError}
                     onRetry={reloadRecommendations}
@@ -262,6 +435,15 @@ const AccountBillingPage: React.FC = () => {
                     )}
                 />
             </section>
+
+            <AddPaymentMethodModal
+                isOpen={isAddMethodOpen}
+                clientSecret={clientSecret}
+                isLoading={isActionLoading}
+                onClose={handleCloseAddMethod}
+                onSave={handleSaveMethod}
+                onRequestIntent={handleRequestIntent}
+            />
         </AccountShell>
     );
 };
