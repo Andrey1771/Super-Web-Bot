@@ -118,6 +118,7 @@ builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
+builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
 
 
 
