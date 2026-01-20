@@ -5,7 +5,10 @@ import type { StripeCardNumberElementOptions } from '@stripe/stripe-js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock } from '@fortawesome/free-solid-svg-icons';
 
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY ?? '');
+const stripePublishableKey = typeof window !== 'undefined'
+    ? window.__APP_CONFIG__?.stripePublishableKey ?? ''
+    : '';
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const elementStyle = {
     style: {
@@ -189,6 +192,26 @@ const AddCardModal: React.FC<AddCardModalProps> = ({
 
     if (!isOpen) {
         return null;
+    }
+
+    if (!stripePromise) {
+        return (
+            <div className="billing-modal-overlay" role="dialog" aria-modal="true">
+                <div className="billing-modal">
+                    <div className="billing-modal-body">
+                        <h3>Link a bank card</h3>
+                        <p className="billing-modal-subtitle">
+                            Stripe publishable key is missing. Please configure window.__APP_CONFIG__.stripePublishableKey.
+                        </p>
+                        <div className="billing-modal-actions">
+                            <button type="button" className="btn btn-outline" onClick={onClose}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (

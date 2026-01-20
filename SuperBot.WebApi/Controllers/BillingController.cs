@@ -231,7 +231,7 @@ namespace SuperBot.WebApi.Controllers
                 .ToList();
 
             var totalCount = userOrders.Count;
-            _logger.LogInformation(\"Billing invoices fetched for {UserId}. Count: {Count}.\", GetUserId(), totalCount);
+            _logger.LogInformation("Billing invoices fetched for {UserId}. Count: {Count}.", GetUserId(), totalCount);
             var pageItems = userOrders
                 .Skip((normalizedPage - 1) * normalizedPageSize)
                 .Take(normalizedPageSize)
