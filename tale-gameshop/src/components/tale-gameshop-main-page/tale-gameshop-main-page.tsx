@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import styles from './tale-gameshop-main-page.module.css';
+import './tale-gameshop-main-page.css';
 import '../../font-awesome.ts';
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
@@ -189,18 +189,18 @@ export default function TaleGameshopMainPage() {
     };
 
     const renderGameCard = (game: Game, size: 'large' | 'small') => (
-        <div className={`${styles["hero-card"]} ${size === 'large' ? styles["hero-card-large"] : styles["hero-card-small"]}`}>
-            <div className={styles["hero-media"]}>
+        <div className={`hero-card ${size === 'large' ? 'hero-card-large' : 'hero-card-small'}`}>
+            <div className="hero-media">
                 {game?.imagePath ? (
                     <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
                 ) : (
-                    <div className={`${styles["media-placeholder"]} ${styles.skeleton}`} aria-hidden="true" />
+                    <div className="media-placeholder skeleton" aria-hidden="true" />
                 )}
             </div>
-            <div className={styles["hero-overlay"]}>
-                <span className={styles["hero-title"]}>{game?.title}</span>
+            <div className="hero-overlay">
+                <span className="hero-title">{game?.title}</span>
                 {game?.price !== undefined && (
-                    <span className={styles["hero-price"]}>${game.price.toFixed(2)}</span>
+                    <span className="hero-price">${game.price.toFixed(2)}</span>
                 )}
             </div>
         </div>
@@ -208,38 +208,38 @@ export default function TaleGameshopMainPage() {
 
     const renderHeroSkeleton = (size: 'large' | 'small') => (
         <div
-            className={`${styles["hero-card"]} ${size === 'large' ? styles["hero-card-large"] : styles["hero-card-small"]} ${styles["skeleton-card"]}`}
+            className={`hero-card ${size === 'large' ? 'hero-card-large' : 'hero-card-small'} skeleton-card`}
             aria-hidden="true"
         >
-            <div className={styles["hero-media"]}>
-                <div className={`${styles["media-placeholder"]} ${styles.skeleton}`} />
+            <div className="hero-media">
+                <div className="media-placeholder skeleton" />
             </div>
-            <div className={styles["hero-overlay"]}>
-                <span className={`${styles["skeleton-line"]} ${styles.skeleton}`} />
-                <span className={`${styles["skeleton-line"]} ${styles["skeleton-line-short"]} ${styles.skeleton}`} />
+            <div className="hero-overlay">
+                <span className="skeleton-line skeleton" />
+                <span className="skeleton-line skeleton-line-short skeleton" />
             </div>
         </div>
     );
 
     return (
-        <div className={styles["main-page"]}>
-            <section className={styles.hero}>
-                <div className={`container ${styles["hero-grid"]} ${styles["hero-container"]}`}>
-                    <div className={styles["hero-copy"]}>
-                        <div className={styles.eyebrow}>PARE GAMES</div>
+        <div className="main-page">
+            <section className="hero">
+                <div className="container hero-grid hero-container">
+                    <div className="hero-copy">
+                        <div className="eyebrow">PARE GAMES</div>
                         <h1>Discover Your Next Favourite Computer Game</h1>
-                        <p className={styles["hero-subtext"]}>
+                        <p className="hero-subtext">
                             A curated marketplace built for PC gamers. Browse premium picks, pay securely, and jump in instantly.
                         </p>
-                        <div className={styles["hero-perks"]}>
+                        <div className="hero-perks">
                             {perks.map((perk) => (
-                                <div className={styles["hero-perk"]} key={perk}>
+                                <div className="hero-perk" key={perk}>
                                     <FontAwesomeIcon icon={faCheckCircle} />
                                     <span>{perk}</span>
                                 </div>
                             ))}
                         </div>
-                        <div className={styles["hero-actions"]}>
+                        <div className="hero-actions">
                             <Link to={`/games?filterCategory`} className="btn btn-primary">
                                 Shop
                             </Link>
@@ -249,7 +249,7 @@ export default function TaleGameshopMainPage() {
                         </div>
                     </div>
 
-                    <div className={styles["hero-showcase"]}>
+                    <div className="hero-showcase">
                         {isLoading ? (
                             <>
                                 {renderHeroSkeleton('large')}
@@ -265,34 +265,34 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["featured-section"]}>
+            <section className="featured-section">
                 <div className="container">
-                    <div className={styles["section-header"]}>
+                    <div className="section-header">
                         <div>
-                            <div className={styles.eyebrow}>Featured / Popular</div>
+                            <div className="eyebrow">Featured / Popular</div>
                             <h2>Featured / Popular games</h2>
                         </div>
-                        <div className={styles["carousel-actions"]}>
+                        <div className="carousel-actions">
                             <Link to={`/games`} className="icon-button" aria-label="Browse more games">
                                 <FontAwesomeIcon icon={faArrowRight} />
                             </Link>
                         </div>
                     </div>
 
-                    <div className={styles["featured-scroller"]}>
+                    <div className="featured-scroller">
                         {isLoading ? (
                             Array.from({length: 6}).map((_, index) => (
                                 <div
-                                    className={`${styles["featured-card"]} ${styles["skeleton-card"]}`}
+                                    className="featured-card skeleton-card"
                                     key={`featured-skeleton-${index}`}
                                     aria-hidden="true"
                                 >
-                                    <div className={styles["featured-media"]}>
-                                        <div className={`${styles["media-placeholder"]} ${styles.skeleton}`} />
+                                    <div className="featured-media">
+                                        <div className="media-placeholder skeleton" />
                                     </div>
-                                    <div className={styles["featured-meta"]}>
-                                        <span className={`${styles["skeleton-line"]} ${styles.skeleton}`} />
-                                        <span className={`${styles["skeleton-line"]} ${styles["skeleton-line-short"]} ${styles.skeleton}`} />
+                                    <div className="featured-meta">
+                                        <span className="skeleton-line skeleton" />
+                                        <span className="skeleton-line skeleton-line-short skeleton" />
                                     </div>
                                 </div>
                             ))
@@ -300,20 +300,20 @@ export default function TaleGameshopMainPage() {
                             featuredGames.map((game) => (
                                 <Link
                                     to={`/games?filterCategory=${game.title}`}
-                                    className={styles["featured-card"]}
+                                    className="featured-card"
                                     key={game.id || game.title}
                                 >
-                                    <div className={styles["featured-media"]}>
+                                    <div className="featured-media">
                                         {game.imagePath ? (
                                             <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
                                         ) : (
-                                            <div className={`${styles["media-placeholder"]} ${styles.skeleton}`} aria-hidden="true" />
+                                            <div className="media-placeholder skeleton" aria-hidden="true" />
                                         )}
                                     </div>
-                                    <div className={styles["featured-meta"]}>
-                                        <span className={styles["featured-title"]}>{game.title}</span>
+                                    <div className="featured-meta">
+                                        <span className="featured-title">{game.title}</span>
                                         {game.price !== undefined && (
-                                            <span className={styles["featured-price"]}>${game.price.toFixed(2)}</span>
+                                            <span className="featured-price">${game.price.toFixed(2)}</span>
                                         )}
                                     </div>
                                 </Link>
@@ -323,49 +323,49 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["explore-blog-section"]}>
+            <section className="explore-blog-section">
                 <div className="container">
-                    <div className={styles["explore-grid"]}>
-                        <div className={styles["explore-column"]}>
-                            <div className={styles["column-header"]}>
+                    <div className="explore-grid">
+                        <div className="explore-column">
+                            <div className="column-header">
                                 <h3>Explore our games</h3>
                                 <p className="muted">Genres curated for every kind of player.</p>
                             </div>
-                            <div className={styles["genre-grid"]}>
+                            <div className="genre-grid">
                                 {genres.map((genre) => (
-                                    <div className={styles["genre-card"]} key={genre.title}>
-                                        <div className={styles["genre-icon"]}>
+                                    <div className="genre-card" key={genre.title}>
+                                        <div className="genre-icon">
                                             <FontAwesomeIcon icon={genre.icon} />
                                         </div>
-                                        <div className={styles["genre-copy"]}>
-                                            <div className={styles["genre-title"]}>{genre.title}</div>
-                                            <div className={`${styles["genre-description"]} muted`}>{genre.description}</div>
+                                        <div className="genre-copy">
+                                            <div className="genre-title">{genre.title}</div>
+                                            <div className="genre-description muted">{genre.description}</div>
                                         </div>
-                                        <Link className={styles["genre-link"]} to={`/games?filterCategory=${genre.title}`}>
+                                        <Link className="genre-link" to={`/games?filterCategory=${genre.title}`}>
                                             View
                                         </Link>
                                     </div>
                                 ))}
                             </div>
-                            <Link className={`btn btn-outline ${styles["full-width"]}`} to={`/games`}>
+                            <Link className="btn btn-outline full-width" to={`/games`}>
                                 Browse all genres
                             </Link>
                         </div>
 
-                        <div className={styles["explore-column"]}>
-                            <div className={styles["column-header"]}>
+                        <div className="explore-column">
+                            <div className="column-header">
                                 <h3>Latest blog posts</h3>
                                 <p className="muted">Fresh drops from our editorial team.</p>
                             </div>
-                            <div className={styles["blog-list"]}>
+                            <div className="blog-list">
                                 {blogPosts.map((post) => (
-                                    <div className={styles["blog-item"]} key={post.title}>
-                                        <div className={styles["blog-thumb"]} aria-hidden="true" />
-                                        <div className={styles["blog-copy"]}>
-                                            <div className={styles["blog-title"]}>{post.title}</div>
-                                            <div className={`${styles["blog-snippet"]} muted`}>{post.snippet}</div>
+                                    <div className="blog-item" key={post.title}>
+                                        <div className="blog-thumb" aria-hidden="true" />
+                                        <div className="blog-copy">
+                                            <div className="blog-title">{post.title}</div>
+                                            <div className="blog-snippet muted">{post.snippet}</div>
                                         </div>
-                                        <Link className={styles["text-link"]} to={post.link}>
+                                        <Link className="text-link" to={post.link}>
                                             Read
                                         </Link>
                                     </div>
@@ -376,24 +376,24 @@ export default function TaleGameshopMainPage() {
                             </Link>
                         </div>
 
-                        <div className={styles["explore-column"]}>
-                            <div className={styles["column-header"]}>
+                        <div className="explore-column">
+                            <div className="column-header">
                                 <h3>Highlights from blog</h3>
                                 <p className="muted">Hand-picked stories worth reading.</p>
                             </div>
-                            <div className={styles["highlight-stack"]}>
+                            <div className="highlight-stack">
                                 {highlights.map((item) => (
-                                    <div className={styles["highlight-card"]} key={item.title}>
-                                        <div className={styles["highlight-media"]} aria-hidden="true" />
-                                        <div className={styles["highlight-body"]}>
-                                            <div className={styles["highlight-header"]}>
-                                                <span className={styles["highlight-badge"]}>{item.badge}</span>
-                                                <Link className={styles["text-link"]} to={item.link}>
+                                    <div className="highlight-card" key={item.title}>
+                                        <div className="highlight-media" aria-hidden="true" />
+                                        <div className="highlight-body">
+                                            <div className="highlight-header">
+                                                <span className="highlight-badge">{item.badge}</span>
+                                                <Link className="text-link" to={item.link}>
                                                     Read more
                                                 </Link>
                                             </div>
-                                            <div className={styles["highlight-title"]}>{item.title}</div>
-                                            <div className={`${styles["highlight-snippet"]} muted`}>{item.snippet}</div>
+                                            <div className="highlight-title">{item.title}</div>
+                                            <div className="highlight-snippet muted">{item.snippet}</div>
                                         </div>
                                     </div>
                                 ))}
@@ -403,21 +403,21 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["why-section"]}>
+            <section className="why-section">
                 <div className="container">
-                    <div className={styles["section-heading"]}>
+                    <div className="section-heading">
                         <h2>Why choose us</h2>
                         <p className="muted">Curated games, secure payments, and delivery in moments.</p>
                     </div>
-                    <div className={styles["why-grid"]}>
+                    <div className="why-grid">
                         {reasons.map((reason) => (
-                            <div className={styles["why-card"]} key={reason.title}>
-                                <div className={styles["why-icon"]}>
+                            <div className="why-card" key={reason.title}>
+                                <div className="why-icon">
                                     <FontAwesomeIcon icon={reason.icon} />
                                 </div>
-                                <div className={styles["why-copy"]}>
-                                    <div className={styles["why-title"]}>{reason.title}</div>
-                                    <div className={`${styles["why-description"]} muted`}>{reason.description}</div>
+                                <div className="why-copy">
+                                    <div className="why-title">{reason.title}</div>
+                                    <div className="why-description muted">{reason.description}</div>
                                 </div>
                             </div>
                         ))}
@@ -425,37 +425,37 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["how-section"]}>
+            <section className="how-section">
                 <div className="container">
-                    <div className={styles["section-heading"]}>
+                    <div className="section-heading">
                         <h2>How it works</h2>
                         <p className="muted">Three simple steps from browsing to playing.</p>
                     </div>
-                    <div className={styles["steps-grid"]}>
+                    <div className="steps-grid">
                         {steps.map((step, index) => (
-                            <div className={styles["step-card"]} key={step.label}>
-                                <div className={styles["step-marker"]}>{index + 1}</div>
-                                <div className={styles["step-body"]}>
-                                    <div className={styles["step-title"]}>{step.label}</div>
-                                    <div className={`${styles["step-helper"]} muted`}>{step.helper}</div>
+                            <div className="step-card" key={step.label}>
+                                <div className="step-marker">{index + 1}</div>
+                                <div className="step-body">
+                                    <div className="step-title">{step.label}</div>
+                                    <div className="step-helper muted">{step.helper}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                    <div className={`${styles["trust-row"]} muted`}>
+                    <div className="trust-row muted">
                         Refund policy • Verified payments • Instant email delivery
                     </div>
                 </div>
             </section>
 
-            <section className={styles["cta-section"]}>
+            <section className="cta-section">
                 <div className="container">
-                    <div className={styles["cta-card"]}>
-                        <div className={styles["cta-copy"]}>
+                    <div className="cta-card">
+                        <div className="cta-copy">
                             <h3>Ready to explore the Store?</h3>
                             <p className="muted">Discover the full catalog and weekly deals.</p>
                         </div>
-                        <div className={styles["cta-actions"]}>
+                        <div className="cta-actions">
                             <Link to="/games" className="btn btn-primary">
                                 Go to Store
                             </Link>
@@ -467,34 +467,34 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["testimonials-section"]}>
+            <section className="testimonials-section">
                 <div className="container">
-                    <div className={styles["section-heading"]}>
+                    <div className="section-heading">
                         <h2>Loved by players</h2>
                         <p className="muted">Trusted by thousands for fast delivery and curated picks.</p>
                     </div>
-                    <div className={styles["testimonials-grid"]}>
-                        <div className={styles["rating-card"]}>
-                            <div className={styles.stars} aria-label="4.8 out of 5 stars">
+                    <div className="testimonials-grid">
+                        <div className="rating-card">
+                            <div className="stars" aria-label="4.8 out of 5 stars">
                                 {[...Array(5)].map((_, idx) => (
                                     <FontAwesomeIcon key={idx} icon={faStar} />
                                 ))}
                             </div>
-                            <div className={styles["rating-score"]}>4.8/5</div>
-                            <div className={`${styles["rating-helper"]} muted`}>based on 2,300 reviews</div>
+                            <div className="rating-score">4.8/5</div>
+                            <div className="rating-helper muted">based on 2,300 reviews</div>
                         </div>
 
-                        <div className={styles["testimonial-cards"]}>
+                        <div className="testimonial-cards">
                             {testimonials.map((item) => (
-                                <div className={styles["testimonial-card"]} key={item.name}>
-                                    <p className={styles["testimonial-quote"]}>{item.quote}</p>
-                                    <div className={styles["testimonial-footer"]}>
-                                        <div className={styles.avatar} aria-hidden="true">{item.name.charAt(0)}</div>
-                                        <div className={styles["testimonial-meta"]}>
-                                            <div className={styles["testimonial-name"]}>{item.name}</div>
-                                            <div className={`${styles["testimonial-role"]} muted`}>{item.role}</div>
+                                <div className="testimonial-card" key={item.name}>
+                                    <p className="testimonial-quote">{item.quote}</p>
+                                    <div className="testimonial-footer">
+                                        <div className="avatar" aria-hidden="true">{item.name.charAt(0)}</div>
+                                        <div className="testimonial-meta">
+                                            <div className="testimonial-name">{item.name}</div>
+                                            <div className="testimonial-role muted">{item.role}</div>
                                         </div>
-                                        <span className={styles["testimonial-badge"]}>{item.badge}</span>
+                                        <span className="testimonial-badge">{item.badge}</span>
                                     </div>
                                 </div>
                             ))}
@@ -503,14 +503,14 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["trust-section"]}>
+            <section className="trust-section">
                 <div className="container">
-                    <div className={styles["trust-heading"]}>
+                    <div className="trust-heading">
                         <h3>Trusted payment & delivery</h3>
                     </div>
-                    <div className={styles["trust-items"]}>
+                    <div className="trust-items">
                         {trustPoints.map((point) => (
-                            <div className={styles["trust-item"]} key={point.title}>
+                            <div className="trust-item" key={point.title}>
                                 <FontAwesomeIcon icon={point.icon} />
                                 <span>{point.title}</span>
                             </div>
@@ -519,22 +519,22 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["newsletter-section"]}>
+            <section className="newsletter-section">
                 <div className="container">
-                    <div className={styles["newsletter-card"]}>
-                        <div className={styles["newsletter-copy"]}>
+                    <div className="newsletter-card">
+                        <div className="newsletter-copy">
                             <h3>Get weekly deals & rare picks</h3>
                             <p className="muted">No spam. Unsubscribe anytime.</p>
                         </div>
-                        <form className={styles["newsletter-form"]} onSubmit={(e) => e.preventDefault()}>
-                            <div className={styles["input-row"]}>
-                                <div className={styles["input-icon"]}>
+                        <form className="newsletter-form" onSubmit={(e) => e.preventDefault()}>
+                            <div className="input-row">
+                                <div className="input-icon">
                                     <FontAwesomeIcon icon={faEnvelope} />
                                 </div>
                                 <input type="email" placeholder="Enter your email" required />
                                 <button className="btn btn-primary" type="submit">Subscribe</button>
                             </div>
-                            <label className={styles["checkbox-row"]}>
+                            <label className="checkbox-row">
                                 <input type="checkbox" defaultChecked />
                                 <span>Notify me about price drops</span>
                             </label>
@@ -543,24 +543,24 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["faq-section"]}>
+            <section className="faq-section">
                 <div className="container">
-                    <div className={styles["section-heading"]}>
+                    <div className="section-heading">
                         <h3>Quick FAQ</h3>
                         <p className="muted">Answers to common questions about delivery and payments.</p>
                     </div>
-                    <div className={styles["faq-list"]}>
+                    <div className="faq-list">
                         {faqs.map((item, index) => (
                             <div
-                                className={`${styles["faq-item"]} ${openFaqIndex === index ? styles.open : ''}`}
+                                className={`faq-item ${openFaqIndex === index ? 'open' : ''}`}
                                 key={item.question}
                             >
-                                <button className={styles["faq-trigger"]} onClick={() => toggleFaq(index)}>
+                                <button className="faq-trigger" onClick={() => toggleFaq(index)}>
                                     <span>{item.question}</span>
                                     <FontAwesomeIcon icon={faChevronDown} />
                                 </button>
                                 {openFaqIndex === index && (
-                                    <div className={`${styles["faq-answer"]} muted`}>{item.answer}</div>
+                                    <div className="faq-answer muted">{item.answer}</div>
                                 )}
                             </div>
                         ))}
@@ -568,14 +568,14 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className={styles["store-prefooter"]}>
+            <section className="store-prefooter">
                 <div className="container">
-                    <div className={styles["store-prefooter-card"]}>
-                        <div className={styles["store-prefooter-copy"]}>
+                    <div className="store-prefooter-card">
+                        <div className="store-prefooter-copy">
                             <h3>Find your next game today</h3>
                             <p className="muted">Step into the full catalog with weekly deals and curated picks.</p>
                         </div>
-                        <div className={styles["store-prefooter-actions"]}>
+                        <div className="store-prefooter-actions">
                             <Link to="/games" className="btn btn-primary">Go to Store</Link>
                             <Link to={`/games?filterCategory`} className="btn btn-outline">Browse genres</Link>
                         </div>
