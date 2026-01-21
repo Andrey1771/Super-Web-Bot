@@ -19,7 +19,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser, timestam
             )}
             <div className="ticket-message__content">
                 <div className="ticket-message__bubble">
-                    {!isUser && <span className="ticket-message__author">{message.authorName}</span>}
+                    {isUser ? (
+                        <span className="ticket-message__author ticket-message__author--user">You</span>
+                    ) : (
+                        <span className="ticket-message__author">{message.authorName}</span>
+                    )}
                     <p>{message.body}</p>
                     {message.attachments && message.attachments.length > 0 && (
                         <div className="ticket-message__attachments">

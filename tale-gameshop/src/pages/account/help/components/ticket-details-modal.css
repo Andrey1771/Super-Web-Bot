@@ -4,9 +4,9 @@
     background: rgba(15, 23, 42, 0.45);
     backdrop-filter: blur(6px);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 24px;
+    padding: 72px 24px 32px;
     z-index: 60;
 }
 
@@ -53,7 +53,7 @@
     grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
     gap: 24px;
     padding: 24px 28px;
-    overflow: hidden;
+    overflow: auto;
 }
 
 .ticket-modal__left,
@@ -61,7 +61,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .ticket-modal__left {
@@ -71,6 +71,7 @@
 
 .ticket-modal__right {
     padding-left: 8px;
+    padding-bottom: 8px;
 }
 
 .ticket-modal__skeleton,
@@ -93,7 +94,7 @@
     flex-direction: column;
     gap: 16px;
     overflow: auto;
-    padding-right: 8px;
+    padding-right: 0;
 }
 
 .ticket-conversation__header {
@@ -169,6 +170,11 @@
     display: block;
     font-weight: 600;
     margin-bottom: 4px;
+}
+
+.ticket-message__author--user {
+    text-align: right;
+    color: #5b31d4;
 }
 
 .ticket-message__bubble p {
@@ -388,6 +394,7 @@
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    padding-bottom: 8px;
 }
 
 @media (max-width: 900px) {
