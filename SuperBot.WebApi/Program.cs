@@ -21,6 +21,7 @@ using Telegram.Bot;
 using SuperBot.WebApi.Types;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.WebApi.Support;
+using SuperBot.WebApi.Support.Infrastructure;
 using SuperBot.WebApi.Support.Services;
 
 var builder = WebApplication.CreateBuilder(args);
