@@ -20,6 +20,8 @@ using SuperBot.Application.Commands.Telegram;
 using Telegram.Bot;
 using SuperBot.WebApi.Types;
 using SuperBot.Core.Interfaces.IBotStateService;
+using SuperBot.WebApi.Support;
+using SuperBot.WebApi.Support.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +72,8 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
 
 builder.Services.AddControllers();
+builder.Services.Configure<SupportOptions>(builder.Configuration.GetSection("Support"));
+builder.Services.Configure<SupportRoleOptions>(builder.Configuration.GetSection("Support:Roles"));
 
 var domainAssembly = typeof(GetMainMenuCommand).Assembly;
 builder.Services
@@ -119,6 +123,8 @@ builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>()
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
+builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
+builder.Services.AddScoped<SupportRoleEvaluator>();
 
 
 
@@ -185,6 +191,12 @@ builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddTransient<IClaimsTransformation, KeycloakClaimsTransformation>();
+builder.Services.AddAuthorization(options =>
+{
+    var supportRoles = builder.Configuration.GetSection("Support:Roles").Get<SupportRoleOptions>()?.Roles
+        ?? new List<string> { "admin", "support" };
+    options.AddPolicy("SupportAgent", policy => policy.RequireRole(supportRoles.ToArray()));
+});
 
 builder.Services.AddLogging(logging =>
 {
@@ -243,6 +255,8 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
@@ -254,8 +268,5 @@ using (var scope = app.Services.CreateScope())
         () => scope.ServiceProvider.GetRequiredService<IBackgroundTaskService>().ScheduleClearOutdatedDataJob(),
         Cron.Daily);
 }
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.Run();
