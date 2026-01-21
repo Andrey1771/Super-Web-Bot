@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
 import SecurityBanner from '../security/components/SecurityBanner';
@@ -32,6 +32,8 @@ const AccountSecurityPage: React.FC = () => {
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isActionLoading, setIsActionLoading] = useState(false);
+    const [statusError, setStatusError] = useState<string | null>(null);
+    const isFetchingRef = useRef(false);
 
     const showToast = useCallback((message: string) => {
         setToast(message);
@@ -39,16 +41,22 @@ const AccountSecurityPage: React.FC = () => {
     }, []);
 
     const fetchStatus = useCallback(async () => {
+        if (isFetchingRef.current) {
+            return;
+        }
+        isFetchingRef.current = true;
         setIsLoading(true);
+        setStatusError(null);
         try {
             const data = await getAccountSecurityStatus();
             setStatus(data);
         } catch (error) {
-            showToast('Unable to load account profile.');
+            setStatusError('Unable to load security status. Please try again.');
         } finally {
             setIsLoading(false);
+            isFetchingRef.current = false;
         }
-    }, [showToast]);
+    }, []);
 
     const backupGenerated = Boolean(status?.backupCodesGenerated);
 
@@ -231,6 +239,17 @@ const AccountSecurityPage: React.FC = () => {
             headerTestId="security-header"
         >
             <SecurityBanner show={requiresBanner} onSetup2fa={handleSetup2fa} />
+            {statusError && (
+                <div className="card security-status-error" role="alert">
+                    <div>
+                        <strong>Security data unavailable</strong>
+                        <p>{statusError}</p>
+                    </div>
+                    <button type="button" className="btn btn-outline" onClick={fetchStatus} disabled={isLoading}>
+                        Retry
+                    </button>
+                </div>
+            )}
             <div className="security-grid">
                 <TwoFactorCard
                     isEnabled={Boolean(status?.twoFactorEnabled)}
