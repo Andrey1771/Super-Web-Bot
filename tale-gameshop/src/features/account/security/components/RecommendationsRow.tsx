@@ -14,7 +14,7 @@ const RecommendationsRow: React.FC = () => {
         reload: reloadRecommendations
     } = useRecommendations(6);
 
-    const handleAddToCart = (id: string, title: string, price: number, image: string) => {
+    const handleAddToCart = (id: string, title: string, price: number, image?: string) => {
         dispatch({
             type: 'ADD_TO_CART',
             payload: {
@@ -22,7 +22,7 @@ const RecommendationsRow: React.FC = () => {
                 name: title,
                 price,
                 quantity: 1,
-                image
+                image: image && image !== 'string' ? image : ''
             }
         });
     };
@@ -54,7 +54,7 @@ const RecommendationsRow: React.FC = () => {
                 renderItem={(item) => (
                     <div key={item.game.id ?? item.game.title} className="card security-recommendation-card">
                         <div className="security-recommendation-media">
-                            {item.game.imagePath ? (
+                            {item.game.imagePath && item.game.imagePath !== 'string' ? (
                                 <img src={item.game.imagePath} alt={item.game.title} />
                             ) : (
                                 <div className="security-recommendation-fallback" aria-hidden="true" />

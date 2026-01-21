@@ -59,7 +59,7 @@ const AccountOverviewPage: React.FC = () => {
         navigate('/account/keys');
     };
 
-    const handleAddToCart = (id: string, title: string, price: number, image: string) => {
+    const handleAddToCart = (id: string, title: string, price: number, image?: string) => {
         dispatch({
             type: 'ADD_TO_CART',
             payload: {
@@ -67,7 +67,7 @@ const AccountOverviewPage: React.FC = () => {
                 name: title,
                 price,
                 quantity: 1,
-                image
+                image: image && image !== 'string' ? image : ''
             }
         });
     };
@@ -321,7 +321,7 @@ const AccountOverviewPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="account-recommendation-card">
                             <div className="account-recommendation-media">
-                                {item.game.imagePath ? (
+                                {item.game.imagePath && item.game.imagePath !== 'string' ? (
                                     <img src={item.game.imagePath} alt={item.game.title} />
                                 ) : (
                                     <div className="account-recommendation-fallback" aria-hidden="true" />
