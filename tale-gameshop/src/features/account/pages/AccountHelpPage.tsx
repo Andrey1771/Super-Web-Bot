@@ -5,6 +5,8 @@ import AccountShell from '../components/AccountShell';
 import NewSupportRequestModal from '../components/NewSupportRequestModal';
 import {listSupportTickets} from '../support/supportApi';
 import type {SupportTicket, SupportTicketStatus} from '../support/types';
+import TicketDetailsModal from '../../../pages/account/help/components/TicketDetailsModal';
+import type {TicketSummary} from '../../../types/support';
 import './account-help-page.css';
 
 const faqItems = [
@@ -35,6 +37,9 @@ const AccountHelpPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+    const [selectedTicketSummary, setSelectedTicketSummary] = useState<TicketSummary | undefined>();
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     const formatRelativeTime = (value: string) => {
@@ -147,7 +152,22 @@ const AccountHelpPage: React.FC = () => {
                                         {statusLabelFor(ticket.status)}
                                     </span>
                                     <span className="help-muted">{formatRelativeTime(ticket.updatedAt)}</span>
-                                    <button type="button" className="btn btn-outline help-view-btn">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline help-view-btn"
+                                        onClick={() => {
+                                            setSelectedTicketId(ticket.id);
+                                            setSelectedTicketSummary({
+                                                id: ticket.id,
+                                                publicId: ticket.publicId ?? ticket.id,
+                                                subject: ticket.subject,
+                                                category: ticket.category,
+                                                status: statusLabelFor(ticket.status),
+                                                updatedAt: ticket.updatedAt
+                                            });
+                                            setIsTicketModalOpen(true);
+                                        }}
+                                    >
                                         View
                                     </button>
                                 </div>
@@ -238,6 +258,16 @@ const AccountHelpPage: React.FC = () => {
                     setTickets((prev) => [ticket, ...prev]);
                     setToastMessage('Request submitted');
                     await fetchTickets();
+                }}
+            />
+            <TicketDetailsModal
+                isOpen={isTicketModalOpen}
+                ticketId={selectedTicketId}
+                initialTicket={selectedTicketSummary}
+                onClose={() => {
+                    setIsTicketModalOpen(false);
+                    setSelectedTicketId(null);
+                    setSelectedTicketSummary(undefined);
                 }}
             />
             {toastMessage && <div className="help-toast">{toastMessage}</div>}

@@ -2,6 +2,7 @@ export type SupportTicketStatus = string | number;
 
 export interface SupportTicket {
     id: string;
+    publicId?: string | number;
     category: string;
     subject: string;
     status: SupportTicketStatus;
