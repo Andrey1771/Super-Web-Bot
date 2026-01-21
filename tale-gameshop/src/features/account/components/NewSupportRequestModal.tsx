@@ -194,20 +194,18 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                 subject: subject.trim(),
                 description: description.trim()
             };
-            const createdTicket = await createSupportTicket(payload);
+            const created = await createSupportTicket(payload);
 
-            if (attachments.length > 0) {
+            if (attachments.length > 0 && created.firstMessageId) {
                 try {
-                    await Promise.all(
-                        attachments.map((file) => uploadSupportAttachment(createdTicket.id, file))
-                    );
+                    await uploadSupportAttachment(created.ticket.id, created.firstMessageId, attachments);
                 } catch (error) {
                     console.warn('Attachment upload failed', error);
                     setAttachmentError('Attachments could not be uploaded yet. Please send them in a follow-up.');
                 }
             }
 
-            await onSubmitted(createdTicket);
+            await onSubmitted(created.ticket);
             onClose();
         } catch (error) {
             console.error('Failed to create support request', error);

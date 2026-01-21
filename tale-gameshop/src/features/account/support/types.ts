@@ -18,3 +18,15 @@ export interface CreateSupportTicketPayload {
     subject: string;
     description: string;
 }
+
+export interface SupportTicketListResponse {
+    items: SupportTicket[];
+    page: number;
+    pageSize: number;
+    total: number;
+}
+
+export interface CreateSupportTicketResponse {
+    ticket: SupportTicket;
+    firstMessageId: string;
+}
