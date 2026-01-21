@@ -4,7 +4,7 @@ type DeleteAccountModalProps = {
     isOpen: boolean;
     isSubmitting: boolean;
     onClose: () => void;
-    onConfirm: (payload: { confirmation: string; password: string }) => void;
+    onConfirm: (payload: { confirmation: string; password: string; twoFactorCode?: string }) => void;
 };
 
 const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
@@ -15,6 +15,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
 }) => {
     const [confirmation, setConfirmation] = useState('');
     const [password, setPassword] = useState('');
+    const [twoFactorCode, setTwoFactorCode] = useState('');
     const [error, setError] = useState('');
 
     if (!isOpen) {
@@ -31,7 +32,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             return;
         }
         setError('');
-        onConfirm({confirmation, password});
+        onConfirm({confirmation, password, twoFactorCode: twoFactorCode || undefined});
     };
 
     return (
@@ -62,6 +63,15 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                             value={password}
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="••••••••"
+                        />
+                    </label>
+                    <label className="security-field">
+                        <span>2FA code (if enabled)</span>
+                        <input
+                            className="input"
+                            value={twoFactorCode}
+                            onChange={(event) => setTwoFactorCode(event.target.value)}
+                            placeholder="123456"
                         />
                     </label>
                     {error && <p className="security-error">{error}</p>}

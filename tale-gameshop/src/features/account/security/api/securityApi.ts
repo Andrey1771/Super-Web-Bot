@@ -45,6 +45,6 @@ export const downloadSecurityReport = async (): Promise<Blob> => {
     return response.data;
 };
 
-export const deleteAccount = async (payload: { confirmation: string; password: string }): Promise<void> => {
+export const deleteAccount = async (payload: { confirmation: string; password: string; twoFactorCode?: string }): Promise<void> => {
     await apiClient().post('/api/account/security/delete-account', payload);
 };

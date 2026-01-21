@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
@@ -11,43 +11,34 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
+import { useOrders } from '../../../hooks/use-orders';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-orders-page.css';
+import type { Order } from '../../../models/order';
 
-const orders = [
-    {
-        id: '121021',
-        date: 'April 5, 2024',
-        amount: '$29.99',
-        status: 'Processing',
-        items: ['1 × Hades II'],
-        viewLabel: 'View key'
-    },
-    {
-        id: '121020',
-        date: 'March 28, 2024',
-        amount: '$64.50',
-        status: 'Completed',
-        items: ['1 × Hollow Knight: Silksong', '1 × Sea of Stars'],
-        viewLabel: 'View keys'
-    },
-    {
-        id: '121019',
-        date: 'March 14, 2024',
-        amount: '$18.00',
-        status: 'Completed',
-        items: ['1 × Balatro'],
-        viewLabel: 'View key'
-    },
-    {
-        id: '121018',
-        date: 'February 22, 2024',
-        amount: '$42.40',
-        status: 'Completed',
-        items: ['1 × Pacific Drive'],
-        viewLabel: 'View key'
+const formatCurrency = (value: number, currency = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency
+    }).format(value);
+};
+
+const formatDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
     }
-];
+    return new Intl.DateTimeFormat('en-US', {month: 'long', day: 'numeric', year: 'numeric'}).format(date);
+};
+
+const getStatusMeta = (order: Order) => {
+    const isCompleted = order.status === 'Completed' || (order.isPaid && order.isFulfilled);
+    return {
+        label: order.status || (order.isPaid ? 'Completed' : 'Payment pending'),
+        className: isCompleted ? 'status-completed' : 'status-processing',
+        isCompleted
+    };
+};
 
 const AccountOrdersPage: React.FC = () => {
     const {
@@ -56,12 +47,39 @@ const AccountOrdersPage: React.FC = () => {
         error: recommendationsError,
         reload: reloadRecommendations
     } = useRecommendations(6);
+    const {
+        items: orders,
+        totalCount,
+        isLoading: isOrdersLoading,
+        error: ordersError,
+        reload: reloadOrders
+    } = useOrders(null);
+
+    const ordersTitle = useMemo(() => {
+        if (isOrdersLoading) {
+            return 'Orders';
+        }
+        return `Orders (${totalCount})`;
+    }, [isOrdersLoading, totalCount]);
+
+    const ordersSubtitle = useMemo(() => {
+        if (isOrdersLoading) {
+            return 'Loading your orders...';
+        }
+        if (ordersError) {
+            return 'Unable to load orders right now.';
+        }
+        if (totalCount === 0) {
+            return 'No orders yet';
+        }
+        return `Showing 1-${orders.length} of ${totalCount}`;
+    }, [isOrdersLoading, ordersError, orders.length, totalCount]);
 
     return (
         <AccountShell
             title="My account"
             sectionLabel="Orders"
-            subtitle={<h2 className="orders-title">Orders (12)</h2>}
+            subtitle={<h2 className="orders-title">{ordersTitle}</h2>}
             actions={(
                 <>
                     <Link to="/account/settings" className="btn btn-outline account-action-btn">
@@ -102,44 +120,57 @@ const AccountOrdersPage: React.FC = () => {
                     </div>
                 </div>
                 <div className="orders-toolbar-footer">
-                    <span>Showing 1-4 of 12</span>
+                    <span>{ordersSubtitle}</span>
                 </div>
             </div>
 
             <div className="orders-list">
-                {orders.map((order) => {
-                    const isProcessing = order.status === 'Processing';
+                {isOrdersLoading && (
+                    <div className="card orders-state">Loading your orders…</div>
+                )}
+                {!isOrdersLoading && ordersError && (
+                    <div className="card orders-state orders-state-error">
+                        <span>{ordersError}</span>
+                        <button type="button" className="btn btn-outline" onClick={reloadOrders}>
+                            Try again
+                        </button>
+                    </div>
+                )}
+                {!isOrdersLoading && !ordersError && orders.length === 0 && (
+                    <div className="card orders-state">Your orders will appear here after checkout.</div>
+                )}
+                {!isOrdersLoading && !ordersError && orders.map((order) => {
+                    const statusMeta = getStatusMeta(order);
+                    const orderItems = [order.gameName ? `1 × ${order.gameName}` : '1 × Game'];
+                    const amount = formatCurrency(order.totalAmount ?? 0, order.currency ?? 'USD');
+                    const viewLabel = order.isPaid ? 'View keys' : 'Awaiting payment';
 
                     return (
                         <div key={order.id} className="card order-card">
                             <div className="order-card-header">
-                                <span className="order-date">{order.date}</span>
-                                <span className="order-amount">{order.amount}</span>
+                                <span className="order-date">{formatDate(order.orderDate)}</span>
+                                <span className="order-amount">{amount}</span>
                             </div>
                             <div className="order-card-body">
                                 <div className="order-cover" aria-hidden="true" />
                                 <div className="order-details">
                                     <strong>Order #{order.id}</strong>
                                     <div className="order-items">
-                                        {order.items.map((item) => (
+                                        {orderItems.map((item) => (
                                             <span key={item}>{item}</span>
                                         ))}
                                     </div>
                                 </div>
                                 <div className="order-actions">
-                                    <span
-                                        className={`badge order-status ${
-                                            isProcessing ? 'status-processing' : 'status-completed'
-                                        }`}
-                                    >
-                                        {order.status}
+                                    <span className={`badge order-status ${statusMeta.className}`}>
+                                        {statusMeta.label}
                                     </span>
                                     <button
                                         type="button"
                                         className="btn btn-primary order-action-btn"
-                                        disabled={isProcessing}
+                                        disabled={!order.isPaid}
                                     >
-                                        {order.viewLabel}
+                                        {viewLabel}
                                     </button>
                                     <button type="button" className="btn btn-outline order-action-btn">
                                         <FontAwesomeIcon icon={faFileInvoice} />
@@ -174,7 +205,7 @@ const AccountOrdersPage: React.FC = () => {
                         <FontAwesomeIcon icon={faChevronRight} />
                     </button>
                 </div>
-                <span className="orders-pagination-note">Showing 1-4 of 12</span>
+                <span className="orders-pagination-note">{ordersSubtitle}</span>
             </div>
 
             <section className="orders-recommendations">
