@@ -1,0 +1,20 @@
+export interface SupportTicket {
+    id: string;
+    category: string;
+    subject: string;
+    status: string;
+    updatedAt: string;
+}
+
+export interface SupportAttachment {
+    id?: string;
+    fileName: string;
+    size: number;
+    url?: string;
+}
+
+export interface CreateSupportTicketPayload {
+    category: string;
+    subject: string;
+    description: string;
+}

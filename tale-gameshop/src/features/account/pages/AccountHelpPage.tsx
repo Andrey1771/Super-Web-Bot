@@ -1,32 +1,11 @@
-import React from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faChevronDown, faFileLines} from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import NewSupportRequestModal from '../components/NewSupportRequestModal';
+import {listSupportTickets} from '../support/supportApi';
+import type {SupportTicket} from '../support/types';
 import './account-help-page.css';
-
-const supportRequests = [
-    {
-        id: '#10482',
-        issue: 'Payment failed',
-        status: 'Open',
-        updated: '2 hours ago',
-        statusStyle: 'open'
-    },
-    {
-        id: '#10411',
-        issue: 'Key delivery delay',
-        status: 'Waiting for response',
-        updated: 'Yesterday',
-        statusStyle: 'waiting'
-    },
-    {
-        id: '#10377',
-        issue: 'Refund request',
-        status: 'Resolved',
-        updated: '5 days ago',
-        statusStyle: 'resolved'
-    }
-];
 
 const faqItems = [
     {
@@ -52,13 +31,82 @@ const systemStatuses = [
 ];
 
 const AccountHelpPage: React.FC = () => {
+    const [tickets, setTickets] = useState<SupportTicket[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+    const formatRelativeTime = (value: string) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        const diffMs = Date.now() - date.getTime();
+        const diffMinutes = Math.floor(diffMs / 60000);
+        if (diffMinutes < 1) {
+            return 'Just now';
+        }
+        if (diffMinutes < 60) {
+            return `${diffMinutes} min ago`;
+        }
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (diffHours < 24) {
+            return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+        }
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    };
+
+    const statusClassFor = (status: string) => {
+        const normalized = status.toLowerCase();
+        if (normalized.includes('wait') || normalized.includes('pending')) {
+            return 'waiting';
+        }
+        if (normalized.includes('resolve') || normalized.includes('closed')) {
+            return 'resolved';
+        }
+        return 'open';
+    };
+
+    const fetchTickets = useCallback(async () => {
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const data = await listSupportTickets();
+            setTickets(data);
+        } catch (error) {
+            console.error('Failed to load support tickets', error);
+            setLoadError('Unable to load requests right now.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchTickets();
+    }, [fetchTickets]);
+
+    useEffect(() => {
+        if (!toastMessage) {
+            return;
+        }
+        const timeout = window.setTimeout(() => setToastMessage(null), 3000);
+        return () => window.clearTimeout(timeout);
+    }, [toastMessage]);
+
     return (
         <AccountShell title="Help" sectionLabel="Help">
             <div className="help-page">
                 <section className="card help-support">
                     <div className="help-section-header">
                         <h2>My support requests</h2>
-                        <button type="button" className="btn btn-primary help-action-btn">
+                        <button
+                            type="button"
+                            className="btn btn-primary help-action-btn"
+                            onClick={() => setIsModalOpen(true)}
+                        >
                             New request
                         </button>
                     </div>
@@ -70,17 +118,26 @@ const AccountHelpPage: React.FC = () => {
                             <span>Updated</span>
                             <span />
                         </div>
-                        {supportRequests.map((request) => (
-                            <div className="help-requests-row" key={request.id}>
-                                <strong>{request.id}</strong>
-                                <span>{request.issue}</span>
-                                <span className={`help-status-pill ${request.statusStyle}`}>{request.status}</span>
-                                <span className="help-muted">{request.updated}</span>
-                                <button type="button" className="btn btn-outline help-view-btn">
-                                    View
-                                </button>
-                            </div>
-                        ))}
+                        {isLoading && <div className="help-requests-empty">Loading support requests...</div>}
+                        {!isLoading && loadError && <div className="help-requests-empty">{loadError}</div>}
+                        {!isLoading && !loadError && tickets.length === 0 && (
+                            <div className="help-requests-empty">No support requests yet.</div>
+                        )}
+                        {!isLoading &&
+                            !loadError &&
+                            tickets.map((ticket) => (
+                                <div className="help-requests-row" key={ticket.id}>
+                                    <strong>{ticket.id.startsWith('#') ? ticket.id : `#${ticket.id}`}</strong>
+                                    <span>{ticket.subject || ticket.category}</span>
+                                    <span className={`help-status-pill ${statusClassFor(ticket.status)}`}>
+                                        {ticket.status}
+                                    </span>
+                                    <span className="help-muted">{formatRelativeTime(ticket.updatedAt)}</span>
+                                    <button type="button" className="btn btn-outline help-view-btn">
+                                        View
+                                    </button>
+                                </div>
+                            ))}
                     </div>
                 </section>
 
@@ -160,6 +217,16 @@ const AccountHelpPage: React.FC = () => {
                     </div>
                 </section>
             </div>
+            <NewSupportRequestModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmitted={async (ticket) => {
+                    setTickets((prev) => [ticket, ...prev]);
+                    setToastMessage('Request submitted');
+                    await fetchTickets();
+                }}
+            />
+            {toastMessage && <div className="help-toast">{toastMessage}</div>}
         </AccountShell>
     );
 };
