@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
+import { useKeycloak } from '@react-keycloak/web';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
     faArrowLeft,
@@ -31,6 +32,8 @@ import type { BillingDetailsDto, BillingProfileDto, InvoiceDto, PaymentMethodDto
 
 const AccountBillingPage: React.FC = () => {
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const { keycloak } = useKeycloak();
+    const isAuthenticated = keycloak.authenticated;
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -124,13 +127,27 @@ const AccountBillingPage: React.FC = () => {
     };
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            setProfileLoading(false);
+            setProfileError('Sign in to view billing profile.');
+            setPaymentMethodsLoading(false);
+            setPaymentMethodsError('Sign in to view payment methods.');
+            return;
+        }
+
         loadProfile();
         loadPaymentMethods();
-    }, []);
+    }, [isAuthenticated]);
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            setInvoicesLoading(false);
+            setInvoicesError('Sign in to view invoices.');
+            return;
+        }
+
         loadInvoices(invoicePage);
-    }, [invoicePage]);
+    }, [invoicePage, isAuthenticated]);
 
     useEffect(() => {
         if (!profileDraft || !profile) {

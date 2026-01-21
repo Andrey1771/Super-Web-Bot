@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useKeycloak } from '@react-keycloak/web';
 import container from '../inversify.config';
 import IDENTIFIERS from '../constants/identifiers';
 import type { IRecommendationsService } from '../iterfaces/i-recommendations-service';
@@ -6,11 +7,19 @@ import type { RecommendationItem } from '../models/recommendations';
 
 export const useRecommendations = (limit = 8) => {
     const recommendationsService = container.get<IRecommendationsService>(IDENTIFIERS.IRecommendationsService);
+    const { keycloak } = useKeycloak();
+    const isAuthenticated = keycloak.authenticated;
     const [items, setItems] = useState<RecommendationItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
+        if (!isAuthenticated) {
+            setItems([]);
+            setError('Sign in to see recommendations.');
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         setError(null);
         try {
@@ -22,7 +31,7 @@ export const useRecommendations = (limit = 8) => {
         } finally {
             setIsLoading(false);
         }
-    }, [limit, recommendationsService]);
+    }, [isAuthenticated, limit, recommendationsService]);
 
     useEffect(() => {
         load();
