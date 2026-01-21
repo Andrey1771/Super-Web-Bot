@@ -8,25 +8,16 @@ import {
     faHeart
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
-import {
-    accountProfile,
-    accountQuickStats,
-    getRecentOrders
-} from '../mockAccountData';
-import {useCart} from '../../../context/cart-context';
-import { useRecommendations } from '../../../hooks/use-recommendations';
-import { useGameKeys } from '../../../hooks/use-game-keys';
 import {accountProfile} from '../mockAccountData';
 import {useCart} from '../../../context/cart-context';
-import { useRecommendations } from '../../../hooks/use-recommendations';
-import { useGameKeys } from '../../../hooks/use-game-keys';
-import { useOrders } from '../../../hooks/use-orders';
-import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
+import {useRecommendations} from '../../../hooks/use-recommendations';
+import {useGameKeys} from '../../../hooks/use-game-keys';
+import {useOrders} from '../../../hooks/use-orders';
+import {useWishlistSummary} from '../../../hooks/use-wishlist-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-overview-page.css';
 
 const AccountOverviewPage: React.FC = () => {
-    const orders = getRecentOrders();
     const {dispatch} = useCart();
     const navigate = useNavigate();
     const {

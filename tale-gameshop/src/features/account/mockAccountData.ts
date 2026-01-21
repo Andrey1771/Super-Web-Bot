@@ -12,5 +12,3 @@ export const accountProfile = {
     badge: 'Verified buyer',
     memberSince: '2025'
 };
-
-export const getRecentOrders = () => recentOrders;
