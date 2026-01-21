@@ -8,25 +8,21 @@ import {
     faHeart
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
-import {accountProfile} from '../mockAccountData';
+import {
+    accountProfile,
+    accountQuickStats,
+    getRecentOrders
+} from '../mockAccountData';
 import {useCart} from '../../../context/cart-context';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useGameKeys } from '../../../hooks/use-game-keys';
-import { useOrders } from '../../../hooks/use-orders';
-import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-overview-page.css';
 
 const AccountOverviewPage: React.FC = () => {
+    const orders = getRecentOrders();
     const {dispatch} = useCart();
     const navigate = useNavigate();
-    const {
-        items: orders,
-        totalCount: ordersCount,
-        isLoading: ordersLoading,
-        error: ordersError,
-        reload: reloadOrders
-    } = useOrders(3);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -38,14 +34,7 @@ const AccountOverviewPage: React.FC = () => {
         isLoading: isKeysLoading,
         error: keysError,
         reload: reloadKeys
-    } = useGameKeys(6);
-    const {
-        count: savedCount,
-        isLoading: isSavedLoading,
-        error: savedError
-    } = useWishlistSummary();
-
-    const recentKeys = keys.slice(0, 3);
+    } = useGameKeys(3);
 
     const handleInvoiceView = (orderId: string) => {
         console.log(`TODO: open invoice for ${orderId}`);
@@ -72,8 +61,6 @@ const AccountOverviewPage: React.FC = () => {
         });
     };
 
-    const formatCountLabel = (count: number, label: string) => `${count} ${label}${count === 1 ? '' : 's'}`;
-
     return (
         <AccountShell
             title="Account overview"
@@ -97,74 +84,56 @@ const AccountOverviewPage: React.FC = () => {
 
             <div className="account-quick-actions">
                 <div className="card account-card account-action-card">
-                <div className="account-action-header">
-                    <FontAwesomeIcon icon={faBagShopping} />
-                    <h3>Orders</h3>
+                    <div className="account-action-header">
+                        <FontAwesomeIcon icon={faBagShopping} />
+                        <h3>Orders</h3>
+                    </div>
+                    <p>View your orders and invoices</p>
+                    <div className="account-action-footer">
+                        <strong>{accountQuickStats.orders}</strong>
+                        <Link to="/account/orders" className="btn btn-outline account-action-btn">
+                            View
+                        </Link>
+                    </div>
                 </div>
-                <p>View your orders and invoices</p>
-                <div className="account-action-footer">
-                    <strong>
-                        {ordersLoading
-                            ? 'Loading…'
-                            : ordersError
-                                ? 'Unavailable'
-                                : formatCountLabel(ordersCount, 'order')}
-                    </strong>
-                    <Link to="/account/orders" className="btn btn-outline account-action-btn">
-                        View
-                    </Link>
-                </div>
-            </div>
                 <div className="card account-card account-action-card">
-                <div className="account-action-header">
-                    <FontAwesomeIcon icon={faKey} />
-                    <h3>Keys &amp; activation</h3>
+                    <div className="account-action-header">
+                        <FontAwesomeIcon icon={faKey} />
+                        <h3>Keys &amp; activation</h3>
+                    </div>
+                    <p>Reveal, copy and activate keys</p>
+                    <div className="account-action-footer">
+                        <strong>{accountQuickStats.keys}</strong>
+                        <Link to="/account/keys" className="btn btn-outline account-action-btn">
+                            Open
+                        </Link>
+                    </div>
                 </div>
-                <p>Reveal, copy and activate keys</p>
-                <div className="account-action-footer">
-                    <strong>
-                        {isKeysLoading
-                            ? 'Loading…'
-                            : keysError
-                                ? 'Unavailable'
-                                : formatCountLabel(keys.length, 'key')}
-                    </strong>
-                    <Link to="/account/keys" className="btn btn-outline account-action-btn">
-                        Open
-                    </Link>
-                </div>
-            </div>
                 <div className="card account-card account-action-card">
-                <div className="account-action-header">
-                    <FontAwesomeIcon icon={faHeart} />
-                    <h3>Saved items</h3>
+                    <div className="account-action-header">
+                        <FontAwesomeIcon icon={faHeart} />
+                        <h3>Saved items</h3>
+                    </div>
+                    <p>Wishlist for future purchases</p>
+                    <div className="account-action-footer">
+                        <strong>{accountQuickStats.saved}</strong>
+                        <Link to="/account/saved" className="btn btn-outline account-action-btn">
+                            Open
+                        </Link>
+                    </div>
                 </div>
-                <p>Wishlist for future purchases</p>
-                <div className="account-action-footer">
-                    <strong>
-                        {isSavedLoading
-                            ? 'Loading…'
-                            : savedError
-                                ? 'Unavailable'
-                                : formatCountLabel(savedCount, 'item')}
-                    </strong>
-                    <Link to="/account/saved" className="btn btn-outline account-action-btn">
-                        Open
-                    </Link>
-                </div>
-            </div>
                 <div className="card account-card account-action-card">
-                <div className="account-action-header">
-                    <FontAwesomeIcon icon={faCreditCard} />
-                    <h3>Billing</h3>
-                </div>
-                <p>Payment methods and invoices</p>
-                <div className="account-action-footer">
-                    <strong>Manage</strong>
-                    <Link to="/account/billing" className="btn btn-outline account-action-btn">
-                        Manage
-                    </Link>
-                </div>
+                    <div className="account-action-header">
+                        <FontAwesomeIcon icon={faCreditCard} />
+                        <h3>Billing</h3>
+                    </div>
+                    <p>Payment methods and invoices</p>
+                    <div className="account-action-footer">
+                        <strong>{accountQuickStats.billing}</strong>
+                        <Link to="/account/billing" className="btn btn-outline account-action-btn">
+                            Manage
+                        </Link>
+                    </div>
                 </div>
             </div>
 
@@ -180,57 +149,28 @@ const AccountOverviewPage: React.FC = () => {
                             <th>Order ID</th>
                             <th>Game</th>
                             <th>Date</th>
-                            <th>Status</th>
+                            <th>Amount</th>
                             <th>Invoice</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {ordersLoading && (
-                            <tr>
-                                <td colSpan={5}>Loading orders...</td>
-                            </tr>
-                        )}
-                        {!ordersLoading && ordersError && (
-                            <tr>
-                                <td colSpan={5}>
-                                    {ordersError}{' '}
+                        {orders.map((order) => (
+                            <tr key={order.id}>
+                                <td>{order.id}</td>
+                                <td>{order.game}</td>
+                                <td>{order.date}</td>
+                                <td>{order.amount}</td>
+                                <td>
                                     <button
                                         type="button"
                                         className="btn btn-outline account-action-btn"
-                                        onClick={reloadOrders}
+                                        onClick={() => handleInvoiceView(order.id)}
                                     >
-                                        Retry
+                                        View
                                     </button>
                                 </td>
                             </tr>
-                        )}
-                        {!ordersLoading && !ordersError && orders.length === 0 && (
-                            <tr>
-                                <td colSpan={5}>No recent orders yet.</td>
-                            </tr>
-                        )}
-                        {!ordersLoading && !ordersError && orders.map((order) => {
-                            const statusLabel = order.isPaid ? 'Paid' : 'Pending';
-                            const dateLabel = new Date(order.orderDate).toLocaleDateString();
-
-                            return (
-                                <tr key={order.id}>
-                                    <td>{order.id}</td>
-                                    <td>{order.gameName}</td>
-                                    <td>{dateLabel}</td>
-                                    <td>{statusLabel}</td>
-                                    <td>
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline account-action-btn"
-                                            onClick={() => handleInvoiceView(order.id)}
-                                        >
-                                            View
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                        ))}
                         </tbody>
                     </table>
                 </div>
@@ -264,7 +204,7 @@ const AccountOverviewPage: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    {!isKeysLoading && !keysError && recentKeys.length === 0 && (
+                    {!isKeysLoading && !keysError && keys.length === 0 && (
                         <div className="account-key-item">
                             <div>
                                 <strong>No keys yet</strong>
@@ -274,7 +214,7 @@ const AccountOverviewPage: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    {!isKeysLoading && !keysError && recentKeys.map((keyItem, index) => {
+                    {!isKeysLoading && !keysError && keys.map((keyItem, index) => {
                         const title = keyItem.game?.title ?? keyItem.game?.name ?? 'Unknown game';
                         const dateLabel = keyItem.issuedAt
                             ? new Date(keyItem.issuedAt).toLocaleDateString()

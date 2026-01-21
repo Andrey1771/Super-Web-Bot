@@ -118,6 +118,7 @@ builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
+builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
 
 
 
@@ -179,7 +180,6 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>((httpClient) =>
     httpClient.BaseAddress = new Uri(uri);
     return new KeycloakClient(httpClient, uri);
 });
-builder.Services.AddHttpClient<KeycloakAdminClient>();
 
 builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
 

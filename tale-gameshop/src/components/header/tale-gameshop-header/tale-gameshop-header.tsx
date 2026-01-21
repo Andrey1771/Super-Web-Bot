@@ -12,6 +12,7 @@ import AdminPanelSection from "../admin-panel-section/admin-panel-section";
 import container from "../../../inversify.config";
 import type {IKeycloakAuthService} from "../../../iterfaces/i-keycloak-auth-service";
 import IDENTIFIERS from "../../../constants/identifiers";
+import CartIcon from "../../cart/cart-icon/cart-icon";
 
 export default function TaleGameshopHeader() {
     const {keycloak} = useKeycloak();
@@ -125,6 +126,7 @@ export default function TaleGameshopHeader() {
                 </ul>
 
                 <div className="header-actions">
+                    <CartIcon isText={false} />
                     {!keycloak.authenticated ? (
                         <LoginAndRegisterSection></LoginAndRegisterSection>
                     ) : (

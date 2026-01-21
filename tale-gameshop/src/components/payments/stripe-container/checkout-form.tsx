@@ -105,16 +105,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="checkout-stripe-form">
+        <form onSubmit={handleSubmit}>
             <ExpressCheckoutElement onConfirm={handleConfirmExpressCheckout}/>
             <PaymentElement options={paymentElementOptions}/>
             <button
                 disabled={!stripe}
-                className="btn btn-primary checkout-stripe-submit"
-                data-testid="place-order-button"
-                type="submit"
+                className="w-full px-4 py-2 bg-green-500 text-white font-bold rounded hover:bg-green-700 mt-3"
             >
-                Place order
+                Place Order
             </button>
             {/* Show error message to your customers */}
             {errorMessage && <div>{errorMessage}</div>}

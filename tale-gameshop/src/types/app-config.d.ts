@@ -1,5 +1,6 @@
 export type AppConfig = {
     apiBaseUrl?: string;
+    stripePublishableKey?: string;
     keycloak?: {
         url?: string;
         realm?: string;
