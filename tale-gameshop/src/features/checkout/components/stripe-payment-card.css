@@ -1,0 +1,40 @@
+.stripe-payment-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.stripe-payment-header h2 {
+    margin-bottom: var(--space-8);
+}
+
+.stripe-payment-header p {
+    margin: 0;
+    color: var(--color-muted);
+}
+
+.stripe-payment-body {
+    padding: var(--space-12);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+}
+
+.stripe-payment-note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-muted);
+    text-align: center;
+}
+
+.checkout-stripe-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.checkout-stripe-submit {
+    width: 100%;
+    height: 52px;
+    font-size: 16px;
+}

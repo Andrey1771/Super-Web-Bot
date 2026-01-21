@@ -1,138 +1,56 @@
-import React from 'react';
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {
-    faChevronDown,
-    faChevronRight,
-    faEye,
-    faShieldHalved,
-    faShieldVirus,
-    faGlobe,
-    faChevronLeft
-} from '@fortawesome/free-solid-svg-icons';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SecurityBanner from '../security/components/SecurityBanner';
+import TwoFactorCard from '../security/components/TwoFactorCard';
+import EmailVerificationCard from '../security/components/EmailVerificationCard';
+import PasswordCard from '../security/components/PasswordCard';
+import ActiveSessionsCard from '../security/components/ActiveSessionsCard';
+import DangerZoneCard from '../security/components/DangerZoneCard';
+import RecommendationsRow from '../security/components/RecommendationsRow';
+import ChangeEmailModal from '../security/modals/ChangeEmailModal';
+import DeleteAccountModal from '../security/modals/DeleteAccountModal';
+import {
+    changeEmail,
+    changePassword,
+    deleteAccount,
+    downloadSecurityReport,
+    getAccountSecurityStatus,
+    resendVerificationEmail,
+    revokeAllSessions,
+    revokeSession,
+    sendResetPasswordEmail,
+    setupTwoFactor
+} from '../security/api/securityApi';
+import type {AccountSecurityStatus} from '../security/types';
 import './account-security-page.css';
 
-const SecurityTopSection: React.FC = () => {
-    return (
-        <>
-            <section className="card security-alert" data-testid="security-alert">
-                <div className="security-alert-icon" aria-hidden="true">
-                    <FontAwesomeIcon icon={faShieldHalved} />
-                </div>
-                <div className="security-alert-content">
-                    <h2>Your account is not fully protected</h2>
-                    <p>Enable two-factor authentication (2FA) to enhance the security of your account.</p>
-                </div>
-                <button type="button" className="btn btn-primary security-alert-btn">
-                    Set up 2FA
-                </button>
-            </section>
+const AccountSecurityPage: React.FC = () => {
+    const [status, setStatus] = useState<AccountSecurityStatus | null>(null);
+    const [toast, setToast] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isActionLoading, setIsActionLoading] = useState(false);
 
-            <div className="security-grid">
-                <div className="card security-card" data-testid="security-2fa-card">
-                    <div className="security-card-header">
-                        <h3>Two-Factor Authentication</h3>
-                        <button type="button" className="security-status-btn" disabled>
-                            Disabled
-                            <FontAwesomeIcon icon={faChevronDown} />
-                        </button>
-                    </div>
-                    <div className="security-card-actions">
-                        <button type="button" className="btn btn-primary security-action-btn">
-                            Enable 2FA
-                        </button>
-                        <a href="#" className="security-link">
-                            Learn how it works
-                        </a>
-                    </div>
-                    <div className="security-divider" aria-hidden="true" />
-                    <p className="security-muted">Backup codes: not generated</p>
-                </div>
+    const showToast = useCallback((message: string) => {
+        setToast(message);
+        setTimeout(() => setToast(null), 3000);
+    }, []);
 
-                <div className="card security-card" data-testid="security-email-card">
-                    <div className="security-card-header">
-                        <h3>Email verification</h3>
-                        <span className="security-status-pill">
-                            Not verified
-                            <FontAwesomeIcon icon={faChevronRight} />
-                        </span>
-                    </div>
-                    <p className="security-muted">Verify email to secure purchases and recovery.</p>
-                    <div className="security-email-actions">
-                        <button type="button" className="btn btn-outline security-secondary-btn">
-                            Resend verification email
-                        </button>
-                        <button type="button" className="btn btn-outline security-secondary-btn">
-                            Change email
-                            <FontAwesomeIcon icon={faChevronRight} />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="card security-password" data-testid="security-password-card">
-                <div className="security-password-grid">
-                    <div className="security-password-form">
-                        <h3>Password</h3>
-                        <label className="security-field">
-                            <span>Current password</span>
-                            <div className="security-input">
-                                <input type="password" placeholder="••••••••" />
-                                <button type="button" className="security-input-icon" disabled aria-hidden="true">
-                                    <FontAwesomeIcon icon={faEye} />
-                                </button>
-                            </div>
-                        </label>
-                        <label className="security-field">
-                            <span>New password</span>
-                            <div className="security-input">
-                                <input type="password" placeholder="••••••••" />
-                                <button type="button" className="security-input-icon" disabled aria-hidden="true">
-                                    <FontAwesomeIcon icon={faEye} />
-                                </button>
-                            </div>
-                        </label>
-                        <label className="security-field">
-                            <span>Confirm new password</span>
-                            <div className="security-input">
-                                <input type="password" placeholder="••••••••" />
-                                <button type="button" className="security-input-icon" disabled aria-hidden="true">
-                                    <FontAwesomeIcon icon={faEye} />
-                                </button>
-                            </div>
-                        </label>
-                        <button type="button" className="btn btn-primary security-update-btn">
-                            Update password
-                        </button>
-                    </div>
-
-                    <div className="security-password-info">
-                        <div className="security-forgot-row">
-                            <span>Forgot password?</span>
-                            <button type="button" className="security-inline-link">
-                                Reset
-                                <FontAwesomeIcon icon={faChevronRight} />
-                            </button>
-                        </div>
-                        <div className="security-info-card">
-                            <div>
-                                <h4>Password</h4>
-                                <p>Your password was updated over 6 months ago.</p>
-                                <p>For your safety, updating your password regularly is recommended.</p>
-                            </div>
-                            <button type="button" className="btn btn-outline security-secondary-btn">
-                                Reset
-                                <FontAwesomeIcon icon={faChevronRight} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-};
+    const fetchStatus = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await getAccountSecurityStatus();
+            setStatus(data);
+        } catch (error) {
+            showToast('Unable to load account profile.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [showToast]);
 
 const SecurityBottomSection: React.FC = () => {
     const {
@@ -142,63 +60,12 @@ const SecurityBottomSection: React.FC = () => {
         reload: reloadRecommendations
     } = useRecommendations(6);
 
-    return (
-        <>
-            <div className="security-bottom-grid">
-                <div className="security-section" data-testid="security-sessions">
-                    <h3>Active sessions</h3>
-                    <div className="card security-sessions-card">
-                        <div className="security-session-row">
-                            <div className="security-session-icon" aria-hidden="true">
-                                <FontAwesomeIcon icon={faShieldVirus} />
-                            </div>
-                            <div className="security-session-details">
-                                <strong>Firefox on Windows</strong>
-                                <span>Kyiv - 11 hours ago - IP 123.345.67.89</span>
-                            </div>
-                            <button type="button" className="btn btn-outline security-secondary-btn">
-                                Log out
-                                <FontAwesomeIcon icon={faChevronRight} />
-                            </button>
-                        </div>
-                        <div className="security-session-row">
-                            <div className="security-session-icon" aria-hidden="true">
-                                <FontAwesomeIcon icon={faGlobe} />
-                            </div>
-                            <div className="security-session-details">
-                                <strong>Chrome on Windows</strong>
-                                <span>United States - Yesterday at 21:12 - IP 34.123.45.67</span>
-                            </div>
-                            <button type="button" className="btn btn-outline security-secondary-btn">
-                                Log out
-                                <FontAwesomeIcon icon={faChevronRight} />
-                            </button>
-                        </div>
-                        <button type="button" className="btn btn-outline security-logout-all">
-                            Log out all sessions
-                        </button>
-                    </div>
-                </div>
-
-                <div className="security-section" data-testid="security-danger">
-                    <h3>Danger zone</h3>
-                    <div className="card security-danger-card">
-                        <div className="security-danger-actions">
-                            <button type="button" className="btn btn-outline security-danger-btn">
-                                Delete account
-                            </button>
-                            <button type="button" className="btn btn-outline security-secondary-btn">
-                                Download security report
-                            </button>
-                        </div>
-                        <div className="security-danger-text">
-                            <p>Permanently delete your account and data.</p>
-                            <p>Download a copy of your account security report for your records.</p>
-                            <p>Proceed with caution.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    const requiresBanner = useMemo(() => {
+        if (!status) {
+            return false;
+        }
+        return !status.emailVerified || !status.twoFactorEnabled;
+    }, [status]);
 
             <section className="security-recommendations" data-testid="security-recommendations">
                 <div className="security-recommendations-header">
@@ -252,18 +119,71 @@ const SecurityBottomSection: React.FC = () => {
         </>
     );
 };
-
-const AccountSecurityPage: React.FC = () => {
     return (
         <AccountShell
             title="Security"
             sectionLabel="Security"
             subtitle="Manage password, email verification and 2FA."
-            actions={<></>}
+            actions={(
+                <>
+                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
+                        Edit profile
+                    </Link>
+                    <Link to="/support" className="btn btn-primary account-action-btn">
+                        Support
+                    </Link>
+                </>
+            )}
             headerTestId="security-header"
         >
-            <SecurityTopSection />
-            <SecurityBottomSection />
+            <SecurityBanner show={requiresBanner} onSetup2fa={handleSetup2fa} />
+            <div className="security-grid">
+                <TwoFactorCard
+                    isEnabled={Boolean(status?.twoFactorEnabled)}
+                    backupCodesGenerated={backupGenerated}
+                    isLoading={isLoading}
+                    onPrimaryAction={status?.twoFactorEnabled ? handleManage2fa : handleSetup2fa}
+                />
+                <EmailVerificationCard
+                    emailVerified={Boolean(status?.emailVerified)}
+                    isLoading={isActionLoading || isLoading}
+                    onResend={handleResendEmail}
+                    onChangeEmail={() => setIsEmailModalOpen(true)}
+                />
+            </div>
+            <PasswordCard
+                isSubmitting={isActionLoading}
+                lastUpdatedLabel={passwordUpdatedLabel}
+                onSubmit={handlePasswordChange}
+                onReset={handleResetPassword}
+            />
+            <div className="security-bottom-grid">
+                <ActiveSessionsCard
+                    sessions={status?.sessions ?? []}
+                    isLoading={isLoading}
+                    onLogoutSession={handleLogoutSession}
+                    onLogoutAll={handleLogoutAllSessions}
+                />
+                <DangerZoneCard
+                    onDelete={() => setIsDeleteOpen(true)}
+                    onDownloadReport={handleDownloadReport}
+                />
+            </div>
+            <RecommendationsRow />
+
+            <ChangeEmailModal
+                isOpen={isEmailModalOpen}
+                isSubmitting={isActionLoading}
+                onClose={() => setIsEmailModalOpen(false)}
+                onSubmit={handleChangeEmail}
+            />
+            <DeleteAccountModal
+                isOpen={isDeleteOpen}
+                isSubmitting={isActionLoading}
+                onClose={() => setIsDeleteOpen(false)}
+                onConfirm={handleDeleteAccount}
+            />
+            {toast && <div className="security-toast">{toast}</div>}
         </AccountShell>
     );
 };
