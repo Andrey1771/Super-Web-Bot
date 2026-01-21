@@ -37,6 +37,7 @@ const AccountHelpPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const newRequestButtonRef = React.useRef<HTMLButtonElement | null>(null);
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
     const [selectedTicketSummary, setSelectedTicketSummary] = useState<TicketSummary | undefined>();
@@ -124,6 +125,7 @@ const AccountHelpPage: React.FC = () => {
                         <button
                             type="button"
                             className="btn btn-primary help-action-btn"
+                            ref={newRequestButtonRef}
                             onClick={() => setIsModalOpen(true)}
                         >
                             New request
@@ -254,6 +256,7 @@ const AccountHelpPage: React.FC = () => {
             <NewSupportRequestModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
+                openerRef={newRequestButtonRef}
                 onSubmitted={async (ticket) => {
                     setTickets((prev) => [ticket, ...prev]);
                     setToastMessage('Request submitted');

@@ -9,6 +9,7 @@ interface NewSupportRequestModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmitted: (ticket: SupportTicket) => Promise<void> | void;
+    openerRef?: React.RefObject<HTMLElement>;
 }
 
 const issueOptions = [
@@ -41,7 +42,7 @@ const formatFileSize = (size: number): string => {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, onClose, onSubmitted}) => {
+const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, onClose, onSubmitted, openerRef}) => {
     const dialogRef = useRef<HTMLDivElement | null>(null);
     const firstFieldRef = useRef<HTMLSelectElement | null>(null);
     const [category, setCategory] = useState('');
@@ -50,6 +51,8 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
     const [attachments, setAttachments] = useState<File[]>([]);
     const [errors, setErrors] = useState({category: '', subject: '', description: ''});
     const [attachmentError, setAttachmentError] = useState('');
+    const [submitError, setSubmitError] = useState('');
+    const [submitWarning, setSubmitWarning] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isFormReady = useMemo(() => {
@@ -66,7 +69,9 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
-                onClose();
+                if (!isSubmitting) {
+                    handleRequestClose('esc');
+                }
                 return;
             }
 
@@ -112,8 +117,9 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
         return () => {
             document.body.style.overflow = originalOverflow;
             document.removeEventListener('keydown', handleKeyDown);
+            openerRef?.current?.focus();
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, isSubmitting, onClose, openerRef]);
 
     useEffect(() => {
         if (isOpen) {
@@ -123,6 +129,8 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
             setAttachments([]);
             setErrors({category: '', subject: '', description: ''});
             setAttachmentError('');
+            setSubmitError('');
+            setSubmitWarning('');
             setIsSubmitting(false);
         }
     }, [isOpen]);
@@ -181,6 +189,8 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
+        setSubmitError('');
+        setSubmitWarning('');
         const nextErrors = validate();
         const hasErrors = Object.values(nextErrors).some(Boolean) || Boolean(attachmentError);
         if (hasErrors) {
@@ -201,7 +211,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                     await uploadSupportAttachment(created.ticket.id, created.firstMessageId, attachments);
                 } catch (error) {
                     console.warn('Attachment upload failed', error);
-                    setAttachmentError('Attachments could not be uploaded yet. Please send them in a follow-up.');
+                    setSubmitWarning('Ticket created, but attachments failed. You can add them in a follow-up.');
                 }
             }
 
@@ -209,10 +219,22 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
             onClose();
         } catch (error) {
             console.error('Failed to create support request', error);
-            setAttachmentError('Something went wrong. Please try again.');
+            setSubmitError('Something went wrong. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const hasDraft = Boolean(category || subject.trim() || description.trim() || attachments.length > 0);
+
+    const handleRequestClose = (reason: 'overlay' | 'button' | 'esc') => {
+        if (isSubmitting) {
+            return;
+        }
+        if (hasDraft && !window.confirm('Discard draft?')) {
+            return;
+        }
+        onClose();
     };
 
     if (!isOpen) {
@@ -224,7 +246,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
             className="new-request-modal-overlay"
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
-                    onClose();
+                    handleRequestClose('overlay');
                 }
             }}
         >
@@ -238,12 +260,19 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
             >
                 <div className="new-request-modal-header">
                     <h2 id="new-request-title">Submit a new request</h2>
-                    <button type="button" className="new-request-modal-close" onClick={onClose} aria-label="Close">
+                    <button
+                        type="button"
+                        className="new-request-modal-close"
+                        onClick={() => handleRequestClose('button')}
+                        aria-label="Close"
+                        disabled={isSubmitting}
+                    >
                         ×
                     </button>
                 </div>
                 <div className="new-request-modal-body">
                     <form className="new-request-form" id="new-request-form" onSubmit={handleSubmit}>
+                        {submitError && <div className="new-request-form-error">{submitError}</div>}
                         <div className="new-request-form-field">
                             <label htmlFor="support-issue">What can we help you with? <span aria-hidden="true">*</span></label>
                             <select
@@ -322,6 +351,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                                     accept="image/png,image/jpeg,application/pdf"
                                     multiple
                                     onChange={handleFileChange}
+                                    className="new-request-file-input"
                                 />
                                 <label htmlFor="support-attachments" className="new-request-attach-label">
                                     <span className="new-request-attach-button">Choose file</span>
@@ -352,6 +382,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                         <p id="new-request-description" className="new-request-note">
                             Our team responds 24/7. Average response time: 2–4 hours.
                         </p>
+                        {submitWarning && <div className="new-request-form-warning">{submitWarning}</div>}
                     </form>
 
                     <aside className="new-request-quick-actions">
@@ -369,7 +400,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                     </aside>
                 </div>
                 <div className="new-request-modal-footer">
-                    <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting}>
+                    <button type="button" className="btn btn-outline" onClick={() => handleRequestClose('button')} disabled={isSubmitting}>
                         Cancel
                     </button>
                     <button

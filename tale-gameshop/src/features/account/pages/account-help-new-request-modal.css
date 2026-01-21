@@ -4,9 +4,9 @@
     background: rgba(15, 23, 42, 0.45);
     backdrop-filter: blur(6px);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 24px;
+    padding: 72px 24px 32px;
     z-index: 50;
 }
 
@@ -59,6 +59,23 @@
     flex-direction: column;
     gap: 16px;
     padding-right: 8px;
+}
+
+.new-request-form-error,
+.new-request-form-warning {
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.new-request-form-error {
+    background: rgba(248, 113, 113, 0.12);
+    color: #b91c1c;
+}
+
+.new-request-form-warning {
+    background: rgba(250, 204, 21, 0.15);
+    color: #92400e;
 }
 
 .new-request-form-field {
@@ -117,10 +134,12 @@
     position: relative;
 }
 
-.new-request-attach-box input[type="file"] {
+.new-request-file-input {
     position: absolute;
     opacity: 0;
     pointer-events: none;
+    width: 1px;
+    height: 1px;
 }
 
 .new-request-attach-label {
