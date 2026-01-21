@@ -1,8 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
-import { useRecommendations } from '../../../hooks/use-recommendations';
-import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import SecurityBanner from '../security/components/SecurityBanner';
 import TwoFactorCard from '../security/components/TwoFactorCard';
 import EmailVerificationCard from '../security/components/EmailVerificationCard';
@@ -52,13 +50,18 @@ const AccountSecurityPage: React.FC = () => {
         }
     }, [showToast]);
 
-const SecurityBottomSection: React.FC = () => {
-    const {
-        items: recommendations,
-        isLoading: isRecommendationsLoading,
-        error: recommendationsError,
-        reload: reloadRecommendations
-    } = useRecommendations(6);
+    const backupGenerated = Boolean(status?.backupCodesGenerated);
+
+    const passwordUpdatedLabel = useMemo(() => {
+        if (!status?.passwordUpdatedAt) {
+            return 'recently';
+        }
+        const date = new Date(status.passwordUpdatedAt);
+        if (Number.isNaN(date.getTime())) {
+            return 'recently';
+        }
+        return `on ${date.toLocaleDateString()}`;
+    }, [status?.passwordUpdatedAt]);
 
     const requiresBanner = useMemo(() => {
         if (!status) {
@@ -67,58 +70,149 @@ const SecurityBottomSection: React.FC = () => {
         return !status.emailVerified || !status.twoFactorEnabled;
     }, [status]);
 
-            <section className="security-recommendations" data-testid="security-recommendations">
-                <div className="security-recommendations-header">
-                    <h3>Recommendations based on your wishlist</h3>
-                    <div className="security-recommendations-actions">
-                        <button type="button" className="btn btn-outline security-arrow-btn" aria-label="Scroll left">
-                            <FontAwesomeIcon icon={faChevronLeft} />
-                        </button>
-                        <button type="button" className="btn btn-outline security-arrow-btn" aria-label="Scroll right">
-                            <FontAwesomeIcon icon={faChevronRight} />
-                        </button>
-                    </div>
-                </div>
-                <RecommendationsSection
-                    items={recommendations}
-                    isLoading={isRecommendationsLoading}
-                    error={recommendationsError}
-                    onRetry={reloadRecommendations}
-                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
-                    listClassName="security-recommendations-list"
-                    stateClassName="security-recommendations-state"
-                    renderSkeleton={(index) => (
-                        <div key={`rec-skeleton-${index}`} className="card security-recommendation-card is-skeleton" />
-                    )}
-                    renderItem={(item) => (
-                        <div key={item.game.id ?? item.game.title} className="card security-recommendation-card">
-                            <div className="security-recommendation-media">
-                                {item.game.imagePath ? (
-                                    <img src={item.game.imagePath} alt={item.game.title} />
-                                ) : (
-                                    <div className="security-recommendation-fallback" aria-hidden="true" />
-                                )}
-                            </div>
-                            <div className="security-recommendation-body">
-                                <strong>{item.game.title}</strong>
-                                <span className="security-recommendation-price">
-                                    ${Number(item.game.price).toFixed(2)}
-                                </span>
-                            </div>
-                            <button
-                                type="button"
-                                className="btn btn-primary security-recommendation-btn"
-                                disabled={!item.game.id}
-                            >
-                                Add to cart
-                            </button>
-                        </div>
-                    )}
-                />
-            </section>
-        </>
-    );
-};
+    useEffect(() => {
+        fetchStatus();
+    }, [fetchStatus]);
+
+    const handleResendEmail = useCallback(async () => {
+        setIsActionLoading(true);
+        try {
+            await resendVerificationEmail();
+            showToast('Verification email sent.');
+        } catch (error) {
+            showToast('Unable to resend verification email.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [showToast]);
+
+    const handleChangeEmail = useCallback(async (payload: { newEmail: string; password: string }) => {
+        setIsActionLoading(true);
+        try {
+            await changeEmail(payload);
+            setIsEmailModalOpen(false);
+            showToast('Email updated. Check your inbox to verify it.');
+            await fetchStatus();
+        } catch (error) {
+            showToast('Unable to update email.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [fetchStatus, showToast]);
+
+    const handlePasswordChange = useCallback(async (payload: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+        setIsActionLoading(true);
+        try {
+            const response = await changePassword({currentPassword: payload.currentPassword, newPassword: payload.newPassword});
+            showToast(response.message || 'Password updated.');
+            if (response.redirectUrl) {
+                window.open(response.redirectUrl, '_blank', 'noopener');
+            }
+            if (response.mode === 'logout') {
+                setTimeout(() => window.location.reload(), 1000);
+            }
+            await fetchStatus();
+        } catch (error) {
+            showToast('Unable to update password.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [fetchStatus, showToast]);
+
+    const handleResetPassword = useCallback(async () => {
+        setIsActionLoading(true);
+        try {
+            await sendResetPasswordEmail();
+            showToast('Password reset email sent.');
+        } catch (error) {
+            showToast('Unable to send reset email.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [showToast]);
+
+    const handleSetup2fa = useCallback(async () => {
+        setIsActionLoading(true);
+        try {
+            const response = await setupTwoFactor();
+            showToast(response.message || 'Follow the instructions to finish enabling 2FA.');
+            if (response.redirectUrl) {
+                window.open(response.redirectUrl, '_blank', 'noopener');
+            }
+            await fetchStatus();
+        } catch (error) {
+            showToast('Unable to start 2FA setup.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [fetchStatus, showToast]);
+
+    const handleManage2fa = useCallback(() => {
+        if (status?.accountConsoleUrl) {
+            window.open(status.accountConsoleUrl, '_blank', 'noopener');
+        } else {
+            showToast('Account console is unavailable.');
+        }
+    }, [showToast, status?.accountConsoleUrl]);
+
+    const handleLogoutSession = useCallback(async (id: string) => {
+        setIsActionLoading(true);
+        try {
+            await revokeSession(id);
+            showToast('Session logged out.');
+            await fetchStatus();
+        } catch (error) {
+            showToast('Unable to log out session.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [fetchStatus, showToast]);
+
+    const handleLogoutAllSessions = useCallback(async () => {
+        setIsActionLoading(true);
+        try {
+            await revokeAllSessions();
+            showToast('All sessions logged out.');
+            await fetchStatus();
+        } catch (error) {
+            showToast('Unable to log out all sessions.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [fetchStatus, showToast]);
+
+    const handleDownloadReport = useCallback(async () => {
+        setIsActionLoading(true);
+        try {
+            const report = await downloadSecurityReport();
+            const url = window.URL.createObjectURL(report);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'security-report.json';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            showToast('Security report downloaded.');
+        } catch (error) {
+            showToast('Unable to download report.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [showToast]);
+
+    const handleDeleteAccount = useCallback(async (payload: { confirmation: string; password: string }) => {
+        setIsActionLoading(true);
+        try {
+            await deleteAccount(payload);
+            setIsDeleteOpen(false);
+            showToast('Account deletion requested.');
+        } catch (error) {
+            showToast('Unable to delete account.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    }, [showToast]);
     return (
         <AccountShell
             title="Security"
