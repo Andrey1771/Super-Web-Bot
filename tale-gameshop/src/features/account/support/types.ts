@@ -1,8 +1,10 @@
+export type SupportTicketStatus = string | number;
+
 export interface SupportTicket {
     id: string;
     category: string;
     subject: string;
-    status: string;
+    status: SupportTicketStatus;
     updatedAt: string;
 }
 

@@ -4,7 +4,7 @@ import {faChevronDown, faFileLines} from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import NewSupportRequestModal from '../components/NewSupportRequestModal';
 import {listSupportTickets} from '../support/supportApi';
-import type {SupportTicket} from '../support/types';
+import type {SupportTicket, SupportTicketStatus} from '../support/types';
 import './account-help-page.css';
 
 const faqItems = [
@@ -59,8 +59,22 @@ const AccountHelpPage: React.FC = () => {
         return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
     };
 
-    const statusClassFor = (status: string) => {
-        const normalized = status.toLowerCase();
+    const statusLabelFor = (status: SupportTicketStatus) => {
+        if (typeof status === 'number') {
+            const statusMap: Record<number, string> = {
+                0: 'Open',
+                1: 'WaitingForUser',
+                2: 'WaitingForSupport',
+                3: 'Resolved',
+                4: 'Closed'
+            };
+            return statusMap[status] ?? 'Open';
+        }
+        return status;
+    };
+
+    const statusClassFor = (status: SupportTicketStatus) => {
+        const normalized = statusLabelFor(status).toLowerCase();
         if (normalized.includes('wait') || normalized.includes('pending')) {
             return 'waiting';
         }
@@ -130,7 +144,7 @@ const AccountHelpPage: React.FC = () => {
                                     <strong>{ticket.id.startsWith('#') ? ticket.id : `#${ticket.id}`}</strong>
                                     <span>{ticket.subject || ticket.category}</span>
                                     <span className={`help-status-pill ${statusClassFor(ticket.status)}`}>
-                                        {ticket.status}
+                                        {statusLabelFor(ticket.status)}
                                     </span>
                                     <span className="help-muted">{formatRelativeTime(ticket.updatedAt)}</span>
                                     <button type="button" className="btn btn-outline help-view-btn">
