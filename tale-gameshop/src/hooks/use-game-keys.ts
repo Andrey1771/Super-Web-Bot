@@ -1,16 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import container from '../inversify.config';
 import IDENTIFIERS from '../constants/identifiers';
-import type { IGameKeysService } from '../iterfaces/i-game-keys-service';
-import type { GameKey } from '../models/game-key';
+import type {IGameKeysService} from '../iterfaces/i-game-keys-service';
+import type {GameKey} from '../models/game-key';
+import type {IKeycloakService} from '../iterfaces/i-keycloak-service';
 
 export const useGameKeys = (limit = 20) => {
     const gameKeysService = container.get<IGameKeysService>(IDENTIFIERS.IGameKeysService);
+    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
     const [items, setItems] = useState<GameKey[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
+        if (!keycloakService.keycloak.authenticated) {
+            setItems([]);
+            setIsLoading(false);
+            setError('Sign in to view your keys.');
+            return;
+        }
         setIsLoading(true);
         setError(null);
         try {
@@ -22,7 +30,7 @@ export const useGameKeys = (limit = 20) => {
         } finally {
             setIsLoading(false);
         }
-    }, [gameKeysService, limit]);
+    }, [gameKeysService, keycloakService, limit]);
 
     useEffect(() => {
         load();
