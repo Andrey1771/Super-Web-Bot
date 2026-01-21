@@ -4,5 +4,9 @@ export type Order = {
     gameName: string;
     userName: string;
     isPaid: boolean;
+    isFulfilled: boolean;
     orderDate: string;
+    totalAmount: number;
+    currency: string;
+    status: string;
 };

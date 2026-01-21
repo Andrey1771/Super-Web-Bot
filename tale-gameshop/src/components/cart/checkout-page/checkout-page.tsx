@@ -1,95 +1,85 @@
-import React, {useState, useRef, useEffect} from 'react';
-import {useCart} from '../../../context/cart-context';
-import CheckoutForm from '../../payments/stripe-container/checkout-form';
-import axios from "axios";
+import React, {useEffect, useMemo, useState} from 'react';
 import {Elements} from '@stripe/react-stripe-js';
 import {loadStripe} from '@stripe/stripe-js';
+import axios from 'axios';
+import {useCart} from '../../../context/cart-context';
+import CheckoutForm from '../../payments/stripe-container/checkout-form';
 import './checkout-page.css';
-import container from "../../../inversify.config";
-import {IUrlService} from "../../../iterfaces/i-url-service";
-import IDENTIFIERS from "../../../constants/identifiers";
+import container from '../../../inversify.config';
+import {IUrlService} from '../../../iterfaces/i-url-service';
+import IDENTIFIERS from '../../../constants/identifiers';
+import OrderSummaryCard from '../../../features/checkout/components/OrderSummaryCard';
+import StripePaymentCard from '../../../features/checkout/components/StripePaymentCard';
+import {calculateCheckoutTotals} from '../../../features/checkout/utils/checkout-totals';
 
+const stripePromise = loadStripe(
+    'pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW'
+);
 
 const CheckoutPage: React.FC = () => {
     const {state} = useCart();
-    const totalPrice = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
-
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const totals = useMemo(() => calculateCheckoutTotals(state.items), [state.items]);
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
 
-    const [clientSecret, setClientSecret] = useState(null);
     useEffect(() => {
-        (async () => {
-            // Запрос на сервер для получения clientSecret TODO
-            const {data} = await axios.post(`${urlService.apiBaseUrl}/api/payments/create-payment-intent`, {
-                amount: totalPrice, // сумма в центах
-            });
-            setClientSecret(data.clientSecret);
-        })();
-    }, []);
+        const fetchClientSecret = async () => {
+            if (totals.total <= 0) {
+                setClientSecret(null);
+                return;
+            }
 
-    const stripePromise = loadStripe('pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW');
+            const {data} = await axios.post(`${urlService.apiBaseUrl}/api/payments/create-payment-intent`, {
+                amount: totals.total
+            });
+
+            setClientSecret(data.clientSecret);
+        };
+
+        fetchClientSecret();
+    }, [totals.total, urlService.apiBaseUrl]);
 
     const options = {
-        // passing the client secret obtained in step 3
-        clientSecret: clientSecret,
-        // Fully customizable with appearance API.
-        appearance: {/*...*/},
+        clientSecret: clientSecret ?? undefined,
+        appearance: {},
         requestPayerName: true,
-        requestPayerEmail: true,
+        requestPayerEmail: true
     };
 
     return (
-        <div className="checkout-page-container p-4 mx-auto flex justify-center w-full items-stretch">
-            <div className="checkout-page-left-elements-container h-full flex justify-start flex-col">
-                <h1 className="text-3xl font-bold mb-6">Checkout</h1>
-                <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-                <div className="checkout-page-cart-elements mb-6">
-                    <div className="w-full">
-                        {state.items.map((item) => (
-                            <div
-                                key={item.gameId}
-                                className="grid grid-cols-3 items-center p-2 border-b gap-4 text-center"
-                            >
-                                {/* Колонка с изображением и названием */}
-                                <div className="flex items-center gap-4">
-                                    <img
-                                        src={`${urlService.apiBaseUrl}/${item.image}`}
-                                        alt={item.name}
-                                        className="w-16 h-16 object-cover rounded"
-                                    />
-                                    <span className="truncate">{item.name}</span>
-                                </div>
-
-                                {/* Колонка с количеством и ценой */}
-                                <div>
-                                    <span>
-                                        {item.quantity} x ${item.price.toFixed(2)}
-                                    </span>
-                                </div>
-
-                                {/* Колонка с общей ценой */}
-                                <div className="text-right">
-                                    <span>${(item.price * item.quantity).toFixed(2)}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="text-lg font-bold flex justify-between mt-4">
-                        <span>Total:</span>
-                        <span>${totalPrice.toFixed(2)}</span>
+        <div className="checkout-page" data-testid="checkout-page">
+            <section className="section checkout-page-section">
+                <div className="container">
+                    <header className="checkout-page-header">
+                        <h1>Checkout</h1>
+                        <p className="checkout-page-subtitle">
+                            Review your order and complete payment securely.
+                        </p>
+                    </header>
+                    <div className="checkout-page-grid">
+                        <div className="checkout-page-main">
+                            <OrderSummaryCard
+                                items={state.items}
+                                imageBaseUrl={urlService.apiBaseUrl}
+                                totals={totals}
+                            />
+                        </div>
+                        <aside className="checkout-page-aside">
+                            <StripePaymentCard>
+                                {clientSecret ? (
+                                    <Elements stripe={stripePromise} options={options} mode="payment">
+                                        <CheckoutForm clientSecret={clientSecret} />
+                                    </Elements>
+                                ) : (
+                                    <div className="checkout-page-stripe-placeholder">
+                                        Payment details will appear once your order total is ready.
+                                    </div>
+                                )}
+                            </StripePaymentCard>
+                        </aside>
                     </div>
                 </div>
-            </div>
-            <div className="checkout-page-right-elements-container">
-                <div className="margin-bottom-60px"></div>
-                <h2 className="text-xl font-bold mb-4">Payment Method</h2>
-                {clientSecret &&
-                    <Elements stripe={stripePromise} options={options} mode={'payment'}>
-                        <CheckoutForm clientSecret={clientSecret}/>
-                    </Elements>
-                }
-            </div>
+            </section>
         </div>
     );
 };

@@ -8,6 +8,7 @@ namespace SuperBot.Core.Entities
         public string GameName { get; set; }
         public string UserName { get; set; }
         public bool IsPaid { get; set; }
+        public bool IsFulfilled { get; set; }
         public DateTime OrderDate { get; set; }
     }
 }

@@ -23,6 +23,8 @@ import { IRecommendationsService } from "./iterfaces/i-recommendations-service";
 import { RecommendationsService } from "./services/recommendations-service";
 import { IGameKeysService } from "./iterfaces/i-game-keys-service";
 import { GameKeysService } from "./services/game-keys-service";
+import { IOrdersService } from "./iterfaces/i-orders-service";
+import { OrdersService } from "./services/orders-service";
 
 const container = new Container();
 
@@ -40,5 +42,6 @@ container.bind<IAdminService>(IDENTIFIERS.IAdminService).to(AdminService).inSing
 container.bind<IWishlistService>(IDENTIFIERS.IWishlistService).to(WishlistService).inSingletonScope();
 container.bind<IRecommendationsService>(IDENTIFIERS.IRecommendationsService).to(RecommendationsService).inSingletonScope();
 container.bind<IGameKeysService>(IDENTIFIERS.IGameKeysService).to(GameKeysService).inSingletonScope();
+container.bind<IOrdersService>(IDENTIFIERS.IOrdersService).to(OrdersService).inSingletonScope();
 
 export default container;

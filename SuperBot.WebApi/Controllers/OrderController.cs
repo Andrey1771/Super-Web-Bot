@@ -1,4 +1,7 @@
 ﻿using AutoMapper;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Application.Commands.TopUp;
@@ -10,7 +13,11 @@ namespace SuperBot.WebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OrderController(IOrderRepository _orderRepository, IMapper _mapper, IMediator _mediator) : Controller
+    public class OrderController(
+        IOrderRepository _orderRepository,
+        IGameRepository _gameRepository,
+        IMapper _mapper,
+        IMediator _mediator) : Controller
     {
         [HttpPost("confirm/{orderId}")]
         public async Task<IActionResult> SetPaidSteamOrder(string orderId)
@@ -47,6 +54,46 @@ namespace SuperBot.WebApi.Controllers
             var orderDtos = _mapper.Map<IEnumerable<Order>>(orders);
 
             return Ok(orderDtos);
+        }
+
+        // GET: api/order/summary
+        [HttpGet("summary")]
+        public async Task<ActionResult<IEnumerable<OrderSummaryDto>>> GetOrderSummaries()
+        {
+            var orders = (await _orderRepository.GetAllOrdersAsync()).ToList();
+            var gameIds = orders
+                .Select(order => order.GameId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            var games = gameIds.Count > 0
+                ? await _gameRepository.GetByIdsAsync(gameIds)
+                : new List<Game>();
+
+            var gameLookup = games.ToDictionary(game => game.Id, StringComparer.OrdinalIgnoreCase);
+
+            var summaries = orders.Select(order =>
+            {
+                gameLookup.TryGetValue(order.GameId ?? string.Empty, out var game);
+                var totalAmount = game?.Price ?? 0m;
+
+                return new OrderSummaryDto
+                {
+                    Id = order.Id,
+                    GameId = order.GameId,
+                    GameName = string.IsNullOrWhiteSpace(order.GameName) ? game?.Name : order.GameName,
+                    UserName = order.UserName,
+                    IsPaid = order.IsPaid,
+                    IsFulfilled = order.IsFulfilled,
+                    OrderDate = order.OrderDate,
+                    TotalAmount = totalAmount,
+                    Currency = "USD",
+                    Status = ResolveStatus(order)
+                };
+            });
+
+            return Ok(summaries);
         }
 
         // POST: api/order
@@ -101,5 +148,33 @@ namespace SuperBot.WebApi.Controllers
             return NoContent(); // Successful delete
         }
 
+        private static string ResolveStatus(Order order)
+        {
+            if (!order.IsPaid)
+            {
+                return "Payment pending";
+            }
+
+            if (!order.IsFulfilled)
+            {
+                return "Processing";
+            }
+
+            return "Completed";
+        }
+    }
+
+    public class OrderSummaryDto
+    {
+        public Guid Id { get; set; }
+        public string GameId { get; set; }
+        public string GameName { get; set; }
+        public string UserName { get; set; }
+        public bool IsPaid { get; set; }
+        public bool IsFulfilled { get; set; }
+        public DateTime OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Currency { get; set; }
+        public string Status { get; set; }
     }
 }

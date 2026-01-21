@@ -100,6 +100,20 @@
     gap: var(--space-16);
 }
 
+.orders-state {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-24);
+    color: var(--color-muted);
+    font-weight: 600;
+}
+
+.orders-state-error {
+    color: var(--color-text);
+}
+
 .order-card {
     display: flex;
     flex-direction: column;
