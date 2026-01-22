@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faChevronLeft, faChevronRight, faStar} from '@fortawesome/free-solid-svg-icons';
+import {faChevronLeft, faChevronRight} from '@fortawesome/free-solid-svg-icons';
 import './testimonials-carousel.css';
 
 export type Testimonial = {
@@ -151,25 +151,14 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                     <h2>Loved by players</h2>
                     <p className="muted">Trusted by thousands for fast delivery and curated picks.</p>
                 </div>
-                <div className="testimonials-carousel-grid">
-                    <div className="rating-card">
-                        <div className="stars" aria-label="4.8 out of 5 stars">
-                            {[...Array(5)].map((_, idx) => (
-                                <FontAwesomeIcon key={idx} icon={faStar} />
-                            ))}
-                        </div>
-                        <div className="rating-score">4.8/5</div>
-                        <div className="rating-helper muted">based on 2,300 reviews</div>
-                    </div>
-
-                    <div
-                        className="testimonials-carousel"
-                        role="region"
-                        aria-roledescription="carousel"
-                        aria-label="Player testimonials"
-                        tabIndex={0}
-                        onKeyDown={handleKeyDown}
-                    >
+                <div
+                    className="testimonials-carousel"
+                    role="region"
+                    aria-roledescription="carousel"
+                    aria-label="Player testimonials"
+                    tabIndex={0}
+                    onKeyDown={handleKeyDown}
+                >
                         {!hasTestimonials && (
                             <div className="card testimonials-empty">
                                 <h3>No testimonials yet</h3>
@@ -178,31 +167,6 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                         )}
                         {hasTestimonials && (
                             <>
-                                <div className="testimonials-carousel-header">
-                                    <h3>Recent reviews</h3>
-                                    {showControls && (
-                                        <div className="testimonials-carousel-actions">
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline testimonials-carousel-btn"
-                                                onClick={handlePrev}
-                                                disabled={activeIndex === 0}
-                                                aria-label="Previous testimonial"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronLeft} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline testimonials-carousel-btn"
-                                                onClick={handleNext}
-                                                disabled={activeIndex === maxIndex}
-                                                aria-label="Next testimonial"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronRight} />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
                                 <span className="visually-hidden" aria-live="polite">
                                     Showing testimonial {activeIndex + 1} of {testimonials.length}
                                 </span>
@@ -244,22 +208,41 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                                     </div>
                                 </div>
                                 {showControls && (
-                                    <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
-                                        {testimonials.map((_, index) => (
-                                            <button
-                                                key={`testimonial-dot-${index}`}
-                                                type="button"
-                                                className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
-                                                onClick={() => handleDotClick(index)}
-                                                aria-label={`Go to testimonial ${index + 1}`}
-                                                aria-pressed={index === activeIndex}
-                                            />
-                                        ))}
+                                    <div className="testimonials-carousel-controls">
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline testimonials-carousel-btn"
+                                            onClick={handlePrev}
+                                            disabled={activeIndex === 0}
+                                            aria-label="Previous testimonial"
+                                        >
+                                            <FontAwesomeIcon icon={faChevronLeft} />
+                                        </button>
+                                        <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
+                                            {testimonials.map((_, index) => (
+                                                <button
+                                                    key={`testimonial-dot-${index}`}
+                                                    type="button"
+                                                    className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
+                                                    onClick={() => handleDotClick(index)}
+                                                    aria-label={`Go to testimonial ${index + 1}`}
+                                                    aria-pressed={index === activeIndex}
+                                                />
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline testimonials-carousel-btn"
+                                            onClick={handleNext}
+                                            disabled={activeIndex === maxIndex}
+                                            aria-label="Next testimonial"
+                                        >
+                                            <FontAwesomeIcon icon={faChevronRight} />
+                                        </button>
                                     </div>
                                 )}
                             </>
                         )}
-                    </div>
                 </div>
             </div>
         </section>
