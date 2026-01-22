@@ -15,39 +15,38 @@ interface TestimonialsCarouselProps {
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const GAP = 20;
 
 const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials}) => {
     const [activeIndex, setActiveIndex] = useState(0);
-    const [step, setStep] = useState(0);
-    const [dragOffset, setDragOffset] = useState(0);
-    const [trackIndex, setTrackIndex] = useState(1);
-    const [isTransitionEnabled, setIsTransitionEnabled] = useState(true);
+    const [cardWidth, setCardWidth] = useState(0);
+    const [viewportWidth, setViewportWidth] = useState(0);
     const trackRef = useRef<HTMLDivElement | null>(null);
     const cardRef = useRef<HTMLDivElement | null>(null);
     const viewportRef = useRef<HTMLDivElement | null>(null);
-    const dragState = useRef({isDragging: false, startX: 0, lastOffset: 0});
 
-    const maxIndex = Math.max(testimonials.length - 1, 0);
     const hasTestimonials = testimonials.length > 0;
-    const showControls = testimonials.length > 1;
-    const hasLoop = testimonials.length > 1;
-    const renderItems = useMemo(() => {
-        if (testimonials.length <= 1) {
-            return testimonials;
+    const step = useMemo(() => cardWidth + GAP, [cardWidth]);
+    const visibleCount = useMemo(() => {
+        if (viewportWidth === 0 || step === 0) {
+            return 1;
         }
-        const first = testimonials[0];
-        const last = testimonials[testimonials.length - 1];
-        return [last, ...testimonials, first];
-    }, [testimonials]);
+        return Math.max(1, Math.floor((viewportWidth + GAP) / step));
+    }, [step, viewportWidth]);
+    const maxIndex = useMemo(
+        () => Math.max(0, testimonials.length - visibleCount),
+        [testimonials.length, visibleCount]
+    );
+    const showControls = hasTestimonials && testimonials.length > visibleCount;
 
     const measureStep = useCallback(() => {
         if (!trackRef.current || !cardRef.current) {
             return;
         }
         const cardWidth = cardRef.current.getBoundingClientRect().width;
-        const styles = window.getComputedStyle(trackRef.current);
-        const gapValue = parseFloat(styles.columnGap || styles.gap || '0');
-        setStep(cardWidth + gapValue);
+        const viewportWidth = viewportRef.current?.getBoundingClientRect().width ?? 0;
+        setCardWidth(cardWidth);
+        setViewportWidth(viewportWidth);
     }, []);
 
     useEffect(() => {
@@ -55,11 +54,11 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
         const observer = new ResizeObserver(() => {
             measureStep();
         });
-        if (trackRef.current) {
-            observer.observe(trackRef.current);
-        }
         if (cardRef.current) {
             observer.observe(cardRef.current);
+        }
+        if (viewportRef.current) {
+            observer.observe(viewportRef.current);
         }
         window.addEventListener('resize', measureStep);
         return () => {
@@ -69,37 +68,25 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
     }, [measureStep]);
 
     useEffect(() => {
-        if (!hasTestimonials) {
-            setActiveIndex(0);
-            setTrackIndex(0);
-            return;
-        }
         setActiveIndex((prev) => clamp(prev, 0, maxIndex));
-        setTrackIndex(testimonials.length > 1 ? 1 : 0);
-    }, [hasTestimonials, maxIndex, testimonials.length]);
+    }, [maxIndex]);
 
     const handlePrev = () => {
         if (!showControls) {
             return;
         }
-        setActiveIndex((prev) => (prev === 0 ? maxIndex : prev - 1));
-        setTrackIndex((prev) => prev - 1);
-        setIsTransitionEnabled(true);
+        setActiveIndex((prev) => clamp(prev - 1, 0, maxIndex));
     };
 
     const handleNext = () => {
         if (!showControls) {
             return;
         }
-        setActiveIndex((prev) => (prev === maxIndex ? 0 : prev + 1));
-        setTrackIndex((prev) => prev + 1);
-        setIsTransitionEnabled(true);
+        setActiveIndex((prev) => clamp(prev + 1, 0, maxIndex));
     };
 
     const handleDotClick = (index: number) => {
         setActiveIndex(clamp(index, 0, maxIndex));
-        setTrackIndex(testimonials.length > 1 ? index + 1 : index);
-        setIsTransitionEnabled(true);
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -116,87 +103,12 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
         }
     };
 
-    const startDrag = (clientX: number) => {
-        dragState.current = {isDragging: true, startX: clientX, lastOffset: 0};
-    };
-
-    const updateDrag = (clientX: number) => {
-        if (!dragState.current.isDragging) {
-            return;
-        }
-        const diff = clientX - dragState.current.startX;
-        dragState.current.lastOffset = diff;
-        setDragOffset(diff);
-    };
-
-    const endDrag = () => {
-        if (!dragState.current.isDragging) {
-            return;
-        }
-        const diff = dragState.current.lastOffset;
-        const threshold = step > 0 ? step * 0.25 : 60;
-        if (Math.abs(diff) > threshold) {
-            if (diff < 0) {
-                handleNext();
-            } else {
-                handlePrev();
-            }
-        }
-        dragState.current = {isDragging: false, startX: 0, lastOffset: 0};
-        setDragOffset(0);
-    };
-
-    const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-        if (!showControls) {
-            return;
-        }
-        viewportRef.current?.setPointerCapture(event.pointerId);
-        startDrag(event.clientX);
-    };
-
-    const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-        updateDrag(event.clientX);
-    };
-
-    const handlePointerUp = () => {
-        endDrag();
-    };
-
-    const handlePointerLeave = () => {
-        endDrag();
-    };
-
     const translateX = useMemo(() => {
         if (!hasTestimonials || step === 0) {
             return 0;
         }
-        return -(trackIndex * step) + dragOffset;
-    }, [dragOffset, hasTestimonials, step, trackIndex]);
-
-    const handleTrackTransitionEnd = () => {
-        if (!hasLoop) {
-            return;
-        }
-        if (trackIndex === 0) {
-            setIsTransitionEnabled(false);
-            setTrackIndex(testimonials.length);
-            return;
-        }
-        if (trackIndex === testimonials.length + 1) {
-            setIsTransitionEnabled(false);
-            setTrackIndex(1);
-        }
-    };
-
-    useEffect(() => {
-        if (isTransitionEnabled) {
-            return;
-        }
-        const frame = requestAnimationFrame(() => {
-            setIsTransitionEnabled(true);
-        });
-        return () => cancelAnimationFrame(frame);
-    }, [isTransitionEnabled]);
+        return -(activeIndex * step);
+    }, [activeIndex, hasTestimonials, step]);
 
     return (
         <section className="testimonials-carousel-section">
@@ -232,33 +144,48 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                             )}
                             {hasTestimonials && (
                                 <>
+                                    <div className="testimonials-carousel-header">
+                                        <div className="testimonials-carousel-controls">
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline testimonials-carousel-btn"
+                                                onClick={handlePrev}
+                                                disabled={activeIndex === 0}
+                                                aria-label="Previous testimonial"
+                                            >
+                                                <FontAwesomeIcon icon={faChevronLeft} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline testimonials-carousel-btn"
+                                                onClick={handleNext}
+                                                disabled={activeIndex === maxIndex}
+                                                aria-label="Next testimonial"
+                                            >
+                                                <FontAwesomeIcon icon={faChevronRight} />
+                                            </button>
+                                        </div>
+                                    </div>
                                     <span className="visually-hidden" aria-live="polite">
                                         Showing testimonial {activeIndex + 1} of {testimonials.length}
                                     </span>
                                     <div
                                         className="testimonials-carousel-viewport"
                                         ref={viewportRef}
-                                        onPointerDown={handlePointerDown}
-                                        onPointerMove={handlePointerMove}
-                                        onPointerUp={handlePointerUp}
-                                        onPointerLeave={handlePointerLeave}
                                     >
                                     <div
                                         className="testimonials-carousel-track"
                                         ref={trackRef}
                                         style={{
                                             transform: `translateX(${translateX}px)`,
-                                            transition: dragOffset !== 0 || !isTransitionEnabled
-                                                ? 'none'
-                                                : 'transform 0.4s ease'
+                                            transition: 'transform 300ms ease'
                                         }}
-                                        onTransitionEnd={handleTrackTransitionEnd}
                                     >
-                                        {renderItems.map((item, index) => (
+                                        {testimonials.map((item, index) => (
                                             <article
                                                 className="testimonial-card"
                                                 key={`${item.name}-${index}`}
-                                                ref={index === (testimonials.length > 1 ? 1 : 0) ? cardRef : undefined}
+                                                ref={index === 0 ? cardRef : undefined}
                                             >
                                                 <p className="testimonial-quote">{item.quote}</p>
                                                     <div className="testimonial-footer">
@@ -276,35 +203,17 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                                         </div>
                                     </div>
                                     {showControls && (
-                                        <div className="testimonials-carousel-controls">
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline testimonials-carousel-btn"
-                                                onClick={handlePrev}
-                                                aria-label="Previous testimonial"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronLeft} />
-                                            </button>
-                                            <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
-                                                {testimonials.map((_, index) => (
-                                                    <button
-                                                        key={`testimonial-dot-${index}`}
-                                                        type="button"
-                                                        className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
-                                                        onClick={() => handleDotClick(index)}
-                                                        aria-label={`Go to testimonial ${index + 1}`}
-                                                        aria-pressed={index === activeIndex}
-                                                    />
-                                                ))}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline testimonials-carousel-btn"
-                                                onClick={handleNext}
-                                                aria-label="Next testimonial"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronRight} />
-                                            </button>
+                                        <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
+                                            {Array.from({length: maxIndex + 1}).map((_, index) => (
+                                                <button
+                                                    key={`testimonial-dot-${index}`}
+                                                    type="button"
+                                                    className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
+                                                    onClick={() => handleDotClick(index)}
+                                                    aria-label={`Go to testimonial ${index + 1}`}
+                                                    aria-pressed={index === activeIndex}
+                                                />
+                                            ))}
                                         </div>
                                     )}
                                 </>
