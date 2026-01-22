@@ -13,7 +13,6 @@ import {
     faLeaf,
     faPuzzlePiece,
     faShieldAlt,
-    faStar,
     faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import container from "../../inversify.config";
@@ -22,6 +21,7 @@ import IDENTIFIERS from "../../constants/identifiers";
 import {Game} from "../../models/game";
 import {Link} from "react-router-dom";
 import {IUrlService} from "../../iterfaces/i-url-service";
+import TestimonialsCarousel from "../testimonials/TestimonialsCarousel";
 
 export default function TaleGameshopMainPage() {
     const [latestGame, setLatestGame] = useState<Game | null>(null);
@@ -467,41 +467,7 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className="testimonials-section">
-                <div className="container">
-                    <div className="section-heading">
-                        <h2>Loved by players</h2>
-                        <p className="muted">Trusted by thousands for fast delivery and curated picks.</p>
-                    </div>
-                    <div className="testimonials-grid">
-                        <div className="rating-card">
-                            <div className="stars" aria-label="4.8 out of 5 stars">
-                                {[...Array(5)].map((_, idx) => (
-                                    <FontAwesomeIcon key={idx} icon={faStar} />
-                                ))}
-                            </div>
-                            <div className="rating-score">4.8/5</div>
-                            <div className="rating-helper muted">based on 2,300 reviews</div>
-                        </div>
-
-                        <div className="testimonial-cards">
-                            {testimonials.map((item) => (
-                                <div className="testimonial-card" key={item.name}>
-                                    <p className="testimonial-quote">{item.quote}</p>
-                                    <div className="testimonial-footer">
-                                        <div className="avatar" aria-hidden="true">{item.name.charAt(0)}</div>
-                                        <div className="testimonial-meta">
-                                            <div className="testimonial-name">{item.name}</div>
-                                            <div className="testimonial-role muted">{item.role}</div>
-                                        </div>
-                                        <span className="testimonial-badge">{item.badge}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <TestimonialsCarousel testimonials={testimonials} />
 
             <section className="trust-section">
                 <div className="container">

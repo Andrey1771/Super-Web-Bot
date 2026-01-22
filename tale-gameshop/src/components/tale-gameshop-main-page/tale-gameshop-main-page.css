@@ -680,114 +680,6 @@
   font-weight: 700;
 }
 
-.main-page .testimonials-section {
-  background: var(--color-bg);
-  padding: 72px 0;
-}
-
-.main-page .testimonials-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: var(--space-24);
-  align-items: start;
-}
-
-.main-page .rating-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-24);
-  box-shadow: var(--shadow-sm);
-  display: grid;
-  gap: var(--space-12);
-}
-
-.main-page .rating-card .stars {
-  color: var(--color-primary);
-  letter-spacing: 2px;
-  display: flex;
-  gap: 6px;
-}
-
-.main-page .rating-score {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--color-text);
-}
-
-.main-page .rating-helper {
-  font-size: 14px;
-}
-
-.main-page .testimonial-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-24);
-}
-
-.main-page .testimonial-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-24);
-  box-shadow: var(--shadow-md);
-  display: grid;
-  gap: var(--space-16);
-  min-height: 220px;
-  text-wrap: nowrap;
-}
-
-.main-page .testimonial-quote {
-  margin: 0;
-  color: var(--color-text);
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-.main-page .testimonial-footer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  text-wrap: nowrap;
-}
-
-.main-page .avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--color-primary) 14%, #ede9fe);
-  color: var(--color-primary);
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-}
-
-.main-page .testimonial-meta {
-  flex: 1;
-}
-
-.main-page .testimonial-name {
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.main-page .testimonial-role {
-  font-size: 14px;
-}
-
-.main-page .testimonial-badge {
-  background: color-mix(in srgb, var(--color-primary) 12%, #f4f0ff);
-  color: var(--color-primary);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-weight: 700;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
 .main-page .trust-section {
   padding: 32px 0 72px;
 }
@@ -1027,14 +919,6 @@
   }
 
   .main-page .why-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .main-page .testimonials-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .main-page .testimonial-cards {
     grid-template-columns: repeat(2, 1fr);
   }
 
