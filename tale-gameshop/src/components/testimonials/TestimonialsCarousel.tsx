@@ -151,98 +151,110 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                     <h2>Loved by players</h2>
                     <p className="muted">Trusted by thousands for fast delivery and curated picks.</p>
                 </div>
-                <div
-                    className="testimonials-carousel"
-                    role="region"
-                    aria-roledescription="carousel"
-                    aria-label="Player testimonials"
-                    tabIndex={0}
-                    onKeyDown={handleKeyDown}
-                >
-                        {!hasTestimonials && (
-                            <div className="card testimonials-empty">
-                                <h3>No testimonials yet</h3>
-                                <p className="muted">Check back soon for player feedback.</p>
-                            </div>
-                        )}
-                        {hasTestimonials && (
-                            <>
-                                <span className="visually-hidden" aria-live="polite">
-                                    Showing testimonial {activeIndex + 1} of {testimonials.length}
-                                </span>
-                                <div
-                                    className="testimonials-carousel-viewport"
-                                    ref={viewportRef}
-                                    onPointerDown={handlePointerDown}
-                                    onPointerMove={handlePointerMove}
-                                    onPointerUp={handlePointerUp}
-                                    onPointerLeave={handlePointerLeave}
-                                >
-                                    <div
-                                        className="testimonials-carousel-track"
-                                        ref={trackRef}
-                                        style={{
-                                            transform: `translateX(${translateX}px)`,
-                                            transition: dragOffset !== 0 ? 'none' : 'transform 0.4s ease'
-                                        }}
-                                    >
-                                        {testimonials.map((item, index) => (
-                                            <article
-                                                className="testimonial-card"
-                                                key={`${item.name}-${index}`}
-                                                ref={index === 0 ? cardRef : undefined}
-                                            >
-                                                <p className="testimonial-quote">{item.quote}</p>
-                                                <div className="testimonial-footer">
-                                                    <div className="avatar" aria-hidden="true">
-                                                        {item.name.charAt(0)}
-                                                    </div>
-                                                    <div className="testimonial-meta">
-                                                        <div className="testimonial-name">{item.name}</div>
-                                                        <div className="testimonial-role muted">{item.role}</div>
-                                                    </div>
-                                                    <span className="testimonial-badge">{item.badge}</span>
-                                                </div>
-                                            </article>
-                                        ))}
-                                    </div>
+                <div className="testimonials-carousel-layout">
+                    <div className="testimonials-rating-card">
+                        <div className="rating-stars" aria-label="4.8 out of 5 stars">
+                            {[...Array(5)].map((_, idx) => (
+                                <span key={idx} aria-hidden="true">★</span>
+                            ))}
+                        </div>
+                        <div className="rating-score">4.8/5</div>
+                        <div className="rating-helper">based on 2,300 reviews</div>
+                    </div>
+
+                    <div
+                        className="testimonials-carousel"
+                        role="region"
+                        aria-roledescription="carousel"
+                        aria-label="Player testimonials"
+                        tabIndex={0}
+                        onKeyDown={handleKeyDown}
+                    >
+                            {!hasTestimonials && (
+                                <div className="card testimonials-empty">
+                                    <h3>No testimonials yet</h3>
+                                    <p className="muted">Check back soon for player feedback.</p>
                                 </div>
-                                {showControls && (
-                                    <div className="testimonials-carousel-controls">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline testimonials-carousel-btn"
-                                            onClick={handlePrev}
-                                            disabled={activeIndex === 0}
-                                            aria-label="Previous testimonial"
+                            )}
+                            {hasTestimonials && (
+                                <>
+                                    <span className="visually-hidden" aria-live="polite">
+                                        Showing testimonial {activeIndex + 1} of {testimonials.length}
+                                    </span>
+                                    <div
+                                        className="testimonials-carousel-viewport"
+                                        ref={viewportRef}
+                                        onPointerDown={handlePointerDown}
+                                        onPointerMove={handlePointerMove}
+                                        onPointerUp={handlePointerUp}
+                                        onPointerLeave={handlePointerLeave}
+                                    >
+                                        <div
+                                            className="testimonials-carousel-track"
+                                            ref={trackRef}
+                                            style={{
+                                                transform: `translateX(${translateX}px)`,
+                                                transition: dragOffset !== 0 ? 'none' : 'transform 0.4s ease'
+                                            }}
                                         >
-                                            <FontAwesomeIcon icon={faChevronLeft} />
-                                        </button>
-                                        <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
-                                            {testimonials.map((_, index) => (
-                                                <button
-                                                    key={`testimonial-dot-${index}`}
-                                                    type="button"
-                                                    className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
-                                                    onClick={() => handleDotClick(index)}
-                                                    aria-label={`Go to testimonial ${index + 1}`}
-                                                    aria-pressed={index === activeIndex}
-                                                />
+                                            {testimonials.map((item, index) => (
+                                                <article
+                                                    className="testimonial-card"
+                                                    key={`${item.name}-${index}`}
+                                                    ref={index === 0 ? cardRef : undefined}
+                                                >
+                                                    <p className="testimonial-quote">{item.quote}</p>
+                                                    <div className="testimonial-footer">
+                                                        <div className="avatar" aria-hidden="true">
+                                                            {item.name.charAt(0)}
+                                                        </div>
+                                                        <div className="testimonial-meta">
+                                                            <div className="testimonial-name">{item.name}</div>
+                                                            <div className="testimonial-role muted">{item.role}</div>
+                                                        </div>
+                                                        <span className="testimonial-badge">{item.badge}</span>
+                                                    </div>
+                                                </article>
                                             ))}
                                         </div>
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline testimonials-carousel-btn"
-                                            onClick={handleNext}
-                                            disabled={activeIndex === maxIndex}
-                                            aria-label="Next testimonial"
-                                        >
-                                            <FontAwesomeIcon icon={faChevronRight} />
-                                        </button>
                                     </div>
-                                )}
-                            </>
-                        )}
+                                    {showControls && (
+                                        <div className="testimonials-carousel-controls">
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline testimonials-carousel-btn"
+                                                onClick={handlePrev}
+                                                disabled={activeIndex === 0}
+                                                aria-label="Previous testimonial"
+                                            >
+                                                <FontAwesomeIcon icon={faChevronLeft} />
+                                            </button>
+                                            <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
+                                                {testimonials.map((_, index) => (
+                                                    <button
+                                                        key={`testimonial-dot-${index}`}
+                                                        type="button"
+                                                        className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
+                                                        onClick={() => handleDotClick(index)}
+                                                        aria-label={`Go to testimonial ${index + 1}`}
+                                                        aria-pressed={index === activeIndex}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline testimonials-carousel-btn"
+                                                onClick={handleNext}
+                                                disabled={activeIndex === maxIndex}
+                                                aria-label="Next testimonial"
+                                            >
+                                                <FontAwesomeIcon icon={faChevronRight} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                    </div>
                 </div>
             </div>
         </section>
