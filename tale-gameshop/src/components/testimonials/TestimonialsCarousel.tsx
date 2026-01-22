@@ -15,7 +15,7 @@ interface TestimonialsCarouselProps {
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-const GAP = 20;
+const GAP = 22;
 
 const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials}) => {
     const [activeIndex, setActiveIndex] = useState(0);
@@ -143,29 +143,7 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                                 </div>
                             )}
                             {hasTestimonials && (
-                                <>
-                                    <div className="testimonials-carousel-header">
-                                        <div className="testimonials-carousel-controls">
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline testimonials-carousel-btn"
-                                                onClick={handlePrev}
-                                                disabled={activeIndex === 0}
-                                                aria-label="Previous testimonial"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronLeft} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline testimonials-carousel-btn"
-                                                onClick={handleNext}
-                                                disabled={activeIndex === maxIndex}
-                                                aria-label="Next testimonial"
-                                            >
-                                                <FontAwesomeIcon icon={faChevronRight} />
-                                            </button>
-                                        </div>
-                                    </div>
+                                <div className="testimonials-carousel-right">
                                     <span className="visually-hidden" aria-live="polite">
                                         Showing testimonial {activeIndex + 1} of {testimonials.length}
                                     </span>
@@ -203,20 +181,40 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                                         </div>
                                     </div>
                                     {showControls && (
-                                        <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
-                                            {Array.from({length: maxIndex + 1}).map((_, index) => (
-                                                <button
-                                                    key={`testimonial-dot-${index}`}
-                                                    type="button"
-                                                    className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
-                                                    onClick={() => handleDotClick(index)}
-                                                    aria-label={`Go to testimonial ${index + 1}`}
-                                                    aria-pressed={index === activeIndex}
-                                                />
-                                            ))}
-                                        </div>
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline carousel-arrow is-left"
+                                                onClick={handlePrev}
+                                                disabled={activeIndex === 0}
+                                                aria-label="Previous testimonial"
+                                            >
+                                                <FontAwesomeIcon icon={faChevronLeft} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline carousel-arrow is-right"
+                                                onClick={handleNext}
+                                                disabled={activeIndex === maxIndex}
+                                                aria-label="Next testimonial"
+                                            >
+                                                <FontAwesomeIcon icon={faChevronRight} />
+                                            </button>
+                                            <div className="testimonials-carousel-dots" role="tablist" aria-label="Testimonials">
+                                                {Array.from({length: maxIndex + 1}).map((_, index) => (
+                                                    <button
+                                                        key={`testimonial-dot-${index}`}
+                                                        type="button"
+                                                        className={`testimonials-carousel-dot${index === activeIndex ? ' is-active' : ''}`}
+                                                        onClick={() => handleDotClick(index)}
+                                                        aria-label={`Go to testimonial ${index + 1}`}
+                                                        aria-pressed={index === activeIndex}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
                                     )}
-                                </>
+                                </div>
                             )}
                     </div>
                 </div>
