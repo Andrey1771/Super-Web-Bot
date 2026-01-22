@@ -58,15 +58,25 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
     }, [measureStep]);
 
     useEffect(() => {
+        if (!hasTestimonials) {
+            setActiveIndex(0);
+            return;
+        }
         setActiveIndex((prev) => clamp(prev, 0, maxIndex));
-    }, [maxIndex]);
+    }, [hasTestimonials, maxIndex]);
 
     const handlePrev = () => {
-        setActiveIndex((prev) => clamp(prev - 1, 0, maxIndex));
+        if (!showControls) {
+            return;
+        }
+        setActiveIndex((prev) => (prev === 0 ? maxIndex : prev - 1));
     };
 
     const handleNext = () => {
-        setActiveIndex((prev) => clamp(prev + 1, 0, maxIndex));
+        if (!showControls) {
+            return;
+        }
+        setActiveIndex((prev) => (prev === maxIndex ? 0 : prev + 1));
     };
 
     const handleDotClick = (index: number) => {
@@ -224,7 +234,6 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                                                 type="button"
                                                 className="btn btn-outline testimonials-carousel-btn"
                                                 onClick={handlePrev}
-                                                disabled={activeIndex === 0}
                                                 aria-label="Previous testimonial"
                                             >
                                                 <FontAwesomeIcon icon={faChevronLeft} />
@@ -245,7 +254,6 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                                                 type="button"
                                                 className="btn btn-outline testimonials-carousel-btn"
                                                 onClick={handleNext}
-                                                disabled={activeIndex === maxIndex}
                                                 aria-label="Next testimonial"
                                             >
                                                 <FontAwesomeIcon icon={faChevronRight} />
