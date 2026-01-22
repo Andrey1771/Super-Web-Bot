@@ -23,9 +23,20 @@
 .rating-stars {
     display: inline-flex;
     gap: 6px;
-    color: #7c5cff;
-    font-size: 18px;
+    color: #6f38ff;
+    font-size: 20px;
     letter-spacing: 2px;
+}
+
+.rating-score {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1f1b2e;
+}
+
+.rating-helper {
+    font-size: 13px;
+    color: #6c6f86;
 }
 
 .testimonials-carousel {
