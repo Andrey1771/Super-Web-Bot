@@ -28,11 +28,17 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
     const hasTestimonials = testimonials.length > 0;
     const step = useMemo(() => cardWidth + GAP, [cardWidth]);
     const visibleCount = useMemo(() => {
-        if (viewportWidth === 0 || step === 0) {
+        if (viewportWidth <= 0) {
             return 1;
         }
-        return Math.max(1, Math.floor((viewportWidth + GAP) / step));
-    }, [step, viewportWidth]);
+        if (viewportWidth < 720) {
+            return 1;
+        }
+        if (viewportWidth < 1100) {
+            return 2;
+        }
+        return 3;
+    }, [viewportWidth]);
     const maxIndex = useMemo(
         () => Math.max(0, testimonials.length - visibleCount),
         [testimonials.length, visibleCount]
@@ -40,13 +46,15 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
     const showControls = hasTestimonials && testimonials.length > visibleCount;
 
     const measureStep = useCallback(() => {
-        if (!trackRef.current || !cardRef.current) {
+        const viewport = viewportRef.current;
+        if (!viewport) {
             return;
         }
-        const cardWidth = cardRef.current.getBoundingClientRect().width;
-        const viewportWidth = viewportRef.current?.getBoundingClientRect().width ?? 0;
-        setCardWidth(cardWidth);
-        setViewportWidth(viewportWidth);
+        const measuredCard = viewport.querySelector<HTMLElement>('.testimonial-card');
+        if (measuredCard) {
+            setCardWidth(measuredCard.getBoundingClientRect().width);
+        }
+        setViewportWidth(viewport.getBoundingClientRect().width);
     }, []);
 
     useEffect(() => {
@@ -54,9 +62,6 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
         const observer = new ResizeObserver(() => {
             measureStep();
         });
-        if (cardRef.current) {
-            observer.observe(cardRef.current);
-        }
         if (viewportRef.current) {
             observer.observe(viewportRef.current);
         }
