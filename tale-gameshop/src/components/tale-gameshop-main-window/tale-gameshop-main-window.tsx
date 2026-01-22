@@ -20,6 +20,7 @@ import CheckoutPage from "../cart/checkout-page/checkout-page";
 import SuccessPurchasePage from "../cart/success-purchase-page/success-purchase-page";
 import ApologyPage from "../apology-page/apology-page";
 import SupportPage from "../support-page/support-page";
+import SupportDocPage from "../support-docs/support-doc-page";
 import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
@@ -50,6 +51,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/checkout" element={<CheckoutPage/>}/>
                     <Route path="/successPurchasePage" element={<SuccessPurchasePage/>}/>
                     <Route path="/support" element={<SupportPage/>}/>
+                    <Route path="/support/docs/:docId" element={<SupportDocPage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
                     <Route path="/account/*" element={<AccountRoutes/>}/>

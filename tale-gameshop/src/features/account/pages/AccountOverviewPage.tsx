@@ -8,21 +8,26 @@ import {
     faHeart
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
-import {
-    accountProfile,
-    accountQuickStats,
-    getRecentOrders
-} from '../mockAccountData';
+import {accountProfile} from '../mockAccountData';
 import {useCart} from '../../../context/cart-context';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useGameKeys } from '../../../hooks/use-game-keys';
+import { useOrders } from '../../../hooks/use-orders';
+import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
+import { usePaymentMethodsSummary } from '../../../hooks/use-payment-methods-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import './account-overview-page.css';
 
 const AccountOverviewPage: React.FC = () => {
-    const orders = getRecentOrders();
     const {dispatch} = useCart();
     const navigate = useNavigate();
+    const {
+        items: orders,
+        totalCount: ordersTotal,
+        isLoading: isOrdersLoading,
+        error: ordersError,
+        reload: reloadOrders
+    } = useOrders(3);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -35,6 +40,39 @@ const AccountOverviewPage: React.FC = () => {
         error: keysError,
         reload: reloadKeys
     } = useGameKeys(3);
+    const {
+        count: wishlistCount,
+        isLoading: isWishlistLoading,
+        error: wishlistError,
+        reload: reloadWishlist
+    } = useWishlistSummary();
+    const {
+        count: paymentMethodsCount,
+        isLoading: isPaymentMethodsLoading,
+        error: paymentMethodsError,
+        reload: reloadPaymentMethods
+    } = usePaymentMethodsSummary();
+
+    const ordersSummary = ordersError
+        ? 'Unavailable'
+        : isOrdersLoading
+            ? 'Loading...'
+            : `${ordersTotal} order${ordersTotal === 1 ? '' : 's'}`;
+    const keysSummary = keysError
+        ? 'Unavailable'
+        : isKeysLoading
+            ? 'Loading...'
+            : `${keys.length} active key${keys.length === 1 ? '' : 's'}`;
+    const savedSummary = wishlistError
+        ? 'Unavailable'
+        : isWishlistLoading
+            ? 'Loading...'
+            : `${wishlistCount} item${wishlistCount === 1 ? '' : 's'}`;
+    const billingSummary = paymentMethodsError
+        ? 'Unavailable'
+        : isPaymentMethodsLoading
+            ? 'Loading...'
+            : `${paymentMethodsCount} method${paymentMethodsCount === 1 ? '' : 's'}`;
 
     const handleInvoiceView = (orderId: string) => {
         console.log(`TODO: open invoice for ${orderId}`);
@@ -90,7 +128,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>View your orders and invoices</p>
                     <div className="account-action-footer">
-                        <strong>{accountQuickStats.orders}</strong>
+                        <strong>{ordersSummary}</strong>
                         <Link to="/account/orders" className="btn btn-outline account-action-btn">
                             View
                         </Link>
@@ -103,7 +141,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>Reveal, copy and activate keys</p>
                     <div className="account-action-footer">
-                        <strong>{accountQuickStats.keys}</strong>
+                        <strong>{keysSummary}</strong>
                         <Link to="/account/keys" className="btn btn-outline account-action-btn">
                             Open
                         </Link>
@@ -116,7 +154,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>Wishlist for future purchases</p>
                     <div className="account-action-footer">
-                        <strong>{accountQuickStats.saved}</strong>
+                        <strong>{savedSummary}</strong>
                         <Link to="/account/saved" className="btn btn-outline account-action-btn">
                             Open
                         </Link>
@@ -129,7 +167,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>Payment methods and invoices</p>
                     <div className="account-action-footer">
-                        <strong>{accountQuickStats.billing}</strong>
+                        <strong>{billingSummary}</strong>
                         <Link to="/account/billing" className="btn btn-outline account-action-btn">
                             Manage
                         </Link>
@@ -154,12 +192,44 @@ const AccountOverviewPage: React.FC = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {orders.map((order) => (
+                        {isOrdersLoading && (
+                            <tr>
+                                <td colSpan={5} className="account-table-state">
+                                    Loading recent orders...
+                                </td>
+                            </tr>
+                        )}
+                        {!isOrdersLoading && ordersError && (
+                            <tr>
+                                <td colSpan={5} className="account-table-state">
+                                    <div className="account-table-state-content">
+                                        <span>{ordersError}</span>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline account-action-btn"
+                                            onClick={reloadOrders}
+                                        >
+                                            Retry
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
+                        {!isOrdersLoading && !ordersError && orders.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="account-table-state">
+                                    No recent orders yet.
+                                </td>
+                            </tr>
+                        )}
+                        {!isOrdersLoading && !ordersError && orders.map((order) => (
                             <tr key={order.id}>
                                 <td>{order.id}</td>
-                                <td>{order.game}</td>
-                                <td>{order.date}</td>
-                                <td>{order.amount}</td>
+                                <td>{order.gameName}</td>
+                                <td>{new Date(order.orderDate).toLocaleDateString()}</td>
+                                <td>
+                                    {order.currency} {order.totalAmount.toFixed(2)}
+                                </td>
                                 <td>
                                     <button
                                         type="button"
@@ -214,7 +284,7 @@ const AccountOverviewPage: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    {!isKeysLoading && !keysError && keys.map((keyItem, index) => {
+                    {!isKeysLoading && !keysError && keys.slice(0, 3).map((keyItem, index) => {
                         const title = keyItem.game?.title ?? keyItem.game?.name ?? 'Unknown game';
                         const dateLabel = keyItem.issuedAt
                             ? new Date(keyItem.issuedAt).toLocaleDateString()
@@ -242,6 +312,26 @@ const AccountOverviewPage: React.FC = () => {
                     })}
                 </div>
             </div>
+
+            {(wishlistError || paymentMethodsError) && (
+                <div className="account-overview-alert">
+                    <p>
+                        Some account summaries could not be loaded.
+                    </p>
+                    <div className="account-overview-alert-actions">
+                        {wishlistError && (
+                            <button type="button" className="btn btn-outline account-action-btn" onClick={reloadWishlist}>
+                                Retry wishlist
+                            </button>
+                        )}
+                        {paymentMethodsError && (
+                            <button type="button" className="btn btn-outline account-action-btn" onClick={reloadPaymentMethods}>
+                                Retry billing
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="card account-card">
                 <div className="account-section-header">
