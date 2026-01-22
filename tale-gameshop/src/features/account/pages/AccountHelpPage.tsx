@@ -1,35 +1,22 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faChevronDown, faFileLines} from '@fortawesome/free-solid-svg-icons';
+import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
 import NewSupportRequestModal from '../components/NewSupportRequestModal';
 import {listSupportTickets} from '../support/supportApi';
 import type {SupportTicket, SupportTicketStatus} from '../support/types';
 import TicketDetailsModal from '../../../pages/account/help/components/TicketDetailsModal';
 import type {TicketSummary} from '../../../types/support';
+import {faqItems} from '../../../content/support/faq';
+import {supportDocs} from '../../../content/support/docs';
 import './account-help-page.css';
-
-const faqItems = [
-    {
-        question: 'Where is my game key?',
-        answer:
-            'Keys are delivered instantly after payment, but some banks need additional checks. ' +
-            'If it has been more than 30 minutes, refresh your orders page or contact support.'
-    },
-    {question: 'How do refunds work?'},
-    {question: 'Payment was charged but order is missing'},
-    {question: 'How to download an invoice?'},
-    {question: 'How to activate a Steam key?'},
-    {question: 'How to secure my account?'}
-];
-
-const guideLinks = ['Activation guide', 'Refund policy', 'Payment methods', 'Regional restrictions'];
 
 const systemStatuses = [
     {label: 'Store', status: 'Operational'},
     {label: 'Checkout', status: 'Operational'},
     {label: 'Key delivery', status: 'Operational'},
-    {label: 'Support чат', status: 'Operational'}
+    {label: 'Support chat', status: 'Operational'}
 ];
 
 const AccountHelpPage: React.FC = () => {
@@ -42,6 +29,7 @@ const AccountHelpPage: React.FC = () => {
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
     const [selectedTicketSummary, setSelectedTicketSummary] = useState<TicketSummary | undefined>();
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [openFaqId, setOpenFaqId] = useState<string | null>(faqItems[0]?.id ?? null);
 
     const formatRelativeTime = (value: string) => {
         const date = new Date(value);
@@ -183,19 +171,37 @@ const AccountHelpPage: React.FC = () => {
                     </div>
                     <div className="help-accordion">
                         {faqItems.map((item, index) => {
-                            const isOpen = index === 0;
+                            const isOpen = item.id === openFaqId;
+                            const contentId = `${item.id}-content`;
+                            const buttonId = `${item.id}-button`;
 
                             return (
                                 <div
-                                    key={item.question}
+                                    key={item.id}
                                     className={`help-accordion-item${isOpen ? ' is-open' : ''}`}
                                 >
-                                    <button type="button" className="help-accordion-trigger">
+                                    <button
+                                        id={buttonId}
+                                        type="button"
+                                        className="help-accordion-trigger"
+                                        aria-expanded={isOpen}
+                                        aria-controls={contentId}
+                                        onClick={() =>
+                                            setOpenFaqId((prev) => (prev === item.id ? null : item.id))
+                                        }
+                                    >
                                         <span>{item.question}</span>
                                         <FontAwesomeIcon icon={faChevronDown} />
                                     </button>
                                     {isOpen && (
-                                        <p className="help-accordion-content">{item.answer}</p>
+                                        <p
+                                            id={contentId}
+                                            className="help-accordion-content"
+                                            role="region"
+                                            aria-labelledby={buttonId}
+                                        >
+                                            {item.answer}
+                                        </p>
                                     )}
                                 </div>
                             );
@@ -207,12 +213,12 @@ const AccountHelpPage: React.FC = () => {
                     <section className="card help-guides">
                         <h3>Guides &amp; policies</h3>
                         <ul>
-                            {guideLinks.map((guide) => (
-                                <li key={guide}>
+                            {supportDocs.map((guide) => (
+                                <li key={guide.id}>
                                     <span className="help-doc-icon" aria-hidden="true">
                                         <FontAwesomeIcon icon={faFileLines} />
                                     </span>
-                                    <span>{guide}</span>
+                                    <Link to={guide.route}>{guide.title}</Link>
                                 </li>
                             ))}
                         </ul>

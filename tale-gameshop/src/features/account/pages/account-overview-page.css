@@ -92,6 +92,19 @@
     background: rgba(124, 58, 237, 0.04);
 }
 
+.account-table-state {
+    text-align: center;
+    color: var(--color-muted);
+    font-size: 14px;
+    padding: 24px;
+}
+
+.account-table-state-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-12);
+}
+
 .account-key-list {
     display: grid;
     gap: var(--space-12);
@@ -179,6 +192,24 @@
 
 .account-recommendations-state {
     padding: var(--space-16);
+}
+
+.account-overview-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: rgba(255, 193, 7, 0.08);
+    color: #8a6d3b;
+    font-size: 14px;
+}
+
+.account-overview-alert-actions {
+    display: inline-flex;
+    gap: var(--space-12);
 }
 
 @keyframes account-recommendation-shimmer {

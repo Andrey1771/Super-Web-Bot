@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import {Link} from 'react-router-dom';
 import {createSupportTicket, uploadSupportAttachment} from '../support/supportApi';
 import type {CreateSupportTicketPayload, SupportTicket} from '../support/types';
+import {supportDocs} from '../../../content/support/docs';
 import '../pages/account-help-new-request-modal.css';
 
 interface NewSupportRequestModalProps {
@@ -21,12 +22,10 @@ const issueOptions = [
     'Other'
 ];
 
-// TODO: Replace with real support guide routes once available.
-const quickActions = [
-    {label: 'Activation guide', to: '/support/activation-guide'},
-    {label: 'Refund policy', to: '/support/refund-policy'},
-    {label: 'Key delivery guide', to: '/support/key-delivery-guide'}
-];
+const quickActionIds = ['activation-guide', 'refund-policy', 'payment-methods'];
+const quickActions = supportDocs
+    .filter((doc) => quickActionIds.includes(doc.id))
+    .map((doc) => ({label: doc.title, to: doc.route}));
 
 const MAX_ATTACHMENTS = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
