@@ -20,6 +20,8 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
     const [activeIndex, setActiveIndex] = useState(0);
     const [step, setStep] = useState(0);
     const [dragOffset, setDragOffset] = useState(0);
+    const [trackIndex, setTrackIndex] = useState(1);
+    const [isTransitionEnabled, setIsTransitionEnabled] = useState(true);
     const trackRef = useRef<HTMLDivElement | null>(null);
     const cardRef = useRef<HTMLDivElement | null>(null);
     const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -28,6 +30,15 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
     const maxIndex = Math.max(testimonials.length - 1, 0);
     const hasTestimonials = testimonials.length > 0;
     const showControls = testimonials.length > 1;
+    const hasLoop = testimonials.length > 1;
+    const renderItems = useMemo(() => {
+        if (testimonials.length <= 1) {
+            return testimonials;
+        }
+        const first = testimonials[0];
+        const last = testimonials[testimonials.length - 1];
+        return [last, ...testimonials, first];
+    }, [testimonials]);
 
     const measureStep = useCallback(() => {
         if (!trackRef.current || !cardRef.current) {
@@ -60,16 +71,20 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
     useEffect(() => {
         if (!hasTestimonials) {
             setActiveIndex(0);
+            setTrackIndex(0);
             return;
         }
         setActiveIndex((prev) => clamp(prev, 0, maxIndex));
-    }, [hasTestimonials, maxIndex]);
+        setTrackIndex(testimonials.length > 1 ? 1 : 0);
+    }, [hasTestimonials, maxIndex, testimonials.length]);
 
     const handlePrev = () => {
         if (!showControls) {
             return;
         }
         setActiveIndex((prev) => (prev === 0 ? maxIndex : prev - 1));
+        setTrackIndex((prev) => prev - 1);
+        setIsTransitionEnabled(true);
     };
 
     const handleNext = () => {
@@ -77,10 +92,14 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
             return;
         }
         setActiveIndex((prev) => (prev === maxIndex ? 0 : prev + 1));
+        setTrackIndex((prev) => prev + 1);
+        setIsTransitionEnabled(true);
     };
 
     const handleDotClick = (index: number) => {
         setActiveIndex(clamp(index, 0, maxIndex));
+        setTrackIndex(testimonials.length > 1 ? index + 1 : index);
+        setIsTransitionEnabled(true);
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -151,8 +170,33 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
         if (!hasTestimonials || step === 0) {
             return 0;
         }
-        return -(activeIndex * step) + dragOffset;
-    }, [activeIndex, dragOffset, hasTestimonials, step]);
+        return -(trackIndex * step) + dragOffset;
+    }, [dragOffset, hasTestimonials, step, trackIndex]);
+
+    const handleTrackTransitionEnd = () => {
+        if (!hasLoop) {
+            return;
+        }
+        if (trackIndex === 0) {
+            setIsTransitionEnabled(false);
+            setTrackIndex(testimonials.length);
+            return;
+        }
+        if (trackIndex === testimonials.length + 1) {
+            setIsTransitionEnabled(false);
+            setTrackIndex(1);
+        }
+    };
+
+    useEffect(() => {
+        if (isTransitionEnabled) {
+            return;
+        }
+        const frame = requestAnimationFrame(() => {
+            setIsTransitionEnabled(true);
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [isTransitionEnabled]);
 
     return (
         <section className="testimonials-carousel-section">
@@ -199,21 +243,24 @@ const TestimonialsCarousel: React.FC<TestimonialsCarouselProps> = ({testimonials
                                         onPointerUp={handlePointerUp}
                                         onPointerLeave={handlePointerLeave}
                                     >
-                                        <div
-                                            className="testimonials-carousel-track"
-                                            ref={trackRef}
-                                            style={{
-                                                transform: `translateX(${translateX}px)`,
-                                                transition: dragOffset !== 0 ? 'none' : 'transform 0.4s ease'
-                                            }}
-                                        >
-                                            {testimonials.map((item, index) => (
-                                                <article
-                                                    className="testimonial-card"
-                                                    key={`${item.name}-${index}`}
-                                                    ref={index === 0 ? cardRef : undefined}
-                                                >
-                                                    <p className="testimonial-quote">{item.quote}</p>
+                                    <div
+                                        className="testimonials-carousel-track"
+                                        ref={trackRef}
+                                        style={{
+                                            transform: `translateX(${translateX}px)`,
+                                            transition: dragOffset !== 0 || !isTransitionEnabled
+                                                ? 'none'
+                                                : 'transform 0.4s ease'
+                                        }}
+                                        onTransitionEnd={handleTrackTransitionEnd}
+                                    >
+                                        {renderItems.map((item, index) => (
+                                            <article
+                                                className="testimonial-card"
+                                                key={`${item.name}-${index}`}
+                                                ref={index === (testimonials.length > 1 ? 1 : 0) ? cardRef : undefined}
+                                            >
+                                                <p className="testimonial-quote">{item.quote}</p>
                                                     <div className="testimonial-footer">
                                                         <div className="avatar" aria-hidden="true">
                                                             {item.name.charAt(0)}
