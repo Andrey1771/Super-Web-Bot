@@ -239,6 +239,28 @@
     .testimonials-carousel-section {
         padding: 56px 0 72px;
     }
+
+    .testimonials-carousel-layout {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .testimonials-rating-card {
+        max-width: 100%;
+    }
+
+    .testimonial-card {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+
+    .carousel-arrow.is-left {
+        left: 6px;
+    }
+
+    .carousel-arrow.is-right {
+        right: 6px;
+    }
 }
 
 @media (max-width: 640px) {
