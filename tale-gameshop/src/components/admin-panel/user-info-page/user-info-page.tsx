@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import "devextreme/dist/css/dx.light.css";
 import { DataGrid } from "devextreme-react";
-import { Column, FilterRow, Paging, Sorting } from "devextreme-react/data-grid";
+import { Column, Paging, Sorting } from "devextreme-react/data-grid";
 import container from "../../../inversify.config";
 import { IAdminService } from "../../../iterfaces/i-admin-service";
 import IDENTIFIERS from "../../../constants/identifiers";
@@ -34,10 +34,16 @@ const UserInfoPage: React.FC = () => {
             try {
                 const res = await adminService.getAllMappedLoginEvents();
                 // Преобразуем данные, добавляя поля из details
-                const transformedData = res.map((item: any) => ({
-                    ...item,
-                    ...item.details,
-                }));
+                const transformedData = res.map((item: any, index: number) => {
+                    const merged = {
+                        ...item,
+                        ...item.details,
+                    };
+                    return {
+                        ...merged,
+                        rowId: `${merged.userId ?? "unknown"}__${merged.time ?? "unknown"}__${merged.clientId ?? ""}__${merged.code_id ?? ""}__${merged.type ?? ""}__${index}`,
+                    };
+                });
 
                 setData(transformedData);
             } catch (error) {
@@ -171,46 +177,36 @@ const UserInfoPage: React.FC = () => {
                         description="Try adjusting filters or check back later."
                     />
                 ) : (
-                    <div className="overflow-x-auto">
-                        <DataGrid
+                    <DataGrid
                             dataSource={filteredData}
                             showBorders={true}
                             showRowLines={true}
                             showColumnLines={true}
                             height="650px"
                             width="100%"
-                            keyExpr="userId"
+                            keyExpr="rowId"
                             allowColumnResizing={true}
                             columnResizingMode="widget"
                             columnChooser={{ enabled: true }}
-                            columnAutoWidth={false}
+                            columnAutoWidth={true}
                             columnHidingEnabled={true}
                             wordWrapEnabled={false}
-                            scrolling={{ mode: "standard", showScrollbar: "always", useNative: true }}
+                            scrolling={{ mode: "virtual", showScrollbar: "always", useNative: true }}
                             pager={{ visible: false }}
                             ref={gridRef}
                             onRowClick={(event) => setSelectedRow(event.data)}
                         >
                             <Sorting mode="multiple" />
-                            <Paging pageSize={10} />
-                            <FilterRow visible={true} />
+                            <Paging enabled={false} />
 
                             <Column
                                 dataField="userId"
                                 caption="User ID"
-                                width={220}
+                                minWidth={200}
                                 cellRender={(cellData: any) => (
-                                    <div className="flex items-center gap-2">
-                                        <span className="admin-table__cell-truncate" title={cellData.value}>
-                                            {cellData.value}
-                                        </span>
-                                        <button
-                                            className="btn btn-outline"
-                                            onClick={() => copyValue(cellData.value)}
-                                        >
-                                            Copy
-                                        </button>
-                                    </div>
+                                    <span className="admin-table__cell-truncate" title={cellData.value}>
+                                        {cellData.value}
+                                    </span>
                                 )}
                             />
                             <Column dataField="username" caption="Username" minWidth={180} />
@@ -235,8 +231,23 @@ const UserInfoPage: React.FC = () => {
                             <Column dataField="realmId" caption="Realm ID" minWidth={160} />
                             <Column dataField="time" caption="Timestamp" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" minWidth={170} />
                             <Column dataField="type" caption="Event Type" minWidth={120} />
+                            <Column
+                                caption="Actions"
+                                width={110}
+                                cellRender={(cellData: any) => (
+                                    <button
+                                        className="btn btn-outline"
+                                        aria-label="Copy user id"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            copyValue(cellData.data.userId);
+                                        }}
+                                    >
+                                        Copy
+                                    </button>
+                                )}
+                            />
                         </DataGrid>
-                    </div>
                 )}
             </Card>
 
