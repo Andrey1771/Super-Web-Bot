@@ -61,6 +61,8 @@ const CardAdderPage: React.FC = () => {
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
   const [isClearFileOpen, setIsClearFileOpen] = useState(false);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+  const [saveErrorDetails, setSaveErrorDetails] = useState<string | null>(null);
+  const [isSaveErrorOpen, setIsSaveErrorOpen] = useState(false);
   const { addToast } = useToast();
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -281,6 +283,25 @@ const CardAdderPage: React.FC = () => {
     return `wwwroot\\uploads\\${fileName}`;
   };
 
+  const buildPayload = (payload: Form) => {
+    const cleaned: Record<string, unknown> = {
+      ...payload,
+      price: payload.price ? Number(payload.price) : 0,
+      gameType: payload.gameType ? Number(payload.gameType) : 0,
+    };
+
+    if (!payload.releaseDate) {
+      delete cleaned.releaseDate;
+    }
+    if (!payload.imagePath) {
+      delete cleaned.imagePath;
+    }
+    if (!payload.description) {
+      delete cleaned.description;
+    }
+    return cleaned;
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!drawerMode) {
@@ -295,20 +316,19 @@ const CardAdderPage: React.FC = () => {
 
     const updatedItem = {
       ...form,
-      price: form.price ? Number(form.price) : 0,
-      gameType: form.gameType ? Number(form.gameType) : 0,
       imagePath,
     };
 
     try {
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       let createdId: string | null = null;
+      const payload = buildPayload(updatedItem);
 
       if (drawerMode === "edit" && selectedGame) {
-        await apiClient.api.put(`/api/game/${selectedGame.id}`, updatedItem);
+        await apiClient.api.put(`/api/game/${selectedGame.id}`, payload);
       }
       if (drawerMode === "create") {
-        const response = await apiClient.api.post("/api/game", updatedItem);
+        const response = await apiClient.api.post("/api/game", payload);
         createdId = response.data?.id ?? response.data?.gameId ?? null;
       }
 
@@ -332,8 +352,14 @@ const CardAdderPage: React.FC = () => {
       addToast(drawerMode === "create" ? "Game created" : "Changes saved", "success");
     } catch (error) {
       console.error("Error saving object:", error);
-      const message = error instanceof Error ? error.message : "Failed to save.";
-      addToast(`Failed to save. ${message}`, "error");
+      const message =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.response?.data?.error ||
+        (error as Error)?.message ||
+        "Failed to save.";
+      setSaveErrorDetails(String(message));
+      setIsSaveErrorOpen(true);
+      addToast("Failed to save. See details.", "error");
     } finally {
       setSaving(false);
     }
@@ -804,6 +830,15 @@ const CardAdderPage: React.FC = () => {
         confirmLabel="Clear"
         onConfirm={handleConfirmClearFile}
         onCancel={() => setIsClearFileOpen(false)}
+      />
+
+      <ModalConfirm
+        isOpen={isSaveErrorOpen}
+        title="Save failed"
+        description={saveErrorDetails ?? "Unexpected error."}
+        confirmLabel="Close"
+        onConfirm={() => setIsSaveErrorOpen(false)}
+        onCancel={() => setIsSaveErrorOpen(false)}
       />
     </div>
   );
