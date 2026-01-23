@@ -80,6 +80,15 @@ const UserInfoPage: React.FC = () => {
         }
     };
 
+    const handleShowColumns = () => {
+        const instance = gridRef.current?.instance;
+        if (instance?.showColumnChooser) {
+            instance.showColumnChooser();
+        } else {
+            addToast("Column chooser unavailable", "error");
+        }
+    };
+
     return (
         <div className="admin-grid">
             <PageHeader
@@ -141,7 +150,7 @@ const UserInfoPage: React.FC = () => {
                 <div className="flex justify-end mt-4 gap-2">
                     <button
                         className="btn btn-outline"
-                        onClick={() => gridRef.current?.instance?.showColumnChooser()}
+                        onClick={handleShowColumns}
                     >
                         Columns
                     </button>
