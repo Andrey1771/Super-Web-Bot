@@ -171,79 +171,71 @@ const UserInfoPage: React.FC = () => {
                         description="Try adjusting filters or check back later."
                     />
                 ) : (
-                    <DataGrid
-                        dataSource={filteredData}
-                        showBorders={true}
-                        showRowLines={true}
-                        showColumnLines={true}
-                        height="650px"
-                        width="100%"
-                        keyExpr="userId"
-                        allowColumnResizing={true}
-                        columnResizingMode="widget"
-                        columnChooser={{ enabled: true }}
-                        columnAutoWidth={true}
-                        wordWrapEnabled={true}
-                        scrolling={{ mode: "virtual" }}
-                        pager={{ visible: false }}
-                        ref={gridRef}
-                        onRowClick={(event) => setSelectedRow(event.data)}
-                    >
-                        <Sorting mode="multiple" />
-                        <Paging pageSize={10} />
-                        <FilterRow visible={true} />
+                    <div className="overflow-x-auto">
+                        <DataGrid
+                            dataSource={filteredData}
+                            showBorders={true}
+                            showRowLines={true}
+                            showColumnLines={true}
+                            height="650px"
+                            width="100%"
+                            keyExpr="userId"
+                            allowColumnResizing={true}
+                            columnResizingMode="widget"
+                            columnChooser={{ enabled: true }}
+                            columnAutoWidth={true}
+                            wordWrapEnabled={false}
+                            scrolling={{ mode: "virtual", useNative: true }}
+                            pager={{ visible: false }}
+                            ref={gridRef}
+                            onRowClick={(event) => setSelectedRow(event.data)}
+                        >
+                            <Sorting mode="multiple" />
+                            <Paging pageSize={10} />
+                            <FilterRow visible={true} />
 
-                        <Column
-                            dataField="userId"
-                            caption="User ID"
-                            cellRender={(cellData: any) => (
-                                <div className="flex items-center gap-2">
-                                    <span>{cellData.value}</span>
-                                    <button
-                                        className="btn btn-outline"
-                                        onClick={() => copyValue(cellData.value)}
-                                    >
-                                        Copy
-                                    </button>
-                                </div>
-                            )}
-                        />
-                        <Column dataField="username" caption="Username" />
-                        <Column
-                            dataField="clientId"
-                            caption="Client ID"
-                            cellRender={(cellData: any) => (
-                                <div className="flex items-center gap-2">
-                                    <span>{cellData.value}</span>
-                                    <button
-                                        className="btn btn-outline"
-                                        onClick={() => copyValue(cellData.value)}
-                                    >
-                                        Copy
-                                    </button>
-                                </div>
-                            )}
-                        />
-                        <Column dataField="auth_method" caption="Auth Method" />
-                        <Column dataField="auth_type" caption="Auth Type" />
-                        <Column dataField="code_id" caption="Code ID" />
-                        <Column dataField="consent" caption="Consent" />
-                        <Column
-                            dataField="redirect_uri"
-                            caption="Redirect URI"
-                            cellRender={(cellData: any) => (
-                                <span title={cellData.value} className="admin-table__cell-truncate">
-                                    {cellData.value}
-                                </span>
-                            )}
-                        />
-                        <Column dataField="response_mode" caption="Response Mode" />
-                        <Column dataField="response_type" caption="Response Type" />
-                        <Column dataField="ipAddress" caption="IP Address" />
-                        <Column dataField="realmId" caption="Realm ID" />
-                        <Column dataField="time" caption="Timestamp" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" />
-                        <Column dataField="type" caption="Event Type" />
-                    </DataGrid>
+                            <Column
+                                dataField="userId"
+                                caption="User ID"
+                                width={220}
+                                cellRender={(cellData: any) => (
+                                    <div className="flex items-center gap-2">
+                                        <span className="admin-table__cell-truncate" title={cellData.value}>
+                                            {cellData.value}
+                                        </span>
+                                        <button
+                                            className="btn btn-outline"
+                                            onClick={() => copyValue(cellData.value)}
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                )}
+                            />
+                            <Column dataField="username" caption="Username" width={200} />
+                            <Column dataField="clientId" caption="Client ID" width={180} />
+                            <Column dataField="auth_method" caption="Auth Method" width={140} />
+                            <Column dataField="auth_type" caption="Auth Type" width={120} />
+                            <Column dataField="code_id" caption="Code ID" width={160} />
+                            <Column dataField="consent" caption="Consent" width={140} />
+                            <Column
+                                dataField="redirect_uri"
+                                caption="Redirect URI"
+                                width={240}
+                                cellRender={(cellData: any) => (
+                                    <span title={cellData.value} className="admin-table__cell-truncate">
+                                        {cellData.value}
+                                    </span>
+                                )}
+                            />
+                            <Column dataField="response_mode" caption="Response Mode" width={140} />
+                            <Column dataField="response_type" caption="Response Type" width={140} />
+                            <Column dataField="ipAddress" caption="IP Address" width={140} />
+                            <Column dataField="realmId" caption="Realm ID" width={160} />
+                            <Column dataField="time" caption="Timestamp" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" width={170} />
+                            <Column dataField="type" caption="Event Type" width={120} />
+                        </DataGrid>
+                    </div>
                 )}
             </Card>
 
