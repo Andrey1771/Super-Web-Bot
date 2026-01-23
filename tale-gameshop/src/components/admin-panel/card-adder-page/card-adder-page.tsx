@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
@@ -44,15 +44,25 @@ const CardAdderPage: React.FC = () => {
   const [selectedGame, setSelectedGame] = useState<GameItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "ready" | "uploading" | "error">("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState("");
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDeleteName, setPendingDeleteName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
+  const [isClearFileOpen, setIsClearFileOpen] = useState(false);
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
   const { addToast } = useToast();
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useSelector((state: { form: Form }) => state.form);
   const dispatch = useDispatch();
@@ -71,8 +81,39 @@ const CardAdderPage: React.FC = () => {
     return () => window.removeEventListener("admin:add", handleGlobalAdd);
   }, []);
 
+  React.useEffect(() => {
+    if (drawerOpen) {
+      nameInputRef.current?.focus();
+    }
+  }, [drawerOpen, drawerMode]);
+
+  React.useEffect(() => {
+    if (!drawerOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleDrawerClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [drawerOpen]);
+
+  React.useEffect(() => {
+    if (!file) {
+      setFilePreviewUrl(null);
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    setFilePreviewUrl(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [file]);
+
   const fetchItems = async (pageNumber: number, reset = false) => {
     try {
+      setListLoading(true);
+      setListError(null);
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get(`/api/game?page=${pageNumber}&limit=20`);
       const newItems = response.data as GameItem[];
@@ -81,10 +122,13 @@ const CardAdderPage: React.FC = () => {
       if (newItems.length < 20) {
         setHasMore(false);
       }
+      setListLoading(false);
       return newItems;
     } catch (error) {
       console.error("Error loading objects:", error);
+      setListError("Failed to load games.");
     }
+    setListLoading(false);
     return [];
   };
 
@@ -119,6 +163,30 @@ const CardAdderPage: React.FC = () => {
 
   useDirtyState(isDirty, { when: isDirty });
 
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    if (!form.name?.trim()) {
+      errors.name = "Name is required.";
+    }
+    if (!form.title?.trim()) {
+      errors.title = "Title is required.";
+    }
+    if (Number.isNaN(Number(form.price)) || Number(form.price) < 0) {
+      errors.price = "Price must be a number greater than or equal to 0.";
+    }
+    if (form.description && form.description.length > 500) {
+      errors.description = "Description must be 500 characters or fewer.";
+    }
+    return errors;
+  }, [form.description, form.name, form.price, form.title]);
+
+  const isFormValid = Object.keys(validationErrors).length === 0;
+
+  const formatPrice = (price: number | undefined) => {
+    const value = typeof price === "number" ? price : 0;
+    return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" }).format(value);
+  };
+
   const applyFormFromGame = (item: GameItem) => {
     dispatch({
       type: "SET_GAME_TYPE_FORM",
@@ -141,24 +209,35 @@ const CardAdderPage: React.FC = () => {
       payload: emptyForm,
     });
     setFile(null);
+    setFilePreviewUrl(null);
+    setUploadStatus("idle");
+    setUploadError(null);
   };
 
   const handleSelectGame = (item: GameItem) => {
+    setIsDetailsLoading(true);
     setSelectedGameId(item.id);
     setSelectedGame(item);
     applyFormFromGame(item);
+    const isMobile = window.innerWidth < 1024;
+    if (isMobile) {
+      setDetailsDrawerOpen(true);
+    }
+    setTimeout(() => setIsDetailsLoading(false), 150);
   };
 
   const handleEditGame = (item: GameItem) => {
     handleSelectGame(item);
     setDrawerMode("edit");
     setDrawerOpen(true);
+    setDetailsDrawerOpen(false);
   };
 
   const handleCreateGame = () => {
     resetForm();
     setDrawerMode("create");
     setDrawerOpen(true);
+    setDetailsDrawerOpen(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -181,13 +260,18 @@ const CardAdderPage: React.FC = () => {
     formData.append("file", file);
 
     try {
+      setUploadStatus("uploading");
+      setUploadError(null);
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.post("/api/image/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      setUploadStatus("idle");
       return getFilePath(response.data.filePath);
     } catch (error) {
       console.error("Error loading image:", error);
+      setUploadStatus("error");
+      setUploadError("Failed to upload file.");
       return form.imagePath;
     }
   };
@@ -200,6 +284,10 @@ const CardAdderPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!drawerMode) {
+      return;
+    }
+    if (!isFormValid) {
+      addToast("Fix validation errors before saving.", "error");
       return;
     }
     setSaving(true);
@@ -240,10 +328,12 @@ const CardAdderPage: React.FC = () => {
       setDrawerOpen(false);
       setDrawerMode(null);
       resetForm();
+      setDetailsDrawerOpen(false);
       addToast(drawerMode === "create" ? "Game created" : "Changes saved", "success");
     } catch (error) {
       console.error("Error saving object:", error);
-      addToast("Failed to save", "error");
+      const message = error instanceof Error ? error.message : "Failed to save.";
+      addToast(`Failed to save. ${message}`, "error");
     } finally {
       setSaving(false);
     }
@@ -275,6 +365,8 @@ const CardAdderPage: React.FC = () => {
 
   const requestDelete = (itemId: string) => {
     setPendingDeleteId(itemId);
+    const item = items.find((game) => game.id === itemId);
+    setPendingDeleteName(item?.name ?? "Unnamed");
     setIsDeleteOpen(true);
   };
 
@@ -287,8 +379,10 @@ const CardAdderPage: React.FC = () => {
       await apiClient.api.delete(`/api/game/${pendingDeleteId}`);
       setItems((prev) => prev.filter((item) => item.id !== pendingDeleteId));
       if (selectedGameId === pendingDeleteId) {
-        setSelectedGameId(null);
-        setSelectedGame(null);
+        const remaining = items.filter((item) => item.id !== pendingDeleteId);
+        const nextGame = remaining[0] ?? null;
+        setSelectedGameId(nextGame?.id ?? null);
+        setSelectedGame(nextGame);
       }
       addToast("Object deleted", "success");
     } catch (error) {
@@ -297,6 +391,7 @@ const CardAdderPage: React.FC = () => {
     } finally {
       setIsDeleteOpen(false);
       setPendingDeleteId(null);
+      setPendingDeleteName(null);
       await fetchItems(1, true);
     }
   };
@@ -304,6 +399,7 @@ const CardAdderPage: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      setUploadStatus("ready");
       dispatch({
         type: "SET_GAME_TYPE_FORM",
         payload: {
@@ -313,6 +409,30 @@ const CardAdderPage: React.FC = () => {
       });
     }
   };
+
+  const handleClearSearch = () => setSearch("");
+
+  const handleRequestClearFile = () => {
+    if (form.imagePath || file) {
+      setIsClearFileOpen(true);
+    } else {
+      resetForm();
+    }
+  };
+
+  const handleConfirmClearFile = () => {
+    setIsClearFileOpen(false);
+    setFile(null);
+    setFilePreviewUrl(null);
+    setUploadStatus("idle");
+    setUploadError(null);
+    dispatch({
+      type: "SET_GAME_TYPE_FORM",
+      payload: { ...form, imagePath: "" },
+    });
+  };
+
+  const drawerTitle = drawerMode === "create" ? "Create game" : "Edit game";
 
   return (
     <div className="admin-grid">
@@ -338,11 +458,32 @@ const CardAdderPage: React.FC = () => {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
+              {search && (
+                <button className="btn btn-outline" onClick={handleClearSearch}>
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
           <div className="mt-4 h-[420px] overflow-y-auto" onScroll={handleScroll}>
-            {filteredItems.length === 0 ? (
+            {listLoading ? (
+              <div className="space-y-3">
+                <div className="skeleton h-10" />
+                <div className="skeleton h-10" />
+                <div className="skeleton h-10" />
+              </div>
+            ) : listError ? (
+              <EmptyState
+                title="Unable to load games"
+                description={listError}
+                action={
+                  <button className="btn btn-primary" onClick={() => fetchItems(1, true)}>
+                    Retry
+                  </button>
+                }
+              />
+            ) : filteredItems.length === 0 ? (
               <EmptyState
                 title="No games yet"
                 description="Create your first game entry to populate the catalog."
@@ -358,19 +499,30 @@ const CardAdderPage: React.FC = () => {
                   <tr>
                     <th>Name</th>
                     <th>Price</th>
+                    <th>Type</th>
+                    <th>Updated</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => (
-                    <tr key={item.id}>
+                    <tr
+                      key={item.id}
+                      className={item.id === selectedGameId ? "admin-table__row-selected" : ""}
+                    >
                       <td>
                         <button className="text-left" onClick={() => handleSelectGame(item)}>
-                          <strong>{item.name || "Unnamed"}</strong>
-                          <div className="admin-table__cell-muted">{item.title}</div>
+                          <strong title={item.name || "Unnamed"} className="admin-table__cell-truncate">
+                            {item.name || "Unnamed"}
+                          </strong>
+                          <div className="admin-table__cell-muted admin-table__cell-truncate" title={item.title}>
+                            {item.title}
+                          </div>
                         </button>
                       </td>
-                      <td>{item.price ?? 0} ₽</td>
+                      <td>{formatPrice(item.price)}</td>
+                      <td className="admin-table__cell-muted">{item.gameType ?? "—"}</td>
+                      <td className="admin-table__cell-muted">{item.releaseDate?.split("T")[0] ?? "—"}</td>
                       <td>
                         <div className="flex gap-2">
                           <button className="btn btn-outline" onClick={() => handleEditGame(item)}>
@@ -393,13 +545,24 @@ const CardAdderPage: React.FC = () => {
         </Card>
 
         <Card className="hidden lg:block">
-          {selectedGame ? (
+          {isDetailsLoading ? (
+            <div className="space-y-3">
+              <div className="skeleton h-10" />
+              <div className="skeleton h-20" />
+              <div className="skeleton h-20" />
+            </div>
+          ) : selectedGame ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3>{selectedGame.name || "Unnamed"}</h3>
-                <button className="btn btn-outline" onClick={() => handleEditGame(selectedGame)}>
-                  Edit
-                </button>
+                <div className="flex gap-2">
+                  <button className="btn btn-outline" onClick={() => handleEditGame(selectedGame)}>
+                    Edit
+                  </button>
+                  <button className="btn btn-outline" onClick={() => requestDelete(selectedGame.id)}>
+                    Delete
+                  </button>
+                </div>
               </div>
 
               <Card>
@@ -415,7 +578,7 @@ const CardAdderPage: React.FC = () => {
 
               <Card>
                 <h3>Action settings</h3>
-                <p><strong>Price:</strong> {selectedGame.price ?? 0} ₽</p>
+                <p><strong>Price:</strong> {formatPrice(selectedGame.price)}</p>
                 <p><strong>Game type:</strong> {selectedGame.gameType ?? "—"}</p>
               </Card>
 
@@ -445,7 +608,7 @@ const CardAdderPage: React.FC = () => {
 
       <Drawer
         isOpen={drawerOpen}
-        title={drawerMode === "create" ? "Create game" : "Edit game"}
+        title={drawerTitle}
         onClose={handleDrawerClose}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -458,7 +621,9 @@ const CardAdderPage: React.FC = () => {
               value={form.name}
               onChange={handleChange}
               className="w-full p-2 border rounded"
+              ref={nameInputRef}
             />
+            {validationErrors.name && <small className="text-red-500">{validationErrors.name}</small>}
             <label className="text-sm font-semibold">Title</label>
             <input
               type="text"
@@ -467,6 +632,7 @@ const CardAdderPage: React.FC = () => {
               onChange={handleChange}
               className="w-full p-2 border rounded"
             />
+            {validationErrors.title && <small className="text-red-500">{validationErrors.title}</small>}
           </Card>
 
           <Card>
@@ -476,8 +642,17 @@ const CardAdderPage: React.FC = () => {
               name="description"
               value={form.description}
               onChange={handleChange}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.stopPropagation();
+                }
+              }}
               className="w-full p-2 border rounded min-h-[120px]"
             />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>{form.description?.length ?? 0} / 500</span>
+              {validationErrors.description && <span className="text-red-500">{validationErrors.description}</span>}
+            </div>
           </Card>
 
           <Card>
@@ -490,6 +665,7 @@ const CardAdderPage: React.FC = () => {
               onChange={handleChange}
               className="w-full p-2 border rounded"
             />
+            {validationErrors.price && <small className="text-red-500">{validationErrors.price}</small>}
             <label className="text-sm font-semibold">Game type</label>
             <GameTypeDropdown />
           </Card>
@@ -509,30 +685,33 @@ const CardAdderPage: React.FC = () => {
           <Card>
             <h3>Media</h3>
             <input type="file" onChange={handleFileChange} className="input" />
+            {filePreviewUrl && (
+              <img src={filePreviewUrl} alt="Preview" className="mt-3 rounded-md border" />
+            )}
             {form.imagePath && (
               <p className="mt-2 text-gray-600">
                 Current file: {form.imagePath.split("\\").pop()}
               </p>
             )}
-            <button
-              type="button"
-              onClick={() =>
-                dispatch({
-                  type: "SET_GAME_TYPE_FORM",
-                  payload: { ...form, imagePath: "" },
-                })
-              }
-              className="btn btn-outline mt-2"
-            >
-              Clear file
-            </button>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRequestClearFile}
+                className="btn btn-outline"
+                aria-label="Clear file"
+              >
+                🗑 Clear file
+              </button>
+              {uploadStatus === "uploading" && <span className="text-xs text-gray-500">Uploading...</span>}
+              {uploadStatus === "error" && <span className="text-xs text-red-500">{uploadError}</span>}
+            </div>
           </Card>
 
-          <div className="flex justify-end gap-3">
+          <div className="admin-drawer__footer">
             <button type="button" className="btn btn-outline" onClick={handleDrawerClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button type="submit" className="btn btn-primary" disabled={saving || !isFormValid}>
               {saving
                 ? "Saving..."
                 : drawerMode === "create"
@@ -541,6 +720,60 @@ const CardAdderPage: React.FC = () => {
             </button>
           </div>
         </form>
+      </Drawer>
+
+      <Drawer
+        isOpen={detailsDrawerOpen && !drawerOpen}
+        title="Game details"
+        onClose={() => setDetailsDrawerOpen(false)}
+      >
+        {selectedGame ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3>{selectedGame.name || "Unnamed"}</h3>
+              <div className="flex gap-2">
+                <button className="btn btn-outline" onClick={() => handleEditGame(selectedGame)}>
+                  Edit
+                </button>
+                <button className="btn btn-outline" onClick={() => requestDelete(selectedGame.id)}>
+                  Delete
+                </button>
+              </div>
+            </div>
+            <Card>
+              <h3>Basic info</h3>
+              <p><strong>Name:</strong> {selectedGame.name || "—"}</p>
+              <p><strong>Title:</strong> {selectedGame.title || "—"}</p>
+            </Card>
+            <Card>
+              <h3>Content</h3>
+              <p>{selectedGame.description || "—"}</p>
+            </Card>
+            <Card>
+              <h3>Action settings</h3>
+              <p><strong>Price:</strong> {formatPrice(selectedGame.price)}</p>
+              <p><strong>Game type:</strong> {selectedGame.gameType ?? "—"}</p>
+            </Card>
+            <Card>
+              <h3>Date</h3>
+              <p>{selectedGame.releaseDate?.split("T")[0] ?? "—"}</p>
+            </Card>
+            <Card>
+              <h3>Media</h3>
+              <p>{selectedGame.imagePath?.split("\\").pop() ?? "—"}</p>
+            </Card>
+          </div>
+        ) : (
+          <EmptyState
+            title="Select a game to view details"
+            description="Choose a game from the list to see its details here."
+            action={
+              <button className="btn btn-primary" onClick={handleCreateGame}>
+                Create game
+              </button>
+            }
+          />
+        )}
       </Drawer>
 
       <ModalConfirm
@@ -554,11 +787,23 @@ const CardAdderPage: React.FC = () => {
 
       <ModalConfirm
         isOpen={isDeleteOpen}
-        title="Delete this item?"
-        description="Это действие необратимо. Удалить объект?"
+        title={`Delete game “${pendingDeleteName ?? "Unnamed"}”?`}
+        description="Это действие необратимо."
         confirmLabel="Delete"
         onConfirm={handleDelete}
-        onCancel={() => setIsDeleteOpen(false)}
+        onCancel={() => {
+          setIsDeleteOpen(false);
+          setPendingDeleteName(null);
+        }}
+      />
+
+      <ModalConfirm
+        isOpen={isClearFileOpen}
+        title="Clear file?"
+        description="Remove the selected file? This cannot be undone."
+        confirmLabel="Clear"
+        onConfirm={handleConfirmClearFile}
+        onCancel={() => setIsClearFileOpen(false)}
       />
     </div>
   );
