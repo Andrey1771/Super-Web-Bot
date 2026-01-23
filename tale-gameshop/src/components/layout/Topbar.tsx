@@ -21,7 +21,12 @@ const Topbar: React.FC<TopbarProps> = ({ title, onToggleSidebar }) => {
         />
       </div>
       <div className="admin-topbar__actions">
-        <button className="btn btn-primary">+ Add</button>
+        <button
+          className="btn btn-primary"
+          onClick={() => window.dispatchEvent(new CustomEvent("admin:add"))}
+        >
+          + Add
+        </button>
         <button className="btn btn-outline">Profile</button>
       </div>
     </header>
