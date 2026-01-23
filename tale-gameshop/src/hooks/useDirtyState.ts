@@ -1,5 +1,32 @@
-import { useEffect, useState } from "react";
-import { unstable_useBlocker as useBlocker } from "react-router-dom";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { UNSAFE_NavigationContext } from "react-router-dom";
+
+type BlockerTransaction = {
+  retry: () => void;
+};
+
+const useBlocker = (blocker: (tx: BlockerTransaction) => void, when = true) => {
+  const { navigator } = useContext(UNSAFE_NavigationContext);
+
+  useEffect(() => {
+    if (!when) {
+      return;
+    }
+
+    const unblock = (navigator as any).block((tx: BlockerTransaction) => {
+      const autoUnblockTx = {
+        ...tx,
+        retry() {
+          unblock();
+          tx.retry();
+        },
+      };
+      blocker(autoUnblockTx);
+    });
+
+    return unblock;
+  }, [navigator, blocker, when]);
+};
 
 type UseDirtyStateOptions = {
   when: boolean;
@@ -9,24 +36,23 @@ type UseDirtyStateOptions = {
 export const useDirtyState = (isDirty: boolean, options?: UseDirtyStateOptions) => {
   const [dirty, setDirty] = useState(isDirty);
   const shouldBlock = options?.when ?? dirty;
-  const blocker = useBlocker(shouldBlock);
+  const message = options?.message ?? "You have unsaved changes. Leave anyway?";
 
   useEffect(() => {
     setDirty(isDirty);
   }, [isDirty]);
 
-  useEffect(() => {
-    if (!blocker.state || blocker.state !== "blocked") {
-      return;
-    }
+  const blocker = useCallback(
+    (tx: BlockerTransaction) => {
+      const proceed = window.confirm(message);
+      if (proceed) {
+        tx.retry();
+      }
+    },
+    [message]
+  );
 
-    const proceed = window.confirm(options?.message ?? "You have unsaved changes. Leave anyway?");
-    if (proceed) {
-      blocker.proceed();
-    } else {
-      blocker.reset();
-    }
-  }, [blocker, options?.message]);
+  useBlocker(blocker, shouldBlock);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
