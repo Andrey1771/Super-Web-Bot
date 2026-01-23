@@ -183,9 +183,10 @@ const UserInfoPage: React.FC = () => {
                             allowColumnResizing={true}
                             columnResizingMode="widget"
                             columnChooser={{ enabled: true }}
-                            columnAutoWidth={true}
+                            columnAutoWidth={false}
+                            columnHidingEnabled={true}
                             wordWrapEnabled={false}
-                            scrolling={{ mode: "virtual", useNative: true }}
+                            scrolling={{ mode: "standard", showScrollbar: "always", useNative: true }}
                             pager={{ visible: false }}
                             ref={gridRef}
                             onRowClick={(event) => setSelectedRow(event.data)}
@@ -212,12 +213,12 @@ const UserInfoPage: React.FC = () => {
                                     </div>
                                 )}
                             />
-                            <Column dataField="username" caption="Username" width={200} />
-                            <Column dataField="clientId" caption="Client ID" width={180} />
-                            <Column dataField="auth_method" caption="Auth Method" width={140} />
-                            <Column dataField="auth_type" caption="Auth Type" width={120} />
-                            <Column dataField="code_id" caption="Code ID" width={160} />
-                            <Column dataField="consent" caption="Consent" width={140} />
+                            <Column dataField="username" caption="Username" minWidth={180} />
+                            <Column dataField="clientId" caption="Client ID" minWidth={160} />
+                            <Column dataField="auth_method" caption="Auth Method" minWidth={140} />
+                            <Column dataField="auth_type" caption="Auth Type" minWidth={120} />
+                            <Column dataField="code_id" caption="Code ID" minWidth={150} />
+                            <Column dataField="consent" caption="Consent" minWidth={140} />
                             <Column
                                 dataField="redirect_uri"
                                 caption="Redirect URI"
@@ -228,12 +229,12 @@ const UserInfoPage: React.FC = () => {
                                     </span>
                                 )}
                             />
-                            <Column dataField="response_mode" caption="Response Mode" width={140} />
-                            <Column dataField="response_type" caption="Response Type" width={140} />
-                            <Column dataField="ipAddress" caption="IP Address" width={140} />
-                            <Column dataField="realmId" caption="Realm ID" width={160} />
-                            <Column dataField="time" caption="Timestamp" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" width={170} />
-                            <Column dataField="type" caption="Event Type" width={120} />
+                            <Column dataField="response_mode" caption="Response Mode" minWidth={140} />
+                            <Column dataField="response_type" caption="Response Type" minWidth={140} />
+                            <Column dataField="ipAddress" caption="IP Address" minWidth={140} />
+                            <Column dataField="realmId" caption="Realm ID" minWidth={160} />
+                            <Column dataField="time" caption="Timestamp" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" minWidth={170} />
+                            <Column dataField="type" caption="Event Type" minWidth={120} />
                         </DataGrid>
                     </div>
                 )}
