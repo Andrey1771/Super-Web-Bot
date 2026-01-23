@@ -1,32 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from "react";
-import { UNSAFE_NavigationContext } from "react-router-dom";
-
-type BlockerTransaction = {
-  retry: () => void;
-};
-
-const useBlocker = (blocker: (tx: BlockerTransaction) => void, when = true) => {
-  const { navigator } = useContext(UNSAFE_NavigationContext);
-
-  useEffect(() => {
-    if (!when) {
-      return;
-    }
-
-    const unblock = (navigator as any).block((tx: BlockerTransaction) => {
-      const autoUnblockTx = {
-        ...tx,
-        retry() {
-          unblock();
-          tx.retry();
-        },
-      };
-      blocker(autoUnblockTx);
-    });
-
-    return unblock;
-  }, [navigator, blocker, when]);
-};
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type UseDirtyStateOptions = {
   when: boolean;
@@ -35,24 +7,74 @@ type UseDirtyStateOptions = {
 
 export const useDirtyState = (isDirty: boolean, options?: UseDirtyStateOptions) => {
   const [dirty, setDirty] = useState(isDirty);
-  const shouldBlock = options?.when ?? dirty;
   const message = options?.message ?? "You have unsaved changes. Leave anyway?";
+  const previousPathRef = useRef<string>(window.location.pathname + window.location.search);
 
   useEffect(() => {
     setDirty(isDirty);
   }, [isDirty]);
 
-  const blocker = useCallback(
-    (tx: BlockerTransaction) => {
-      const proceed = window.confirm(message);
-      if (proceed) {
-        tx.retry();
-      }
-    },
-    [message]
-  );
+  const shouldBlock = options?.when ?? dirty;
 
-  useBlocker(blocker, shouldBlock);
+  const confirmNavigation = useCallback(() => {
+    return window.confirm(message);
+  }, [message]);
+
+  useEffect(() => {
+    if (!shouldBlock) {
+      return;
+    }
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest("a") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) {
+        return;
+      }
+      const proceed = confirmNavigation();
+      if (!proceed) {
+        event.preventDefault();
+      }
+    };
+
+    const handlePopState = () => {
+      const proceed = confirmNavigation();
+      if (!proceed) {
+        window.history.pushState(null, "", previousPathRef.current);
+      } else {
+        previousPathRef.current = window.location.pathname + window.location.search;
+      }
+    };
+
+    const originalPushState = window.history.pushState.bind(window.history);
+    const originalReplaceState = window.history.replaceState.bind(window.history);
+
+    window.history.pushState = (...args) => {
+      if (!confirmNavigation()) {
+        return;
+      }
+      originalPushState(...args);
+      previousPathRef.current = window.location.pathname + window.location.search;
+    };
+
+    window.history.replaceState = (...args) => {
+      if (!confirmNavigation()) {
+        return;
+      }
+      originalReplaceState(...args);
+      previousPathRef.current = window.location.pathname + window.location.search;
+    };
+
+    document.addEventListener("click", handleClick, true);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      document.removeEventListener("click", handleClick, true);
+      window.removeEventListener("popstate", handlePopState);
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+    };
+  }, [confirmNavigation, shouldBlock]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
