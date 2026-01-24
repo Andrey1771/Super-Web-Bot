@@ -340,13 +340,11 @@ const CardAdderPage: React.FC = () => {
       ...payload,
       price: payload.price ? Number(payload.price) : 0,
       gameType: payload.gameType ? Number(payload.gameType) : 0,
+      imagePath: payload.coverMediaId ? "" : payload.imagePath ?? "",
     };
 
     if (!payload.releaseDate) {
       delete cleaned.releaseDate;
-    }
-    if (!payload.imagePath || payload.coverMediaId) {
-      delete cleaned.imagePath;
     }
     if (!payload.coverMediaId) {
       delete cleaned.coverMediaId;
