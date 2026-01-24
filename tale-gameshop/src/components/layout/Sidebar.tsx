@@ -53,8 +53,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         items: [
           {
             label: "Orders",
+            to: "/admin/orders",
             icon: "🧾",
-            disabled: true,
           },
           {
             label: "Refunds",

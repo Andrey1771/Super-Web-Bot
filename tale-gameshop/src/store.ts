@@ -8,6 +8,7 @@ export interface Form { //TODO
     title: string,
     gameType: number,
     imagePath: string,
+    coverMediaId: string,
     releaseDate: string,
 }
 
@@ -19,6 +20,7 @@ const initialState = {  form: {
         title: '',
         gameType: 0,
         imagePath: '',
+        coverMediaId: '',
         releaseDate: '',
     } as Form };
 

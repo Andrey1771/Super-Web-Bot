@@ -52,6 +52,17 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<List<Game>>(gamesDb);
         }
 
+        public async Task<List<Game>> GetByCoverMediaIdAsync(string mediaId)
+        {
+            if (string.IsNullOrWhiteSpace(mediaId))
+            {
+                return new List<Game>();
+            }
+
+            var gamesDb = await _games.Find(game => game.CoverMediaId == mediaId).ToListAsync();
+            return _mapper.Map<List<Game>>(gamesDb);
+        }
+
         public async Task CreateAsync(Game game)
         {
             var gameDb = _mapper.Map<GameDb>(game);

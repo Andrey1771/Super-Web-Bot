@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
+import type { IUrlService } from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 import { useDispatch, useSelector } from "react-redux";
 import { Form } from "../../../store";
@@ -13,6 +14,8 @@ import EmptyState from "../../ui/EmptyState";
 import useDebouncedValue from "../../../hooks/useDebouncedValue";
 import { useDirtyState } from "../../../hooks/useDirtyState";
 import { useToast } from "../../ui/ToastProvider";
+import MediaPickerModal from "../media-library/MediaPickerModal";
+import type { MediaAsset } from "../../../types/media";
 
 type DrawerMode = "edit" | "create" | null;
 
@@ -24,6 +27,7 @@ type GameItem = {
   title?: string;
   gameType?: number;
   imagePath?: string;
+  coverMediaId?: string;
   releaseDate?: string;
 };
 
@@ -35,6 +39,7 @@ const emptyForm: Form = {
   title: "",
   gameType: 0,
   imagePath: "",
+  coverMediaId: "",
   releaseDate: "",
 };
 
@@ -45,10 +50,6 @@ const CardAdderPage: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "ready" | "uploading" | "error">("idle");
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState("");
@@ -59,12 +60,17 @@ const CardAdderPage: React.FC = () => {
   const [pendingDeleteName, setPendingDeleteName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
-  const [isClearFileOpen, setIsClearFileOpen] = useState(false);
+  const [isRemoveMediaOpen, setIsRemoveMediaOpen] = useState(false);
+  const [pendingRemoveTarget, setPendingRemoveTarget] = useState<"cover" | "legacy" | null>(null);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
   const [saveErrorDetails, setSaveErrorDetails] = useState<string | null>(null);
   const [isSaveErrorOpen, setIsSaveErrorOpen] = useState(false);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<MediaAsset | null>(null);
+  const [mediaLoading, setMediaLoading] = useState(false);
   const { addToast } = useToast();
   const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
   const form = useSelector((state: { form: Form }) => state.form);
   const dispatch = useDispatch();
@@ -103,14 +109,15 @@ const CardAdderPage: React.FC = () => {
   }, [drawerOpen]);
 
   React.useEffect(() => {
-    if (!file) {
-      setFilePreviewUrl(null);
+    if (!drawerOpen) {
       return;
     }
-    const preview = URL.createObjectURL(file);
-    setFilePreviewUrl(preview);
-    return () => URL.revokeObjectURL(preview);
-  }, [file]);
+    if (!form.coverMediaId) {
+      setSelectedMedia(null);
+      return;
+    }
+    fetchMediaDetails(form.coverMediaId, true);
+  }, [drawerOpen, form.coverMediaId]);
 
   const fetchItems = async (pageNumber: number, reset = false) => {
     try {
@@ -147,7 +154,7 @@ const CardAdderPage: React.FC = () => {
       return false;
     }
     if (drawerMode === "create") {
-      return Boolean(form.name || form.description || form.title || form.imagePath);
+      return Boolean(form.name || form.description || form.title || form.imagePath || form.coverMediaId);
     }
     if (!selectedGame) {
       return false;
@@ -159,7 +166,8 @@ const CardAdderPage: React.FC = () => {
       Number(form.price) !== Number(selectedGame.price ?? 0) ||
       Number(form.gameType) !== Number(selectedGame.gameType ?? 0) ||
       (form.releaseDate ?? "") !== (selectedGame.releaseDate?.split("T")[0] ?? "") ||
-      form.imagePath !== (selectedGame.imagePath ?? "")
+      form.imagePath !== (selectedGame.imagePath ?? "") ||
+      form.coverMediaId !== (selectedGame.coverMediaId ?? "")
     );
   }, [drawerOpen, drawerMode, form, selectedGame]);
 
@@ -189,6 +197,77 @@ const CardAdderPage: React.FC = () => {
     return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" }).format(value);
   };
 
+  const getLegacyFileName = (path: string) => {
+    if (!path) {
+      return "";
+    }
+    const normalized = path.replace(/\\/g, "/");
+    return normalized.split("/").pop() ?? "";
+  };
+
+  const getLegacyRelativeUrl = (path: string) => {
+    const fileName = getLegacyFileName(path);
+    if (!fileName) {
+      return "";
+    }
+    return `/uploads/${fileName}`;
+  };
+
+  const getLegacyPreviewUrl = (path: string) => {
+    const relative = getLegacyRelativeUrl(path);
+    if (!relative) {
+      return "";
+    }
+    return `${urlService.apiBaseUrl}${relative}`;
+  };
+
+  const fetchMediaDetails = async (mediaId: string, silent = false) => {
+    if (!mediaId) {
+      setSelectedMedia(null);
+      return;
+    }
+    try {
+      if (!silent) {
+        setMediaLoading(true);
+      }
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.get(`/api/media/${mediaId}`);
+      setSelectedMedia(response.data as MediaAsset);
+    } catch (error) {
+      console.error("Failed to load media details", error);
+      setSelectedMedia(null);
+    } finally {
+      if (!silent) {
+        setMediaLoading(false);
+      }
+    }
+  };
+
+  const importLegacyMedia = async () => {
+    if (!form.imagePath) {
+      return;
+    }
+    try {
+      setMediaLoading(true);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.post("/api/media/import", {
+        relativeUrl: getLegacyRelativeUrl(form.imagePath),
+        contentType: "image",
+      });
+      const asset = response.data as MediaAsset;
+      setSelectedMedia(asset);
+      dispatch({
+        type: "SET_GAME_TYPE_FORM",
+        payload: { ...form, coverMediaId: asset.id },
+      });
+      addToast("Legacy image imported to library.", "success");
+    } catch (error) {
+      console.error("Failed to import legacy media", error);
+      addToast("Failed to import legacy image.", "error");
+    } finally {
+      setMediaLoading(false);
+    }
+  };
   const applyFormFromGame = (item: GameItem) => {
     dispatch({
       type: "SET_GAME_TYPE_FORM",
@@ -200,6 +279,7 @@ const CardAdderPage: React.FC = () => {
         title: item.title || "",
         gameType: item.gameType || 0,
         imagePath: item.imagePath || "",
+        coverMediaId: item.coverMediaId || "",
         releaseDate: item.releaseDate ? item.releaseDate.split("T")[0] : "",
       },
     });
@@ -210,10 +290,7 @@ const CardAdderPage: React.FC = () => {
       type: "SET_GAME_TYPE_FORM",
       payload: emptyForm,
     });
-    setFile(null);
-    setFilePreviewUrl(null);
-    setUploadStatus("idle");
-    setUploadError(null);
+    setSelectedMedia(null);
   };
 
   const handleSelectGame = (item: GameItem) => {
@@ -221,6 +298,11 @@ const CardAdderPage: React.FC = () => {
     setSelectedGameId(item.id);
     setSelectedGame(item);
     applyFormFromGame(item);
+    if (item.coverMediaId) {
+      fetchMediaDetails(item.coverMediaId);
+    } else {
+      setSelectedMedia(null);
+    }
     const isMobile = window.innerWidth < 1024;
     if (isMobile) {
       setDetailsDrawerOpen(true);
@@ -253,36 +335,6 @@ const CardAdderPage: React.FC = () => {
     });
   };
 
-  const uploadImage = async () => {
-    if (!file) {
-      return form.imagePath;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      setUploadStatus("uploading");
-      setUploadError(null);
-      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-      const response = await apiClient.api.post("/api/image/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setUploadStatus("idle");
-      return getFilePath(response.data.filePath);
-    } catch (error) {
-      console.error("Error loading image:", error);
-      setUploadStatus("error");
-      setUploadError("Failed to upload file.");
-      return form.imagePath;
-    }
-  };
-
-  const getFilePath = (fullPath: string) => {
-    const fileName = fullPath.split("\\").pop();
-    return `wwwroot\\uploads\\${fileName}`;
-  };
-
   const buildPayload = (payload: Form) => {
     const cleaned: Record<string, unknown> = {
       ...payload,
@@ -293,8 +345,11 @@ const CardAdderPage: React.FC = () => {
     if (!payload.releaseDate) {
       delete cleaned.releaseDate;
     }
-    if (!payload.imagePath) {
+    if (!payload.imagePath || payload.coverMediaId) {
       delete cleaned.imagePath;
+    }
+    if (!payload.coverMediaId) {
+      delete cleaned.coverMediaId;
     }
     if (!payload.description) {
       delete cleaned.description;
@@ -312,11 +367,8 @@ const CardAdderPage: React.FC = () => {
       return;
     }
     setSaving(true);
-    const imagePath = await uploadImage();
-
     const updatedItem = {
       ...form,
-      imagePath,
     };
 
     try {
@@ -422,40 +474,39 @@ const CardAdderPage: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setUploadStatus("ready");
-      dispatch({
-        type: "SET_GAME_TYPE_FORM",
-        payload: {
-          ...form,
-          imagePath: e.target.files[0].name ?? "",
-        },
-      });
-    }
-  };
-
   const handleClearSearch = () => setSearch("");
 
-  const handleRequestClearFile = () => {
-    if (form.imagePath || file) {
-      setIsClearFileOpen(true);
-    } else {
-      resetForm();
-    }
-  };
+  const handleOpenMediaPicker = () => setMediaPickerOpen(true);
 
-  const handleConfirmClearFile = () => {
-    setIsClearFileOpen(false);
-    setFile(null);
-    setFilePreviewUrl(null);
-    setUploadStatus("idle");
-    setUploadError(null);
+  const handleSelectMedia = (asset: MediaAsset) => {
+    setSelectedMedia(asset);
     dispatch({
       type: "SET_GAME_TYPE_FORM",
-      payload: { ...form, imagePath: "" },
+      payload: { ...form, coverMediaId: asset.id },
     });
+  };
+
+  const handleRequestRemove = (target: "cover" | "legacy") => {
+    setPendingRemoveTarget(target);
+    setIsRemoveMediaOpen(true);
+  };
+
+  const handleConfirmRemove = () => {
+    if (pendingRemoveTarget === "cover") {
+      setSelectedMedia(null);
+      dispatch({
+        type: "SET_GAME_TYPE_FORM",
+        payload: { ...form, coverMediaId: "" },
+      });
+    }
+    if (pendingRemoveTarget === "legacy") {
+      dispatch({
+        type: "SET_GAME_TYPE_FORM",
+        payload: { ...form, imagePath: "" },
+      });
+    }
+    setIsRemoveMediaOpen(false);
+    setPendingRemoveTarget(null);
   };
 
   const drawerTitle = drawerMode === "create" ? "Create game" : "Edit game";
@@ -615,7 +666,33 @@ const CardAdderPage: React.FC = () => {
 
               <Card>
                 <h3>Media</h3>
-                <p>{selectedGame.imagePath?.split("\\").pop() ?? "—"}</p>
+                {selectedGame.coverMediaId ? (
+                  selectedMedia ? (
+                    <div className="flex items-center gap-3">
+                      <img src={selectedMedia.url} alt={selectedMedia.filename} className="h-12 w-12 rounded object-cover" />
+                      <div>
+                        <p className="text-sm font-semibold">{selectedMedia.filename}</p>
+                        <p className="text-xs text-gray-500">Linked media</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">Loading media preview...</p>
+                  )
+                ) : selectedGame.imagePath ? (
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={getLegacyPreviewUrl(selectedGame.imagePath)}
+                      alt="Legacy"
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold">{getLegacyFileName(selectedGame.imagePath)}</p>
+                      <p className="text-xs text-gray-500">Legacy image</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p>—</p>
+                )}
               </Card>
             </div>
           ) : (
@@ -710,27 +787,64 @@ const CardAdderPage: React.FC = () => {
 
           <Card>
             <h3>Media</h3>
-            <input type="file" onChange={handleFileChange} className="input" />
-            {filePreviewUrl && (
-              <img src={filePreviewUrl} alt="Preview" className="mt-3 rounded-md border" />
+            {form.coverMediaId && selectedMedia ? (
+              <div className="space-y-3">
+                <div className="h-36 w-full overflow-hidden rounded border">
+                  <img src={selectedMedia.url} alt={selectedMedia.filename} className="h-full w-full object-cover" />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{selectedMedia.filename}</p>
+                    <p className="text-xs text-gray-500">Media ID: {selectedMedia.id}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" className="btn btn-outline" onClick={handleOpenMediaPicker}>
+                      Change
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => handleRequestRemove("cover")}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : form.imagePath ? (
+              <div className="space-y-3">
+                <div className="h-36 w-full overflow-hidden rounded border">
+                  <img src={getLegacyPreviewUrl(form.imagePath)} alt="Legacy cover" className="h-full w-full object-cover" />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">Legacy image</p>
+                    <p className="text-xs text-gray-500">{getLegacyFileName(form.imagePath)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" className="btn btn-outline" onClick={importLegacyMedia} disabled={mediaLoading}>
+                      {mediaLoading ? "Importing..." : "Import to library"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => handleRequestRemove("legacy")}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="h-36 w-full rounded border border-dashed flex items-center justify-center text-sm text-gray-500">
+                  No cover selected yet.
+                </div>
+                <button type="button" className="btn btn-primary" onClick={handleOpenMediaPicker}>
+                  Select image
+                </button>
+              </div>
             )}
-            {form.imagePath && (
-              <p className="mt-2 text-gray-600">
-                Current file: {form.imagePath.split("\\").pop()}
-              </p>
-            )}
-            <div className="mt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRequestClearFile}
-                className="btn btn-outline"
-                aria-label="Clear file"
-              >
-                🗑 Clear file
-              </button>
-              {uploadStatus === "uploading" && <span className="text-xs text-gray-500">Uploading...</span>}
-              {uploadStatus === "error" && <span className="text-xs text-red-500">{uploadError}</span>}
-            </div>
           </Card>
 
           <div className="admin-drawer__footer">
@@ -786,7 +900,33 @@ const CardAdderPage: React.FC = () => {
             </Card>
             <Card>
               <h3>Media</h3>
-              <p>{selectedGame.imagePath?.split("\\").pop() ?? "—"}</p>
+              {selectedGame.coverMediaId ? (
+                selectedMedia ? (
+                  <div className="flex items-center gap-3">
+                    <img src={selectedMedia.url} alt={selectedMedia.filename} className="h-12 w-12 rounded object-cover" />
+                    <div>
+                      <p className="text-sm font-semibold">{selectedMedia.filename}</p>
+                      <p className="text-xs text-gray-500">Linked media</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Loading media preview...</p>
+                )
+              ) : selectedGame.imagePath ? (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={getLegacyPreviewUrl(selectedGame.imagePath)}
+                    alt="Legacy"
+                    className="h-12 w-12 rounded object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold">{getLegacyFileName(selectedGame.imagePath)}</p>
+                    <p className="text-xs text-gray-500">Legacy image</p>
+                  </div>
+                </div>
+              ) : (
+                <p>—</p>
+              )}
             </Card>
           </div>
         ) : (
@@ -801,6 +941,13 @@ const CardAdderPage: React.FC = () => {
           />
         )}
       </Drawer>
+
+      <MediaPickerModal
+        isOpen={mediaPickerOpen}
+        onClose={() => setMediaPickerOpen(false)}
+        onSelect={handleSelectMedia}
+        initialSelectedId={form.coverMediaId || undefined}
+      />
 
       <ModalConfirm
         isOpen={isDiscardOpen}
@@ -824,12 +971,15 @@ const CardAdderPage: React.FC = () => {
       />
 
       <ModalConfirm
-        isOpen={isClearFileOpen}
-        title="Clear file?"
-        description="Remove the selected file? This cannot be undone."
-        confirmLabel="Clear"
-        onConfirm={handleConfirmClearFile}
-        onCancel={() => setIsClearFileOpen(false)}
+        isOpen={isRemoveMediaOpen}
+        title={pendingRemoveTarget === "legacy" ? "Remove legacy image?" : "Remove cover image?"}
+        description="This will clear the selected image from the game."
+        confirmLabel="Remove"
+        onConfirm={handleConfirmRemove}
+        onCancel={() => {
+          setIsRemoveMediaOpen(false);
+          setPendingRemoveTarget(null);
+        }}
       />
 
       <ModalConfirm

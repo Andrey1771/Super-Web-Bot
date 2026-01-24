@@ -114,6 +114,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 builder.Services.AddScoped<MongoDbInitializer>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddScoped<IMediaAssetRepository, MediaAssetMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
@@ -131,6 +132,7 @@ builder.Services.AddScoped<SupportRoleEvaluator>();
 
 builder.Services.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
+builder.Services.AddAutoMapper(typeof(MediaAssetProfile));
 
 //TODO     ,     ,   
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())

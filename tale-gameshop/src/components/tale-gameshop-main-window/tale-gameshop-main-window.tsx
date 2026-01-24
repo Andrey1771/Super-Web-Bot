@@ -26,6 +26,7 @@ import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
 import AccountRoutes from "../../features/account/routes/AccountRoutes";
 import AdminLayout from "../layout/AdminLayout";
+import OrdersPage from "../../pages/admin/OrdersPage";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -53,6 +54,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="botChanger" element={<BotChangerPage />} />
                         <Route path="siteChanger" element={<SiteChangerPage />} />
                         <Route path="cardAdder" element={<CardAdderPage />} />
+                        <Route path="orders" element={<OrdersPage />} />
                         <Route path="userInfo" element={<UserInfoPage />} />
                         <Route path="userStats" element={<UserStatsPage />} />
                     </Route>
