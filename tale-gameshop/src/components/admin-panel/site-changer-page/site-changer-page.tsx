@@ -3,13 +3,21 @@ import container from "../../../inversify.config";
 import type {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
 import {IUrlService} from "../../../iterfaces/i-url-service";
+import PageHeader from "../../layout/PageHeader";
+import Card from "../../ui/Card";
+import ModalConfirm from "../../ui/ModalConfirm";
+import EmptyState from "../../ui/EmptyState";
+import { useToast } from "../../ui/ToastProvider";
 
 type Data = string[];
 
 const SiteChangerPage: React.FC = () => {
     const [images, setImages] = useState<Data>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
     const [file, setFile] = useState(null);
+    const { addToast } = useToast();
 
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
@@ -32,13 +40,18 @@ const SiteChangerPage: React.FC = () => {
     }
 
     // Удаление изображения
-    const handleDelete = async (index: any) => {
+    const handleDelete = async () => {
+        if (pendingDeleteIndex === null) {
+            return;
+        }
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-            const fileName = images.at(index)?.split('/')?.pop() ?? "";
+            const fileName = images.at(pendingDeleteIndex)?.split('/')?.pop() ?? "";
             await apiClient.api.delete(`/api/Image/delete?fileName=${encodeURIComponent(fileName)}`);
+            addToast("Image deleted", "success");
         } catch (error) {
             console.error('Error getting data:', error);
+            addToast("Failed to delete image", "error");
         }
         finally {
             await updateImages();
@@ -71,6 +84,7 @@ const SiteChangerPage: React.FC = () => {
             setImages([...images, response.data.filePath]); // Добавляем новый путь к изображениям
             setIsModalOpen(false);
             setFile(null); // Сброс файла после загрузки
+            addToast("Image uploaded", "success");
         } catch (error) {
             console.error(error);
             alert("Error load file");
@@ -82,38 +96,66 @@ const SiteChangerPage: React.FC = () => {
 
 
     return (
-        <div className="p-8">
-            <div className="grid grid-cols-5 gap-4">
-                {images.map((image, index) => (
-                    <div key={index} className="relative p-2 border rounded shadow bg-white">
-                        <img
-                            src={`${urlService.apiBaseUrl}${image}`}
-                            alt={`Image ${index + 1}`}
-                            className="w-full h-32 object-fill rounded"
-                        />
+        <div className="admin-grid">
+            <PageHeader
+                title="Media manager"
+                description="Upload, review, and clean up assets used across the storefront."
+                breadcrumbs={["System", "Media"]}
+                primaryAction={
+                    <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+                        Upload image
+                    </button>
+                }
+            />
+
+            <Card>
+                {images.length === 0 ? (
+                    <EmptyState
+                        title="No media yet"
+                        description="Upload the first image to get started."
+                        action={
+                            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+                                Upload first image
+                            </button>
+                        }
+                    />
+                ) : (
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                        {images.map((image, index) => (
+                            <div key={index} className="relative p-2 border rounded shadow bg-white">
+                                <img
+                                    src={`${urlService.apiBaseUrl}${image}`}
+                                    alt={`Image ${index + 1}`}
+                                    className="w-full h-32 object-cover rounded"
+                                />
+                                <button
+                                    onClick={() => {
+                                        setPendingDeleteIndex(index);
+                                        setIsDeleteOpen(true);
+                                    }}
+                                    className="absolute top-1 right-1 bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
+                                >
+                                    Удалить
+                                </button>
+                                <p className="text-center mt-2 text-gray-700">
+                                    {image.split('_').pop()}
+                                </p>
+                            </div>
+                        ))}
                         <button
-                            onClick={() => handleDelete(index)}
-                            className="absolute top-1 right-1 bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
+                            onClick={() => setIsModalOpen(true)}
+                            className="upload-dropzone"
                         >
-                            Удалить
+                            Загрузить еще
                         </button>
-                        <p className="text-center mt-2 text-gray-700">
-                            {image.split('_').pop()}
-                        </p>
                     </div>
-                ))}
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="upload-dropzone"
-                >
-                    Загрузить еще
-                </button>
-            </div>
+                )}
+            </Card>
 
             {/* Модальное окно */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
-                    <div className="card w-full max-w-lg">
+                <div className="admin-modal">
+                    <div className="admin-modal__card">
                         <h2 className="text-lg font-semibold mb-4">Add image</h2>
                         <input
                             type="file"
@@ -137,6 +179,22 @@ const SiteChangerPage: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <ModalConfirm
+                isOpen={isDeleteOpen}
+                title="Удалить изображение?"
+                description="Это действие необратимо."
+                confirmLabel="Delete"
+                onConfirm={async () => {
+                    await handleDelete();
+                    setIsDeleteOpen(false);
+                    setPendingDeleteIndex(null);
+                }}
+                onCancel={() => {
+                    setIsDeleteOpen(false);
+                    setPendingDeleteIndex(null);
+                }}
+            />
         </div>
     );
 };

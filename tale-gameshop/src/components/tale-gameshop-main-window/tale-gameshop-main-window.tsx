@@ -25,6 +25,7 @@ import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
 import AccountRoutes from "../../features/account/routes/AccountRoutes";
+import AdminLayout from "../layout/AdminLayout";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -40,12 +41,21 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/about" element={<AboutUs/>}/>
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>
-                    <Route path="/admin" element={<PrivateRoute><AdminPanelPage/></PrivateRoute>}/>
-                    <Route path="/admin/botChanger" element={<PrivateRoute><BotChangerPage/></PrivateRoute>}/>
-                    <Route path="/admin/siteChanger" element={<PrivateRoute><SiteChangerPage/></PrivateRoute>}/>
-                    <Route path="/admin/cardAdder" element={<PrivateRoute><CardAdderPage/></PrivateRoute>}/>
-                    <Route path="/admin/userInfo" element={<PrivateRoute><UserInfoPage/></PrivateRoute>}/>
-                    <Route path="/admin/userStats" element={<PrivateRoute><UserStatsPage/></PrivateRoute>}/>
+                    <Route
+                        path="/admin"
+                        element={
+                            <PrivateRoute>
+                                <AdminLayout />
+                            </PrivateRoute>
+                        }
+                    >
+                        <Route index element={<AdminPanelPage />} />
+                        <Route path="botChanger" element={<BotChangerPage />} />
+                        <Route path="siteChanger" element={<SiteChangerPage />} />
+                        <Route path="cardAdder" element={<CardAdderPage />} />
+                        <Route path="userInfo" element={<UserInfoPage />} />
+                        <Route path="userStats" element={<UserStatsPage />} />
+                    </Route>
                     <Route path="/callback" element={<CallbackPage/>}/>
                     <Route path="/cart" element={<CartPage/>}/>
                     <Route path="/checkout" element={<CheckoutPage/>}/>

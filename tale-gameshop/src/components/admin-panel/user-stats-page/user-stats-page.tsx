@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
 import { IApiClient } from "../../../iterfaces/i-api-client";
 import HighchartsReact from "highcharts-react-official";
 import Highcharts from "highcharts";
 import { DataGrid } from "devextreme-react";
-import { Column, MasterDetail, GroupPanel } from "devextreme-react/cjs/data-grid";
+import { Column } from "devextreme-react/cjs/data-grid";
+import PageHeader from "../../layout/PageHeader";
+import Card from "../../ui/Card";
+import EmptyState from "../../ui/EmptyState";
 
 //TODO Вынести в отдельный файл и следить за тем, чтобы не было повторного вызова
 import Drilldown from 'highcharts/modules/drilldown';
@@ -27,14 +30,15 @@ interface GroupedGameEntry {
 
 const UserStatsPage: React.FC = () => {
     const [groupedGames, setGroupedGames] = useState<GroupedGameEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [chartType, setChartType] = useState<"pie" | "bar">("pie");
+    const [groupBy, setGroupBy] = useState<"name" | "gameId">("name");
     const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const res = await apiClient.api.get("api/Cart");
-                console.log("Fetched Data:", res);
-
                 const gameCountMap: Record<string, GameEntry> = {};
 
                 // Шагаем по данным и считаем количество каждого gameId
@@ -65,32 +69,47 @@ const UserStatsPage: React.FC = () => {
                 setGroupedGames(groupedData);
             } catch (error) {
                 console.error("Error loading table data:", error);
+            } finally {
+                setLoading(false);
             }
         };
 
         fetchData();
     }, []);
 
-    // Формируем данные для графика
-    const chartData = groupedGames.map(({ name, totalCount }) => ({
-        name,
-        y: totalCount,
-        drilldown: name,
-    }));
+    const totalCarts = groupedGames.reduce((sum, entry) => sum + entry.totalCount, 0);
+    const topCategory = groupedGames.sort((a, b) => b.totalCount - a.totalCount)[0];
+    const avgItemsPerCart = groupedGames.length ? (totalCarts / groupedGames.length).toFixed(2) : "—";
 
-    // Формируем данные для drilldown
+    const chartData = useMemo(() => {
+        if (groupBy === "name") {
+            return groupedGames.map(({ name, totalCount }) => ({
+                name: name || "Unnamed",
+                y: totalCount,
+                drilldown: name || "Unnamed",
+            }));
+        }
+        const flatGames = groupedGames.flatMap((entry) =>
+            entry.games.map((game) => ({
+                name: game.gameId,
+                y: game.count,
+            }))
+        );
+        return flatGames;
+    }, [groupBy, groupedGames]);
+
     const drilldownData = groupedGames.map(({ name, games }) => ({
-        id: name,
-        name: `Number of games with this name: ${name} and ID`,
+        id: name || "Unnamed",
+        name: `Games inside ${name || "Unnamed"}`,
         data: games.map(({ gameId, count }) => [gameId, count]),
     }));
 
     const options = {
         chart: {
-            type: "pie",
+            type: chartType,
         },
         title: {
-            text: "Distribution of games by categories in users' carts",
+            text: "Game distribution in carts",
         },
         accessibility: {
             announceNewData: {
@@ -112,62 +131,99 @@ const UserStatsPage: React.FC = () => {
                 data: chartData,
             },
         ],
-        drilldown: {
-            series: drilldownData,
-        },
-    };
-
-    const DetailTemplate = (props: any) => {
-        const { games } = props.data.data;
-
-        return (
-            <React.Fragment>
-                <DataGrid
-                    dataSource={games}
-                    showBorders={true}
-                    keyExpr="gameId"
-                >
-                    <Column dataField="gameId" caption="Game ID" />
-                    <Column dataField="count" caption="Количество" />
-                </DataGrid>
-            </React.Fragment>
-        );
+        drilldown: chartType === "pie" ? { series: drilldownData } : undefined,
     };
 
     return (
-        <div className="p-8 flex gap-4">
-            {/* Блок с таблицей */}
-            <div className="w-1/2">
-                <h2 className="text-xl font-bold mb-4">📋 Table of games</h2>
-                <DataGrid
-                    dataSource={groupedGames.map(gGames => {
-                        return {
-                            name: gGames.name,
-                            totalCount: gGames.totalCount,
-                            games: gGames.games.map(games => `Game: ${games.gameId} Count: ${games.count}`)
-                        };
-                    })}
+        <div className="admin-grid">
+            <PageHeader
+                title="Game statistics"
+                description="Track cart activity, top categories, and distribution trends."
+                breadcrumbs={["Analytics", "Game statistics"]}
+                primaryAction={<button className="btn btn-primary">Export</button>}
+            />
 
-                    keyExpr="name"
-                    showBorders={true}
-                    allowColumnReordering={true}
-                    allowColumnResizing={true}
-                >
-                    <GroupPanel visible={true} />
-                    <Column dataField="name" caption="Категория игр" />
-                    <Column dataField="totalCount" caption="Всего игр" />
-                    <Column dataField="games" caption="Игры подробнее" />
-
-                    {/* Разворачиваем ячейки для подробностей */}
-                    {/*<MasterDetail enabled={true} component={DetailTemplate} />*/}
-                </DataGrid>
+            <div className="admin-grid admin-grid--3">
+                <Card>
+                    <h3>Total carts</h3>
+                    <div className="text-2xl font-semibold">{loading ? "—" : totalCarts}</div>
+                </Card>
+                <Card>
+                    <h3>Unique users</h3>
+                    <div className="text-2xl font-semibold">—</div>
+                </Card>
+                <Card>
+                    <h3>Top category</h3>
+                    <div className="text-2xl font-semibold">{topCategory?.name || "Unnamed"}</div>
+                </Card>
+                <Card>
+                    <h3>Avg items / cart</h3>
+                    <div className="text-2xl font-semibold">{avgItemsPerCart}</div>
+                </Card>
+                <Card>
+                    <h3>Active campaigns</h3>
+                    <div className="text-2xl font-semibold">—</div>
+                </Card>
+                <Card>
+                    <h3>Revenue impact</h3>
+                    <div className="text-2xl font-semibold">—</div>
+                </Card>
             </div>
 
-            {/* Блок с диаграммой */}
-            <div className="w-1/2">
-                <h2 className="text-xl font-bold mb-4">📊 Game statistics</h2>
-                <HighchartsReact highcharts={Highcharts} options={options} />
-            </div>
+            {loading ? (
+                <Card>
+                    <div className="skeleton h-12" />
+                    <div className="skeleton h-12 mt-3" />
+                    <div className="skeleton h-12 mt-3" />
+                </Card>
+            ) : groupedGames.length === 0 ? (
+                <EmptyState title="No analytics yet" description="Once carts are active, stats will appear here." />
+            ) : (
+                <div className="admin-grid admin-grid--2">
+                    <Card>
+                        <div className="flex items-center justify-between">
+                            <h3>Top categories</h3>
+                            <button className="btn btn-outline">View all</button>
+                        </div>
+                        <DataGrid
+                            dataSource={groupedGames.map((gGames) => ({
+                                name: gGames.name || "Unnamed",
+                                totalCount: gGames.totalCount,
+                            }))}
+                            keyExpr="name"
+                            showBorders={true}
+                            allowColumnReordering={true}
+                            allowColumnResizing={true}
+                        >
+                            <Column dataField="name" caption="Category" />
+                            <Column dataField="totalCount" caption="Items in carts" />
+                        </DataGrid>
+                    </Card>
+
+                    <Card>
+                        <div className="flex items-center justify-between gap-2">
+                            <h3>Distribution</h3>
+                            <div className="flex gap-2">
+                                <select
+                                    value={groupBy}
+                                    onChange={(event) => setGroupBy(event.target.value as typeof groupBy)}
+                                    className="w-full p-2 border rounded"
+                                >
+                                    <option value="name">Group by category</option>
+                                    <option value="gameId">Group by game ID</option>
+                                </select>
+                                <button
+                                    className="btn btn-outline"
+                                    onClick={() => setChartType((prev) => (prev === "pie" ? "bar" : "pie"))}
+                                >
+                                    {chartType === "pie" ? "Bar" : "Pie"}
+                                </button>
+                            </div>
+                        </div>
+                        <HighchartsReact highcharts={Highcharts} options={options} />
+                    </Card>
+                </div>
+            )}
         </div>
     );
 };
