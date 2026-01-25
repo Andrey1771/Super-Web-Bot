@@ -117,6 +117,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         title: "Analytics",
         items: [
           {
+            label: "Overview",
+            to: "/admin/analytics",
+            icon: "📈",
+          },
+          {
+            label: "Settings",
+            to: "/admin/analytics/settings",
+            icon: "🧭",
+          },
+          {
             label: "Game stats",
             to: "/admin/userStats",
             icon: "📊",

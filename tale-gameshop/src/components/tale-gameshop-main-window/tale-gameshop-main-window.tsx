@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import TaleGameshopHeader from "../header/tale-gameshop-header/tale-gameshop-header";
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
 import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-page";
@@ -32,15 +32,25 @@ import ProfilePage from "../../pages/admin/ProfilePage";
 import SettingsPage from "../../pages/admin/SettingsPage";
 import BlogPostsPage from "../../pages/admin/blog/BlogPostsPage";
 import BlogPostEditorPage from "../../pages/admin/blog/BlogPostEditorPage";
+import AnalyticsOverviewPage from "../../pages/admin/analytics/AnalyticsOverviewPage";
+import AnalyticsSettingsPage from "../../pages/admin/analytics/AnalyticsSettingsPage";
+import AnalyticsProvider from "../analytics/AnalyticsProvider";
+import CookieBanner from "../analytics/CookieBanner";
+import { analyticsClient } from "../../utils/analytics-client";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith("/admin");
 
+    useEffect(() => {
+        analyticsClient.trackPageView(location.pathname + location.search, document.title);
+    }, [location.pathname, location.search]);
+
     return (
         <div>
             {!isAdminRoute && <TaleGameshopHeader></TaleGameshopHeader>}
             {!isAdminRoute && <div className="main-page-down-header-padding"></div>}
+                {!isAdminRoute && <AnalyticsProvider />}
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
@@ -63,6 +73,8 @@ export default function TaleGameshopMainWindow() {
                         <Route path="blog/posts" element={<BlogPostsPage />} />
                         <Route path="blog/posts/new" element={<BlogPostEditorPage />} />
                         <Route path="blog/posts/:id/edit" element={<BlogPostEditorPage />} />
+                        <Route path="analytics" element={<AnalyticsOverviewPage />} />
+                        <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="settings" element={<SettingsPage />} />
                         <Route path="userInfo" element={<UserInfoPage />} />
@@ -81,6 +93,7 @@ export default function TaleGameshopMainWindow() {
                 </Routes>
             {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
             <ChatBot></ChatBot>
+            {!isAdminRoute && <CookieBanner />}
         </div>
     );
 }

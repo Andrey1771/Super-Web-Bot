@@ -5,6 +5,7 @@ import { Product } from '../../reducers/cart-reducer';
 import container from "../../inversify.config";
 import {IUrlService} from "../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../constants/identifiers";
+import { analyticsClient } from "../../utils/analytics-client";
 
 interface GameCardProps {
     game: Game;
@@ -14,6 +15,20 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
     const { dispatch } = useCart();
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+
+    const buildItem = () => ({
+        item_id: game.id ?? "",
+        item_name: game.title,
+        price: game.price,
+        item_category: String(game.gameType),
+        quantity: 1
+    });
+
+    const handleViewItem = () => {
+        analyticsClient.trackEcommerce("view_item", {
+            items: [buildItem()]
+        });
+    };
 
     const handleAddToCart = () => {
         dispatch({
@@ -26,10 +41,27 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                 image: game.imagePath
             } as Product,
         });
+
+        analyticsClient.trackEcommerce("add_to_cart", {
+            currency: "UAH",
+            value: game.price,
+            items: [buildItem()]
+        });
     };
 
     return (
-        <div key={game.id} className="card h-full flex flex-col">
+        <div
+            key={game.id}
+            className="card h-full flex flex-col"
+            onClick={handleViewItem}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    handleViewItem();
+                }
+            }}
+            role="button"
+            tabIndex={0}
+        >
             <div className="card-media" style={{ height: '180px' }}>
                 <img
                     alt={game.title}
@@ -49,7 +81,10 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                 <p className="muted mb-4">${game.price}</p>
                 <button
                     className="btn btn-primary w-full justify-center mt-auto"
-                    onClick={handleAddToCart}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        handleAddToCart();
+                    }}
                 >
                     Add to Cart
                 </button>

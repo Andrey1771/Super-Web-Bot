@@ -13,6 +13,7 @@ import type { IUrlService } from '../../iterfaces/i-url-service';
 import type { IWishlistService } from '../../iterfaces/i-wishlist-service';
 import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 import type { IRecommendationsService } from '../../iterfaces/i-recommendations-service';
+import { analyticsClient } from '../../utils/analytics-client';
 
 const categoryOrder = [
     'Educational Games',
@@ -50,10 +51,19 @@ const TaleGameshopGameList: React.FC = () => {
     const filterName = searchParams.get('filterName') ?? '';
     const [searchNameDraft, setSearchNameDraft] = useState(filterName);
     const didMergeRef = useRef(false);
+    const searchTimeoutRef = useRef<number | null>(null);
 
     useEffect(() => {
         setSearchNameDraft(filterName);
     }, [filterName]);
+
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                window.clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         (async () => {
@@ -186,6 +196,16 @@ const TaleGameshopGameList: React.FC = () => {
                 params.delete('filterName');
             }
         });
+
+        if (searchTimeoutRef.current) {
+            window.clearTimeout(searchTimeoutRef.current);
+        }
+
+        searchTimeoutRef.current = window.setTimeout(() => {
+            if (value.trim().length >= 2) {
+                analyticsClient.trackEvent('search', { search_term: value.trim() });
+            }
+        }, 600);
     };
 
     const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
