@@ -416,6 +416,8 @@
   border-radius: var(--radius-md);
   background: linear-gradient(140deg, #f1f2f7 0%, #e7e9f2 100%);
   border: 1px solid var(--color-border);
+  background-size: cover;
+  background-position: center;
 }
 
 .main-page .blog-title {
@@ -461,6 +463,8 @@
   background: linear-gradient(135deg, #f1f2f7 0%, #e1e4ee 100%);
   border: 1px solid var(--color-border);
   min-height: 92px;
+  background-size: cover;
+  background-position: center;
 }
 
 .main-page .highlight-body {

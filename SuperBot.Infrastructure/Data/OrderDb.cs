@@ -15,5 +15,12 @@ namespace SuperBot.Infrastructure.Data
         public bool IsPaid { get; set; }
         public bool IsFulfilled { get; set; }
         public DateTime OrderDate { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public string? Status { get; set; }
+        public string? PaymentStatus { get; set; }
+        public string? FulfillmentStatus { get; set; }
+        public decimal? TotalAmount { get; set; }
+        public string? Currency { get; set; }
+        public string? Notes { get; set; }
     }
 }

@@ -24,8 +24,14 @@ import SupportDocPage from "../support-docs/support-doc-page";
 import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
+import BlogPostPage from "../blog-page/blog-post-page";
 import AccountRoutes from "../../features/account/routes/AccountRoutes";
 import AdminLayout from "../layout/AdminLayout";
+import OrdersPage from "../../pages/admin/OrdersPage";
+import ProfilePage from "../../pages/admin/ProfilePage";
+import SettingsPage from "../../pages/admin/SettingsPage";
+import BlogPostsPage from "../../pages/admin/blog/BlogPostsPage";
+import BlogPostEditorPage from "../../pages/admin/blog/BlogPostEditorPage";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -53,6 +59,12 @@ export default function TaleGameshopMainWindow() {
                         <Route path="botChanger" element={<BotChangerPage />} />
                         <Route path="siteChanger" element={<SiteChangerPage />} />
                         <Route path="cardAdder" element={<CardAdderPage />} />
+                        <Route path="orders" element={<OrdersPage />} />
+                        <Route path="blog/posts" element={<BlogPostsPage />} />
+                        <Route path="blog/posts/new" element={<BlogPostEditorPage />} />
+                        <Route path="blog/posts/:id/edit" element={<BlogPostEditorPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                        <Route path="settings" element={<SettingsPage />} />
                         <Route path="userInfo" element={<UserInfoPage />} />
                         <Route path="userStats" element={<UserStatsPage />} />
                     </Route>
@@ -64,6 +76,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/support/docs/:docId" element={<SupportDocPage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
+                    <Route path="/blog/:slug" element={<BlogPostPage/>}/>
                     <Route path="/account/*" element={<AccountRoutes/>}/>
                 </Routes>
             {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}

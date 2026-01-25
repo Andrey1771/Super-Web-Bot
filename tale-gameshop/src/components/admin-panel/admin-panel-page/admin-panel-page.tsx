@@ -2,15 +2,22 @@ import React from "react";
 import { Link } from "react-router-dom";
 import PageHeader from "../../layout/PageHeader";
 import Card from "../../ui/Card";
+import { useAdminHeader } from "../../layout/AdminHeaderContext";
 
 const AdminPanelPage: React.FC = () => {
+    const { setHeaderActions, setPageTitle } = useAdminHeader();
+
+    React.useEffect(() => {
+        setPageTitle("Dashboard");
+        setHeaderActions([]);
+    }, [setHeaderActions, setPageTitle]);
+
     return (
         <div className="admin-grid">
             <PageHeader
                 title="Admin overview"
                 description="Everything you need to manage the shop, bot, and analytics from one workspace."
                 breadcrumbs={["Admin", "Dashboard"]}
-                primaryAction={<button className="btn btn-primary">Export report</button>}
             />
 
             <div className="admin-grid admin-grid--3">

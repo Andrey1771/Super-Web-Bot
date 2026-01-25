@@ -11,6 +11,7 @@ import EmptyState from "../../ui/EmptyState";
 import useDebouncedValue from "../../../hooks/useDebouncedValue";
 import { useDirtyState } from "../../../hooks/useDirtyState";
 import { useToast } from "../../ui/ToastProvider";
+import { useAdminHeader } from "../../layout/AdminHeaderContext";
 
 type Translations = {
   [key: string]: string;
@@ -48,6 +49,7 @@ const BotChangerPage: React.FC = () => {
   const [isExpandedEditor, setIsExpandedEditor] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { addToast } = useToast();
+  const { setHeaderActions, setPageTitle } = useAdminHeader();
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -196,6 +198,34 @@ const BotChangerPage: React.FC = () => {
     }
   };
 
+  React.useEffect(() => {
+    setPageTitle("Bot Data");
+    setHeaderActions([
+      {
+        type: "button",
+        id: "save-bot-data",
+        label: saving ? "Saving..." : "Save all",
+        variant: "primary",
+        onClick: handleSave,
+      },
+      {
+        type: "button",
+        id: "export-bot-data",
+        label: "Export JSON",
+        variant: "outline",
+        onClick: handleExport,
+      },
+      {
+        type: "button",
+        id: "import-bot-data",
+        label: "Import JSON",
+        variant: "outline",
+        onClick: handleImportClick,
+      },
+    ]);
+    return () => setHeaderActions([]);
+  }, [handleExport, handleImportClick, handleSave, saving, setHeaderActions, setPageTitle]);
+
   const openDrawer = (item: EditorItem) => {
     setDrawerError(null);
     setIsExpandedEditor(false);
@@ -238,11 +268,6 @@ const BotChangerPage: React.FC = () => {
         title="Bot data editor"
         description="Manage translations, keyboard keys, and message templates in one workspace."
         breadcrumbs={["Settings", "Bot", "Bot Data"]}
-        primaryAction={
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save all"}
-          </button>
-        }
       />
 
       <Card>
@@ -279,12 +304,9 @@ const BotChangerPage: React.FC = () => {
               />
             </div>
             <div className="flex gap-2">
-              <button className="btn btn-outline" onClick={handleExport}>
-                Export JSON
-              </button>
-              <button className="btn btn-outline" onClick={handleImportClick}>
-                Import JSON
-              </button>
+              <div className="text-sm text-gray-500">
+                {filteredEntries.length} items
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"

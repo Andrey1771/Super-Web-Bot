@@ -11,6 +11,9 @@ const IDENTIFIERS = {
     IRecommendationsService: Symbol.for("IRecommendationsService"),
     IGameKeysService: Symbol.for("IGameKeysService"),
     IOrdersService: Symbol.for("IOrdersService"),
+    IAdminOrdersService: Symbol.for("IAdminOrdersService"),
+    IBlogService: Symbol.for("IBlogService"),
+    IAdminBlogService: Symbol.for("IAdminBlogService"),
 };
 
 export default IDENTIFIERS;

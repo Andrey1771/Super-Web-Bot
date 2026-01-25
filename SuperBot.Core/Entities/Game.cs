@@ -44,6 +44,7 @@
         public string Title { get; set; }
         public GameType GameType { get; set; }
         public string ImagePath { get; set; }
+        public string CoverMediaId { get; set; }
         public DateTime ReleaseDate { get; set; }
     }
 }

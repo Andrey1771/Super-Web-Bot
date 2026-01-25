@@ -28,6 +28,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("imagePath")]
         public string ImagePath { get; set; }
 
+        [BsonElement("coverMediaId")]
+        public string CoverMediaId { get; set; }
+
         [BsonElement("releaseDate")]
         public DateTime ReleaseDate { get; set; }
     }
