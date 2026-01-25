@@ -130,10 +130,10 @@ const OrdersPage: React.FC = () => {
     setPageSize(nextPageSize);
   };
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     ordersService.exportCsv(items);
     addToast("Export started.", "success");
-  };
+  }, [addToast, items, ordersService]);
 
   useEffect(() => {
     setPageTitle("Orders");

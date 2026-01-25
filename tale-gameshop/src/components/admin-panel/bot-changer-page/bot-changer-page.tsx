@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
@@ -130,7 +130,7 @@ const BotChangerPage: React.FC = () => {
     });
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     setError(null);
     try {
@@ -145,9 +145,9 @@ const BotChangerPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [addToast, editableData]);
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(editableData, null, 2)], {
       type: "application/json",
     });
@@ -157,11 +157,11 @@ const BotChangerPage: React.FC = () => {
     link.download = "bot-data.json";
     link.click();
     URL.revokeObjectURL(url);
-  };
+  }, [editableData]);
 
-  const handleImportClick = () => {
+  const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

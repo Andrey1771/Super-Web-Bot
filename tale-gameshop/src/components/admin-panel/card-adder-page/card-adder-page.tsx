@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
 import type { IUrlService } from "../../../iterfaces/i-url-service";
@@ -280,13 +280,13 @@ const CardAdderPage: React.FC = () => {
     });
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     dispatch({
       type: "SET_GAME_TYPE_FORM",
       payload: emptyForm,
     });
     setSelectedMedia(null);
-  };
+  }, [dispatch]);
 
   const handleSelectGame = (item: GameItem) => {
     setIsDetailsLoading(true);
@@ -312,12 +312,12 @@ const CardAdderPage: React.FC = () => {
     setDetailsDrawerOpen(false);
   };
 
-  const handleCreateGame = () => {
+  const handleCreateGame = useCallback(() => {
     resetForm();
     setDrawerMode("create");
     setDrawerOpen(true);
     setDetailsDrawerOpen(false);
-  };
+  }, [resetForm]);
 
   React.useEffect(() => {
     setPageTitle("Catalog");
