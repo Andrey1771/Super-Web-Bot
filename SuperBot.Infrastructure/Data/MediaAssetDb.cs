@@ -21,6 +21,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("sizeBytes")]
         public long SizeBytes { get; set; }
 
+        [BsonElement("hashSha256")]
+        public string HashSha256 { get; set; }
+
         [BsonElement("width")]
         public int? Width { get; set; }
 

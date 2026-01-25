@@ -128,6 +128,7 @@ builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>()
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
+builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddScoped<SupportRoleEvaluator>();
 
@@ -138,6 +139,7 @@ builder.Services.AddAutoMapper(typeof(CartGameProfile));
 builder.Services.AddAutoMapper(typeof(MediaAssetProfile));
 builder.Services.AddAutoMapper(typeof(BlogProfile));
 builder.Services.AddAutoMapper(typeof(AnalyticsSettingsProfile));
+builder.Services.AddAutoMapper(typeof(ImportJobProfile));
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<Ga4Client>();

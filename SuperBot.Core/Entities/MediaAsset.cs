@@ -7,6 +7,7 @@ namespace SuperBot.Core.Entities
         public string Filename { get; set; }
         public string ContentType { get; set; }
         public long SizeBytes { get; set; }
+        public string HashSha256 { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
         public DateTime CreatedAt { get; set; }

@@ -32,6 +32,16 @@ namespace SuperBot.Infrastructure.Repositories
             return await QueryAsync(filter, query);
         }
 
+        public async Task<IReadOnlyList<BlogPost>> GetAllAsync()
+        {
+            var postsDb = await _posts
+                .Find(Builders<BlogPostDb>.Filter.Empty)
+                .SortByDescending(post => post.UpdatedAt)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
+        }
+
         public async Task<BlogPost> GetByIdAsync(string id)
         {
             var postDb = await _posts.Find(post => post.Id == id).FirstOrDefaultAsync();
@@ -41,6 +51,17 @@ namespace SuperBot.Infrastructure.Repositories
         public async Task<BlogPost> GetBySlugAsync(string slug)
         {
             var postDb = await _posts.Find(post => post.Slug == slug).FirstOrDefaultAsync();
+            return _mapper.Map<BlogPost>(postDb);
+        }
+
+        public async Task<BlogPost> GetByExternalIdAsync(string externalId)
+        {
+            if (string.IsNullOrWhiteSpace(externalId))
+            {
+                return null;
+            }
+
+            var postDb = await _posts.Find(post => post.ExternalId == externalId).FirstOrDefaultAsync();
             return _mapper.Map<BlogPost>(postDb);
         }
 

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using System.Security.Cryptography;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -54,6 +55,7 @@ public class MediaController : ControllerBase
             await file.CopyToAsync(stream, ct);
         }
 
+        var hash = await MediaHashHelper.ComputeHashAsync(physicalPath, ct);
         var relativeUrl = $"/uploads/{uniqueFileName}";
         var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativeUrl}";
 
@@ -63,6 +65,7 @@ public class MediaController : ControllerBase
             Filename = originalName,
             ContentType = file.ContentType,
             SizeBytes = file.Length,
+            HashSha256 = hash,
             CreatedAt = DateTime.UtcNow,
             Tags = Array.Empty<string>()
         };
@@ -89,12 +92,14 @@ public class MediaController : ControllerBase
         }
 
         var fileInfo = new FileInfo(physicalPath);
+        var hash = await MediaHashHelper.ComputeHashAsync(physicalPath, CancellationToken.None);
         var asset = new MediaAsset
         {
             Url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}",
             Filename = fileInfo.Name,
             ContentType = request.ContentType ?? "image",
             SizeBytes = fileInfo.Length,
+            HashSha256 = hash,
             CreatedAt = fileInfo.CreationTimeUtc,
             Tags = Array.Empty<string>()
         };
@@ -173,3 +178,14 @@ public class MediaController : ControllerBase
 }
 
 public record ImportMediaRequest(string RelativeUrl, string ContentType);
+
+internal static class MediaHashHelper
+{
+    public static async Task<string> ComputeHashAsync(string physicalPath, CancellationToken ct)
+    {
+        await using var stream = System.IO.File.OpenRead(physicalPath);
+        using var sha256 = SHA256.Create();
+        var hash = await sha256.ComputeHashAsync(stream, ct);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+}

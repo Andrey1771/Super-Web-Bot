@@ -13,6 +13,12 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("name")]
         public string Name { get; set; }
 
+        [BsonElement("externalId")]
+        public string ExternalId { get; set; }
+
+        [BsonElement("slug")]
+        public string Slug { get; set; }
+
         [BsonElement("price")]
         public decimal Price { get; set; }
 

@@ -12,6 +12,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("slug")]
         public string Slug { get; set; }
 
+        [BsonElement("externalId")]
+        public string ExternalId { get; set; }
+
         [BsonElement("title")]
         public string Title { get; set; }
 

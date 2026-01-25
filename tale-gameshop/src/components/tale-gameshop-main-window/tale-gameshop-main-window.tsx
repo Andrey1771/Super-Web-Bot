@@ -30,6 +30,7 @@ import AdminLayout from "../layout/AdminLayout";
 import OrdersPage from "../../pages/admin/OrdersPage";
 import ProfilePage from "../../pages/admin/ProfilePage";
 import SettingsPage from "../../pages/admin/SettingsPage";
+import DataToolsPage from "../../pages/admin/DataToolsPage";
 import BlogPostsPage from "../../pages/admin/blog/BlogPostsPage";
 import BlogPostEditorPage from "../../pages/admin/blog/BlogPostEditorPage";
 import AnalyticsOverviewPage from "../../pages/admin/analytics/AnalyticsOverviewPage";
@@ -80,6 +81,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="settings" element={<SettingsPage />} />
+                        <Route path="data-tools" element={<DataToolsPage />} />
                         <Route path="userInfo" element={<UserInfoPage />} />
                         <Route path="userStats" element={<UserStatsPage />} />
                     </Route>

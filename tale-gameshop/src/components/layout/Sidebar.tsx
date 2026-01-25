@@ -163,6 +163,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             icon: "🖼️",
           },
           {
+            label: "Import / Export",
+            to: "/admin/data-tools",
+            icon: "📦",
+            roles: ["admin"],
+          },
+          {
             label: "Settings",
             to: "/admin/settings",
             icon: "⚙️",

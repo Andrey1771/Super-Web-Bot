@@ -5,6 +5,7 @@ namespace SuperBot.Core.Interfaces.IRepositories
     public interface IMediaAssetRepository
     {
         Task<MediaAsset> GetByIdAsync(string id);
+        Task<MediaAsset> GetByHashAsync(string hash, long sizeBytes);
         Task<(IReadOnlyList<MediaAsset> Items, long Total)> ListAsync(string search, int page, int pageSize);
         Task CreateAsync(MediaAsset asset);
         Task DeleteAsync(string id);

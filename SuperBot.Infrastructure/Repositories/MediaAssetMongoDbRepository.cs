@@ -23,6 +23,19 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<MediaAsset>(asset);
         }
 
+        public async Task<MediaAsset> GetByHashAsync(string hash, long sizeBytes)
+        {
+            if (string.IsNullOrWhiteSpace(hash) || sizeBytes <= 0)
+            {
+                return null;
+            }
+
+            var asset = await _mediaAssets
+                .Find(item => item.HashSha256 == hash && item.SizeBytes == sizeBytes)
+                .FirstOrDefaultAsync();
+            return _mapper.Map<MediaAsset>(asset);
+        }
+
         public async Task<(IReadOnlyList<MediaAsset> Items, long Total)> ListAsync(string search, int page, int pageSize)
         {
             var filter = Builders<MediaAssetDb>.Filter.Empty;
