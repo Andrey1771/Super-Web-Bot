@@ -3,7 +3,7 @@ import TaleGameshopHeader from "../header/tale-gameshop-header/tale-gameshop-hea
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
 import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-page";
 import './tale-gameshop-main-window.css'
-import {Route, Routes, useLocation} from "react-router-dom";
+import {Navigate, Route, Routes, useLocation} from "react-router-dom";
 import TaleGameshopGameList from "../game-list-page/game-list-page";
 import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
@@ -70,9 +70,12 @@ export default function TaleGameshopMainWindow() {
                         <Route path="siteChanger" element={<SiteChangerPage />} />
                         <Route path="cardAdder" element={<CardAdderPage />} />
                         <Route path="orders" element={<OrdersPage />} />
-                        <Route path="blog/posts" element={<BlogPostsPage />} />
-                        <Route path="blog/posts/new" element={<BlogPostEditorPage />} />
-                        <Route path="blog/posts/:id/edit" element={<BlogPostEditorPage />} />
+                        <Route path="blog" element={<BlogPostsPage />} />
+                        <Route path="blog/new" element={<BlogPostEditorPage />} />
+                        <Route path="blog/:id/edit" element={<BlogPostEditorPage />} />
+                        <Route path="blog/posts" element={<Navigate to="/admin/blog" replace />} />
+                        <Route path="blog/posts/new" element={<Navigate to="/admin/blog/new" replace />} />
+                        <Route path="blog/posts/:id/edit" element={<Navigate to="/admin/blog/:id/edit" replace />} />
                         <Route path="analytics" element={<AnalyticsOverviewPage />} />
                         <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
                         <Route path="profile" element={<ProfilePage />} />

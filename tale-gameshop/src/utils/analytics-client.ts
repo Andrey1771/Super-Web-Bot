@@ -20,7 +20,7 @@ type EventPayload = Record<string, string | number | boolean | undefined>;
 
 declare global {
   interface Window {
-    dataLayer?: Array<Record<string, unknown>>;
+    dataLayer?: Array<any>;
     gtag?: (...args: any[]) => void;
     ym?: (...args: any[]) => void;
   }

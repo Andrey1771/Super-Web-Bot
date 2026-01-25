@@ -1,11 +1,19 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import PageHeader from "../../layout/PageHeader";
 import Card from "../../ui/Card";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
+import { useKeycloak } from "@react-keycloak/web";
 
 const AdminPanelPage: React.FC = () => {
     const { setHeaderActions, setPageTitle } = useAdminHeader();
+    const { keycloak } = useKeycloak();
+    // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
+    const resourceRoles = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"] ?? [];
+    // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
+    const realmRoles = keycloak.tokenParsed?.realm_access?.roles ?? [];
+    const roles = useMemo(() => [...resourceRoles, ...realmRoles], [resourceRoles, realmRoles]);
+    const canManageBlog = roles.includes("admin") || roles.includes("editor");
 
     React.useEffect(() => {
         setPageTitle("Dashboard");
@@ -45,6 +53,11 @@ const AdminPanelPage: React.FC = () => {
                         <Link className="btn btn-outline" to="/admin/cardAdder">
                             Catalog
                         </Link>
+                        {canManageBlog && (
+                            <Link className="btn btn-outline" to="/admin/blog">
+                                Blog posts
+                            </Link>
+                        )}
                         <Link className="btn btn-outline" to="/admin/userInfo">
                             Login history
                         </Link>

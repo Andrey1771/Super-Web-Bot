@@ -57,15 +57,7 @@ const BlogPostsPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Blog posts");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "create-post",
-        label: "Create post",
-        variant: "primary",
-        onClick: () => navigate("/admin/blog/posts/new"),
-      },
-    ]);
+    setHeaderActions([]);
     return () => setHeaderActions([]);
   }, [navigate, setHeaderActions, setPageTitle]);
 
@@ -87,7 +79,12 @@ const BlogPostsPage: React.FC = () => {
       <PageHeader
         title="Blog posts"
         description="Create, edit, schedule, and publish blog posts."
-        breadcrumbs={["Content", "Blog"]}
+        breadcrumbs={["Admin", "Blog"]}
+        primaryAction={(
+          <button className="btn btn-primary" onClick={() => navigate("/admin/blog/new")}>
+            New post
+          </button>
+        )}
       />
 
       <Card>
@@ -157,7 +154,7 @@ const BlogPostsPage: React.FC = () => {
             title="No posts found"
             description="Create the first post to get started."
             action={
-              <button className="btn btn-primary" onClick={() => navigate("/admin/blog/posts/new")}>
+              <button className="btn btn-primary" onClick={() => navigate("/admin/blog/new")}>
                 Create post
               </button>
             }
@@ -176,7 +173,7 @@ const BlogPostsPage: React.FC = () => {
               columnAutoWidth
               columnHidingEnabled
               scrolling={{ mode: "standard", showScrollbar: "always" }}
-              onRowClick={(event) => navigate(`/admin/blog/posts/${event.data.id}/edit`)}
+              onRowClick={(event) => navigate(`/admin/blog/${event.data.id}/edit`)}
             >
               <Paging enabled={false} />
               <Column
@@ -238,7 +235,7 @@ const BlogPostsPage: React.FC = () => {
                 width={140}
                 cellRender={(cellData: { data: BlogPost }) => (
                   <div className="flex gap-2">
-                    <Link className="btn btn-outline" to={`/admin/blog/posts/${cellData.data.id}/edit`}>
+                    <Link className="btn btn-outline" to={`/admin/blog/${cellData.data.id}/edit`}>
                       Edit
                     </Link>
                   </div>

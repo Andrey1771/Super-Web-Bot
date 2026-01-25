@@ -140,7 +140,7 @@ const BlogPostEditorPage: React.FC = () => {
       if (isNew) {
         const created = await adminBlogService.createPost(payload);
         addToast("Post created", "success");
-        navigate(`/admin/blog/posts/${created.id}/edit`);
+        navigate(`/admin/blog/${created.id}/edit`);
       } else if (post) {
         const updated = await adminBlogService.updatePost(post.id, payload);
         addToast("Post saved", "success");
@@ -243,7 +243,7 @@ const BlogPostEditorPage: React.FC = () => {
       <PageHeader
         title={isNew ? "Create post" : "Edit post"}
         description="Write, review, and publish blog content."
-        breadcrumbs={["Content", "Blog", isNew ? "New post" : "Edit post"]}
+        breadcrumbs={["Admin", "Blog", isNew ? "New post" : "Edit post"]}
       />
 
       <Card>

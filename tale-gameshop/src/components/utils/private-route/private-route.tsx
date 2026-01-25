@@ -11,9 +11,13 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({children}) => {
 
     const isLoggedIn = keycloak.authenticated;
     // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
-    const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(role => role === "admin");
+    const resourceRoles = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"] ?? [];
+    // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
+    const realmRoles = keycloak.tokenParsed?.realm_access?.roles ?? [];
+    const roles = [...resourceRoles, ...realmRoles];
+    const isAdminOrEditor = roles.some(role => role === "admin" || role === "editor");
 
-    return isLoggedIn && isAdmin ? (<>{children}</>) : (
+    return isLoggedIn && isAdminOrEditor ? (<>{children}</>) : (
         <AccessDeniedPage></AccessDeniedPage>
     );
 };
