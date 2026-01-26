@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
@@ -54,12 +54,35 @@ const BlogPostEditorPage: React.FC = () => {
     publishedAt: "",
     changeNote: "",
   });
+  const formRef = useRef(form);
+  const scheduledAtRef = useRef(scheduledAt);
+  const publishedAtRef = useRef(publishedAt);
+  const changeNoteRef = useRef(changeNote);
 
   const handleChange = (field: keyof AdminBlogPayload, value: string | string[]) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+      formRef.current = next;
+      return next;
+    });
+  };
+
+  const handleScheduledAtChange = (value: string) => {
+    scheduledAtRef.current = value;
+    setScheduledAt(value);
+  };
+
+  const handlePublishedAtChange = (value: string) => {
+    publishedAtRef.current = value;
+    setPublishedAt(value);
+  };
+
+  const handleChangeNote = (value: string) => {
+    changeNoteRef.current = value;
+    setChangeNote(value);
   };
 
   const tagsText = useMemo(() => form.tags.join(", "), [form.tags]);
@@ -72,7 +95,7 @@ const BlogPostEditorPage: React.FC = () => {
       const response = await adminBlogService.getPost(id ?? "");
       setPost(response.post);
       setVersion(response.version);
-      setForm({
+      const nextForm = {
         title: response.post.title,
         slug: response.post.slug,
         excerpt: response.post.excerpt,
@@ -84,10 +107,18 @@ const BlogPostEditorPage: React.FC = () => {
         scheduledAt: response.post.scheduledAt ?? "",
         publishedAt: response.post.publishedAt ?? "",
         changeNote: "",
-      });
+      };
+      formRef.current = nextForm;
+      setForm(nextForm);
       setStatusDraft(response.post.status);
-      setScheduledAt(response.post.scheduledAt ?? "");
-      setPublishedAt(response.post.publishedAt ?? "");
+      const nextScheduledAt = response.post.scheduledAt ?? "";
+      const nextPublishedAt = response.post.publishedAt ?? "";
+      scheduledAtRef.current = nextScheduledAt;
+      publishedAtRef.current = nextPublishedAt;
+      changeNoteRef.current = "";
+      setScheduledAt(nextScheduledAt);
+      setPublishedAt(nextPublishedAt);
+      setChangeNote("");
       const versionsList = await adminBlogService.getVersions(response.post.id);
       setVersions(versionsList as BlogPostVersion[]);
     } catch (fetchError) {
@@ -97,6 +128,47 @@ const BlogPostEditorPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleSave = useCallback(async (statusOverride?: BlogStatus) => {
+    const currentForm = formRef.current;
+    const payload: AdminBlogPayload = {
+      ...currentForm,
+      slug: currentForm.slug ? slugify(currentForm.slug) : slugify(currentForm.title),
+      tags: currentForm.tags,
+      status: statusOverride ?? currentForm.status,
+      scheduledAt: scheduledAtRef.current || undefined,
+      publishedAt: publishedAtRef.current || undefined,
+      changeNote: changeNoteRef.current || undefined,
+    };
+
+    try {
+      if (isNew) {
+        const created = await adminBlogService.createPost(payload);
+        addToast("Post created", "success");
+        navigate(`/admin/blog/${created.id}/edit`);
+      } else if (post) {
+        const updated = await adminBlogService.updatePost(post.id, payload);
+        addToast("Post saved", "success");
+        setPost(updated);
+        const refreshed = await adminBlogService.getPost(post.id);
+        setVersion(refreshed.version);
+        setForm((prev) => {
+          const next = {
+            ...prev,
+            contentMarkdown: refreshed.version.contentMarkdown ?? prev.contentMarkdown,
+            contentHtml: refreshed.version.contentHtml ?? prev.contentHtml,
+          };
+          formRef.current = next;
+          return next;
+        });
+        const versionsList = await adminBlogService.getVersions(post.id);
+        setVersions(versionsList as BlogPostVersion[]);
+      }
+    } catch (saveError: any) {
+      const message = saveError?.response?.data ?? "Failed to save post.";
+      addToast(String(message), "error");
+    }
+  }, [addToast, adminBlogService, isNew, navigate, post]);
 
   useEffect(() => {
     setPageTitle(isNew ? "Create post" : "Edit post");
@@ -117,49 +189,13 @@ const BlogPostEditorPage: React.FC = () => {
       },
     ]);
     return () => setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle, statusDraft]);
+  }, [handleSave, isNew, setHeaderActions, setPageTitle, statusDraft]);
 
   useEffect(() => {
     if (!isNew) {
       fetchPost();
     }
   }, [id]);
-
-  const handleSave = async (statusOverride?: BlogStatus) => {
-    const payload: AdminBlogPayload = {
-      ...form,
-      slug: form.slug ? slugify(form.slug) : slugify(form.title),
-      tags: form.tags,
-      status: statusOverride ?? form.status,
-      scheduledAt: scheduledAt || undefined,
-      publishedAt: publishedAt || undefined,
-      changeNote: changeNote || undefined,
-    };
-
-    try {
-      if (isNew) {
-        const created = await adminBlogService.createPost(payload);
-        addToast("Post created", "success");
-        navigate(`/admin/blog/${created.id}/edit`);
-      } else if (post) {
-        const updated = await adminBlogService.updatePost(post.id, payload);
-        addToast("Post saved", "success");
-        setPost(updated);
-        const refreshed = await adminBlogService.getPost(post.id);
-        setVersion(refreshed.version);
-        setForm((prev) => ({
-          ...prev,
-          contentMarkdown: refreshed.version.contentMarkdown ?? prev.contentMarkdown,
-          contentHtml: refreshed.version.contentHtml ?? prev.contentHtml,
-        }));
-        const versionsList = await adminBlogService.getVersions(post.id);
-        setVersions(versionsList as BlogPostVersion[]);
-      }
-    } catch (saveError: any) {
-      const message = saveError?.response?.data ?? "Failed to save post.";
-      addToast(String(message), "error");
-    }
-  };
 
   const handleArchive = async () => {
     if (!post) {
@@ -199,18 +235,28 @@ const BlogPostEditorPage: React.FC = () => {
       setPost(updated);
       const refreshed = await adminBlogService.getPost(post.id);
       setVersion(refreshed.version);
-      setForm((prev) => ({
-        ...prev,
-        title: refreshed.post.title,
-        slug: refreshed.post.slug,
-        excerpt: refreshed.post.excerpt,
-        contentMarkdown: refreshed.version.contentMarkdown ?? "",
-        coverAssetId: refreshed.post.coverAssetId ?? "",
-        tags: refreshed.post.tags,
-        status: refreshed.post.status,
-        scheduledAt: refreshed.post.scheduledAt ?? "",
-        publishedAt: refreshed.post.publishedAt ?? "",
-      }));
+      setForm((prev) => {
+        const next = {
+          ...prev,
+          title: refreshed.post.title,
+          slug: refreshed.post.slug,
+          excerpt: refreshed.post.excerpt,
+          contentMarkdown: refreshed.version.contentMarkdown ?? "",
+          coverAssetId: refreshed.post.coverAssetId ?? "",
+          tags: refreshed.post.tags,
+          status: refreshed.post.status,
+          scheduledAt: refreshed.post.scheduledAt ?? "",
+          publishedAt: refreshed.post.publishedAt ?? "",
+        };
+        formRef.current = next;
+        return next;
+      });
+      const restoredScheduledAt = refreshed.post.scheduledAt ?? "";
+      const restoredPublishedAt = refreshed.post.publishedAt ?? "";
+      scheduledAtRef.current = restoredScheduledAt;
+      publishedAtRef.current = restoredPublishedAt;
+      setScheduledAt(restoredScheduledAt);
+      setPublishedAt(restoredPublishedAt);
       const versionsList = await adminBlogService.getVersions(post.id);
       setVersions(versionsList as BlogPostVersion[]);
       addToast("Version restored", "success");
@@ -347,7 +393,7 @@ const BlogPostEditorPage: React.FC = () => {
               type="datetime-local"
               className="w-full p-2 border rounded"
               value={scheduledAt}
-              onChange={(event) => setScheduledAt(event.target.value)}
+              onChange={(event) => handleScheduledAtChange(event.target.value)}
             />
           </>
         )}
@@ -358,7 +404,7 @@ const BlogPostEditorPage: React.FC = () => {
               type="datetime-local"
               className="w-full p-2 border rounded"
               value={publishedAt}
-              onChange={(event) => setPublishedAt(event.target.value)}
+              onChange={(event) => handlePublishedAtChange(event.target.value)}
             />
           </>
         )}
@@ -367,7 +413,7 @@ const BlogPostEditorPage: React.FC = () => {
           type="text"
           className="w-full p-2 border rounded"
           value={changeNote}
-          onChange={(event) => setChangeNote(event.target.value)}
+          onChange={(event) => handleChangeNote(event.target.value)}
         />
         {!isNew && (
           <div className="mt-3">

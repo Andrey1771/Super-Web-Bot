@@ -65,6 +65,10 @@ public class AdminBlogController : ControllerBase
         }
 
         var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return BadRequest("Slug is required.");
+        }
         if (await _blogRepository.GetBySlugAsync(slug) != null)
         {
             return Conflict("Slug already exists.");
@@ -131,6 +135,10 @@ public class AdminBlogController : ControllerBase
         }
 
         var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return BadRequest("Slug is required.");
+        }
         var existingSlug = await _blogRepository.GetBySlugAsync(slug);
         if (existingSlug != null && existingSlug.Id != post.Id)
         {
@@ -326,29 +334,30 @@ public class AdminBlogController : ControllerBase
     private static string GenerateSlug(string value)
     {
         var slug = value.ToLowerInvariant();
-        slug = Regex.Replace(slug, @"[^a-z0-9\s-]", "");
+        slug = Regex.Replace(slug, @"[^\p{L}\p{N}\s-]", "");
         slug = Regex.Replace(slug, @"\s+", "-");
+        slug = Regex.Replace(slug, @"-+", "-");
         return slug.Trim('-');
     }
 }
 
 public class SaveBlogPostRequest
 {
-    public string Title { get; set; }
-    public string Slug { get; set; }
-    public string Excerpt { get; set; }
-    public string ContentMarkdown { get; set; }
-    public string ContentHtml { get; set; }
-    public string CoverAssetId { get; set; }
-    public string CoverUrl { get; set; }
-    public string Status { get; set; }
+    public string? Title { get; set; }
+    public string? Slug { get; set; }
+    public string? Excerpt { get; set; }
+    public string? ContentMarkdown { get; set; }
+    public string? ContentHtml { get; set; }
+    public string? CoverAssetId { get; set; }
+    public string? CoverUrl { get; set; }
+    public string? Status { get; set; }
     public DateTime? PublishedAt { get; set; }
     public DateTime? ScheduledAt { get; set; }
-    public string[] Tags { get; set; }
-    public string AuthorId { get; set; }
-    public string AuthorName { get; set; }
+    public string[]? Tags { get; set; }
+    public string? AuthorId { get; set; }
+    public string? AuthorName { get; set; }
     public int? ReadingTime { get; set; }
-    public string ChangeNote { get; set; }
+    public string? ChangeNote { get; set; }
 }
 
 public class RestoreBlogPostRequest
