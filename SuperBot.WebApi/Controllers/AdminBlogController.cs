@@ -65,6 +65,10 @@ public class AdminBlogController : ControllerBase
         }
 
         var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return BadRequest("Slug is required.");
+        }
         if (await _blogRepository.GetBySlugAsync(slug) != null)
         {
             return Conflict("Slug already exists.");
@@ -131,6 +135,10 @@ public class AdminBlogController : ControllerBase
         }
 
         var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return BadRequest("Slug is required.");
+        }
         var existingSlug = await _blogRepository.GetBySlugAsync(slug);
         if (existingSlug != null && existingSlug.Id != post.Id)
         {
@@ -326,8 +334,9 @@ public class AdminBlogController : ControllerBase
     private static string GenerateSlug(string value)
     {
         var slug = value.ToLowerInvariant();
-        slug = Regex.Replace(slug, @"[^a-z0-9\s-]", "");
+        slug = Regex.Replace(slug, @"[^\p{L}\p{N}\s-]", "");
         slug = Regex.Replace(slug, @"\s+", "-");
+        slug = Regex.Replace(slug, @"-+", "-");
         return slug.Trim('-');
     }
 }
