@@ -343,21 +343,21 @@ public class AdminBlogController : ControllerBase
 
 public class SaveBlogPostRequest
 {
-    public string Title { get; set; }
-    public string Slug { get; set; }
-    public string Excerpt { get; set; }
-    public string ContentMarkdown { get; set; }
-    public string ContentHtml { get; set; }
-    public string CoverAssetId { get; set; }
-    public string CoverUrl { get; set; }
-    public string Status { get; set; }
+    public string? Title { get; set; }
+    public string? Slug { get; set; }
+    public string? Excerpt { get; set; }
+    public string? ContentMarkdown { get; set; }
+    public string? ContentHtml { get; set; }
+    public string? CoverAssetId { get; set; }
+    public string? CoverUrl { get; set; }
+    public string? Status { get; set; }
     public DateTime? PublishedAt { get; set; }
     public DateTime? ScheduledAt { get; set; }
-    public string[] Tags { get; set; }
-    public string AuthorId { get; set; }
-    public string AuthorName { get; set; }
+    public string[]? Tags { get; set; }
+    public string? AuthorId { get; set; }
+    public string? AuthorName { get; set; }
     public int? ReadingTime { get; set; }
-    public string ChangeNote { get; set; }
+    public string? ChangeNote { get; set; }
 }
 
 public class RestoreBlogPostRequest
