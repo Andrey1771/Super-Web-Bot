@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
@@ -98,34 +98,7 @@ const BlogPostEditorPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    setPageTitle(isNew ? "Create post" : "Edit post");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "save-post",
-        label: "Save changes",
-        variant: "primary",
-        onClick: () => handleSave("PUBLISHED" === statusDraft ? "PUBLISHED" : statusDraft),
-      },
-      {
-        type: "button",
-        id: "save-draft",
-        label: "Save draft",
-        variant: "outline",
-        onClick: () => handleSave("DRAFT"),
-      },
-    ]);
-    return () => setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle, statusDraft]);
-
-  useEffect(() => {
-    if (!isNew) {
-      fetchPost();
-    }
-  }, [id]);
-
-  const handleSave = async (statusOverride?: BlogStatus) => {
+  const handleSave = useCallback(async (statusOverride?: BlogStatus) => {
     const payload: AdminBlogPayload = {
       ...form,
       slug: form.slug ? slugify(form.slug) : slugify(form.title),
@@ -159,7 +132,34 @@ const BlogPostEditorPage: React.FC = () => {
       const message = saveError?.response?.data ?? "Failed to save post.";
       addToast(String(message), "error");
     }
-  };
+  }, [addToast, adminBlogService, changeNote, form, isNew, navigate, post, publishedAt, scheduledAt]);
+
+  useEffect(() => {
+    setPageTitle(isNew ? "Create post" : "Edit post");
+    setHeaderActions([
+      {
+        type: "button",
+        id: "save-post",
+        label: "Save changes",
+        variant: "primary",
+        onClick: () => handleSave("PUBLISHED" === statusDraft ? "PUBLISHED" : statusDraft),
+      },
+      {
+        type: "button",
+        id: "save-draft",
+        label: "Save draft",
+        variant: "outline",
+        onClick: () => handleSave("DRAFT"),
+      },
+    ]);
+    return () => setHeaderActions([]);
+  }, [handleSave, isNew, setHeaderActions, setPageTitle, statusDraft]);
+
+  useEffect(() => {
+    if (!isNew) {
+      fetchPost();
+    }
+  }, [id]);
 
   const handleArchive = async () => {
     if (!post) {
