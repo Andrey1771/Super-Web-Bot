@@ -27,6 +27,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
         localStorage.setItem('cart', JSON.stringify(state));
         const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
         const handleAuthSuccess = async () => {
+            const isAdminRoute = window.location.pathname.startsWith('/admin');
+            if (isAdminRoute) {
+                return;
+            }
             // @ts-ignore Keycloak содержит
             await syncCartWithServer(keycloakService.keycloak.tokenParsed.email);
         };
@@ -57,6 +61,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
 
     // Функция синхронизации корзины с сервером
     const syncCartWithServer = async (userId: string) => {
+        if (!userId || window.location.pathname.startsWith('/admin')) {
+            return;
+        }
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
 

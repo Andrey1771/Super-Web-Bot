@@ -25,6 +25,16 @@ import { IGameKeysService } from "./iterfaces/i-game-keys-service";
 import { GameKeysService } from "./services/game-keys-service";
 import { IOrdersService } from "./iterfaces/i-orders-service";
 import { OrdersService } from "./services/orders-service";
+import { IAdminOrdersService } from "./iterfaces/i-admin-orders-service";
+import { AdminOrdersService } from "./services/admin-orders-service";
+import { IBlogService } from "./iterfaces/i-blog-service";
+import { BlogService } from "./services/blog-service";
+import { IAdminBlogService } from "./iterfaces/i-admin-blog-service";
+import { AdminBlogService } from "./services/admin-blog-service";
+import { AnalyticsService } from "./services/analytics-service";
+import { AdminAnalyticsService } from "./services/admin-analytics-service";
+import { IAnalyticsService } from "./iterfaces/i-analytics-service";
+import { IAdminAnalyticsService } from "./iterfaces/i-admin-analytics-service";
 
 const container = new Container();
 
@@ -43,5 +53,10 @@ container.bind<IWishlistService>(IDENTIFIERS.IWishlistService).to(WishlistServic
 container.bind<IRecommendationsService>(IDENTIFIERS.IRecommendationsService).to(RecommendationsService).inSingletonScope();
 container.bind<IGameKeysService>(IDENTIFIERS.IGameKeysService).to(GameKeysService).inSingletonScope();
 container.bind<IOrdersService>(IDENTIFIERS.IOrdersService).to(OrdersService).inSingletonScope();
+container.bind<IAdminOrdersService>(IDENTIFIERS.IAdminOrdersService).to(AdminOrdersService).inSingletonScope();
+container.bind<IBlogService>(IDENTIFIERS.IBlogService).to(BlogService).inSingletonScope();
+container.bind<IAdminBlogService>(IDENTIFIERS.IAdminBlogService).to(AdminBlogService).inSingletonScope();
+container.bind<IAnalyticsService>(IDENTIFIERS.IAnalyticsService).to(AnalyticsService).inSingletonScope();
+container.bind<IAdminAnalyticsService>(IDENTIFIERS.IAdminAnalyticsService).to(AdminAnalyticsService).inSingletonScope();
 
 export default container;

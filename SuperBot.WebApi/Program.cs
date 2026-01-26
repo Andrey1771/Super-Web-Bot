@@ -23,6 +23,7 @@ using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.WebApi.Support;
 using SuperBot.WebApi.Support.Infrastructure;
 using SuperBot.WebApi.Support.Services;
+using SuperBot.WebApi.Services.Analytics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -114,7 +115,10 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 builder.Services.AddScoped<MongoDbInitializer>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddScoped<IMediaAssetRepository, MediaAssetMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
+builder.Services.AddScoped<IBlogRepository, BlogMongoDbRepository>();
+builder.Services.AddScoped<IAnalyticsSettingsRepository, AnalyticsSettingsMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
 builder.Services.AddScoped<IViewedGameRepository, ViewedGameMongoDbRepository>();
@@ -124,6 +128,7 @@ builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>()
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
+builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddScoped<SupportRoleEvaluator>();
 
@@ -131,6 +136,14 @@ builder.Services.AddScoped<SupportRoleEvaluator>();
 
 builder.Services.AddAutoMapper(typeof(GameProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
+builder.Services.AddAutoMapper(typeof(MediaAssetProfile));
+builder.Services.AddAutoMapper(typeof(BlogProfile));
+builder.Services.AddAutoMapper(typeof(AnalyticsSettingsProfile));
+builder.Services.AddAutoMapper(typeof(ImportJobProfile));
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<Ga4Client>();
+builder.Services.AddScoped<YandexMetrikaClient>();
 
 //TODO     ,     ,   
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())

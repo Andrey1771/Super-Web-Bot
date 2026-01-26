@@ -9,6 +9,7 @@ import { Column } from "devextreme-react/cjs/data-grid";
 import PageHeader from "../../layout/PageHeader";
 import Card from "../../ui/Card";
 import EmptyState from "../../ui/EmptyState";
+import { useAdminHeader } from "../../layout/AdminHeaderContext";
 
 //TODO Вынести в отдельный файл и следить за тем, чтобы не было повторного вызова
 import Drilldown from 'highcharts/modules/drilldown';
@@ -34,6 +35,12 @@ const UserStatsPage: React.FC = () => {
     const [chartType, setChartType] = useState<"pie" | "bar">("pie");
     const [groupBy, setGroupBy] = useState<"name" | "gameId">("name");
     const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+    const { setHeaderActions, setPageTitle } = useAdminHeader();
+
+    useEffect(() => {
+        setPageTitle("Game Statistics");
+        setHeaderActions([]);
+    }, [setHeaderActions, setPageTitle]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -140,7 +147,6 @@ const UserStatsPage: React.FC = () => {
                 title="Game statistics"
                 description="Track cart activity, top categories, and distribution trends."
                 breadcrumbs={["Analytics", "Game statistics"]}
-                primaryAction={<button className="btn btn-primary">Export</button>}
             />
 
             <div className="admin-grid admin-grid--3">

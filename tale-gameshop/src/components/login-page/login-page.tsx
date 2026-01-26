@@ -1,5 +1,6 @@
 import React, {useEffect, useState } from "react";
 import './login-page.css'
+import { analyticsClient } from "../../utils/analytics-client";
 
 
 const LoginForm: React.FC = () => {
@@ -14,8 +15,7 @@ const LoginForm: React.FC = () => {
         setError(null);
 
         try {
-
-
+            analyticsClient.trackEvent("login");
 
         } catch (error) {
             setError('Failed to login. Please check your email and password.');

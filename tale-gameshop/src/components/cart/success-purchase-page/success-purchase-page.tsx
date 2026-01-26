@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {Link, useSearchParams} from 'react-router-dom';
+import { analyticsClient } from '../../../utils/analytics-client';
 
 const SuccessPurchasePage: React.FC = () => {
     const [searchParams] = useSearchParams();
 
     const orderId = searchParams.get('orderId') || 'N/A';
     const totalAmount = parseFloat(searchParams.get('totalAmount') || '0');
+
+    useEffect(() => {
+        if (!Number.isNaN(totalAmount) && totalAmount > 0) {
+            analyticsClient.trackEcommerce("purchase", {
+                transaction_id: orderId,
+                currency: "UAH",
+                value: totalAmount,
+                items: []
+            });
+        }
+    }, [orderId, totalAmount]);
 
     const handleContinueShopping = () => {
         // Replace with actual navigation logic if needed

@@ -38,12 +38,15 @@
     public class Game
     {
         public string Id { get; set; }
+        public string ExternalId { get; set; }
+        public string Slug { get; set; }
         public string Name { get; set; }
         public decimal Price { get; set; }
         public string Description { get; set; }
         public string Title { get; set; }
         public GameType GameType { get; set; }
         public string ImagePath { get; set; }
+        public string CoverMediaId { get; set; }
         public DateTime ReleaseDate { get; set; }
     }
 }

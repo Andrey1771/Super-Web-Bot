@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { useKeycloak } from "@react-keycloak/web";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -11,10 +12,24 @@ type NavItem = {
   to?: string;
   icon: React.ReactNode;
   disabled?: boolean;
+  roles?: string[];
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const { keycloak } = useKeycloak();
+  const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
+  const resourceRoles = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"] ?? [];
+  // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
+  const realmRoles = keycloak.tokenParsed?.realm_access?.roles ?? [];
+  const roles = useMemo(() => [...resourceRoles, ...realmRoles], [resourceRoles, realmRoles]);
+  const hasRoles = (required?: string[]) => {
+    if (!required || required.length === 0) {
+      return true;
+    }
+    return required.some((role) => roles.includes(role));
+  };
 
   const groups = useMemo(
     () => [
@@ -53,8 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         items: [
           {
             label: "Orders",
+            to: "/admin/orders",
             icon: "🧾",
-            disabled: true,
           },
           {
             label: "Refunds",
@@ -97,6 +112,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             icon: "🤖",
           },
           {
+            label: "Blog posts",
+            to: "/admin/blog",
+            icon: "📰",
+            roles: ["admin", "editor"],
+          },
+          {
             label: "Commands",
             icon: "⌨️",
             disabled: true,
@@ -117,6 +138,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         title: "Analytics",
         items: [
           {
+            label: "Overview",
+            to: "/admin/analytics",
+            icon: "📈",
+          },
+          {
+            label: "Settings",
+            to: "/admin/analytics/settings",
+            icon: "🧭",
+          },
+          {
             label: "Game stats",
             to: "/admin/userStats",
             icon: "📊",
@@ -132,9 +163,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             icon: "🖼️",
           },
           {
+            label: "Import / Export",
+            to: "/admin/data-tools",
+            icon: "📦",
+            roles: ["admin"],
+          },
+          {
             label: "Settings",
+            to: "/admin/settings",
             icon: "⚙️",
-            disabled: true,
           },
         ],
       },
@@ -170,6 +207,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="admin-sidebar__section-title">{group.title}</div>
           <div className="admin-sidebar__nav">
             {group.items.map((item) => {
+              if (!hasRoles(item.roles)) {
+                return null;
+              }
               if (item.disabled || !item.to) {
                 return (
                   <div
@@ -188,7 +228,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   key={item.label}
                   to={item.to}
                   className={({ isActive }) =>
-                    `admin-sidebar__link ${isActive ? "active" : ""}`
+                    `admin-sidebar__link ${
+                      isActive ||
+                      location.pathname === item.to ||
+                      location.pathname.startsWith(`${item.to}/`)
+                        ? "active"
+                        : ""
+                    }`
                   }
                   onClick={onClose}
                 >

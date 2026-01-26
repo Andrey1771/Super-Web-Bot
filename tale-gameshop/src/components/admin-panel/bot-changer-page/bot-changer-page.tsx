@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
@@ -11,6 +11,7 @@ import EmptyState from "../../ui/EmptyState";
 import useDebouncedValue from "../../../hooks/useDebouncedValue";
 import { useDirtyState } from "../../../hooks/useDirtyState";
 import { useToast } from "../../ui/ToastProvider";
+import { useAdminHeader } from "../../layout/AdminHeaderContext";
 
 type Translations = {
   [key: string]: string;
@@ -48,6 +49,7 @@ const BotChangerPage: React.FC = () => {
   const [isExpandedEditor, setIsExpandedEditor] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { addToast } = useToast();
+  const { setHeaderActions, setPageTitle } = useAdminHeader();
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -128,7 +130,7 @@ const BotChangerPage: React.FC = () => {
     });
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     setError(null);
     try {
@@ -143,9 +145,9 @@ const BotChangerPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [addToast, editableData]);
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     const blob = new Blob([JSON.stringify(editableData, null, 2)], {
       type: "application/json",
     });
@@ -155,11 +157,11 @@ const BotChangerPage: React.FC = () => {
     link.download = "bot-data.json";
     link.click();
     URL.revokeObjectURL(url);
-  };
+  }, [editableData]);
 
-  const handleImportClick = () => {
+  const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -195,6 +197,34 @@ const BotChangerPage: React.FC = () => {
       addToast("Failed to copy key", "error");
     }
   };
+
+  React.useEffect(() => {
+    setPageTitle("Bot Data");
+    setHeaderActions([
+      {
+        type: "button",
+        id: "save-bot-data",
+        label: saving ? "Saving..." : "Save all",
+        variant: "primary",
+        onClick: handleSave,
+      },
+      {
+        type: "button",
+        id: "export-bot-data",
+        label: "Export JSON",
+        variant: "outline",
+        onClick: handleExport,
+      },
+      {
+        type: "button",
+        id: "import-bot-data",
+        label: "Import JSON",
+        variant: "outline",
+        onClick: handleImportClick,
+      },
+    ]);
+    return () => setHeaderActions([]);
+  }, [handleExport, handleImportClick, handleSave, saving, setHeaderActions, setPageTitle]);
 
   const openDrawer = (item: EditorItem) => {
     setDrawerError(null);
@@ -238,11 +268,6 @@ const BotChangerPage: React.FC = () => {
         title="Bot data editor"
         description="Manage translations, keyboard keys, and message templates in one workspace."
         breadcrumbs={["Settings", "Bot", "Bot Data"]}
-        primaryAction={
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save all"}
-          </button>
-        }
       />
 
       <Card>
@@ -279,12 +304,9 @@ const BotChangerPage: React.FC = () => {
               />
             </div>
             <div className="flex gap-2">
-              <button className="btn btn-outline" onClick={handleExport}>
-                Export JSON
-              </button>
-              <button className="btn btn-outline" onClick={handleImportClick}>
-                Import JSON
-              </button>
+              <div className="text-sm text-gray-500">
+                {filteredEntries.length} items
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"

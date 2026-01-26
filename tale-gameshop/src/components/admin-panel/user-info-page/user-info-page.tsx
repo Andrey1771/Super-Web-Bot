@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import "devextreme/dist/css/dx.light.css";
 import { DataGrid } from "devextreme-react";
@@ -12,6 +12,7 @@ import Drawer from "../../ui/Drawer";
 import EmptyState from "../../ui/EmptyState";
 import useDebouncedValue from "../../../hooks/useDebouncedValue";
 import { useToast } from "../../ui/ToastProvider";
+import { useAdminHeader } from "../../layout/AdminHeaderContext";
 
 const UserInfoPage: React.FC = () => {
     const [data, setData] = useState<any[]>([]);
@@ -26,36 +27,37 @@ const UserInfoPage: React.FC = () => {
     const gridRef = useRef<DataGrid<any, any> | null>(null);
     const { addToast } = useToast();
     const debouncedSearch = useDebouncedValue(search, 300);
+    const { setHeaderActions, setPageTitle } = useAdminHeader();
 
     const adminService = container.get<IAdminService>(IDENTIFIERS.IAdminService);
 
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const res = await adminService.getAllMappedLoginEvents();
+            const transformedData = res.map((item: any, index: number) => {
+                const merged = {
+                    ...item,
+                    ...item.details,
+                };
+                return {
+                    ...merged,
+                    rowId: `${merged.userId ?? "unknown"}__${merged.time ?? "unknown"}__${merged.clientId ?? ""}__${merged.code_id ?? ""}__${merged.type ?? ""}__${index}`,
+                };
+            });
+
+            setData(transformedData);
+        } catch (error) {
+            console.error("Error loading table data:", error);
+            addToast("Failed to load login history", "error");
+        } finally {
+            setLoading(false);
+        }
+    }, [adminService, addToast]);
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const res = await adminService.getAllMappedLoginEvents();
-                // Преобразуем данные, добавляя поля из details
-                const transformedData = res.map((item: any, index: number) => {
-                    const merged = {
-                        ...item,
-                        ...item.details,
-                    };
-                    return {
-                        ...merged,
-                        rowId: `${merged.userId ?? "unknown"}__${merged.time ?? "unknown"}__${merged.clientId ?? ""}__${merged.code_id ?? ""}__${merged.type ?? ""}__${index}`,
-                    };
-                });
-
-                setData(transformedData);
-            } catch (error) {
-                console.error("Error loading table data:", error);
-                addToast("Failed to load login history", "error");
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     const filteredData = useMemo(() => {
         return data.filter((item) => {
@@ -95,13 +97,90 @@ const UserInfoPage: React.FC = () => {
         }
     };
 
+    const exportCsv = () => {
+        const headers = [
+            "User ID",
+            "Username",
+            "Client ID",
+            "Auth Method",
+            "Auth Type",
+            "Code ID",
+            "Consent",
+            "Redirect URI",
+            "Response Mode",
+            "Response Type",
+            "IP Address",
+            "Realm ID",
+            "Timestamp",
+            "Event Type",
+        ];
+        const rows = filteredData.map((item) => [
+            item.userId ?? "",
+            item.username ?? "",
+            item.clientId ?? "",
+            item.auth_method ?? "",
+            item.auth_type ?? "",
+            item.code_id ?? "",
+            item.consent ?? "",
+            item.redirect_uri ?? "",
+            item.response_mode ?? "",
+            item.response_type ?? "",
+            item.ipAddress ?? "",
+            item.realmId ?? "",
+            item.time ?? "",
+            item.type ?? "",
+        ]);
+
+        const csvContent = [headers, ...rows]
+            .map((row) => row.map((cell) => `"${String(cell).replace(/\"/g, '""')}"`).join(","))
+            .join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `login-history-${new Date().toISOString().split("T")[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        addToast("Export started", "success");
+    };
+
+    useEffect(() => {
+        setPageTitle("Login History");
+        setHeaderActions([
+            {
+                type: "button",
+                id: "login-columns",
+                label: "Columns",
+                variant: "outline",
+                onClick: handleShowColumns,
+            },
+            {
+                type: "button",
+                id: "login-export",
+                label: "Export CSV",
+                variant: "primary",
+                onClick: exportCsv,
+            },
+            {
+                type: "button",
+                id: "login-refresh",
+                label: "Refresh",
+                variant: "outline",
+                onClick: fetchData,
+            },
+        ]);
+        return () => setHeaderActions([]);
+    }, [exportCsv, fetchData, handleShowColumns, setHeaderActions, setPageTitle]);
+
     return (
         <div className="admin-grid">
             <PageHeader
                 title="Login history"
                 description="Track authentication events with filters and detailed records."
                 breadcrumbs={["Users", "Login history"]}
-                primaryAction={<button className="btn btn-primary">Export CSV</button>}
             />
 
             <Card>
@@ -153,15 +232,6 @@ const UserInfoPage: React.FC = () => {
                     />
                 </div>
 
-                <div className="flex justify-end mt-4 gap-2">
-                    <button
-                        className="btn btn-outline"
-                        onClick={handleShowColumns}
-                    >
-                        Columns
-                    </button>
-                    <button className="btn btn-outline">Export CSV</button>
-                </div>
             </Card>
 
             <Card>
