@@ -82,7 +82,7 @@ const DataToolsPage: React.FC = () => {
     try {
       await downloadFile("/api/admin/data-tools/template", "template.zip");
     } catch (error) {
-      addToast({ title: "Download failed", message: "Unable to download template.", tone: "error" });
+      addToast("Unable to download template.", "error");
     }
   };
 
@@ -94,13 +94,13 @@ const DataToolsPage: React.FC = () => {
       });
       await downloadFile(`/api/admin/data-tools/export?${query.toString()}`, "export.zip");
     } catch (error) {
-      addToast({ title: "Export failed", message: "Unable to export data.", tone: "error" });
+      addToast("Unable to export data.", "error");
     }
   };
 
   const uploadPackage = async (applyChanges: boolean) => {
     if (!file) {
-      addToast({ title: "No file selected", message: "Please choose a ZIP package.", tone: "warning" });
+      addToast("Please choose a ZIP package.", "error");
       return;
     }
 
@@ -131,16 +131,12 @@ const DataToolsPage: React.FC = () => {
       });
       setReport(response.data as ImportJob);
       await loadImports();
-      addToast({
-        title: applyChanges ? "Import completed" : "Validation completed",
-        message: "Check the report for details.",
-        tone: "success",
-      });
+      addToast(applyChanges ? "Import completed." : "Validation completed.");
     } catch (error: any) {
       if (error?.response?.data) {
         setReport(error.response.data as ImportJob);
       }
-      addToast({ title: "Import failed", message: "Please review the errors in the report.", tone: "error" });
+      addToast("Please review the errors in the report.", "error");
     } finally {
       setImporting(false);
       setProgress(0);
