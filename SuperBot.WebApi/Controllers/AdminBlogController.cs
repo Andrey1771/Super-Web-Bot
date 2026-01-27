@@ -13,6 +13,21 @@ public class AdminBlogController : ControllerBase
 {
     private readonly IBlogRepository _blogRepository;
     private readonly IMediaAssetRepository _mediaRepository;
+    private const int TitleMinLength = 10;
+    private const int TitleMaxLength = 80;
+    private const int ExcerptMaxLength = 160;
+    private const int TagsMaxCount = 8;
+    private const int TagMinLength = 2;
+    private const int TagMaxLength = 24;
+    private const long CoverMaxSizeBytes = 5 * 1024 * 1024;
+    private const int CoverMinWidth = 1000;
+    private const int CoverMinHeight = 560;
+    private static readonly HashSet<string> AllowedCoverTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    };
 
     public AdminBlogController(IBlogRepository blogRepository, IMediaAssetRepository mediaRepository)
     {
@@ -64,6 +79,12 @@ public class AdminBlogController : ControllerBase
             return BadRequest("Title is required.");
         }
 
+        var titleValidation = ValidateTitle(request.Title);
+        if (!string.IsNullOrWhiteSpace(titleValidation))
+        {
+            return BadRequest(titleValidation);
+        }
+
         var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
         if (string.IsNullOrWhiteSpace(slug))
         {
@@ -74,12 +95,31 @@ public class AdminBlogController : ControllerBase
             return Conflict("Slug already exists.");
         }
 
+        var normalizedExcerpt = NormalizeExcerpt(request.Excerpt, request.ContentMarkdown, request.ContentHtml);
+        var excerptValidation = ValidateExcerpt(normalizedExcerpt);
+        if (!string.IsNullOrWhiteSpace(excerptValidation))
+        {
+            return BadRequest(excerptValidation);
+        }
+
+        var tagsValidation = ValidateTags(request.Tags);
+        if (!string.IsNullOrWhiteSpace(tagsValidation))
+        {
+            return BadRequest(tagsValidation);
+        }
+
+        var coverValidation = await ValidateCoverAsync(request.CoverAssetId);
+        if (!string.IsNullOrWhiteSpace(coverValidation))
+        {
+            return BadRequest(coverValidation);
+        }
+
         var now = DateTime.UtcNow;
         var post = new BlogPost
         {
             Title = request.Title,
             Slug = slug,
-            Excerpt = request.Excerpt ?? "",
+            Excerpt = normalizedExcerpt,
             CoverAssetId = request.CoverAssetId,
             CoverUrl = await ResolveCoverUrlAsync(request.CoverAssetId, request.CoverUrl),
             Status = NormalizeStatus(request.Status),
@@ -109,7 +149,7 @@ public class AdminBlogController : ControllerBase
             PostId = post.Id,
             VersionNumber = 1,
             Title = request.Title,
-            Excerpt = request.Excerpt ?? "",
+            Excerpt = normalizedExcerpt,
             ContentMarkdown = request.ContentMarkdown ?? "",
             ContentHtml = request.ContentHtml ?? "",
             CoverAssetId = request.CoverAssetId,
@@ -137,6 +177,12 @@ public class AdminBlogController : ControllerBase
             return BadRequest("Title is required.");
         }
 
+        var titleValidation = ValidateTitle(request.Title);
+        if (!string.IsNullOrWhiteSpace(titleValidation))
+        {
+            return BadRequest(titleValidation);
+        }
+
         var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
         if (string.IsNullOrWhiteSpace(slug))
         {
@@ -148,12 +194,31 @@ public class AdminBlogController : ControllerBase
             return Conflict("Slug already exists.");
         }
 
+        var normalizedExcerpt = NormalizeExcerpt(request.Excerpt, request.ContentMarkdown, request.ContentHtml);
+        var excerptValidation = ValidateExcerpt(normalizedExcerpt);
+        if (!string.IsNullOrWhiteSpace(excerptValidation))
+        {
+            return BadRequest(excerptValidation);
+        }
+
+        var tagsValidation = ValidateTags(request.Tags);
+        if (!string.IsNullOrWhiteSpace(tagsValidation))
+        {
+            return BadRequest(tagsValidation);
+        }
+
+        var coverValidation = await ValidateCoverAsync(request.CoverAssetId);
+        if (!string.IsNullOrWhiteSpace(coverValidation))
+        {
+            return BadRequest(coverValidation);
+        }
+
         var versions = await _blogRepository.GetVersionsAsync(post.Id);
         var nextVersion = versions.Count == 0 ? 1 : versions.Max(item => item.VersionNumber) + 1;
 
         post.Title = request.Title;
         post.Slug = slug;
-        post.Excerpt = request.Excerpt ?? "";
+        post.Excerpt = normalizedExcerpt;
         post.CoverAssetId = request.CoverAssetId;
         post.CoverUrl = await ResolveCoverUrlAsync(request.CoverAssetId, request.CoverUrl);
         post.Status = NormalizeStatus(request.Status);
@@ -176,7 +241,7 @@ public class AdminBlogController : ControllerBase
             PostId = post.Id,
             VersionNumber = nextVersion,
             Title = request.Title,
-            Excerpt = request.Excerpt ?? "",
+            Excerpt = normalizedExcerpt,
             ContentMarkdown = request.ContentMarkdown ?? "",
             ContentHtml = request.ContentHtml ?? "",
             CoverAssetId = request.CoverAssetId,
@@ -335,6 +400,133 @@ public class AdminBlogController : ControllerBase
             return asset?.Url ?? fallbackUrl ?? string.Empty;
         }
         return fallbackUrl ?? string.Empty;
+    }
+
+    private static string ValidateTitle(string title)
+    {
+        var trimmed = title?.Trim() ?? string.Empty;
+        if (trimmed.Length < TitleMinLength || trimmed.Length > TitleMaxLength)
+        {
+            return $"Title must be between {TitleMinLength} and {TitleMaxLength} characters.";
+        }
+        return string.Empty;
+    }
+
+    private static string ValidateExcerpt(string excerpt)
+    {
+        if (!string.IsNullOrWhiteSpace(excerpt) && excerpt.Length > ExcerptMaxLength)
+        {
+            return $"Excerpt must be {ExcerptMaxLength} characters or less.";
+        }
+        return string.Empty;
+    }
+
+    private static string ValidateTags(string[] tags)
+    {
+        if (tags == null)
+        {
+            return string.Empty;
+        }
+
+        if (tags.Length > TagsMaxCount)
+        {
+            return $"No more than {TagsMaxCount} tags are allowed.";
+        }
+
+        foreach (var tag in tags)
+        {
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                continue;
+            }
+
+            var length = tag.Trim().Length;
+            if (length < TagMinLength || length > TagMaxLength)
+            {
+                return $"Tags must be between {TagMinLength} and {TagMaxLength} characters.";
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private async Task<string> ValidateCoverAsync(string coverAssetId)
+    {
+        if (string.IsNullOrWhiteSpace(coverAssetId))
+        {
+            return string.Empty;
+        }
+
+        var asset = await _mediaRepository.GetByIdAsync(coverAssetId);
+        if (asset == null)
+        {
+            return "Cover asset not found.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(asset.ContentType) && !AllowedCoverTypes.Contains(asset.ContentType))
+        {
+            return "Cover image must be a JPG, PNG, or WebP file.";
+        }
+
+        if (asset.SizeBytes > CoverMaxSizeBytes)
+        {
+            return "Cover image must be 5MB or smaller.";
+        }
+
+        if (!asset.Width.HasValue || !asset.Height.HasValue)
+        {
+            return "Cover image dimensions are missing.";
+        }
+
+        if (asset.Width.Value < CoverMinWidth || asset.Height.Value < CoverMinHeight)
+        {
+            return $"Cover image must be at least {CoverMinWidth}x{CoverMinHeight}px.";
+        }
+
+        return string.Empty;
+    }
+
+    private static string NormalizeExcerpt(string excerpt, string contentMarkdown, string contentHtml)
+    {
+        var normalized = excerpt?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            var source = !string.IsNullOrWhiteSpace(contentMarkdown)
+                ? StripMarkdown(contentMarkdown)
+                : StripHtml(contentHtml);
+            normalized = source?.Trim() ?? string.Empty;
+        }
+
+        normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+        if (normalized.Length > ExcerptMaxLength)
+        {
+            normalized = normalized.Substring(0, ExcerptMaxLength).Trim();
+        }
+
+        return normalized;
+    }
+
+    private static string StripMarkdown(string markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown))
+        {
+            return string.Empty;
+        }
+
+        var withoutImages = Regex.Replace(markdown, @"!\[[^\]]*\]\([^\)]*\)", " ");
+        var withoutLinks = Regex.Replace(withoutImages, @"\[[^\]]*\]\([^\)]*\)", " ");
+        var withoutFormatting = Regex.Replace(withoutLinks, @"[#>*_`~\-]", " ");
+        return withoutFormatting;
+    }
+
+    private static string StripHtml(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return string.Empty;
+        }
+
+        return Regex.Replace(html, "<.*?>", " ");
     }
 
     private static string GenerateSlug(string value)

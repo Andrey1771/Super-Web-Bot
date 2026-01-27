@@ -86,6 +86,9 @@ const BlogPostEditorPage: React.FC = () => {
   };
 
   const tagsText = useMemo(() => form.tags.join(", "), [form.tags]);
+  const titleCount = form.title.trim().length;
+  const excerptCount = form.excerpt.trim().length;
+  const tagsCount = form.tags.length;
 
   const previewHtml = useMemo(() => renderMarkdown(form.contentMarkdown ?? ""), [form.contentMarkdown]);
 
@@ -306,6 +309,7 @@ const BlogPostEditorPage: React.FC = () => {
             }
           }}
         />
+        <p className="text-xs text-gray-500">Title should be 10–80 characters. {titleCount}/80</p>
         <label className="text-sm font-semibold">Slug</label>
         <input
           type="text"
@@ -319,6 +323,7 @@ const BlogPostEditorPage: React.FC = () => {
           value={form.excerpt}
           onChange={(event) => handleChange("excerpt", event.target.value)}
         />
+        <p className="text-xs text-gray-500">Excerpt should be 160 characters or less. {excerptCount}/160</p>
         <label className="text-sm font-semibold">Tags</label>
         <input
           type="text"
@@ -335,6 +340,7 @@ const BlogPostEditorPage: React.FC = () => {
             )
           }
         />
+        <p className="text-xs text-gray-500">Up to 8 tags, each 2–24 characters. {tagsCount}/8</p>
       </Card>
 
       <Card>
@@ -366,6 +372,9 @@ const BlogPostEditorPage: React.FC = () => {
           </button>
           {form.coverAssetId && <span className="text-xs text-gray-500">Selected media ID: {form.coverAssetId}</span>}
         </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Use JPG/PNG/WebP up to 5MB. Minimum 1000×560px, recommended 1600×900px for best display.
+        </p>
       </Card>
 
       <Card>

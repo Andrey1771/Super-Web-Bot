@@ -16,7 +16,6 @@ import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type {IBlogService} from "../../iterfaces/i-blog-service";
 import type {BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
-import BlogHeroPost from "../../pages/blog/components/BlogHeroPost";
 import PostCard from "../../pages/blog/components/PostCard";
 import {getAnonId} from "../../hooks/use-blog-tracking";
 import "./blog-page.css";
@@ -202,7 +201,13 @@ export default function BlogPage() {
                             </div>
                         </div>
                     ) : featuredPost ? (
-                        <BlogHeroPost post={featuredPost} onTagSelect={(tag) => setActiveTag(tag)} />
+                        <PostCard
+                            post={featuredPost}
+                            variant="featured"
+                            showFeaturedBadge
+                            showActions
+                            onTagSelect={(tag) => setActiveTag(tag)}
+                        />
                     ) : (
                         <div className="featured-card">
                             <div className="featured-content">
@@ -230,12 +235,12 @@ export default function BlogPage() {
                     {loading ? (
                         <div className="posts-grid">
                             {Array.from({length: 6}).map((_, index) => (
-                                <div className="post-card" key={`skeleton-${index}`}>
-                                    <div className="post-media">
+                                <div className="post-card post-card--compact" key={`skeleton-${index}`}>
+                                    <div className="post-card__media post-card__media--compact">
                                         <div className="media-overlay" />
                                         <div className="skeleton h-32" />
                                     </div>
-                                    <div className="post-body">
+                                    <div className="post-card__body post-card__body--compact">
                                         <div className="skeleton h-6" />
                                         <div className="skeleton h-4 mt-3" />
                                         <div className="skeleton h-16 mt-4" />
@@ -250,7 +255,7 @@ export default function BlogPage() {
                     ) : (
                         <div className="posts-grid">
                             {sortedPosts.map((post) => (
-                                <PostCard post={post} key={post.id} />
+                                <PostCard post={post} key={post.id} variant="compact" />
                             ))}
                         </div>
                     )}
@@ -272,12 +277,12 @@ export default function BlogPage() {
                     {loading ? (
                         <div className="posts-grid popular-grid">
                             {Array.from({length: 3}).map((_, index) => (
-                                <div className="post-card" key={`for-you-skeleton-${index}`}>
-                                    <div className="post-media">
+                                <div className="post-card post-card--compact" key={`for-you-skeleton-${index}`}>
+                                    <div className="post-card__media post-card__media--compact">
                                         <div className="media-overlay" />
                                         <div className="skeleton h-32" />
                                     </div>
-                                    <div className="post-body">
+                                    <div className="post-card__body post-card__body--compact">
                                         <div className="skeleton h-6" />
                                         <div className="skeleton h-4 mt-3" />
                                         <div className="skeleton h-16 mt-4" />
@@ -290,7 +295,7 @@ export default function BlogPage() {
                     ) : (
                         <div className="posts-grid popular-grid">
                             {forYouPosts.map((post) => (
-                                <PostCard post={post} key={post.id} />
+                                <PostCard post={post} key={post.id} variant="compact" />
                             ))}
                         </div>
                     )}
@@ -308,7 +313,7 @@ export default function BlogPage() {
                     </div>
                     <div className="posts-grid popular-grid">
                         {popularPosts.map((post) => (
-                            <PostCard post={post} key={post.id} />
+                            <PostCard post={post} key={post.id} variant="compact" />
                         ))}
                     </div>
                 </div>
@@ -359,26 +364,13 @@ export default function BlogPage() {
             <section className="editors-picks section">
                 <div className="container editors-layout">
                     {editorsPicks[0] && (
-                        <div className="editors-featured">
-                            <div className="post-media" aria-hidden="true">
-                                {editorsPicks[0].tags[0] && <span className="badge category-badge">{editorsPicks[0].tags[0]}</span>}
-                                <div className="media-overlay" />
-                                <img src={getCover(editorsPicks[0])} alt={editorsPicks[0].title} />
-                            </div>
-                            <div className="post-body">
-                                <h3>{editorsPicks[0].title}</h3>
-                                <p>{editorsPicks[0].excerpt}</p>
-                                <div className="meta-row">
-                                    <span>{formatDate(editorsPicks[0].publishedAt)}</span>
-                                    <span className="divider-dot" aria-hidden="true">•</span>
-                                    <span>{editorsPicks[0].readingTime ? `${editorsPicks[0].readingTime} min read` : "Quick read"}</span>
-                                </div>
-                                <Link className="link-primary" to={`/blog/${editorsPicks[0].slug}`}>
-                                    Read more
-                                    <FontAwesomeIcon icon={faArrowRightLong} />
-                                </Link>
-                            </div>
-                        </div>
+                        <PostCard
+                            post={editorsPicks[0]}
+                            variant="featured"
+                            className="editors-featured"
+                            showFeaturedBadge={false}
+                            showActions={false}
+                        />
                     )}
                     <div className="editors-list">
                         <div className="editors-list-header">
@@ -390,19 +382,7 @@ export default function BlogPage() {
                         </div>
                         <div className="editors-list-items">
                             {editorsPicks.slice(1).map((item) => (
-                                <article className="mini-post" key={item.id}>
-                                    <div className="mini-thumb" aria-hidden="true">
-                                        <img src={getCover(item)} alt={item.title} />
-                                    </div>
-                                    <div>
-                                        <h4>{item.title}</h4>
-                                        <div className="meta-row">
-                                            <span>{formatDate(item.publishedAt)}</span>
-                                            <span className="divider-dot" aria-hidden="true">•</span>
-                                            <span>{item.readingTime ? `${item.readingTime} min read` : "Quick read"}</span>
-                                        </div>
-                                    </div>
-                                </article>
+                                <PostCard post={item} key={item.id} variant="mini" />
                             ))}
                         </div>
                         <div className="editors-dots" aria-hidden="true">
