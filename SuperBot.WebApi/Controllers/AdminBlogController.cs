@@ -90,9 +90,12 @@ public class AdminBlogController : ControllerBase
             AuthorId = request.AuthorId,
             AuthorName = request.AuthorName,
             Tags = request.Tags ?? Array.Empty<string>(),
+            Topics = request.Topics ?? Array.Empty<string>(),
             ReadingTime = request.ReadingTime,
             CurrentVersionId = string.Empty,
-            ViewCount = 0
+            ViewCount = 0,
+            EditorScore = request.EditorScore ?? 0,
+            Featured = request.Featured ?? false
         };
 
         var scheduleError = ValidateSchedule(post);
@@ -157,6 +160,9 @@ public class AdminBlogController : ControllerBase
         post.PublishedAt = ResolvePublishedAt(request.Status, request.PublishedAt, post.PublishedAt);
         post.ScheduledAt = request.ScheduledAt;
         post.Tags = request.Tags ?? Array.Empty<string>();
+        post.Topics = request.Topics ?? Array.Empty<string>();
+        post.EditorScore = request.EditorScore ?? post.EditorScore;
+        post.Featured = request.Featured ?? post.Featured;
         post.UpdatedAt = DateTime.UtcNow;
 
         var scheduleError = ValidateSchedule(post);
@@ -354,9 +360,12 @@ public class SaveBlogPostRequest
     public DateTime? PublishedAt { get; set; }
     public DateTime? ScheduledAt { get; set; }
     public string[]? Tags { get; set; }
+    public string[]? Topics { get; set; }
     public string? AuthorId { get; set; }
     public string? AuthorName { get; set; }
     public int? ReadingTime { get; set; }
+    public int? EditorScore { get; set; }
+    public bool? Featured { get; set; }
     public string? ChangeNote { get; set; }
 }
 

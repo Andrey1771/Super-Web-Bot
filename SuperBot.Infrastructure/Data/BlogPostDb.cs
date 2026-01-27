@@ -51,6 +51,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("tags")]
         public string[] Tags { get; set; }
 
+        [BsonElement("topics")]
+        public string[] Topics { get; set; }
+
         [BsonElement("readingTime")]
         public int? ReadingTime { get; set; }
 
@@ -59,5 +62,11 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("viewCount")]
         public int? ViewCount { get; set; }
+
+        [BsonElement("editorScore")]
+        public int? EditorScore { get; set; }
+
+        [BsonElement("featured")]
+        public bool Featured { get; set; }
     }
 }

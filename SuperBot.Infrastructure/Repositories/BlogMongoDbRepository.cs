@@ -4,6 +4,7 @@ using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using System;
 
 namespace SuperBot.Infrastructure.Repositories
 {
@@ -63,6 +64,67 @@ namespace SuperBot.Infrastructure.Repositories
 
             var postDb = await _posts.Find(post => post.ExternalId == externalId).FirstOrDefaultAsync();
             return _mapper.Map<BlogPost>(postDb);
+        }
+
+        public async Task<IReadOnlyList<BlogPost>> GetByIdsAsync(IEnumerable<string> ids)
+        {
+            var idList = ids?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList() ?? new List<string>();
+            if (idList.Count == 0)
+            {
+                return Array.Empty<BlogPost>();
+            }
+
+            var filter = Builders<BlogPostDb>.Filter.In(post => post.Id, idList);
+            var postsDb = await _posts.Find(filter).ToListAsync();
+            return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
+        }
+
+        public async Task<IReadOnlyList<BlogPost>> GetPublishedAsync(int limit)
+        {
+            var normalizedLimit = Math.Clamp(limit, 1, 50);
+            var postsDb = await _posts
+                .Find(post => post.Status == "PUBLISHED")
+                .SortByDescending(post => post.PublishedAt)
+                .Limit(normalizedLimit)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
+        }
+
+        public async Task<IReadOnlyList<BlogPost>> GetPublishedSinceAsync(DateTime fromUtc)
+        {
+            var filter = Builders<BlogPostDb>.Filter.And(
+                Builders<BlogPostDb>.Filter.Eq(post => post.Status, "PUBLISHED"),
+                Builders<BlogPostDb>.Filter.Gte(post => post.PublishedAt, fromUtc)
+            );
+
+            var postsDb = await _posts
+                .Find(filter)
+                .SortByDescending(post => post.PublishedAt)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
+        }
+
+        public async Task<IReadOnlyList<BlogPost>> GetEditorsPicksAsync(int limit)
+        {
+            var normalizedLimit = Math.Clamp(limit, 1, 50);
+            var filter = Builders<BlogPostDb>.Filter.And(
+                Builders<BlogPostDb>.Filter.Eq(post => post.Status, "PUBLISHED"),
+                Builders<BlogPostDb>.Filter.Or(
+                    Builders<BlogPostDb>.Filter.Eq(post => post.Featured, true),
+                    Builders<BlogPostDb>.Filter.Gt(post => post.EditorScore, 0)
+                )
+            );
+
+            var postsDb = await _posts
+                .Find(filter)
+                .SortByDescending(post => post.EditorScore)
+                .ThenByDescending(post => post.PublishedAt)
+                .Limit(normalizedLimit)
+                .ToListAsync();
+
+            return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
         }
 
         public async Task CreateAsync(BlogPost post, BlogPostVersion version)

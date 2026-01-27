@@ -17,8 +17,11 @@ namespace SuperBot.Core.Entities
         public string AuthorId { get; set; }
         public string AuthorName { get; set; }
         public string[] Tags { get; set; } = Array.Empty<string>();
+        public string[] Topics { get; set; } = Array.Empty<string>();
         public int? ReadingTime { get; set; }
         public string CurrentVersionId { get; set; }
         public int? ViewCount { get; set; }
+        public int? EditorScore { get; set; }
+        public bool Featured { get; set; }
     }
 }

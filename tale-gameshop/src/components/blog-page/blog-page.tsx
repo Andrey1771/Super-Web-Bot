@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faArrowRightLong,
@@ -15,11 +15,14 @@ import {Link} from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type {IBlogService} from "../../iterfaces/i-blog-service";
-import type {BlogListItem} from "../../types/blog";
+import type {BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
+import BlogHeroPost from "../../pages/blog/components/BlogHeroPost";
+import PostCard from "../../pages/blog/components/PostCard";
+import {getAnonId} from "../../hooks/use-blog-tracking";
 import "./blog-page.css";
 
 const FALLBACK_COVER = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1600&q=80";
-const PAGE_SIZE = 9;
+const RECOMMENDATION_LIMIT = 6;
 
 const sortOptions = ["Newest", "Most popular", "Editor's picks"];
 
@@ -76,86 +79,80 @@ export default function BlogPage() {
     const [activeTag, setActiveTag] = useState("All");
     const [search, setSearch] = useState("");
     const [sort, setSort] = useState(sortOptions[0]);
-    const [posts, setPosts] = useState<BlogListItem[]>([]);
-    const [total, setTotal] = useState(0);
-    const [page, setPage] = useState(1);
+    const [recommendations, setRecommendations] = useState<BlogRecommendationsResponse | null>(null);
     const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchPosts = useCallback(async (requestedPage: number, append = false) => {
-        try {
-            if (append) {
-                setLoadingMore(true);
-            } else {
-                setLoading(true);
-            }
-            setError(null);
-            const response = await blogService.getPosts({
-                page: requestedPage,
-                pageSize: PAGE_SIZE,
-                tag: activeTag === "All" ? undefined : activeTag,
-                search: search.trim() ? search.trim() : undefined
-            });
-            setTotal(response.total);
-            setPosts((prev) => (append ? [...prev, ...response.items] : response.items));
-            setPage(requestedPage);
-        } catch (fetchError) {
-            console.error(fetchError);
-            setError("Unable to load blog posts.");
-        } finally {
-            setLoading(false);
-            setLoadingMore(false);
-        }
-    }, [activeTag, blogService, search]);
-
     useEffect(() => {
-        fetchPosts(1, false);
-    }, [fetchPosts]);
+        const fetchRecommendations = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const response = await blogService.getHomeRecommendations({
+                    anonId: getAnonId(),
+                    limit: RECOMMENDATION_LIMIT
+                });
+                setRecommendations(response);
+            } catch (fetchError) {
+                console.error(fetchError);
+                setError("Unable to load blog posts.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRecommendations();
+    }, [blogService]);
 
     const tagFilters = useMemo(() => {
         const tags = new Set<string>();
-        posts.forEach((post) => post.tags.forEach((tag) => tags.add(tag)));
+        const allPosts: BlogListItem[] = [
+            ...(recommendations?.latestPosts ?? []),
+            ...(recommendations?.popularThisWeek ?? []),
+            ...(recommendations?.editorsPicks ?? []),
+            ...(recommendations?.forYou ?? [])
+        ];
+        if (recommendations?.heroPost) {
+            allPosts.push(recommendations.heroPost);
+        }
+        allPosts.forEach((post) => post.tags.forEach((tag) => tags.add(tag)));
         return ["All", ...Array.from(tags).slice(0, 6)];
-    }, [posts]);
+    }, [recommendations]);
 
-    const postsByDate = useMemo(() => {
-        return [...posts].sort((a, b) => {
+    const matchesFilters = useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+        return (post: BlogListItem) => {
+            const matchesTag = activeTag === "All" || post.tags.includes(activeTag);
+            if (!normalizedSearch) {
+                return matchesTag;
+            }
+            const text = `${post.title} ${post.excerpt}`.toLowerCase();
+            return matchesTag && text.includes(normalizedSearch);
+        };
+    }, [activeTag, search]);
+
+    const featuredPost = recommendations?.heroPost;
+    const latestPosts = (recommendations?.latestPosts ?? []).filter(matchesFilters);
+    const popularPosts = (recommendations?.popularThisWeek ?? []).filter(matchesFilters);
+    const editorsPicks = (recommendations?.editorsPicks ?? []).filter(matchesFilters);
+    const forYouPosts = (recommendations?.forYou?.length ? recommendations.forYou : recommendations?.popularThisWeek ?? [])
+        .filter(matchesFilters);
+
+    const sortedPosts = useMemo(() => {
+        if (sort === "Most popular") {
+            return [...latestPosts].sort((a, b) => (b.readingTime ?? 0) - (a.readingTime ?? 0));
+        }
+
+        if (sort === "Editor's picks") {
+            return [...latestPosts].sort((a, b) => a.title.localeCompare(b.title));
+        }
+
+        return [...latestPosts].sort((a, b) => {
             const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
             const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
             return dateB - dateA;
         });
-    }, [posts]);
-
-    const postsByReadingTime = useMemo(() => {
-        return [...posts].sort((a, b) => (b.readingTime ?? 0) - (a.readingTime ?? 0));
-    }, [posts]);
-
-    const featuredPost = postsByDate[0];
-    const popularPosts = postsByReadingTime.slice(0, 3);
-    const editorsFeatured = postsByDate[1] ?? postsByDate[0];
-    const editorsList = postsByDate.slice(2, 6);
-
-    const sortedPosts = useMemo(() => {
-        if (sort === "Most popular") {
-            return postsByReadingTime;
-        }
-
-        if (sort === "Editor's picks") {
-            return [...posts].sort((a, b) => a.title.localeCompare(b.title));
-        }
-
-        return postsByDate;
-    }, [posts, postsByDate, postsByReadingTime, sort]);
-
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-    const pageNumbers = useMemo(() => {
-        const start = Math.max(1, Math.min(page - 1, totalPages - 2));
-        const end = Math.min(totalPages, start + 2);
-        return Array.from({length: end - start + 1}, (_, index) => start + index);
-    }, [page, totalPages]);
-
-    const canLoadMore = page * PAGE_SIZE < total;
+    }, [latestPosts, sort]);
 
     return (
         <main className="blog-page">
@@ -205,36 +202,7 @@ export default function BlogPage() {
                             </div>
                         </div>
                     ) : featuredPost ? (
-                        <div className="featured-card">
-                            <div className="featured-media" aria-hidden="true">
-                                <div className="media-overlay" />
-                                <img
-                                    src={getCover(featuredPost)}
-                                    alt={featuredPost.title}
-                                />
-                            </div>
-                            <div className="featured-content">
-                                <div className="featured-top">
-                                    <span className="badge featured-badge">Featured</span>
-                                </div>
-                                <h2>{featuredPost.title}</h2>
-                                <div className="meta-row">
-                                    <span>{formatDate(featuredPost.publishedAt)}</span>
-                                    <span className="divider-dot" aria-hidden="true">•</span>
-                                    <span>{featuredPost.readingTime ? `${featuredPost.readingTime} min read` : "Quick read"}</span>
-                                    {featuredPost.tags[0] && <span className="meta-pill">{featuredPost.tags[0]}</span>}
-                                </div>
-                                <p className="featured-text">{featuredPost.excerpt}</p>
-                                <div className="featured-actions">
-                                    <Link className="btn btn-primary" to={`/blog/${featuredPost.slug}`}>Read article</Link>
-                                    <button className="btn btn-link" type="button" onClick={() => setActiveTag(featuredPost.tags[0] ?? "All")}
-                                    >
-                                        View all {featuredPost.tags[0] ?? "posts"}
-                                        <FontAwesomeIcon icon={faArrowRightLong} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <BlogHeroPost post={featuredPost} onTagSelect={(tag) => setActiveTag(tag)} />
                     ) : (
                         <div className="featured-card">
                             <div className="featured-content">
@@ -282,57 +250,50 @@ export default function BlogPage() {
                     ) : (
                         <div className="posts-grid">
                             {sortedPosts.map((post) => (
-                                <article className="post-card" key={post.id}>
-                                    <div className="post-media" aria-hidden="true">
-                                        {post.tags[0] && <span className="badge category-badge">{post.tags[0]}</span>}
-                                        <div className="media-overlay" />
-                                        <img src={getCover(post)} alt={post.title} />
-                                    </div>
-                                    <div className="post-body">
-                                        <h3>{post.title}</h3>
-                                        <div className="meta-row">
-                                            <span>{formatDate(post.publishedAt)}</span>
-                                            <span className="divider-dot" aria-hidden="true">•</span>
-                                            <span>{post.readingTime ? `${post.readingTime} min read` : "Quick read"}</span>
-                                        </div>
-                                        <p>{post.excerpt}</p>
-                                        <div className="post-footer">
-                                            <Link className="link-primary" to={`/blog/${post.slug}`}>
-                                                Read more
-                                                <FontAwesomeIcon icon={faArrowRightLong} />
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </article>
+                                <PostCard post={post} key={post.id} />
                             ))}
                         </div>
                     )}
                     <div className="posts-actions">
-                        <button
-                            className="btn btn-ghost"
-                            type="button"
-                            onClick={() => fetchPosts(page + 1, true)}
-                            disabled={!canLoadMore || loadingMore}
-                        >
-                            {loadingMore ? "Loading..." : "Load more posts"}
-                            <FontAwesomeIcon icon={faArrowRightLong} />
-                        </button>
-                        <nav className="pagination" aria-label="Blog pagination">
-                            {pageNumbers.map((pageNumber) => (
-                                <button
-                                    key={pageNumber}
-                                    className={`page-btn ${pageNumber === page ? "active" : ""}`}
-                                    type="button"
-                                    onClick={() => fetchPosts(pageNumber, false)}
-                                >
-                                    {pageNumber}
-                                </button>
-                            ))}
-                            {totalPages > pageNumbers[pageNumbers.length - 1] && (
-                                <span className="page-ellipsis">…</span>
-                            )}
-                        </nav>
+                        <span className="muted">Showing curated recommendations tailored to your interests.</span>
                     </div>
+                </div>
+            </section>
+
+            <section className="popular-posts section">
+                <div className="container">
+                    <div className="popular-header">
+                        <h2>For you</h2>
+                        <Link className="link-primary" to="/blog">
+                            View all
+                            <FontAwesomeIcon icon={faArrowRightLong} />
+                        </Link>
+                    </div>
+                    {loading ? (
+                        <div className="posts-grid popular-grid">
+                            {Array.from({length: 3}).map((_, index) => (
+                                <div className="post-card" key={`for-you-skeleton-${index}`}>
+                                    <div className="post-media">
+                                        <div className="media-overlay" />
+                                        <div className="skeleton h-32" />
+                                    </div>
+                                    <div className="post-body">
+                                        <div className="skeleton h-6" />
+                                        <div className="skeleton h-4 mt-3" />
+                                        <div className="skeleton h-16 mt-4" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : forYouPosts.length === 0 ? (
+                        <p className="muted">We are learning your tastes. Check back after reading a few posts.</p>
+                    ) : (
+                        <div className="posts-grid popular-grid">
+                            {forYouPosts.map((post) => (
+                                <PostCard post={post} key={post.id} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -347,28 +308,7 @@ export default function BlogPage() {
                     </div>
                     <div className="posts-grid popular-grid">
                         {popularPosts.map((post) => (
-                            <article className="post-card" key={post.id}>
-                                <div className="post-media" aria-hidden="true">
-                                    {post.tags[0] && <span className="badge category-badge">{post.tags[0]}</span>}
-                                    <div className="media-overlay" />
-                                    <img src={getCover(post)} alt={post.title} />
-                                </div>
-                                <div className="post-body">
-                                    <h3>{post.title}</h3>
-                                    <div className="meta-row">
-                                        <span>{formatDate(post.publishedAt)}</span>
-                                        <span className="divider-dot" aria-hidden="true">•</span>
-                                        <span>{post.readingTime ? `${post.readingTime} min read` : "Quick read"}</span>
-                                    </div>
-                                    <p>{post.excerpt}</p>
-                                    <div className="post-footer">
-                                        <Link className="link-primary" to={`/blog/${post.slug}`}>
-                                            Read more
-                                            <FontAwesomeIcon icon={faArrowRightLong} />
-                                        </Link>
-                                    </div>
-                                </div>
-                            </article>
+                            <PostCard post={post} key={post.id} />
                         ))}
                     </div>
                 </div>
@@ -418,22 +358,22 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container editors-layout">
-                    {editorsFeatured && (
+                    {editorsPicks[0] && (
                         <div className="editors-featured">
                             <div className="post-media" aria-hidden="true">
-                                {editorsFeatured.tags[0] && <span className="badge category-badge">{editorsFeatured.tags[0]}</span>}
+                                {editorsPicks[0].tags[0] && <span className="badge category-badge">{editorsPicks[0].tags[0]}</span>}
                                 <div className="media-overlay" />
-                                <img src={getCover(editorsFeatured)} alt={editorsFeatured.title} />
+                                <img src={getCover(editorsPicks[0])} alt={editorsPicks[0].title} />
                             </div>
                             <div className="post-body">
-                                <h3>{editorsFeatured.title}</h3>
-                                <p>{editorsFeatured.excerpt}</p>
+                                <h3>{editorsPicks[0].title}</h3>
+                                <p>{editorsPicks[0].excerpt}</p>
                                 <div className="meta-row">
-                                    <span>{formatDate(editorsFeatured.publishedAt)}</span>
+                                    <span>{formatDate(editorsPicks[0].publishedAt)}</span>
                                     <span className="divider-dot" aria-hidden="true">•</span>
-                                    <span>{editorsFeatured.readingTime ? `${editorsFeatured.readingTime} min read` : "Quick read"}</span>
+                                    <span>{editorsPicks[0].readingTime ? `${editorsPicks[0].readingTime} min read` : "Quick read"}</span>
                                 </div>
-                                <Link className="link-primary" to={`/blog/${editorsFeatured.slug}`}>
+                                <Link className="link-primary" to={`/blog/${editorsPicks[0].slug}`}>
                                     Read more
                                     <FontAwesomeIcon icon={faArrowRightLong} />
                                 </Link>
@@ -449,7 +389,7 @@ export default function BlogPage() {
                             </Link>
                         </div>
                         <div className="editors-list-items">
-                            {editorsList.map((item) => (
+                            {editorsPicks.slice(1).map((item) => (
                                 <article className="mini-post" key={item.id}>
                                     <div className="mini-thumb" aria-hidden="true">
                                         <img src={getCover(item)} alt={item.title} />
