@@ -22,6 +22,7 @@ import ApologyPage from "../apology-page/apology-page";
 import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
+import GameDetailsPage from "../game-details-page/game-details-page";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -34,6 +35,7 @@ export default function TaleGameshopMainWindow() {
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
+                    <Route path="/games/:slug" element={<GameDetailsPage/>}/>
                     <Route path="/about" element={<AboutUs/>}/>
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>
