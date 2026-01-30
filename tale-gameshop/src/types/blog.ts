@@ -15,9 +15,12 @@ export type BlogPost = {
   authorId?: string;
   authorName?: string;
   tags: string[];
+  topics?: string[];
   readingTime?: number;
   currentVersionId: string;
   viewCount?: number;
+  editorScore?: number;
+  featured?: boolean;
 };
 
 export type BlogPostVersion = {
@@ -43,6 +46,14 @@ export type BlogListItem = {
   tags: string[];
   publishedAt?: string;
   readingTime?: number;
+};
+
+export type BlogRecommendationsResponse = {
+  heroPost?: BlogListItem;
+  latestPosts: BlogListItem[];
+  popularThisWeek: BlogListItem[];
+  editorsPicks: BlogListItem[];
+  forYou: BlogListItem[];
 };
 
 export type BlogListResponse = {

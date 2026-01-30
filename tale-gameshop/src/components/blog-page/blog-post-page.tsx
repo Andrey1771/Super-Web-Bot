@@ -5,6 +5,7 @@ import IDENTIFIERS from "../../constants/identifiers";
 import type { IBlogService } from "../../iterfaces/i-blog-service";
 import type { BlogPost, BlogPostVersion } from "../../types/blog";
 import { renderMarkdown } from "../../utils/markdown";
+import { useBlogTracking } from "../../hooks/use-blog-tracking";
 import "./blog-page.css";
 
 const BlogPostPage: React.FC = () => {
@@ -14,6 +15,7 @@ const BlogPostPage: React.FC = () => {
   const [version, setVersion] = useState<BlogPostVersion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { trackOpen, trackReadProgress, trackReadComplete, trackBookmark } = useBlogTracking();
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -36,6 +38,38 @@ const BlogPostPage: React.FC = () => {
     };
     fetchPost();
   }, [blogService, slug]);
+
+  useEffect(() => {
+    if (!post) {
+      return;
+    }
+    trackOpen(post.id);
+  }, [post, trackOpen]);
+
+  useEffect(() => {
+    if (!post) {
+      return;
+    }
+
+    const start = Date.now();
+    const minReadTimeMs = 30000;
+    const interval = window.setInterval(() => {
+      const doc = document.documentElement;
+      const scrollTop = window.scrollY || doc.scrollTop;
+      const viewportHeight = window.innerHeight;
+      const scrollHeight = doc.scrollHeight;
+      const scrollDepth = scrollHeight ? Math.min((scrollTop + viewportHeight) / scrollHeight, 1) : 0;
+      const dwellMs = Date.now() - start;
+
+      trackReadProgress(post.id, scrollDepth, dwellMs);
+
+      if (scrollDepth >= 0.8 && dwellMs >= minReadTimeMs) {
+        trackReadComplete(post.id, dwellMs);
+      }
+    }, 4000);
+
+    return () => window.clearInterval(interval);
+  }, [post, trackReadComplete, trackReadProgress]);
 
   const contentHtml = useMemo(() => {
     return renderMarkdown(version?.contentMarkdown ?? "");
@@ -90,6 +124,9 @@ const BlogPostPage: React.FC = () => {
                   {tag}
                 </span>
               ))}
+              <button className="btn btn-outline" type="button" onClick={() => trackBookmark(post.id)}>
+                Save
+              </button>
             </div>
           </div>
           {post.coverUrl && (

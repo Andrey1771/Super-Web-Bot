@@ -25,6 +25,10 @@ namespace SuperBot.WebApi.Services
                 "WishlistItems",
                 "ViewedGames",
                 "GameKeys",
+                "BlogPosts",
+                "BlogPostVersions",
+                "BlogEvents",
+                "UserBlogProfiles",
                 "SupportTickets",
                 "SupportMessages",
                 "SupportAttachments",
@@ -69,6 +73,80 @@ namespace SuperBot.WebApi.Services
 
             await viewedCollection.Indexes.CreateOneAsync(viewedUserGameIndex);
             await viewedCollection.Indexes.CreateOneAsync(viewedUserDateIndex);
+
+            var blogPostsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogPostDb>("BlogPosts");
+            var blogSlugIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostDb>.IndexKeys.Ascending(item => item.Slug),
+                new CreateIndexOptions { Unique = true, Name = "ix_blog_posts_slug" }
+            );
+            var blogPublishedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostDb>.IndexKeys.Descending(item => item.PublishedAt),
+                new CreateIndexOptions { Name = "ix_blog_posts_published_at" }
+            );
+            var blogTagsIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostDb>.IndexKeys.Ascending(item => item.Tags),
+                new CreateIndexOptions { Name = "ix_blog_posts_tags" }
+            );
+            var blogStatusPublishedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostDb>.IndexKeys
+                    .Ascending(item => item.Status)
+                    .Descending(item => item.PublishedAt),
+                new CreateIndexOptions { Name = "ix_blog_posts_status_published" }
+            );
+
+            await blogPostsCollection.Indexes.CreateOneAsync(blogSlugIndex);
+            await blogPostsCollection.Indexes.CreateOneAsync(blogPublishedIndex);
+            await blogPostsCollection.Indexes.CreateOneAsync(blogTagsIndex);
+            await blogPostsCollection.Indexes.CreateOneAsync(blogStatusPublishedIndex);
+
+            var blogEventsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogEventDb>("BlogEvents");
+            var blogEventPostIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogEventDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogEventDb>.IndexKeys
+                    .Ascending(item => item.PostId)
+                    .Descending(item => item.Timestamp),
+                new CreateIndexOptions { Name = "ix_blog_events_post_ts" }
+            );
+            var blogEventUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogEventDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogEventDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Descending(item => item.Timestamp),
+                new CreateIndexOptions { Name = "ix_blog_events_user_ts" }
+            );
+            var blogEventAnonIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogEventDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogEventDb>.IndexKeys
+                    .Ascending(item => item.AnonId)
+                    .Descending(item => item.Timestamp),
+                new CreateIndexOptions { Name = "ix_blog_events_anon_ts" }
+            );
+            var blogEventTypeIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogEventDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogEventDb>.IndexKeys
+                    .Ascending(item => item.EventType)
+                    .Descending(item => item.Timestamp),
+                new CreateIndexOptions { Name = "ix_blog_events_type_ts" }
+            );
+
+            await blogEventsCollection.Indexes.CreateOneAsync(blogEventPostIndex);
+            await blogEventsCollection.Indexes.CreateOneAsync(blogEventUserIndex);
+            await blogEventsCollection.Indexes.CreateOneAsync(blogEventAnonIndex);
+            await blogEventsCollection.Indexes.CreateOneAsync(blogEventTypeIndex);
+
+            var blogProfilesCollection = _database.GetCollection<SuperBot.Infrastructure.Data.UserBlogProfileDb>("UserBlogProfiles");
+            var blogProfileUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(
+                Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>.IndexKeys.Ascending(item => item.UserId),
+                new CreateIndexOptions { Name = "ix_blog_profiles_user", Unique = true, Sparse = true }
+            );
+            var blogProfileAnonIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(
+                Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>.IndexKeys.Ascending(item => item.AnonId),
+                new CreateIndexOptions { Name = "ix_blog_profiles_anon", Unique = true, Sparse = true }
+            );
+            var blogProfileUpdatedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(
+                Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>.IndexKeys.Descending(item => item.UpdatedAt),
+                new CreateIndexOptions { Name = "ix_blog_profiles_updated" }
+            );
+
+            await blogProfilesCollection.Indexes.CreateOneAsync(blogProfileUserIndex);
+            await blogProfilesCollection.Indexes.CreateOneAsync(blogProfileAnonIndex);
+            await blogProfilesCollection.Indexes.CreateOneAsync(blogProfileUpdatedIndex);
 
             var gameKeyCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameKeyDb>("GameKeys");
             var gameKeyUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(

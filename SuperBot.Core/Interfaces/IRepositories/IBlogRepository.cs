@@ -10,6 +10,10 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<BlogPost> GetByIdAsync(string id);
         Task<BlogPost> GetBySlugAsync(string slug);
         Task<BlogPost> GetByExternalIdAsync(string externalId);
+        Task<IReadOnlyList<BlogPost>> GetByIdsAsync(IEnumerable<string> ids);
+        Task<IReadOnlyList<BlogPost>> GetPublishedAsync(int limit);
+        Task<IReadOnlyList<BlogPost>> GetPublishedSinceAsync(DateTime fromUtc);
+        Task<IReadOnlyList<BlogPost>> GetEditorsPicksAsync(int limit);
         Task CreateAsync(BlogPost post, BlogPostVersion version);
         Task UpdateAsync(BlogPost post, BlogPostVersion version);
         Task<List<BlogPostVersion>> GetVersionsAsync(string postId);
