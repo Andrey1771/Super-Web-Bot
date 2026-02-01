@@ -17,6 +17,12 @@ export class GameDetailsService implements IGameDetailsService {
     }
 
     async getGameDetailsBySlug(slug: string): Promise<GameDetailsViewModel> {
+        const shouldUseApi = process.env.REACT_APP_USE_GAME_DETAILS_API === 'true';
+
+        if (!shouldUseApi) {
+            return gameDetailsMock;
+        }
+
         try {
             const response = await this._apiClient.api.get(`${API_URL}/${slug}`);
             return response.data as GameDetailsViewModel;
