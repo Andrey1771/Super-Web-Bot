@@ -34,5 +34,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("externalId")]
         [BsonIgnoreIfNull]
         public string? ExternalId { get; set; }
+
+        [BsonElement("slug")]
+        [BsonIgnoreIfNull]
+        public string? Slug { get; set; }
     }
 }
