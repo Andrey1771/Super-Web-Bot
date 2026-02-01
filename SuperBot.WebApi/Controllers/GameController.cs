@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using System;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -13,8 +14,15 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllGames()
         {
-            var games = await _gameRepository.GetAllAsync();
-            return Ok(games);
+            try
+            {
+                var games = await _gameRepository.GetAllAsync();
+                return Ok(games);
+            }
+            catch (Exception)
+            {
+                return Ok(Array.Empty<Game>());
+            }
         }
 
         [HttpGet("{id}")]
