@@ -4,6 +4,7 @@ import { Game } from '../models/game';
 import IDENTIFIERS from "../constants/identifiers";
 import type {IApiClient} from "../iterfaces/i-api-client";
 import container from '../inversify.config';
+import { gamesMock } from './game.mock';
 
 const API_URL = '/api/Game'; // Замените на ваш URL
 
@@ -20,12 +21,18 @@ export class GameService implements IGameService {
 
     // Получение всех игр
     async getAllGames(): Promise<Game[]> {
+        const shouldUseApi = process.env.REACT_APP_USE_GAMES_API === 'true';
+
+        if (!shouldUseApi) {
+            return gamesMock;
+        }
+
         try {
             const response = await this._apiClient.api.get(API_URL);
             return response.data;
         } catch (error) {
-            console.error('Error fetching games:', error);
-            throw error;
+            console.warn('Falling back to mock games data.', error);
+            return gamesMock;
         }
     }
 

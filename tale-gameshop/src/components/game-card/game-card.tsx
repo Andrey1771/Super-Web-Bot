@@ -30,6 +30,11 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
     };
 
     const gameSlug = encodeURIComponent(game.name ?? game.title);
+    const imageUrl = game.imagePath.startsWith('http')
+        ? game.imagePath
+        : game.imagePath.startsWith('/')
+            ? game.imagePath
+            : `${urlService.apiBaseUrl}/${game.imagePath}`;
 
     return (
         <div key={game.id} className="card h-full flex flex-col">
@@ -38,7 +43,7 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                     <img
                         alt={game.title}
                         height="180"
-                        src={`${urlService.apiBaseUrl}/${game.imagePath}`}
+                        src={imageUrl}
                         width="100%"
                     />
                 </Link>
