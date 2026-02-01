@@ -30,5 +30,9 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("releaseDate")]
         public DateTime ReleaseDate { get; set; }
+
+        [BsonElement("externalId")]
+        [BsonIgnoreIfNull]
+        public string? ExternalId { get; set; }
     }
 }
