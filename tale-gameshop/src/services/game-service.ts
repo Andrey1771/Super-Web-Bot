@@ -21,7 +21,7 @@ export class GameService implements IGameService {
 
     // Получение всех игр
     async getAllGames(): Promise<Game[]> {
-        const shouldUseApi = process.env.REACT_APP_USE_GAMES_API === 'true';
+        const shouldUseApi = process.env.REACT_APP_USE_GAMES_API !== 'false';
 
         if (!shouldUseApi) {
             return gamesMock;
