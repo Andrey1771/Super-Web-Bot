@@ -40,6 +40,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "start": "webpack serve --open --config webpack.config.js --mode development",
     "start-dev": "webpack serve --open --config webpack.config.js --mode development",
     "start-prod": "node server.js",
     "build": "webpack --mode production",
