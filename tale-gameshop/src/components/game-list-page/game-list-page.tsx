@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import IDENTIFIERS from '../../constants/identifiers';
 import './game-list-page.css';
 import container from '../../inversify.config';
@@ -14,6 +14,7 @@ import type { IWishlistService } from '../../iterfaces/i-wishlist-service';
 import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 import type { IRecommendationsService } from '../../iterfaces/i-recommendations-service';
 import { analyticsClient } from '../../utils/analytics-client';
+import { slugify } from '../../utils/slugify';
 
 const categoryOrder = [
     'Educational Games',
@@ -507,6 +508,7 @@ const TaleGameshopGameList: React.FC = () => {
         const price = Number.isFinite(game.price) ? `$${Number(game.price).toFixed(2)}` : '$0';
         const wishlistKey = resolveWishlistKey(game);
         const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
+        const gameSlug = slugify(game.title || game.name);
 
         return (
             <div
@@ -518,8 +520,13 @@ const TaleGameshopGameList: React.FC = () => {
                     className={`relative mb-4 overflow-hidden rounded-[16px] ${
                         isLarge ? 'h-[190px]' : 'h-[120px]'
                     }`}
-                    onClick={() => handleRecordViewed(game)}
                 >
+                    <Link
+                        to={`/games/${gameSlug}`}
+                        className="absolute inset-0 z-[1]"
+                        aria-label={`Open ${game.title}`}
+                        onClick={() => handleRecordViewed(game)}
+                    />
                     {renderImage(game)}
                     {showBadge && (
                         <span className="absolute left-3 top-3 rounded-full bg-[#6b3ff2] px-3 py-1 text-xs font-semibold text-white shadow-sm">
@@ -549,7 +556,9 @@ const TaleGameshopGameList: React.FC = () => {
                 </div>
                 <div className="flex flex-1 flex-col">
                     <h3 className={`${isLarge ? 'text-lg' : 'text-sm'} font-semibold text-[#2c2354]`}>
-                        {game.title}
+                        <Link to={`/games/${gameSlug}`} onClick={() => handleRecordViewed(game)}>
+                            {game.title}
+                        </Link>
                     </h3>
                     <span className="mt-1 text-sm font-medium text-[#6f64a8]">{price}</span>
                     <button
