@@ -508,7 +508,7 @@ const TaleGameshopGameList: React.FC = () => {
         const price = Number.isFinite(game.price) ? `$${Number(game.price).toFixed(2)}` : '$0';
         const wishlistKey = resolveWishlistKey(game);
         const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
-        const gameSlug = slugify(game.title || game.name);
+        const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
 
         return (
             <div

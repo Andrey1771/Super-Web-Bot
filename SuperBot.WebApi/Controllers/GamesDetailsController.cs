@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using System.Text.RegularExpressions;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -37,13 +38,26 @@ public class GamesDetailsController : ControllerBase
             return BadRequest("Slug is required.");
         }
 
-        var details = await _gameDetailsRepository.GetBySlugAsync(slug);
+        var normalizedSlug = NormalizeSlug(slug);
+        var details = await _gameDetailsRepository.GetBySlugAsync(normalizedSlug);
+        if (details == null && normalizedSlug != slug)
+        {
+            details = await _gameDetailsRepository.GetBySlugAsync(slug);
+        }
         if (details == null)
         {
-            var game = await _gameRepository.GetBySlugAsync(slug);
+            var game = await _gameRepository.GetBySlugAsync(normalizedSlug)
+                ?? (normalizedSlug != slug ? await _gameRepository.GetBySlugAsync(slug) : null);
             if (game == null)
             {
-                return NotFound();
+                var games = await _gameRepository.GetAllAsync();
+                game = games.FirstOrDefault(candidate =>
+                    NormalizeSlug(candidate?.Slug) == normalizedSlug
+                    || NormalizeSlug(candidate?.Title ?? candidate?.Name) == normalizedSlug);
+                if (game == null)
+                {
+                    return NotFound();
+                }
             }
 
             details = BuildDefaultDetails(game);
@@ -82,7 +96,12 @@ public class GamesDetailsController : ControllerBase
     [HttpGet("{slug}/recommendations")]
     public async Task<IActionResult> GetRecommendations(string slug, [FromQuery] int limit = 8)
     {
-        var details = await _gameDetailsRepository.GetBySlugAsync(slug);
+        var normalizedSlug = NormalizeSlug(slug);
+        var details = await _gameDetailsRepository.GetBySlugAsync(normalizedSlug);
+        if (details == null && normalizedSlug != slug)
+        {
+            details = await _gameDetailsRepository.GetBySlugAsync(slug);
+        }
         if (details == null)
         {
             return NotFound();
@@ -97,7 +116,9 @@ public class GamesDetailsController : ControllerBase
         return new GameDetails
         {
             GameId = game.Id,
-            Slug = game.Slug,
+            Slug = string.IsNullOrWhiteSpace(game.Slug)
+                ? NormalizeSlug(game.Title ?? game.Name)
+                : NormalizeSlug(game.Slug),
             Title = string.IsNullOrWhiteSpace(game.Title) ? game.Name : game.Title,
             Tagline = string.Empty,
             DescriptionMarkdown = string.Empty,
@@ -225,5 +246,19 @@ public class GamesDetailsController : ControllerBase
     private string GetUserName()
     {
         return User.Identity?.Name ?? User.FindFirst("preferred_username")?.Value ?? User.FindFirst("email")?.Value ?? string.Empty;
+    }
+
+    private static string NormalizeSlug(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        normalized = Regex.Replace(normalized, @"[^\p{L}\p{N}\s-]", string.Empty);
+        normalized = Regex.Replace(normalized, @"\s+", "-");
+        normalized = Regex.Replace(normalized, @"-+", "-");
+        return normalized;
     }
 }

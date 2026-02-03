@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using System.Text.RegularExpressions;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -42,7 +43,8 @@ public class AdminGameDetailsController : ControllerBase
         }
 
         payload.GameId = id;
-        payload.Slug = string.IsNullOrWhiteSpace(payload.Slug) ? game.Slug : payload.Slug;
+        var fallbackSlug = string.IsNullOrWhiteSpace(game.Slug) ? NormalizeSlug(game.Title ?? game.Name) : NormalizeSlug(game.Slug);
+        payload.Slug = string.IsNullOrWhiteSpace(payload.Slug) ? fallbackSlug : NormalizeSlug(payload.Slug);
         payload.Title = string.IsNullOrWhiteSpace(payload.Title) ? game.Title ?? game.Name : payload.Title;
 
         await _gameDetailsRepository.UpsertAsync(payload);
@@ -179,5 +181,19 @@ public class AdminGameDetailsController : ControllerBase
     {
         public List<string> SimilarGameIds { get; set; } = new();
         public GameAutoRecommendRules AutoRecommendRules { get; set; } = new();
+    }
+
+    private static string NormalizeSlug(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        normalized = Regex.Replace(normalized, @"[^\p{L}\p{N}\s-]", string.Empty);
+        normalized = Regex.Replace(normalized, @"\s+", "-");
+        normalized = Regex.Replace(normalized, @"-+", "-");
+        return normalized;
     }
 }
