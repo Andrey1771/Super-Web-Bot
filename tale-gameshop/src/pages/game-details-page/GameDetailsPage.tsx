@@ -73,6 +73,7 @@ const StarRating = ({ rating, size = 16 }: { rating: number; size?: number }) =>
 
 const GameMediaGallery = ({ media, title }: { media: MediaItem[]; title: string }) => {
   const [selectedId, setSelectedId] = useState(media[0]?.id ?? '');
+  const [isPlaying, setIsPlaying] = useState(false);
   const thumbnailRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -88,6 +89,7 @@ const GameMediaGallery = ({ media, title }: { media: MediaItem[]; title: string 
 
   useEffect(() => {
     updateScrollState();
+    setIsPlaying(false);
     const node = thumbnailRef.current;
     if (!node) return;
     const handleScroll = () => updateScrollState();
@@ -97,7 +99,7 @@ const GameMediaGallery = ({ media, title }: { media: MediaItem[]; title: string 
       node.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', updateScrollState);
     };
-  }, [media.length]);
+  }, [media.length, selectedId]);
 
   const scrollByAmount = (amount: number) => {
     const node = thumbnailRef.current;
@@ -110,9 +112,21 @@ const GameMediaGallery = ({ media, title }: { media: MediaItem[]; title: string 
       <div className="game-media-main card">
         {selectedMedia?.type === 'video' ? (
           <div className="game-media-video">
-            <video controls poster={selectedMedia.thumbUrl} aria-label={`${title} trailer`}>
-              <source src={selectedMedia.url} />
-            </video>
+            {isPlaying ? (
+              <video controls autoPlay poster={selectedMedia.posterUrl ?? selectedMedia.thumbUrl} aria-label={`${title} trailer`}>
+                <source src={selectedMedia.url} />
+              </video>
+            ) : (
+              <button
+                type="button"
+                className="video-poster"
+                onClick={() => setIsPlaying(true)}
+                aria-label="Play trailer"
+              >
+                <img src={selectedMedia.posterUrl ?? selectedMedia.thumbUrl} alt={`${title} trailer`} />
+                <span className="video-play">▶</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="game-media-image">
@@ -183,6 +197,7 @@ const GamePurchaseCard = ({
       <div className="purchase-rating">
         <StarRating rating={ratingSummary.average} size={14} />
         <span className="rating-value">{ratingSummary.average.toFixed(1)}</span>
+        <span className="rating-pill">{ratingSummary.label}</span>
       </div>
       <div className="purchase-actions">
         <button className="btn btn-primary" type="button">
@@ -308,15 +323,34 @@ const AboutGameCard = ({ description, features, awards }: { description: string[
 
 const GameplayCard = ({ trailerUrl, screenshots }: { trailerUrl: string; screenshots: string[] }) => {
   const [activeShot, setActiveShot] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
+  const handlePlay = () => {
+    if (videoRef.current) {
+      videoRef.current.play();
+    }
+  };
 
   return (
     <div className="card" id="gameplay">
       <h2>Gameplay & trailer</h2>
       <div className="video-card">
         <div className="video-frame">
-          <video controls poster={screenshots[0]} aria-label="Official gameplay trailer">
+          <video
+            ref={videoRef}
+            controls
+            poster={screenshots[0]}
+            aria-label="Official gameplay trailer"
+            onPlay={() => setIsTrailerPlaying(true)}
+            onPause={() => setIsTrailerPlaying(false)}
+          >
             <source src={trailerUrl} />
           </video>
+          {!isTrailerPlaying && (
+            <button type="button" className="video-overlay" onClick={handlePlay} aria-label="Play trailer">
+              <span className="play-icon" aria-hidden="true">▶</span>
+            </button>
+          )}
           <span className="video-label">Official Gameplay Trailer</span>
         </div>
       </div>
@@ -550,7 +584,14 @@ const ReviewList = ({ reviews }: { reviews: Review[] }) => (
 const WriteReviewCard = ({ isAuthenticated }: { isAuthenticated: boolean }) => (
   <div className="card write-review">
     <h2>Write a review</h2>
-    {!isAuthenticated && <p className="muted">Sign in to leave a review</p>}
+    {!isAuthenticated && (
+      <div className="write-review-locked">
+        <p className="muted">Sign in to leave a review</p>
+        <Link to="/logIn" className="btn btn-primary">
+          Sign in
+        </Link>
+      </div>
+    )}
     <div className="write-stars" aria-label="Select rating">
       {Array.from({ length: 5 }).map((_, index) => (
         <button key={index} type="button" className="star-button" disabled={!isAuthenticated}>
@@ -622,16 +663,19 @@ const RecommendationsCarousel = ({ items }: { items: GameCardItem[] }) => {
       </div>
       <div className="recommendations-track" ref={trackRef}>
         {items.map((item) => (
-          <Link key={item.id} to={`/games/${item.slug}`} className="recommendation-card">
-            <img src={item.coverUrl} alt={item.title} loading="lazy" />
-            <div>
+          <div key={item.id} className="recommendation-card">
+            <Link to={`/games/${item.slug}`} className="recommendation-link">
+              <img src={item.coverUrl} alt={item.title} loading="lazy" />
               <p className="line-clamp-2">{item.title}</p>
-              <div className="recommendation-meta">
-                <span>{formatPrice(item.price, 'USD')}</span>
-                <span className="recommendation-rating">★ {item.rating.toFixed(1)}</span>
-              </div>
+            </Link>
+            <div className="recommendation-meta">
+              <span>{formatPrice(item.price, 'USD')}</span>
+              <span className="recommendation-rating">★ {item.rating.toFixed(1)}</span>
             </div>
-          </Link>
+            <button className="btn btn-primary btn-small" type="button" disabled title="Coming soon">
+              Add to cart
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -669,6 +713,23 @@ const GameDetailsPage: React.FC = () => {
   const displayPricing = selectedEdition?.pricing ?? data?.pricing;
   const isAuthenticated = Boolean(keycloakService.keycloak?.authenticated);
 
+  const renderPlatformIcon = (platform: string) => {
+    const key = platform.toLowerCase();
+    if (key.includes('windows')) {
+      return '🪟';
+    }
+    if (key.includes('mac')) {
+      return '🍎';
+    }
+    if (key.includes('playstation')) {
+      return '🎮';
+    }
+    if (key.includes('xbox')) {
+      return '🕹️';
+    }
+    return '💻';
+  };
+
   if (!data || !displayPricing) {
     return (
       <main className="game-details-page">
@@ -702,61 +763,74 @@ const GameDetailsPage: React.FC = () => {
               <span>/</span>
               <span className="current">{data.game.title}</span>
             </nav>
-            <h1 className="game-title line-clamp-2">{data.game.title}</h1>
+            <h1 className="game-title">{data.game.title}</h1>
             <p className="game-tagline">{data.game.tagline}</p>
             <div className="badge-row">
-              {['Top rated', 'New', `-${displayPricing.discountPercent ?? 0}%`, 'Steam key'].map((badge) => (
-                <span key={badge} className="badge">
-                  {badge}
+              {[
+                { label: 'Top rated', variant: 'primary' },
+                { label: 'New', variant: 'neutral' },
+                { label: `-${displayPricing.discountPercent ?? 0}%`, variant: 'discount' },
+                { label: 'Steam key', variant: 'neutral' }
+              ].map((badge) => (
+                <span key={badge.label} className={`badge badge-${badge.variant}`}>
+                  {badge.label}
                 </span>
               ))}
             </div>
-            <div className="meta-list">
-              <div>
-                <span className="meta-label">Developer</span>
-                <span>{data.game.developer}</span>
-              </div>
-              <div>
-                <span className="meta-label">Publisher</span>
-                <span>{data.game.publisher}</span>
-              </div>
-              <div>
-                <span className="meta-label">Release date</span>
-                <span>{data.game.releaseDate}</span>
-              </div>
-              <div>
-                <span className="meta-label">Platforms</span>
-                <div className="chip-row">
-                  {data.game.platforms.map((platform) => (
-                    <span key={platform} className="chip">
-                      {platform}
-                    </span>
-                  ))}
+            <div className="hero-info-grid">
+              <div className="hero-info-main">
+                <div className="meta-list">
+                  <div>
+                    <span className="meta-label">Developer</span>
+                    <span>{data.game.developer}</span>
+                  </div>
+                  <div>
+                    <span className="meta-label">Publisher</span>
+                    <span>{data.game.publisher}</span>
+                  </div>
+                  <div>
+                    <span className="meta-label">Release date</span>
+                    <span>{data.game.releaseDate}</span>
+                  </div>
+                  <div>
+                    <span className="meta-label">Platforms</span>
+                    <div className="chip-row">
+                      {data.game.platforms.map((platform) => (
+                        <span key={platform} className="chip platform-chip">
+                          <span className="platform-icon" aria-hidden="true">{renderPlatformIcon(platform)}</span>
+                          {platform}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="meta-label">Genres</span>
+                    <div className="chip-row">
+                      {data.game.genres.map((genre) => (
+                        <span key={genre} className="chip">
+                          {genre}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="rating-summary card compact">
+                  <div className="rating-score">
+                    <span>{data.ratingSummary.average.toFixed(1)}</span>
+                  </div>
+                  <div>
+                    <StarRating rating={data.ratingSummary.average} />
+                    <p>
+                      ({data.ratingSummary.totalReviews.toLocaleString()} reviews)
+                    </p>
+                  </div>
+                  <span className="rating-label">{data.ratingSummary.label}</span>
                 </div>
               </div>
-              <div>
-                <span className="meta-label">Genres</span>
-                <div className="chip-row">
-                  {data.game.genres.map((genre) => (
-                    <span key={genre} className="chip">
-                      {genre}
-                    </span>
-                  ))}
-                </div>
+              <div className="hero-purchase">
+                <GamePurchaseCard pricing={displayPricing} ratingSummary={data.ratingSummary} />
               </div>
             </div>
-            <div className="rating-summary card">
-              <div className="rating-score">
-                <span>{data.ratingSummary.average.toFixed(1)}</span>
-              </div>
-              <div>
-                <StarRating rating={data.ratingSummary.average} />
-                <p>
-                  ({data.ratingSummary.totalReviews.toLocaleString()} reviews) · {data.ratingSummary.label}
-                </p>
-              </div>
-            </div>
-            <GamePurchaseCard pricing={displayPricing} ratingSummary={data.ratingSummary} />
             <GameQuickInfoTiles tiles={data.quickInfoTiles} />
           </div>
         </div>
@@ -791,28 +865,32 @@ const GameDetailsPage: React.FC = () => {
           <div className="reviews-header">
             <h2>Reviews</h2>
             <div className="reviews-controls">
-              <select className="input" aria-label="Sort reviews">
-                <option>Newest</option>
-                <option>Top</option>
-                <option>Verified purchases</option>
-              </select>
-              <select className="input" aria-label="Filter by rating">
-                <option>All ratings</option>
-                <option>5 stars</option>
-                <option>4 stars</option>
-                <option>3 stars</option>
-                <option>2 stars</option>
-                <option>1 star</option>
-              </select>
-              <label className="filter-checkbox">
-                <input type="checkbox" />
-                Only with gameplay time
-              </label>
-              <label className="filter-checkbox">
-                <input type="checkbox" />
-                Only with images
-              </label>
-              <input className="input" placeholder="Search reviews..." aria-label="Search reviews" />
+              <div className="controls-row">
+                <select className="input" aria-label="Sort reviews">
+                  <option>Newest</option>
+                  <option>Top</option>
+                  <option>Verified purchases</option>
+                </select>
+                <select className="input" aria-label="Filter by rating">
+                  <option>All ratings</option>
+                  <option>5 stars</option>
+                  <option>4 stars</option>
+                  <option>3 stars</option>
+                  <option>2 stars</option>
+                  <option>1 star</option>
+                </select>
+                <label className="filter-checkbox">
+                  <input type="checkbox" />
+                  Only with gameplay time
+                </label>
+                <label className="filter-checkbox">
+                  <input type="checkbox" />
+                  Only with images
+                </label>
+              </div>
+              <div className="controls-row search-row">
+                <input className="input" placeholder="Search reviews..." aria-label="Search reviews" />
+              </div>
             </div>
           </div>
           <div className="reviews-grid">

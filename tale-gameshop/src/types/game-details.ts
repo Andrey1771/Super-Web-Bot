@@ -23,6 +23,7 @@ export interface MediaItem {
   type: 'image' | 'video';
   url: string;
   thumbUrl: string;
+  posterUrl?: string;
   durationSec?: number;
 }
 

@@ -49,6 +49,7 @@ export const gameDetailsMock: GameDetailsViewModel = {
       type: 'video',
       url: 'https://www.w3schools.com/html/mov_bbb.mp4',
       thumbUrl: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=240&q=80',
+      posterUrl: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
       durationSec: 126
     },
     {
