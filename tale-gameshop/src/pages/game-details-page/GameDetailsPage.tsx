@@ -1,24 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import './game-details-page.css';
-import { gameDetailsService } from '../../services/game-details-service';
 import {
-  DetailRow,
   DLC,
   Edition,
   GameCardItem,
-  GameDetailsViewModel,
+  GameDetails,
+  GameDetailsResponse,
+  GameSystemRequirements,
   MediaItem,
   QAItem,
   QuickInfoTile,
   RatingBreakdownItem,
   Review,
-  ReviewTag,
-  SystemRequirement
+  ReviewTag
 } from '../../types/game-details';
 import IDENTIFIERS from '../../constants/identifiers';
 import container from '../../inversify.config';
 import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
+import type { IGameDetailsService } from '../../iterfaces/i-game-details-service';
+import type { GameReviewFilters } from '../../types/game-details-service';
+import { getAnonId } from '../../hooks/use-blog-tracking';
 
 const formatPrice = (price: number, currency: string) => {
   const formatter = new Intl.NumberFormat('en-US', {
@@ -35,6 +37,8 @@ const formatDuration = (durationSec?: number) => {
   const seconds = durationSec % 60;
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
+
+type DetailRow = { id: string; label: string; value: string | string[] };
 
 const StarRating = ({ rating, size = 16 }: { rating: number; size?: number }) => {
   const fullStars = Math.floor(rating);
@@ -71,7 +75,26 @@ const StarRating = ({ rating, size = 16 }: { rating: number; size?: number }) =>
   );
 };
 
-const GameMediaGallery = ({ media, title }: { media: MediaItem[]; title: string }) => {
+const GameMediaGallery = ({
+  media,
+  title,
+  onMediaPlay
+}: {
+  media: MediaItem[];
+  title: string;
+  onMediaPlay?: (item: MediaItem) => void;
+}) => {
+  if (media.length === 0) {
+    return (
+      <div className="game-media-gallery">
+        <div className="game-media-main card">
+          <div className="game-media-image">
+            <div className="media-placeholder">No media available</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const [selectedId, setSelectedId] = useState(media[0]?.id ?? '');
   const [isPlaying, setIsPlaying] = useState(false);
   const thumbnailRef = useRef<HTMLDivElement | null>(null);
@@ -100,6 +123,12 @@ const GameMediaGallery = ({ media, title }: { media: MediaItem[]; title: string 
       window.removeEventListener('resize', updateScrollState);
     };
   }, [media.length, selectedId]);
+
+  useEffect(() => {
+    if (isPlaying && selectedMedia && selectedMedia.type === 'video') {
+      onMediaPlay?.(selectedMedia);
+    }
+  }, [isPlaying, onMediaPlay, selectedMedia]);
 
   const scrollByAmount = (amount: number) => {
     const node = thumbnailRef.current;
@@ -294,34 +323,40 @@ const GameStickyTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => 
   );
 };
 
-const AboutGameCard = ({ description, features, awards }: { description: string[]; features: string[]; awards: string[] }) => (
-  <div className="card" id="overview">
-    <h2>About this game</h2>
-    {description.map((paragraph) => (
-      <p key={paragraph}>{paragraph}</p>
-    ))}
-    <div className="features">
-      <h3>Key features</h3>
-      <ul>
-        {features.map((feature) => (
-          <li key={feature}>{feature}</li>
-        ))}
-      </ul>
-    </div>
-    <div className="awards">
-      <h3>Awards & nominations</h3>
-      <div className="award-row">
-        {awards.map((award) => (
-          <span key={award} className="award-pill">
-            🏆 {award}
-          </span>
-        ))}
+const AboutGameCard = ({ descriptionMarkdown, features, awards }: { descriptionMarkdown: string; features: string[]; awards: GameDetails["awards"] }) => {
+  const paragraphs = descriptionMarkdown
+    ? descriptionMarkdown.split(/\n\n+/).map((text) => text.trim()).filter(Boolean)
+    : ["No description available yet."];
+
+  return (
+    <div className="card" id="overview">
+      <h2>About this game</h2>
+      {paragraphs.map((paragraph) => (
+        <p key={paragraph}>{paragraph}</p>
+      ))}
+      <div className="features">
+        <h3>Key features</h3>
+        <ul>
+          {features.map((feature) => (
+            <li key={feature}>{feature}</li>
+          ))}
+        </ul>
+      </div>
+      <div className="awards">
+        <h3>Awards & nominations</h3>
+        <div className="award-row">
+          {awards.map((award) => (
+            <span key={award.title} className="award-pill">
+              🏆 {award.title}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const GameplayCard = ({ trailerUrl, screenshots }: { trailerUrl: string; screenshots: string[] }) => {
+const GameplayCard = ({ trailer, screenshots }: { trailer?: MediaItem; screenshots: MediaItem[] }) => {
   const [activeShot, setActiveShot] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
@@ -336,20 +371,26 @@ const GameplayCard = ({ trailerUrl, screenshots }: { trailerUrl: string; screens
       <h2>Gameplay & trailer</h2>
       <div className="video-card">
         <div className="video-frame">
-          <video
-            ref={videoRef}
-            controls
-            poster={screenshots[0]}
-            aria-label="Official gameplay trailer"
-            onPlay={() => setIsTrailerPlaying(true)}
-            onPause={() => setIsTrailerPlaying(false)}
-          >
-            <source src={trailerUrl} />
-          </video>
-          {!isTrailerPlaying && (
-            <button type="button" className="video-overlay" onClick={handlePlay} aria-label="Play trailer">
-              <span className="play-icon" aria-hidden="true">▶</span>
-            </button>
+          {trailer ? (
+            <>
+              <video
+                ref={videoRef}
+                controls
+                poster={trailer.posterUrl ?? trailer.thumbUrl}
+                aria-label="Official gameplay trailer"
+                onPlay={() => setIsTrailerPlaying(true)}
+                onPause={() => setIsTrailerPlaying(false)}
+              >
+                <source src={trailer.url} />
+              </video>
+              {!isTrailerPlaying && (
+                <button type="button" className="video-overlay" onClick={handlePlay} aria-label="Play trailer">
+                  <span className="play-icon" aria-hidden="true">▶</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="video-empty">Trailer coming soon</div>
           )}
           <span className="video-label">Official Gameplay Trailer</span>
         </div>
@@ -357,13 +398,13 @@ const GameplayCard = ({ trailerUrl, screenshots }: { trailerUrl: string; screens
       <div className="screenshot-grid">
         {screenshots.map((shot) => (
           <button
-            key={shot}
+            key={shot.id}
             type="button"
             className="screenshot-item"
-            onClick={() => setActiveShot(shot)}
+            onClick={() => setActiveShot(shot.url)}
             aria-label="Open screenshot"
           >
-            <img src={shot} alt="Gameplay screenshot" loading="lazy" />
+            <img src={shot.url} alt="Gameplay screenshot" loading="lazy" />
             <span className="screenshot-overlay">View</span>
           </button>
         ))}
@@ -404,17 +445,22 @@ const GameDetailsCard = ({ details }: { details: DetailRow[] }) => (
   </div>
 );
 
-const SystemRequirementsCard = ({ requirements }: { requirements: SystemRequirement[] }) => (
+const SystemRequirementsCard = ({ requirements }: { requirements: GameSystemRequirements }) => (
   <div className="card" id="system-requirements">
     <h2>System requirements</h2>
-    <div className="detail-rows">
-      {requirements.map((req) => (
-        <div key={req.id} className="detail-row">
-          <span className="detail-label">{req.label}</span>
-          <span className="detail-value">{req.value}</span>
+    {requirements?.windows && (
+      <div className="requirements-block">
+        <h3>Windows</h3>
+        <div className="detail-rows">
+          {Object.entries(requirements.windows.minimum ?? {}).map(([key, value]) => (
+            <div key={`win-min-${key}`} className="detail-row">
+              <span className="detail-label">{key.toUpperCase()}</span>
+              <span className="detail-value">{value as string}</span>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      </div>
+    )}
   </div>
 );
 
@@ -431,22 +477,22 @@ const EditionSelector = ({
     <h2>Edition</h2>
     <div className="edition-list">
       {editions.map((edition) => (
-        <label key={edition.id} className={`edition-item ${selectedId === edition.id ? 'is-active' : ''}`}>
+        <label key={edition.code} className={`edition-item ${selectedId === edition.code ? 'is-active' : ''}`}>
           <input
             type="radio"
             name="edition"
-            checked={selectedId === edition.id}
-            onChange={() => onSelect(edition.id)}
+            checked={selectedId === edition.code}
+            onChange={() => onSelect(edition.code)}
           />
           <div>
-            <p className="edition-name">{edition.name}</p>
+            <p className="edition-name">{edition.title}</p>
             <p className="edition-description">{edition.description}</p>
           </div>
           <div className="edition-pricing">
-            <span className="edition-price">{formatPrice(edition.pricing.price, edition.pricing.currency)}</span>
-            {edition.pricing.oldPrice && (
+            <span className="edition-price">{formatPrice(edition.price, 'USD')}</span>
+            {edition.discountPercent && (
               <span className="edition-old">
-                {formatPrice(edition.pricing.oldPrice, edition.pricing.currency)}
+                {formatPrice(edition.price / (1 - edition.discountPercent / 100), 'USD')}
               </span>
             )}
           </div>
@@ -535,7 +581,17 @@ const ReviewsSummary = ({
   </div>
 );
 
-const ReviewCard = ({ review }: { review: Review }) => {
+const ReviewCard = ({
+  review,
+  onHelpful,
+  onReport,
+  canInteract
+}: {
+  review: Review;
+  onHelpful: (reviewId: string) => void;
+  onReport: (reviewId: string) => void;
+  canInteract: boolean;
+}) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -545,7 +601,7 @@ const ReviewCard = ({ review }: { review: Review }) => {
           <img src={review.avatarUrl} alt={review.userName} />
           <div>
             <p className="review-name">{review.userName}</p>
-            {review.verified && <span className="verified">Verified purchase</span>}
+            {review.verifiedPurchase && <span className="verified">Verified purchase</span>}
           </div>
         </div>
         <div className="review-meta">
@@ -558,14 +614,14 @@ const ReviewCard = ({ review }: { review: Review }) => {
       <button type="button" className="btn btn-link" onClick={() => setExpanded((prev) => !prev)}>
         {expanded ? 'Show less' : 'Read more'}
       </button>
-      {review.screenshotUrl && (
-        <img className="review-shot" src={review.screenshotUrl} alt="Review screenshot" loading="lazy" />
+      {review.images?.[0]?.url && (
+        <img className="review-shot" src={review.images[0].url} alt="Review screenshot" loading="lazy" />
       )}
       <div className="review-actions">
-        <button type="button" className="btn btn-ghost" disabled title="Coming soon">
+        <button type="button" className="btn btn-ghost" onClick={() => onHelpful(review.id)} disabled={!canInteract}>
           👍 Helpful ({review.helpfulCount})
         </button>
-        <button type="button" className="btn btn-ghost" disabled title="Coming soon">
+        <button type="button" className="btn btn-ghost" onClick={() => onReport(review.id)} disabled={!canInteract}>
           Report
         </button>
       </div>
@@ -573,71 +629,138 @@ const ReviewCard = ({ review }: { review: Review }) => {
   );
 };
 
-const ReviewList = ({ reviews }: { reviews: Review[] }) => (
+const ReviewList = ({
+  reviews,
+  onHelpful,
+  onReport,
+  canInteract
+}: {
+  reviews: Review[];
+  onHelpful: (reviewId: string) => void;
+  onReport: (reviewId: string) => void;
+  canInteract: boolean;
+}) => (
   <div className="review-list">
     {reviews.map((review) => (
-      <ReviewCard key={review.id} review={review} />
+      <ReviewCard key={review.id} review={review} onHelpful={onHelpful} onReport={onReport} canInteract={canInteract} />
     ))}
   </div>
 );
 
-const WriteReviewCard = ({ isAuthenticated }: { isAuthenticated: boolean }) => (
-  <div className="card write-review">
-    <h2>Write a review</h2>
-    {!isAuthenticated && (
-      <div className="write-review-locked">
-        <p className="muted">Sign in to leave a review</p>
-        <Link to="/logIn" className="btn btn-primary">
-          Sign in
-        </Link>
-      </div>
-    )}
-    <div className="write-stars" aria-label="Select rating">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <button key={index} type="button" className="star-button" disabled={!isAuthenticated}>
-          ★
-        </button>
-      ))}
-    </div>
-    <textarea
-      className="input review-textarea"
-      placeholder="Share your experience..."
-      disabled={!isAuthenticated}
-    />
-    <div className="write-review-actions">
-      <button type="button" className="btn btn-outline" disabled={!isAuthenticated}>
-        Add images
-      </button>
-      <label className="checkbox-row">
-        <input type="checkbox" disabled={!isAuthenticated} />
-        I recommend this game
-      </label>
-    </div>
-    <button type="button" className="btn btn-primary" disabled={!isAuthenticated}>
-      Submit
-    </button>
-  </div>
-);
+const WriteReviewCard = ({
+  isAuthenticated,
+  onSubmit
+}: {
+  isAuthenticated: boolean;
+  onSubmit: (payload: { rating: number; text: string; recommend: boolean }) => void;
+}) => {
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState('');
+  const [recommend, setRecommend] = useState(true);
 
-const QASection = ({ items }: { items: QAItem[] }) => (
-  <div className="card qa-section">
-    <div className="qa-header">
-      <h2>Q & A</h2>
-      <button type="button" className="btn btn-outline" disabled title="Coming soon">
+  const handleSubmit = () => {
+    if (!text.trim() || rating === 0) {
+      return;
+    }
+    onSubmit({ rating, text: text.trim(), recommend });
+    setText('');
+  };
+
+  return (
+    <div className="card write-review">
+      <h2>Write a review</h2>
+      {!isAuthenticated && (
+        <div className="write-review-locked">
+          <p className="muted">Sign in to leave a review</p>
+          <Link to="/logIn" className="btn btn-primary">
+            Sign in
+          </Link>
+        </div>
+      )}
+      <div className="write-stars" aria-label="Select rating">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <button
+            key={index}
+            type="button"
+            className={`star-button ${rating >= index + 1 ? 'is-active' : ''}`}
+            disabled={!isAuthenticated}
+            onClick={() => setRating(index + 1)}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <textarea
+        className="input review-textarea"
+        placeholder="Share your experience..."
+        disabled={!isAuthenticated}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+      />
+      <div className="write-review-actions">
+        <button type="button" className="btn btn-outline" disabled={!isAuthenticated} title="Coming soon">
+          Add images
+        </button>
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            disabled={!isAuthenticated}
+            checked={recommend}
+            onChange={(event) => setRecommend(event.target.checked)}
+          />
+          I recommend this game
+        </label>
+      </div>
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={!isAuthenticated || !text.trim() || rating === 0}
+        onClick={handleSubmit}
+      >
+        Submit
+      </button>
+    </div>
+  );
+};
+
+const QASection = ({
+  items,
+  onAsk,
+  canAsk
+}: {
+  items: QAItem[];
+  onAsk: (question: string) => void;
+  canAsk: boolean;
+}) => {
+  const [draft, setDraft] = useState('');
+
+  return (
+    <div className="card qa-section">
+      <div className="qa-header">
+        <h2>Q & A</h2>
+      <button type="button" className="btn btn-outline" onClick={() => onAsk(draft)} disabled={!draft.trim() || !canAsk}>
         Ask a question
       </button>
     </div>
-    <div className="qa-list">
-      {items.map((item) => (
-        <div key={item.id} className="qa-item">
-          <p className="qa-question">{item.question}</p>
-          <p className="qa-answer">{item.answer}</p>
-          <span className="qa-date">{item.createdAt}</span>
-        </div>
-      ))}
+    <input
+      className="input"
+      placeholder="Ask the community..."
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      disabled={!canAsk}
+    />
+      <div className="qa-list">
+        {items.map((item) => (
+          <div key={item.id} className="qa-item">
+            <p className="qa-question">{item.question}</p>
+            <p className="qa-answer">{item.answer ?? item.answers?.[0]?.text ?? "Awaiting response."}</p>
+            <span className="qa-date">{item.createdAt}</span>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const RecommendationsCarousel = ({ items }: { items: GameCardItem[] }) => {
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -684,22 +807,51 @@ const RecommendationsCarousel = ({ items }: { items: GameCardItem[] }) => {
 
 const GameDetailsPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const [data, setData] = useState<GameDetailsViewModel | null>(null);
+  const [data, setData] = useState<GameDetailsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsTotal, setReviewsTotal] = useState(0);
+  const [reviewFilters, setReviewFilters] = useState<GameReviewFilters>({ sort: 'createdAt:desc', page: 1, pageSize: 6 });
+  const [questions, setQuestions] = useState<QAItem[]>([]);
   const [selectedEditionId, setSelectedEditionId] = useState('');
 
   const keycloakService = useMemo(
     () => container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService),
     []
   );
+  const gameDetailsService = useMemo(
+    () => container.get<IGameDetailsService>(IDENTIFIERS.IGameDetailsService),
+    []
+  );
 
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
-      const response = await gameDetailsService.getGameDetails(slug ?? '');
-      if (isMounted) {
-        setData(response);
-        if (response.editions.length > 0) {
-          setSelectedEditionId(response.editions[0].id);
+      if (!slug) {
+        setError('Game not found.');
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const response = await gameDetailsService.getGameDetails(slug ?? '');
+        if (isMounted) {
+          setData(response);
+          document.title = `${response.game.title} — Tale Shop`;
+          if (response.game.editions?.length > 0) {
+            const defaultEdition = response.game.editions.find((edition) => edition.isDefault) ?? response.game.editions[0];
+            setSelectedEditionId(defaultEdition.code);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load game details', err);
+        if (isMounted) {
+          setError('Failed to load game details. Please try again later.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
         }
       }
     };
@@ -707,10 +859,58 @@ const GameDetailsPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [slug]);
+  }, [gameDetailsService, slug]);
 
-  const selectedEdition = data?.editions.find((edition) => edition.id === selectedEditionId);
-  const displayPricing = selectedEdition?.pricing ?? data?.pricing;
+  useEffect(() => {
+    if (!data?.game?.gameId) {
+      return;
+    }
+    const fetchReviews = async () => {
+      try {
+        const response = await gameDetailsService.getReviews(data.game.gameId, reviewFilters);
+        setReviews(response.items);
+        setReviewsTotal(response.total);
+      } catch (err) {
+        console.error('Failed to load reviews', err);
+      }
+    };
+    fetchReviews();
+  }, [data?.game?.gameId, gameDetailsService, reviewFilters]);
+
+  useEffect(() => {
+    if (!data?.game?.gameId) {
+      return;
+    }
+    const fetchQuestions = async () => {
+      try {
+        const response = await gameDetailsService.getQuestions(data.game.gameId, 6);
+        setQuestions(response.items ?? []);
+      } catch (err) {
+        console.error('Failed to load questions', err);
+      }
+    };
+    fetchQuestions();
+  }, [data?.game?.gameId, gameDetailsService]);
+
+  useEffect(() => {
+    if (!data?.game?.gameId) {
+      return;
+    }
+    gameDetailsService.trackGameView({
+      gameId: data.game.gameId,
+      anonId: getAnonId()
+    });
+  }, [data?.game?.gameId, gameDetailsService]);
+
+  const selectedEdition = data?.game.editions?.find((edition) => edition.code === selectedEditionId);
+  const displayPricing = selectedEdition
+    ? {
+        price: selectedEdition.price,
+        oldPrice: selectedEdition.discountPercent ? selectedEdition.price / (1 - selectedEdition.discountPercent / 100) : undefined,
+        currency: data?.pricing.currency ?? 'USD',
+        discountPercent: selectedEdition.discountPercent
+      }
+    : data?.pricing;
   const isAuthenticated = Boolean(keycloakService.keycloak?.authenticated);
 
   const renderPlatformIcon = (platform: string) => {
@@ -721,16 +921,13 @@ const GameDetailsPage: React.FC = () => {
     if (key.includes('mac')) {
       return '🍎';
     }
-    if (key.includes('playstation')) {
-      return '🎮';
-    }
-    if (key.includes('xbox')) {
-      return '🕹️';
+    if (key.includes('linux')) {
+      return '🐧';
     }
     return '💻';
   };
 
-  if (!data || !displayPricing) {
+  if (isLoading) {
     return (
       <main className="game-details-page">
         <div className="container">
@@ -739,6 +936,94 @@ const GameDetailsPage: React.FC = () => {
       </main>
     );
   }
+
+  if (error || !data || !displayPricing) {
+    return (
+      <main className="game-details-page">
+        <div className="container">
+          <p>{error ?? 'Game not found.'}</p>
+        </div>
+      </main>
+    );
+  }
+
+  const platforms = [
+    data.game.platforms.windows ? 'Windows' : null,
+    data.game.platforms.mac ? 'Mac' : null,
+    data.game.platforms.linux ? 'Linux' : null
+  ].filter(Boolean) as string[];
+
+  const mediaItems = data.game.gallery?.length
+    ? data.game.gallery
+    : data.game.cover
+      ? [{
+          id: 'cover',
+          type: 'image',
+          url: data.game.cover.url,
+          thumbUrl: data.game.cover.url
+        }]
+      : [];
+  const trailer = mediaItems.find((item) => item.type === 'video');
+  const screenshots = mediaItems.filter((item) => item.type === 'image');
+
+  const ratingLabel = data.ratingSummary.avg >= 4.5 ? 'Very Positive' : data.ratingSummary.avg >= 4 ? 'Positive' : 'Mixed';
+  const ratingSummary = {
+    average: data.ratingSummary.avg,
+    totalReviews: data.ratingSummary.count,
+    label: ratingLabel
+  };
+
+  const ratingBreakdown: RatingBreakdownItem[] = [5, 4, 3, 2, 1].map((rating) => {
+    const count = data.ratingSummary.distribution?.[rating.toString()] ?? 0;
+    const percent = data.ratingSummary.count ? Math.round((count / data.ratingSummary.count) * 100) : 0;
+    return { rating, percent };
+  });
+
+  const reviewTags: ReviewTag[] = (data.game.tags ?? []).slice(0, 3).map((tag, index) => ({ id: `${index}-${tag}`, label: tag }));
+
+  const quickInfoTiles: QuickInfoTile[] = [
+    {
+      id: 'languages',
+      label: 'Languages',
+      value: data.game.languages?.text?.length
+        ? data.game.languages.text.length > 1
+          ? `${data.game.languages.text[0]} + ${data.game.languages.text.length - 1} more`
+          : data.game.languages.text[0]
+        : 'See details',
+      icon: 'language'
+    },
+    {
+      id: 'age',
+      label: 'Age rating',
+      value: data.game.ageRating?.label ?? 'Not rated',
+      icon: 'age'
+    },
+    {
+      id: 'online',
+      label: 'Online features',
+      value: data.game.onlineFeatures?.[0] ?? 'Single-player',
+      icon: 'online'
+    },
+    {
+      id: 'controller',
+      label: 'Controller support',
+      value: data.game.controllerSupport ?? 'Full',
+      icon: 'controller'
+    }
+  ];
+
+  const detailRows: DetailRow[] = [
+    { id: 'detail-genres', label: 'Genre', value: data.game.genres },
+    { id: 'detail-tags', label: 'Tags', value: data.game.tags },
+    { id: 'detail-online', label: 'Modes', value: data.game.onlineFeatures },
+    { id: 'detail-languages', label: 'Supported languages', value: data.game.languages?.text ?? [] },
+    { id: 'detail-cloud', label: 'Cloud saves', value: data.game.cloudSavesSupported ? 'Supported' : 'Not supported' }
+  ];
+
+  const developerPublisher = [
+    data.game.developer ? { id: 'dev', name: data.game.developer.name, logoUrl: data.game.developer.logoUrl, website: data.game.developer.website } : null,
+    data.game.publisher ? { id: 'pub', name: data.game.publisher.name, logoUrl: data.game.publisher.logoUrl, website: data.game.publisher.website } : null
+  ].filter(Boolean) as { id: string; name: string; logoUrl: string; website: string }[];
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -753,7 +1038,19 @@ const GameDetailsPage: React.FC = () => {
       <div className="container game-details-container">
         <div className="game-details-hero">
           <div className="hero-left">
-            <GameMediaGallery media={data.media} title={data.game.title} />
+            <GameMediaGallery
+              media={mediaItems}
+              title={data.game.title}
+              onMediaPlay={(item) => {
+                if (!data?.game?.gameId) return;
+                gameDetailsService.trackMediaPlay({
+                  gameId: data.game.gameId,
+                  mediaId: item.id,
+                  mediaType: item.type,
+                  anonId: getAnonId()
+                });
+              }}
+            />
           </div>
           <div className="hero-right">
             <nav className="breadcrumbs">
@@ -766,36 +1063,38 @@ const GameDetailsPage: React.FC = () => {
             <h1 className="game-title">{data.game.title}</h1>
             <p className="game-tagline">{data.game.tagline}</p>
             <div className="badge-row">
-              {[
-                { label: 'Top rated', variant: 'primary' },
-                { label: 'New', variant: 'neutral' },
-                { label: `-${displayPricing.discountPercent ?? 0}%`, variant: 'discount' },
-                { label: 'Steam key', variant: 'neutral' }
-              ].map((badge) => (
-                <span key={badge.label} className={`badge badge-${badge.variant}`}>
-                  {badge.label}
-                </span>
-              ))}
+              {(data.heroBadges?.length ? data.heroBadges : ['Steam key']).map((badge) => {
+                const variant = badge.toLowerCase().includes('%')
+                  ? 'discount'
+                  : badge.toLowerCase().includes('top')
+                    ? 'primary'
+                    : 'neutral';
+                return (
+                  <span key={badge} className={`badge badge-${variant}`}>
+                    {badge}
+                  </span>
+                );
+              })}
             </div>
             <div className="hero-info-grid">
               <div className="hero-info-main">
                 <div className="meta-list">
                   <div>
                     <span className="meta-label">Developer</span>
-                    <span>{data.game.developer}</span>
+                    <span>{data.game.developer?.name ?? '—'}</span>
                   </div>
                   <div>
                     <span className="meta-label">Publisher</span>
-                    <span>{data.game.publisher}</span>
+                    <span>{data.game.publisher?.name ?? '—'}</span>
                   </div>
                   <div>
                     <span className="meta-label">Release date</span>
-                    <span>{data.game.releaseDate}</span>
+                    <span>{data.game.releaseDate ?? 'TBA'}</span>
                   </div>
                   <div>
                     <span className="meta-label">Platforms</span>
                     <div className="chip-row">
-                      {data.game.platforms.map((platform) => (
+                      {platforms.map((platform) => (
                         <span key={platform} className="chip platform-chip">
                           <span className="platform-icon" aria-hidden="true">{renderPlatformIcon(platform)}</span>
                           {platform}
@@ -816,22 +1115,22 @@ const GameDetailsPage: React.FC = () => {
                 </div>
                 <div className="rating-summary card compact">
                   <div className="rating-score">
-                    <span>{data.ratingSummary.average.toFixed(1)}</span>
+                    <span>{ratingSummary.average.toFixed(1)}</span>
                   </div>
                   <div>
-                    <StarRating rating={data.ratingSummary.average} />
+                    <StarRating rating={ratingSummary.average} />
                     <p>
-                      ({data.ratingSummary.totalReviews.toLocaleString()} reviews)
+                      ({ratingSummary.totalReviews.toLocaleString()} reviews)
                     </p>
                   </div>
-                  <span className="rating-label">{data.ratingSummary.label}</span>
+                  <span className="rating-label">{ratingSummary.label}</span>
                 </div>
               </div>
               <div className="hero-purchase">
-                <GamePurchaseCard pricing={displayPricing} ratingSummary={data.ratingSummary} />
+                <GamePurchaseCard pricing={displayPricing} ratingSummary={ratingSummary} />
               </div>
             </div>
-            <GameQuickInfoTiles tiles={data.quickInfoTiles} />
+            <GameQuickInfoTiles tiles={quickInfoTiles} />
           </div>
         </div>
 
@@ -841,22 +1140,22 @@ const GameDetailsPage: React.FC = () => {
           <div className="details-grid">
             <div className="details-main">
               <AboutGameCard
-                description={data.game.description}
-                features={data.game.features}
+                descriptionMarkdown={data.game.descriptionMarkdown}
+                features={data.game.keyFeatures}
                 awards={data.game.awards}
               />
-              <GameplayCard trailerUrl={data.trailerUrl} screenshots={data.screenshotGallery} />
-              <GameDetailsCard details={data.detailRows} />
-              <SystemRequirementsCard requirements={data.systemRequirements} />
+              <GameplayCard trailer={trailer} screenshots={screenshots} />
+              <GameDetailsCard details={detailRows} />
+              <SystemRequirementsCard requirements={data.game.systemRequirements} />
             </div>
             <aside className="details-sidebar">
               <EditionSelector
-                editions={data.editions}
+                editions={data.game.editions}
                 selectedId={selectedEditionId}
                 onSelect={setSelectedEditionId}
               />
-              <DLCList items={data.dlc} />
-              <DeveloperPublisherCard items={data.developerPublisher} />
+              <DLCList items={data.game.dlcItems} />
+              <DeveloperPublisherCard items={developerPublisher} />
             </aside>
           </div>
         </section>
@@ -866,46 +1165,108 @@ const GameDetailsPage: React.FC = () => {
             <h2>Reviews</h2>
             <div className="reviews-controls">
               <div className="controls-row">
-                <select className="input" aria-label="Sort reviews">
-                  <option>Newest</option>
-                  <option>Top</option>
-                  <option>Verified purchases</option>
+                <select
+                  className="input"
+                  aria-label="Sort reviews"
+                  value={reviewFilters.sort ?? 'createdAt:desc'}
+                  onChange={(event) => setReviewFilters((prev) => ({ ...prev, sort: event.target.value }))}
+                >
+                  <option value="createdAt:desc">Newest</option>
+                  <option value="helpful:desc">Top</option>
+                  <option value="createdAt:desc">Verified purchases</option>
                 </select>
-                <select className="input" aria-label="Filter by rating">
-                  <option>All ratings</option>
-                  <option>5 stars</option>
-                  <option>4 stars</option>
-                  <option>3 stars</option>
-                  <option>2 stars</option>
-                  <option>1 star</option>
+                <select
+                  className="input"
+                  aria-label="Filter by rating"
+                  value={reviewFilters.rating ?? ''}
+                  onChange={(event) =>
+                    setReviewFilters((prev) => ({ ...prev, rating: event.target.value ? Number(event.target.value) : undefined }))
+                  }
+                >
+                  <option value="">All ratings</option>
+                  <option value="5">5 stars</option>
+                  <option value="4">4 stars</option>
+                  <option value="3">3 stars</option>
+                  <option value="2">2 stars</option>
+                  <option value="1">1 star</option>
                 </select>
                 <label className="filter-checkbox">
-                  <input type="checkbox" />
+                  <input
+                    type="checkbox"
+                    checked={Boolean(reviewFilters.withPlaytime)}
+                    onChange={(event) => setReviewFilters((prev) => ({ ...prev, withPlaytime: event.target.checked }))}
+                  />
                   Only with gameplay time
                 </label>
                 <label className="filter-checkbox">
-                  <input type="checkbox" />
+                  <input
+                    type="checkbox"
+                    checked={Boolean(reviewFilters.withImages)}
+                    onChange={(event) => setReviewFilters((prev) => ({ ...prev, withImages: event.target.checked }))}
+                  />
                   Only with images
                 </label>
               </div>
               <div className="controls-row search-row">
-                <input className="input" placeholder="Search reviews..." aria-label="Search reviews" />
+                <input
+                  className="input"
+                  placeholder="Search reviews..."
+                  aria-label="Search reviews"
+                  value={reviewFilters.q ?? ''}
+                  onChange={(event) => setReviewFilters((prev) => ({ ...prev, q: event.target.value }))}
+                />
               </div>
             </div>
           </div>
           <div className="reviews-grid">
             <ReviewsSummary
-              ratingSummary={data.ratingSummary}
-              breakdown={data.ratingBreakdown}
-              tags={data.reviewTags}
+              ratingSummary={ratingSummary}
+              breakdown={ratingBreakdown}
+              tags={reviewTags}
             />
-            <ReviewList reviews={data.reviews} />
+            <ReviewList
+              reviews={reviews}
+              onHelpful={async (reviewId) => {
+                const response = await gameDetailsService.toggleHelpful(reviewId);
+                setReviews((prev) =>
+                  prev.map((review) =>
+                    review.id === reviewId ? { ...review, helpfulCount: response.count } : review
+                  )
+                );
+              }}
+              onReport={async (reviewId) => {
+                await gameDetailsService.reportReview(reviewId);
+              }}
+              canInteract={isAuthenticated}
+            />
           </div>
           <div className="reviews-lower-grid">
-            <WriteReviewCard isAuthenticated={isAuthenticated} />
-            <QASection items={data.qa} />
+            <WriteReviewCard
+              isAuthenticated={isAuthenticated}
+              onSubmit={async (payload) => {
+                if (!data?.game?.gameId) return;
+                await gameDetailsService.createReview(data.game.gameId, { ...payload, recommend: payload.recommend });
+                setReviewFilters((prev) => ({ ...prev }));
+              }}
+            />
+            <QASection
+              items={questions}
+              onAsk={async (question) => {
+                if (!data?.game?.gameId || !question.trim()) return;
+                await gameDetailsService.askQuestion(data.game.gameId, question.trim());
+                setQuestions((prev) => [
+                  {
+                    id: `temp-${Date.now()}`,
+                    question: question.trim(),
+                    createdAt: 'Just now'
+                  },
+                  ...prev
+                ]);
+              }}
+              canAsk={isAuthenticated}
+            />
           </div>
-          <RecommendationsCarousel items={data.recommendations} />
+          <RecommendationsCarousel items={data.recommendations.moreLikeThis ?? []} />
         </section>
       </div>
     </main>

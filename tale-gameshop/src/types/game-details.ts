@@ -1,21 +1,45 @@
 export interface GameDetails {
-  id: string;
+  id?: string;
+  gameId: string;
   slug: string;
   title: string;
   tagline: string;
-  description: string[];
-  features: string[];
-  awards: string[];
-  developer: string;
-  publisher: string;
-  releaseDate: string;
-  platforms: string[];
+  descriptionMarkdown: string;
+  cover?: GameCover;
+  gallery: MediaItem[];
   genres: string[];
   tags: string[];
-  themes: string[];
-  modes: string[];
-  supportedLanguages: string[];
-  cloudSaves: string;
+  developer?: GameStudioInfo;
+  publisher?: GameStudioInfo;
+  releaseDate?: string;
+  platforms: GamePlatforms;
+  languages: GameLanguageSupport;
+  ageRating?: GameAgeRating;
+  onlineFeatures: string[];
+  controllerSupport: 'None' | 'Partial' | 'Full';
+  cloudSavesSupported: boolean;
+  basePrice: number;
+  discountPercent?: number;
+  currency: string;
+  finalPrice: number;
+  isActive: boolean;
+  isNew: boolean;
+  isTopRated: boolean;
+  keyType: string;
+  keyFeatures: string[];
+  awards: AwardBadge[];
+  editions: Edition[];
+  dlcItems: DLC[];
+  systemRequirements: GameSystemRequirements;
+  similarGameIds: string[];
+  autoRecommendRules: GameAutoRecommendRules;
+  ratingAvg: number;
+  reviewsCount: number;
+}
+
+export interface GameCover {
+  url: string;
+  alt?: string;
 }
 
 export interface MediaItem {
@@ -25,6 +49,7 @@ export interface MediaItem {
   thumbUrl: string;
   posterUrl?: string;
   durationSec?: number;
+  order?: number;
 }
 
 export interface Pricing {
@@ -35,10 +60,13 @@ export interface Pricing {
 }
 
 export interface Edition {
-  id: string;
-  name: string;
+  code: string;
+  title: string;
   description: string;
-  pricing: Pricing;
+  price: number;
+  discountPercent?: number;
+  includedItems?: string[];
+  isDefault?: boolean;
 }
 
 export interface DLC {
@@ -46,25 +74,36 @@ export interface DLC {
   title: string;
   coverUrl: string;
   price: number;
+  discountPercent?: number;
+  isBundle?: boolean;
 }
 
 export interface Review {
   id: string;
   userName: string;
   avatarUrl?: string;
-  verified: boolean;
+  verifiedPurchase: boolean;
   rating: number;
   playtimeHours?: number;
   text: string;
   createdAt: string;
   helpfulCount: number;
-  screenshotUrl?: string;
+  images?: { url: string; thumbUrl: string }[];
+  recommend?: boolean;
 }
 
 export interface QAItem {
   id: string;
   question: string;
-  answer: string;
+  answer?: string;
+  createdAt: string;
+  answers?: QAAnswer[];
+}
+
+export interface QAAnswer {
+  id: string;
+  userName: string;
+  text: string;
   createdAt: string;
 }
 
@@ -100,39 +139,85 @@ export interface DetailRow {
   value: string | string[];
 }
 
-export interface SystemRequirement {
-  id: string;
+export interface GamePlatforms {
+  windows: boolean;
+  mac: boolean;
+  linux: boolean;
+}
+
+export interface GameLanguageSupport {
+  audio: string[];
+  text: string[];
+}
+
+export interface GameAgeRating {
+  system: string;
   label: string;
-  value: string;
+  iconUrl?: string;
 }
 
-export interface DeveloperPublisherInfo {
-  id: string;
+export interface GameStudioInfo {
   name: string;
-  logoUrl: string;
-  website: string;
+  website?: string;
+  logoUrl?: string;
 }
 
-export interface GameDetailsViewModel {
+export interface AwardBadge {
+  title: string;
+  year?: number;
+  type?: string;
+  iconUrl?: string;
+}
+
+export interface GameSystemRequirements {
+  windows: GameSystemRequirementBlock;
+  mac?: GameSystemRequirementBlock;
+  linux?: GameSystemRequirementBlock;
+}
+
+export interface GameSystemRequirementBlock {
+  minimum: GameSystemRequirementSpec;
+  recommended?: GameSystemRequirementSpec;
+}
+
+export interface GameSystemRequirementSpec {
+  os?: string;
+  cpu?: string;
+  ram?: string;
+  gpu?: string;
+  storage?: string;
+  notes?: string;
+}
+
+export interface GameAutoRecommendRules {
+  enabled: boolean;
+  byGenres: boolean;
+  byTags: boolean;
+  byPublisher: boolean;
+}
+
+export interface RatingSummaryResponse {
+  avg: number;
+  count: number;
+  distribution: Record<string, number>;
+}
+
+export interface GameRecommendationsResponse {
+  moreLikeThis: GameCardItem[];
+  recentlyViewed?: GameCardItem[];
+}
+
+export interface GameUserContext {
+  isWishlisted: boolean;
+  hasPurchased: boolean;
+  myReview?: Review;
+}
+
+export interface GameDetailsResponse {
   game: GameDetails;
-  media: MediaItem[];
   pricing: Pricing;
-  editions: Edition[];
-  dlc: DLC[];
-  reviews: Review[];
-  qa: QAItem[];
-  recommendations: GameCardItem[];
-  screenshotGallery: string[];
-  trailerUrl: string;
-  ratingSummary: {
-    average: number;
-    totalReviews: number;
-    label: string;
-  };
-  ratingBreakdown: RatingBreakdownItem[];
-  reviewTags: ReviewTag[];
-  quickInfoTiles: QuickInfoTile[];
-  detailRows: DetailRow[];
-  systemRequirements: SystemRequirement[];
-  developerPublisher: DeveloperPublisherInfo[];
+  ratingSummary: RatingSummaryResponse;
+  heroBadges: string[];
+  recommendations: GameRecommendationsResponse;
+  userContext: GameUserContext;
 }
