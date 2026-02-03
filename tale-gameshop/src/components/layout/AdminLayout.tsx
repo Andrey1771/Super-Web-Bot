@@ -9,6 +9,7 @@ const pageTitles: Record<string, string> = {
   "/admin/botChanger": "Bot Data",
   "/admin/siteChanger": "Media Manager",
   "/admin/cardAdder": "Catalog",
+  "/admin/games/details": "Game Details",
   "/admin/userInfo": "Login History",
   "/admin/userStats": "Game Statistics",
   "/admin/orders": "Orders",
