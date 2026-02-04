@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -190,10 +190,29 @@ public class AdminGameDetailsController : ControllerBase
             return string.Empty;
         }
 
-        var normalized = value.Trim().ToLowerInvariant();
-        normalized = Regex.Replace(normalized, @"[^\p{L}\p{N}\s-]", string.Empty);
-        normalized = Regex.Replace(normalized, @"\s+", "-");
-        normalized = Regex.Replace(normalized, @"-+", "-");
+        var builder = new StringBuilder();
+        var lastWasDash = false;
+
+        foreach (var ch in value.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                builder.Append(ch);
+                lastWasDash = false;
+                continue;
+            }
+
+            if (ch == ' ' || ch == '-' || ch == '_')
+            {
+                if (!lastWasDash && builder.Length > 0)
+                {
+                    builder.Append('-');
+                    lastWasDash = true;
+                }
+            }
+        }
+
+        var normalized = builder.ToString().Trim('-');
         return normalized;
     }
 }
