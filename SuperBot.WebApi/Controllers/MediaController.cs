@@ -25,8 +25,14 @@ public class MediaController : ControllerBase
     {
         _mediaRepository = mediaRepository;
         _gameRepository = gameRepository;
-        _webRoot = env.WebRootPath;
-        _uploadFolder = Path.Combine(env.WebRootPath, "uploads");
+        _webRoot = string.IsNullOrWhiteSpace(env.WebRootPath)
+            ? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")
+            : env.WebRootPath;
+        if (!Directory.Exists(_webRoot))
+        {
+            Directory.CreateDirectory(_webRoot);
+        }
+        _uploadFolder = Path.Combine(_webRoot, "uploads");
         _videoThumbsFolder = Path.Combine(_uploadFolder, "video-thumbs");
         if (!Directory.Exists(_uploadFolder))
         {
@@ -95,27 +101,37 @@ public class MediaController : ControllerBase
 
         if (isVideo)
         {
-            if (!IsFfmpegAvailable() || !IsFfprobeAvailable())
+            if (IsFfprobeAvailable())
             {
-                return BadRequest("FFmpeg/ffprobe not available, cannot generate video preview.");
+                try
+                {
+                    var metadata = await TryReadVideoMetadataAsync(physicalPath, ct);
+                    width = metadata.Width;
+                    height = metadata.Height;
+                    durationSec = metadata.DurationSeconds;
+                }
+                catch
+                {
+                    width = null;
+                    height = null;
+                    durationSec = null;
+                }
             }
 
-            try
+            if (IsFfmpegAvailable())
             {
-                var metadata = await TryReadVideoMetadataAsync(physicalPath, ct);
-                width = metadata.Width;
-                height = metadata.Height;
-                durationSec = metadata.DurationSeconds;
-
-                var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.jpg";
-                var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
-                var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
-                await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, durationSec, ct);
-                thumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
-            }
-            catch (Exception ex)
-            {
-                return BadRequest($"Failed to generate video preview: {ex.Message}");
+                try
+                {
+                    var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.jpg";
+                    var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
+                    var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
+                    await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, durationSec, ct);
+                    thumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
+                }
+                catch
+                {
+                    thumbnailUrl = null;
+                }
             }
         }
 
