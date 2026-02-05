@@ -17,6 +17,7 @@ public class MediaController : ControllerBase
     private readonly string _videoThumbsFolder;
     private readonly IMediaAssetRepository _mediaRepository;
     private readonly IGameRepository _gameRepository;
+    private const string VideoPlaceholderFileName = "video-placeholder.svg";
     private static readonly HashSet<string> AllowedImages = new(StringComparer.OrdinalIgnoreCase)
     {
         ".jpg", ".jpeg", ".png", ".webp"
@@ -118,11 +119,6 @@ public class MediaController : ControllerBase
 
         if (isVideo)
         {
-            if (!IsFfmpegAvailable())
-            {
-                return StatusCode(500, "FFmpeg not installed: cannot generate video preview.");
-            }
-
             try
             {
                 if (IsFfprobeAvailable())
@@ -133,11 +129,18 @@ public class MediaController : ControllerBase
                     durationSec = metadata.DurationSeconds;
                 }
 
-                var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.jpg";
-                var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
-                var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
-                await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, durationSec, ct);
-                thumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
+                if (IsFfmpegAvailable())
+                {
+                    var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.jpg";
+                    var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
+                    var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
+                    await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, durationSec, ct);
+                    thumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
+                }
+                else
+                {
+                    thumbnailUrl = GetPlaceholderThumbnailUrl();
+                }
             }
             catch (Exception ex)
             {
@@ -477,6 +480,12 @@ public class MediaController : ControllerBase
         path = path.TrimStart('/');
         var relativePath = path.Replace("/", Path.DirectorySeparatorChar.ToString());
         return Path.Combine(_webRoot, relativePath);
+    }
+
+    private string GetPlaceholderThumbnailUrl()
+    {
+        var placeholderRelative = $"/uploads/video-thumbs/{VideoPlaceholderFileName}";
+        return $"{Request.Scheme}://{Request.Host}{placeholderRelative}";
     }
 }
 

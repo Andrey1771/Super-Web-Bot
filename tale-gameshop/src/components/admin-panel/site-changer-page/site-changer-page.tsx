@@ -11,7 +11,7 @@ import useDebouncedValue from "../../../hooks/useDebouncedValue";
 import { useToast } from "../../ui/ToastProvider";
 import type { MediaAsset, MediaUsage } from "../../../types/media";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
-import { resolveMediaUrl } from "../../../utils/media";
+import { isPlaceholderThumbnailUrl, resolveMediaUrl } from "../../../utils/media";
 
 const pageSize = 24;
 
@@ -283,7 +283,7 @@ const SiteChangerPage: React.FC = () => {
             const isVideo = item.type === "video" || item.contentType?.startsWith("video");
             const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
             const resolvedUrl = resolveMediaUrl(item.url, apiBaseUrl);
-            const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id]);
+            const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id] || isPlaceholderThumbnailUrl(item.thumbnailUrl));
             const isGenerating = generatingPreviews[item.id];
             return (
             <Card key={item.id} className="flex items-center gap-4">
@@ -355,7 +355,7 @@ const SiteChangerPage: React.FC = () => {
           const isVideo = item.type === "video" || item.contentType?.startsWith("video");
           const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
           const resolvedUrl = resolveMediaUrl(item.url, apiBaseUrl);
-          const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id]);
+          const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id] || isPlaceholderThumbnailUrl(item.thumbnailUrl));
           const isGenerating = generatingPreviews[item.id];
           return (
           <div key={item.id} className="border rounded-lg p-3 bg-white shadow-sm">
@@ -519,7 +519,7 @@ const SiteChangerPage: React.FC = () => {
                 <img src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)} alt={selectedAsset.filename} className="h-full w-full object-cover" />
               )}
             </div>
-            {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && !selectedAsset.thumbnailUrl && (
+            {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && (!selectedAsset.thumbnailUrl || isPlaceholderThumbnailUrl(selectedAsset.thumbnailUrl)) && (
               <div className="flex items-center gap-3 text-sm text-amber-700">
                 <span>Preview missing.</span>
                 <button

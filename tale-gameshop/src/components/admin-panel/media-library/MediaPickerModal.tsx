@@ -6,7 +6,7 @@ import IDENTIFIERS from "../../../constants/identifiers";
 import Card from "../../ui/Card";
 import { useToast } from "../../ui/ToastProvider";
 import { MediaAsset } from "../../../types/media";
-import { resolveMediaUrl } from "../../../utils/media";
+import { isPlaceholderThumbnailUrl, resolveMediaUrl } from "../../../utils/media";
 
 type MediaPickerModalProps = {
   isOpen: boolean;
@@ -246,7 +246,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                     const isVideo = item.type === "video" || item.contentType?.startsWith("video");
                     const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
                     const resolvedUrl = resolveMediaUrl(item.url, apiBaseUrl);
-                    const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id]);
+                    const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id] || isPlaceholderThumbnailUrl(item.thumbnailUrl));
                     const isGenerating = generatingPreviews[item.id];
                     return (
                       <button
@@ -351,7 +351,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       />
                     )}
                   </div>
-                  {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && !selectedAsset.thumbnailUrl && (
+                  {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && (!selectedAsset.thumbnailUrl || isPlaceholderThumbnailUrl(selectedAsset.thumbnailUrl)) && (
                     <div className="flex items-center gap-2 text-xs text-amber-700">
                       <span>Preview missing.</span>
                       <button
