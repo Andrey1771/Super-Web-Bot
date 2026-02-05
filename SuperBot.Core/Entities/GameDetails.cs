@@ -21,29 +21,29 @@ namespace SuperBot.Core.Entities
 
     public class GameDetails
     {
-        public string Id { get; set; }
-        public string GameId { get; set; }
-        public string Slug { get; set; }
-        public string Title { get; set; }
-        public string Tagline { get; set; }
-        public string DescriptionMarkdown { get; set; }
-        public GameCover Cover { get; set; }
+        public string? Id { get; set; }
+        public string? GameId { get; set; }
+        public string? Slug { get; set; }
+        public string? Title { get; set; }
+        public string? Tagline { get; set; }
+        public string? DescriptionMarkdown { get; set; }
+        public GameCover? Cover { get; set; }
         public List<GameMediaItem> Gallery { get; set; } = new();
         public List<string> Genres { get; set; } = new();
         public List<string> Tags { get; set; } = new();
-        public GameStudioInfo Developer { get; set; }
-        public GameStudioInfo Publisher { get; set; }
+        public GameStudioInfo? Developer { get; set; }
+        public GameStudioInfo? Publisher { get; set; }
         public DateTime? ReleaseDate { get; set; }
         public GamePlatforms Platforms { get; set; } = new();
         public GameLanguageSupport Languages { get; set; } = new();
-        public GameAgeRating AgeRating { get; set; }
+        public GameAgeRating? AgeRating { get; set; }
         public List<string> OnlineFeatures { get; set; } = new();
         public ControllerSupport ControllerSupport { get; set; } = ControllerSupport.Full;
         public bool CloudSavesSupported { get; set; }
 
         public decimal BasePrice { get; set; }
         public decimal? DiscountPercent { get; set; }
-        public string Currency { get; set; }
+        public string? Currency { get; set; }
         public decimal FinalPrice { get; set; }
         public bool IsActive { get; set; }
         public bool IsNew { get; set; }
@@ -65,20 +65,20 @@ namespace SuperBot.Core.Entities
 
     public class GameCover
     {
-        public string Url { get; set; }
-        public string Alt { get; set; }
+        public string? Url { get; set; }
+        public string? Alt { get; set; }
     }
 
     public class GameMediaItem
     {
-        public string Id { get; set; }
-        public string Type { get; set; }
-        public string Url { get; set; }
-        public string ThumbUrl { get; set; }
-        public string PosterUrl { get; set; }
+        public string? Id { get; set; }
+        public string? Type { get; set; }
+        public string? Url { get; set; }
+        public string? ThumbUrl { get; set; }
+        public string? PosterUrl { get; set; }
         public int? DurationSec { get; set; }
-        public string Title { get; set; }
-        public string Caption { get; set; }
+        public string? Title { get; set; }
+        public string? Caption { get; set; }
         public bool IsTrailer { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
@@ -87,9 +87,9 @@ namespace SuperBot.Core.Entities
 
     public class GameStudioInfo
     {
-        public string Name { get; set; }
-        public string Website { get; set; }
-        public string LogoUrl { get; set; }
+        public string? Name { get; set; }
+        public string? Website { get; set; }
+        public string? LogoUrl { get; set; }
     }
 
     public class GamePlatforms
@@ -107,16 +107,16 @@ namespace SuperBot.Core.Entities
 
     public class GameAgeRating
     {
-        public string System { get; set; }
-        public string Label { get; set; }
-        public string IconUrl { get; set; }
+        public string? System { get; set; }
+        public string? Label { get; set; }
+        public string? IconUrl { get; set; }
     }
 
     public class GameEdition
     {
-        public string Code { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
+        public string? Code { get; set; }
+        public string? Title { get; set; }
+        public string? Description { get; set; }
         public decimal Price { get; set; }
         public decimal? DiscountPercent { get; set; }
         public List<string> IncludedItems { get; set; } = new();
@@ -125,9 +125,9 @@ namespace SuperBot.Core.Entities
 
     public class GameDlcItem
     {
-        public string Id { get; set; }
-        public string Title { get; set; }
-        public string CoverUrl { get; set; }
+        public string? Id { get; set; }
+        public string? Title { get; set; }
+        public string? CoverUrl { get; set; }
         public decimal Price { get; set; }
         public decimal? DiscountPercent { get; set; }
         public bool IsBundle { get; set; }
@@ -135,33 +135,33 @@ namespace SuperBot.Core.Entities
 
     public class GameAwardBadge
     {
-        public string Title { get; set; }
+        public string? Title { get; set; }
         public int? Year { get; set; }
-        public string Type { get; set; }
-        public string IconUrl { get; set; }
+        public string? Type { get; set; }
+        public string? IconUrl { get; set; }
     }
 
     public class GameSystemRequirements
     {
         public GameSystemRequirementBlock Windows { get; set; } = new();
-        public GameSystemRequirementBlock Mac { get; set; }
-        public GameSystemRequirementBlock Linux { get; set; }
+        public GameSystemRequirementBlock? Mac { get; set; }
+        public GameSystemRequirementBlock? Linux { get; set; }
     }
 
     public class GameSystemRequirementBlock
     {
         public GameSystemRequirementSpec Minimum { get; set; } = new();
-        public GameSystemRequirementSpec Recommended { get; set; }
+        public GameSystemRequirementSpec? Recommended { get; set; }
     }
 
     public class GameSystemRequirementSpec
     {
-        public string Os { get; set; }
-        public string Cpu { get; set; }
-        public string Ram { get; set; }
-        public string Gpu { get; set; }
-        public string Storage { get; set; }
-        public string Notes { get; set; }
+        public string? Os { get; set; }
+        public string? Cpu { get; set; }
+        public string? Ram { get; set; }
+        public string? Gpu { get; set; }
+        public string? Storage { get; set; }
+        public string? Notes { get; set; }
     }
 
     public class GameAutoRecommendRules
