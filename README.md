@@ -17,6 +17,32 @@ Project Launch:
 
 1) docker-compose up --build
 
+## FFmpeg install (required for video thumbnails)
+
+### Quick install script (Linux / macOS)
+```bash
+./scripts/install-ffmpeg.sh
+```
+
+### Manual install commands
+
+**Ubuntu / Debian**
+```bash
+sudo apt-get update
+sudo apt-get install -y ffmpeg
+```
+
+**macOS (Homebrew)**
+```bash
+brew update
+brew install ffmpeg
+```
+
+**Windows (Chocolatey, PowerShell as Admin)**
+```powershell
+choco install ffmpeg -y
+```
+
 ### Note: Keycloak is not fully functional in production under Docker yet (certificate issues). Here is an alternative way to run it:
 2) Download Keycloak: [Google Drive Link](https://drive.google.com/drive/folders/1ibd1OYW1uvTO3xLvmvBEuFm9hBY-LEP2?usp=sharing)
 
