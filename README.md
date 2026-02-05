@@ -24,6 +24,11 @@ Project Launch:
 ./scripts/install-ffmpeg.sh
 ```
 
+### Quick install script (Windows, PowerShell)
+```powershell
+.\scripts\install-ffmpeg.ps1
+```
+
 ### Manual install commands
 
 **Ubuntu / Debian**
