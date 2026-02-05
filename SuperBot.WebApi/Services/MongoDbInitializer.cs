@@ -21,6 +21,11 @@ namespace SuperBot.WebApi.Services
             {
                 "Users",
                 "Games",
+                "GameDetails",
+                "GameReviews",
+                "GameReviewHelpfulVotes",
+                "GameQuestions",
+                "GameTrackingEvents",
                 "Orders",
                 "WishlistItems",
                 "ViewedGames",
@@ -73,6 +78,68 @@ namespace SuperBot.WebApi.Services
 
             await viewedCollection.Indexes.CreateOneAsync(viewedUserGameIndex);
             await viewedCollection.Indexes.CreateOneAsync(viewedUserDateIndex);
+
+            var gameDetailsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameDetailsDb>("GameDetails");
+            var detailsSlugIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameDetailsDb>(
+                Builders<SuperBot.Infrastructure.Data.GameDetailsDb>.IndexKeys.Ascending(item => item.Slug),
+                new CreateIndexOptions { Unique = true, Name = "ix_game_details_slug", Sparse = true }
+            );
+            var detailsGameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameDetailsDb>(
+                Builders<SuperBot.Infrastructure.Data.GameDetailsDb>.IndexKeys.Ascending(item => item.GameId),
+                new CreateIndexOptions { Unique = true, Name = "ix_game_details_game" }
+            );
+            await gameDetailsCollection.Indexes.CreateOneAsync(detailsSlugIndex);
+            await gameDetailsCollection.Indexes.CreateOneAsync(detailsGameIndex);
+
+            var reviewCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameReviewDb>("GameReviews");
+            var reviewGameDateIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameReviewDb>(
+                Builders<SuperBot.Infrastructure.Data.GameReviewDb>.IndexKeys
+                    .Ascending(item => item.GameId)
+                    .Descending(item => item.CreatedAt),
+                new CreateIndexOptions { Name = "ix_game_reviews_game_created" }
+            );
+            var reviewGameRatingIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameReviewDb>(
+                Builders<SuperBot.Infrastructure.Data.GameReviewDb>.IndexKeys
+                    .Ascending(item => item.GameId)
+                    .Descending(item => item.Rating),
+                new CreateIndexOptions { Name = "ix_game_reviews_game_rating" }
+            );
+            var reviewUserGameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameReviewDb>(
+                Builders<SuperBot.Infrastructure.Data.GameReviewDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Ascending(item => item.GameId),
+                new CreateIndexOptions { Name = "ix_game_reviews_user_game", Unique = true, Sparse = true }
+            );
+            await reviewCollection.Indexes.CreateOneAsync(reviewGameDateIndex);
+            await reviewCollection.Indexes.CreateOneAsync(reviewGameRatingIndex);
+            await reviewCollection.Indexes.CreateOneAsync(reviewUserGameIndex);
+
+            var reviewHelpfulCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameReviewHelpfulVoteDb>("GameReviewHelpfulVotes");
+            var helpfulIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameReviewHelpfulVoteDb>(
+                Builders<SuperBot.Infrastructure.Data.GameReviewHelpfulVoteDb>.IndexKeys
+                    .Ascending(item => item.ReviewId)
+                    .Ascending(item => item.UserId),
+                new CreateIndexOptions { Name = "ix_review_helpful_unique", Unique = true }
+            );
+            await reviewHelpfulCollection.Indexes.CreateOneAsync(helpfulIndex);
+
+            var questionsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameQuestionDb>("GameQuestions");
+            var questionsIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameQuestionDb>(
+                Builders<SuperBot.Infrastructure.Data.GameQuestionDb>.IndexKeys
+                    .Ascending(item => item.GameId)
+                    .Descending(item => item.CreatedAt),
+                new CreateIndexOptions { Name = "ix_game_questions_game_created" }
+            );
+            await questionsCollection.Indexes.CreateOneAsync(questionsIndex);
+
+            var trackingCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameTrackingEventDb>("GameTrackingEvents");
+            var trackingGameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameTrackingEventDb>(
+                Builders<SuperBot.Infrastructure.Data.GameTrackingEventDb>.IndexKeys
+                    .Ascending(item => item.GameId)
+                    .Descending(item => item.Timestamp),
+                new CreateIndexOptions { Name = "ix_game_tracking_game_ts" }
+            );
+            await trackingCollection.Indexes.CreateOneAsync(trackingGameIndex);
 
             var blogPostsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogPostDb>("BlogPosts");
             var blogSlugIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostDb>(
@@ -200,6 +267,58 @@ namespace SuperBot.WebApi.Services
             if (_environment.IsDevelopment())
             {
                 await SeedSupportTicketsAsync(ticketsCollection, messagesCollection);
+            }
+
+            await SeedGameDetailsAsync(gameDetailsCollection);
+        }
+
+        private async Task SeedGameDetailsAsync(IMongoCollection<SuperBot.Infrastructure.Data.GameDetailsDb> gameDetailsCollection)
+        {
+            var gamesCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameDb>("Games");
+            var games = await gamesCollection.Find(game => true).ToListAsync();
+            if (games.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var game in games)
+            {
+                if (string.IsNullOrWhiteSpace(game.Id))
+                {
+                    continue;
+                }
+
+                var existing = await gameDetailsCollection.Find(item => item.GameId == game.Id).FirstOrDefaultAsync();
+                if (existing != null)
+                {
+                    if (string.IsNullOrWhiteSpace(existing.Slug) && !string.IsNullOrWhiteSpace(game.Slug))
+                    {
+                        var update = Builders<SuperBot.Infrastructure.Data.GameDetailsDb>.Update.Set(item => item.Slug, game.Slug);
+                        await gameDetailsCollection.UpdateOneAsync(item => item.GameId == game.Id, update);
+                    }
+                    continue;
+                }
+
+                var details = new SuperBot.Infrastructure.Data.GameDetailsDb
+                {
+                    GameId = game.Id,
+                    Slug = string.IsNullOrWhiteSpace(game.Slug) ? game.Name?.ToLowerInvariant().Replace(' ', '-') : game.Slug,
+                    Title = string.IsNullOrWhiteSpace(game.Title) ? game.Name : game.Title,
+                    Tagline = string.Empty,
+                    DescriptionMarkdown = string.Empty,
+                    Cover = string.IsNullOrWhiteSpace(game.ImagePath) ? null : new SuperBot.Infrastructure.Data.GameCoverDb { Url = game.ImagePath, Alt = game.Title ?? game.Name },
+                    BasePrice = game.Price,
+                    Currency = "USD",
+                    FinalPrice = game.Price,
+                    IsActive = true,
+                    IsNew = false,
+                    IsTopRated = false,
+                    ControllerSupport = "Full",
+                    Platforms = new SuperBot.Infrastructure.Data.GamePlatformsDb { Windows = true, Mac = false, Linux = false },
+                    ReleaseDate = game.ReleaseDate
+                };
+
+                await gameDetailsCollection.InsertOneAsync(details);
             }
         }
 

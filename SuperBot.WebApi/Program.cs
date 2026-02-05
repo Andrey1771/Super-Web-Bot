@@ -115,6 +115,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 builder.Services.AddScoped<MongoDbInitializer>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddScoped<IGameDetailsRepository, GameDetailsMongoDbRepository>();
 builder.Services.AddScoped<IMediaAssetRepository, MediaAssetMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IBlogRepository, BlogMongoDbRepository>();
@@ -125,6 +126,10 @@ builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
 builder.Services.AddScoped<IViewedGameRepository, ViewedGameMongoDbRepository>();
 builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
+builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();
+builder.Services.AddScoped<IGameReviewHelpfulRepository, GameReviewHelpfulMongoDbRepository>();
+builder.Services.AddScoped<IGameQuestionRepository, GameQuestionMongoDbRepository>();
+builder.Services.AddScoped<IGameTrackingRepository, GameTrackingMongoDbRepository>();
 builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
 builder.Services.AddScoped<IBlogRecommendationsService, BlogRecommendationsService>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
@@ -138,6 +143,7 @@ builder.Services.AddScoped<SupportRoleEvaluator>();
 
 
 builder.Services.AddAutoMapper(typeof(GameProfile));
+builder.Services.AddAutoMapper(typeof(GameDetailsProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
 builder.Services.AddAutoMapper(typeof(MediaAssetProfile));
 builder.Services.AddAutoMapper(typeof(BlogProfile));
