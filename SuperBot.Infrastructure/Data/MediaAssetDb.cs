@@ -12,6 +12,12 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("url")]
         public string Url { get; set; }
 
+        [BsonElement("type")]
+        public string Type { get; set; }
+
+        [BsonElement("thumbnailUrl")]
+        public string ThumbnailUrl { get; set; }
+
         [BsonElement("filename")]
         public string Filename { get; set; }
 
@@ -29,6 +35,9 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("height")]
         public int? Height { get; set; }
+
+        [BsonElement("durationSec")]
+        public int? DurationSec { get; set; }
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }

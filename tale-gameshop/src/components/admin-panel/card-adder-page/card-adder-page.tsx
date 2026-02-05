@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
 import type { IUrlService } from "../../../iterfaces/i-url-service";
@@ -73,6 +74,7 @@ const CardAdderPage: React.FC = () => {
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
   const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const navigate = useNavigate();
 
   const form = useSelector((state: { form: Form }) => state.form);
   const dispatch = useDispatch();
@@ -307,9 +309,8 @@ const CardAdderPage: React.FC = () => {
 
   const handleEditGame = (item: GameItem) => {
     handleSelectGame(item);
-    setDrawerMode("edit");
-    setDrawerOpen(true);
     setDetailsDrawerOpen(false);
+    navigate(`/admin/games/details?gameId=${item.id}`);
   };
 
   const handleCreateGame = useCallback(() => {
@@ -383,9 +384,6 @@ const CardAdderPage: React.FC = () => {
       let createdId: string | null = null;
       const payload = buildPayload(updatedItem);
 
-      if (drawerMode === "edit" && selectedGame) {
-        await apiClient.api.put(`/api/game/${selectedGame.id}`, payload);
-      }
       if (drawerMode === "create") {
         const response = await apiClient.api.post("/api/game", payload);
         createdId = response.data?.id ?? response.data?.gameId ?? null;
@@ -409,6 +407,9 @@ const CardAdderPage: React.FC = () => {
       resetForm();
       setDetailsDrawerOpen(false);
       addToast(drawerMode === "create" ? "Game created" : "Changes saved", "success");
+      if (drawerMode === "create" && createdId) {
+        navigate(`/admin/games/details?gameId=${createdId}`);
+      }
     } catch (error) {
       console.error("Error saving object:", error);
       const message =
@@ -949,6 +950,7 @@ const CardAdderPage: React.FC = () => {
         onClose={() => setMediaPickerOpen(false)}
         onSelect={handleSelectMedia}
         initialSelectedId={form.coverMediaId || undefined}
+        filterType="image"
       />
 
       <ModalConfirm
