@@ -85,6 +85,13 @@ namespace SuperBot.Infrastructure.Repositories
             asset.Id = assetDb.Id;
         }
 
+        public async Task UpdateAsync(string id, MediaAsset asset)
+        {
+            var assetDb = _mapper.Map<MediaAssetDb>(asset);
+            assetDb.Id = id;
+            await _mediaAssets.ReplaceOneAsync(item => item.Id == id, assetDb);
+        }
+
         public async Task DeleteAsync(string id)
         {
             await _mediaAssets.DeleteOneAsync(asset => asset.Id == id);

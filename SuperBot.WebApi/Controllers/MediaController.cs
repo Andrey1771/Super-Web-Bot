@@ -17,6 +17,14 @@ public class MediaController : ControllerBase
     private readonly string _videoThumbsFolder;
     private readonly IMediaAssetRepository _mediaRepository;
     private readonly IGameRepository _gameRepository;
+    private static readonly HashSet<string> AllowedImages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp"
+    };
+    private static readonly HashSet<string> AllowedVideos = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".mp4", ".webm"
+    };
 
     public MediaController(
         IWebHostEnvironment env,
@@ -55,16 +63,25 @@ public class MediaController : ControllerBase
         }
 
         var originalName = Path.GetFileName(file.FileName);
-        var safeExt = Path.GetExtension(originalName).ToLowerInvariant();
-
-        var allowedImages = new HashSet<string> { ".jpg", ".jpeg", ".png", ".webp" };
-        var allowedVideos = new HashSet<string> { ".mp4", ".webm", ".mov" };
-        var isImage = allowedImages.Contains(safeExt);
-        var isVideo = allowedVideos.Contains(safeExt);
+        var safeExt = Path.GetExtension(originalName);
+        var isVideoContent = file.ContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true;
+        var isImageContent = file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+        var isImage = isImageContent || AllowedImages.Contains(safeExt);
+        var isVideo = isVideoContent || AllowedVideos.Contains(safeExt);
 
         if (!isImage && !isVideo)
         {
             return BadRequest("Unsupported media format.");
+        }
+
+        if (isVideo && !AllowedVideos.Contains(safeExt))
+        {
+            return BadRequest("Unsupported video format. Allowed: mp4, webm.");
+        }
+
+        if (isImage && !AllowedImages.Contains(safeExt))
+        {
+            return BadRequest("Unsupported image format. Allowed: jpg, jpeg, png, webp.");
         }
 
         if (isImage && file.Length > 15_000_000)
@@ -77,7 +94,7 @@ public class MediaController : ControllerBase
             return BadRequest("Video exceeds 300MB limit.");
         }
 
-        var uniqueFileName = $"{Guid.NewGuid():N}{safeExt}";
+        var uniqueFileName = $"{Guid.NewGuid():N}{safeExt.ToLowerInvariant()}";
         var targetFolder = Path.Combine(_uploadFolder, isVideo ? "videos" : "images");
         if (!Directory.Exists(targetFolder))
         {
@@ -101,37 +118,30 @@ public class MediaController : ControllerBase
 
         if (isVideo)
         {
-            if (IsFfprobeAvailable())
+            if (!IsFfmpegAvailable())
             {
-                try
+                return StatusCode(500, "FFmpeg not installed: cannot generate video preview.");
+            }
+
+            try
+            {
+                if (IsFfprobeAvailable())
                 {
                     var metadata = await TryReadVideoMetadataAsync(physicalPath, ct);
                     width = metadata.Width;
                     height = metadata.Height;
                     durationSec = metadata.DurationSeconds;
                 }
-                catch
-                {
-                    width = null;
-                    height = null;
-                    durationSec = null;
-                }
-            }
 
-            if (IsFfmpegAvailable())
+                var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.jpg";
+                var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
+                var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
+                await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, durationSec, ct);
+                thumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
+            }
+            catch (Exception ex)
             {
-                try
-                {
-                    var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.jpg";
-                    var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
-                    var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
-                    await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, durationSec, ct);
-                    thumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
-                }
-                catch
-                {
-                    thumbnailUrl = null;
-                }
+                return StatusCode(500, $"Failed to generate video preview: {ex.Message}");
             }
         }
 
@@ -217,6 +227,61 @@ public class MediaController : ControllerBase
     public Task<IActionResult> ListAdminMedia([FromQuery] string search = "", [FromQuery] string type = "all", [FromQuery] int page = 1, [FromQuery] int pageSize = 24)
     {
         return ListMedia(search, type, page, pageSize);
+    }
+
+    [HttpPost("{id}/generate-thumbnail")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> GenerateThumbnail(string id, CancellationToken ct)
+    {
+        var asset = await _mediaRepository.GetByIdAsync(id);
+        if (asset == null)
+        {
+            return NotFound();
+        }
+
+        var isVideo = string.Equals(asset.Type, "video", StringComparison.OrdinalIgnoreCase)
+            || (asset.ContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true);
+        if (!isVideo)
+        {
+            return BadRequest("Preview generation is supported only for videos.");
+        }
+
+        if (!IsFfmpegAvailable())
+        {
+            return StatusCode(500, "FFmpeg not installed: cannot generate video preview.");
+        }
+
+        var physicalPath = GetPhysicalPathFromUrl(asset.Url);
+        if (string.IsNullOrWhiteSpace(physicalPath) || !System.IO.File.Exists(physicalPath))
+        {
+            return NotFound("Video file not found.");
+        }
+
+        try
+        {
+            if (IsFfprobeAvailable())
+            {
+                var metadata = await TryReadVideoMetadataAsync(physicalPath, ct);
+                asset.Width = metadata.Width;
+                asset.Height = metadata.Height;
+                asset.DurationSec = metadata.DurationSeconds;
+            }
+
+            var videoFileName = Path.GetFileNameWithoutExtension(physicalPath);
+            var thumbFileName = $"{videoFileName}.jpg";
+            var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
+            var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
+
+            await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, asset.DurationSec, ct);
+            asset.ThumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
+
+            await _mediaRepository.UpdateAsync(id, asset);
+            return Ok(asset);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Failed to generate video preview: {ex.Message}");
+        }
     }
 
     [HttpGet("{id}")]
@@ -372,8 +437,8 @@ public class MediaController : ControllerBase
 
     private static async Task GenerateVideoThumbnailAsync(string inputPath, string outputPath, int? durationSec, CancellationToken ct)
     {
-        var seek = durationSec.HasValue && durationSec.Value > 1 ? Math.Min(1, durationSec.Value / 10) : 0;
-        var args = $"-y -ss {seek} -i \"{inputPath}\" -frames:v 1 -q:v 2 \"{outputPath}\"";
+        var seekSeconds = durationSec.HasValue && durationSec.Value <= 1 ? 0 : 1;
+        var args = $"-y -ss 00:00:{seekSeconds:00} -i \"{inputPath}\" -frames:v 1 -q:v 2 \"{outputPath}\"";
         var psi = new ProcessStartInfo("ffmpeg", args)
         {
             RedirectStandardOutput = true,
@@ -394,6 +459,24 @@ public class MediaController : ControllerBase
             var error = await process.StandardError.ReadToEndAsync();
             throw new InvalidOperationException($"Failed to generate thumbnail: {error}");
         }
+    }
+
+    private string GetPhysicalPathFromUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        var path = url;
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            path = uri.AbsolutePath;
+        }
+
+        path = path.TrimStart('/');
+        var relativePath = path.Replace("/", Path.DirectorySeparatorChar.ToString());
+        return Path.Combine(_webRoot, relativePath);
     }
 }
 

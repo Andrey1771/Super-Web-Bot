@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
+import type { IUrlService } from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 import Card from "../../ui/Card";
 import { useToast } from "../../ui/ToastProvider";
 import { MediaAsset } from "../../../types/media";
+import { resolveMediaUrl } from "../../../utils/media";
 
 type MediaPickerModalProps = {
   isOpen: boolean;
@@ -37,7 +39,10 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
+  const [generatingPreviews, setGeneratingPreviews] = useState<Record<string, boolean>>({});
   const { addToast } = useToast();
+  const apiBaseUrl = container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
   useEffect(() => {
     if (!isOpen) {
@@ -63,6 +68,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const fetchMedia = async (filter: "all" | "image" | "video" = activeFilter) => {
     try {
       setLoading(true);
+      setBrokenThumbnails({});
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get(
         `/api/media?page=1&pageSize=60&type=${filter}`
@@ -96,11 +102,34 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       setSelectedIds([newAsset.id]);
       setActiveTab("library");
       addToast("Media uploaded to library.", "success");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed", error);
-      setUploadError("Failed to upload. Try a different file.");
+      const message = error?.response?.data ?? "Failed to upload. Try a different file.";
+      setUploadError(typeof message === "string" ? message : "Failed to upload. Try a different file.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleGeneratePreview = async (asset: MediaAsset) => {
+    try {
+      setGeneratingPreviews((prev) => ({ ...prev, [asset.id]: true }));
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.post(`/api/media/${asset.id}/generate-thumbnail`);
+      const updated = response.data as MediaAsset;
+      setItems((prev) => prev.map((item) => (item.id === asset.id ? updated : item)));
+      setBrokenThumbnails((prev) => {
+        const next = { ...prev };
+        delete next[asset.id];
+        return next;
+      });
+      addToast("Preview generated.", "success");
+    } catch (error: any) {
+      console.error("Preview generation failed", error);
+      const message = error?.response?.data ?? "Failed to generate preview.";
+      addToast(typeof message === "string" ? message : "Failed to generate preview.", "error");
+    } finally {
+      setGeneratingPreviews((prev) => ({ ...prev, [asset.id]: false }));
     }
   };
 
@@ -215,6 +244,10 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                   {filteredItems.map((item) => {
                     const isVideo = item.type === "video" || item.contentType?.startsWith("video");
+                    const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
+                    const resolvedUrl = resolveMediaUrl(item.url, apiBaseUrl);
+                    const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id]);
+                    const isGenerating = generatingPreviews[item.id];
                     return (
                       <button
                         type="button"
@@ -237,15 +270,39 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       >
                         <div className="h-28 w-full overflow-hidden rounded relative">
                           {isVideo ? (
-                            item.thumbnailUrl ? (
-                              <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                            !showPreviewMissing ? (
+                              <img
+                                src={resolvedThumbnail}
+                                alt={item.filename}
+                                className="h-full w-full object-cover"
+                                onError={() => setBrokenThumbnails((prev) => ({ ...prev, [item.id]: true }))}
+                              />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
-                                ▶ Video
+                              <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gray-100 text-[11px] text-gray-500">
+                                <span>Preview missing</span>
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  className="text-xs text-indigo-600 hover:underline"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleGeneratePreview(item);
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      handleGeneratePreview(item);
+                                    }
+                                  }}
+                                  aria-disabled={isGenerating}
+                                >
+                                  {isGenerating ? "Generating..." : "Generate preview"}
+                                </span>
                               </div>
                             )
                           ) : (
-                            <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
+                            <img src={resolvedUrl} alt={item.filename} className="h-full w-full object-cover" />
                           )}
                           {isVideo && (
                             <span className="absolute inset-0 flex items-center justify-center text-white">
@@ -281,15 +338,31 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       <video
                         controls
                         preload="metadata"
-                        poster={selectedAsset.thumbnailUrl ?? undefined}
+                        poster={resolveMediaUrl(selectedAsset.thumbnailUrl ?? undefined, apiBaseUrl)}
                         className="h-full w-full object-contain bg-black"
                       >
-                        <source src={selectedAsset.url} type={selectedAsset.contentType ?? "video/mp4"} />
+                        <source src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)} type={selectedAsset.contentType ?? "video/mp4"} />
                       </video>
                     ) : (
-                      <img src={selectedAsset.url} alt={selectedAsset.filename} className="h-full w-full object-cover" />
+                      <img
+                        src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)}
+                        alt={selectedAsset.filename}
+                        className="h-full w-full object-cover"
+                      />
                     )}
                   </div>
+                  {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && !selectedAsset.thumbnailUrl && (
+                    <div className="flex items-center gap-2 text-xs text-amber-700">
+                      <span>Preview missing.</span>
+                      <button
+                        className="text-xs text-indigo-600 hover:underline"
+                        onClick={() => handleGeneratePreview(selectedAsset)}
+                        disabled={generatingPreviews[selectedAsset.id]}
+                      >
+                        {generatingPreviews[selectedAsset.id] ? "Generating..." : "Generate preview"}
+                      </button>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-semibold">{selectedAsset.filename}</p>
                     <p className="text-xs text-gray-500">

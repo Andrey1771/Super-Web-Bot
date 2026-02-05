@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
+import type { IUrlService } from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 import PageHeader from "../../layout/PageHeader";
 import Card from "../../ui/Card";
@@ -10,6 +11,7 @@ import useDebouncedValue from "../../../hooks/useDebouncedValue";
 import { useToast } from "../../ui/ToastProvider";
 import type { MediaAsset, MediaUsage } from "../../../types/media";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
+import { resolveMediaUrl } from "../../../utils/media";
 
 const pageSize = 24;
 
@@ -34,8 +36,11 @@ const SiteChangerPage: React.FC = () => {
   const [deleteUsage, setDeleteUsage] = useState<MediaUsage[]>([]);
   const [deleteUsageCount, setDeleteUsageCount] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
+  const [generatingPreviews, setGeneratingPreviews] = useState<Record<string, boolean>>({});
   const { addToast } = useToast();
   const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const apiBaseUrl = container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -65,6 +70,7 @@ const SiteChangerPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setBrokenThumbnails({});
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get(
         `/api/media?search=${encodeURIComponent(debouncedSearch)}&page=${page}&pageSize=${pageSize}&type=${typeFilter}`
@@ -127,9 +133,10 @@ const SiteChangerPage: React.FC = () => {
       setUploadFile(null);
       setPage(1);
       fetchMedia();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed", error);
-      addToast("Upload failed. Try again.", "error");
+      const message = error?.response?.data ?? "Upload failed. Try again.";
+      addToast(typeof message === "string" ? message : "Upload failed. Try again.", "error");
     } finally {
       setUploading(false);
     }
@@ -173,6 +180,29 @@ const SiteChangerPage: React.FC = () => {
     } catch (error) {
       console.error("Copy failed", error);
       addToast("Copy failed.", "error");
+    }
+  };
+
+  const handleGeneratePreview = async (asset: MediaAsset) => {
+    try {
+      setGeneratingPreviews((prev) => ({ ...prev, [asset.id]: true }));
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.post(`/api/media/${asset.id}/generate-thumbnail`);
+      const updated = response.data as MediaAsset;
+      setItems((prev) => prev.map((item) => (item.id === asset.id ? updated : item)));
+      setSelectedAsset((prev) => (prev?.id === asset.id ? updated : prev));
+      setBrokenThumbnails((prev) => {
+        const next = { ...prev };
+        delete next[asset.id];
+        return next;
+      });
+      addToast("Preview generated.", "success");
+    } catch (error: any) {
+      console.error("Preview generation failed", error);
+      const message = error?.response?.data ?? "Failed to generate preview.";
+      addToast(typeof message === "string" ? message : "Failed to generate preview.", "error");
+    } finally {
+      setGeneratingPreviews((prev) => ({ ...prev, [asset.id]: false }));
     }
   };
 
@@ -251,23 +281,51 @@ const SiteChangerPage: React.FC = () => {
         <div className="space-y-3">
           {items.map((item) => {
             const isVideo = item.type === "video" || item.contentType?.startsWith("video");
+            const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
+            const resolvedUrl = resolveMediaUrl(item.url, apiBaseUrl);
+            const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id]);
+            const isGenerating = generatingPreviews[item.id];
             return (
             <Card key={item.id} className="flex items-center gap-4">
               {isVideo ? (
-                item.thumbnailUrl ? (
+                !showPreviewMissing ? (
                   <div className="relative h-16 w-20 overflow-hidden rounded">
-                    <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                    <img
+                      src={resolvedThumbnail}
+                      alt={item.filename}
+                      className="h-full w-full object-cover"
+                      onError={() => setBrokenThumbnails((prev) => ({ ...prev, [item.id]: true }))}
+                    />
                     <span className="absolute inset-0 flex items-center justify-center text-white">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">▶</span>
                     </span>
                   </div>
                 ) : (
-                  <div className="flex h-16 w-20 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
-                    ▶ Video
+                  <div className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded bg-gray-100 text-[11px] text-gray-500">
+                    <span>Preview missing</span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="text-xs text-indigo-600 hover:underline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleGeneratePreview(item);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleGeneratePreview(item);
+                        }
+                      }}
+                      aria-disabled={isGenerating}
+                    >
+                      {isGenerating ? "Generating..." : "Generate preview"}
+                    </span>
                   </div>
                 )
               ) : (
-                <img src={item.url} alt={item.filename} className="h-16 w-20 rounded object-cover" />
+                <img src={resolvedUrl} alt={item.filename} className="h-16 w-20 rounded object-cover" />
               )}
               <div className="flex-1">
                 <p className="font-semibold">{item.filename}</p>
@@ -295,14 +353,23 @@ const SiteChangerPage: React.FC = () => {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {items.map((item) => {
           const isVideo = item.type === "video" || item.contentType?.startsWith("video");
+          const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
+          const resolvedUrl = resolveMediaUrl(item.url, apiBaseUrl);
+          const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id]);
+          const isGenerating = generatingPreviews[item.id];
           return (
           <div key={item.id} className="border rounded-lg p-3 bg-white shadow-sm">
             <button className="w-full" onClick={() => handleOpenDetails(item)}>
               <div className="h-32 w-full overflow-hidden rounded">
                 {isVideo ? (
-                  item.thumbnailUrl ? (
+                  !showPreviewMissing ? (
                     <div className="relative h-full w-full">
-                      <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                      <img
+                        src={resolvedThumbnail}
+                        alt={item.filename}
+                        className="h-full w-full object-cover"
+                        onError={() => setBrokenThumbnails((prev) => ({ ...prev, [item.id]: true }))}
+                      />
                       <span className="absolute inset-0 flex items-center justify-center text-white">
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">▶</span>
                       </span>
@@ -313,12 +380,31 @@ const SiteChangerPage: React.FC = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
-                      ▶ Video
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gray-100 text-xs text-gray-500">
+                      <span>Preview missing</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="text-xs text-indigo-600 hover:underline"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleGeneratePreview(item);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleGeneratePreview(item);
+                          }
+                        }}
+                        aria-disabled={isGenerating}
+                      >
+                        {isGenerating ? "Generating..." : "Generate preview"}
+                      </span>
                     </div>
                   )
                 ) : (
-                  <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
+                  <img src={resolvedUrl} alt={item.filename} className="h-full w-full object-cover" />
                 )}
               </div>
             </button>
@@ -424,17 +510,26 @@ const SiteChangerPage: React.FC = () => {
                 <video
                   controls
                   preload="metadata"
-                  poster={selectedAsset.thumbnailUrl ?? undefined}
+                  poster={resolveMediaUrl(selectedAsset.thumbnailUrl ?? undefined, apiBaseUrl)}
                   className="h-full w-full object-contain bg-black"
                 >
-                  <source src={selectedAsset.url} type={selectedAsset.contentType ?? "video/mp4"} />
+                  <source src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)} type={selectedAsset.contentType ?? "video/mp4"} />
                 </video>
               ) : (
-                <img src={selectedAsset.url} alt={selectedAsset.filename} className="h-full w-full object-cover" />
+                <img src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)} alt={selectedAsset.filename} className="h-full w-full object-cover" />
               )}
             </div>
             {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && !selectedAsset.thumbnailUrl && (
-              <p className="text-sm text-amber-600">No preview generated. Re-upload or check FFmpeg.</p>
+              <div className="flex items-center gap-3 text-sm text-amber-700">
+                <span>Preview missing.</span>
+                <button
+                  className="btn btn-outline btn-small"
+                  onClick={() => handleGeneratePreview(selectedAsset)}
+                  disabled={generatingPreviews[selectedAsset.id]}
+                >
+                  {generatingPreviews[selectedAsset.id] ? "Generating..." : "Generate preview"}
+                </button>
+              </div>
             )}
             <Card>
               <h3>Details</h3>
