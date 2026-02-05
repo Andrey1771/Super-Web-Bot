@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IGameService } from "../../iterfaces/i-game-service";
@@ -54,6 +55,7 @@ const GameDetailsEditorPage: React.FC = () => {
   const gameService = useMemo(() => container.get<IGameService>(IDENTIFIERS.IGameService), []);
   const adminService = useMemo(() => container.get<IAdminGameDetailsService>(IDENTIFIERS.IAdminGameDetailsService), []);
   const { addToast } = useToast();
+  const location = useLocation();
   const [games, setGames] = useState<Game[]>([]);
   const [selectedGameId, setSelectedGameId] = useState<string>("");
   const [details, setDetails] = useState<GameDetails | null>(null);
@@ -65,11 +67,14 @@ const GameDetailsEditorPage: React.FC = () => {
       const list = await gameService.getAllGames();
       setGames(list);
       if (list.length > 0) {
-        setSelectedGameId(list[0].id ?? "");
+        const params = new URLSearchParams(location.search);
+        const requestedId = params.get("gameId");
+        const matched = requestedId ? list.find((item) => item.id === requestedId) : null;
+        setSelectedGameId(matched?.id ?? list[0].id ?? "");
       }
     };
     fetchGames();
-  }, [gameService]);
+  }, [gameService, location.search]);
 
   useEffect(() => {
     if (!selectedGameId) return;
