@@ -963,7 +963,7 @@ const GameDetailsPage: React.FC = () => {
           thumbUrl: data.game.cover.url
         }]
       : [];
-  const trailer = mediaItems.find((item) => item.type === 'video');
+  const trailer = mediaItems.find((item) => item.isTrailer) ?? mediaItems.find((item) => item.type === 'video');
   const screenshots = mediaItems.filter((item) => item.type === 'image');
 
   const ratingLabel = data.ratingSummary.avg >= 4.5 ? 'Very Positive' : data.ratingSummary.avg >= 4 ? 'Positive' : 'Mixed';

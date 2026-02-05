@@ -61,6 +61,7 @@ const GameDetailsEditorPage: React.FC = () => {
   const [details, setDetails] = useState<GameDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [mediaPickerMode, setMediaPickerMode] = useState<"cover" | "gallery">("cover");
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -123,22 +124,43 @@ const GameDetailsEditorPage: React.FC = () => {
     updateDetails({ gallery: next });
   };
 
-  const addGalleryItem = () => {
+  const addGalleryAssets = (assets: Array<{ id: string; url: string; thumbnailUrl?: string | null; type?: "image" | "video"; durationSec?: number | null }>) => {
+    if (!details) return;
+    const existingIds = new Set(details.gallery.map((item) => item.id));
+    const newItems: MediaItem[] = assets
+      .filter((asset) => !existingIds.has(asset.id))
+      .map((asset, index) => ({
+        id: asset.id,
+        type: asset.type ?? "image",
+        url: asset.url,
+        thumbUrl: asset.thumbnailUrl ?? asset.url,
+        posterUrl: asset.thumbnailUrl ?? asset.url,
+        durationSec: asset.durationSec ?? undefined,
+        order: details.gallery.length + index + 1
+      }));
+    updateDetails({ gallery: [...details.gallery, ...newItems] });
+  };
+
+  const setTrailer = (id: string) => {
     if (!details) return;
     updateDetails({
-      gallery: [
-        ...details.gallery,
-        {
-          id: `media-${Date.now()}`,
-          type: "image",
-          url: "",
-          thumbUrl: "",
-          posterUrl: "",
-          durationSec: undefined,
-          order: details.gallery.length + 1
-        }
-      ]
+      gallery: details.gallery.map((item) => ({ ...item, isTrailer: item.id === id }))
     });
+  };
+
+  const moveGalleryItem = (index: number, direction: -1 | 1) => {
+    if (!details) return;
+    const next = [...details.gallery];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= next.length) return;
+    const [removed] = next.splice(index, 1);
+    next.splice(targetIndex, 0, removed);
+    updateDetails({ gallery: next.map((item, idx) => ({ ...item, order: idx + 1 })) });
+  };
+
+  const removeGalleryItem = (id: string) => {
+    if (!details) return;
+    updateDetails({ gallery: details.gallery.filter((item) => item.id !== id) });
   };
 
   const updateEdition = (index: number, patch: Partial<GameDetails["editions"][number]>) => {
@@ -267,19 +289,85 @@ const GameDetailsEditorPage: React.FC = () => {
 
       <div className="admin-card">
         <h3>Media</h3>
-        <button className="btn btn-outline" onClick={() => setMediaPickerOpen(true)}>Select cover</button>
-        {details.cover?.url && <img src={details.cover.url} alt="Cover" className="mt-2 rounded-lg" />}
-        <div className="admin-table__cell-muted mt-4">Gallery</div>
-        <div className="admin-grid">
-          {details.gallery.map((item, index) => (
-            <div key={item.id} className="admin-grid admin-grid--3">
-              <input className="input" value={item.type} onChange={(event) => updateGalleryItem(index, { type: event.target.value as MediaItem["type"] })} />
-              <input className="input" placeholder="URL" value={item.url} onChange={(event) => updateGalleryItem(index, { url: event.target.value })} />
-              <input className="input" placeholder="Thumb URL" value={item.thumbUrl} onChange={(event) => updateGalleryItem(index, { thumbUrl: event.target.value })} />
-            </div>
-          ))}
+        <p className="text-sm text-gray-500">Upload images or videos, arrange the gallery, and mark a trailer.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            className="btn btn-outline"
+            onClick={() => {
+              setMediaPickerMode("cover");
+              setMediaPickerOpen(true);
+            }}
+          >
+            Choose cover
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={() => {
+              setMediaPickerMode("gallery");
+              setMediaPickerOpen(true);
+            }}
+          >
+            Add media
+          </button>
         </div>
-        <button className="btn btn-outline" onClick={addGalleryItem}>Add media</button>
+        {details.cover?.url ? (
+          <div className="mt-4 flex items-center gap-3">
+            <img src={details.cover.url} alt={details.cover.alt ?? "Cover"} className="h-24 w-20 rounded object-cover" />
+            <div>
+              <p className="text-sm font-semibold">Cover image</p>
+              <button className="btn btn-outline btn-small" onClick={() => updateDetails({ cover: undefined })}>
+                Remove cover
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-gray-500">No cover selected.</p>
+        )}
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {details.gallery.length === 0 ? (
+            <p className="text-sm text-gray-500">Gallery is empty.</p>
+          ) : (
+            details.gallery.map((item, index) => (
+              <div key={item.id} className="border rounded-lg p-3 flex gap-3">
+                <div className="h-20 w-28 overflow-hidden rounded bg-gray-100">
+                  {item.type === "video" ? (
+                    item.thumbUrl ? (
+                      <img src={item.thumbUrl} alt={item.title ?? "Video"} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">▶ Video</div>
+                    )
+                  ) : (
+                    <img src={item.url} alt={item.title ?? "Image"} className="h-full w-full object-cover" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase text-gray-500">{item.type}</span>
+                    {item.type === "video" && (
+                      <button
+                        className={`btn btn-small ${item.isTrailer ? "btn-primary" : "btn-outline"}`}
+                        onClick={() => setTrailer(item.id)}
+                      >
+                        {item.isTrailer ? "Trailer" : "Set trailer"}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    className="input"
+                    placeholder="Caption"
+                    value={item.caption ?? ""}
+                    onChange={(event) => updateGalleryItem(index, { caption: event.target.value })}
+                  />
+                  <div className="flex gap-2 flex-wrap">
+                    <button className="btn btn-outline btn-small" onClick={() => moveGalleryItem(index, -1)}>↑</button>
+                    <button className="btn btn-outline btn-small" onClick={() => moveGalleryItem(index, 1)}>↓</button>
+                    <button className="btn btn-outline btn-small" onClick={() => removeGalleryItem(item.id)}>Remove</button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <div className="admin-card">
@@ -369,7 +457,16 @@ const GameDetailsEditorPage: React.FC = () => {
       <MediaPickerModal
         isOpen={mediaPickerOpen}
         onClose={() => setMediaPickerOpen(false)}
-        onSelect={(asset) => updateDetails({ cover: { url: asset.url, alt: asset.filename } })}
+        filterType={mediaPickerMode === "cover" ? "image" : "all"}
+        allowMultiple={mediaPickerMode === "gallery"}
+        onSelect={(asset) => {
+          if (mediaPickerMode === "cover") {
+            updateDetails({ cover: { url: asset.url, alt: asset.filename } });
+          } else {
+            addGalleryAssets([asset]);
+          }
+        }}
+        onSelectMany={(assets) => addGalleryAssets(assets)}
       />
     </div>
   );

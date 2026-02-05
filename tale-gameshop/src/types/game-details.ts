@@ -49,6 +49,11 @@ export interface MediaItem {
   thumbUrl: string;
   posterUrl?: string;
   durationSec?: number;
+  title?: string;
+  caption?: string;
+  isTrailer?: boolean;
+  width?: number;
+  height?: number;
   order?: number;
 }
 

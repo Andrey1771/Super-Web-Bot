@@ -77,6 +77,11 @@ namespace SuperBot.Core.Entities
         public string ThumbUrl { get; set; }
         public string PosterUrl { get; set; }
         public int? DurationSec { get; set; }
+        public string Title { get; set; }
+        public string Caption { get; set; }
+        public bool IsTrailer { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
         public int Order { get; set; }
     }
 

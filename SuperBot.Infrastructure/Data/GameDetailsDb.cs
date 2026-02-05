@@ -146,6 +146,21 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("durationSec")]
         public int? DurationSec { get; set; }
 
+        [BsonElement("title")]
+        public string Title { get; set; }
+
+        [BsonElement("caption")]
+        public string Caption { get; set; }
+
+        [BsonElement("isTrailer")]
+        public bool IsTrailer { get; set; }
+
+        [BsonElement("width")]
+        public int? Width { get; set; }
+
+        [BsonElement("height")]
+        public int? Height { get; set; }
+
         [BsonElement("order")]
         public int Order { get; set; }
     }

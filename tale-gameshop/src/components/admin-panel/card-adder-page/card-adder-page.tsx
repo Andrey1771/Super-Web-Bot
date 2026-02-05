@@ -950,6 +950,7 @@ const CardAdderPage: React.FC = () => {
         onClose={() => setMediaPickerOpen(false)}
         onSelect={handleSelectMedia}
         initialSelectedId={form.coverMediaId || undefined}
+        filterType="image"
       />
 
       <ModalConfirm

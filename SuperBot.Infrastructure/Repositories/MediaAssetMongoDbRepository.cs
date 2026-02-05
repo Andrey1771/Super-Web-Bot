@@ -36,7 +36,7 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<MediaAsset>(asset);
         }
 
-        public async Task<(IReadOnlyList<MediaAsset> Items, long Total)> ListAsync(string search, int page, int pageSize)
+        public async Task<(IReadOnlyList<MediaAsset> Items, long Total)> ListAsync(string search, int page, int pageSize, string type = null)
         {
             var filter = Builders<MediaAssetDb>.Filter.Empty;
             if (!string.IsNullOrWhiteSpace(search))
@@ -44,6 +44,27 @@ namespace SuperBot.Infrastructure.Repositories
                 filter = Builders<MediaAssetDb>.Filter.Regex(
                     item => item.Filename,
                     new MongoDB.Bson.BsonRegularExpression(search, "i"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(type) && type != "all")
+            {
+                var normalized = type.ToLowerInvariant();
+                var typeFilter = Builders<MediaAssetDb>.Filter.Eq(item => item.Type, normalized);
+                if (normalized == "image")
+                {
+                    var contentFilter = Builders<MediaAssetDb>.Filter.Regex(
+                        item => item.ContentType,
+                        new MongoDB.Bson.BsonRegularExpression("^image/", "i"));
+                    typeFilter = Builders<MediaAssetDb>.Filter.Or(typeFilter, contentFilter);
+                }
+                if (normalized == "video")
+                {
+                    var contentFilter = Builders<MediaAssetDb>.Filter.Regex(
+                        item => item.ContentType,
+                        new MongoDB.Bson.BsonRegularExpression("^video/", "i"));
+                    typeFilter = Builders<MediaAssetDb>.Filter.Or(typeFilter, contentFilter);
+                }
+                filter = Builders<MediaAssetDb>.Filter.And(filter, typeFilter);
             }
 
             var total = await _mediaAssets.CountDocumentsAsync(filter);

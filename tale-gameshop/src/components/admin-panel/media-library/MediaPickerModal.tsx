@@ -10,14 +10,29 @@ type MediaPickerModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (asset: MediaAsset) => void;
+  onSelectMany?: (assets: MediaAsset[]) => void;
   initialSelectedId?: string;
+  initialSelectedIds?: string[];
+  filterType?: "all" | "image" | "video";
+  allowMultiple?: boolean;
 };
 
-const MediaPickerModal: React.FC<MediaPickerModalProps> = ({ isOpen, onClose, onSelect, initialSelectedId }) => {
+const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
+  isOpen,
+  onClose,
+  onSelect,
+  onSelectMany,
+  initialSelectedId,
+  initialSelectedIds,
+  filterType = "all",
+  allowMultiple = false,
+}) => {
   const [activeTab, setActiveTab] = useState<"library" | "upload">("library");
+  const [activeFilter, setActiveFilter] = useState<"all" | "image" | "video">(filterType);
   const [items, setItems] = useState<MediaAsset[]>([]);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -32,8 +47,10 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({ isOpen, onClose, on
     setUploadFile(null);
     setUploadError(null);
     setSelectedId(initialSelectedId ?? null);
-    fetchMedia();
-  }, [initialSelectedId, isOpen]);
+    setSelectedIds(initialSelectedIds ?? (initialSelectedId ? [initialSelectedId] : []));
+    setActiveFilter(filterType);
+    fetchMedia(filterType);
+  }, [filterType, initialSelectedId, initialSelectedIds, isOpen]);
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) {
@@ -43,11 +60,13 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({ isOpen, onClose, on
     return items.filter((item) => item.filename.toLowerCase().includes(lower));
   }, [items, search]);
 
-  const fetchMedia = async () => {
+  const fetchMedia = async (filter: "all" | "image" | "video" = activeFilter) => {
     try {
       setLoading(true);
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-      const response = await apiClient.api.get("/api/media?page=1&pageSize=60");
+      const response = await apiClient.api.get(
+        `/api/media?page=1&pageSize=60&type=${filter}`
+      );
       setItems(response.data.items ?? []);
     } catch (error) {
       console.error("Failed to load media", error);
@@ -74,20 +93,32 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({ isOpen, onClose, on
       const newAsset = response.data as MediaAsset;
       setItems((prev) => [newAsset, ...prev]);
       setSelectedId(newAsset.id);
+      setSelectedIds([newAsset.id]);
       setActiveTab("library");
-      addToast("Image uploaded to library.", "success");
+      addToast("Media uploaded to library.", "success");
     } catch (error) {
       console.error("Upload failed", error);
-      setUploadError("Failed to upload. Try a different image.");
+      setUploadError("Failed to upload. Try a different file.");
     } finally {
       setUploading(false);
     }
   };
 
   const handleUseSelected = () => {
+    if (allowMultiple) {
+      const selected = items.filter((item) => selectedIds.includes(item.id));
+      if (selected.length === 0) {
+        addToast("Select media first.", "error");
+        return;
+      }
+      onSelectMany?.(selected);
+      onClose();
+      return;
+    }
+
     const selected = items.find((item) => item.id === selectedId);
     if (!selected) {
-      addToast("Select an image first.", "error");
+      addToast("Select media first.", "error");
       return;
     }
     onSelect(selected);
@@ -128,6 +159,22 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({ isOpen, onClose, on
 
         {activeTab === "library" && (
           <div className="mt-4 space-y-4">
+            {filterType === "all" && (
+              <div className="flex gap-2">
+                {(["all", "image", "video"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    className={`btn btn-small ${activeFilter === tab ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => {
+                      setActiveFilter(tab);
+                      fetchMedia(tab);
+                    }}
+                  >
+                    {tab === "all" ? "All" : tab === "image" ? "Images" : "Videos"}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="admin-topbar__search">
               <span>🔎</span>
               <input
@@ -151,33 +198,68 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({ isOpen, onClose, on
                   <div className="skeleton h-10" />
                 </div>
               ) : filteredItems.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">No media found. Upload a new image.</div>
+                <div className="text-center text-gray-500 py-8">No media found. Upload a new file.</div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-                  {filteredItems.map((item) => (
-                    <button
-                      type="button"
-                      key={item.id}
-                      onClick={() => setSelectedId(item.id)}
-                      className={`border rounded-lg p-2 text-left transition hover:shadow ${
-                        selectedId === item.id ? "border-indigo-500 ring-2 ring-indigo-200" : "border-gray-200"
-                      }`}
-                    >
-                      <div className="h-28 w-full overflow-hidden rounded">
-                        <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
-                      </div>
-                      <div className="mt-2 text-sm font-medium truncate" title={item.filename}>
-                        {item.filename}
-                      </div>
-                    </button>
-                  ))}
+                  {filteredItems.map((item) => {
+                    const isVideo = item.type === "video" || item.contentType?.startsWith("video");
+                    return (
+                      <button
+                        type="button"
+                        key={item.id}
+                        onClick={() => {
+                          if (allowMultiple) {
+                            setSelectedIds((prev) =>
+                              prev.includes(item.id) ? prev.filter((value) => value !== item.id) : [...prev, item.id]
+                            );
+                          } else {
+                            setSelectedId(item.id);
+                            setSelectedIds([item.id]);
+                          }
+                        }}
+                        className={`border rounded-lg p-2 text-left transition hover:shadow ${
+                          (allowMultiple ? selectedIds.includes(item.id) : selectedId === item.id)
+                            ? "border-indigo-500 ring-2 ring-indigo-200"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <div className="h-28 w-full overflow-hidden rounded">
+                          {isVideo ? (
+                            item.thumbnailUrl ? (
+                              <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
+                                ▶ Video
+                              </div>
+                            )
+                          ) : (
+                            <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
+                          )}
+                        </div>
+                        {isVideo && (
+                          <span className="mt-2 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                            Video
+                          </span>
+                        )}
+                        <div className="mt-2 text-sm font-medium truncate" title={item.filename}>
+                          {item.filename}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </Card>
 
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">
-                {selectedId ? "1 item selected" : "Select an image to continue"}
+                {allowMultiple
+                  ? selectedIds.length > 0
+                    ? `${selectedIds.length} items selected`
+                    : "Select media to continue"
+                  : selectedId
+                    ? "1 item selected"
+                    : "Select media to continue"}
               </span>
               <button className="btn btn-primary" onClick={handleUseSelected}>
                 Use selected
@@ -191,7 +273,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({ isOpen, onClose, on
             <div className="border border-dashed rounded-lg p-6 text-center">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
               />
               {uploadFile && (

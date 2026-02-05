@@ -11,6 +11,7 @@ namespace SuperBot.WebApi.Controllers;
 public class MediaController : ControllerBase
 {
     private readonly string _uploadFolder;
+    private readonly string _webRoot;
     private readonly IMediaAssetRepository _mediaRepository;
     private readonly IGameRepository _gameRepository;
 
@@ -21,6 +22,7 @@ public class MediaController : ControllerBase
     {
         _mediaRepository = mediaRepository;
         _gameRepository = gameRepository;
+        _webRoot = env.WebRootPath;
         _uploadFolder = Path.Combine(env.WebRootPath, "uploads");
         if (!Directory.Exists(_uploadFolder))
         {
@@ -30,8 +32,8 @@ public class MediaController : ControllerBase
 
     [HttpPost("upload")]
     [Authorize(Roles = "admin")]
-    [RequestSizeLimit(20_000_000)]
-    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken ct)
+    [RequestSizeLimit(300_000_000)]
+    public async Task<IActionResult> UploadMedia(IFormFile file, CancellationToken ct)
     {
         if (file == null || file.Length == 0)
         {
@@ -41,14 +43,33 @@ public class MediaController : ControllerBase
         var originalName = Path.GetFileName(file.FileName);
         var safeExt = Path.GetExtension(originalName).ToLowerInvariant();
 
-        var allowed = new HashSet<string> { ".jpg", ".jpeg", ".png", ".webp" };
-        if (!allowed.Contains(safeExt))
+        var allowedImages = new HashSet<string> { ".jpg", ".jpeg", ".png", ".webp" };
+        var allowedVideos = new HashSet<string> { ".mp4", ".webm", ".mov" };
+        var isImage = allowedImages.Contains(safeExt);
+        var isVideo = allowedVideos.Contains(safeExt);
+
+        if (!isImage && !isVideo)
         {
-            return BadRequest("Unsupported image format.");
+            return BadRequest("Unsupported media format.");
+        }
+
+        if (isImage && file.Length > 15_000_000)
+        {
+            return BadRequest("Image exceeds 15MB limit.");
+        }
+
+        if (isVideo && file.Length > 300_000_000)
+        {
+            return BadRequest("Video exceeds 300MB limit.");
         }
 
         var uniqueFileName = $"{Guid.NewGuid():N}{safeExt}";
-        var physicalPath = Path.Combine(_uploadFolder, uniqueFileName);
+        var targetFolder = Path.Combine(_uploadFolder, isVideo ? "videos" : "images");
+        if (!Directory.Exists(targetFolder))
+        {
+            Directory.CreateDirectory(targetFolder);
+        }
+        var physicalPath = Path.Combine(targetFolder, uniqueFileName);
 
         await using (var stream = System.IO.File.Create(physicalPath))
         {
@@ -56,12 +77,14 @@ public class MediaController : ControllerBase
         }
 
         var hash = await MediaHashHelper.ComputeHashAsync(physicalPath, ct);
-        var relativeUrl = $"/uploads/{uniqueFileName}";
+        var relativeUrl = isVideo ? $"/uploads/videos/{uniqueFileName}" : $"/uploads/images/{uniqueFileName}";
         var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativeUrl}";
 
         var asset = new MediaAsset
         {
+            Type = isVideo ? "video" : "image",
             Url = absoluteUrl,
+            ThumbnailUrl = null,
             Filename = originalName,
             ContentType = file.ContentType,
             SizeBytes = file.Length,
@@ -75,6 +98,14 @@ public class MediaController : ControllerBase
         return Ok(asset);
     }
 
+    [HttpPost("/api/admin/media/upload")]
+    [Authorize(Roles = "admin")]
+    [RequestSizeLimit(300_000_000)]
+    public Task<IActionResult> UploadAdminMedia(IFormFile file, CancellationToken ct)
+    {
+        return UploadMedia(file, ct);
+    }
+
     [HttpPost("import")]
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> ImportExisting([FromBody] ImportMediaRequest request)
@@ -84,8 +115,9 @@ public class MediaController : ControllerBase
             return BadRequest("relativeUrl is required.");
         }
 
-        var fileName = Path.GetFileName(request.RelativeUrl);
-        var physicalPath = Path.Combine(_uploadFolder, fileName);
+        var relativePath = request.RelativeUrl.TrimStart('/');
+        var fileName = Path.GetFileName(relativePath);
+        var physicalPath = Path.Combine(_webRoot, relativePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
         if (!System.IO.File.Exists(physicalPath))
         {
             return NotFound("File not found.");
@@ -95,7 +127,10 @@ public class MediaController : ControllerBase
         var hash = await MediaHashHelper.ComputeHashAsync(physicalPath, CancellationToken.None);
         var asset = new MediaAsset
         {
-            Url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}",
+            Url = $"{Request.Scheme}://{Request.Host}/{relativePath}",
+            Type = request.ContentType != null && request.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                ? "video"
+                : "image",
             Filename = fileInfo.Name,
             ContentType = request.ContentType ?? "image",
             SizeBytes = fileInfo.Length,
@@ -110,13 +145,20 @@ public class MediaController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> ListMedia([FromQuery] string search = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 24)
+    public async Task<IActionResult> ListMedia([FromQuery] string search = "", [FromQuery] string type = "all", [FromQuery] int page = 1, [FromQuery] int pageSize = 24)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > 100 ? 24 : pageSize;
 
-        var (items, total) = await _mediaRepository.ListAsync(search, page, pageSize);
+        var (items, total) = await _mediaRepository.ListAsync(search, page, pageSize, type);
         return Ok(new { items, total });
+    }
+
+    [HttpGet("/api/admin/media")]
+    [Authorize(Roles = "admin")]
+    public Task<IActionResult> ListAdminMedia([FromQuery] string search = "", [FromQuery] string type = "all", [FromQuery] int page = 1, [FromQuery] int pageSize = 24)
+    {
+        return ListMedia(search, type, page, pageSize);
     }
 
     [HttpGet("{id}")]
@@ -165,8 +207,8 @@ public class MediaController : ControllerBase
             }
         }
 
-        var fileName = Path.GetFileName(new Uri(asset.Url).AbsolutePath);
-        var physicalPath = Path.Combine(_uploadFolder, fileName);
+        var relativePath = new Uri(asset.Url).AbsolutePath.TrimStart('/');
+        var physicalPath = Path.Combine(_webRoot, relativePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
         if (System.IO.File.Exists(physicalPath))
         {
             System.IO.File.Delete(physicalPath);

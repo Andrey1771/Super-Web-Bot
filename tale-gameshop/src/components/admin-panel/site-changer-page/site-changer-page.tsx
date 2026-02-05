@@ -17,6 +17,7 @@ const SiteChangerPage: React.FC = () => {
   const [items, setItems] = useState<MediaAsset[]>([]);
   const [total, setTotal] = useState(0);
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [typeFilter, setTypeFilter] = useState<"all" | "image" | "video">("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,7 @@ const SiteChangerPage: React.FC = () => {
 
   useEffect(() => {
     fetchMedia();
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, typeFilter]);
 
   useEffect(() => {
     setPageTitle("Media Manager");
@@ -66,7 +67,7 @@ const SiteChangerPage: React.FC = () => {
       setError(null);
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get(
-        `/api/media?search=${encodeURIComponent(debouncedSearch)}&page=${page}&pageSize=${pageSize}`
+        `/api/media?search=${encodeURIComponent(debouncedSearch)}&page=${page}&pageSize=${pageSize}&type=${typeFilter}`
       );
       setItems(response.data.items ?? []);
       setTotal(response.data.total ?? 0);
@@ -121,7 +122,7 @@ const SiteChangerPage: React.FC = () => {
       await apiClient.api.post("/api/media/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      addToast("Image uploaded to library.", "success");
+      addToast("Media uploaded to library.", "success");
       setUploadOpen(false);
       setUploadFile(null);
       setPage(1);
@@ -226,10 +227,10 @@ const SiteChangerPage: React.FC = () => {
       return (
         <EmptyState
           title="No media yet"
-          description="Upload the first image to build your library."
+          description="Upload the first image or video to build your library."
           action={
             <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>
-              Upload first image
+              Upload first media
             </button>
           }
         />
@@ -239,9 +240,21 @@ const SiteChangerPage: React.FC = () => {
     if (view === "list") {
       return (
         <div className="space-y-3">
-          {items.map((item) => (
+          {items.map((item) => {
+            const isVideo = item.type === "video" || item.contentType?.startsWith("video");
+            return (
             <Card key={item.id} className="flex items-center gap-4">
-              <img src={item.url} alt={item.filename} className="h-16 w-20 rounded object-cover" />
+              {isVideo ? (
+                item.thumbnailUrl ? (
+                  <img src={item.thumbnailUrl} alt={item.filename} className="h-16 w-20 rounded object-cover" />
+                ) : (
+                  <div className="flex h-16 w-20 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
+                    ▶ Video
+                  </div>
+                )
+              ) : (
+                <img src={item.url} alt={item.filename} className="h-16 w-20 rounded object-cover" />
+              )}
               <div className="flex-1">
                 <p className="font-semibold">{item.filename}</p>
                 <p className="text-xs text-gray-500">
@@ -258,18 +271,31 @@ const SiteChangerPage: React.FC = () => {
                 </button>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       );
     }
 
     return (
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {items.map((item) => (
+        {items.map((item) => {
+          const isVideo = item.type === "video" || item.contentType?.startsWith("video");
+          return (
           <div key={item.id} className="border rounded-lg p-3 bg-white shadow-sm">
             <button className="w-full" onClick={() => handleOpenDetails(item)}>
               <div className="h-32 w-full overflow-hidden rounded">
-                <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
+                {isVideo ? (
+                  item.thumbnailUrl ? (
+                    <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
+                      ▶ Video
+                    </div>
+                  )
+                ) : (
+                  <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
+                )}
               </div>
             </button>
             <div className="mt-2">
@@ -290,7 +316,8 @@ const SiteChangerPage: React.FC = () => {
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   }, [items, loading, error, view, emptyState, total, page]);
@@ -318,6 +345,17 @@ const SiteChangerPage: React.FC = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex gap-2">
+              {(["all", "image", "video"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  className={`btn btn-small ${typeFilter === tab ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => setTypeFilter(tab)}
+                >
+                  {tab === "all" ? "All" : tab === "image" ? "Images" : "Videos"}
+                </button>
+              ))}
+            </div>
             <select className="input" defaultValue="newest">
               <option value="newest">Newest first</option>
             </select>
@@ -358,13 +396,23 @@ const SiteChangerPage: React.FC = () => {
         {selectedAsset ? (
           <div className="space-y-4">
             <div className="h-48 w-full overflow-hidden rounded border">
-              <img src={selectedAsset.url} alt={selectedAsset.filename} className="h-full w-full object-cover" />
+              {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) ? (
+                selectedAsset.thumbnailUrl ? (
+                  <img src={selectedAsset.thumbnailUrl} alt={selectedAsset.filename} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gray-100 text-sm text-gray-500">
+                    ▶ Video preview not available
+                  </div>
+                )
+              ) : (
+                <img src={selectedAsset.url} alt={selectedAsset.filename} className="h-full w-full object-cover" />
+              )}
             </div>
             <Card>
               <h3>Details</h3>
               <p><strong>Filename:</strong> {selectedAsset.filename}</p>
               <p><strong>Size:</strong> {formatBytes(selectedAsset.sizeBytes)}</p>
-              <p><strong>Type:</strong> {selectedAsset.contentType}</p>
+              <p><strong>Type:</strong> {selectedAsset.type ?? "image"} ({selectedAsset.contentType})</p>
               <p><strong>Created:</strong> {formatDate(selectedAsset.createdAt)}</p>
               <p><strong>Dimensions:</strong> {selectedAsset.width && selectedAsset.height ? `${selectedAsset.width}×${selectedAsset.height}` : "—"}</p>
             </Card>
@@ -407,10 +455,10 @@ const SiteChangerPage: React.FC = () => {
       {uploadOpen && (
         <div className="admin-modal" onClick={() => setUploadOpen(false)}>
           <div className="admin-modal__card" onClick={(event) => event.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-4">Upload image</h2>
+            <h2 className="text-lg font-semibold mb-4">Upload media</h2>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
               className="mb-4"
             />
