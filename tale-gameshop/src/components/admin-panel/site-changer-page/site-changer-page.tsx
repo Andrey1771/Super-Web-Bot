@@ -194,6 +194,15 @@ const SiteChangerPage: React.FC = () => {
     return date.toLocaleDateString("ru-RU", { year: "numeric", month: "short", day: "numeric" });
   };
 
+  const formatDuration = (seconds?: number | null) => {
+    if (!seconds && seconds !== 0) {
+      return null;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remaining = seconds % 60;
+    return `${minutes}:${remaining.toString().padStart(2, "0")}`;
+  };
+
   const canGoNext = page * pageSize < total;
 
   const emptyState = !loading && items.length === 0 && !error;
@@ -246,7 +255,12 @@ const SiteChangerPage: React.FC = () => {
             <Card key={item.id} className="flex items-center gap-4">
               {isVideo ? (
                 item.thumbnailUrl ? (
-                  <img src={item.thumbnailUrl} alt={item.filename} className="h-16 w-20 rounded object-cover" />
+                  <div className="relative h-16 w-20 overflow-hidden rounded">
+                    <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                    <span className="absolute inset-0 flex items-center justify-center text-white">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">▶</span>
+                    </span>
+                  </div>
                 ) : (
                   <div className="flex h-16 w-20 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
                     ▶ Video
@@ -287,7 +301,17 @@ const SiteChangerPage: React.FC = () => {
               <div className="h-32 w-full overflow-hidden rounded">
                 {isVideo ? (
                   item.thumbnailUrl ? (
-                    <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                    <div className="relative h-full w-full">
+                      <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
+                      <span className="absolute inset-0 flex items-center justify-center text-white">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">▶</span>
+                      </span>
+                      {formatDuration(item.durationSec) && (
+                        <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+                          {formatDuration(item.durationSec)}
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
                       ▶ Video
@@ -397,17 +421,21 @@ const SiteChangerPage: React.FC = () => {
           <div className="space-y-4">
             <div className="h-48 w-full overflow-hidden rounded border">
               {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) ? (
-                selectedAsset.thumbnailUrl ? (
-                  <img src={selectedAsset.thumbnailUrl} alt={selectedAsset.filename} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gray-100 text-sm text-gray-500">
-                    ▶ Video preview not available
-                  </div>
-                )
+                <video
+                  controls
+                  preload="metadata"
+                  poster={selectedAsset.thumbnailUrl ?? undefined}
+                  className="h-full w-full object-contain bg-black"
+                >
+                  <source src={selectedAsset.url} type={selectedAsset.contentType ?? "video/mp4"} />
+                </video>
               ) : (
                 <img src={selectedAsset.url} alt={selectedAsset.filename} className="h-full w-full object-cover" />
               )}
             </div>
+            {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && !selectedAsset.thumbnailUrl && (
+              <p className="text-sm text-amber-600">No preview generated. Re-upload or check FFmpeg.</p>
+            )}
             <Card>
               <h3>Details</h3>
               <p><strong>Filename:</strong> {selectedAsset.filename}</p>
@@ -415,12 +443,16 @@ const SiteChangerPage: React.FC = () => {
               <p><strong>Type:</strong> {selectedAsset.type ?? "image"} ({selectedAsset.contentType})</p>
               <p><strong>Created:</strong> {formatDate(selectedAsset.createdAt)}</p>
               <p><strong>Dimensions:</strong> {selectedAsset.width && selectedAsset.height ? `${selectedAsset.width}×${selectedAsset.height}` : "—"}</p>
+              {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && (
+                <p><strong>Duration:</strong> {formatDuration(selectedAsset.durationSec) ?? "—"}</p>
+              )}
             </Card>
             <Card>
               <h3>Link</h3>
               <div className="flex items-center gap-2">
                 <input type="text" readOnly value={selectedAsset.url} className="w-full p-2 border rounded" />
                 <button className="btn btn-outline" onClick={() => handleCopy(selectedAsset.url, "Link copied")}>Copy</button>
+                <button className="btn btn-outline" onClick={() => window.open(selectedAsset.url, "_blank", "noopener,noreferrer")}>Open</button>
               </div>
             </Card>
             <Card>

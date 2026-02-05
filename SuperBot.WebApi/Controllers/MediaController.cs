@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Diagnostics;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -12,6 +14,7 @@ public class MediaController : ControllerBase
 {
     private readonly string _uploadFolder;
     private readonly string _webRoot;
+    private readonly string _videoThumbsFolder;
     private readonly IMediaAssetRepository _mediaRepository;
     private readonly IGameRepository _gameRepository;
 
@@ -24,9 +27,14 @@ public class MediaController : ControllerBase
         _gameRepository = gameRepository;
         _webRoot = env.WebRootPath;
         _uploadFolder = Path.Combine(env.WebRootPath, "uploads");
+        _videoThumbsFolder = Path.Combine(_uploadFolder, "video-thumbs");
         if (!Directory.Exists(_uploadFolder))
         {
             Directory.CreateDirectory(_uploadFolder);
+        }
+        if (!Directory.Exists(_videoThumbsFolder))
+        {
+            Directory.CreateDirectory(_videoThumbsFolder);
         }
     }
 
@@ -80,15 +88,49 @@ public class MediaController : ControllerBase
         var relativeUrl = isVideo ? $"/uploads/videos/{uniqueFileName}" : $"/uploads/images/{uniqueFileName}";
         var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativeUrl}";
 
+        string thumbnailUrl = null;
+        int? width = null;
+        int? height = null;
+        int? durationSec = null;
+
+        if (isVideo)
+        {
+            if (!IsFfmpegAvailable() || !IsFfprobeAvailable())
+            {
+                return BadRequest("FFmpeg/ffprobe not available, cannot generate video preview.");
+            }
+
+            try
+            {
+                var metadata = await TryReadVideoMetadataAsync(physicalPath, ct);
+                width = metadata.Width;
+                height = metadata.Height;
+                durationSec = metadata.DurationSeconds;
+
+                var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.jpg";
+                var thumbPhysicalPath = Path.Combine(_videoThumbsFolder, thumbFileName);
+                var thumbRelativeUrl = $"/uploads/video-thumbs/{thumbFileName}";
+                await GenerateVideoThumbnailAsync(physicalPath, thumbPhysicalPath, durationSec, ct);
+                thumbnailUrl = $"{Request.Scheme}://{Request.Host}{thumbRelativeUrl}";
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Failed to generate video preview: {ex.Message}");
+            }
+        }
+
         var asset = new MediaAsset
         {
             Type = isVideo ? "video" : "image",
             Url = absoluteUrl,
-            ThumbnailUrl = null,
+            ThumbnailUrl = thumbnailUrl,
             Filename = originalName,
             ContentType = file.ContentType,
             SizeBytes = file.Length,
             HashSha256 = hash,
+            Width = width,
+            Height = height,
+            DurationSec = durationSec,
             CreatedAt = DateTime.UtcNow,
             Tags = Array.Empty<string>()
         };
@@ -214,8 +256,128 @@ public class MediaController : ControllerBase
             System.IO.File.Delete(physicalPath);
         }
 
+        if (!string.IsNullOrWhiteSpace(asset.ThumbnailUrl))
+        {
+            var thumbRelativePath = new Uri(asset.ThumbnailUrl).AbsolutePath.TrimStart('/');
+            var thumbPhysicalPath = Path.Combine(_webRoot, thumbRelativePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+            if (System.IO.File.Exists(thumbPhysicalPath))
+            {
+                System.IO.File.Delete(thumbPhysicalPath);
+            }
+        }
+
         await _mediaRepository.DeleteAsync(id);
         return Ok(new { deleted = true, usedByCount = usage.Count });
+    }
+
+    private static bool IsFfmpegAvailable()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("ffmpeg", "-version")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = Process.Start(psi);
+            process?.WaitForExit(2000);
+            return process?.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsFfprobeAvailable()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("ffprobe", "-version")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = Process.Start(psi);
+            process?.WaitForExit(2000);
+            return process?.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<(int? Width, int? Height, int? DurationSeconds)> TryReadVideoMetadataAsync(string path, CancellationToken ct)
+    {
+        var psi = new ProcessStartInfo("ffprobe", $"-v error -select_streams v:0 -show_entries stream=width,height,duration -of json \"{path}\"")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(psi);
+        if (process == null)
+        {
+            return (null, null, null);
+        }
+
+        var output = await process.StandardOutput.ReadToEndAsync();
+        await process.WaitForExitAsync(ct);
+        if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
+        {
+            return (null, null, null);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(output);
+            var stream = doc.RootElement.GetProperty("streams")[0];
+            int? width = stream.TryGetProperty("width", out var widthEl) ? widthEl.GetInt32() : null;
+            int? height = stream.TryGetProperty("height", out var heightEl) ? heightEl.GetInt32() : null;
+            int? duration = null;
+            if (stream.TryGetProperty("duration", out var durationEl) && double.TryParse(durationEl.GetString(), out var durationValue))
+            {
+                duration = (int)Math.Round(durationValue);
+            }
+            return (width, height, duration);
+        }
+        catch
+        {
+            return (null, null, null);
+        }
+    }
+
+    private static async Task GenerateVideoThumbnailAsync(string inputPath, string outputPath, int? durationSec, CancellationToken ct)
+    {
+        var seek = durationSec.HasValue && durationSec.Value > 1 ? Math.Min(1, durationSec.Value / 10) : 0;
+        var args = $"-y -ss {seek} -i \"{inputPath}\" -frames:v 1 -q:v 2 \"{outputPath}\"";
+        var psi = new ProcessStartInfo("ffmpeg", args)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(psi);
+        if (process == null)
+        {
+            throw new InvalidOperationException("Unable to start ffmpeg.");
+        }
+
+        await process.WaitForExitAsync(ct);
+        if (process.ExitCode != 0)
+        {
+            var error = await process.StandardError.ReadToEndAsync();
+            throw new InvalidOperationException($"Failed to generate thumbnail: {error}");
+        }
     }
 }
 

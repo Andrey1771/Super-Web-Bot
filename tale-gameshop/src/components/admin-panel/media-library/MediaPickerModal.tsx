@@ -125,6 +125,17 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     onClose();
   };
 
+  const selectedAsset = items.find((item) => item.id === selectedId) ?? null;
+
+  const formatDuration = (seconds?: number | null) => {
+    if (!seconds && seconds !== 0) {
+      return null;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remaining = seconds % 60;
+    return `${minutes}:${remaining.toString().padStart(2, "0")}`;
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -190,7 +201,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               )}
             </div>
 
-            <Card className="max-h-[360px] overflow-y-auto">
+            <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+              <Card className="max-h-[360px] overflow-y-auto">
               {loading ? (
                 <div className="space-y-3">
                   <div className="skeleton h-10" />
@@ -223,7 +235,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                             : "border-gray-200"
                         }`}
                       >
-                        <div className="h-28 w-full overflow-hidden rounded">
+                        <div className="h-28 w-full overflow-hidden rounded relative">
                           {isVideo ? (
                             item.thumbnailUrl ? (
                               <img src={item.thumbnailUrl} alt={item.filename} className="h-full w-full object-cover" />
@@ -234,6 +246,16 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                             )
                           ) : (
                             <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
+                          )}
+                          {isVideo && (
+                            <span className="absolute inset-0 flex items-center justify-center text-white">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">▶</span>
+                            </span>
+                          )}
+                          {isVideo && formatDuration(item.durationSec) && (
+                            <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+                              {formatDuration(item.durationSec)}
+                            </span>
                           )}
                         </div>
                         {isVideo && (
@@ -250,6 +272,36 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                 </div>
               )}
             </Card>
+            <Card>
+              <h3 className="text-sm font-semibold">Preview</h3>
+              {selectedAsset ? (
+                <div className="mt-3 space-y-3">
+                  <div className="h-40 w-full overflow-hidden rounded border">
+                    {selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video") ? (
+                      <video
+                        controls
+                        preload="metadata"
+                        poster={selectedAsset.thumbnailUrl ?? undefined}
+                        className="h-full w-full object-contain bg-black"
+                      >
+                        <source src={selectedAsset.url} type={selectedAsset.contentType ?? "video/mp4"} />
+                      </video>
+                    ) : (
+                      <img src={selectedAsset.url} alt={selectedAsset.filename} className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{selectedAsset.filename}</p>
+                    <p className="text-xs text-gray-500">
+                      {selectedAsset.type ?? "image"} • {formatDuration(selectedAsset.durationSec) ?? "—"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-gray-500">Select media to preview.</p>
+              )}
+            </Card>
+          </div>
 
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">
