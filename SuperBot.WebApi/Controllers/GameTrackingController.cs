@@ -65,9 +65,9 @@ public class GameTrackingController : ControllerBase
         [JsonPropertyName("gameId")]
         public string GameId { get; set; }
         [JsonPropertyName("userId")]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
         [JsonPropertyName("anonId")]
-        public string AnonId { get; set; }
+        public string? AnonId { get; set; }
         [JsonPropertyName("timestamp")]
         public DateTime? Timestamp { get; set; }
     }
@@ -77,13 +77,13 @@ public class GameTrackingController : ControllerBase
         [JsonPropertyName("gameId")]
         public string GameId { get; set; }
         [JsonPropertyName("mediaId")]
-        public string MediaId { get; set; }
+        public string? MediaId { get; set; }
         [JsonPropertyName("mediaType")]
-        public string MediaType { get; set; }
+        public string? MediaType { get; set; }
         [JsonPropertyName("userId")]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
         [JsonPropertyName("anonId")]
-        public string AnonId { get; set; }
+        public string? AnonId { get; set; }
         [JsonPropertyName("timestamp")]
         public DateTime? Timestamp { get; set; }
     }
