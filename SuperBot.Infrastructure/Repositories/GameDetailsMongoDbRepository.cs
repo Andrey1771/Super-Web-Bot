@@ -48,13 +48,22 @@ namespace SuperBot.Infrastructure.Repositories
         public async Task UpsertAsync(GameDetails details)
         {
             var db = _mapper.Map<GameDetailsDb>(details);
-            var filter = Builders<GameDetailsDb>.Filter.Eq(item => item.GameId, details.GameId);
-            await _details.ReplaceOneAsync(filter, db, new ReplaceOptions { IsUpsert = true });
+            var existing = await _details.Find(item => item.GameId == details.GameId).FirstOrDefaultAsync();
+            if (existing == null)
+            {
+                db.Id = null;
+                await _details.InsertOneAsync(db);
+                return;
+            }
+
+            db.Id = existing.Id;
+            await _details.ReplaceOneAsync(item => item.Id == existing.Id, db);
         }
 
         public async Task UpdateAsync(string id, GameDetails details)
         {
             var db = _mapper.Map<GameDetailsDb>(details);
+            db.Id = id;
             await _details.ReplaceOneAsync(item => item.Id == id, db);
         }
     }
