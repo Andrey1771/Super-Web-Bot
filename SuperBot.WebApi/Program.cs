@@ -156,6 +156,7 @@ builder.Services.AddAutoMapper(typeof(ImportJobProfile));
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<Ga4Client>();
 builder.Services.AddScoped<YandexMetrikaClient>();
+builder.Services.AddHostedService<SuperBot.WebApi.Support.Chat.Services.OllamaStartupLogger>();
 
 //TODO     ,     ,   
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
@@ -246,6 +247,21 @@ app.Lifetime.ApplicationStarted.Register(() =>
     startupLogger.LogInformation("CORS allowed origin: {Origin}",
         app.Configuration.GetSection("FrontendConfiguration:Uri").Value ?? "not configured");
 });
+
+if (app.Environment.IsDevelopment() && app.Configuration.GetSection("Diagnostics").GetValue<bool>("LogHttpRequests"))
+{
+    app.Use(async (context, next) =>
+    {
+        var requestLogger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("HttpRequestLogger");
+        requestLogger.LogInformation("HTTP {Method} {Path} started.", context.Request.Method, context.Request.Path);
+        await next();
+        requestLogger.LogInformation("HTTP {Method} {Path} finished with {StatusCode}.",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode);
+    });
+}
 
 // !!!     HTTP-     
 app.UseForwardedHeaders();
