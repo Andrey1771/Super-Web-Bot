@@ -189,38 +189,6 @@
     font-size: 14px;
 }
 
-.settings-avatar-drawer {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
-}
-
-.settings-avatar-drawer img {
-    width: 220px;
-    height: 220px;
-    border-radius: 16px;
-    object-fit: cover;
-    border: 1px solid var(--color-border);
-}
-
-.settings-avatar-preview-placeholder {
-    width: 220px;
-    height: 220px;
-    border-radius: 16px;
-    background: #f1f2f7;
-}
-
-.settings-avatar-progress {
-    color: var(--color-muted);
-    font-size: 12px;
-}
-
-.settings-avatar-drawer-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-12);
-}
-
 .settings-preferences-grid {
     margin-bottom: var(--space-4);
 }
@@ -464,5 +432,192 @@
     .settings-recommendation-card {
         min-width: 220px;
         scroll-snap-align: start;
+    }
+}
+
+
+.ts-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 20px;
+}
+
+.ts-modal {
+    width: min(720px, 100%);
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+}
+
+.ts-modal-close {
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.ts-modal-close:hover {
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--color-primary);
+}
+
+.ts-avatar-crop-modal {
+    display: flex;
+    flex-direction: column;
+}
+
+.ts-avatar-crop-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.ts-avatar-crop-modal__header h3 {
+    margin: 0;
+}
+
+.ts-avatar-crop-modal__header p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.ts-avatar-crop-modal__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 20px;
+    padding: 24px;
+}
+
+.ts-avatar-cropper-stage {
+    position: relative;
+    min-height: 360px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #111827;
+    touch-action: none;
+    cursor: grab;
+}
+
+.ts-avatar-cropper-stage:active {
+    cursor: grabbing;
+}
+
+.ts-avatar-cropper-stage > img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    user-select: none;
+    transform-origin: center;
+    max-width: none;
+    max-height: none;
+}
+
+.ts-avatar-cropper-mask {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.ts-avatar-cropper-mask::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 0 34%, rgba(17, 24, 39, 0.62) 35%);
+}
+
+.ts-avatar-cropper-mask::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 72%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+}
+
+.ts-avatar-crop-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ts-avatar-crop-controls__label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.ts-avatar-crop-preview {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: #eef1f7;
+    overflow: hidden;
+}
+
+.ts-avatar-crop-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ts-avatar-crop-controls__group {
+    display: grid;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.ts-avatar-crop-controls__buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.ts-avatar-crop-controls__buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ts-avatar-crop-modal__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 24px 24px;
+    border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+    .ts-modal-overlay {
+        padding: 10px;
+    }
+
+    .ts-avatar-crop-modal__body {
+        grid-template-columns: 1fr;
+    }
+
+    .ts-avatar-cropper-stage {
+        min-height: 280px;
+    }
+
+    .ts-avatar-crop-controls__buttons {
+        flex-wrap: wrap;
+    }
+
+    .ts-avatar-crop-modal__footer {
+        justify-content: flex-end;
     }
 }

@@ -3,9 +3,9 @@ import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faArrowLeft, faArrowRight, faChevronRight, faPen} from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import AvatarCropModal from '../components/AvatarCropModal';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import Drawer from '../../../components/ui/Drawer';
 import ModalConfirm from '../../../components/ui/ModalConfirm';
 import { useToast } from '../../../components/ui/ToastProvider';
 import { deleteAvatar, uploadAvatar } from '../../../api/accountApi';
@@ -16,12 +16,10 @@ const AccountSettingsPage: React.FC = () => {
     const { profile, updateAvatar } = useAccountProfile();
     const { addToast } = useToast();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [isAvatarDrawerOpen, setIsAvatarDrawerOpen] = useState(false);
+    const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -57,34 +55,28 @@ const AccountSettingsPage: React.FC = () => {
             return;
         }
         const nextUrl = URL.createObjectURL(file);
-        setSelectedFile(file);
         setPreviewUrl(nextUrl);
-        setIsAvatarDrawerOpen(true);
+        setIsAvatarModalOpen(true);
     };
 
-    const closeAvatarDrawer = () => {
-        setIsAvatarDrawerOpen(false);
+    const closeAvatarModal = () => {
+        setIsAvatarModalOpen(false);
         if (previewUrl) {
             URL.revokeObjectURL(previewUrl);
         }
-        setSelectedFile(null);
         setPreviewUrl(null);
-        setUploadProgress(0);
     };
 
-    const handleUpload = async () => {
-        if (!selectedFile) {
-            return;
-        }
+    const handleUpload = async (file: File) => {
         setIsUploading(true);
         try {
-            const response = await uploadAvatar(selectedFile, setUploadProgress);
+            const response = await uploadAvatar(file);
             updateAvatar(response.avatarUrl ?? null);
             addToast('Avatar updated.', 'success');
-            closeAvatarDrawer();
+            closeAvatarModal();
         } catch (error) {
             console.error(error);
-            addToast('Upload failed. Please try again.', 'error');
+            addToast('Upload failed', 'error');
         } finally {
             setIsUploading(false);
         }
@@ -269,26 +261,13 @@ const AccountSettingsPage: React.FC = () => {
                 </div>
             </div>
 
-            <Drawer isOpen={isAvatarDrawerOpen} title="Preview avatar" onClose={closeAvatarDrawer}>
-                <div className="settings-avatar-drawer">
-                    {previewUrl ? (
-                        <img src={previewUrl} alt="Avatar preview" />
-                    ) : (
-                        <div className="settings-avatar-preview-placeholder" />
-                    )}
-                    <div className="settings-avatar-progress">
-                        {uploadProgress > 0 && <span>Upload {uploadProgress}%</span>}
-                    </div>
-                    <div className="settings-avatar-drawer-actions">
-                        <button type="button" className="btn btn-outline" onClick={closeAvatarDrawer} disabled={isUploading}>
-                            Cancel
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={handleUpload} disabled={isUploading}>
-                            Save avatar
-                        </button>
-                    </div>
-                </div>
-            </Drawer>
+            <AvatarCropModal
+                isOpen={isAvatarModalOpen}
+                imageSrc={previewUrl}
+                isSaving={isUploading}
+                onClose={closeAvatarModal}
+                onSave={handleUpload}
+            />
 
             <ModalConfirm
                 isOpen={isRemoveModalOpen}
