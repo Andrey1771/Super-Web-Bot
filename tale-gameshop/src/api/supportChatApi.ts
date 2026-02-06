@@ -1,9 +1,11 @@
 import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
+import type { IUrlService } from "../iterfaces/i-url-service";
 import type { ChatConfig, ChatMessage, ChatSessionDetail, ChatSessionListResponse } from "../types/support-chat";
 
 const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+const apiBaseUrl = () => container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
 export const fetchChatConfig = async (): Promise<ChatConfig> => {
   const response = await apiClient().get("/api/support/chat/config");
@@ -49,7 +51,7 @@ export const streamChatMessage = async (
   onDone: (payload: { message?: ChatMessage | null }) => void,
   onError: (error: string) => void
 ) => {
-  const response = await fetch(`/api/support/chat/sessions/${sessionId}/stream`, {
+  const response = await fetch(`${apiBaseUrl()}/api/support/chat/sessions/${sessionId}/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
