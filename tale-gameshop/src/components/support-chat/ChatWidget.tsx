@@ -134,8 +134,9 @@ const ChatWidget: React.FC = () => {
     return response.sessionId;
   }, [leadForm.email, leadForm.orderId, loadSession, sessionId]);
 
-  const handleSend = useCallback(async (overrideText?: string) => {
-    const text = (overrideText ?? inputValue).trim();
+  const handleSend = useCallback(async (overrideText?: string | null) => {
+    const rawText = typeof overrideText === "string" ? overrideText : inputValue;
+    const text = rawText.trim();
     if (!text) {
       return;
     }
