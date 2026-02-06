@@ -231,6 +231,21 @@ builder.Services.AddLogging(logging =>
 });
 
 var app = builder.Build();
+var startupLogger = app.Logger;
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var supportChatSection = app.Configuration.GetSection("SupportChat");
+    var ollamaBaseUrl = supportChatSection.GetValue<string>("OllamaBaseUrl") ?? "n/a";
+    var ollamaModel = supportChatSection.GetValue<string>("OllamaModel") ?? "n/a";
+    var streamingEnabled = supportChatSection.GetValue<bool>("StreamingEnabled");
+
+    startupLogger.LogInformation("SuperBot.WebApi started. Environment: {Environment}", app.Environment.EnvironmentName);
+    startupLogger.LogInformation("Support chat AI: {OllamaBaseUrl} (model={OllamaModel}, streaming={StreamingEnabled})",
+        ollamaBaseUrl, ollamaModel, streamingEnabled);
+    startupLogger.LogInformation("CORS allowed origin: {Origin}",
+        app.Configuration.GetSection("FrontendConfiguration:Uri").Value ?? "not configured");
+});
 
 // !!!     HTTP-     
 app.UseForwardedHeaders();
@@ -249,8 +264,10 @@ if (app.Environment.IsDevelopment())
 //    DI-   
 using (var scope = app.Services.CreateScope())
 {
+    startupLogger.LogInformation("Initializing MongoDB collections and indexes...");
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
     await mongoDbInitializer.InitializeAsync(); //   
+    startupLogger.LogInformation("MongoDB initialization completed.");
 }
 
 //  
