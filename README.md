@@ -82,3 +82,11 @@ SupportChat: {
 3. Run the Web API (Docker or local). The chat widget will call the API at `/api/support/chat/...`.
 
 If Ollama is unavailable, the assistant gracefully falls back and offers a human handoff. You can also disable streaming by setting `SupportChat:StreamingEnabled` to `false`.
+
+## Account avatar uploads
+
+The account settings page supports avatar uploads and removal.
+
+* Upload endpoint: `POST /api/account/avatar` (multipart file, max 2MB, PNG/JPG/WebP)
+* Remove endpoint: `DELETE /api/account/avatar`
+* Avatars are stored under `wwwroot/uploads/avatars` and served via `/uploads/avatars/...`.

@@ -1,6 +1,7 @@
 import React from 'react';
 import {Link, NavLink} from 'react-router-dom';
 import {accountProfile} from '../mockAccountData';
+import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-shell.css';
 
 interface AccountShellProps {
@@ -31,21 +32,39 @@ const AccountShell: React.FC<AccountShellProps> = ({
     headerTestId,
     children
 }) => {
+    const { profile } = useAccountProfile();
     const subtitleContent = subtitle
         ? typeof subtitle === 'string'
             ? <p className="account-subtitle">{subtitle}</p>
             : subtitle
         : null;
 
+    const displayName = profile?.displayName ?? accountProfile.name;
+    const email = profile?.email ?? accountProfile.email;
+    const initialsSource = displayName || email || accountProfile.name;
+    const initials = initialsSource
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase() || accountProfile.initials;
+
     return (
         <div className="account-page">
             <div className="container account-layout">
                 <aside className="account-sidebar">
                     <div className="card account-profile">
-                        <div className="account-avatar">{accountProfile.initials}</div>
+                        <div className="account-avatar">
+                            {profile?.avatarUrl ? (
+                                <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
+                            ) : (
+                                initials
+                            )}
+                        </div>
                         <div className="account-profile-details">
-                            <strong>{accountProfile.name}</strong>
-                            <span className="account-email">{accountProfile.email}</span>
+                            <strong>{displayName}</strong>
+                            <span className="account-email">{email}</span>
                             <span className="badge">{accountProfile.badge}</span>
                         </div>
                     </div>

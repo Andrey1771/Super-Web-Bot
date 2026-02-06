@@ -8,20 +8,23 @@ import AccountBillingPage from '../pages/AccountBillingPage';
 import AccountSavedItemsPage from '../pages/AccountSavedItemsPage';
 import AccountSecurityPage from '../pages/AccountSecurityPage';
 import AccountHelpPage from '../pages/AccountHelpPage';
+import { AccountProfileProvider } from '../context/AccountProfileContext';
 
 const AccountRoutes: React.FC = () => {
     return (
-        <Routes>
-            <Route index element={<AccountOverviewPage />} />
-            <Route path="orders" element={<AccountOrdersPage />} />
-            <Route path="keys" element={<AccountKeysPage />} />
-            <Route path="saved" element={<AccountSavedItemsPage />} />
-            <Route path="settings" element={<AccountSettingsPage />} />
-            <Route path="billing" element={<AccountBillingPage />} />
-            <Route path="security" element={<AccountSecurityPage />} />
-            <Route path="help" element={<AccountHelpPage />} />
-            <Route path="*" element={<Navigate to="/account" replace />} />
-        </Routes>
+        <AccountProfileProvider>
+            <Routes>
+                <Route index element={<AccountOverviewPage />} />
+                <Route path="orders" element={<AccountOrdersPage />} />
+                <Route path="keys" element={<AccountKeysPage />} />
+                <Route path="saved" element={<AccountSavedItemsPage />} />
+                <Route path="settings" element={<AccountSettingsPage />} />
+                <Route path="billing" element={<AccountBillingPage />} />
+                <Route path="security" element={<AccountSecurityPage />} />
+                <Route path="help" element={<AccountHelpPage />} />
+                <Route path="*" element={<Navigate to="/account" replace />} />
+            </Routes>
+        </AccountProfileProvider>
     );
 };
 

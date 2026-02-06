@@ -9,6 +9,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import {accountProfile} from '../mockAccountData';
+import { useAccountProfile } from '../context/AccountProfileContext';
 import {useCart} from '../../../context/cart-context';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useGameKeys } from '../../../hooks/use-game-keys';
@@ -99,6 +100,10 @@ const AccountOverviewPage: React.FC = () => {
         });
     };
 
+    const { profile } = useAccountProfile();
+    const displayName = profile?.displayName ?? accountProfile.name;
+    const email = profile?.email ?? accountProfile.email;
+
     return (
         <AccountShell
             title="Account overview"
@@ -107,10 +112,10 @@ const AccountOverviewPage: React.FC = () => {
         >
             <div className="card account-card account-profile-card">
                 <div className="account-profile-summary">
-                    <div className="account-avatar account-avatar-lg">{accountProfile.initials}</div>
+                    <AccountProfileSummary />
                     <div>
-                        <h2>{accountProfile.name}</h2>
-                        <p className="account-profile-email">{accountProfile.email}</p>
+                        <h2>{displayName}</h2>
+                        <p className="account-profile-email">{email}</p>
                         <span className="badge">{accountProfile.badge}</span>
                         <p className="account-member-since">Member since {accountProfile.memberSince}</p>
                     </div>
@@ -383,6 +388,29 @@ const AccountOverviewPage: React.FC = () => {
                 />
             </div>
         </AccountShell>
+    );
+};
+
+const AccountProfileSummary: React.FC = () => {
+    const { profile } = useAccountProfile();
+    const displayName = profile?.displayName ?? accountProfile.name;
+    const initialsSource = displayName || profile?.email || accountProfile.name;
+    const initials = initialsSource
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase() || accountProfile.initials;
+
+    return (
+        <div className="account-avatar account-avatar-lg">
+            {profile?.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
+            ) : (
+                initials
+            )}
+        </div>
     );
 };
 

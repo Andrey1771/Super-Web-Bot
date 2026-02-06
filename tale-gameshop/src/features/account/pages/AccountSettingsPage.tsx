@@ -1,19 +1,109 @@
-import React from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faArrowLeft, faArrowRight, faChevronRight} from '@fortawesome/free-solid-svg-icons';
+import {faArrowLeft, faArrowRight, faChevronRight, faPen} from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import Drawer from '../../../components/ui/Drawer';
+import ModalConfirm from '../../../components/ui/ModalConfirm';
+import { useToast } from '../../../components/ui/ToastProvider';
+import { deleteAvatar, uploadAvatar } from '../../../api/accountApi';
+import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-settings-page.css';
 
 const AccountSettingsPage: React.FC = () => {
+    const { profile, updateAvatar } = useAccountProfile();
+    const { addToast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [isAvatarDrawerOpen, setIsAvatarDrawerOpen] = useState(false);
+    const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
         error: recommendationsError,
         reload: reloadRecommendations
     } = useRecommendations(6);
+
+    const displayName = profile?.displayName ?? 'User';
+    const initials = useMemo(() => {
+        return displayName
+            .split(' ')
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join('')
+            .toUpperCase();
+    }, [displayName]);
+
+    const openFileDialog = () => fileInputRef.current?.click();
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) {
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            addToast('File too large (max 2MB).', 'error');
+            return;
+        }
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            addToast('Unsupported format. Use PNG, JPG, or WebP.', 'error');
+            return;
+        }
+        const nextUrl = URL.createObjectURL(file);
+        setSelectedFile(file);
+        setPreviewUrl(nextUrl);
+        setIsAvatarDrawerOpen(true);
+    };
+
+    const closeAvatarDrawer = () => {
+        setIsAvatarDrawerOpen(false);
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        setUploadProgress(0);
+    };
+
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            return;
+        }
+        setIsUploading(true);
+        try {
+            const response = await uploadAvatar(selectedFile, setUploadProgress);
+            updateAvatar(response.avatarUrl ?? null);
+            addToast('Avatar updated.', 'success');
+            closeAvatarDrawer();
+        } catch (error) {
+            console.error(error);
+            addToast('Upload failed. Please try again.', 'error');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleRemove = async () => {
+        setIsUploading(true);
+        try {
+            await deleteAvatar();
+            updateAvatar(null);
+            addToast('Avatar removed.', 'success');
+        } catch (error) {
+            console.error(error);
+            addToast('Remove failed. Please try again.', 'error');
+        } finally {
+            setIsUploading(false);
+            setIsRemoveModalOpen(false);
+        }
+    };
 
     return (
         <AccountShell
@@ -35,15 +125,53 @@ const AccountSettingsPage: React.FC = () => {
                 <div className="settings-card-header">
                     <h3>Profile</h3>
                 </div>
+                <div className="settings-avatar-block">
+                    <button type="button" className="settings-avatar" onClick={openFileDialog}>
+                        {profile?.avatarUrl ? (
+                            <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
+                        ) : (
+                            <span>{initials}</span>
+                        )}
+                        <span className="settings-avatar-edit" aria-hidden="true">
+                            <FontAwesomeIcon icon={faPen} />
+                        </span>
+                    </button>
+                    <div className="settings-avatar-actions">
+                        <div>
+                            <strong>Avatar</strong>
+                            <p className="settings-avatar-hint">PNG/JPG/WebP • up to 2 MB • square recommended</p>
+                        </div>
+                        <div className="settings-avatar-buttons">
+                            <button type="button" className="btn btn-primary" onClick={openFileDialog} disabled={isUploading}>
+                                {isUploading ? 'Uploading...' : 'Upload photo'}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={() => setIsRemoveModalOpen(true)}
+                                disabled={!profile?.avatarUrl || isUploading}
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="settings-avatar-input"
+                        onChange={handleFileChange}
+                    />
+                </div>
                 <div className="settings-form-grid">
                     <label className="settings-field">
                         <span>Display name</span>
-                        <input type="text" defaultValue="Alex R." />
+                        <input type="text" defaultValue={displayName} />
                     </label>
                     <label className="settings-field">
                         <span>Email address</span>
                         <div className="settings-input-with-icon">
-                            <input type="email" defaultValue="hohlov908@gmail.com" />
+                            <input type="email" defaultValue={profile?.email ?? ''} />
                             <FontAwesomeIcon icon={faChevronRight} />
                         </div>
                     </label>
@@ -62,9 +190,7 @@ const AccountSettingsPage: React.FC = () => {
                     </label>
                 </div>
                 <div className="settings-card-footer">
-                    <a href="#" className="settings-link">
-                        Delete avatar
-                    </a>
+                    <span className="settings-muted-link">Keep your profile secure with a fresh avatar.</span>
                     <button type="button" className="btn btn-primary settings-save-btn">
                         Save changes
                     </button>
@@ -142,6 +268,37 @@ const AccountSettingsPage: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <Drawer isOpen={isAvatarDrawerOpen} title="Preview avatar" onClose={closeAvatarDrawer}>
+                <div className="settings-avatar-drawer">
+                    {previewUrl ? (
+                        <img src={previewUrl} alt="Avatar preview" />
+                    ) : (
+                        <div className="settings-avatar-preview-placeholder" />
+                    )}
+                    <div className="settings-avatar-progress">
+                        {uploadProgress > 0 && <span>Upload {uploadProgress}%</span>}
+                    </div>
+                    <div className="settings-avatar-drawer-actions">
+                        <button type="button" className="btn btn-outline" onClick={closeAvatarDrawer} disabled={isUploading}>
+                            Cancel
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={handleUpload} disabled={isUploading}>
+                            Save avatar
+                        </button>
+                    </div>
+                </div>
+            </Drawer>
+
+            <ModalConfirm
+                isOpen={isRemoveModalOpen}
+                title="Remove avatar?"
+                description="This will remove your current avatar and return to initials."
+                confirmLabel="Remove"
+                cancelLabel="Cancel"
+                onConfirm={handleRemove}
+                onCancel={() => setIsRemoveModalOpen(false)}
+            />
 
             <section className="settings-recommendations" data-testid="settings-recommendations">
                 <div className="settings-recommendations-header">
