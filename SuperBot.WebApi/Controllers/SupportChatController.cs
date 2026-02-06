@@ -12,10 +12,14 @@ namespace SuperBot.WebApi.Controllers;
 public class SupportChatController : ControllerBase
 {
     private readonly ISupportChatService _chatService;
+    private readonly ILogger _streamLogger;
+    private readonly ILogger _pollLogger;
 
-    public SupportChatController(ISupportChatService chatService)
+    public SupportChatController(ISupportChatService chatService, ILoggerFactory loggerFactory)
     {
         _chatService = chatService;
+        _streamLogger = loggerFactory.CreateLogger("SupportChat.Stream");
+        _pollLogger = loggerFactory.CreateLogger("SupportChat.Poll");
     }
 
     [HttpGet("config")]
@@ -69,7 +73,9 @@ public class SupportChatController : ControllerBase
     {
         try
         {
+            _pollLogger.LogInformation("Support chat poll started. SessionId={SessionId} After={After}", sessionId, after);
             var result = await _chatService.GetMessagesAsync(sessionId, after);
+            _pollLogger.LogInformation("Support chat poll finished. SessionId={SessionId} Count={Count}", sessionId, result.Count);
             return Ok(result);
         }
         catch (SupportChatRequestException ex)
@@ -108,6 +114,7 @@ public class SupportChatController : ControllerBase
         Response.ContentType = "text/event-stream";
         try
         {
+            _streamLogger.LogInformation("Support chat stream started. SessionId={SessionId}", sessionId);
             var userContext = User.Identity?.IsAuthenticated == true
                 ? SupportUserContext.FromClaims(User)
                 : null;
@@ -127,12 +134,14 @@ public class SupportChatController : ControllerBase
             var donePayload = JsonSerializer.Serialize(new { message });
             await Response.WriteAsync($"event: done\ndata: {donePayload}\n\n", cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
+            _streamLogger.LogInformation("Support chat stream finished. SessionId={SessionId}", sessionId);
         }
         catch (SupportChatRequestException ex)
         {
             var errorPayload = JsonSerializer.Serialize(new { error = ex.Message });
             await Response.WriteAsync($"event: error\ndata: {errorPayload}\n\n", cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
+            _streamLogger.LogWarning("Support chat stream failed. SessionId={SessionId} Error={Error}", sessionId, ex.Message);
         }
     }
 }
