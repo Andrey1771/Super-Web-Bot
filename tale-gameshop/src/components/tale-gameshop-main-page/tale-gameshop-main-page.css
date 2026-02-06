@@ -151,12 +151,14 @@
 
 .main-page .hero-card-large {
   aspect-ratio: 4 / 5;
+  max-height: 520px;
 }
 
 .main-page .hero-card-small {
   aspect-ratio: 16 / 17;
   max-width: 280px;
   margin-left: auto;
+  max-height: 360px;
 }
 
 .main-page .hero-media {
@@ -934,6 +936,14 @@
 @media (max-width: 992px) {
   .main-page .hero {
     padding: 56px 0 72px;
+  }
+
+  .main-page .hero-showcase {
+    grid-template-columns: 1fr;
+  }
+
+  .main-page .hero-card-small {
+    display: none;
   }
 
   .main-page .hero-perks {
