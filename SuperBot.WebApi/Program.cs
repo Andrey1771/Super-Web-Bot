@@ -230,6 +230,7 @@ builder.Services.AddLogging(logging =>
     logging.AddConsole();
     logging.AddDebug();
 });
+builder.Logging.AddProvider(new SuperBot.WebApi.Services.SupportChatConsoleLoggerProvider());
 
 var app = builder.Build();
 var startupLogger = app.Logger;
