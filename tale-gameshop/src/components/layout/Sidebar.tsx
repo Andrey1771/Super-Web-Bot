@@ -110,6 +110,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         ],
       },
       {
+        title: "Support",
+        items: [
+          {
+            label: "Live chat",
+            to: "/admin/support/live-chat",
+            icon: "💬",
+            roles: ["admin", "support"],
+          },
+        ],
+      },
+      {
         title: "Bot / Content",
         items: [
           {

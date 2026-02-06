@@ -37,7 +37,9 @@ namespace SuperBot.WebApi.Services
                 "SupportTickets",
                 "SupportMessages",
                 "SupportAttachments",
-                "SupportTicketCounters"
+                "SupportTicketCounters",
+                "SupportChatSessions",
+                "SupportChatMessages"
             };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
@@ -263,6 +265,31 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_support_attachments_ticket_created" }
             );
             await attachmentsCollection.Indexes.CreateOneAsync(attachmentTicketIndex);
+
+            var chatSessionsCollection = _database.GetCollection<Support.Chat.Models.ChatSession>("SupportChatSessions");
+            var chatSessionStatusIndex = new CreateIndexModel<Support.Chat.Models.ChatSession>(
+                Builders<Support.Chat.Models.ChatSession>.IndexKeys
+                    .Ascending(session => session.Status)
+                    .Descending(session => session.LastMessageAt),
+                new CreateIndexOptions { Name = "ix_support_chat_sessions_status_last" }
+            );
+            var chatSessionUserIndex = new CreateIndexModel<Support.Chat.Models.ChatSession>(
+                Builders<Support.Chat.Models.ChatSession>.IndexKeys
+                    .Ascending(session => session.UserId)
+                    .Descending(session => session.UpdatedAt),
+                new CreateIndexOptions { Name = "ix_support_chat_sessions_user_updated" }
+            );
+            await chatSessionsCollection.Indexes.CreateOneAsync(chatSessionStatusIndex);
+            await chatSessionsCollection.Indexes.CreateOneAsync(chatSessionUserIndex);
+
+            var chatMessagesCollection = _database.GetCollection<Support.Chat.Models.ChatMessage>("SupportChatMessages");
+            var chatMessageSessionIndex = new CreateIndexModel<Support.Chat.Models.ChatMessage>(
+                Builders<Support.Chat.Models.ChatMessage>.IndexKeys
+                    .Ascending(message => message.SessionId)
+                    .Ascending(message => message.CreatedAt),
+                new CreateIndexOptions { Name = "ix_support_chat_messages_session_created" }
+            );
+            await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageSessionIndex);
 
             if (_environment.IsDevelopment())
             {

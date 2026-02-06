@@ -57,3 +57,28 @@ choco install ffmpeg -y
 
 PS: You need to configure users in Keycloak and import the realm-export from "keycloak settings (temp)"
 In the future, you must create a user with the tale-shop-app role "admin" in the "TaleShop" (realm) to enable editing product cards, adding new products, and configuring the bot and website.
+
+## Support Chat + Ollama (local LLM)
+
+The storefront support widget uses a local Ollama model for AI replies. Configure these settings in `SuperBot.WebApi/appsettings.json` or via environment variables:
+
+```json
+SupportChat: {
+  "OllamaBaseUrl": "http://localhost:11434",
+  "OllamaModel": "gemma3",
+  "StreamingEnabled": true
+}
+```
+
+### Quick start
+1. Install and start Ollama locally:
+   ```bash
+   ollama serve
+   ```
+2. Pull the model configured above:
+   ```bash
+   ollama pull gemma3
+   ```
+3. Run the Web API (Docker or local). The chat widget will call the API at `/api/support/chat/...`.
+
+If Ollama is unavailable, the assistant gracefully falls back and offers a human handoff. You can also disable streaming by setting `SupportChat:StreamingEnabled` to `false`.

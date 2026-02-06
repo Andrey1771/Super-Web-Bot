@@ -76,6 +76,7 @@ builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Str
 builder.Services.AddControllers();
 builder.Services.Configure<SupportOptions>(builder.Configuration.GetSection("Support"));
 builder.Services.Configure<SupportRoleOptions>(builder.Configuration.GetSection("Support:Roles"));
+builder.Services.Configure<SuperBot.WebApi.Support.Chat.SupportChatOptions>(builder.Configuration.GetSection("SupportChat"));
 
 var domainAssembly = typeof(GetMainMenuCommand).Assembly;
 builder.Services
@@ -139,6 +140,8 @@ builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepos
 builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddScoped<SupportRoleEvaluator>();
+builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.IOllamaChatClient, SuperBot.WebApi.Support.Chat.Services.OllamaChatClient>();
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportChatService, SuperBot.WebApi.Support.Chat.Services.SupportChatService>();
 
 
 
