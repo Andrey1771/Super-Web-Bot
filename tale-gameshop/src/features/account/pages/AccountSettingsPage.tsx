@@ -8,7 +8,7 @@ import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import ModalConfirm from '../../../components/ui/ModalConfirm';
 import { useToast } from '../../../components/ui/ToastProvider';
-import { deleteAvatar, saveAccountProfile } from '../../../api/accountApi';
+import { deleteAvatar, fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
 import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-settings-page.css';
 
@@ -118,8 +118,12 @@ const AccountSettingsPage: React.FC = () => {
                 avatar: draftAvatarFile
             });
 
-            updateAvatar(profileResponse.avatarUrl ?? null);
-            setSavedAvatarUrl(profileResponse.avatarUrl ?? null);
+            const refreshedProfile = await fetchAccountProfile();
+            const nextAvatarUrl = refreshedProfile.avatarUrl ?? profileResponse.avatarUrl ?? null;
+            updateAvatar(nextAvatarUrl);
+            setSavedAvatarUrl(nextAvatarUrl);
+            setDisplayNameInput(refreshedProfile.displayName ?? displayNameInput);
+            setEmailInput(refreshedProfile.email ?? emailInput);
             clearAvatarDraft();
             addToast('Profile updated.', 'success');
         } catch (error) {
