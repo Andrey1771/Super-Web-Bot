@@ -39,6 +39,24 @@ public class AccountController : ControllerBase
 
         var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
 
+        if (user != null && string.IsNullOrWhiteSpace(user.AvatarPath))
+        {
+            var recoveredAvatarPath = TryRecoverAvatarPath(userId);
+            if (!string.IsNullOrWhiteSpace(recoveredAvatarPath))
+            {
+                var recoveredAt = DateTime.UtcNow;
+                user.AvatarPath = recoveredAvatarPath;
+                user.AvatarUpdatedAt = recoveredAt;
+                await _users.UpdateOneAsync(
+                    u => u.UserId == userId,
+                    Builders<UserDb>.Update
+                        .Set(u => u.AvatarPath, recoveredAvatarPath)
+                        .Set(u => u.AvatarUpdatedAt, recoveredAt)
+                        .Set(u => u.UpdatedAt, recoveredAt)
+                );
+            }
+        }
+
         return Ok(new AccountProfileResponse
         {
             UserId = userId,
@@ -178,6 +196,20 @@ public class AccountController : ControllerBase
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var version = updatedAt?.Ticks.ToString() ?? DateTime.UtcNow.Ticks.ToString();
         return $"{baseUrl}/uploads/{avatarPath}?v={version}";
+    }
+
+
+    private string? TryRecoverAvatarPath(string userId)
+    {
+        var safeUserId = NormalizeUserId(userId);
+        var avatarFolder = EnsureUserAvatarFolder(safeUserId);
+        var avatarPath = Path.Combine(avatarFolder, "avatar.webp");
+        if (!System.IO.File.Exists(avatarPath))
+        {
+            return null;
+        }
+
+        return Path.Combine("avatars", safeUserId, "avatar.webp").Replace("\\", "/");
     }
 
     private string EnsureUserAvatarFolder(string safeUserId)
