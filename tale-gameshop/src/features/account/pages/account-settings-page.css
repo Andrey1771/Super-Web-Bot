@@ -581,6 +581,26 @@
     font-size: 14px;
 }
 
+
+.ts-avatar-crop-controls__zoom-row {
+    display: grid;
+    grid-template-columns: 38px 1fr 38px;
+    gap: 8px;
+    align-items: center;
+}
+
+.ts-avatar-crop-controls__zoom-row .btn {
+    height: 34px;
+    padding: 0;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.ts-avatar-crop-controls__zoom-value {
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
 .ts-avatar-crop-controls__buttons {
     display: flex;
     gap: 8px;

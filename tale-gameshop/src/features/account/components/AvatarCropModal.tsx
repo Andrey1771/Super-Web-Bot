@@ -11,6 +11,11 @@ type AvatarCropModalProps = {
   onSave: (file: File) => Promise<void>;
 };
 
+type Size = {
+  width: number;
+  height: number;
+};
+
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
   '[href]',
@@ -21,18 +26,41 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 const VIEWPORT_SIZE = 360;
+const MASK_RATIO = 0.72;
+const MAX_ZOOM = 4;
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const getRotatedBounds = (width: number, height: number, rotation: number): Size => {
+  const radians = (Math.PI * rotation) / 180;
+  const sin = Math.abs(Math.sin(radians));
+  const cos = Math.abs(Math.cos(radians));
+  return {
+    width: width * cos + height * sin,
+    height: width * sin + height * cos
+  };
+};
 
 const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isSaving, onClose, onSave }) => {
   const modalRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchDistanceRef = useRef<number | null>(null);
+  const pinchStartZoomRef = useRef<number>(1);
+  const shouldFitOnReadyRef = useRef(false);
+
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [minZoom, setMinZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cropSize, setCropSize] = useState<Size | null>(null);
+  const [mediaSize, setMediaSize] = useState<Size | null>(null);
 
   const hasUnsavedChanges = useMemo(
-    () => Boolean(imageSrc) && (Math.abs(position.x) > 0 || Math.abs(position.y) > 0 || zoom !== 1 || rotation !== 0),
-    [imageSrc, position.x, position.y, zoom, rotation]
+    () => Boolean(imageSrc) && (Math.abs(position.x) > 0 || Math.abs(position.y) > 0 || Math.abs(zoom - minZoom) > 0.001 || rotation !== 0),
+    [imageSrc, minZoom, position.x, position.y, rotation, zoom]
   );
 
   const requestClose = useCallback(() => {
@@ -44,6 +72,38 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
     }
     onClose();
   }, [hasUnsavedChanges, isSaving, onClose]);
+
+  const getClampedPosition = useCallback(
+    (nextPosition: { x: number; y: number }, nextZoom: number, nextRotation: number) => {
+      if (!cropSize || !mediaSize) {
+        return nextPosition;
+      }
+
+      const rotatedBounds = getRotatedBounds(mediaSize.width * nextZoom, mediaSize.height * nextZoom, nextRotation);
+      const maxX = Math.max(0, (rotatedBounds.width - cropSize.width) / 2);
+      const maxY = Math.max(0, (rotatedBounds.height - cropSize.height) / 2);
+
+      return {
+        x: clamp(nextPosition.x, -maxX, maxX),
+        y: clamp(nextPosition.y, -maxY, maxY)
+      };
+    },
+    [cropSize, mediaSize]
+  );
+
+  const setClampedZoom = useCallback(
+    (nextZoom: number) => {
+      setZoom((currentZoom) => {
+        const clampedZoom = clamp(nextZoom, minZoom, MAX_ZOOM);
+        if (clampedZoom === currentZoom) {
+          return currentZoom;
+        }
+        setPosition((currentPosition) => getClampedPosition(currentPosition, clampedZoom, rotation));
+        return clampedZoom;
+      });
+    },
+    [getClampedPosition, minZoom, rotation]
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -98,13 +158,45 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
     if (!isOpen) {
       setPosition({ x: 0, y: 0 });
       setZoom(1);
+      setMinZoom(1);
       setRotation(0);
+      setCropSize(null);
+      setMediaSize(null);
+      pointersRef.current.clear();
+      pinchDistanceRef.current = null;
+      dragRef.current = null;
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
       setPreviewUrl(null);
     }
   }, [isOpen, previewUrl]);
+
+  useEffect(() => {
+    if (!cropSize || !mediaSize) {
+      return;
+    }
+
+    const coverZoom = Math.max(cropSize.width / mediaSize.width, cropSize.height / mediaSize.height);
+    setMinZoom(coverZoom);
+
+    if (shouldFitOnReadyRef.current) {
+      shouldFitOnReadyRef.current = false;
+      setZoom(coverZoom);
+      setPosition({ x: 0, y: 0 });
+      return;
+    }
+
+    setZoom((currentZoom) => clamp(currentZoom, coverZoom, MAX_ZOOM));
+  }, [cropSize, mediaSize]);
+
+  useEffect(() => {
+    if (!cropSize || !mediaSize) {
+      return;
+    }
+
+    setPosition((currentPosition) => getClampedPosition(currentPosition, zoom, rotation));
+  }, [cropSize, mediaSize, getClampedPosition, rotation, zoom]);
 
   useEffect(() => {
     if (!isOpen || !imageSrc) {
@@ -136,6 +228,43 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
     };
   }, [imageSrc, isOpen, position, rotation, zoom]);
 
+  useEffect(() => {
+    if (!isOpen || !imageSrc) {
+      return;
+    }
+
+    shouldFitOnReadyRef.current = true;
+    setPosition({ x: 0, y: 0 });
+    setRotation(0);
+  }, [imageSrc, isOpen]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!isOpen || !stage) {
+      return;
+    }
+
+    const updateCropSize = () => {
+      const size = Math.min(stage.clientWidth, stage.clientHeight) * MASK_RATIO;
+      setCropSize({ width: size, height: size });
+    };
+
+    updateCropSize();
+    const observer = new ResizeObserver(updateCropSize);
+    observer.observe(stage);
+
+    return () => observer.disconnect();
+  }, [isOpen]);
+
+  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const image = event.currentTarget;
+    const baseScale = Math.max(VIEWPORT_SIZE / image.naturalWidth, VIEWPORT_SIZE / image.naturalHeight);
+    setMediaSize({
+      width: image.naturalWidth * baseScale,
+      height: image.naturalHeight * baseScale
+    });
+  };
+
   const handleSave = useCallback(async () => {
     if (!imageSrc || isSaving) {
       return;
@@ -146,11 +275,43 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
   }, [imageSrc, isSaving, onSave, position, rotation, zoom]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    dragRef.current = { x: event.clientX, y: event.clientY };
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointersRef.current.size === 1) {
+      dragRef.current = { x: event.clientX, y: event.clientY };
+    }
+
+    if (pointersRef.current.size === 2) {
+      const [first, second] = Array.from(pointersRef.current.values());
+      pinchDistanceRef.current = Math.hypot(second.x - first.x, second.y - first.y);
+      pinchStartZoomRef.current = zoom;
+      dragRef.current = null;
+    }
+
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) {
+      return;
+    }
+
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointersRef.current.size === 2) {
+      const [first, second] = Array.from(pointersRef.current.values());
+      const currentDistance = Math.hypot(second.x - first.x, second.y - first.y);
+      if (!pinchDistanceRef.current || pinchDistanceRef.current === 0) {
+        pinchDistanceRef.current = currentDistance;
+        pinchStartZoomRef.current = zoom;
+        return;
+      }
+
+      const scaleRatio = currentDistance / pinchDistanceRef.current;
+      setClampedZoom(Number((pinchStartZoomRef.current * scaleRatio).toFixed(3)));
+      return;
+    }
+
     if (!dragRef.current) {
       return;
     }
@@ -159,17 +320,34 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
     const deltaY = event.clientY - dragRef.current.y;
     dragRef.current = { x: event.clientX, y: event.clientY };
 
-    setPosition((current) => ({ x: current.x + deltaX, y: current.y + deltaY }));
+    setPosition((current) => getClampedPosition({ x: current.x + deltaX, y: current.y + deltaY }, zoom, rotation));
   };
 
-  const onPointerUp = () => {
-    dragRef.current = null;
+  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+
+    if (pointersRef.current.size < 2) {
+      pinchDistanceRef.current = null;
+    }
+
+    if (pointersRef.current.size === 1) {
+      const remaining = Array.from(pointersRef.current.values())[0];
+      dragRef.current = { x: remaining.x, y: remaining.y };
+    } else {
+      dragRef.current = null;
+    }
   };
 
   const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     event.preventDefault();
     const delta = event.deltaY < 0 ? 0.08 : -0.08;
-    setZoom((current) => Math.min(3, Math.max(1, Number((current + delta).toFixed(2)))));
+    setClampedZoom(Number((zoom + delta).toFixed(2)));
+  };
+
+  const handleResetFit = () => {
+    setPosition({ x: 0, y: 0 });
+    setClampedZoom(minZoom);
   };
 
   if (!isOpen || !imageSrc) {
@@ -199,6 +377,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
         <div className="ts-avatar-crop-modal__body">
           <div
             className="ts-avatar-cropper-stage"
+            ref={stageRef}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -209,6 +388,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
               src={imageSrc}
               alt="Crop avatar"
               draggable={false}
+              onLoad={handleImageLoad}
               style={{
                 transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${zoom}) rotate(${rotation}deg)`
               }}
@@ -224,7 +404,23 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
 
             <label className="ts-avatar-crop-controls__group">
               <span>Zoom</span>
-              <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
+              <div className="ts-avatar-crop-controls__zoom-row">
+                <button type="button" className="btn btn-outline" onClick={() => setClampedZoom(zoom - 0.1)}>
+                  -
+                </button>
+                <input
+                  type="range"
+                  min={minZoom}
+                  max={MAX_ZOOM}
+                  step={0.01}
+                  value={zoom}
+                  onChange={(event) => setClampedZoom(Number(event.target.value))}
+                />
+                <button type="button" className="btn btn-outline" onClick={() => setClampedZoom(zoom + 0.1)}>
+                  +
+                </button>
+              </div>
+              <span className="ts-avatar-crop-controls__zoom-value">{zoom.toFixed(2)}x</span>
             </label>
 
             <label className="ts-avatar-crop-controls__group">
@@ -245,6 +441,9 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
               </button>
               <button type="button" className="btn btn-outline" onClick={() => setRotation((value) => value + 90)}>
                 <FontAwesomeIcon icon={faRotateRight} /> 90°
+              </button>
+              <button type="button" className="btn btn-outline" onClick={handleResetFit}>
+                Fit
               </button>
             </div>
           </aside>
