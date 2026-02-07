@@ -134,6 +134,14 @@ public class AccountController : ControllerBase
             nextAvatarPath = relativePath;
             nextAvatarUpdatedAt = now;
         }
+        else if (request.RemoveAvatar)
+        {
+            var safeUserId = NormalizeUserId(userId);
+            var avatarFolder = EnsureUserAvatarFolder(safeUserId);
+            DeleteAllFilesInFolder(avatarFolder);
+            nextAvatarPath = null;
+            nextAvatarUpdatedAt = null;
+        }
 
         var update = Builders<UserDb>.Update
             .Set(u => u.Name, nextDisplayName)
@@ -256,6 +264,7 @@ public class AccountProfileUpdateRequest
     public string? DisplayName { get; set; }
     public string? Email { get; set; }
     public IFormFile? Avatar { get; set; }
+    public bool RemoveAvatar { get; set; }
 }
 
 public class AccountProfileResponse

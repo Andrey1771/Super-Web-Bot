@@ -8,7 +8,7 @@ import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import ModalConfirm from '../../../components/ui/ModalConfirm';
 import { useToast } from '../../../components/ui/ToastProvider';
-import { deleteAvatar, fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
+import { fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
 import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-settings-page.css';
 
@@ -23,6 +23,7 @@ const AccountSettingsPage: React.FC = () => {
     const [draftAvatarPreviewUrl, setDraftAvatarPreviewUrl] = useState<string | null>(null);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [savedAvatarUrl, setSavedAvatarUrl] = useState<string | null>(profile?.avatarUrl ?? null);
+    const [pendingAvatarRemoval, setPendingAvatarRemoval] = useState(false);
     const [displayNameInput, setDisplayNameInput] = useState(profile?.displayName ?? 'User');
     const [emailInput, setEmailInput] = useState(profile?.email ?? '');
     const {
@@ -42,6 +43,7 @@ const AccountSettingsPage: React.FC = () => {
         setSavedAvatarUrl(profile?.avatarUrl ?? null);
         setDisplayNameInput(profile?.displayName ?? 'User');
         setEmailInput(profile?.email ?? '');
+        setPendingAvatarRemoval(false);
     }, [profile?.avatarUrl, profile?.displayName, profile?.email, isAvatarModalOpen]);
 
     const replaceDraftAvatarPreviewUrl = (nextUrl: string | null) => {
@@ -93,6 +95,7 @@ const AccountSettingsPage: React.FC = () => {
             return;
         }
         const nextUrl = URL.createObjectURL(file);
+        setPendingAvatarRemoval(false);
         replaceDraftAvatarPreviewUrl(nextUrl);
         setIsAvatarModalOpen(true);
     };
@@ -105,6 +108,7 @@ const AccountSettingsPage: React.FC = () => {
     const handleAvatarDraftSave = async (file: File) => {
         const nextPreviewUrl = URL.createObjectURL(file);
         setDraftAvatarFile(file);
+        setPendingAvatarRemoval(false);
         replaceDraftAvatarPreviewUrl(nextPreviewUrl);
         setIsAvatarModalOpen(false);
     };
@@ -115,7 +119,8 @@ const AccountSettingsPage: React.FC = () => {
             const profileResponse = await saveAccountProfile({
                 displayName: displayNameInput,
                 email: emailInput,
-                avatar: draftAvatarFile
+                avatar: draftAvatarFile,
+                removeAvatar: pendingAvatarRemoval && !draftAvatarFile
             });
 
             const refreshedProfile = await fetchAccountProfile();
@@ -125,6 +130,7 @@ const AccountSettingsPage: React.FC = () => {
             setDisplayNameInput(refreshedProfile.displayName ?? displayNameInput);
             setEmailInput(refreshedProfile.email ?? emailInput);
             clearAvatarDraft();
+            setPendingAvatarRemoval(false);
             addToast('Profile updated.', 'success');
         } catch (error) {
             console.error(error);
@@ -134,24 +140,14 @@ const AccountSettingsPage: React.FC = () => {
         }
     };
 
-    const handleRemove = async () => {
-        setIsSavingProfile(true);
-        try {
-            await deleteAvatar();
-            updateAvatar(null);
-            setSavedAvatarUrl(null);
-            clearAvatarDraft();
-            addToast('Avatar removed.', 'success');
-        } catch (error) {
-            console.error(error);
-            addToast('Remove failed. Please try again.', 'error');
-        } finally {
-            setIsSavingProfile(false);
-            setIsRemoveModalOpen(false);
-        }
+    const handleRemove = () => {
+        setPendingAvatarRemoval(true);
+        clearAvatarDraft();
+        setIsRemoveModalOpen(false);
+        addToast('Avatar will be removed after Save changes.', 'info');
     };
 
-    const avatarDisplayUrl = draftAvatarPreviewUrl ?? savedAvatarUrl;
+    const avatarDisplayUrl = draftAvatarPreviewUrl ?? (pendingAvatarRemoval ? null : savedAvatarUrl);
 
     return (
         <AccountShell
@@ -197,7 +193,7 @@ const AccountSettingsPage: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline"
                                 onClick={() => setIsRemoveModalOpen(true)}
-                                disabled={!savedAvatarUrl || isSavingProfile}
+                                disabled={!savedAvatarUrl || isSavingProfile || pendingAvatarRemoval}
                             >
                                 Remove
                             </button>

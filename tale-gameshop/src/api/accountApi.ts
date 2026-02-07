@@ -14,6 +14,7 @@ export type SaveAccountProfilePayload = {
   displayName?: string;
   email?: string;
   avatar?: File | null;
+  removeAvatar?: boolean;
 };
 
 export const saveAccountProfile = async (payload: SaveAccountProfilePayload): Promise<AccountProfile> => {
@@ -26,6 +27,9 @@ export const saveAccountProfile = async (payload: SaveAccountProfilePayload): Pr
   }
   if (payload.avatar) {
     formData.append("avatar", payload.avatar);
+  }
+  if (payload.removeAvatar) {
+    formData.append("removeAvatar", "true");
   }
 
   const response = await apiClient().patch("/api/account/profile", formData, {
