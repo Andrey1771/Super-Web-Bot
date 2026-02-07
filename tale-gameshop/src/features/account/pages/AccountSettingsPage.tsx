@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faArrowLeft, faArrowRight, faChevronRight, faPen} from '@fortawesome/free-solid-svg-icons';
@@ -20,6 +20,7 @@ const AccountSettingsPage: React.FC = () => {
     const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [committedAvatarUrl, setCommittedAvatarUrl] = useState<string | null>(profile?.avatarUrl ?? null);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -28,6 +29,14 @@ const AccountSettingsPage: React.FC = () => {
     } = useRecommendations(6);
 
     const displayName = profile?.displayName ?? 'User';
+
+    useEffect(() => {
+        if (isAvatarModalOpen) {
+            return;
+        }
+        setCommittedAvatarUrl(profile?.avatarUrl ?? null);
+    }, [profile?.avatarUrl, isAvatarModalOpen]);
+
     const initials = useMemo(() => {
         return displayName
             .split(' ')
@@ -72,6 +81,7 @@ const AccountSettingsPage: React.FC = () => {
         try {
             const response = await uploadAvatar(file);
             updateAvatar(response.avatarUrl ?? null);
+            setCommittedAvatarUrl(response.avatarUrl ?? null);
             addToast('Avatar updated.', 'success');
             closeAvatarModal();
         } catch (error) {
@@ -87,6 +97,7 @@ const AccountSettingsPage: React.FC = () => {
         try {
             await deleteAvatar();
             updateAvatar(null);
+            setCommittedAvatarUrl(null);
             addToast('Avatar removed.', 'success');
         } catch (error) {
             console.error(error);
@@ -119,8 +130,8 @@ const AccountSettingsPage: React.FC = () => {
                 </div>
                 <div className="settings-avatar-block">
                     <button type="button" className="settings-avatar" onClick={openFileDialog}>
-                        {profile?.avatarUrl ? (
-                            <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
+                        {committedAvatarUrl ? (
+                            <img src={committedAvatarUrl} alt={`${displayName} avatar`} />
                         ) : (
                             <span>{initials}</span>
                         )}
@@ -141,7 +152,7 @@ const AccountSettingsPage: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline"
                                 onClick={() => setIsRemoveModalOpen(true)}
-                                disabled={!profile?.avatarUrl || isUploading}
+                                disabled={!committedAvatarUrl || isUploading}
                             >
                                 Remove
                             </button>
