@@ -16,11 +16,12 @@ const AccountSettingsPage: React.FC = () => {
     const { profile, updateAvatar } = useAccountProfile();
     const { addToast } = useToast();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const draftAvatarUrlRef = useRef<string | null>(null);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [draftAvatarUrl, setDraftAvatarUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [committedAvatarUrl, setCommittedAvatarUrl] = useState<string | null>(profile?.avatarUrl ?? null);
+    const [savedAvatarUrl, setSavedAvatarUrl] = useState<string | null>(profile?.avatarUrl ?? null);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -34,17 +35,26 @@ const AccountSettingsPage: React.FC = () => {
         if (isAvatarModalOpen) {
             return;
         }
-        setCommittedAvatarUrl(profile?.avatarUrl ?? null);
+        setSavedAvatarUrl(profile?.avatarUrl ?? null);
     }, [profile?.avatarUrl, isAvatarModalOpen]);
+
+    const replaceDraftAvatarUrl = (nextUrl: string | null) => {
+        if (draftAvatarUrlRef.current) {
+            URL.revokeObjectURL(draftAvatarUrlRef.current);
+        }
+        draftAvatarUrlRef.current = nextUrl;
+        setDraftAvatarUrl(nextUrl);
+    };
 
 
     useEffect(() => {
         return () => {
-            if (previewUrl) {
-                URL.revokeObjectURL(previewUrl);
+            if (draftAvatarUrlRef.current) {
+                URL.revokeObjectURL(draftAvatarUrlRef.current);
+                draftAvatarUrlRef.current = null;
             }
         };
-    }, [previewUrl]);
+    }, []);
 
     const initials = useMemo(() => {
         return displayName
@@ -73,21 +83,13 @@ const AccountSettingsPage: React.FC = () => {
             return;
         }
         const nextUrl = URL.createObjectURL(file);
-        setPreviewUrl((current) => {
-            if (current) {
-                URL.revokeObjectURL(current);
-            }
-            return nextUrl;
-        });
+        replaceDraftAvatarUrl(nextUrl);
         setIsAvatarModalOpen(true);
     };
 
     const closeAvatarModal = () => {
         setIsAvatarModalOpen(false);
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewUrl(null);
+        replaceDraftAvatarUrl(null);
     };
 
     const handleUpload = async (file: File) => {
@@ -95,7 +97,7 @@ const AccountSettingsPage: React.FC = () => {
         try {
             const response = await uploadAvatar(file);
             updateAvatar(response.avatarUrl ?? null);
-            setCommittedAvatarUrl(response.avatarUrl ?? null);
+            setSavedAvatarUrl(response.avatarUrl ?? null);
             addToast('Avatar updated.', 'success');
             closeAvatarModal();
         } catch (error) {
@@ -111,7 +113,8 @@ const AccountSettingsPage: React.FC = () => {
         try {
             await deleteAvatar();
             updateAvatar(null);
-            setCommittedAvatarUrl(null);
+            setSavedAvatarUrl(null);
+            replaceDraftAvatarUrl(null);
             addToast('Avatar removed.', 'success');
         } catch (error) {
             console.error(error);
@@ -121,6 +124,8 @@ const AccountSettingsPage: React.FC = () => {
             setIsRemoveModalOpen(false);
         }
     };
+
+    const avatarDisplayUrl = draftAvatarUrl ?? savedAvatarUrl;
 
     return (
         <AccountShell
@@ -144,8 +149,8 @@ const AccountSettingsPage: React.FC = () => {
                 </div>
                 <div className="settings-avatar-block">
                     <button type="button" className="settings-avatar" onClick={openFileDialog}>
-                        {committedAvatarUrl ? (
-                            <img src={committedAvatarUrl} alt={`${displayName} avatar`} />
+                        {avatarDisplayUrl ? (
+                            <img src={avatarDisplayUrl} alt={`${displayName} avatar`} />
                         ) : (
                             <span>{initials}</span>
                         )}
@@ -166,7 +171,7 @@ const AccountSettingsPage: React.FC = () => {
                                 type="button"
                                 className="btn btn-outline"
                                 onClick={() => setIsRemoveModalOpen(true)}
-                                disabled={!committedAvatarUrl || isUploading}
+                                disabled={!savedAvatarUrl || isUploading}
                             >
                                 Remove
                             </button>
@@ -287,9 +292,9 @@ const AccountSettingsPage: React.FC = () => {
             </div>
 
             <AvatarCropModal
-                key={previewUrl ?? 'avatar-crop-empty'}
+                key={draftAvatarUrl ?? 'avatar-crop-empty'}
                 isOpen={isAvatarModalOpen}
-                imageSrc={previewUrl}
+                imageSrc={draftAvatarUrl}
                 isSaving={isUploading}
                 onClose={closeAvatarModal}
                 onSave={handleUpload}
