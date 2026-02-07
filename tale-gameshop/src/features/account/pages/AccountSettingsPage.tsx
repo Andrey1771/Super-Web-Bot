@@ -37,6 +37,15 @@ const AccountSettingsPage: React.FC = () => {
         setCommittedAvatarUrl(profile?.avatarUrl ?? null);
     }, [profile?.avatarUrl, isAvatarModalOpen]);
 
+
+    useEffect(() => {
+        return () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
+
     const initials = useMemo(() => {
         return displayName
             .split(' ')
@@ -64,7 +73,12 @@ const AccountSettingsPage: React.FC = () => {
             return;
         }
         const nextUrl = URL.createObjectURL(file);
-        setPreviewUrl(nextUrl);
+        setPreviewUrl((current) => {
+            if (current) {
+                URL.revokeObjectURL(current);
+            }
+            return nextUrl;
+        });
         setIsAvatarModalOpen(true);
     };
 
@@ -273,6 +287,7 @@ const AccountSettingsPage: React.FC = () => {
             </div>
 
             <AvatarCropModal
+                key={previewUrl ?? 'avatar-crop-empty'}
                 isOpen={isAvatarModalOpen}
                 imageSrc={previewUrl}
                 isSaving={isUploading}
