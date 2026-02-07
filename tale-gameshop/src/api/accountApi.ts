@@ -10,22 +10,29 @@ export const fetchAccountProfile = async (): Promise<AccountProfile> => {
   return response.data as AccountProfile;
 };
 
-export const uploadAvatar = async (
-  file: File,
-  onProgress?: (value: number) => void
-): Promise<AvatarResponse> => {
+export type SaveAccountProfilePayload = {
+  displayName?: string;
+  email?: string;
+  avatar?: File | null;
+};
+
+export const saveAccountProfile = async (payload: SaveAccountProfilePayload): Promise<AccountProfile> => {
   const formData = new FormData();
-  formData.append("file", file);
-  const response = await apiClient().post("/api/account/avatar", formData, {
+  if (typeof payload.displayName === "string") {
+    formData.append("displayName", payload.displayName);
+  }
+  if (typeof payload.email === "string") {
+    formData.append("email", payload.email);
+  }
+  if (payload.avatar) {
+    formData.append("avatar", payload.avatar);
+  }
+
+  const response = await apiClient().patch("/api/account/profile", formData, {
     headers: { "Content-Type": "multipart/form-data" },
-    onUploadProgress: (event) => {
-      if (!event.total) {
-        return;
-      }
-      onProgress?.(Math.round((event.loaded / event.total) * 100));
-    },
   });
-  return response.data as AvatarResponse;
+
+  return response.data as AccountProfile;
 };
 
 export const deleteAvatar = async (): Promise<AvatarResponse> => {

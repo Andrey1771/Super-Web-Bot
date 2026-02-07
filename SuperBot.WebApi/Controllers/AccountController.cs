@@ -36,86 +36,97 @@ public class AccountController : ControllerBase
         {
             return Unauthorized();
         }
+
         var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
 
         return Ok(new AccountProfileResponse
         {
             UserId = userId,
             Email = email,
-            DisplayName = displayName,
+            DisplayName = user?.Name ?? displayName,
             AvatarUrl = BuildAvatarUrl(user?.AvatarPath, user?.AvatarUpdatedAt)
         });
     }
 
-    [HttpPost("avatar")]
+    [HttpPatch("profile")]
     [RequestSizeLimit(MaxAvatarBytes + 1024)]
-    public async Task<ActionResult<AvatarResponse>> UploadAvatar([FromForm] IFormFile file)
+    public async Task<ActionResult<AccountProfileResponse>> SaveProfile([FromForm] AccountProfileUpdateRequest request)
     {
-        var (userId, email, displayName) = GetUserIdentity();
+        var (userId, email, fallbackDisplayName) = GetUserIdentity();
         if (string.IsNullOrWhiteSpace(userId))
         {
             return Unauthorized();
         }
-        if (file == null)
-        {
-            return BadRequest("File is required.");
-        }
-
-        if (file.Length > MaxAvatarBytes)
-        {
-            return BadRequest("File too large.");
-        }
-
-        if (!AllowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
-        {
-            return BadRequest("Unsupported file format.");
-        }
-
-        var avatarFolder = EnsureAvatarFolder();
-        var safeUserId = NormalizeUserId(userId);
-        var filename = $"{safeUserId}_{Guid.NewGuid():N}.webp";
-        var relativePath = Path.Combine("avatars", filename).Replace("\\", "/");
-        var fullPath = Path.Combine(avatarFolder, filename);
-
-        try
-        {
-            await using var stream = file.OpenReadStream();
-            using var image = await Image.LoadAsync(stream);
-            image.Mutate(x => x.AutoOrient().Resize(new ResizeOptions
-            {
-                Mode = ResizeMode.Crop,
-                Size = new Size(AvatarSize, AvatarSize),
-                Position = AnchorPositionMode.Center
-            }));
-
-            await image.SaveAsync(fullPath, new WebpEncoder { Quality = 80 });
-        }
-        catch (Exception)
-        {
-            return BadRequest("Invalid image.");
-        }
 
         var now = DateTime.UtcNow;
         var existing = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
-        if (existing?.AvatarPath != null)
+
+        var nextDisplayName = string.IsNullOrWhiteSpace(request.DisplayName)
+            ? existing?.Name ?? fallbackDisplayName ?? email ?? userId
+            : request.DisplayName.Trim();
+
+        string? nextAvatarPath = existing?.AvatarPath;
+        DateTime? nextAvatarUpdatedAt = existing?.AvatarUpdatedAt;
+
+        if (request.Avatar is { } avatar)
         {
-            SafeDeleteAvatar(existing.AvatarPath);
+            if (avatar.Length > MaxAvatarBytes)
+            {
+                return BadRequest("File too large.");
+            }
+
+            if (!AllowedContentTypes.Contains(avatar.ContentType, StringComparer.OrdinalIgnoreCase))
+            {
+                return BadRequest("Unsupported file format.");
+            }
+
+            var safeUserId = NormalizeUserId(userId);
+            var avatarFolder = EnsureUserAvatarFolder(safeUserId);
+            DeleteAllFilesInFolder(avatarFolder);
+
+            var filename = "avatar.webp";
+            var relativePath = Path.Combine("avatars", safeUserId, filename).Replace("\\", "/");
+            var fullPath = Path.Combine(avatarFolder, filename);
+
+            try
+            {
+                await using var stream = avatar.OpenReadStream();
+                using var image = await Image.LoadAsync(stream);
+                image.Mutate(x => x.AutoOrient().Resize(new ResizeOptions
+                {
+                    Mode = ResizeMode.Crop,
+                    Size = new Size(AvatarSize, AvatarSize),
+                    Position = AnchorPositionMode.Center
+                }));
+
+                await image.SaveAsync(fullPath, new WebpEncoder { Quality = 80 });
+            }
+            catch
+            {
+                return BadRequest("Invalid image.");
+            }
+
+            nextAvatarPath = relativePath;
+            nextAvatarUpdatedAt = now;
         }
 
         var update = Builders<UserDb>.Update
-            .Set(u => u.AvatarPath, relativePath)
-            .Set(u => u.AvatarUpdatedAt, now)
+            .Set(u => u.Name, nextDisplayName)
+            .Set(u => u.Username, nextDisplayName)
+            .Set(u => u.AvatarPath, nextAvatarPath)
+            .Set(u => u.AvatarUpdatedAt, nextAvatarUpdatedAt)
             .Set(u => u.UpdatedAt, now)
             .SetOnInsert(u => u.UserId, userId)
-            .SetOnInsert(u => u.Username, displayName ?? email ?? userId)
-            .SetOnInsert(u => u.Name, displayName ?? email ?? userId)
             .SetOnInsert(u => u.CreatedAt, now);
 
         await _users.UpdateOneAsync(u => u.UserId == userId, update, new UpdateOptions { IsUpsert = true });
 
-        return Ok(new AvatarResponse
+        return Ok(new AccountProfileResponse
         {
-            AvatarUrl = BuildAvatarUrl(relativePath, now)
+            UserId = userId,
+            Email = request.Email ?? email,
+            DisplayName = nextDisplayName,
+            AvatarUrl = BuildAvatarUrl(nextAvatarPath, nextAvatarUpdatedAt)
         });
     }
 
@@ -127,12 +138,10 @@ public class AccountController : ControllerBase
         {
             return Unauthorized();
         }
-        var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
 
-        if (user?.AvatarPath != null)
-        {
-            SafeDeleteAvatar(user.AvatarPath);
-        }
+        var safeUserId = NormalizeUserId(userId);
+        var avatarFolder = EnsureUserAvatarFolder(safeUserId);
+        DeleteAllFilesInFolder(avatarFolder);
 
         var update = Builders<UserDb>.Update
             .Set(u => u.AvatarPath, null)
@@ -171,10 +180,10 @@ public class AccountController : ControllerBase
         return $"{baseUrl}/uploads/{avatarPath}?v={version}";
     }
 
-    private string EnsureAvatarFolder()
+    private string EnsureUserAvatarFolder(string safeUserId)
     {
         var webRoot = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        var root = Path.Combine(webRoot, "uploads", "avatars");
+        var root = Path.Combine(webRoot, "uploads", "avatars", safeUserId);
         if (!Directory.Exists(root))
         {
             Directory.CreateDirectory(root);
@@ -183,24 +192,16 @@ public class AccountController : ControllerBase
         return root;
     }
 
-    private void SafeDeleteAvatar(string relativePath)
+    private static void DeleteAllFilesInFolder(string folder)
     {
-        var filename = Path.GetFileName(relativePath);
-        if (string.IsNullOrWhiteSpace(filename))
+        if (!Directory.Exists(folder))
         {
             return;
         }
 
-        var folder = EnsureAvatarFolder();
-        var fullPath = Path.GetFullPath(Path.Combine(folder, filename));
-        if (!fullPath.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
+        foreach (var filePath in Directory.GetFiles(folder))
         {
-            return;
-        }
-
-        if (System.IO.File.Exists(fullPath))
-        {
-            System.IO.File.Delete(fullPath);
+            System.IO.File.Delete(filePath);
         }
     }
 
@@ -209,6 +210,13 @@ public class AccountController : ControllerBase
         var cleaned = Regex.Replace(userId, @"[^a-zA-Z0-9_-]", string.Empty);
         return string.IsNullOrWhiteSpace(cleaned) ? "user" : cleaned;
     }
+}
+
+public class AccountProfileUpdateRequest
+{
+    public string? DisplayName { get; set; }
+    public string? Email { get; set; }
+    public IFormFile? Avatar { get; set; }
 }
 
 public class AccountProfileResponse
