@@ -44,5 +44,11 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; }
+
+        [BsonElement("avatarPath")]
+        public string? AvatarPath { get; set; }
+
+        [BsonElement("avatarUpdatedAt")]
+        public DateTime? AvatarUpdatedAt { get; set; }
     }
 }

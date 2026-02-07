@@ -16,6 +16,7 @@ const pageTitles: Record<string, string> = {
   "/admin/profile": "Profile",
   "/admin/settings": "Settings",
   "/admin/data-tools": "Import / Export",
+  "/admin/support/live-chat": "Support / Live Chat",
 };
 
 const AdminLayout: React.FC = () => {

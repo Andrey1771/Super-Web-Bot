@@ -14,5 +14,7 @@ namespace SuperBot.Core.Entities
         public List<string> WishlistGameIds { get; set; } = new();
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public string? AvatarPath { get; set; }
+        public DateTime? AvatarUpdatedAt { get; set; }
     }
 }

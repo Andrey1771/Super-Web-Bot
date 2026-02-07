@@ -8,7 +8,7 @@ import TaleGameshopGameList from "../game-list-page/game-list-page";
 import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
 import RegistrationPage from "../registration-page/registration-page";
-import ChatBot from "../bot/chat-bot/chat-bot";
+import ChatWidget from "../support-chat/ChatWidget";
 import AdminPanelPage from "../admin-panel/admin-panel-page/admin-panel-page";
 import CallbackPage from "../callback-page/callback-page";
 import PrivateRoute from "../utils/private-route/private-route";
@@ -40,6 +40,7 @@ import AnalyticsSettingsPage from "../../pages/admin/analytics/AnalyticsSettings
 import AnalyticsProvider from "../analytics/AnalyticsProvider";
 import CookieBanner from "../analytics/CookieBanner";
 import { analyticsClient } from "../../utils/analytics-client";
+import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -82,6 +83,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="blog/posts/:id/edit" element={<Navigate to="/admin/blog/:id/edit" replace />} />
                         <Route path="analytics" element={<AnalyticsOverviewPage />} />
                         <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
+                        <Route path="support/live-chat" element={<SupportLiveChatPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="settings" element={<SettingsPage />} />
                         <Route path="data-tools" element={<DataToolsPage />} />
@@ -98,10 +100,17 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
                     <Route path="/blog/:slug" element={<BlogPostPage/>}/>
-                    <Route path="/account/*" element={<AccountRoutes/>}/>
+                    <Route
+                        path="/account/*"
+                        element={
+                            <PrivateRoute>
+                                <AccountRoutes />
+                            </PrivateRoute>
+                        }
+                    />
                 </Routes>
             {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
-            <ChatBot></ChatBot>
+            {!isAdminRoute && <ChatWidget />}
             {!isAdminRoute && <CookieBanner />}
         </div>
     );

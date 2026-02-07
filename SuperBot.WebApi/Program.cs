@@ -76,6 +76,7 @@ builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Str
 builder.Services.AddControllers();
 builder.Services.Configure<SupportOptions>(builder.Configuration.GetSection("Support"));
 builder.Services.Configure<SupportRoleOptions>(builder.Configuration.GetSection("Support:Roles"));
+builder.Services.Configure<SuperBot.WebApi.Support.Chat.SupportChatOptions>(builder.Configuration.GetSection("SupportChat"));
 
 var domainAssembly = typeof(GetMainMenuCommand).Assembly;
 builder.Services
@@ -139,6 +140,8 @@ builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepos
 builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddScoped<SupportRoleEvaluator>();
+builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.IOllamaChatClient, SuperBot.WebApi.Support.Chat.Services.OllamaChatClient>();
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportChatService, SuperBot.WebApi.Support.Chat.Services.SupportChatService>();
 
 
 
@@ -153,6 +156,7 @@ builder.Services.AddAutoMapper(typeof(ImportJobProfile));
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<Ga4Client>();
 builder.Services.AddScoped<YandexMetrikaClient>();
+builder.Services.AddHostedService<SuperBot.WebApi.Support.Chat.Services.OllamaStartupLogger>();
 
 //TODO     ,     ,   
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
@@ -226,8 +230,39 @@ builder.Services.AddLogging(logging =>
     logging.AddConsole();
     logging.AddDebug();
 });
+builder.Logging.AddProvider(new SuperBot.WebApi.Services.SupportChatConsoleLoggerProvider());
 
 var app = builder.Build();
+var startupLogger = app.Logger;
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var supportChatSection = app.Configuration.GetSection("SupportChat");
+    var ollamaBaseUrl = supportChatSection.GetValue<string>("OllamaBaseUrl") ?? "n/a";
+    var ollamaModel = supportChatSection.GetValue<string>("OllamaModel") ?? "n/a";
+    var streamingEnabled = supportChatSection.GetValue<bool>("StreamingEnabled");
+
+    startupLogger.LogInformation("SuperBot.WebApi started. Environment: {Environment}", app.Environment.EnvironmentName);
+    startupLogger.LogInformation("Support chat AI: {OllamaBaseUrl} (model={OllamaModel}, streaming={StreamingEnabled})",
+        ollamaBaseUrl, ollamaModel, streamingEnabled);
+    startupLogger.LogInformation("CORS allowed origin: {Origin}",
+        app.Configuration.GetSection("FrontendConfiguration:Uri").Value ?? "not configured");
+});
+
+if (app.Environment.IsDevelopment() && app.Configuration.GetSection("Diagnostics").GetValue<bool>("LogHttpRequests"))
+{
+    app.Use(async (context, next) =>
+    {
+        var requestLogger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("HttpRequestLogger");
+        requestLogger.LogInformation("HTTP {Method} {Path} started.", context.Request.Method, context.Request.Path);
+        await next();
+        requestLogger.LogInformation("HTTP {Method} {Path} finished with {StatusCode}.",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode);
+    });
+}
 
 // !!!     HTTP-     
 app.UseForwardedHeaders();
@@ -246,8 +281,10 @@ if (app.Environment.IsDevelopment())
 //    DI-   
 using (var scope = app.Services.CreateScope())
 {
+    startupLogger.LogInformation("Initializing MongoDB collections and indexes...");
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
     await mongoDbInitializer.InitializeAsync(); //   
+    startupLogger.LogInformation("MongoDB initialization completed.");
 }
 
 //  

@@ -19,6 +19,12 @@ type MediaPickerModalProps = {
   allowMultiple?: boolean;
 };
 
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 5;
+const SCALE_STEP = 0.1;
+
+const clampScale = (value: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, Number(value.toFixed(2))));
+
 const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   isOpen,
   onClose,
@@ -41,6 +47,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
   const [generatingPreviews, setGeneratingPreviews] = useState<Record<string, boolean>>({});
+  const [scale, setScale] = useState(1);
   const { addToast } = useToast();
   const apiBaseUrl = container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
@@ -56,6 +63,16 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     setActiveFilter(filterType);
     fetchMedia(filterType);
   }, [filterType, initialSelectedId, initialSelectedIds, isOpen]);
+
+
+  useEffect(() => {
+    if (!isOpen) {
+      setScale(1);
+      return;
+    }
+
+    setScale(1);
+  }, [isOpen, selectedId]);
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) {
@@ -152,6 +169,25 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     }
     onSelect(selected);
     onClose();
+  };
+
+
+  const handleZoomIn = () => {
+    setScale((current) => clampScale(current + SCALE_STEP));
+  };
+
+  const handleZoomOut = () => {
+    setScale((current) => clampScale(current - SCALE_STEP));
+  };
+
+  const handleResetZoom = () => {
+    setScale(1);
+  };
+
+  const handleImageWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const direction = event.deltaY < 0 ? 1 : -1;
+    setScale((current) => clampScale(current + direction * 0.08));
   };
 
   const selectedAsset = items.find((item) => item.id === selectedId) ?? null;
@@ -333,24 +369,45 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               <h3 className="text-sm font-semibold">Preview</h3>
               {selectedAsset ? (
                 <div className="mt-3 space-y-3">
-                  <div className="h-40 w-full overflow-hidden rounded border">
+                  <div className="h-[70vh] max-h-[520px] w-full overflow-hidden rounded border bg-gray-50">
                     {selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video") ? (
                       <video
                         controls
                         preload="metadata"
                         poster={resolveMediaUrl(selectedAsset.thumbnailUrl ?? undefined, apiBaseUrl)}
-                        className="h-full w-full object-contain bg-black"
+                        className="h-full w-full bg-black"
                       >
                         <source src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)} type={selectedAsset.contentType ?? "video/mp4"} />
                       </video>
                     ) : (
-                      <img
-                        src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)}
-                        alt={selectedAsset.filename}
-                        className="h-full w-full object-cover"
-                      />
+                      <div
+                        className="flex h-full w-full items-center justify-center overflow-hidden"
+                        onWheel={handleImageWheel}
+                      >
+                        <img
+                          src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)}
+                          alt={selectedAsset.filename}
+                          style={{
+                            transform: `scale(${scale})`,
+                            transformOrigin: 'center center',
+                            maxWidth: 'none',
+                            maxHeight: 'none',
+                            transition: 'transform 160ms ease-out'
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
+                  {!(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <button type="button" className="btn btn-outline" onClick={handleZoomOut}>−</button>
+                        <button type="button" className="btn btn-outline" onClick={handleZoomIn}>+</button>
+                        <button type="button" className="btn btn-outline" onClick={handleResetZoom}>Reset</button>
+                      </div>
+                      <span className="text-xs text-gray-500">{Math.round(scale * 100)}%</span>
+                    </div>
+                  )}
                   {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && (!selectedAsset.thumbnailUrl || isPlaceholderThumbnailUrl(selectedAsset.thumbnailUrl)) && (
                     <div className="flex items-center gap-2 text-xs text-amber-700">
                       <span>Preview missing.</span>
