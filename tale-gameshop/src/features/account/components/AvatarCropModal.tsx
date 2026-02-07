@@ -58,6 +58,8 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
   const [cropSize, setCropSize] = useState<Size | null>(null);
   const [mediaSize, setMediaSize] = useState<Size | null>(null);
 
+  const effectiveMaxZoom = useMemo(() => Math.max(MAX_ZOOM, Number((minZoom + 0.01).toFixed(2))), [minZoom]);
+
   const hasUnsavedChanges = useMemo(
     () => Boolean(imageSrc) && (Math.abs(position.x) > 0 || Math.abs(position.y) > 0 || Math.abs(zoom - minZoom) > 0.001 || rotation !== 0),
     [imageSrc, minZoom, position.x, position.y, rotation, zoom]
@@ -94,7 +96,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
   const setClampedZoom = useCallback(
     (nextZoom: number) => {
       setZoom((currentZoom) => {
-        const clampedZoom = clamp(nextZoom, minZoom, MAX_ZOOM);
+        const clampedZoom = clamp(nextZoom, minZoom, effectiveMaxZoom);
         if (clampedZoom === currentZoom) {
           return currentZoom;
         }
@@ -102,7 +104,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
         return clampedZoom;
       });
     },
-    [getClampedPosition, minZoom, rotation]
+    [effectiveMaxZoom, getClampedPosition, minZoom, rotation]
   );
 
   useEffect(() => {
@@ -187,8 +189,8 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
       return;
     }
 
-    setZoom((currentZoom) => clamp(currentZoom, coverZoom, MAX_ZOOM));
-  }, [cropSize, mediaSize]);
+    setZoom((currentZoom) => clamp(currentZoom, coverZoom, effectiveMaxZoom));
+  }, [cropSize, effectiveMaxZoom, mediaSize]);
 
   useEffect(() => {
     if (!cropSize || !mediaSize) {
@@ -411,7 +413,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
                 <input
                   type="range"
                   min={minZoom}
-                  max={MAX_ZOOM}
+                  max={effectiveMaxZoom}
                   step={0.01}
                   value={zoom}
                   onChange={(event) => setClampedZoom(Number(event.target.value))}

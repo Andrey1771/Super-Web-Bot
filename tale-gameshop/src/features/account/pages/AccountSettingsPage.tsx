@@ -125,7 +125,7 @@ const AccountSettingsPage: React.FC = () => {
         }
     };
 
-    const avatarDisplayUrl = draftAvatarUrl ?? savedAvatarUrl;
+    const avatarDisplayUrl = savedAvatarUrl;
 
     return (
         <AccountShell
