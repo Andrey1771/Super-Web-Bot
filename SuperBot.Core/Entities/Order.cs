@@ -15,6 +15,8 @@ namespace SuperBot.Core.Entities
         public string? PaymentStatus { get; set; }
         public string? FulfillmentStatus { get; set; }
         public decimal? TotalAmount { get; set; }
+        public string? PromoCode { get; set; }
+        public decimal? PromoDiscountAmount { get; set; }
         public string? Currency { get; set; }
         public string? Notes { get; set; }
     }

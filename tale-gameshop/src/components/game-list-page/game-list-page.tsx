@@ -304,7 +304,7 @@ const TaleGameshopGameList: React.FC = () => {
             payload: {
                 gameId: game.id ?? '',
                 name: game.name,
-                price: game.price,
+                price: game.finalPrice ?? game.price,
                 quantity: 1,
                 image: game.imagePath
             } as Product
@@ -505,7 +505,9 @@ const TaleGameshopGameList: React.FC = () => {
 
     const CatalogCard = ({ game, variant, showBadge }: { game: Game; variant: 'large' | 'small'; showBadge?: boolean }) => {
         const isLarge = variant === 'large';
-        const price = Number.isFinite(game.price) ? `$${Number(game.price).toFixed(2)}` : '$0';
+        const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
+        const finalPrice = Number.isFinite(game.finalPrice ?? game.price) ? Number(game.finalPrice ?? game.price) : regularPrice;
+        const hasActiveDiscount = Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0 && finalPrice < regularPrice);
         const wishlistKey = resolveWishlistKey(game);
         const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
         const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
@@ -560,7 +562,19 @@ const TaleGameshopGameList: React.FC = () => {
                             {game.title}
                         </Link>
                     </h3>
-                    <span className="mt-1 text-sm font-medium text-[#6f64a8]">{price}</span>
+                    <div className="mt-1 flex items-center gap-2 text-sm">
+                        {hasActiveDiscount ? (
+                            <>
+                                <span className="font-medium text-[#9b92c4] line-through">${regularPrice.toFixed(2)}</span>
+                                <span className="font-semibold text-[#6b3ff2]">${finalPrice.toFixed(2)}</span>
+                                <span className="rounded-full bg-[#e7dcff] px-2 py-0.5 text-xs font-semibold text-[#5a2dd1]">
+                                    -{Number(game.discountPercent).toFixed(0)}%
+                                </span>
+                            </>
+                        ) : (
+                            <span className="font-medium text-[#6f64a8]">${finalPrice.toFixed(2)}</span>
+                        )}
+                    </div>
                     <button
                         className={`mt-auto w-full rounded-[12px] border border-[#d9d3ff] bg-[#6b3ff2] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(107,63,242,0.25)] transition hover:brightness-110 ${
                             isLarge ? 'mt-6' : 'mt-4'
@@ -783,7 +797,7 @@ const TaleGameshopGameList: React.FC = () => {
                                         {displayGames.map((game, gameIndex) => {
                                             const showLarge = isFirstSection && gameIndex === 0;
                                             const cardVariant = showLarge ? 'large' : 'small';
-                                            const badge = showLarge && game.title === 'Elden Ring';
+                                            const badge = showLarge && Boolean(game.discountActive);
                                             const cardSpan = showLarge ? 'lg:col-span-2 md:col-span-2' : '';
 
                                             return (
@@ -809,71 +823,6 @@ const TaleGameshopGameList: React.FC = () => {
                         Load More
                     </button>
                 </div>
-
-                <section className="mt-12 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0b0d1f_0%,#1a1634_45%,#3b1d78_100%)] px-8 py-12 text-white shadow-[0_28px_60px_rgba(29,20,64,0.35)]">
-                    <div className="mx-auto max-w-3xl text-center">
-                        <h2 className="text-3xl font-semibold md:text-4xl">Discover your next favourite game</h2>
-                        <p className="mt-3 text-sm text-white/70 md:text-base">
-                            Explore collections &amp; discover new favorites with our curated recommendations.
-                        </p>
-                    </div>
-                    <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                        {[
-                            {
-                                title: 'Best Deals',
-                                subtitle: 'of the Week',
-                                action: 'View Deals',
-                                badge: '25% OFF',
-                                buttonClass: 'bg-[#6b3ff2] text-white shadow-[0_12px_24px_rgba(107,63,242,0.4)]',
-                                imageClass: 'bg-[linear-gradient(135deg,#2f2b56_0%,#6041a8_50%,#f2a674_100%)]'
-                            },
-                            {
-                                title: 'Newly Added',
-                                subtitle: 'Games',
-                                action: 'See New',
-                                badge: null,
-                                buttonClass: 'bg-white text-[#3c2b78] shadow-[0_12px_24px_rgba(255,255,255,0.16)]',
-                                imageClass: 'bg-[linear-gradient(135deg,#1a213f_0%,#4e6dc8_45%,#99c4ff_100%)]'
-                            },
-                            {
-                                title: 'Top Rated',
-                                subtitle: 'Picks',
-                                action: 'Browse Top Rated',
-                                badge: null,
-                                buttonClass: 'bg-[#6b3ff2] text-white shadow-[0_12px_24px_rgba(107,63,242,0.4)]',
-                                imageClass: 'bg-[linear-gradient(135deg,#231c3a_0%,#5a4b8a_45%,#f0b07a_100%)]'
-                            },
-                            {
-                                title: 'Your Personal',
-                                subtitle: 'Picks',
-                                action: 'See For You',
-                                badge: null,
-                                buttonClass: 'bg-white text-[#3c2b78] shadow-[0_12px_24px_rgba(255,255,255,0.16)]',
-                                imageClass: 'bg-[linear-gradient(135deg,#1c2544_0%,#5b69b2_40%,#b7c9f1_100%)]'
-                            }
-                        ].map((card) => (
-                            <div
-                                key={card.title}
-                                className="relative flex min-h-[250px] flex-col justify-end overflow-hidden rounded-[22px] border border-white/10 bg-white/5 px-5 py-5 shadow-[0_20px_40px_rgba(10,8,30,0.45)]"
-                            >
-                                <div className={`absolute inset-0 opacity-95 ${card.imageClass}`} />
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d1f]/80 via-[#0b0d1f]/30 to-transparent" />
-                                {card.badge && (
-                                    <span className="relative z-10 inline-flex w-max rounded-full bg-[#6b3ff2] px-3 py-1 text-xs font-semibold shadow-sm">
-                                        {card.badge}
-                                    </span>
-                                )}
-                                <div className="relative z-10 mt-3 space-y-1">
-                                    <h3 className="text-xl font-semibold">{card.title}</h3>
-                                    <p className="text-base text-white/85">{card.subtitle}</p>
-                                </div>
-                                <button className={`relative z-10 mt-5 w-max rounded-[12px] px-4 py-2 text-sm font-semibold ${card.buttonClass}`}>
-                                    {card.action}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </section>
 
                 <section className="mt-12">
                     <div className="max-w-2xl">

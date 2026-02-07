@@ -15,11 +15,14 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
     const { dispatch } = useCart();
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
+    const finalPrice = Number.isFinite(game.finalPrice ?? game.price) ? Number(game.finalPrice ?? game.price) : regularPrice;
+    const hasActiveDiscount = Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0 && finalPrice < regularPrice);
 
     const buildItem = () => ({
         item_id: game.id ?? "",
         item_name: game.title,
-        price: game.price,
+        price: finalPrice,
         item_category: String(game.gameType),
         quantity: 1
     });
@@ -36,7 +39,7 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
             payload: {
                 gameId: game.id ?? "",
                 name: game.name,
-                price: game.price,
+                price: finalPrice,
                 quantity: 1,
                 image: game.imagePath
             } as Product,
@@ -44,7 +47,7 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
 
         analyticsClient.trackEcommerce("add_to_cart", {
             currency: "UAH",
-            value: game.price,
+            value: finalPrice,
             items: [buildItem()]
         });
     };
@@ -78,7 +81,17 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                 >
                     {game.title.length > 44 ? `${game.title.slice(0, 44)}...` : game.title}
                 </h2>
-                <p className="muted mb-4">${game.price}</p>
+                <div className="muted mb-4">
+                    {hasActiveDiscount ? (
+                        <>
+                            <span className="line-through mr-2">${regularPrice.toFixed(2)}</span>
+                            <span className="font-semibold">${finalPrice.toFixed(2)}</span>
+                            <span className="ml-2">-{Number(game.discountPercent).toFixed(0)}%</span>
+                        </>
+                    ) : (
+                        <span>${finalPrice.toFixed(2)}</span>
+                    )}
+                </div>
                 <button
                     className="btn btn-primary w-full justify-center mt-auto"
                     onClick={(event) => {

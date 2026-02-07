@@ -226,3 +226,12 @@ export interface GameDetailsResponse {
   recommendations: GameRecommendationsResponse;
   userContext: GameUserContext;
 }
+
+
+export interface AdminGameDiscount {
+  gameId: string;
+  discountPercent?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  isActive: boolean;
+}

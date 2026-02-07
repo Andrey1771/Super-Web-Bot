@@ -1,4 +1,5 @@
-import type { GameDetails } from "../types/game-details";
+import type { AdminGameDiscount, GameDetails } from "../types/game-details";
+
 
 export interface IAdminGameDetailsService {
   getGameDetails: (id: string) => Promise<GameDetails>;
@@ -19,4 +20,7 @@ export interface IAdminGameDetailsService {
   updateRequirements: (id: string, requirements: GameDetails["systemRequirements"]) => Promise<GameDetails>;
   updateAwards: (id: string, awards: GameDetails["awards"]) => Promise<GameDetails>;
   updateRecommendations: (id: string, payload: { similarGameIds: string[]; autoRecommendRules: GameDetails["autoRecommendRules"] }) => Promise<GameDetails>;
+  getDiscount: (id: string) => Promise<AdminGameDiscount>;
+  upsertDiscount: (id: string, payload: { discountPercent: number; startDate: string; endDate: string }) => Promise<AdminGameDiscount>;
+  deleteDiscount: (id: string) => Promise<void>;
 }

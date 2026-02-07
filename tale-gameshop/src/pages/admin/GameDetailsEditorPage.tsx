@@ -5,7 +5,7 @@ import IDENTIFIERS from "../../constants/identifiers";
 import type { IGameService } from "../../iterfaces/i-game-service";
 import type { IAdminGameDetailsService } from "../../iterfaces/i-admin-game-details-service";
 import type { Game } from "../../models/game";
-import type { GameDetails, MediaItem } from "../../types/game-details";
+import type { AdminGameDiscount, GameDetails, MediaItem } from "../../types/game-details";
 import MediaPickerModal from "../../components/admin-panel/media-library/MediaPickerModal";
 import { useToast } from "../../components/ui/ToastProvider";
 
@@ -62,6 +62,7 @@ const GameDetailsEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaPickerMode, setMediaPickerMode] = useState<"cover" | "gallery">("cover");
+  const [discount, setDiscount] = useState<AdminGameDiscount>({ gameId: "", isActive: false });
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -100,6 +101,22 @@ const GameDetailsEditorPage: React.FC = () => {
   const updateDetails = (patch: Partial<GameDetails>) => {
     setDetails((prev) => (prev ? { ...prev, ...patch } : prev));
   };
+
+  useEffect(() => {
+    if (!selectedGameId) return;
+    const loadDiscount = async () => {
+      try {
+        const response = await adminService.getDiscount(selectedGameId);
+        setDiscount(response);
+      } catch (error) {
+        console.error(error);
+        setDiscount({ gameId: selectedGameId, isActive: false });
+      }
+    };
+
+    loadDiscount();
+  }, [adminService, selectedGameId]);
+
 
   const handleSave = async () => {
     if (!details) return;
@@ -193,6 +210,40 @@ const GameDetailsEditorPage: React.FC = () => {
     const next = [...details.dlcItems];
     next[index] = { ...next[index], ...patch };
     updateDetails({ dlcItems: next });
+  };
+
+
+
+  const handleSaveDiscount = async () => {
+    if (!selectedGameId || !discount.discountPercent || !discount.startDate || !discount.endDate) {
+      addToast("Fill discount percent and dates.", "error");
+      return;
+    }
+
+    try {
+      const saved = await adminService.upsertDiscount(selectedGameId, {
+        discountPercent: Number(discount.discountPercent),
+        startDate: discount.startDate,
+        endDate: discount.endDate
+      });
+      setDiscount(saved);
+      addToast("Discount saved.", "success");
+    } catch (error) {
+      console.error(error);
+      addToast("Failed to save discount.", "error");
+    }
+  };
+
+  const handleDeleteDiscount = async () => {
+    if (!selectedGameId) return;
+    try {
+      await adminService.deleteDiscount(selectedGameId);
+      setDiscount({ gameId: selectedGameId, isActive: false });
+      addToast("Discount removed.", "success");
+    } catch (error) {
+      console.error(error);
+      addToast("Failed to remove discount.", "error");
+    }
   };
 
   const addDlc = () => {
@@ -378,13 +429,37 @@ const GameDetailsEditorPage: React.FC = () => {
             <input className="input" type="number" value={details.basePrice} onChange={(event) => updateDetails({ basePrice: Number(event.target.value) })} />
           </label>
           <label>
-            Discount %
-            <input className="input" type="number" value={details.discountPercent ?? ""} onChange={(event) => updateDetails({ discountPercent: Number(event.target.value) || undefined })} />
-          </label>
-          <label>
             Currency
             <input className="input" value={details.currency} onChange={(event) => updateDetails({ currency: event.target.value })} />
           </label>
+          <label>
+            Current final price
+            <input className="input" type="number" value={details.finalPrice} onChange={(event) => updateDetails({ finalPrice: Number(event.target.value) })} />
+          </label>
+        </div>
+
+        <div className="admin-grid admin-grid--4" style={{ marginTop: 12 }}>
+          <label>
+            Discount %
+            <input className="input" type="number" value={discount.discountPercent ?? ""} onChange={(event) => setDiscount((prev) => ({ ...prev, gameId: selectedGameId, discountPercent: Number(event.target.value) || undefined }))} />
+          </label>
+          <label>
+            Start date
+            <input className="input" type="datetime-local" value={discount.startDate ? discount.startDate.slice(0, 16) : ""} onChange={(event) => setDiscount((prev) => ({ ...prev, gameId: selectedGameId, startDate: event.target.value }))} />
+          </label>
+          <label>
+            End date
+            <input className="input" type="datetime-local" value={discount.endDate ? discount.endDate.slice(0, 16) : ""} onChange={(event) => setDiscount((prev) => ({ ...prev, gameId: selectedGameId, endDate: event.target.value }))} />
+          </label>
+          <label>
+            Active now
+            <input className="input" value={discount.isActive ? "Yes" : "No"} readOnly />
+          </label>
+        </div>
+
+        <div className="mt-3 flex gap-2">
+          <button className="btn btn-outline" onClick={handleSaveDiscount}>Save discount</button>
+          <button className="btn btn-outline" onClick={handleDeleteDiscount}>Delete discount</button>
         </div>
       </div>
 

@@ -8,6 +8,7 @@ using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using SuperBot.Core.Interfaces;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -17,7 +18,8 @@ namespace SuperBot.WebApi.Controllers
         IOrderRepository _orderRepository,
         IGameRepository _gameRepository,
         IMapper _mapper,
-        IMediator _mediator) : Controller
+        IMediator _mediator,
+        IPromoCodeService _promoCodeService) : Controller
     {
         [HttpPost("confirm/{orderId}")]
         public async Task<IActionResult> SetPaidSteamOrder(string orderId)
@@ -106,9 +108,41 @@ namespace SuperBot.WebApi.Controllers
             }
 
             var order = _mapper.Map<Order>(orderDto);
+            order.OrderDate = order.OrderDate == default ? DateTime.UtcNow : order.OrderDate;
+
+            if (!string.IsNullOrWhiteSpace(order.PromoCode) && order.TotalAmount.HasValue)
+            {
+                var validation = await _promoCodeService.ValidateAsync(new PromoValidationRequest
+                {
+                    Code = order.PromoCode,
+                    CartSubtotal = order.TotalAmount.Value,
+                    UserName = order.UserName
+                });
+
+                if (!validation.Valid)
+                {
+                    return BadRequest(new { message = validation.Message });
+                }
+
+                order.PromoCode = validation.NormalizedCode;
+                order.PromoDiscountAmount = validation.DiscountAmount;
+                order.TotalAmount = validation.FinalTotal;
+            }
+
             await _orderRepository.CreateOrderAsync(order);
 
-            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, orderDto);
+            if (!string.IsNullOrWhiteSpace(order.PromoCode) && order.TotalAmount.HasValue)
+            {
+                await _promoCodeService.RecordUsageAsync(new PromoApplyRequest
+                {
+                    Code = order.PromoCode,
+                    CartSubtotal = order.TotalAmount.Value + (order.PromoDiscountAmount ?? 0),
+                    UserName = order.UserName,
+                    OrderId = order.Id.ToString()
+                });
+            }
+
+            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, order);
         }
 
         // PUT: api/order/{id}

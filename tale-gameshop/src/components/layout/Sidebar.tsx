@@ -64,8 +64,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           },
           {
             label: "Prices/Discounts",
+            to: "/admin/promo-codes",
             icon: "💸",
-            disabled: true,
+            roles: ["admin"],
           },
         ],
       },
