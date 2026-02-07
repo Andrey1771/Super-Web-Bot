@@ -100,7 +100,14 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
                     <Route path="/blog/:slug" element={<BlogPostPage/>}/>
-                    <Route path="/account/*" element={<AccountRoutes/>}/>
+                    <Route
+                        path="/account/*"
+                        element={
+                            <PrivateRoute>
+                                <AccountRoutes />
+                            </PrivateRoute>
+                        }
+                    />
                 </Routes>
             {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
             {!isAdminRoute && <ChatWidget />}
