@@ -39,20 +39,27 @@ public class AccountController : ControllerBase
 
         var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
 
-        if (user != null && string.IsNullOrWhiteSpace(user.AvatarPath))
+        var resolvedAvatarPath = user?.AvatarPath;
+        var resolvedAvatarUpdatedAt = user?.AvatarUpdatedAt;
+        if (string.IsNullOrWhiteSpace(resolvedAvatarPath))
         {
             var recoveredAvatarPath = TryRecoverAvatarPath(userId);
             if (!string.IsNullOrWhiteSpace(recoveredAvatarPath))
             {
                 var recoveredAt = DateTime.UtcNow;
-                user.AvatarPath = recoveredAvatarPath;
-                user.AvatarUpdatedAt = recoveredAt;
+                resolvedAvatarPath = recoveredAvatarPath;
+                resolvedAvatarUpdatedAt = recoveredAt;
                 await _users.UpdateOneAsync(
                     u => u.UserId == userId,
                     Builders<UserDb>.Update
                         .Set(u => u.AvatarPath, recoveredAvatarPath)
                         .Set(u => u.AvatarUpdatedAt, recoveredAt)
                         .Set(u => u.UpdatedAt, recoveredAt)
+                        .SetOnInsert(u => u.UserId, userId)
+                        .SetOnInsert(u => u.Name, displayName ?? email ?? userId)
+                        .SetOnInsert(u => u.Username, displayName ?? email ?? userId)
+                        .SetOnInsert(u => u.CreatedAt, recoveredAt),
+                    new UpdateOptions { IsUpsert = true }
                 );
             }
         }
@@ -62,7 +69,7 @@ public class AccountController : ControllerBase
             UserId = userId,
             Email = email,
             DisplayName = user?.Name ?? displayName,
-            AvatarUrl = BuildAvatarUrl(user?.AvatarPath, user?.AvatarUpdatedAt)
+            AvatarUrl = BuildAvatarUrl(resolvedAvatarPath, resolvedAvatarUpdatedAt)
         });
     }
 
