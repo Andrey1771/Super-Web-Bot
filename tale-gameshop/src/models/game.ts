@@ -1,13 +1,14 @@
-// Типы данных для игры
 export interface Game {
     id?: string;
     slug?: string;
     name: string;
     description: string;
     price: number;
+    finalPrice?: number;
+    discountPercent?: number;
+    discountActive?: boolean;
     title: string;
-    gameType: number; // Соотносится с сервером
+    gameType: number;
     imagePath: string;
     releaseDate: string;
-    // добавьте другие поля в зависимости от структуры вашего объекта Game
 }

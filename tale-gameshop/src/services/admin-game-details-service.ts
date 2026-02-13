@@ -3,7 +3,7 @@ import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import container from "../inversify.config";
 import type { IAdminGameDetailsService } from "../iterfaces/i-admin-game-details-service";
-import type { GameDetails } from "../types/game-details";
+import type { AdminGameDiscount, GameDetails } from "../types/game-details";
 
 @injectable()
 export class AdminGameDetailsService implements IAdminGameDetailsService {
@@ -65,5 +65,20 @@ export class AdminGameDetailsService implements IAdminGameDetailsService {
   async updateRecommendations(id: string, payload: { similarGameIds: string[]; autoRecommendRules: GameDetails["autoRecommendRules"] }): Promise<GameDetails> {
     const response = await this._apiClient.api.put(`/api/admin/games/${id}/recommendations`, payload);
     return response.data;
+  }
+
+
+  async getDiscount(id: string): Promise<AdminGameDiscount> {
+    const response = await this._apiClient.api.get(`/api/admin/games/${id}/discount`);
+    return response.data;
+  }
+
+  async upsertDiscount(id: string, payload: { discountPercent: number; startDate: string; endDate: string }): Promise<AdminGameDiscount> {
+    const response = await this._apiClient.api.put(`/api/admin/games/${id}/discount`, payload);
+    return response.data;
+  }
+
+  async deleteDiscount(id: string): Promise<void> {
+    await this._apiClient.api.delete(`/api/admin/games/${id}/discount`);
   }
 }

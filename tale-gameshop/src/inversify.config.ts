@@ -39,6 +39,8 @@ import { IAnalyticsService } from "./iterfaces/i-analytics-service";
 import { IAdminAnalyticsService } from "./iterfaces/i-admin-analytics-service";
 import { IAdminGameDetailsService } from "./iterfaces/i-admin-game-details-service";
 import { AdminGameDetailsService } from "./services/admin-game-details-service";
+import { IAdminPromoCodesService } from "./iterfaces/i-admin-promo-codes-service";
+import { AdminPromoCodesService } from "./services/admin-promo-codes-service";
 
 const container = new Container();
 
@@ -64,5 +66,6 @@ container.bind<IAdminBlogService>(IDENTIFIERS.IAdminBlogService).to(AdminBlogSer
 container.bind<IAnalyticsService>(IDENTIFIERS.IAnalyticsService).to(AnalyticsService).inSingletonScope();
 container.bind<IAdminAnalyticsService>(IDENTIFIERS.IAdminAnalyticsService).to(AdminAnalyticsService).inSingletonScope();
 container.bind<IAdminGameDetailsService>(IDENTIFIERS.IAdminGameDetailsService).to(AdminGameDetailsService).inSingletonScope();
+container.bind<IAdminPromoCodesService>(IDENTIFIERS.IAdminPromoCodesService).to(AdminPromoCodesService).inSingletonScope();
 
 export default container;

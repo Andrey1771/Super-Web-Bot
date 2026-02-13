@@ -116,6 +116,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 builder.Services.AddScoped<MongoDbInitializer>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepository>();
 builder.Services.AddScoped<IGameDetailsRepository, GameDetailsMongoDbRepository>();
 builder.Services.AddScoped<IMediaAssetRepository, MediaAssetMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
@@ -133,10 +134,13 @@ builder.Services.AddScoped<IGameQuestionRepository, GameQuestionMongoDbRepositor
 builder.Services.AddScoped<IGameTrackingRepository, GameTrackingMongoDbRepository>();
 builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
 builder.Services.AddScoped<IBlogRecommendationsService, BlogRecommendationsService>();
+builder.Services.AddScoped<IPromoCodeService, PromoCodeService>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
+builder.Services.AddScoped<IPromoCodeRepository, PromoCodeMongoDbRepository>();
+builder.Services.AddScoped<IPromoCodeUsageRepository, PromoCodeUsageMongoDbRepository>();
 builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddScoped<SupportRoleEvaluator>();
@@ -146,12 +150,14 @@ builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportChatSer
 
 
 builder.Services.AddAutoMapper(typeof(GameProfile));
+builder.Services.AddAutoMapper(typeof(GameDiscountProfile));
 builder.Services.AddAutoMapper(typeof(GameDetailsProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
 builder.Services.AddAutoMapper(typeof(MediaAssetProfile));
 builder.Services.AddAutoMapper(typeof(BlogProfile));
 builder.Services.AddAutoMapper(typeof(AnalyticsSettingsProfile));
 builder.Services.AddAutoMapper(typeof(ImportJobProfile));
+builder.Services.AddAutoMapper(typeof(PromoCodeProfile));
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<Ga4Client>();

@@ -39,7 +39,9 @@ namespace SuperBot.WebApi.Services
                 "SupportAttachments",
                 "SupportTicketCounters",
                 "SupportChatSessions",
-                "SupportChatMessages"
+                "SupportChatMessages",
+                "PromoCodes",
+                "PromoCodeUsages"
             };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
@@ -216,6 +218,22 @@ namespace SuperBot.WebApi.Services
             await blogProfilesCollection.Indexes.CreateOneAsync(blogProfileUserIndex);
             await blogProfilesCollection.Indexes.CreateOneAsync(blogProfileAnonIndex);
             await blogProfilesCollection.Indexes.CreateOneAsync(blogProfileUpdatedIndex);
+
+            var promoCodeCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PromoCodeDb>("PromoCodes");
+            var promoCodeIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PromoCodeDb>(
+                Builders<SuperBot.Infrastructure.Data.PromoCodeDb>.IndexKeys.Ascending(item => item.Code),
+                new CreateIndexOptions { Name = "ix_promo_codes_code", Unique = true }
+            );
+            await promoCodeCollection.Indexes.CreateOneAsync(promoCodeIndex);
+
+            var promoUsageCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PromoCodeUsageDb>("PromoCodeUsages");
+            var promoUsageCodeIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PromoCodeUsageDb>(
+                Builders<SuperBot.Infrastructure.Data.PromoCodeUsageDb>.IndexKeys
+                    .Ascending(item => item.PromoCodeId)
+                    .Ascending(item => item.UserName),
+                new CreateIndexOptions { Name = "ix_promo_usages_code_user" }
+            );
+            await promoUsageCollection.Indexes.CreateOneAsync(promoUsageCodeIndex);
 
             var gameKeyCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameKeyDb>("GameKeys");
             var gameKeyUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(
