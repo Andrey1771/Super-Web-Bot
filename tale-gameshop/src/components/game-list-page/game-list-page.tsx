@@ -747,23 +747,25 @@ const TaleGameshopGameList: React.FC = () => {
                     </p>
                 </div>
 
-                <section className="mt-10 grid gap-6 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
+                <div className="mt-10">
+                    <label className="flex w-full items-center gap-2 rounded-[14px] border border-[#e6e1ff] bg-white px-4 py-3 text-sm text-[#6b64a8] shadow-sm">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#9b92c4]">
+                            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+                            <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                        <input
+                            type="text"
+                            className="w-full bg-transparent text-sm text-[#5a5286] placeholder:text-[#b0a7d4] focus:outline-none"
+                            placeholder="Search games..."
+                            value={searchNameDraft}
+                            onChange={handleSearchChange}
+                        />
+                    </label>
+                </div>
+
+                <section className="mt-4 grid gap-6 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
                     <aside className="rounded-[22px] border border-[#ece8ff] bg-white p-5 shadow-[0_18px_38px_rgba(92,69,160,0.12)]">
                         <h2 className="text-2xl font-semibold text-[#2b2350]">Filters</h2>
-
-                        <label className="mt-5 flex items-center gap-2 rounded-[14px] border border-[#e6e1ff] bg-white px-3 py-2 text-sm text-[#6b64a8] shadow-sm">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#9b92c4]">
-                                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
-                                <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                            <input
-                                type="text"
-                                className="w-full bg-transparent text-sm text-[#5a5286] placeholder:text-[#b0a7d4] focus:outline-none"
-                                placeholder="Search games..."
-                                value={searchNameDraft}
-                                onChange={handleSearchChange}
-                            />
-                        </label>
 
                         <div className="mt-6 border-t border-[#f0ebff] pt-5">
                             <h3 className="text-lg font-semibold text-[#2b2350]">Categories</h3>
