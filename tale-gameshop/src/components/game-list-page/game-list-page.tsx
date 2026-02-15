@@ -209,8 +209,7 @@ const TaleGameshopGameList: React.FC = () => {
         }, 600);
     };
 
-    const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = event.target.value;
+    const setCategoryFilter = (value: string) => {
         patchSearchParams((params) => {
             if (value) {
                 params.set('filterCategory', value);
@@ -220,11 +219,20 @@ const TaleGameshopGameList: React.FC = () => {
         });
     };
 
+    const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        setCategoryFilter(event.target.value);
+    };
+
     const clearAllFilters = () => {
         setSearchNameDraft('');
         patchSearchParams((params) => {
             params.delete('filterCategory');
             params.delete('filterName');
+            params.delete('filterMinPrice');
+            params.delete('filterMaxPrice');
+            params.delete('sortBy');
+            params.delete('page');
+            params.delete('platforms');
         });
     };
 
@@ -280,6 +288,44 @@ const TaleGameshopGameList: React.FC = () => {
 
         return categoryOptions.length > 0 ? categoryOptions : categoryOrder;
     }, [settingsCategories, categoryOptions]);
+
+    const availablePlatforms = useMemo(() => {
+        const platformValues = new Set<string>();
+        games.forEach((game) => {
+            const platformField = (game as Game & { platform?: string; platforms?: string[] }).platform;
+            const platformsField = (game as Game & { platform?: string; platforms?: string[] }).platforms;
+
+            if (platformField) {
+                platformValues.add(platformField);
+            }
+
+            if (Array.isArray(platformsField)) {
+                platformsField.forEach((platform) => platformValues.add(platform));
+            }
+        });
+        return Array.from(platformValues).sort((a, b) => a.localeCompare(b));
+    }, [games]);
+
+    const availablePrices = useMemo(() => {
+        const prices = games
+            .map((game) => Number(game.finalPrice ?? game.price))
+            .filter((price) => Number.isFinite(price) && price >= 0);
+        const min = prices.length > 0 ? Math.floor(Math.min(...prices)) : 0;
+        const max = prices.length > 0 ? Math.ceil(Math.max(...prices)) : 100;
+        return { min, max };
+    }, [games]);
+
+    const selectedPlatforms = useMemo(() => {
+        return (searchParams.get('platforms') ?? '')
+            .split(',')
+            .map((platform) => platform.trim())
+            .filter(Boolean);
+    }, [searchParams]);
+
+    const minPriceFilter = Number(searchParams.get('filterMinPrice') ?? availablePrices.min);
+    const maxPriceFilter = Number(searchParams.get('filterMaxPrice') ?? availablePrices.max);
+    const sortBy = searchParams.get('sortBy') ?? 'popular';
+    const currentPage = Math.max(1, Number(searchParams.get('page') ?? 1));
 
     const getCollapsed = useCallback(
         (category: string) => {
@@ -619,6 +665,76 @@ const TaleGameshopGameList: React.FC = () => {
         return descriptions;
     }, [settings]);
 
+    const filteredGames = useMemo(() => {
+        const byCategory = categoriesForDisplay.flatMap((category) => {
+            const categoryGames = filteredGamesByCategory.get(category) ?? [];
+            return categoryGames.map((game) => ({ category, game }));
+        });
+
+        const withPlatform = byCategory.filter(({ game }) => {
+            if (selectedPlatforms.length === 0) {
+                return true;
+            }
+
+            const platformField = (game as Game & { platform?: string; platforms?: string[] }).platform;
+            const platformsField = (game as Game & { platform?: string; platforms?: string[] }).platforms;
+            const gamePlatforms = [
+                ...(platformField ? [platformField] : []),
+                ...(Array.isArray(platformsField) ? platformsField : [])
+            ];
+
+            return selectedPlatforms.some((platform) => gamePlatforms.includes(platform));
+        });
+
+        const withinPriceRange = withPlatform.filter(({ game }) => {
+            const price = Number(game.finalPrice ?? game.price);
+            return price >= minPriceFilter && price <= maxPriceFilter;
+        });
+
+        const sorted = [...withinPriceRange].sort((a, b) => {
+            const leftPrice = Number(a.game.finalPrice ?? a.game.price);
+            const rightPrice = Number(b.game.finalPrice ?? b.game.price);
+
+            if (sortBy === 'price-asc') {
+                return leftPrice - rightPrice;
+            }
+            if (sortBy === 'price-desc') {
+                return rightPrice - leftPrice;
+            }
+            if (sortBy === 'name-asc') {
+                return a.game.title.localeCompare(b.game.title);
+            }
+            if (sortBy === 'name-desc') {
+                return b.game.title.localeCompare(a.game.title);
+            }
+            return 0;
+        });
+
+        return sorted;
+    }, [
+        categoriesForDisplay,
+        filteredGamesByCategory,
+        maxPriceFilter,
+        minPriceFilter,
+        selectedPlatforms,
+        sortBy
+    ]);
+
+    const pageSize = 12;
+    const totalPages = Math.max(1, Math.ceil(filteredGames.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginatedGames = filteredGames.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+
+    const updateParams = (patchFn: (params: URLSearchParams) => void) => {
+        patchSearchParams((params) => {
+            patchFn(params);
+            const nextPage = Number(params.get('page') ?? 1);
+            if (nextPage < 1) {
+                params.set('page', '1');
+            }
+        });
+    };
+
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
             <div className="pointer-events-none fixed left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(204,190,255,0.55)_0%,rgba(246,242,251,0.1)_70%)] blur-3xl" />
@@ -631,198 +747,287 @@ const TaleGameshopGameList: React.FC = () => {
                     </p>
                 </div>
 
-                <div className="mt-10 rounded-[22px] border border-[#ece8ff] bg-white/80 p-5 shadow-[0_18px_38px_rgba(92,69,160,0.12)] backdrop-blur">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex flex-1 flex-wrap items-center gap-3">
-                            <label className="relative flex w-full max-w-[260px] items-center rounded-[14px] border border-[#e6e1ff] bg-white px-4 py-2 text-sm text-[#6b64a8] shadow-sm">
-                                <span className="mr-2 text-[#9b92c4]">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
-                                        <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                    </svg>
-                                </span>
-                                <input
-                                    type="text"
-                                    className="w-full bg-transparent text-sm text-[#5a5286] placeholder:text-[#b0a7d4] focus:outline-none"
-                                    placeholder="Search games..."
-                                    value={searchNameDraft}
-                                    onChange={handleSearchChange}
-                                />
-                            </label>
+                <section className="mt-10 grid gap-6 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
+                    <aside className="rounded-[22px] border border-[#ece8ff] bg-white p-5 shadow-[0_18px_38px_rgba(92,69,160,0.12)]">
+                        <h2 className="text-2xl font-semibold text-[#2b2350]">Filters</h2>
 
-                            <div className="relative">
-                                <select
-                                    className="h-10 rounded-[14px] border border-[#e6e1ff] bg-white px-4 pr-8 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none"
-                                    value={filterCategory}
-                                    onChange={handleCategoryChange}
-                                >
-                                    <option value="">All categories</option>
-                                    {categoryOptions.map((category) => (
-                                        <option key={category} value={category}>
-                                            {category}
-                                        </option>
-                                    ))}
-                                </select>
-                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9b92c4]">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                                        <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                    </svg>
-                                </span>
-                            </div>
+                        <label className="mt-5 flex items-center gap-2 rounded-[14px] border border-[#e6e1ff] bg-white px-3 py-2 text-sm text-[#6b64a8] shadow-sm">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#9b92c4]">
+                                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+                                <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                            <input
+                                type="text"
+                                className="w-full bg-transparent text-sm text-[#5a5286] placeholder:text-[#b0a7d4] focus:outline-none"
+                                placeholder="Search games..."
+                                value={searchNameDraft}
+                                onChange={handleSearchChange}
+                            />
+                        </label>
 
-                            <div className="relative">
-                                <select className="h-10 rounded-[14px] border border-[#e6e1ff] bg-white px-4 pr-8 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none">
-                                    <option>Any price</option>
-                                </select>
-                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9b92c4]">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                                        <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                    </svg>
-                                </span>
-                            </div>
-
-                            <div className="relative">
-                                <select className="h-10 rounded-[14px] border border-[#e6e1ff] bg-white px-4 pr-8 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none">
-                                    <option>All platforms</option>
-                                </select>
-                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9b92c4]">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                                        <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                    </svg>
-                                </span>
-                            </div>
-
-                            <div className="relative">
-                                <select className="h-10 rounded-[14px] border border-[#e6e1ff] bg-white px-4 pr-8 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none">
-                                    <option>Sort by: Most Popular</option>
-                                </select>
-                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9b92c4]">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                                        <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                    </svg>
-                                </span>
+                        <div className="mt-6 border-t border-[#f0ebff] pt-5">
+                            <h3 className="text-lg font-semibold text-[#2b2350]">Categories</h3>
+                            <div className="mt-3 space-y-2">
+                                {categoryOptions.map((category) => {
+                                    const checked = filterCategory === category;
+                                    return (
+                                        <label key={category} className="flex cursor-pointer items-center gap-3 text-sm text-[#5a5286]">
+                                            <input
+                                                type="checkbox"
+                                                className="h-4 w-4 rounded border-[#d8d0ff] text-[#6b3ff2] focus:ring-[#6b3ff2]"
+                                                checked={checked}
+                                                onChange={() => setCategoryFilter(checked ? '' : category)}
+                                            />
+                                            <span>{category}</span>
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        {availablePlatforms.length > 0 && (
+                            <div className="mt-6 border-t border-[#f0ebff] pt-5">
+                                <h3 className="text-lg font-semibold text-[#2b2350]">Platforms</h3>
+                                <div className="mt-3 space-y-2">
+                                    {availablePlatforms.map((platform) => {
+                                        const checked = selectedPlatforms.includes(platform);
+                                        return (
+                                            <label key={platform} className="flex cursor-pointer items-center gap-3 text-sm text-[#5a5286]">
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 rounded border-[#d8d0ff] text-[#6b3ff2] focus:ring-[#6b3ff2]"
+                                                    checked={checked}
+                                                    onChange={() =>
+                                                        updateParams((params) => {
+                                                            const next = checked
+                                                                ? selectedPlatforms.filter((item) => item !== platform)
+                                                                : [...selectedPlatforms, platform];
+                                                            if (next.length > 0) {
+                                                                params.set('platforms', next.join(','));
+                                                            } else {
+                                                                params.delete('platforms');
+                                                            }
+                                                            params.set('page', '1');
+                                                        })
+                                                    }
+                                                />
+                                                <span>{platform}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-6 border-t border-[#f0ebff] pt-5">
+                            <h3 className="text-lg font-semibold text-[#2b2350]">Price</h3>
+                            <input
+                                type="range"
+                                min={availablePrices.min}
+                                max={availablePrices.max}
+                                value={maxPriceFilter}
+                                className="mt-4 w-full accent-[#6b3ff2]"
+                                onChange={(event) => {
+                                    const value = Number(event.target.value);
+                                    updateParams((params) => {
+                                        params.set('filterMaxPrice', String(value));
+                                        params.set('filterMinPrice', String(Math.min(minPriceFilter, value)));
+                                        params.set('page', '1');
+                                    });
+                                }}
+                            />
+                            <div className="mt-3 grid grid-cols-2 gap-3">
+                                <input
+                                    type="number"
+                                    min={availablePrices.min}
+                                    max={availablePrices.max}
+                                    value={minPriceFilter}
+                                    className="h-10 rounded-[12px] border border-[#e6e1ff] px-3 text-sm text-[#5a5286] focus:outline-none"
+                                    onChange={(event) => {
+                                        const value = Number(event.target.value);
+                                        updateParams((params) => {
+                                            if (Number.isFinite(value)) {
+                                                params.set('filterMinPrice', String(value));
+                                                params.set('page', '1');
+                                            }
+                                        });
+                                    }}
+                                />
+                                <input
+                                    type="number"
+                                    min={availablePrices.min}
+                                    max={availablePrices.max}
+                                    value={maxPriceFilter}
+                                    className="h-10 rounded-[12px] border border-[#e6e1ff] px-3 text-sm text-[#5a5286] focus:outline-none"
+                                    onChange={(event) => {
+                                        const value = Number(event.target.value);
+                                        updateParams((params) => {
+                                            if (Number.isFinite(value)) {
+                                                params.set('filterMaxPrice', String(value));
+                                                params.set('page', '1');
+                                            }
+                                        });
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-6 grid grid-cols-2 gap-3">
                             <button
-                                className="flex items-center gap-2 rounded-[12px] border border-[#e6e1ff] bg-white px-4 py-2 text-sm font-semibold text-[#6b64a8] shadow-sm"
+                                className="rounded-[12px] border border-[#6b3ff2] bg-transparent px-4 py-2 text-sm font-semibold text-[#6b3ff2]"
                                 onClick={clearAllFilters}
                             >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                    <path
-                                        d="M7 7h10l-3 4v5l-4 2v-7L7 7Z"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        strokeLinejoin="round"
-                                    />
-                                </svg>
                                 Reset
                             </button>
-                            <button className="rounded-[12px] bg-[#6b3ff2] px-5 py-2 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(107,63,242,0.28)]">
+                            <button
+                                className="rounded-[12px] bg-[#6b3ff2] px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(107,63,242,0.28)]"
+                                onClick={() => updateParams((params) => params.set('page', '1'))}
+                            >
                                 Apply Filters
                             </button>
                         </div>
-                    </div>
+                    </aside>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                        <button
-                            className="rounded-full border border-[#e6e1ff] bg-white px-3 py-1.5 text-xs font-semibold text-[#6b64a8]"
-                            onClick={clearAllFilters}
-                        >
-                            Reset
-                        </button>
-                        <button className="rounded-full border border-[#e6e1ff] bg-white px-3 py-1.5 text-xs font-semibold text-[#6b64a8]">
-                            Under $20
-                        </button>
-                        <button
-                            className="rounded-full border border-[#e6e1ff] bg-white px-3 py-1.5 text-xs font-semibold text-[#6b64a8]"
-                            onClick={clearAllFilters}
-                        >
-                            Clear all
-                        </button>
-                    </div>
-                </div>
+                    <div>
+                        <div className="mb-5 flex items-center justify-end">
+                            <div className="relative">
+                                <select
+                                    className="h-11 rounded-[12px] border border-[#e6e1ff] bg-white px-4 pr-9 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none"
+                                    value={sortBy}
+                                    onChange={(event) =>
+                                        updateParams((params) => {
+                                            params.set('sortBy', event.target.value);
+                                            params.set('page', '1');
+                                        })
+                                    }
+                                >
+                                    <option value="popular">Sort by: Most Popular</option>
+                                    <option value="price-asc">Sort by: Price Low to High</option>
+                                    <option value="price-desc">Sort by: Price High to Low</option>
+                                    <option value="name-asc">Sort by: Name A-Z</option>
+                                    <option value="name-desc">Sort by: Name Z-A</option>
+                                </select>
+                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9b92c4]">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                                        <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                                    </svg>
+                                </span>
+                            </div>
+                        </div>
 
-                <div className="mt-10 space-y-6">
-                    {categoriesForDisplay.map((category, index) => {
-                        const isCollapsed = getCollapsed(category);
-                        const description = categoryDescriptions.get(category);
-                        const displayGames = filteredGamesByCategory.get(category) ?? [];
-                        const isFirstSection = index === 0;
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {paginatedGames.map(({ category, game }, index) => {
+                                const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
+                                const finalPrice = Number(game.finalPrice ?? game.price);
+                                const wishlistKey = resolveWishlistKey(game);
+                                const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
 
-                        return (
-                            <section
-                                key={category}
-                                className="rounded-[22px] border border-[#ece8ff] bg-white/70 p-6 shadow-[0_16px_34px_rgba(97,75,164,0.1)]"
-                            >
-                                <div className="flex flex-wrap items-center justify-between gap-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#f0ebff]">
-                                            {resolveIcon(category)}
-                                        </div>
-                                        <div>
-                                            <h2 className="text-xl font-semibold text-[#2b2350]">{category}</h2>
-                                            {description && <p className="mt-1 text-sm text-[#6f64a8]">{description}</p>}
-                                        </div>
-                                    </div>
-                                    <button
-                                        className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e6e1ff] bg-white text-[#6b64a8] shadow-sm transition hover:border-[#cfc6ff]"
-                                        onClick={() => toggleCollapsed(category)}
-                                        aria-label={isCollapsed ? 'Expand category' : 'Collapse category'}
+                                return (
+                                    <article
+                                        key={`${game.id ?? index}-${category}`}
+                                        className="group overflow-hidden rounded-xl border border-[#ece8ff] bg-white shadow-sm transition hover:shadow-md"
                                     >
-                                        <svg
-                                            className={`h-3 w-3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                        >
-                                            <path
-                                                d="m6 9 6 6 6-6"
-                                                stroke="currentColor"
-                                                strokeWidth="1.6"
-                                                strokeLinecap="round"
+                                        <div className="relative h-44 overflow-hidden">
+                                            <Link
+                                                to={`/games/${gameSlug}`}
+                                                className="absolute inset-0 z-[1]"
+                                                aria-label={`Open ${game.title}`}
+                                                onClick={() => handleRecordViewed(game)}
                                             />
-                                        </svg>
-                                    </button>
-                                </div>
+                                            {renderImage(game)}
+                                            <button
+                                                type="button"
+                                                className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
+                                                    isWishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
+                                                }`}
+                                                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                                                aria-pressed={isWishlisted}
+                                                onClick={() => handleToggleWishlist(game)}
+                                                disabled={!wishlistKey}
+                                            >
+                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill={isWishlisted ? 'currentColor' : 'none'}>
+                                                    <path
+                                                        d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
+                                                        stroke="currentColor"
+                                                        strokeWidth="1.5"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
 
-                                {!isCollapsed && (
-                                    <div
-                                        className={`mt-6 grid gap-5 ${
-                                            isFirstSection
-                                                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-                                                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-                                        }`}
-                                    >
-                                        {displayGames.map((game, gameIndex) => {
-                                            const showLarge = isFirstSection && gameIndex === 0;
-                                            const cardVariant = showLarge ? 'large' : 'small';
-                                            const badge = showLarge && Boolean(game.discountActive);
-                                            const cardSpan = showLarge ? 'lg:col-span-2 md:col-span-2' : '';
-
-                                            return (
-                                                <div key={`${category}-${game.id ?? gameIndex}`} className={cardSpan}>
-                                                    <CatalogCard game={game} variant={cardVariant} showBadge={badge} />
-                                                </div>
-                                            );
-                                        })}
-                                        {displayGames.length === 0 && (
-                                            <div className="col-span-full rounded-[16px] border border-dashed border-[#e6e1ff] bg-white/70 py-8 text-center text-sm text-[#8a81b5]">
-                                                No games available yet.
+                                        <div className="space-y-3 p-4">
+                                            <h3 className="text-[28px] leading-tight font-semibold text-[#2c2354]">
+                                                <Link to={`/games/${gameSlug}`} onClick={() => handleRecordViewed(game)}>
+                                                    {game.title}
+                                                </Link>
+                                            </h3>
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#5b21b6]">
+                                                <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none">
+                                                    <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
+                                                    <circle cx="10" cy="10" r="1.8" fill="currentColor" />
+                                                </svg>
+                                                {category}
+                                            </span>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-2xl font-semibold text-[#2b2350]">${finalPrice.toFixed(2)}</span>
+                                                <button
+                                                    className="rounded-[12px] bg-[#6b3ff2] px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(107,63,242,0.28)]"
+                                                    onClick={() => handleAddToCart(game)}
+                                                >
+                                                    Add to Cart
+                                                </button>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-                            </section>
-                        );
-                    })}
-                </div>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                            {paginatedGames.length === 0 && (
+                                <div className="col-span-full rounded-[16px] border border-dashed border-[#e6e1ff] bg-white/70 py-12 text-center text-sm text-[#8a81b5]">
+                                    No games found for current filters.
+                                </div>
+                            )}
+                        </div>
 
-                <div className="mt-10 flex justify-center">
-                    <button className="rounded-full border border-[#e6e1ff] bg-white px-8 py-3 text-sm font-semibold text-[#6b64a8] shadow-sm">
-                        Load More
-                    </button>
-                </div>
+                        <div className="mt-8 flex items-center justify-center gap-2">
+                            <button
+                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#e6e1ff] bg-white text-[#6b64a8] disabled:opacity-50"
+                                onClick={() =>
+                                    updateParams((params) => {
+                                        params.set('page', String(Math.max(1, safeCurrentPage - 1)));
+                                    })
+                                }
+                                disabled={safeCurrentPage <= 1}
+                            >
+                                ‹
+                            </button>
+                            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    className={`flex h-10 min-w-10 items-center justify-center rounded-[12px] px-3 text-sm font-semibold ${
+                                        page === safeCurrentPage
+                                            ? 'bg-[#6b3ff2] text-white'
+                                            : 'border border-[#e6e1ff] bg-white text-[#6b64a8]'
+                                    }`}
+                                    onClick={() => updateParams((params) => params.set('page', String(page)))}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                            <button
+                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#e6e1ff] bg-white text-[#6b64a8] disabled:opacity-50"
+                                onClick={() =>
+                                    updateParams((params) => {
+                                        params.set('page', String(Math.min(totalPages, safeCurrentPage + 1)));
+                                    })
+                                }
+                                disabled={safeCurrentPage >= totalPages}
+                            >
+                                ›
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
                 <section className="mt-12">
                     <div className="max-w-2xl">
