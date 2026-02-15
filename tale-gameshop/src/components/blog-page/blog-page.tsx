@@ -80,6 +80,8 @@ export default function BlogPage() {
     const [sort, setSort] = useState(sortOptions[0]);
     const [recommendations, setRecommendations] = useState<BlogRecommendationsResponse | null>(null);
     const [editorsSliderPosts, setEditorsSliderPosts] = useState<BlogListItem[]>([]);
+    const [mainFeaturedPost, setMainFeaturedPost] = useState<BlogListItem | null>(null);
+    const [editorFallbackPosts, setEditorFallbackPosts] = useState<BlogListItem[]>([]);
     const [activeEditorSlide, setActiveEditorSlide] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -89,26 +91,31 @@ export default function BlogPage() {
             try {
                 setLoading(true);
                 setError(null);
-                const [recommendationResponse, featuredResponse] = await Promise.all([
+                const [recommendationResponse, featuredResponse, mainFeaturedResponse, fallbackResponse] = await Promise.all([
                     blogService.getHomeRecommendations({
                         anonId: getAnonId(),
                         limit: RECOMMENDATION_LIMIT
                     }),
-                    blogService.getPosts({ page: 1, pageSize: 5, featured: true })
+                    blogService.getPosts({ page: 1, pageSize: 12, featured: true }),
+                    blogService.getPosts({ page: 1, pageSize: 1, mainFeatured: true }),
+                    blogService.getPosts({ page: 1, pageSize: 12 })
                 ]);
 
                 setRecommendations(recommendationResponse);
+                setMainFeaturedPost(mainFeaturedResponse.items[0] ?? null);
+                setEditorFallbackPosts(fallbackResponse.items);
 
                 if (featuredResponse.items.length > 0) {
                     setEditorsSliderPosts(featuredResponse.items);
                 } else {
-                    const fallbackResponse = await blogService.getPosts({ page: 1, pageSize: 3 });
-                    setEditorsSliderPosts(fallbackResponse.items.slice(0, 3));
+                    setEditorsSliderPosts(fallbackResponse.items);
                 }
             } catch (fetchError) {
                 console.error(fetchError);
                 setError("Unable to load blog posts.");
                 setEditorsSliderPosts([]);
+                setMainFeaturedPost(null);
+                setEditorFallbackPosts([]);
             } finally {
                 setLoading(false);
             }
@@ -155,25 +162,25 @@ export default function BlogPage() {
         .filter(matchesFilters);
 
     const editorCandidates = useMemo(() => {
-        return editorsSliderPosts.filter(matchesFilters);
-    }, [editorsSliderPosts, matchesFilters]);
+        return editorsSliderPosts;
+    }, [editorsSliderPosts]);
 
     const mainEditorPost = useMemo(() => {
-        if (editorCandidates.length === 0) {
-            return null;
+        if (mainFeaturedPost) {
+            return mainFeaturedPost;
         }
 
-        const manuallySelected = editorCandidates.find((post) => post.mainFeatured);
-        if (manuallySelected) {
-            return manuallySelected;
+        if (editorCandidates.length > 0) {
+            return editorCandidates[0];
         }
 
-        return editorCandidates[0] ?? null;
-    }, [editorCandidates]);
+        return editorFallbackPosts[0] ?? null;
+    }, [editorCandidates, editorFallbackPosts, mainFeaturedPost]);
 
     const sideEditorPosts = useMemo(() => {
-        return editorCandidates.filter((post) => post.id !== mainEditorPost?.id);
-    }, [editorCandidates, mainEditorPost]);
+        const rotationSource = editorCandidates.length > 0 ? editorCandidates : editorFallbackPosts;
+        return rotationSource.filter((post) => post.id !== mainEditorPost?.id);
+    }, [editorCandidates, editorFallbackPosts, mainEditorPost]);
 
     const sidePageCount = Math.max(1, Math.ceil(sideEditorPosts.length / 3));
     const sidePageStart = activeEditorSlide * 3;
@@ -440,7 +447,7 @@ export default function BlogPage() {
                         )}
 
                         <aside className="editors-side-card">
-                            <div className="editors-side-list">
+                            <div className="editors-side-list" key={activeEditorSlide}>
                                 {visibleSidePosts.map((item) => (
                                     <Link className="editors-side-item" key={item.id} to={`/blog/${item.slug}`}>
                                         <img src={getCover(item)} alt={item.title} />
@@ -451,27 +458,25 @@ export default function BlogPage() {
                                     </Link>
                                 ))}
                             </div>
-                            {sidePageCount > 1 && (
-                                <div className="editors-dots" aria-label="Editor picks slider controls">
-                                    <button className="dot-btn" type="button" onClick={handlePrevEditorSlide}>
-                                        <FontAwesomeIcon icon={faChevronLeft} />
-                                    </button>
-                                    <div className="dot-track">
-                                        {Array.from({ length: sidePageCount }).map((_, index) => (
-                                            <button
-                                                key={index}
-                                                className={`dot ${index === activeEditorSlide ? "active" : ""}`}
-                                                type="button"
-                                                aria-label={`Go to page ${index + 1}`}
-                                                onClick={() => setActiveEditorSlide(index)}
-                                            />
-                                        ))}
-                                    </div>
-                                    <button className="dot-btn" type="button" onClick={handleNextEditorSlide}>
-                                        <FontAwesomeIcon icon={faChevronRight} />
-                                    </button>
+                            <div className="editors-dots" aria-label="Editor picks slider controls">
+                                <button className="dot-btn" type="button" onClick={handlePrevEditorSlide} disabled={sidePageCount <= 1}>
+                                    <FontAwesomeIcon icon={faChevronLeft} />
+                                </button>
+                                <div className="dot-track">
+                                    {Array.from({ length: sidePageCount }).map((_, index) => (
+                                        <button
+                                            key={index}
+                                            className={`dot ${index === activeEditorSlide ? "active" : ""}`}
+                                            type="button"
+                                            aria-label={`Go to page ${index + 1}`}
+                                            onClick={() => setActiveEditorSlide(index)}
+                                        />
+                                    ))}
                                 </div>
-                            )}
+                                <button className="dot-btn" type="button" onClick={handleNextEditorSlide} disabled={sidePageCount <= 1}>
+                                    <FontAwesomeIcon icon={faChevronRight} />
+                                </button>
+                            </div>
                         </aside>
                     </div>
                 </div>
