@@ -289,22 +289,47 @@ const TaleGameshopGameList: React.FC = () => {
         return categoryOptions.length > 0 ? categoryOptions : categoryOrder;
     }, [settingsCategories, categoryOptions]);
 
+    const extractPlatformsFromGame = useCallback((game: Game) => {
+        const gameWithPlatforms = game as Game & {
+            platform?: string;
+            platforms?: string[] | string;
+            supportedPlatforms?: string[] | string;
+        };
+
+        const normalizeValue = (value: string) =>
+            value
+                .split(/[;,/]/)
+                .map((item) => item.trim())
+                .filter(Boolean);
+
+        const values: string[] = [];
+
+        if (typeof gameWithPlatforms.platform === 'string') {
+            values.push(...normalizeValue(gameWithPlatforms.platform));
+        }
+
+        if (Array.isArray(gameWithPlatforms.platforms)) {
+            values.push(...gameWithPlatforms.platforms.map((item) => item.trim()).filter(Boolean));
+        } else if (typeof gameWithPlatforms.platforms === 'string') {
+            values.push(...normalizeValue(gameWithPlatforms.platforms));
+        }
+
+        if (Array.isArray(gameWithPlatforms.supportedPlatforms)) {
+            values.push(...gameWithPlatforms.supportedPlatforms.map((item) => item.trim()).filter(Boolean));
+        } else if (typeof gameWithPlatforms.supportedPlatforms === 'string') {
+            values.push(...normalizeValue(gameWithPlatforms.supportedPlatforms));
+        }
+
+        return Array.from(new Set(values));
+    }, []);
+
     const availablePlatforms = useMemo(() => {
         const platformValues = new Set<string>();
         games.forEach((game) => {
-            const platformField = (game as Game & { platform?: string; platforms?: string[] }).platform;
-            const platformsField = (game as Game & { platform?: string; platforms?: string[] }).platforms;
-
-            if (platformField) {
-                platformValues.add(platformField);
-            }
-
-            if (Array.isArray(platformsField)) {
-                platformsField.forEach((platform) => platformValues.add(platform));
-            }
+            extractPlatformsFromGame(game).forEach((platform) => platformValues.add(platform));
         });
         return Array.from(platformValues).sort((a, b) => a.localeCompare(b));
-    }, [games]);
+    }, [extractPlatformsFromGame, games]);
 
     const availablePrices = useMemo(() => {
         const prices = games
@@ -676,12 +701,7 @@ const TaleGameshopGameList: React.FC = () => {
                 return true;
             }
 
-            const platformField = (game as Game & { platform?: string; platforms?: string[] }).platform;
-            const platformsField = (game as Game & { platform?: string; platforms?: string[] }).platforms;
-            const gamePlatforms = [
-                ...(platformField ? [platformField] : []),
-                ...(Array.isArray(platformsField) ? platformsField : [])
-            ];
+            const gamePlatforms = extractPlatformsFromGame(game);
 
             return selectedPlatforms.some((platform) => gamePlatforms.includes(platform));
         });
@@ -717,7 +737,8 @@ const TaleGameshopGameList: React.FC = () => {
         maxPriceFilter,
         minPriceFilter,
         selectedPlatforms,
-        sortBy
+        sortBy,
+        extractPlatformsFromGame
     ]);
 
     const pageSize = 12;
@@ -787,39 +808,40 @@ const TaleGameshopGameList: React.FC = () => {
                             </div>
                         </div>
 
-                        {availablePlatforms.length > 0 && (
-                            <div className="mt-6 border-t border-[#f0ebff] pt-5">
-                                <h3 className="text-lg font-semibold text-[#2b2350]">Platforms</h3>
-                                <div className="mt-3 space-y-2">
-                                    {availablePlatforms.map((platform) => {
-                                        const checked = selectedPlatforms.includes(platform);
-                                        return (
-                                            <label key={platform} className="flex cursor-pointer items-center gap-3 text-sm text-[#5a5286]">
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-4 w-4 rounded border-[#d8d0ff] text-[#6b3ff2] focus:ring-[#6b3ff2]"
-                                                    checked={checked}
-                                                    onChange={() =>
-                                                        updateParams((params) => {
-                                                            const next = checked
-                                                                ? selectedPlatforms.filter((item) => item !== platform)
-                                                                : [...selectedPlatforms, platform];
-                                                            if (next.length > 0) {
-                                                                params.set('platforms', next.join(','));
-                                                            } else {
-                                                                params.delete('platforms');
-                                                            }
-                                                            params.set('page', '1');
-                                                        })
-                                                    }
-                                                />
-                                                <span>{platform}</span>
-                                            </label>
-                                        );
-                                    })}
-                                </div>
+                        <div className="mt-6 border-t border-[#f0ebff] pt-5">
+                            <h3 className="text-lg font-semibold text-[#2b2350]">Platforms</h3>
+                            <div className="mt-3 space-y-2">
+                                {availablePlatforms.map((platform) => {
+                                    const checked = selectedPlatforms.includes(platform);
+                                    return (
+                                        <label key={platform} className="flex cursor-pointer items-center gap-3 text-sm text-[#5a5286]">
+                                            <input
+                                                type="checkbox"
+                                                className="h-4 w-4 rounded border-[#d8d0ff] text-[#6b3ff2] focus:ring-[#6b3ff2]"
+                                                checked={checked}
+                                                onChange={() =>
+                                                    updateParams((params) => {
+                                                        const next = checked
+                                                            ? selectedPlatforms.filter((item) => item !== platform)
+                                                            : [...selectedPlatforms, platform];
+                                                        if (next.length > 0) {
+                                                            params.set('platforms', next.join(','));
+                                                        } else {
+                                                            params.delete('platforms');
+                                                        }
+                                                        params.set('page', '1');
+                                                    })
+                                                }
+                                            />
+                                            <span>{platform}</span>
+                                        </label>
+                                    );
+                                })}
+                                {availablePlatforms.length === 0 && (
+                                    <p className="text-sm text-[#8a81b5]">No platform data available.</p>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         <div className="mt-6 border-t border-[#f0ebff] pt-5">
                             <h3 className="text-lg font-semibold text-[#2b2350]">Price</h3>
