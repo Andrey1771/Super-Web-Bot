@@ -400,18 +400,7 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container editors-layout">
-                    {activeEditorPost ? (
-                        <PostCard
-                            post={activeEditorPost}
-                            variant="featured"
-                            className="editors-featured"
-                            showFeaturedBadge={false}
-                            showActions={false}
-                        />
-                    ) : (
-                        <div className="editors-empty">No featured posts yet.</div>
-                    )}
-                    <div className="editors-list">
+                    <div className="editors-widget">
                         <div className="editors-list-header">
                             <h2>Editor&apos;s picks</h2>
                             <Link className="link-primary" to="/blog?filter=featured">
@@ -423,7 +412,7 @@ export default function BlogPage() {
                             <div className="editors-slide-card">
                                 <img src={getCover(activeEditorPost)} alt={activeEditorPost.title} />
                                 <h3>{activeEditorPost.title}</h3>
-                                <Link className="link-primary" to={`/blog/${activeEditorPost.slug}`}>
+                                <Link className="link-primary editors-read-link" to={`/blog/${activeEditorPost.slug}`}>
                                     Read article
                                     <FontAwesomeIcon icon={faArrowRightLong} />
                                 </Link>
