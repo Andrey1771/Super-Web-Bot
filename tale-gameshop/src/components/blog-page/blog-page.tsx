@@ -154,24 +154,43 @@ export default function BlogPage() {
     const forYouPosts = (recommendations?.forYou?.length ? recommendations.forYou : recommendations?.popularThisWeek ?? [])
         .filter(matchesFilters);
 
-    const editorSlides = useMemo(() => {
+    const editorCandidates = useMemo(() => {
         return editorsSliderPosts.filter(matchesFilters);
     }, [editorsSliderPosts, matchesFilters]);
 
-    const activeEditorPost = editorSlides[activeEditorSlide] ?? null;
+    const mainEditorPost = useMemo(() => {
+        if (editorCandidates.length === 0) {
+            return null;
+        }
+
+        const manuallySelected = editorCandidates.find((post) => post.mainFeatured);
+        if (manuallySelected) {
+            return manuallySelected;
+        }
+
+        return editorCandidates[0] ?? null;
+    }, [editorCandidates]);
+
+    const sideEditorPosts = useMemo(() => {
+        return editorCandidates.filter((post) => post.id !== mainEditorPost?.id);
+    }, [editorCandidates, mainEditorPost]);
+
+    const sidePageCount = Math.max(1, Math.ceil(sideEditorPosts.length / 3));
+    const sidePageStart = activeEditorSlide * 3;
+    const visibleSidePosts = sideEditorPosts.slice(sidePageStart, sidePageStart + 3);
 
     const handlePrevEditorSlide = () => {
-        if (editorSlides.length === 0) {
+        if (sidePageCount <= 1) {
             return;
         }
-        setActiveEditorSlide((prev) => (prev - 1 + editorSlides.length) % editorSlides.length);
+        setActiveEditorSlide((prev) => (prev - 1 + sidePageCount) % sidePageCount);
     };
 
     const handleNextEditorSlide = () => {
-        if (editorSlides.length === 0) {
+        if (sidePageCount <= 1) {
             return;
         }
-        setActiveEditorSlide((prev) => (prev + 1) % editorSlides.length);
+        setActiveEditorSlide((prev) => (prev + 1) % sidePageCount);
     };
 
     const sortedPosts = useMemo(() => {
@@ -399,46 +418,61 @@ export default function BlogPage() {
             </section>
 
             <section className="editors-picks section">
-                <div className="container editors-layout">
-                    <div className="editors-widget">
-                        <div className="editors-list-header">
-                            <h2>Editor&apos;s picks</h2>
-                            <Link className="link-primary" to="/blog?filter=featured">
-                                View all
-                                <FontAwesomeIcon icon={faArrowRightLong} />
-                            </Link>
-                        </div>
-                        {activeEditorPost ? (
-                            <div className="editors-slide-card">
-                                <img src={getCover(activeEditorPost)} alt={activeEditorPost.title} />
-                                <h3>{activeEditorPost.title}</h3>
-                                <Link className="link-primary editors-read-link" to={`/blog/${activeEditorPost.slug}`}>
-                                    Read article
-                                    <FontAwesomeIcon icon={faArrowRightLong} />
-                                </Link>
-                            </div>
+                <div className="container">
+                    <h2 className="editors-title">Editor&apos;s picks</h2>
+                    <div className="editors-layout">
+                        {mainEditorPost ? (
+                            <article className="editors-main-card">
+                                <img className="editors-main-image" src={getCover(mainEditorPost)} alt={mainEditorPost.title} />
+                                <div className="editors-main-body">
+                                    {mainEditorPost.tags[0] && <span className="editors-main-tag">{mainEditorPost.tags[0]}</span>}
+                                    <h3>{mainEditorPost.title}</h3>
+                                    <p>{mainEditorPost.excerpt}</p>
+                                    <div className="editors-main-meta">{formatDate(mainEditorPost.publishedAt)} • {mainEditorPost.readingTime ?? 5} min read</div>
+                                    <Link className="btn btn-primary editors-main-cta" to={`/blog/${mainEditorPost.slug}`}>
+                                        Read more
+                                        <FontAwesomeIcon icon={faArrowRightLong} />
+                                    </Link>
+                                </div>
+                            </article>
                         ) : (
-                            <p className="text-sm text-gray-500">Once posts are marked as Editor&apos;s Pick, they will appear here.</p>
+                            <div className="editors-empty">No featured posts yet.</div>
                         )}
-                        <div className="editors-dots" aria-label="Editor picks slider controls">
-                            <button className="dot-btn" type="button" onClick={handlePrevEditorSlide} disabled={editorSlides.length <= 1}>
-                                <FontAwesomeIcon icon={faChevronLeft} />
-                            </button>
-                            <div className="dot-track">
-                                {editorSlides.map((slide, index) => (
-                                    <button
-                                        key={slide.id}
-                                        className={`dot ${index === activeEditorSlide ? "active" : ""}`}
-                                        type="button"
-                                        aria-label={`Go to slide ${index + 1}`}
-                                        onClick={() => setActiveEditorSlide(index)}
-                                    />
+
+                        <aside className="editors-side-card">
+                            <div className="editors-side-list">
+                                {visibleSidePosts.map((item) => (
+                                    <Link className="editors-side-item" key={item.id} to={`/blog/${item.slug}`}>
+                                        <img src={getCover(item)} alt={item.title} />
+                                        <div>
+                                            <h4>{item.title}</h4>
+                                            <p>{formatDate(item.publishedAt)} • {item.readingTime ?? 5} min read</p>
+                                        </div>
+                                    </Link>
                                 ))}
                             </div>
-                            <button className="dot-btn" type="button" onClick={handleNextEditorSlide} disabled={editorSlides.length <= 1}>
-                                <FontAwesomeIcon icon={faChevronRight} />
-                            </button>
-                        </div>
+                            {sidePageCount > 1 && (
+                                <div className="editors-dots" aria-label="Editor picks slider controls">
+                                    <button className="dot-btn" type="button" onClick={handlePrevEditorSlide}>
+                                        <FontAwesomeIcon icon={faChevronLeft} />
+                                    </button>
+                                    <div className="dot-track">
+                                        {Array.from({ length: sidePageCount }).map((_, index) => (
+                                            <button
+                                                key={index}
+                                                className={`dot ${index === activeEditorSlide ? "active" : ""}`}
+                                                type="button"
+                                                aria-label={`Go to page ${index + 1}`}
+                                                onClick={() => setActiveEditorSlide(index)}
+                                            />
+                                        ))}
+                                    </div>
+                                    <button className="dot-btn" type="button" onClick={handleNextEditorSlide}>
+                                        <FontAwesomeIcon icon={faChevronRight} />
+                                    </button>
+                                </div>
+                            )}
+                        </aside>
                     </div>
                 </div>
             </section>

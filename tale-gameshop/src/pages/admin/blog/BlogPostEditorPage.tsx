@@ -54,6 +54,7 @@ const BlogPostEditorPage: React.FC = () => {
     publishedAt: "",
     changeNote: "",
     featured: false,
+    mainFeatured: false,
   });
   const formRef = useRef(form);
   const scheduledAtRef = useRef(scheduledAt);
@@ -112,6 +113,7 @@ const BlogPostEditorPage: React.FC = () => {
         publishedAt: response.post.publishedAt ?? "",
         changeNote: "",
         featured: response.post.featured ?? false,
+        mainFeatured: response.post.mainFeatured ?? false,
       };
       formRef.current = nextForm;
       setForm(nextForm);
@@ -426,6 +428,14 @@ const BlogPostEditorPage: React.FC = () => {
             onChange={(event) => handleChange("featured", event.target.checked)}
           />
           <span className="text-sm">Editor's Pick (Show in featured slider)</span>
+        </label>
+        <label className="inline-flex items-center gap-2 mt-2">
+          <input
+            type="checkbox"
+            checked={Boolean(form.mainFeatured)}
+            onChange={(event) => handleChange("mainFeatured", event.target.checked)}
+          />
+          <span className="text-sm">Set as MAIN Editor's Pick</span>
         </label>
         <label className="text-sm font-semibold">Change note</label>
         <input

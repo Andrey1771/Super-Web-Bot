@@ -135,7 +135,8 @@ public class AdminBlogController : ControllerBase
             CurrentVersionId = string.Empty,
             ViewCount = 0,
             EditorScore = request.EditorScore ?? 0,
-            Featured = request.Featured ?? false
+            Featured = request.Featured ?? false,
+            MainFeatured = request.MainFeatured ?? false
         };
 
         var scheduleError = ValidateSchedule(post);
@@ -228,6 +229,7 @@ public class AdminBlogController : ControllerBase
         post.Topics = request.Topics ?? Array.Empty<string>();
         post.EditorScore = request.EditorScore ?? post.EditorScore;
         post.Featured = request.Featured ?? post.Featured;
+        post.MainFeatured = request.MainFeatured ?? post.MainFeatured;
         post.UpdatedAt = DateTime.UtcNow;
 
         var scheduleError = ValidateSchedule(post);
@@ -558,6 +560,7 @@ public class SaveBlogPostRequest
     public int? ReadingTime { get; set; }
     public int? EditorScore { get; set; }
     public bool? Featured { get; set; }
+    public bool? MainFeatured { get; set; }
     public string? ChangeNote { get; set; }
 }
 

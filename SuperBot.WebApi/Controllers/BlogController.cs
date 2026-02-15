@@ -22,7 +22,8 @@ public class BlogController : ControllerBase
         [FromQuery] int pageSize = 12,
         [FromQuery] string tag = "",
         [FromQuery] string search = "",
-        [FromQuery] bool? featured = null)
+        [FromQuery] bool? featured = null,
+        [FromQuery] bool? mainFeatured = null)
     {
         var query = new BlogQueryParameters
         {
@@ -31,7 +32,8 @@ public class BlogController : ControllerBase
             Tag = tag,
             Search = search,
             Status = status,
-            Featured = featured
+            Featured = featured,
+            MainFeatured = mainFeatured
         };
 
         var (items, total) = await _blogRepository.GetPublicPagedAsync(query);
@@ -45,7 +47,8 @@ public class BlogController : ControllerBase
             post.Tags,
             post.PublishedAt,
             post.ReadingTime,
-            post.Featured
+            post.Featured,
+            post.MainFeatured
         });
 
         return Ok(new { items = list, total });

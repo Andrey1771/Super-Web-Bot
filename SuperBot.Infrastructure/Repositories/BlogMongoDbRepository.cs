@@ -214,6 +214,11 @@ namespace SuperBot.Infrastructure.Repositories
                 filter &= Builders<BlogPostDb>.Filter.Eq(post => post.Featured, query.Featured.Value);
             }
 
+            if (query.MainFeatured.HasValue)
+            {
+                filter &= Builders<BlogPostDb>.Filter.Eq(post => post.MainFeatured, query.MainFeatured.Value);
+            }
+
             return filter;
         }
 

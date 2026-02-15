@@ -13,7 +13,7 @@ export class BlogService implements IBlogService {
     this._apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
   }
 
-  async getPosts(params: { page: number; pageSize: number; tag?: string; search?: string; featured?: boolean }): Promise<BlogListResponse> {
+  async getPosts(params: { page: number; pageSize: number; tag?: string; search?: string; featured?: boolean; mainFeatured?: boolean }): Promise<BlogListResponse> {
     const query = new URLSearchParams();
     query.append("status", "PUBLISHED");
     query.append("page", String(params.page));
@@ -26,6 +26,9 @@ export class BlogService implements IBlogService {
     }
     if (typeof params.featured === "boolean") {
       query.append("featured", String(params.featured));
+    }
+    if (typeof params.mainFeatured === "boolean") {
+      query.append("mainFeatured", String(params.mainFeatured));
     }
     const response = await this._apiClient.api.get(`/api/blog/posts?${query.toString()}`);
     return response.data as BlogListResponse;

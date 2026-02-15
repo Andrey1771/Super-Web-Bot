@@ -21,6 +21,7 @@ export type BlogPost = {
   viewCount?: number;
   editorScore?: number;
   featured?: boolean;
+  mainFeatured?: boolean;
 };
 
 export type BlogPostVersion = {
@@ -46,6 +47,8 @@ export type BlogListItem = {
   tags: string[];
   publishedAt?: string;
   readingTime?: number;
+  featured?: boolean;
+  mainFeatured?: boolean;
 };
 
 export type BlogRecommendationsResponse = {
