@@ -182,8 +182,9 @@ export default function BlogPage() {
         return rotationSource.filter((post) => post.id !== mainEditorPost?.id);
     }, [editorCandidates, editorFallbackPosts, mainEditorPost]);
 
-    const sidePageCount = Math.max(1, sideEditorPosts.length);
-    const activeSidePost = sideEditorPosts[activeEditorSlide] ?? null;
+    const sidePageCount = Math.max(1, Math.ceil(sideEditorPosts.length / 3));
+    const sidePageStart = activeEditorSlide * 3;
+    const visibleSidePosts = sideEditorPosts.slice(sidePageStart, sidePageStart + 3);
 
     const handlePrevEditorSlide = () => {
         if (sidePageCount <= 1) {
@@ -446,17 +447,21 @@ export default function BlogPage() {
                         )}
 
                         <aside className="editors-side-card">
-                            {activeSidePost ? (
-                                <Link className="editors-side-slide" to={`/blog/${activeSidePost.slug}`} key={activeSidePost.id}>
-                                    <img src={getCover(activeSidePost)} alt={activeSidePost.title} />
-                                    <div className="editors-side-slide-body">
-                                        <h4>{activeSidePost.title}</h4>
-                                        <span className="editors-side-slide-link">Read article</span>
-                                    </div>
-                                </Link>
-                            ) : (
-                                <div className="editors-side-placeholder">No featured posts yet.</div>
-                            )}
+                            <div className="editors-side-list" key={activeEditorSlide}>
+                                {visibleSidePosts.length > 0 ? (
+                                    visibleSidePosts.map((item) => (
+                                        <Link className="editors-side-item" key={item.id} to={`/blog/${item.slug}`}>
+                                            <img src={getCover(item)} alt={item.title} />
+                                            <div className="editors-side-item-body">
+                                                <h4>{item.title}</h4>
+                                                <p>{formatDate(item.publishedAt)} • {item.readingTime ?? 5} min read</p>
+                                            </div>
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <div className="editors-side-placeholder">No featured posts yet.</div>
+                                )}
+                            </div>
                             <div className="editors-dots" aria-label="Editor picks slider controls">
                                 <button className="dot-btn" type="button" onClick={handlePrevEditorSlide} disabled={sidePageCount <= 1}>
                                     <FontAwesomeIcon icon={faChevronLeft} />

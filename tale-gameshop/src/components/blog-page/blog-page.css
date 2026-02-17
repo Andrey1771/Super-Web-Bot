@@ -625,6 +625,7 @@
 
 .editors-picks {
   padding-top: var(--space-48);
+  background: linear-gradient(180deg, rgba(241, 242, 247, 0.6) 0%, rgba(248, 248, 252, 0.25) 100%);
 }
 
 .editors-title {
@@ -633,8 +634,8 @@
 
 .editors-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-  gap: var(--space-16);
+  grid-template-columns: 0.48fr 0.52fr;
+  gap: 18px;
   align-items: stretch;
 }
 
@@ -642,9 +643,9 @@
 .editors-side-card,
 .editors-empty {
   background: #ffffff;
-  border: 1px solid var(--color-border);
+  border: 1px solid #eceaf4;
   border-radius: 24px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
 .editors-main-card {
@@ -655,10 +656,10 @@
 
 .editors-main-image {
   width: 100%;
-  aspect-ratio: 16 / 8;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   display: block;
-  min-height: 220px;
+  min-height: 230px;
 }
 
 .editors-main-body {
@@ -673,24 +674,26 @@
   font-size: 12px;
   font-weight: 700;
   color: #7c3aed;
-  background: #f3ecff;
+  background: #f2ebff;
   border-radius: 999px;
   padding: 6px 10px;
 }
 
 .editors-main-body h3 {
   margin: 0;
-  font-size: clamp(30px, 2.4vw, 38px);
-  line-height: 1.2;
+  font-size: 32px;
+  line-height: 1.15;
 }
 
 .editors-main-body p {
   margin: 0;
-  color: var(--color-muted);
+  color: #667085;
+  font-size: 18px;
+  line-height: 1.45;
 }
 
 .editors-main-meta {
-  color: var(--color-muted);
+  color: #667085;
   font-weight: 600;
 }
 
@@ -708,53 +711,59 @@
 }
 
 .editors-side-card {
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
-.editors-side-slide {
+.editors-side-list {
   display: flex;
   flex-direction: column;
-  text-decoration: none;
-  color: inherit;
-  animation: editorsFadeIn 0.24s ease;
+  min-height: 100%;
+  animation: editorsFadeIn 0.25s ease;
 }
 
 @keyframes editorsFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(3px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.editors-side-slide img {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: 24px 24px 0 0;
-  min-height: 190px;
-}
-
-.editors-side-slide-body {
+.editors-side-item {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  gap: 12px;
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid #efedf6;
 }
 
-.editors-side-slide-body h4 {
+.editors-side-item:last-child {
+  border-bottom: none;
+}
+
+.editors-side-item img {
+  width: 68px;
+  height: 68px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #eceaf4;
+}
+
+.editors-side-item-body {
+  min-width: 0;
+}
+
+.editors-side-item-body h4 {
   margin: 0;
-  font-size: clamp(26px, 2.2vw, 34px);
+  font-size: 20px;
   line-height: 1.2;
 }
 
-.editors-side-slide-link {
-  color: #7c3aed;
-  font-weight: 700;
-}
-
-.editors-side-placeholder {
-  padding: 24px 16px;
-  color: var(--color-muted);
+.editors-side-item-body p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 15px;
 }
 
 .editors-dots {
@@ -763,19 +772,19 @@
   gap: 8px;
   margin-top: auto;
   margin-left: auto;
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-top: 1px solid #e8defd;
   border-left: 1px solid #e8defd;
   border-top-left-radius: 16px;
-  background: #f5f1ff;
+  background: #f4efff;
 }
 
 .dot-btn {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  border: 1px solid #ddd7ec;
-  background: #f8f6ff;
+  border: 1px solid #dbd3f0;
+  background: #ffffff;
   color: #7f8796;
   display: inline-flex;
   align-items: center;
@@ -804,19 +813,17 @@
   border-radius: 50%;
   border: none;
   padding: 0;
-  background: #dadfea;
+  background: #d8dce7;
 }
 
 .editors-dots .dot.active {
   background: #7c3aed;
 }
 
+.editors-side-placeholder,
 .editors-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 24px;
-  color: var(--color-muted);
+  color: #667085;
 }
 
 .cta-strip {
@@ -918,6 +925,10 @@
   .editors-layout {
     grid-template-columns: 1fr;
   }
+
+  .editors-side-item {
+    grid-template-columns: 60px 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -943,6 +954,10 @@
   .cta-card {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .editors-main-body h3 {
+    font-size: 28px;
   }
 }
 
