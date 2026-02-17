@@ -426,35 +426,51 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container">
-                    <h2 className="editors-title">Editor&apos;s picks</h2>
+                    <div className="editors-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <h2 className="editors-title" style={{ margin: 0 }}>Editor&apos;s picks</h2>
+                        <Link className="link-primary" to="/blog?filter=featured" style={{ color: '#7C3AED', fontWeight: 600 }}>
+                            View all <FontAwesomeIcon icon={faArrowRightLong} />
+                        </Link>
+                    </div>
+
                     <div className="editors-layout">
                         {mainEditorPost ? (
                             <article className="editors-main-card">
-                                <img className="editors-main-image" src={getCover(mainEditorPost)} alt={mainEditorPost.title} />
+                                <div className="editors-main-image-wrapper">
+                                    <img className="editors-main-image" src={getCover(mainEditorPost)} alt={mainEditorPost.title} />
+                                </div>
                                 <div className="editors-main-body">
-                                    {mainEditorPost.tags[0] && <span className="editors-main-tag">{mainEditorPost.tags[0]}</span>}
-                                    <h3>{mainEditorPost.title}</h3>
-                                    <p>{mainEditorPost.excerpt}</p>
-                                    <div className="editors-main-meta">{formatDate(mainEditorPost.publishedAt)} • {mainEditorPost.readingTime ?? 5} min read</div>
-                                    <Link className="btn btn-primary editors-main-cta" to={`/blog/${mainEditorPost.slug}`}>
-                                        Read more
+                                    {mainEditorPost.tags[0] && <span className="editors-badge">{mainEditorPost.tags[0]}</span>}
+                                    <h3 className="editors-main-title">{mainEditorPost.title}</h3>
+                                    <p className="editors-main-excerpt">{mainEditorPost.excerpt}</p>
+                                    <div className="editors-main-meta">
+                                        {formatDate(mainEditorPost.publishedAt)} • {mainEditorPost.readingTime ?? 5} min read
+                                    </div>
+                                    <Link className="btn editors-main-cta" to={`/blog/${mainEditorPost.slug}`}>
+                                        Read article
                                         <FontAwesomeIcon icon={faArrowRightLong} />
                                     </Link>
                                 </div>
                             </article>
                         ) : (
-                            <div className="editors-empty">No featured posts yet.</div>
+                            <div className="editors-main-card empty">
+                                <div className="editors-empty">No featured posts yet.</div>
+                            </div>
                         )}
 
-                        <aside className="editors-side-card">
+                        <aside className="editors-side-wrapper">
                             <div className="editors-side-list" key={activeEditorSlide}>
                                 {visibleSidePosts.length > 0 ? (
                                     visibleSidePosts.map((item) => (
                                         <Link className="editors-side-item" key={item.id} to={`/blog/${item.slug}`}>
-                                            <img src={getCover(item)} alt={item.title} />
+                                            <div className="editors-side-item-image">
+                                                <img src={getCover(item)} alt={item.title} />
+                                            </div>
                                             <div className="editors-side-item-body">
-                                                <h4>{item.title}</h4>
-                                                <p>{formatDate(item.publishedAt)} • {item.readingTime ?? 5} min read</p>
+                                                <h4 className="editors-side-item-title">{item.title}</h4>
+                                                <p className="editors-side-item-meta">
+                                                    {formatDate(item.publishedAt)} • {item.readingTime ?? 5} min read
+                                                </p>
                                             </div>
                                         </Link>
                                     ))
@@ -462,7 +478,8 @@ export default function BlogPage() {
                                     <div className="editors-side-placeholder">No featured posts yet.</div>
                                 )}
                             </div>
-                            <div className="editors-dots" aria-label="Editor picks slider controls">
+
+                            <div className="editors-controls" aria-label="Editor picks slider controls">
                                 <button className="dot-btn" type="button" onClick={handlePrevEditorSlide} disabled={sidePageCount <= 1}>
                                     <FontAwesomeIcon icon={faChevronLeft} />
                                 </button>
