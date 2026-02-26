@@ -53,13 +53,14 @@ const BlogPostEditorPage: React.FC = () => {
     scheduledAt: "",
     publishedAt: "",
     changeNote: "",
+    featured: false,
   });
   const formRef = useRef(form);
   const scheduledAtRef = useRef(scheduledAt);
   const publishedAtRef = useRef(publishedAt);
   const changeNoteRef = useRef(changeNote);
 
-  const handleChange = (field: keyof AdminBlogPayload, value: string | string[]) => {
+  const handleChange = (field: keyof AdminBlogPayload, value: string | string[] | boolean) => {
     setForm((prev) => {
       const next = {
         ...prev,
@@ -110,6 +111,7 @@ const BlogPostEditorPage: React.FC = () => {
         scheduledAt: response.post.scheduledAt ?? "",
         publishedAt: response.post.publishedAt ?? "",
         changeNote: "",
+        featured: response.post.featured ?? false,
       };
       formRef.current = nextForm;
       setForm(nextForm);
@@ -417,6 +419,14 @@ const BlogPostEditorPage: React.FC = () => {
             />
           </>
         )}
+        <label className="inline-flex items-center gap-2 mt-3">
+          <input
+            type="checkbox"
+            checked={Boolean(form.featured)}
+            onChange={(event) => handleChange("featured", event.target.checked)}
+          />
+          <span className="text-sm">Editor's Pick (Show in featured slider)</span>
+        </label>
         <label className="text-sm font-semibold">Change note</label>
         <input
           type="text"

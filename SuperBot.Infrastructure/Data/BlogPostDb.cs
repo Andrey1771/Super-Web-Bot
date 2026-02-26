@@ -66,7 +66,7 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("editorScore")]
         public int? EditorScore { get; set; }
 
-        [BsonElement("featured")]
+        [BsonElement("is_featured")]
         public bool Featured { get; set; }
     }
 }

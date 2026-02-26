@@ -29,4 +29,5 @@ export type AdminBlogPayload = {
   scheduledAt?: string;
   publishedAt?: string;
   changeNote?: string;
+  featured?: boolean;
 };

@@ -79,6 +79,8 @@ export default function BlogPage() {
     const [search, setSearch] = useState("");
     const [sort, setSort] = useState(sortOptions[0]);
     const [recommendations, setRecommendations] = useState<BlogRecommendationsResponse | null>(null);
+    const [editorsSliderPosts, setEditorsSliderPosts] = useState<BlogListItem[]>([]);
+    const [activeEditorSlide, setActiveEditorSlide] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -87,14 +89,26 @@ export default function BlogPage() {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await blogService.getHomeRecommendations({
-                    anonId: getAnonId(),
-                    limit: RECOMMENDATION_LIMIT
-                });
-                setRecommendations(response);
+                const [recommendationResponse, featuredResponse] = await Promise.all([
+                    blogService.getHomeRecommendations({
+                        anonId: getAnonId(),
+                        limit: RECOMMENDATION_LIMIT
+                    }),
+                    blogService.getPosts({ page: 1, pageSize: 5, featured: true })
+                ]);
+
+                setRecommendations(recommendationResponse);
+
+                if (featuredResponse.items.length > 0) {
+                    setEditorsSliderPosts(featuredResponse.items);
+                } else {
+                    const fallbackResponse = await blogService.getPosts({ page: 1, pageSize: 3 });
+                    setEditorsSliderPosts(fallbackResponse.items.slice(0, 3));
+                }
             } catch (fetchError) {
                 console.error(fetchError);
                 setError("Unable to load blog posts.");
+                setEditorsSliderPosts([]);
             } finally {
                 setLoading(false);
             }
@@ -102,6 +116,10 @@ export default function BlogPage() {
 
         fetchRecommendations();
     }, [blogService]);
+
+    useEffect(() => {
+        setActiveEditorSlide(0);
+    }, [editorsSliderPosts.length]);
 
     const tagFilters = useMemo(() => {
         const tags = new Set<string>();
@@ -133,9 +151,28 @@ export default function BlogPage() {
     const featuredPost = recommendations?.heroPost;
     const latestPosts = (recommendations?.latestPosts ?? []).filter(matchesFilters);
     const popularPosts = (recommendations?.popularThisWeek ?? []).filter(matchesFilters);
-    const editorsPicks = (recommendations?.editorsPicks ?? []).filter(matchesFilters);
     const forYouPosts = (recommendations?.forYou?.length ? recommendations.forYou : recommendations?.popularThisWeek ?? [])
         .filter(matchesFilters);
+
+    const editorSlides = useMemo(() => {
+        return editorsSliderPosts.filter(matchesFilters);
+    }, [editorsSliderPosts, matchesFilters]);
+
+    const activeEditorPost = editorSlides[activeEditorSlide] ?? null;
+
+    const handlePrevEditorSlide = () => {
+        if (editorSlides.length === 0) {
+            return;
+        }
+        setActiveEditorSlide((prev) => (prev - 1 + editorSlides.length) % editorSlides.length);
+    };
+
+    const handleNextEditorSlide = () => {
+        if (editorSlides.length === 0) {
+            return;
+        }
+        setActiveEditorSlide((prev) => (prev + 1) % editorSlides.length);
+    };
 
     const sortedPosts = useMemo(() => {
         if (sort === "Most popular") {
@@ -363,39 +400,42 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container editors-layout">
-                    {editorsPicks[0] && (
-                        <PostCard
-                            post={editorsPicks[0]}
-                            variant="featured"
-                            className="editors-featured"
-                            showFeaturedBadge={false}
-                            showActions={false}
-                        />
-                    )}
-                    <div className="editors-list">
+                    <div className="editors-widget">
                         <div className="editors-list-header">
                             <h2>Editor&apos;s picks</h2>
-                            <Link className="link-primary" to="/blog">
+                            <Link className="link-primary" to="/blog?filter=featured">
                                 View all
                                 <FontAwesomeIcon icon={faArrowRightLong} />
                             </Link>
                         </div>
-                        <div className="editors-list-items">
-                            {editorsPicks.slice(1).map((item) => (
-                                <PostCard post={item} key={item.id} variant="mini" />
-                            ))}
-                        </div>
-                        <div className="editors-dots" aria-hidden="true">
-                            <button className="dot-btn" type="button">
+                        {activeEditorPost ? (
+                            <div className="editors-slide-card">
+                                <img src={getCover(activeEditorPost)} alt={activeEditorPost.title} />
+                                <h3>{activeEditorPost.title}</h3>
+                                <Link className="link-primary editors-read-link" to={`/blog/${activeEditorPost.slug}`}>
+                                    Read article
+                                    <FontAwesomeIcon icon={faArrowRightLong} />
+                                </Link>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500">Once posts are marked as Editor&apos;s Pick, they will appear here.</p>
+                        )}
+                        <div className="editors-dots" aria-label="Editor picks slider controls">
+                            <button className="dot-btn" type="button" onClick={handlePrevEditorSlide} disabled={editorSlides.length <= 1}>
                                 <FontAwesomeIcon icon={faChevronLeft} />
                             </button>
                             <div className="dot-track">
-                                <span className="dot active" />
-                                <span className="dot" />
-                                <span className="dot" />
-                                <span className="dot" />
+                                {editorSlides.map((slide, index) => (
+                                    <button
+                                        key={slide.id}
+                                        className={`dot ${index === activeEditorSlide ? "active" : ""}`}
+                                        type="button"
+                                        aria-label={`Go to slide ${index + 1}`}
+                                        onClick={() => setActiveEditorSlide(index)}
+                                    />
+                                ))}
                             </div>
-                            <button className="dot-btn" type="button">
+                            <button className="dot-btn" type="button" onClick={handleNextEditorSlide} disabled={editorSlides.length <= 1}>
                                 <FontAwesomeIcon icon={faChevronRight} />
                             </button>
                         </div>
