@@ -166,7 +166,7 @@ namespace SuperBot.WebApi.Services
             );
             var blogMainEditorsPickUniqueIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostDb>(
                 Builders<SuperBot.Infrastructure.Data.BlogPostDb>.IndexKeys.Ascending(item => item.IsMainEditorsPick),
-                new CreateIndexOptions
+                new CreateIndexOptions<SuperBot.Infrastructure.Data.BlogPostDb>
                 {
                     Name = "ux_blog_posts_main_editors_pick",
                     Unique = true,
