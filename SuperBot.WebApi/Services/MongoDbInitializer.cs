@@ -164,11 +164,21 @@ namespace SuperBot.WebApi.Services
                     .Descending(item => item.PublishedAt),
                 new CreateIndexOptions { Name = "ix_blog_posts_status_published" }
             );
+            var blogMainEditorsPickUniqueIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostDb>.IndexKeys.Ascending(item => item.IsMainEditorsPick),
+                new CreateIndexOptions
+                {
+                    Name = "ux_blog_posts_main_editors_pick",
+                    Unique = true,
+                    PartialFilterExpression = Builders<SuperBot.Infrastructure.Data.BlogPostDb>.Filter.Eq(item => item.IsMainEditorsPick, true)
+                }
+            );
 
             await blogPostsCollection.Indexes.CreateOneAsync(blogSlugIndex);
             await blogPostsCollection.Indexes.CreateOneAsync(blogPublishedIndex);
             await blogPostsCollection.Indexes.CreateOneAsync(blogTagsIndex);
             await blogPostsCollection.Indexes.CreateOneAsync(blogStatusPublishedIndex);
+            await blogPostsCollection.Indexes.CreateOneAsync(blogMainEditorsPickUniqueIndex);
 
             var blogEventsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogEventDb>("BlogEvents");
             var blogEventPostIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogEventDb>(

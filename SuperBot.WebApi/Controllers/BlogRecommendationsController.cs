@@ -76,6 +76,8 @@ public class BlogPostSummary
     public string[] Tags { get; set; }
     public DateTime? PublishedAt { get; set; }
     public int? ReadingTime { get; set; }
+    public bool Featured { get; set; }
+    public bool IsMainEditorsPick { get; set; }
 
     public static BlogPostSummary From(SuperBot.Core.Entities.BlogPost post)
     {
@@ -93,7 +95,9 @@ public class BlogPostSummary
             CoverUrl = post.CoverUrl,
             Tags = post.Tags ?? Array.Empty<string>(),
             PublishedAt = post.PublishedAt,
-            ReadingTime = post.ReadingTime
+            ReadingTime = post.ReadingTime,
+            Featured = post.Featured,
+            IsMainEditorsPick = post.IsMainEditorsPick
         };
     }
 }

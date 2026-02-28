@@ -138,6 +138,8 @@ public class AdminBlogController : ControllerBase
             Featured = request.Featured ?? false
         };
 
+        post.IsMainEditorsPick = ResolveMainEditorsPick(request.IsMainEditorsPick, post.Featured);
+
         var scheduleError = ValidateSchedule(post);
         if (!string.IsNullOrWhiteSpace(scheduleError))
         {
@@ -228,6 +230,7 @@ public class AdminBlogController : ControllerBase
         post.Topics = request.Topics ?? Array.Empty<string>();
         post.EditorScore = request.EditorScore ?? post.EditorScore;
         post.Featured = request.Featured ?? post.Featured;
+        post.IsMainEditorsPick = ResolveMainEditorsPick(request.IsMainEditorsPick, post.Featured, post.IsMainEditorsPick);
         post.UpdatedAt = DateTime.UtcNow;
 
         var scheduleError = ValidateSchedule(post);
@@ -322,6 +325,7 @@ public class AdminBlogController : ControllerBase
         post.Title = version.Title;
         post.Excerpt = version.Excerpt;
         post.CoverAssetId = version.CoverAssetId;
+        post.IsMainEditorsPick = post.Featured ? post.IsMainEditorsPick : false;
         post.UpdatedAt = DateTime.UtcNow;
         await _blogRepository.UpdateAsync(post, restored);
 
@@ -338,6 +342,7 @@ public class AdminBlogController : ControllerBase
         }
 
         post.Status = "ARCHIVED";
+        post.IsMainEditorsPick = false;
         post.UpdatedAt = DateTime.UtcNow;
         await _blogRepository.UpdateAsync(post, new BlogPostVersion
         {
@@ -354,6 +359,16 @@ public class AdminBlogController : ControllerBase
         });
 
         return Ok(post);
+    }
+
+    private static bool ResolveMainEditorsPick(bool? isMainEditorsPick, bool isEditorsPick, bool existing = false)
+    {
+        if (!isEditorsPick)
+        {
+            return false;
+        }
+
+        return isMainEditorsPick ?? existing;
     }
 
     private static string NormalizeStatus(string status)
@@ -558,6 +573,7 @@ public class SaveBlogPostRequest
     public int? ReadingTime { get; set; }
     public int? EditorScore { get; set; }
     public bool? Featured { get; set; }
+    public bool? IsMainEditorsPick { get; set; }
     public string? ChangeNote { get; set; }
 }
 

@@ -119,7 +119,8 @@ namespace SuperBot.Infrastructure.Repositories
 
             var postsDb = await _posts
                 .Find(filter)
-                .SortByDescending(post => post.EditorScore)
+                .SortByDescending(post => post.IsMainEditorsPick)
+                .ThenByDescending(post => post.EditorScore)
                 .ThenByDescending(post => post.PublishedAt)
                 .Limit(normalizedLimit)
                 .ToListAsync();
@@ -135,6 +136,11 @@ namespace SuperBot.Infrastructure.Repositories
             }
             version.PostId = post.Id;
 
+            if (post.IsMainEditorsPick)
+            {
+                await ClearMainEditorsPickAsync(post.Id);
+            }
+
             var versionDb = _mapper.Map<BlogPostVersionDb>(version);
             await _versions.InsertOneAsync(versionDb);
             version.Id = versionDb.Id;
@@ -146,6 +152,11 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task UpdateAsync(BlogPost post, BlogPostVersion version)
         {
+            if (post.IsMainEditorsPick)
+            {
+                await ClearMainEditorsPickAsync(post.Id);
+            }
+
             var versionDb = _mapper.Map<BlogPostVersionDb>(version);
             await _versions.InsertOneAsync(versionDb);
             version.Id = versionDb.Id;
@@ -179,6 +190,18 @@ namespace SuperBot.Infrastructure.Repositories
             var versionDb = _mapper.Map<BlogPostVersionDb>(version);
             await _versions.InsertOneAsync(versionDb);
             version.Id = versionDb.Id;
+        }
+
+
+        public async Task ClearMainEditorsPickAsync(string postId)
+        {
+            var filter = Builders<BlogPostDb>.Filter.And(
+                Builders<BlogPostDb>.Filter.Ne(post => post.Id, postId),
+                Builders<BlogPostDb>.Filter.Eq(post => post.IsMainEditorsPick, true)
+            );
+
+            var update = Builders<BlogPostDb>.Update.Set(post => post.IsMainEditorsPick, false);
+            await _posts.UpdateManyAsync(filter, update);
         }
 
         private static FilterDefinition<BlogPostDb> BuildFilter(BlogQueryParameters query, bool includeOnlyPublished)

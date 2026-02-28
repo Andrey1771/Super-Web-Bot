@@ -54,6 +54,7 @@ const BlogPostEditorPage: React.FC = () => {
     publishedAt: "",
     changeNote: "",
     featured: false,
+    isMainEditorsPick: false,
   });
   const formRef = useRef(form);
   const scheduledAtRef = useRef(scheduledAt);
@@ -112,6 +113,7 @@ const BlogPostEditorPage: React.FC = () => {
         publishedAt: response.post.publishedAt ?? "",
         changeNote: "",
         featured: response.post.featured ?? false,
+        isMainEditorsPick: response.post.isMainEditorsPick ?? false,
       };
       formRef.current = nextForm;
       setForm(nextForm);
@@ -423,10 +425,26 @@ const BlogPostEditorPage: React.FC = () => {
           <input
             type="checkbox"
             checked={Boolean(form.featured)}
-            onChange={(event) => handleChange("featured", event.target.checked)}
+            onChange={(event) => {
+              const isChecked = event.target.checked;
+              handleChange("featured", isChecked);
+              if (!isChecked) {
+                handleChange("isMainEditorsPick", false);
+              }
+            }}
           />
-          <span className="text-sm">Editor's Pick (Show in featured slider)</span>
+          <span className="text-sm">Editor's Pick (Show in Editor's picks section)</span>
         </label>
+        <label className="inline-flex items-center gap-2 mt-2">
+          <input
+            type="checkbox"
+            checked={Boolean(form.isMainEditorsPick)}
+            disabled={!form.featured}
+            onChange={(event) => handleChange("isMainEditorsPick", event.target.checked)}
+          />
+          <span className="text-sm">Use as main Editor's picks featured card</span>
+        </label>
+        {!form.featured && <p className="text-xs text-gray-500 mt-1">Enable Editor's Pick first to mark a main featured card.</p>}
         <label className="text-sm font-semibold">Change note</label>
         <input
           type="text"

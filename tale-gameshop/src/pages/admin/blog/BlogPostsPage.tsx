@@ -182,7 +182,14 @@ const BlogPostsPage: React.FC = () => {
                 minWidth={240}
                 cellRender={(cellData: { data: BlogPost }) => (
                   <div className="admin-table__cell-truncate" title={cellData.data.title}>
-                    <strong>{cellData.data.title}</strong>
+                    <div className="flex items-center gap-2">
+                      <strong>{cellData.data.title}</strong>
+                      {cellData.data.isMainEditorsPick && (
+                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700">
+                          Main Editor's Pick
+                        </span>
+                      )}
+                    </div>
                     <div className="admin-table__cell-muted">{cellData.data.excerpt}</div>
                   </div>
                 )}

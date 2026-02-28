@@ -45,7 +45,8 @@ public class BlogController : ControllerBase
             post.Tags,
             post.PublishedAt,
             post.ReadingTime,
-            post.Featured
+            post.Featured,
+            post.IsMainEditorsPick
         });
 
         return Ok(new { items = list, total });

@@ -19,5 +19,6 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<List<BlogPostVersion>> GetVersionsAsync(string postId);
         Task<BlogPostVersion> GetVersionByIdAsync(string postId, string versionId);
         Task AddVersionAsync(BlogPostVersion version);
+        Task ClearMainEditorsPickAsync(string postId);
     }
 }
