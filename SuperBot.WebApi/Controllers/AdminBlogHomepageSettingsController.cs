@@ -40,9 +40,13 @@ public class AdminBlogHomepageSettingsController : ControllerBase
             return BadRequest("Request body is required.");
         }
 
-        if (!string.IsNullOrWhiteSpace(request.MainHeroPostId))
+        var normalizedMainHeroPostId = string.IsNullOrWhiteSpace(request.MainHeroPostId)
+            ? null
+            : request.MainHeroPostId.Trim();
+
+        if (!string.IsNullOrWhiteSpace(normalizedMainHeroPostId))
         {
-            var post = await _blogRepository.GetByIdAsync(request.MainHeroPostId);
+            var post = await _blogRepository.GetByIdAsync(normalizedMainHeroPostId);
             if (post == null)
             {
                 return NotFound("Post not found.");
@@ -57,7 +61,7 @@ public class AdminBlogHomepageSettingsController : ControllerBase
         var settings = new BlogHomepageSettings
         {
             Id = "default",
-            MainHeroPostId = request.MainHeroPostId,
+            MainHeroPostId = normalizedMainHeroPostId,
             UpdatedAt = DateTime.UtcNow,
             UpdatedBy = GetCurrentUserId()
         };
@@ -84,5 +88,5 @@ public class AdminBlogHomepageSettingsController : ControllerBase
 
 public class UpdateMainHeroRequest
 {
-    public string MainHeroPostId { get; set; }
+    public string? MainHeroPostId { get; set; }
 }
