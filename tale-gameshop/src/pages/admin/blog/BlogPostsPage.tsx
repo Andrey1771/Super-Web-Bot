@@ -219,13 +219,6 @@ const BlogPostsPage: React.FC = () => {
               columnAutoWidth
               columnHidingEnabled
               scrolling={{ mode: "standard", showScrollbar: "always" }}
-              onRowClick={(event) => {
-                const target = event.event?.target as HTMLElement | undefined;
-                if (target?.closest(".admin-table-action")) {
-                  return;
-                }
-                navigate(`/admin/blog/${event.data.id}/edit`);
-              }}
               onRowPrepared={(event: any) => {
                 if (event.rowType === "data" && event.data?.id === mainHeroPostId) {
                   event.rowElement?.classList.add("admin-blog-main-hero-row");
