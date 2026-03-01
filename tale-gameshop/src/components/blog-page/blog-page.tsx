@@ -18,6 +18,7 @@ import type {IBlogService} from "../../iterfaces/i-blog-service";
 import type {BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
 import PostCard from "../../pages/blog/components/PostCard";
 import {getAnonId} from "../../hooks/use-blog-tracking";
+import FeaturedEditorsPickCard from "./featured-editors-pick-card";
 import "./blog-page.css";
 
 const FALLBACK_COVER = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1600&q=80";
@@ -400,6 +401,7 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container editors-layout">
+                    <FeaturedEditorsPickCard />
                     <div className="editors-widget">
                         <div className="editors-list-header">
                             <h2>Editor&apos;s picks</h2>
