@@ -291,7 +291,7 @@ const BlogPostsPage: React.FC = () => {
                       event.stopPropagation();
                       handleSetMainHero(cellData.data);
                     }}
-                    disabled={updatingMainHeroId === cellData.data.id || cellData.data.status !== "PUBLISHED"}
+                    disabled={updatingMainHeroId === cellData.data.id}
                     title={cellData.data.status !== "PUBLISHED" ? "Only published posts can be main hero" : mainHeroPostId === cellData.data.id ? "Clear main hero" : "Set as main hero"}
                   >
                     {updatingMainHeroId === cellData.data.id ? "Updating..." : mainHeroPostId === cellData.data.id ? "Main Hero ✓" : "Set as main"}
