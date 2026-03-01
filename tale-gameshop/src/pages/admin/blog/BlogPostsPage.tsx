@@ -80,10 +80,11 @@ const BlogPostsPage: React.FC = () => {
 
     try {
       setUpdatingMainHeroId(post.id);
-      const result = await adminBlogService.setMainHeroPost(post.id);
+      const nextMainHeroId = mainHeroPostId === post.id ? undefined : post.id;
+      const result = await adminBlogService.setMainHeroPost(nextMainHeroId);
       setMainHeroPostId(result.mainHeroPostId ?? "");
-      setMainHeroPostPreview(post);
-      addToast("Main hero updated.", "success");
+      setMainHeroPostPreview(nextMainHeroId ? post : null);
+      addToast(nextMainHeroId ? "Main hero updated." : "Main hero removed.", "success");
     } catch (updateError: any) {
       const message = updateError?.response?.data ?? "Failed to update main hero.";
       addToast(String(message), "error");
@@ -218,7 +219,13 @@ const BlogPostsPage: React.FC = () => {
               columnAutoWidth
               columnHidingEnabled
               scrolling={{ mode: "standard", showScrollbar: "always" }}
-              onRowClick={(event) => navigate(`/admin/blog/${event.data.id}/edit`)}
+              onRowClick={(event) => {
+                const target = event.event?.target as HTMLElement | undefined;
+                if (target?.closest(".admin-table-action")) {
+                  return;
+                }
+                navigate(`/admin/blog/${event.data.id}/edit`);
+              }}
               onRowPrepared={(event: any) => {
                 if (event.rowType === "data" && event.data?.id === mainHeroPostId) {
                   event.rowElement?.classList.add("admin-blog-main-hero-row");
@@ -285,15 +292,16 @@ const BlogPostsPage: React.FC = () => {
                 minWidth={120}
                 cellRender={(cellData: { data: BlogPost }) => (
                   <button
-                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${mainHeroPostId === cellData.data.id ? "bg-violet-100 text-violet-700 border-violet-300" : "bg-white text-slate-600 border-slate-300 hover:border-violet-300 hover:text-violet-700"}`}
+                    type="button"
+                    className={`admin-table-action px-3 py-1 rounded-full text-xs border transition-colors ${mainHeroPostId === cellData.data.id ? "bg-violet-100 text-violet-700 border-violet-300" : "bg-white text-slate-600 border-slate-300 hover:border-violet-300 hover:text-violet-700"}`}
                     onClick={(event) => {
                       event.stopPropagation();
                       handleSetMainHero(cellData.data);
                     }}
                     disabled={updatingMainHeroId === cellData.data.id || cellData.data.status !== "PUBLISHED"}
-                    title={cellData.data.status !== "PUBLISHED" ? "Only published posts can be main hero" : "Set as main hero"}
+                    title={cellData.data.status !== "PUBLISHED" ? "Only published posts can be main hero" : mainHeroPostId === cellData.data.id ? "Clear main hero" : "Set as main hero"}
                   >
-                    {updatingMainHeroId === cellData.data.id ? "Updating..." : mainHeroPostId === cellData.data.id ? "Main Hero" : "Set as main"}
+                    {updatingMainHeroId === cellData.data.id ? "Updating..." : mainHeroPostId === cellData.data.id ? "Main Hero ✓" : "Set as main"}
                   </button>
                 )}
               />
@@ -302,7 +310,7 @@ const BlogPostsPage: React.FC = () => {
                 width={140}
                 cellRender={(cellData: { data: BlogPost }) => (
                   <div className="flex gap-2">
-                    <Link className="btn btn-outline" to={`/admin/blog/${cellData.data.id}/edit`}>
+                    <Link className="btn btn-outline admin-table-action" to={`/admin/blog/${cellData.data.id}/edit`}>
                       Edit
                     </Link>
                   </div>
