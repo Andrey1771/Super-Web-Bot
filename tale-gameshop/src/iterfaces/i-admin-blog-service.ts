@@ -30,4 +30,5 @@ export type AdminBlogPayload = {
   publishedAt?: string;
   changeNote?: string;
   featured?: boolean;
+  blogHomeFeatured?: boolean;
 };

@@ -95,8 +95,13 @@ namespace SuperBot.Core.Services
 
             var latestPosts = await _blogRepository.GetPublishedAsync(Math.Max(normalizedLimit, 6));
             var editorsPicks = await _blogRepository.GetEditorsPicksAsync(Math.Max(4, normalizedLimit));
+            var configuredHeroPost = await _blogRepository.GetBlogHomeFeaturedAsync();
 
-            var heroPost = editorsPicks.FirstOrDefault() ?? latestPosts.FirstOrDefault();
+            var fallbackHeroPost = latestPosts.FirstOrDefault(post => !string.IsNullOrWhiteSpace(post.CoverUrl))
+                                   ?? latestPosts.FirstOrDefault()
+                                   ?? editorsPicks.FirstOrDefault();
+
+            var heroPost = configuredHeroPost ?? fallbackHeroPost;
             if (heroPost == null)
             {
                 return new BlogRecommendationsResult();

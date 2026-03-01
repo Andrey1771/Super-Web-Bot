@@ -14,6 +14,8 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<IReadOnlyList<BlogPost>> GetPublishedAsync(int limit);
         Task<IReadOnlyList<BlogPost>> GetPublishedSinceAsync(DateTime fromUtc);
         Task<IReadOnlyList<BlogPost>> GetEditorsPicksAsync(int limit);
+        Task<BlogPost> GetBlogHomeFeaturedAsync();
+        Task ClearBlogHomeFeaturedAsync(string exceptPostId = null);
         Task CreateAsync(BlogPost post, BlogPostVersion version);
         Task UpdateAsync(BlogPost post, BlogPostVersion version);
         Task<List<BlogPostVersion>> GetVersionsAsync(string postId);

@@ -650,6 +650,15 @@
   transform: translateY(-2px);
 }
 
+.featured-editors-card--empty {
+  justify-content: center;
+  min-height: 320px;
+}
+
+.featured-editors-card--empty:hover {
+  transform: none;
+}
+
 .featured-editors-card__cover {
   width: 100%;
   height: clamp(200px, 20vw, 260px);

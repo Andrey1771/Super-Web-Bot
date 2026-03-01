@@ -54,6 +54,7 @@ const BlogPostEditorPage: React.FC = () => {
     publishedAt: "",
     changeNote: "",
     featured: false,
+    blogHomeFeatured: false,
   });
   const formRef = useRef(form);
   const scheduledAtRef = useRef(scheduledAt);
@@ -112,6 +113,7 @@ const BlogPostEditorPage: React.FC = () => {
         publishedAt: response.post.publishedAt ?? "",
         changeNote: "",
         featured: response.post.featured ?? false,
+        blogHomeFeatured: response.post.blogHomeFeatured ?? false,
       };
       formRef.current = nextForm;
       setForm(nextForm);
@@ -252,6 +254,8 @@ const BlogPostEditorPage: React.FC = () => {
           status: refreshed.post.status,
           scheduledAt: refreshed.post.scheduledAt ?? "",
           publishedAt: refreshed.post.publishedAt ?? "",
+          featured: refreshed.post.featured ?? false,
+          blogHomeFeatured: refreshed.post.blogHomeFeatured ?? false,
         };
         formRef.current = next;
         return next;
@@ -426,6 +430,14 @@ const BlogPostEditorPage: React.FC = () => {
             onChange={(event) => handleChange("featured", event.target.checked)}
           />
           <span className="text-sm">Editor's Pick (Show in featured slider)</span>
+        </label>
+        <label className="inline-flex items-center gap-2 mt-3">
+          <input
+            type="checkbox"
+            checked={Boolean(form.blogHomeFeatured)}
+            onChange={(event) => handleChange("blogHomeFeatured", event.target.checked)}
+          />
+          <span className="text-sm">Main Blog Hero (large featured card on Blog page)</span>
         </label>
         <label className="text-sm font-semibold">Change note</label>
         <input

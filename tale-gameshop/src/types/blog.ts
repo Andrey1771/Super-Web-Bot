@@ -21,6 +21,7 @@ export type BlogPost = {
   viewCount?: number;
   editorScore?: number;
   featured?: boolean;
+  blogHomeFeatured?: boolean;
 };
 
 export type BlogPostVersion = {

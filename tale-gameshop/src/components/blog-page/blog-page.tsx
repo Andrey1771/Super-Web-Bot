@@ -422,7 +422,7 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container editors-layout">
-                    <FeaturedEditorsPickCard />
+                    <FeaturedEditorsPickCard post={featuredPost} fallbackCover={FALLBACK_COVER} />
                     <div className="editors-widget">
                         <div className="editors-list-header">
                             <h2>Editor&apos;s picks</h2>

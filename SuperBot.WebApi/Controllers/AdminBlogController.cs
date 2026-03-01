@@ -115,6 +115,7 @@ public class AdminBlogController : ControllerBase
         }
 
         var now = DateTime.UtcNow;
+        var shouldBeBlogHomeFeatured = request.BlogHomeFeatured ?? false;
         var post = new BlogPost
         {
             Title = request.Title,
@@ -135,7 +136,8 @@ public class AdminBlogController : ControllerBase
             CurrentVersionId = string.Empty,
             ViewCount = 0,
             EditorScore = request.EditorScore ?? 0,
-            Featured = request.Featured ?? false
+            Featured = request.Featured ?? false,
+            BlogHomeFeatured = shouldBeBlogHomeFeatured
         };
 
         var scheduleError = ValidateSchedule(post);
@@ -157,6 +159,11 @@ public class AdminBlogController : ControllerBase
             CreatedBy = request.AuthorName,
             ChangeNote = request.ChangeNote ?? "Initial version"
         };
+
+        if (shouldBeBlogHomeFeatured)
+        {
+            await _blogRepository.ClearBlogHomeFeaturedAsync();
+        }
 
         await _blogRepository.CreateAsync(post, version);
 
@@ -228,6 +235,7 @@ public class AdminBlogController : ControllerBase
         post.Topics = request.Topics ?? Array.Empty<string>();
         post.EditorScore = request.EditorScore ?? post.EditorScore;
         post.Featured = request.Featured ?? post.Featured;
+        post.BlogHomeFeatured = request.BlogHomeFeatured ?? post.BlogHomeFeatured;
         post.UpdatedAt = DateTime.UtcNow;
 
         var scheduleError = ValidateSchedule(post);
@@ -249,6 +257,11 @@ public class AdminBlogController : ControllerBase
             CreatedBy = request.AuthorName,
             ChangeNote = request.ChangeNote ?? "Updated"
         };
+
+        if (post.BlogHomeFeatured)
+        {
+            await _blogRepository.ClearBlogHomeFeaturedAsync(post.Id);
+        }
 
         await _blogRepository.UpdateAsync(post, version);
 
@@ -558,6 +571,7 @@ public class SaveBlogPostRequest
     public int? ReadingTime { get; set; }
     public int? EditorScore { get; set; }
     public bool? Featured { get; set; }
+    public bool? BlogHomeFeatured { get; set; }
     public string? ChangeNote { get; set; }
 }
 

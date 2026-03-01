@@ -231,6 +231,15 @@ const BlogPostsPage: React.FC = () => {
                 )}
               />
               <Column
+                caption="Main hero"
+                minWidth={120}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span className={`px-2 py-1 rounded-full text-xs ${cellData.data.blogHomeFeatured ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-600"}`}>
+                    {cellData.data.blogHomeFeatured ? "Featured" : "No"}
+                  </span>
+                )}
+              />
+              <Column
                 caption="Actions"
                 width={140}
                 cellRender={(cellData: { data: BlogPost }) => (
