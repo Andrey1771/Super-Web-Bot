@@ -431,14 +431,9 @@ const BlogPostEditorPage: React.FC = () => {
           />
           <span className="text-sm">Editor's Pick (Show in featured slider)</span>
         </label>
-        <label className="inline-flex items-center gap-2 mt-3">
-          <input
-            type="checkbox"
-            checked={Boolean(form.blogHomeFeatured)}
-            onChange={(event) => handleChange("blogHomeFeatured", event.target.checked)}
-          />
-          <span className="text-sm">Main Blog Hero (large featured card on Blog page)</span>
-        </label>
+        <p className="text-xs text-gray-500 mt-2">
+          Main Blog Hero is managed from the Blog posts list table for faster single-selection workflow.
+        </p>
         <label className="text-sm font-semibold">Change note</label>
         <input
           type="text"

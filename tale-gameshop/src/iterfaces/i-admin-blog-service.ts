@@ -15,6 +15,8 @@ export interface IAdminBlogService {
   getVersion(id: string, versionId: string): Promise<BlogPostVersion>;
   restoreVersion(id: string, versionId: string, changeNote?: string): Promise<BlogPost>;
   archivePost(id: string): Promise<BlogPost>;
+  getHomeSettings(): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
+  setMainHeroPost(postId?: string): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
 }
 
 export type AdminBlogPayload = {

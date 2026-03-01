@@ -318,6 +318,11 @@
   background: rgba(124, 58, 237, 0.08);
 }
 
+.admin-blog-main-hero-row td {
+  background: color-mix(in srgb, var(--color-primary) 8%, #ffffff) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-primary) 15%, #ffffff), inset 0 -1px 0 color-mix(in srgb, var(--color-primary) 15%, #ffffff);
+}
+
 .admin-drawer__footer {
   position: sticky;
   bottom: 0;
