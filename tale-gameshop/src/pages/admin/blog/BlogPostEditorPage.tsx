@@ -18,6 +18,38 @@ import { slugify } from "../../../utils/slugify";
 
 const statusOptions: BlogStatus[] = ["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"];
 
+const toDateTimeLocalValue = (value?: string | null): string => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const toIsoDateTimeValue = (value?: string): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date.toISOString();
+};
+
 const BlogPostEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new" || !id;
@@ -120,8 +152,8 @@ const BlogPostEditorPage: React.FC = () => {
       formRef.current = nextForm;
       setForm(nextForm);
       setStatusDraft(response.post.status);
-      const nextScheduledAt = response.post.scheduledAt ?? "";
-      const nextPublishedAt = response.post.publishedAt ?? "";
+      const nextScheduledAt = toDateTimeLocalValue(response.post.scheduledAt);
+      const nextPublishedAt = toDateTimeLocalValue(response.post.publishedAt);
       scheduledAtRef.current = nextScheduledAt;
       publishedAtRef.current = nextPublishedAt;
       changeNoteRef.current = "";
@@ -145,8 +177,8 @@ const BlogPostEditorPage: React.FC = () => {
       slug: currentForm.slug ? slugify(currentForm.slug) : slugify(currentForm.title),
       tags: currentForm.tags,
       status: statusOverride ?? currentForm.status,
-      scheduledAt: scheduledAtRef.current || undefined,
-      publishedAt: publishedAtRef.current || undefined,
+      scheduledAt: toIsoDateTimeValue(scheduledAtRef.current),
+      publishedAt: toIsoDateTimeValue(publishedAtRef.current),
       changeNote: changeNoteRef.current || undefined,
     };
 
@@ -263,8 +295,8 @@ const BlogPostEditorPage: React.FC = () => {
         formRef.current = next;
         return next;
       });
-      const restoredScheduledAt = refreshed.post.scheduledAt ?? "";
-      const restoredPublishedAt = refreshed.post.publishedAt ?? "";
+      const restoredScheduledAt = toDateTimeLocalValue(refreshed.post.scheduledAt);
+      const restoredPublishedAt = toDateTimeLocalValue(refreshed.post.publishedAt);
       scheduledAtRef.current = restoredScheduledAt;
       publishedAtRef.current = restoredPublishedAt;
       setScheduledAt(restoredScheduledAt);
