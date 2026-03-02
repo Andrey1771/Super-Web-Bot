@@ -3,12 +3,84 @@ import { useParams, Link } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IBlogService } from "../../iterfaces/i-blog-service";
-import type { BlogPost, BlogPostVersion } from "../../types/blog";
+import type { BlogListItem, BlogPost, BlogPostVersion } from "../../types/blog";
 import { renderMarkdown } from "../../utils/markdown";
 import { useBlogTracking } from "../../hooks/use-blog-tracking";
 import SafeBlogImage from "./SafeBlogImage";
-import {getBlogPostCoverUrl} from "../../utils/blog-cover";
+import { getBlogPostCoverUrl } from "../../utils/blog-cover";
+import PostCard from "../../pages/blog/components/PostCard";
 import "./blog-page.css";
+
+type TocItem = {
+  id: string;
+  text: string;
+  level: number;
+};
+
+const formatDate = (value?: string) => {
+  if (!value) {
+    return "Draft";
+  }
+
+  return new Date(value).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+};
+
+const toListItem = (post: BlogPost): BlogListItem => ({
+  id: post.id,
+  slug: post.slug,
+  title: post.title,
+  excerpt: post.excerpt,
+  coverUrl: post.coverUrl,
+  imageUrl: post.imageUrl,
+  tags: post.tags,
+  publishedAt: post.publishedAt,
+  readingTime: post.readingTime
+});
+
+const buildTocAndInjectAnchors = (html: string): { contentHtml: string; headings: TocItem[] } => {
+  if (!html) {
+    return { contentHtml: "", headings: [] };
+  }
+
+  const parser = new DOMParser();
+  const documentNode = parser.parseFromString(html, "text/html");
+  const headingElements = Array.from(documentNode.body.querySelectorAll("h2, h3, h4"));
+
+  const usedIds = new Set<string>();
+  const headings = headingElements
+    .map((heading): TocItem | null => {
+      const text = heading.textContent?.trim() ?? "";
+      if (!text) {
+        return null;
+      }
+
+      const level = Number.parseInt(heading.tagName.replace("H", ""), 10);
+      const baseId = text
+        .toLowerCase()
+        .replace(/[^a-z0-9а-яё\s-]/gi, "")
+        .trim()
+        .replace(/\s+/g, "-") || "section";
+
+      let id = baseId;
+      let index = 2;
+      while (usedIds.has(id)) {
+        id = `${baseId}-${index}`;
+        index += 1;
+      }
+      usedIds.add(id);
+
+      heading.id = id;
+
+      return { id, text, level };
+    })
+    .filter((item): item is TocItem => item !== null);
+
+  return { contentHtml: documentNode.body.innerHTML, headings };
+};
 
 const BlogPostPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -17,6 +89,9 @@ const BlogPostPage: React.FC = () => {
   const [version, setVersion] = useState<BlogPostVersion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogListItem[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [activeHeading, setActiveHeading] = useState<string | null>(null);
   const { trackOpen, trackReadProgress, trackReadComplete, trackBookmark } = useBlogTracking();
 
   useEffect(() => {
@@ -24,20 +99,27 @@ const BlogPostPage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
+
         if (!slug) {
+          setPost(null);
+          setVersion(null);
           setError("Post not found.");
           return;
         }
+
         const response = await blogService.getPostBySlug(slug);
         setPost(response.post);
         setVersion(response.version);
       } catch (fetchError) {
         console.error(fetchError);
+        setPost(null);
+        setVersion(null);
         setError("Unable to load blog post.");
       } finally {
         setLoading(false);
       }
     };
+
     fetchPost();
   }, [blogService, slug]);
 
@@ -73,30 +155,106 @@ const BlogPostPage: React.FC = () => {
     return () => window.clearInterval(interval);
   }, [post, trackReadComplete, trackReadProgress]);
 
-  const contentHtml = useMemo(() => {
-    return renderMarkdown(version?.contentMarkdown ?? "");
-  }, [version?.contentMarkdown]);
+  useEffect(() => {
+    const fetchRelated = async () => {
+      if (!post) {
+        setRelatedPosts([]);
+        return;
+      }
+
+      try {
+        setRelatedLoading(true);
+
+        const firstTag = post.tags[0];
+        const relatedByTag = await blogService.getPosts({
+          page: 1,
+          pageSize: 4,
+          tag: firstTag || undefined
+        });
+
+        let nextItems = relatedByTag.items.filter((item) => item.id !== post.id);
+
+        if (nextItems.length < 3) {
+          const fallback = await blogService.getPosts({ page: 1, pageSize: 6 });
+          const fallbackFiltered = fallback.items.filter((item) => item.id !== post.id && !nextItems.some((existing) => existing.id === item.id));
+          nextItems = [...nextItems, ...fallbackFiltered];
+        }
+
+        setRelatedPosts(nextItems.slice(0, 3));
+      } catch (relatedError) {
+        console.error(relatedError);
+        setRelatedPosts([]);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    fetchRelated();
+  }, [blogService, post]);
+
+  const contentHtml = useMemo(() => renderMarkdown(version?.contentMarkdown ?? version?.contentHtml ?? ""), [version?.contentHtml, version?.contentMarkdown]);
+
+  const articleContent = useMemo(() => buildTocAndInjectAnchors(contentHtml), [contentHtml]);
+
+  useEffect(() => {
+    if (!articleContent.headings.length) {
+      setActiveHeading(null);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+
+        if (visibleEntry?.target?.id) {
+          setActiveHeading(visibleEntry.target.id);
+        }
+      },
+      { rootMargin: "0px 0px -70% 0px", threshold: [0.1, 1] }
+    );
+
+    articleContent.headings.forEach((heading) => {
+      const element = document.getElementById(heading.id);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [articleContent]);
+
+  const topic = post?.topics?.[0] ?? post?.tags?.[0];
+  const hasMeta = Boolean(post?.authorName || post?.publishedAt || post?.readingTime);
 
   if (loading) {
     return (
       <main className="blog-page">
         <section className="section">
-          <div className="container">
-            <div className="skeleton h-10" />
-            <div className="skeleton h-80 mt-4" />
+          <div className="container blog-post-state-card" aria-busy="true">
+            <div className="blog-post-loading-hero">
+              <div className="skeleton blog-post-skeleton-chip" />
+              <div className="skeleton blog-post-skeleton-title" />
+              <div className="skeleton blog-post-skeleton-text" />
+              <div className="skeleton blog-post-skeleton-meta" />
+            </div>
+            <div className="skeleton blog-post-skeleton-cover" />
+            <div className="skeleton blog-post-skeleton-content" />
           </div>
         </section>
       </main>
     );
   }
 
-  if (error || !post || !version) {
+  if (error) {
     return (
       <main className="blog-page">
         <section className="section">
-          <div className="container">
-            <h2>Post not found</h2>
-            <p className="muted">{error ?? "We couldn't locate this post."}</p>
+          <div className="container blog-post-state-card">
+            <p className="eyebrow">Blog</p>
+            <h2>Something went wrong</h2>
+            <p className="muted">{error}</p>
             <Link className="btn btn-primary" to="/blog">
               Back to blog
             </Link>
@@ -106,35 +264,160 @@ const BlogPostPage: React.FC = () => {
     );
   }
 
+  if (!post || !version) {
+    return (
+      <main className="blog-page">
+        <section className="section">
+          <div className="container blog-post-state-card">
+            <p className="eyebrow">Blog</p>
+            <h2>Post not found</h2>
+            <p className="muted">We couldn&apos;t locate this article. It may have been moved or removed.</p>
+            <Link className="btn btn-primary" to="/blog">
+              Back to blog
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  const postForCard = toListItem(post);
+
   return (
     <main className="blog-page">
-      <section className="section">
-        <div className="container">
-          <Link className="btn btn-outline" to="/blog">
-            ← Back to blog
-          </Link>
-          <div className="blog-post-header">
-            <h1>{post.title}</h1>
-            <p className="muted">{post.excerpt}</p>
-            <div className="blog-post-meta">
-              <span>{post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : "Draft"}</span>
-              {post.readingTime && <span>{post.readingTime} min read</span>}
+      <section className="section blog-post-section">
+        <div className="container blog-post-shell">
+          <nav className="blog-breadcrumbs" aria-label="Breadcrumb">
+            <Link to="/">Home</Link>
+            <span aria-hidden="true">/</span>
+            <Link to="/blog">Blog</Link>
+            <span aria-hidden="true">/</span>
+            <span className="blog-breadcrumbs__current" aria-current="page">
+              {post.title}
+            </span>
+          </nav>
+
+          <header className="blog-post-hero surface">
+            <div className="blog-post-hero__copy">
+              {topic && <p className="badge blog-post-hero__topic">{topic}</p>}
+              <h1>{post.title}</h1>
+              {post.excerpt && <p className="blog-post-hero__excerpt">{post.excerpt}</p>}
+
+              {hasMeta && (
+                <div className="blog-post-meta" aria-label="Post metadata">
+                  {post.authorName && <span>By {post.authorName}</span>}
+                  {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
+                  {post.readingTime && <span>{post.readingTime} min read</span>}
+                </div>
+              )}
+
+              <div className="blog-post-hero__actions">
+                <button className="btn btn-outline" type="button" onClick={() => trackBookmark(post.id)} aria-label="Save article">
+                  Save article
+                </button>
+                <a className="btn btn-ghost" href="#post-content">
+                  Jump to content
+                </a>
+              </div>
             </div>
-            <div className="blog-post-tags">
-              {post.tags.map((tag) => (
-                <span key={tag} className="blog-tag">
-                  {tag}
-                </span>
-              ))}
-              <button className="btn btn-outline" type="button" onClick={() => trackBookmark(post.id)}>
-                Save
-              </button>
+            <div className="blog-post-cover" role="img" aria-label={`${post.title} cover`}>
+              <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} loading="eager" />
             </div>
+          </header>
+
+          <div className="blog-post-layout">
+            {articleContent.headings.length > 0 && (
+              <aside className="blog-post-aside surface" aria-label="Article tools">
+                <p className="blog-post-aside__title">On this page</p>
+                <ul className="blog-post-toc">
+                  {articleContent.headings.map((heading) => (
+                    <li key={heading.id} className={`blog-post-toc__item blog-post-toc__item--h${heading.level}`}>
+                      <a className={activeHeading === heading.id ? "is-active" : ""} href={`#${heading.id}`}>
+                        {heading.text}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <div className="blog-post-share">
+                  <p className="blog-post-aside__title">Share</p>
+                  <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(post.title)}`} target="_blank" rel="noreferrer">
+                    Share on X
+                  </a>
+                  <a href={`mailto:?subject=${encodeURIComponent(post.title)}&body=${encodeURIComponent(window.location.href)}`}>
+                    Share via email
+                  </a>
+                </div>
+              </aside>
+            )}
+
+            <article id="post-content" className="blog-post-content surface" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
           </div>
-          <div className="blog-post-cover">
-            <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} />
-          </div>
-          <article className="blog-post-content prose max-w-none" dangerouslySetInnerHTML={{ __html: contentHtml }} />
+
+          <footer className="blog-post-footer">
+            {post.tags.length > 0 && (
+              <div className="blog-post-footer__tags" aria-label="Post tags">
+                <h3>Tags</h3>
+                <div className="blog-post-tags">
+                  {post.tags.map((tag) => (
+                    <Link key={tag} to={`/blog?tag=${encodeURIComponent(tag)}`} className="blog-tag">
+                      #{tag}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {post.authorName && (
+              <div className="blog-post-author-card surface">
+                <p className="eyebrow">Author</p>
+                <h3>{post.authorName}</h3>
+                <p className="muted">Writes about games, updates, and practical buying guides at Tale Shop Blog.</p>
+              </div>
+            )}
+
+            <div className="blog-post-footer__cta">
+              <Link className="btn btn-outline" to="/blog">
+                Back to blog
+              </Link>
+            </div>
+          </footer>
+
+          <section className="related-posts-section" aria-labelledby="related-posts-title">
+            <div className="related-posts-section__header">
+              <h2 id="related-posts-title">Related posts</h2>
+              <p className="muted">More stories you might enjoy.</p>
+            </div>
+
+            {relatedLoading ? (
+              <div className="related-posts-grid" aria-busy="true">
+                {[1, 2, 3].map((item) => (
+                  <div className="related-posts-skeleton surface" key={item}>
+                    <div className="skeleton related-posts-skeleton__media" />
+                    <div className="skeleton related-posts-skeleton__title" />
+                    <div className="skeleton related-posts-skeleton__meta" />
+                  </div>
+                ))}
+              </div>
+            ) : relatedPosts.length > 0 ? (
+              <div className="related-posts-grid">
+                {relatedPosts.map((item) => (
+                  <PostCard key={item.id} post={item} variant="compact" />
+                ))}
+              </div>
+            ) : (
+              <div className="related-posts-empty surface">
+                <p className="muted">No related posts yet. Explore the full blog for more articles.</p>
+                <Link className="btn btn-outline" to="/blog">
+                  Browse all posts
+                </Link>
+              </div>
+            )}
+          </section>
+
+          <section className="blog-post-nav surface" aria-label="Post navigation">
+            <h3>Keep reading</h3>
+            <PostCard post={postForCard} variant="mini" />
+          </section>
         </div>
       </section>
     </main>
