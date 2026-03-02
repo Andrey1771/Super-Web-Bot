@@ -6,6 +6,10 @@ namespace SuperBot.WebApi.Services;
 public class ImageMetadataReader : IImageMetadataReader
 {
     private readonly string _webRoot;
+    private static readonly HttpClient HttpClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(10)
+    };
 
     public ImageMetadataReader(IWebHostEnvironment env)
     {
@@ -21,13 +25,28 @@ public class ImageMetadataReader : IImageMetadataReader
             return Task.FromResult<(int Width, int Height)?>(null);
         }
 
+        return TryReadFromAssetAsync(asset, ct);
+    }
+
+    private async Task<(int Width, int Height)?> TryReadFromAssetAsync(MediaAsset asset, CancellationToken ct)
+    {
         var physicalPath = ResolvePhysicalPath(asset.Url);
-        if (string.IsNullOrWhiteSpace(physicalPath))
+        if (!string.IsNullOrWhiteSpace(physicalPath))
         {
-            return Task.FromResult<(int Width, int Height)?>(null);
+            var fromFile = await TryReadImageSizeAsync(physicalPath, ct);
+            if (fromFile.HasValue)
+            {
+                return fromFile;
+            }
         }
 
-        return TryReadImageSizeAsync(physicalPath, ct);
+        if (Uri.TryCreate(asset.Url, UriKind.Absolute, out var absoluteUri)
+            && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
+        {
+            return await TryReadImageSizeFromRemoteAsync(absoluteUri, ct);
+        }
+
+        return null;
     }
 
     public async Task<(int Width, int Height)?> TryReadImageSizeAsync(string physicalPath, CancellationToken ct = default)
@@ -73,5 +92,24 @@ public class ImageMetadataReader : IImageMetadataReader
         relativePath = relativePath.TrimStart('/');
         var safePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
         return Path.GetFullPath(Path.Combine(_webRoot, safePath));
+    }
+
+    private static async Task<(int Width, int Height)?> TryReadImageSizeFromRemoteAsync(Uri uri, CancellationToken ct)
+    {
+        try
+        {
+            await using var stream = await HttpClient.GetStreamAsync(uri, ct);
+            var info = await Image.IdentifyAsync(stream, ct);
+            if (info == null || info.Width <= 0 || info.Height <= 0)
+            {
+                return null;
+            }
+
+            return (info.Width, info.Height);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
