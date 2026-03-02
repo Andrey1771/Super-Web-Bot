@@ -395,7 +395,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       </video>
                     ) : (
                       <div
-                        className="flex h-full w-full items-center justify-center overflow-hidden"
+                        className="h-full w-full overflow-auto"
                         onWheel={handleImageWheel}
                       >
                         {selectedPreviewBroken || !resolveMediaUrl(selectedAsset.url, apiBaseUrl) ? (
@@ -409,9 +409,11 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                             onError={() => setSelectedPreviewBroken(true)}
                             style={{
                               transform: `scale(${scale})`,
-                              transformOrigin: 'center center',
-                              maxWidth: 'none',
-                              maxHeight: 'none',
+                              transformOrigin: 'top center',
+                              maxWidth: '100%',
+                              height: 'auto',
+                              display: 'block',
+                              margin: '0 auto',
                               transition: 'transform 160ms ease-out'
                             }}
                           />
