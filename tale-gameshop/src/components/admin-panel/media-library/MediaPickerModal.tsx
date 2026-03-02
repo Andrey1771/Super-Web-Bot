@@ -383,7 +383,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               <h3 className="text-sm font-semibold">Preview</h3>
               {selectedAsset ? (
                 <div className="mt-3 space-y-3">
-                  <div className="h-[70vh] max-h-[520px] w-full overflow-hidden rounded border bg-gray-50">
+                  <div className="h-[360px] md:h-[420px] w-full overflow-hidden rounded border bg-gray-50">
                     {selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video") ? (
                       <video
                         controls
