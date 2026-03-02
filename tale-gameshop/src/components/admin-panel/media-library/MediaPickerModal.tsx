@@ -81,6 +81,10 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     setSelectedPreviewBroken(false);
   }, [isOpen, selectedId]);
 
+  useEffect(() => {
+    setSelectionError(null);
+  }, [selectedId]);
+
   const filteredItems = useMemo(() => {
     if (!search.trim()) {
       return items;
@@ -183,6 +187,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       return;
     }
 
+    setSelectionError(null);
     const shouldClose = onSelect(selected);
     if (shouldClose !== false) {
       onClose();
@@ -312,6 +317,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                             setSelectedIds((prev) =>
                               prev.includes(item.id) ? prev.filter((value) => value !== item.id) : [...prev, item.id]
                             );
+                            setSelectionError(getSelectionError ? getSelectionError(item) : null);
                           } else {
                             setSelectedId(item.id);
                             setSelectedIds([item.id]);
@@ -475,8 +481,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           </div>
 
             <div className="flex items-center justify-between">
-              <span className={`text-xs ${selectionError ? "font-medium text-red-600" : "text-gray-500"}`}>
-                {selectionError ?? (
+              <span className={`text-xs ${(activeSelectionError ?? selectionError) ? "font-medium text-red-600" : "text-gray-500"}`}>
+                {activeSelectionError ?? selectionError ?? (
                   allowMultiple
                     ? selectedIds.length > 0
                       ? `${selectedIds.length} items selected`
