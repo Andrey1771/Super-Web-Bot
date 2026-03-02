@@ -6,6 +6,7 @@ import type { IBlogService } from "../../iterfaces/i-blog-service";
 import type { BlogPost, BlogPostVersion } from "../../types/blog";
 import { renderMarkdown } from "../../utils/markdown";
 import { useBlogTracking } from "../../hooks/use-blog-tracking";
+import SafeBlogImage from "./SafeBlogImage";
 import "./blog-page.css";
 
 const BlogPostPage: React.FC = () => {
@@ -129,11 +130,9 @@ const BlogPostPage: React.FC = () => {
               </button>
             </div>
           </div>
-          {post.coverUrl && (
-            <div className="blog-post-cover">
-              <img src={post.coverUrl} alt={post.title} />
-            </div>
-          )}
+          <div className="blog-post-cover">
+            <SafeBlogImage src={post.coverUrl} alt={post.title} />
+          </div>
           <article className="blog-post-content prose max-w-none" dangerouslySetInnerHTML={{ __html: contentHtml }} />
         </div>
       </section>

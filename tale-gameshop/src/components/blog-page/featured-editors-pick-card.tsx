@@ -1,10 +1,10 @@
 import React from "react";
 import {Link} from "react-router-dom";
 import type {BlogListItem} from "../../types/blog";
+import SafeBlogImage from "./SafeBlogImage";
 
 type FeaturedEditorsPickCardProps = {
     post?: BlogListItem | null;
-    fallbackCover: string;
 };
 
 const formatDate = (value?: string) => {
@@ -15,7 +15,7 @@ const formatDate = (value?: string) => {
     return new Date(value).toLocaleDateString();
 };
 
-export default function FeaturedEditorsPickCard({post, fallbackCover}: FeaturedEditorsPickCardProps) {
+export default function FeaturedEditorsPickCard({post}: FeaturedEditorsPickCardProps) {
     if (!post) {
         return (
             <article className="featured-editors-card featured-editors-card--empty" aria-label="Featured editor's pick">
@@ -33,7 +33,7 @@ export default function FeaturedEditorsPickCard({post, fallbackCover}: FeaturedE
 
     return (
         <article className="featured-editors-card" aria-label="Featured editor's pick">
-            <img src={post.coverUrl || fallbackCover} alt={post.title} className="featured-editors-card__cover" />
+            <SafeBlogImage src={post.coverUrl} alt={post.title} className="featured-editors-card__cover" />
             <div className="featured-editors-card__content">
                 <span className="featured-editors-card__tag">{tag}</span>
                 <h3>{post.title}</h3>

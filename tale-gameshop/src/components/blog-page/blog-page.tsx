@@ -19,9 +19,9 @@ import type {BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
 import PostCard from "../../pages/blog/components/PostCard";
 import {getAnonId} from "../../hooks/use-blog-tracking";
 import FeaturedEditorsPickCard from "./featured-editors-pick-card";
+import SafeBlogImage from "./SafeBlogImage";
 import "./blog-page.css";
 
-const FALLBACK_COVER = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1600&q=80";
 const RECOMMENDATION_LIMIT = 6;
 const EDITORS_VISIBLE_ITEMS = 3;
 const EDITORS_FETCH_LIMIT = 9;
@@ -74,7 +74,6 @@ const formatDate = (value?: string) => {
     return new Date(value).toLocaleDateString();
 };
 
-const getCover = (post: BlogListItem) => post.coverUrl || FALLBACK_COVER;
 
 export default function BlogPage() {
     const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
@@ -422,7 +421,7 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container editors-layout">
-                    <FeaturedEditorsPickCard post={featuredPost} fallbackCover={FALLBACK_COVER} />
+                    <FeaturedEditorsPickCard post={featuredPost} />
                     <div className="editors-widget">
                         <div className="editors-list-header">
                             <h2>Editor&apos;s picks</h2>
@@ -435,7 +434,7 @@ export default function BlogPage() {
                             <div className="editors-posts-list" role="list">
                                 {activeEditorPosts.map((post) => (
                                     <article className="editors-list-item" role="listitem" key={post.id}>
-                                        <img src={getCover(post)} alt={post.title} className="editors-list-item__thumb" />
+                                        <SafeBlogImage src={post.coverUrl} alt={post.title} className="editors-list-item__thumb" />
                                         <div className="editors-list-item__body">
                                             <h3 className="line-clamp-2">{post.title}</h3>
                                             <p className="editors-list-item__meta">{getEditorMeta(post)}</p>
