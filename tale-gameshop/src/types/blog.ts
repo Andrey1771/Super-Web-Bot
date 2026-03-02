@@ -7,6 +7,7 @@ export type BlogPost = {
   excerpt: string;
   coverAssetId?: string;
   coverUrl?: string;
+  imageUrl?: string;
   status: BlogStatus;
   publishedAt?: string;
   scheduledAt?: string;
@@ -44,6 +45,7 @@ export type BlogListItem = {
   title: string;
   excerpt: string;
   coverUrl?: string;
+  imageUrl?: string;
   tags: string[];
   publishedAt?: string;
   readingTime?: number;
