@@ -15,8 +15,43 @@ import type { AdminBlogPayload } from "../../../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../../../types/blog";
 import { renderMarkdown } from "../../../utils/markdown";
 import { slugify } from "../../../utils/slugify";
+import type { MediaAsset } from "../../../types/media";
 
 const statusOptions: BlogStatus[] = ["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"];
+const COVER_MIN_WIDTH = 1000;
+const COVER_MIN_HEIGHT = 560;
+
+const toDateTimeLocalValue = (value?: string | null): string => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const toIsoDateTimeValue = (value?: string): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date.toISOString();
+};
 
 const BlogPostEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -120,8 +155,8 @@ const BlogPostEditorPage: React.FC = () => {
       formRef.current = nextForm;
       setForm(nextForm);
       setStatusDraft(response.post.status);
-      const nextScheduledAt = response.post.scheduledAt ?? "";
-      const nextPublishedAt = response.post.publishedAt ?? "";
+      const nextScheduledAt = toDateTimeLocalValue(response.post.scheduledAt);
+      const nextPublishedAt = toDateTimeLocalValue(response.post.publishedAt);
       scheduledAtRef.current = nextScheduledAt;
       publishedAtRef.current = nextPublishedAt;
       changeNoteRef.current = "";
@@ -145,8 +180,8 @@ const BlogPostEditorPage: React.FC = () => {
       slug: currentForm.slug ? slugify(currentForm.slug) : slugify(currentForm.title),
       tags: currentForm.tags,
       status: statusOverride ?? currentForm.status,
-      scheduledAt: scheduledAtRef.current || undefined,
-      publishedAt: publishedAtRef.current || undefined,
+      scheduledAt: toIsoDateTimeValue(scheduledAtRef.current),
+      publishedAt: toIsoDateTimeValue(publishedAtRef.current),
       changeNote: changeNoteRef.current || undefined,
     };
 
@@ -222,8 +257,32 @@ const BlogPostEditorPage: React.FC = () => {
     }
   };
 
-  const handleSelectMedia = (asset: { id: string }) => {
+  const getCoverSelectionError = (asset: MediaAsset): string | null => {
+    const isImage = asset.type === "image" || asset.contentType?.startsWith("image");
+    if (!isImage) {
+      return "Cover must be an image file.";
+    }
+
+    if (!asset.width || !asset.height) {
+      return "Cover image dimensions are missing. Please upload/regenerate this image.";
+    }
+
+    if (asset.width < COVER_MIN_WIDTH || asset.height < COVER_MIN_HEIGHT) {
+      return `Cover image must be at least ${COVER_MIN_WIDTH}x${COVER_MIN_HEIGHT}px.`;
+    }
+
+    return null;
+  };
+
+  const handleSelectMedia = (asset: MediaAsset) => {
+    const selectionError = getCoverSelectionError(asset);
+    if (selectionError) {
+      addToast(selectionError, "error");
+      return false;
+    }
+
     handleChange("coverAssetId", asset.id);
+    return true;
   };
 
   const handleVersionView = async (versionId: string) => {
@@ -263,8 +322,8 @@ const BlogPostEditorPage: React.FC = () => {
         formRef.current = next;
         return next;
       });
-      const restoredScheduledAt = refreshed.post.scheduledAt ?? "";
-      const restoredPublishedAt = refreshed.post.publishedAt ?? "";
+      const restoredScheduledAt = toDateTimeLocalValue(refreshed.post.scheduledAt);
+      const restoredPublishedAt = toDateTimeLocalValue(refreshed.post.publishedAt);
       scheduledAtRef.current = restoredScheduledAt;
       publishedAtRef.current = restoredPublishedAt;
       setScheduledAt(restoredScheduledAt);
@@ -500,6 +559,7 @@ const BlogPostEditorPage: React.FC = () => {
         isOpen={mediaPickerOpen}
         onClose={() => setMediaPickerOpen(false)}
         onSelect={handleSelectMedia}
+        getSelectionError={getCoverSelectionError}
         initialSelectedId={form.coverAssetId || undefined}
       />
 

@@ -92,6 +92,16 @@ namespace SuperBot.Infrastructure.Repositories
             await _mediaAssets.ReplaceOneAsync(item => item.Id == id, assetDb);
         }
 
+
+        public async Task UpdateDimensionsAsync(string id, int width, int height)
+        {
+            var update = Builders<MediaAssetDb>.Update
+                .Set(item => item.Width, width)
+                .Set(item => item.Height, height);
+
+            await _mediaAssets.UpdateOneAsync(item => item.Id == id, update);
+        }
+
         public async Task DeleteAsync(string id)
         {
             await _mediaAssets.DeleteOneAsync(asset => asset.Id == id);

@@ -11,8 +11,9 @@ import { isPlaceholderThumbnailUrl, resolveMediaUrl } from "../../../utils/media
 type MediaPickerModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (asset: MediaAsset) => void;
+  onSelect: (asset: MediaAsset) => boolean | void;
   onSelectMany?: (assets: MediaAsset[]) => void;
+  getSelectionError?: (asset: MediaAsset) => string | null;
   initialSelectedId?: string;
   initialSelectedIds?: string[];
   filterType?: "all" | "image" | "video";
@@ -30,6 +31,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   onClose,
   onSelect,
   onSelectMany,
+  getSelectionError,
   initialSelectedId,
   initialSelectedIds,
   filterType = "all",
@@ -46,8 +48,11 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+  const [selectedPreviewBroken, setSelectedPreviewBroken] = useState(false);
   const [generatingPreviews, setGeneratingPreviews] = useState<Record<string, boolean>>({});
   const [scale, setScale] = useState(1);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const { addToast } = useToast();
   const apiBaseUrl = container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
@@ -61,6 +66,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     setSelectedId(initialSelectedId ?? null);
     setSelectedIds(initialSelectedIds ?? (initialSelectedId ? [initialSelectedId] : []));
     setActiveFilter(filterType);
+    setSelectionError(null);
     fetchMedia(filterType);
   }, [filterType, initialSelectedId, initialSelectedIds, isOpen]);
 
@@ -72,7 +78,12 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     }
 
     setScale(1);
+    setSelectedPreviewBroken(false);
   }, [isOpen, selectedId]);
+
+  useEffect(() => {
+    setSelectionError(null);
+  }, [selectedId]);
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) {
@@ -86,6 +97,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     try {
       setLoading(true);
       setBrokenThumbnails({});
+      setBrokenImages({});
+      setSelectedPreviewBroken(false);
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get(
         `/api/media?page=1&pageSize=60&type=${filter}`
@@ -167,8 +180,18 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       addToast("Select media first.", "error");
       return;
     }
-    onSelect(selected);
-    onClose();
+    const validationError = getSelectionError ? getSelectionError(selected) : null;
+    if (validationError) {
+      setSelectionError(validationError);
+      addToast(validationError, "error");
+      return;
+    }
+
+    setSelectionError(null);
+    const shouldClose = onSelect(selected);
+    if (shouldClose !== false) {
+      onClose();
+    }
   };
 
 
@@ -191,6 +214,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   };
 
   const selectedAsset = items.find((item) => item.id === selectedId) ?? null;
+  const activeSelectionError = selectedAsset && getSelectionError ? getSelectionError(selectedAsset) : null;
 
   const formatDuration = (seconds?: number | null) => {
     if (!seconds && seconds !== 0) {
@@ -293,9 +317,11 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                             setSelectedIds((prev) =>
                               prev.includes(item.id) ? prev.filter((value) => value !== item.id) : [...prev, item.id]
                             );
+                            setSelectionError(getSelectionError ? getSelectionError(item) : null);
                           } else {
                             setSelectedId(item.id);
                             setSelectedIds([item.id]);
+                            setSelectionError(getSelectionError ? getSelectionError(item) : null);
                           }
                         }}
                         className={`border rounded-lg p-2 text-left transition hover:shadow ${
@@ -337,8 +363,17 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                                 </span>
                               </div>
                             )
+                          ) : brokenImages[item.id] || !resolvedUrl ? (
+                            <div className="flex h-full w-full items-center justify-center bg-gray-100 text-[11px] text-gray-500">
+                              Image unavailable
+                            </div>
                           ) : (
-                            <img src={resolvedUrl} alt={item.filename} className="h-full w-full object-cover" />
+                            <img
+                              src={resolvedUrl}
+                              alt={item.filename}
+                              className="h-full w-full object-cover"
+                              onError={() => setBrokenImages((prev) => ({ ...prev, [item.id]: true }))}
+                            />
                           )}
                           {isVideo && (
                             <span className="absolute inset-0 flex items-center justify-center text-white">
@@ -369,7 +404,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               <h3 className="text-sm font-semibold">Preview</h3>
               {selectedAsset ? (
                 <div className="mt-3 space-y-3">
-                  <div className="h-[70vh] max-h-[520px] w-full overflow-hidden rounded border bg-gray-50">
+                  <div className="h-[280px] md:h-[300px] max-h-[42vh] w-full overflow-hidden rounded border bg-gray-50">
                     {selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video") ? (
                       <video
                         controls
@@ -381,24 +416,33 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       </video>
                     ) : (
                       <div
-                        className="flex h-full w-full items-center justify-center overflow-hidden"
+                        className="h-full w-full overflow-auto"
                         onWheel={handleImageWheel}
                       >
-                        <img
-                          src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)}
-                          alt={selectedAsset.filename}
-                          style={{
-                            transform: `scale(${scale})`,
-                            transformOrigin: 'center center',
-                            maxWidth: 'none',
-                            maxHeight: 'none',
-                            transition: 'transform 160ms ease-out'
-                          }}
-                        />
+                        {selectedPreviewBroken || !resolveMediaUrl(selectedAsset.url, apiBaseUrl) ? (
+                          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-sm text-gray-500">
+                            Preview unavailable
+                          </div>
+                        ) : (
+                          <img
+                            src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)}
+                            alt={selectedAsset.filename}
+                            onError={() => setSelectedPreviewBroken(true)}
+                            style={{
+                              transform: `scale(${scale})`,
+                              transformOrigin: 'top center',
+                              maxWidth: '100%',
+                              height: 'auto',
+                              display: 'block',
+                              margin: '0 auto',
+                              transition: 'transform 160ms ease-out'
+                            }}
+                          />
+                        )}
                       </div>
                     )}
                   </div>
-                  {!(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && (
+                  {!(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && !selectedPreviewBroken && (
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <button type="button" className="btn btn-outline" onClick={handleZoomOut}>−</button>
@@ -420,6 +464,9 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       </button>
                     </div>
                   )}
+                  {activeSelectionError && (
+                    <p className="text-xs font-medium text-red-600">{activeSelectionError}</p>
+                  )}
                   <div>
                     <p className="text-sm font-semibold">{selectedAsset.filename}</p>
                     <p className="text-xs text-gray-500">
@@ -434,14 +481,16 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">
-                {allowMultiple
-                  ? selectedIds.length > 0
-                    ? `${selectedIds.length} items selected`
-                    : "Select media to continue"
-                  : selectedId
-                    ? "1 item selected"
-                    : "Select media to continue"}
+              <span className={`text-xs ${(activeSelectionError ?? selectionError) ? "font-medium text-red-600" : "text-gray-500"}`}>
+                {activeSelectionError ?? selectionError ?? (
+                  allowMultiple
+                    ? selectedIds.length > 0
+                      ? `${selectedIds.length} items selected`
+                      : "Select media to continue"
+                    : selectedId
+                      ? "1 item selected"
+                      : "Select media to continue"
+                )}
               </span>
               <button className="btn btn-primary" onClick={handleUseSelected}>
                 Use selected

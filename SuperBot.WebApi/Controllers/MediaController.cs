@@ -5,6 +5,7 @@ using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Diagnostics;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -17,6 +18,7 @@ public class MediaController : ControllerBase
     private readonly string _videoThumbsFolder;
     private readonly IMediaAssetRepository _mediaRepository;
     private readonly IGameRepository _gameRepository;
+    private readonly IImageMetadataReader _imageMetadataReader;
     private const string VideoPlaceholderFileName = "video-placeholder.svg";
     private static readonly HashSet<string> AllowedImages = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -30,10 +32,12 @@ public class MediaController : ControllerBase
     public MediaController(
         IWebHostEnvironment env,
         IMediaAssetRepository mediaRepository,
-        IGameRepository gameRepository)
+        IGameRepository gameRepository,
+        IImageMetadataReader imageMetadataReader)
     {
         _mediaRepository = mediaRepository;
         _gameRepository = gameRepository;
+        _imageMetadataReader = imageMetadataReader;
         _webRoot = string.IsNullOrWhiteSpace(env.WebRootPath)
             ? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")
             : env.WebRootPath;
@@ -147,6 +151,15 @@ public class MediaController : ControllerBase
                 return StatusCode(500, $"Failed to generate video preview: {ex.Message}");
             }
         }
+        else
+        {
+            var imageSize = await _imageMetadataReader.TryReadImageSizeAsync(physicalPath, ct);
+            if (imageSize.HasValue)
+            {
+                width = imageSize.Value.Width;
+                height = imageSize.Value.Height;
+            }
+        }
 
         var asset = new MediaAsset
         {
@@ -196,16 +209,29 @@ public class MediaController : ControllerBase
 
         var fileInfo = new FileInfo(physicalPath);
         var hash = await MediaHashHelper.ComputeHashAsync(physicalPath, CancellationToken.None);
+        var isVideoImport = request.ContentType != null && request.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
+        int? width = null;
+        int? height = null;
+        if (!isVideoImport)
+        {
+            var imageSize = await _imageMetadataReader.TryReadImageSizeAsync(physicalPath, CancellationToken.None);
+            if (imageSize.HasValue)
+            {
+                width = imageSize.Value.Width;
+                height = imageSize.Value.Height;
+            }
+        }
+
         var asset = new MediaAsset
         {
             Url = $"{Request.Scheme}://{Request.Host}/{relativePath}",
-            Type = request.ContentType != null && request.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
-                ? "video"
-                : "image",
+            Type = isVideoImport ? "video" : "image",
             Filename = fileInfo.Name,
             ContentType = request.ContentType ?? "image",
             SizeBytes = fileInfo.Length,
             HashSha256 = hash,
+            Width = width,
+            Height = height,
             CreatedAt = fileInfo.CreationTimeUtc,
             Tags = Array.Empty<string>()
         };

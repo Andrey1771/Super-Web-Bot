@@ -9,6 +9,7 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<(IReadOnlyList<MediaAsset> Items, long Total)> ListAsync(string search, int page, int pageSize, string type = null);
         Task CreateAsync(MediaAsset asset);
         Task UpdateAsync(string id, MediaAsset asset);
+        Task UpdateDimensionsAsync(string id, int width, int height);
         Task DeleteAsync(string id);
     }
 }
