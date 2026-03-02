@@ -13,6 +13,7 @@ type MediaPickerModalProps = {
   onClose: () => void;
   onSelect: (asset: MediaAsset) => boolean | void;
   onSelectMany?: (assets: MediaAsset[]) => void;
+  getSelectionError?: (asset: MediaAsset) => string | null;
   initialSelectedId?: string;
   initialSelectedIds?: string[];
   filterType?: "all" | "image" | "video";
@@ -30,6 +31,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   onClose,
   onSelect,
   onSelectMany,
+  getSelectionError,
   initialSelectedId,
   initialSelectedIds,
   filterType = "all",
@@ -50,6 +52,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [selectedPreviewBroken, setSelectedPreviewBroken] = useState(false);
   const [generatingPreviews, setGeneratingPreviews] = useState<Record<string, boolean>>({});
   const [scale, setScale] = useState(1);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const { addToast } = useToast();
   const apiBaseUrl = container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
@@ -63,6 +66,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     setSelectedId(initialSelectedId ?? null);
     setSelectedIds(initialSelectedIds ?? (initialSelectedId ? [initialSelectedId] : []));
     setActiveFilter(filterType);
+    setSelectionError(null);
     fetchMedia(filterType);
   }, [filterType, initialSelectedId, initialSelectedIds, isOpen]);
 
@@ -172,6 +176,13 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       addToast("Select media first.", "error");
       return;
     }
+    const validationError = getSelectionError ? getSelectionError(selected) : null;
+    if (validationError) {
+      setSelectionError(validationError);
+      addToast(validationError, "error");
+      return;
+    }
+
     const shouldClose = onSelect(selected);
     if (shouldClose !== false) {
       onClose();
@@ -198,6 +209,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   };
 
   const selectedAsset = items.find((item) => item.id === selectedId) ?? null;
+  const activeSelectionError = selectedAsset && getSelectionError ? getSelectionError(selectedAsset) : null;
 
   const formatDuration = (seconds?: number | null) => {
     if (!seconds && seconds !== 0) {
@@ -303,6 +315,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                           } else {
                             setSelectedId(item.id);
                             setSelectedIds([item.id]);
+                            setSelectionError(getSelectionError ? getSelectionError(item) : null);
                           }
                         }}
                         className={`border rounded-lg p-2 text-left transition hover:shadow ${
@@ -445,6 +458,9 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       </button>
                     </div>
                   )}
+                  {activeSelectionError && (
+                    <p className="text-xs font-medium text-red-600">{activeSelectionError}</p>
+                  )}
                   <div>
                     <p className="text-sm font-semibold">{selectedAsset.filename}</p>
                     <p className="text-xs text-gray-500">
@@ -459,14 +475,16 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">
-                {allowMultiple
-                  ? selectedIds.length > 0
-                    ? `${selectedIds.length} items selected`
-                    : "Select media to continue"
-                  : selectedId
-                    ? "1 item selected"
-                    : "Select media to continue"}
+              <span className={`text-xs ${selectionError ? "font-medium text-red-600" : "text-gray-500"}`}>
+                {selectionError ?? (
+                  allowMultiple
+                    ? selectedIds.length > 0
+                      ? `${selectedIds.length} items selected`
+                      : "Select media to continue"
+                    : selectedId
+                      ? "1 item selected"
+                      : "Select media to continue"
+                )}
               </span>
               <button className="btn btn-primary" onClick={handleUseSelected}>
                 Use selected

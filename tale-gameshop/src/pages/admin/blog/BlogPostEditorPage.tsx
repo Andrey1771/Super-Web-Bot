@@ -18,6 +18,8 @@ import { slugify } from "../../../utils/slugify";
 import type { MediaAsset } from "../../../types/media";
 
 const statusOptions: BlogStatus[] = ["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"];
+const COVER_MIN_WIDTH = 1000;
+const COVER_MIN_HEIGHT = 560;
 
 const toDateTimeLocalValue = (value?: string | null): string => {
   if (!value) {
@@ -255,16 +257,27 @@ const BlogPostEditorPage: React.FC = () => {
     }
   };
 
-  const handleSelectMedia = (asset: MediaAsset) => {
+  const getCoverSelectionError = (asset: MediaAsset): string | null => {
     const isImage = asset.type === "image" || asset.contentType?.startsWith("image");
-
     if (!isImage) {
-      addToast("Cover must be an image file.", "error");
-      return false;
+      return "Cover must be an image file.";
     }
 
     if (!asset.width || !asset.height) {
-      addToast("Cover image dimensions are missing. Please upload/regenerate this image.", "error");
+      return "Cover image dimensions are missing. Please upload/regenerate this image.";
+    }
+
+    if (asset.width < COVER_MIN_WIDTH || asset.height < COVER_MIN_HEIGHT) {
+      return `Cover image must be at least ${COVER_MIN_WIDTH}x${COVER_MIN_HEIGHT}px.`;
+    }
+
+    return null;
+  };
+
+  const handleSelectMedia = (asset: MediaAsset) => {
+    const selectionError = getCoverSelectionError(asset);
+    if (selectionError) {
+      addToast(selectionError, "error");
       return false;
     }
 
@@ -546,6 +559,7 @@ const BlogPostEditorPage: React.FC = () => {
         isOpen={mediaPickerOpen}
         onClose={() => setMediaPickerOpen(false)}
         onSelect={handleSelectMedia}
+        getSelectionError={getCoverSelectionError}
         initialSelectedId={form.coverAssetId || undefined}
       />
 
