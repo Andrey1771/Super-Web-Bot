@@ -15,6 +15,7 @@ import type { AdminBlogPayload } from "../../../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../../../types/blog";
 import { renderMarkdown } from "../../../utils/markdown";
 import { slugify } from "../../../utils/slugify";
+import type { MediaAsset } from "../../../types/media";
 
 const statusOptions: BlogStatus[] = ["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"];
 
@@ -254,8 +255,21 @@ const BlogPostEditorPage: React.FC = () => {
     }
   };
 
-  const handleSelectMedia = (asset: { id: string }) => {
+  const handleSelectMedia = (asset: MediaAsset) => {
+    const isImage = asset.type === "image" || asset.contentType?.startsWith("image");
+
+    if (!isImage) {
+      addToast("Cover must be an image file.", "error");
+      return false;
+    }
+
+    if (!asset.width || !asset.height) {
+      addToast("Cover image dimensions are missing. Please upload/regenerate this image.", "error");
+      return false;
+    }
+
     handleChange("coverAssetId", asset.id);
+    return true;
   };
 
   const handleVersionView = async (versionId: string) => {

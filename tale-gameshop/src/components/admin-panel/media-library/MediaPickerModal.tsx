@@ -11,7 +11,7 @@ import { isPlaceholderThumbnailUrl, resolveMediaUrl } from "../../../utils/media
 type MediaPickerModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (asset: MediaAsset) => void;
+  onSelect: (asset: MediaAsset) => boolean | void;
   onSelectMany?: (assets: MediaAsset[]) => void;
   initialSelectedId?: string;
   initialSelectedIds?: string[];
@@ -172,8 +172,10 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       addToast("Select media first.", "error");
       return;
     }
-    onSelect(selected);
-    onClose();
+    const shouldClose = onSelect(selected);
+    if (shouldClose !== false) {
+      onClose();
+    }
   };
 
 
