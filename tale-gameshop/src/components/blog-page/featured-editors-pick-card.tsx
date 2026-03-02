@@ -29,7 +29,7 @@ export default function FeaturedEditorsPickCard({post, fallbackCover}: FeaturedE
     }
 
     const tag = post.tags?.[0] ?? "Blog";
-    const readTime = post.readingTime ? `${post.readingTime} min read` : "Quick read";
+    const readTime = post.readingTime ? `${post.readingTime} min read` : null;
 
     return (
         <article className="featured-editors-card" aria-label="Featured editor's pick">
@@ -38,7 +38,7 @@ export default function FeaturedEditorsPickCard({post, fallbackCover}: FeaturedE
                 <span className="featured-editors-card__tag">{tag}</span>
                 <h3>{post.title}</h3>
                 <p className="featured-editors-card__excerpt">{post.excerpt}</p>
-                <p className="featured-editors-card__meta">{formatDate(post.publishedAt)} • {readTime}</p>
+                <p className="featured-editors-card__meta">{formatDate(post.publishedAt)}{readTime ? ` • ${readTime}` : ""}</p>
                 <Link className="featured-editors-card__cta" to={`/blog/${post.slug}`}>
                     Read more →
                 </Link>

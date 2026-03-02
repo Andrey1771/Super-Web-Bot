@@ -30,6 +30,7 @@ export type AdminBlogPayload = {
   status: BlogStatus;
   scheduledAt?: string;
   publishedAt?: string;
+  readingTime?: number;
   changeNote?: string;
   featured?: boolean;
   blogHomeFeatured?: boolean;

@@ -22,6 +22,8 @@ public class AdminBlogController : ControllerBase
     private const long CoverMaxSizeBytes = 5 * 1024 * 1024;
     private const int CoverMinWidth = 1000;
     private const int CoverMinHeight = 560;
+    private const int ReadingTimeMinMinutes = 1;
+    private const int ReadingTimeMaxMinutes = 120;
     private static readonly HashSet<string> AllowedCoverTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
@@ -112,6 +114,12 @@ public class AdminBlogController : ControllerBase
         if (!string.IsNullOrWhiteSpace(coverValidation))
         {
             return BadRequest(coverValidation);
+        }
+
+        var readingTimeValidation = ValidateReadingTime(request.ReadingTime);
+        if (!string.IsNullOrWhiteSpace(readingTimeValidation))
+        {
+            return BadRequest(readingTimeValidation);
         }
 
         var now = DateTime.UtcNow;
@@ -220,6 +228,12 @@ public class AdminBlogController : ControllerBase
             return BadRequest(coverValidation);
         }
 
+        var readingTimeValidation = ValidateReadingTime(request.ReadingTime);
+        if (!string.IsNullOrWhiteSpace(readingTimeValidation))
+        {
+            return BadRequest(readingTimeValidation);
+        }
+
         var versions = await _blogRepository.GetVersionsAsync(post.Id);
         var nextVersion = versions.Count == 0 ? 1 : versions.Max(item => item.VersionNumber) + 1;
 
@@ -233,6 +247,7 @@ public class AdminBlogController : ControllerBase
         post.ScheduledAt = request.ScheduledAt;
         post.Tags = request.Tags ?? Array.Empty<string>();
         post.Topics = request.Topics ?? Array.Empty<string>();
+        post.ReadingTime = request.ReadingTime;
         post.EditorScore = request.EditorScore ?? post.EditorScore;
         post.Featured = request.Featured ?? post.Featured;
         post.BlogHomeFeatured = request.BlogHomeFeatured ?? post.BlogHomeFeatured;
@@ -458,6 +473,21 @@ public class AdminBlogController : ControllerBase
             {
                 return $"Tags must be between {TagMinLength} and {TagMaxLength} characters.";
             }
+        }
+
+        return string.Empty;
+    }
+
+    private static string ValidateReadingTime(int? readingTime)
+    {
+        if (!readingTime.HasValue)
+        {
+            return string.Empty;
+        }
+
+        if (readingTime.Value < ReadingTimeMinMinutes || readingTime.Value > ReadingTimeMaxMinutes)
+        {
+            return $"Reading time must be between {ReadingTimeMinMinutes} and {ReadingTimeMaxMinutes} minutes.";
         }
 
         return string.Empty;

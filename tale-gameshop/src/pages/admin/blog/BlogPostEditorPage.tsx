@@ -52,6 +52,7 @@ const BlogPostEditorPage: React.FC = () => {
     status: "DRAFT",
     scheduledAt: "",
     publishedAt: "",
+    readingTime: undefined,
     changeNote: "",
     featured: false,
     blogHomeFeatured: false,
@@ -61,7 +62,7 @@ const BlogPostEditorPage: React.FC = () => {
   const publishedAtRef = useRef(publishedAt);
   const changeNoteRef = useRef(changeNote);
 
-  const handleChange = (field: keyof AdminBlogPayload, value: string | string[] | boolean) => {
+  const handleChange = (field: keyof AdminBlogPayload, value: string | string[] | boolean | number | undefined) => {
     setForm((prev) => {
       const next = {
         ...prev,
@@ -111,6 +112,7 @@ const BlogPostEditorPage: React.FC = () => {
         status: response.post.status,
         scheduledAt: response.post.scheduledAt ?? "",
         publishedAt: response.post.publishedAt ?? "",
+        readingTime: response.post.readingTime,
         changeNote: "",
         featured: response.post.featured ?? false,
         blogHomeFeatured: response.post.blogHomeFeatured ?? false,
@@ -254,6 +256,7 @@ const BlogPostEditorPage: React.FC = () => {
           status: refreshed.post.status,
           scheduledAt: refreshed.post.scheduledAt ?? "",
           publishedAt: refreshed.post.publishedAt ?? "",
+          readingTime: refreshed.post.readingTime,
           featured: refreshed.post.featured ?? false,
           blogHomeFeatured: refreshed.post.blogHomeFeatured ?? false,
         };
@@ -423,6 +426,20 @@ const BlogPostEditorPage: React.FC = () => {
             />
           </>
         )}
+        <label className="text-sm font-semibold">Reading time (minutes)</label>
+        <input
+          type="number"
+          min={1}
+          max={120}
+          step={1}
+          className="w-full p-2 border rounded"
+          value={form.readingTime ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+            handleChange("readingTime", value === "" ? undefined : Number(value));
+          }}
+        />
+        <p className="text-xs text-gray-500">Shown on blog cards and article pages as "X min read".</p>
         <label className="inline-flex items-center gap-2 mt-3">
           <input
             type="checkbox"

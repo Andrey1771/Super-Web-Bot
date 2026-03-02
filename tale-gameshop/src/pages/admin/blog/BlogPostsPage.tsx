@@ -256,6 +256,13 @@ const BlogPostsPage: React.FC = () => {
                   </span>
                 )}
               />
+              <Column
+                caption="Reading"
+                minWidth={110}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span>{cellData.data.readingTime ? `${cellData.data.readingTime} min` : "—"}</span>
+                )}
+              />
               <Column dataField="updatedAt" caption="Updated" minWidth={170} />
               <Column
                 dataField="slug"

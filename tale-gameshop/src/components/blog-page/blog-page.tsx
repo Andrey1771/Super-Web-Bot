@@ -192,8 +192,8 @@ export default function BlogPage() {
     };
 
     const getEditorMeta = (post: BlogListItem) => {
-        const readTime = post.readingTime ? `${post.readingTime} min read` : "Quick read";
-        return `${formatDate(post.publishedAt)} • ${readTime}`;
+        const readTime = post.readingTime ? `${post.readingTime} min read` : "";
+        return `${formatDate(post.publishedAt)}${readTime ? ` • ${readTime}` : ""}`;
     };
 
     const sortedPosts = useMemo(() => {
