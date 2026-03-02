@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Text.RegularExpressions;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -13,6 +14,7 @@ public class AdminBlogController : ControllerBase
 {
     private readonly IBlogRepository _blogRepository;
     private readonly IMediaAssetRepository _mediaRepository;
+    private readonly IImageMetadataReader _imageMetadataReader;
     private const int TitleMinLength = 10;
     private const int TitleMaxLength = 80;
     private const int ExcerptMaxLength = 160;
@@ -31,10 +33,11 @@ public class AdminBlogController : ControllerBase
         "image/webp"
     };
 
-    public AdminBlogController(IBlogRepository blogRepository, IMediaAssetRepository mediaRepository)
+    public AdminBlogController(IBlogRepository blogRepository, IMediaAssetRepository mediaRepository, IImageMetadataReader imageMetadataReader)
     {
         _blogRepository = blogRepository;
         _mediaRepository = mediaRepository;
+        _imageMetadataReader = imageMetadataReader;
     }
 
     [HttpGet]
@@ -518,7 +521,17 @@ public class AdminBlogController : ControllerBase
 
         if (!asset.Width.HasValue || !asset.Height.HasValue)
         {
-            return "Cover image dimensions are missing.";
+            var recoveredDimensions = await _imageMetadataReader.TryReadImageSizeAsync(asset, HttpContext?.RequestAborted ?? CancellationToken.None);
+            if (recoveredDimensions.HasValue)
+            {
+                asset.Width = recoveredDimensions.Value.Width;
+                asset.Height = recoveredDimensions.Value.Height;
+                await _mediaRepository.UpdateDimensionsAsync(asset.Id, asset.Width.Value, asset.Height.Value);
+            }
+            else
+            {
+                return "Cover image dimensions are missing. Please upload/regenerate this image.";
+            }
         }
 
         if (asset.Width.Value < CoverMinWidth || asset.Height.Value < CoverMinHeight)
