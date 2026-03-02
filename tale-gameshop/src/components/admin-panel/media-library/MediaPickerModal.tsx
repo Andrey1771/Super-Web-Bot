@@ -46,6 +46,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+  const [selectedPreviewBroken, setSelectedPreviewBroken] = useState(false);
   const [generatingPreviews, setGeneratingPreviews] = useState<Record<string, boolean>>({});
   const [scale, setScale] = useState(1);
   const { addToast } = useToast();
@@ -72,6 +74,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     }
 
     setScale(1);
+    setSelectedPreviewBroken(false);
   }, [isOpen, selectedId]);
 
   const filteredItems = useMemo(() => {
@@ -86,6 +89,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     try {
       setLoading(true);
       setBrokenThumbnails({});
+      setBrokenImages({});
+      setSelectedPreviewBroken(false);
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get(
         `/api/media?page=1&pageSize=60&type=${filter}`
@@ -337,8 +342,17 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                                 </span>
                               </div>
                             )
+                          ) : brokenImages[item.id] || !resolvedUrl ? (
+                            <div className="flex h-full w-full items-center justify-center bg-gray-100 text-[11px] text-gray-500">
+                              Image unavailable
+                            </div>
                           ) : (
-                            <img src={resolvedUrl} alt={item.filename} className="h-full w-full object-cover" />
+                            <img
+                              src={resolvedUrl}
+                              alt={item.filename}
+                              className="h-full w-full object-cover"
+                              onError={() => setBrokenImages((prev) => ({ ...prev, [item.id]: true }))}
+                            />
                           )}
                           {isVideo && (
                             <span className="absolute inset-0 flex items-center justify-center text-white">
@@ -384,21 +398,28 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                         className="flex h-full w-full items-center justify-center overflow-hidden"
                         onWheel={handleImageWheel}
                       >
-                        <img
-                          src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)}
-                          alt={selectedAsset.filename}
-                          style={{
-                            transform: `scale(${scale})`,
-                            transformOrigin: 'center center',
-                            maxWidth: 'none',
-                            maxHeight: 'none',
-                            transition: 'transform 160ms ease-out'
-                          }}
-                        />
+                        {selectedPreviewBroken || !resolveMediaUrl(selectedAsset.url, apiBaseUrl) ? (
+                          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-sm text-gray-500">
+                            Preview unavailable
+                          </div>
+                        ) : (
+                          <img
+                            src={resolveMediaUrl(selectedAsset.url, apiBaseUrl)}
+                            alt={selectedAsset.filename}
+                            onError={() => setSelectedPreviewBroken(true)}
+                            style={{
+                              transform: `scale(${scale})`,
+                              transformOrigin: 'center center',
+                              maxWidth: 'none',
+                              maxHeight: 'none',
+                              transition: 'transform 160ms ease-out'
+                            }}
+                          />
+                        )}
                       </div>
                     )}
                   </div>
-                  {!(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && (
+                  {!(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) && !selectedPreviewBroken && (
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <button type="button" className="btn btn-outline" onClick={handleZoomOut}>−</button>
