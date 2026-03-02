@@ -52,15 +52,17 @@ const BlogPostEditorPage: React.FC = () => {
     status: "DRAFT",
     scheduledAt: "",
     publishedAt: "",
+    readingTime: undefined,
     changeNote: "",
     featured: false,
+    blogHomeFeatured: false,
   });
   const formRef = useRef(form);
   const scheduledAtRef = useRef(scheduledAt);
   const publishedAtRef = useRef(publishedAt);
   const changeNoteRef = useRef(changeNote);
 
-  const handleChange = (field: keyof AdminBlogPayload, value: string | string[] | boolean) => {
+  const handleChange = (field: keyof AdminBlogPayload, value: string | string[] | boolean | number | undefined) => {
     setForm((prev) => {
       const next = {
         ...prev,
@@ -110,8 +112,10 @@ const BlogPostEditorPage: React.FC = () => {
         status: response.post.status,
         scheduledAt: response.post.scheduledAt ?? "",
         publishedAt: response.post.publishedAt ?? "",
+        readingTime: response.post.readingTime,
         changeNote: "",
         featured: response.post.featured ?? false,
+        blogHomeFeatured: response.post.blogHomeFeatured ?? false,
       };
       formRef.current = nextForm;
       setForm(nextForm);
@@ -252,6 +256,9 @@ const BlogPostEditorPage: React.FC = () => {
           status: refreshed.post.status,
           scheduledAt: refreshed.post.scheduledAt ?? "",
           publishedAt: refreshed.post.publishedAt ?? "",
+          readingTime: refreshed.post.readingTime,
+          featured: refreshed.post.featured ?? false,
+          blogHomeFeatured: refreshed.post.blogHomeFeatured ?? false,
         };
         formRef.current = next;
         return next;
@@ -419,6 +426,20 @@ const BlogPostEditorPage: React.FC = () => {
             />
           </>
         )}
+        <label className="text-sm font-semibold">Reading time (minutes)</label>
+        <input
+          type="number"
+          min={1}
+          max={120}
+          step={1}
+          className="w-full p-2 border rounded"
+          value={form.readingTime ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+            handleChange("readingTime", value === "" ? undefined : Number(value));
+          }}
+        />
+        <p className="text-xs text-gray-500">Shown on blog cards and article pages as "X min read".</p>
         <label className="inline-flex items-center gap-2 mt-3">
           <input
             type="checkbox"
@@ -427,6 +448,9 @@ const BlogPostEditorPage: React.FC = () => {
           />
           <span className="text-sm">Editor's Pick (Show in featured slider)</span>
         </label>
+        <p className="text-xs text-gray-500 mt-2">
+          Main Blog Hero is managed from the Blog posts list table for faster single-selection workflow.
+        </p>
         <label className="text-sm font-semibold">Change note</label>
         <input
           type="text"

@@ -127,6 +127,37 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
         }
 
+        public async Task<BlogPost> GetBlogHomeFeaturedAsync()
+        {
+            var filter = Builders<BlogPostDb>.Filter.And(
+                Builders<BlogPostDb>.Filter.Eq(post => post.Status, "PUBLISHED"),
+                Builders<BlogPostDb>.Filter.Eq(post => post.BlogHomeFeatured, true)
+            );
+
+            var postDb = await _posts
+                .Find(filter)
+                .SortByDescending(post => post.UpdatedAt)
+                .FirstOrDefaultAsync();
+
+            return _mapper.Map<BlogPost>(postDb);
+        }
+
+        public async Task ClearBlogHomeFeaturedAsync(string exceptPostId = null)
+        {
+            var filter = Builders<BlogPostDb>.Filter.Eq(post => post.BlogHomeFeatured, true);
+
+            if (!string.IsNullOrWhiteSpace(exceptPostId))
+            {
+                filter = Builders<BlogPostDb>.Filter.And(
+                    filter,
+                    Builders<BlogPostDb>.Filter.Ne(post => post.Id, exceptPostId)
+                );
+            }
+
+            var update = Builders<BlogPostDb>.Update.Set(post => post.BlogHomeFeatured, false);
+            await _posts.UpdateManyAsync(filter, update);
+        }
+
         public async Task CreateAsync(BlogPost post, BlogPostVersion version)
         {
             if (string.IsNullOrWhiteSpace(post.Id))

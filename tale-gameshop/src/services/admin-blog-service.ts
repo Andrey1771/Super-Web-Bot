@@ -73,4 +73,16 @@ export class AdminBlogService implements IAdminBlogService {
     const response = await this._apiClient.api.delete(`/api/admin/blog/posts/${id}`);
     return response.data as BlogPost;
   }
+
+  async getHomeSettings(): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }> {
+    const response = await this._apiClient.api.get(`/api/admin/blog/home-settings`);
+    return response.data as { mainHeroPostId?: string; updatedAt?: string; updatedBy?: string };
+  }
+
+  async setMainHeroPost(postId?: string): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }> {
+    const response = await this._apiClient.api.put(`/api/admin/blog/home-settings/main-hero`, {
+      mainHeroPostId: postId ?? null,
+    });
+    return response.data as { mainHeroPostId?: string; updatedAt?: string; updatedBy?: string };
+  }
 }

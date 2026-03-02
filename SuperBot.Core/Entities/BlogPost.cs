@@ -23,5 +23,6 @@ namespace SuperBot.Core.Entities
         public int? ViewCount { get; set; }
         public int? EditorScore { get; set; }
         public bool Featured { get; set; }
+        public bool BlogHomeFeatured { get; set; }
     }
 }

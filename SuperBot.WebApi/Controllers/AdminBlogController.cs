@@ -22,6 +22,8 @@ public class AdminBlogController : ControllerBase
     private const long CoverMaxSizeBytes = 5 * 1024 * 1024;
     private const int CoverMinWidth = 1000;
     private const int CoverMinHeight = 560;
+    private const int ReadingTimeMinMinutes = 1;
+    private const int ReadingTimeMaxMinutes = 120;
     private static readonly HashSet<string> AllowedCoverTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
@@ -114,7 +116,14 @@ public class AdminBlogController : ControllerBase
             return BadRequest(coverValidation);
         }
 
+        var readingTimeValidation = ValidateReadingTime(request.ReadingTime);
+        if (!string.IsNullOrWhiteSpace(readingTimeValidation))
+        {
+            return BadRequest(readingTimeValidation);
+        }
+
         var now = DateTime.UtcNow;
+        var shouldBeBlogHomeFeatured = request.BlogHomeFeatured ?? false;
         var post = new BlogPost
         {
             Title = request.Title,
@@ -135,7 +144,8 @@ public class AdminBlogController : ControllerBase
             CurrentVersionId = string.Empty,
             ViewCount = 0,
             EditorScore = request.EditorScore ?? 0,
-            Featured = request.Featured ?? false
+            Featured = request.Featured ?? false,
+            BlogHomeFeatured = shouldBeBlogHomeFeatured
         };
 
         var scheduleError = ValidateSchedule(post);
@@ -157,6 +167,11 @@ public class AdminBlogController : ControllerBase
             CreatedBy = request.AuthorName,
             ChangeNote = request.ChangeNote ?? "Initial version"
         };
+
+        if (shouldBeBlogHomeFeatured)
+        {
+            await _blogRepository.ClearBlogHomeFeaturedAsync();
+        }
 
         await _blogRepository.CreateAsync(post, version);
 
@@ -213,6 +228,12 @@ public class AdminBlogController : ControllerBase
             return BadRequest(coverValidation);
         }
 
+        var readingTimeValidation = ValidateReadingTime(request.ReadingTime);
+        if (!string.IsNullOrWhiteSpace(readingTimeValidation))
+        {
+            return BadRequest(readingTimeValidation);
+        }
+
         var versions = await _blogRepository.GetVersionsAsync(post.Id);
         var nextVersion = versions.Count == 0 ? 1 : versions.Max(item => item.VersionNumber) + 1;
 
@@ -226,8 +247,10 @@ public class AdminBlogController : ControllerBase
         post.ScheduledAt = request.ScheduledAt;
         post.Tags = request.Tags ?? Array.Empty<string>();
         post.Topics = request.Topics ?? Array.Empty<string>();
+        post.ReadingTime = request.ReadingTime;
         post.EditorScore = request.EditorScore ?? post.EditorScore;
         post.Featured = request.Featured ?? post.Featured;
+        post.BlogHomeFeatured = request.BlogHomeFeatured ?? post.BlogHomeFeatured;
         post.UpdatedAt = DateTime.UtcNow;
 
         var scheduleError = ValidateSchedule(post);
@@ -249,6 +272,11 @@ public class AdminBlogController : ControllerBase
             CreatedBy = request.AuthorName,
             ChangeNote = request.ChangeNote ?? "Updated"
         };
+
+        if (post.BlogHomeFeatured)
+        {
+            await _blogRepository.ClearBlogHomeFeaturedAsync(post.Id);
+        }
 
         await _blogRepository.UpdateAsync(post, version);
 
@@ -450,6 +478,21 @@ public class AdminBlogController : ControllerBase
         return string.Empty;
     }
 
+    private static string ValidateReadingTime(int? readingTime)
+    {
+        if (!readingTime.HasValue)
+        {
+            return string.Empty;
+        }
+
+        if (readingTime.Value < ReadingTimeMinMinutes || readingTime.Value > ReadingTimeMaxMinutes)
+        {
+            return $"Reading time must be between {ReadingTimeMinMinutes} and {ReadingTimeMaxMinutes} minutes.";
+        }
+
+        return string.Empty;
+    }
+
     private async Task<string> ValidateCoverAsync(string coverAssetId)
     {
         if (string.IsNullOrWhiteSpace(coverAssetId))
@@ -558,6 +601,7 @@ public class SaveBlogPostRequest
     public int? ReadingTime { get; set; }
     public int? EditorScore { get; set; }
     public bool? Featured { get; set; }
+    public bool? BlogHomeFeatured { get; set; }
     public string? ChangeNote { get; set; }
 }
 

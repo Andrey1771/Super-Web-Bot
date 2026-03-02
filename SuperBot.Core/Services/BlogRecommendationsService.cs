@@ -13,17 +13,20 @@ namespace SuperBot.Core.Services
         private static readonly string[] WeightedReadEvents = { "POST_READ_PROGRESS", "POST_READ_COMPLETE" };
 
         private readonly IBlogRepository _blogRepository;
+        private readonly IBlogHomepageSettingsRepository _blogHomepageSettingsRepository;
         private readonly IBlogEventRepository _eventRepository;
         private readonly IUserBlogProfileRepository _profileRepository;
         private readonly ILogger<BlogRecommendationsService> _logger;
 
         public BlogRecommendationsService(
             IBlogRepository blogRepository,
+            IBlogHomepageSettingsRepository blogHomepageSettingsRepository,
             IBlogEventRepository eventRepository,
             IUserBlogProfileRepository profileRepository,
             ILogger<BlogRecommendationsService> logger)
         {
             _blogRepository = blogRepository;
+            _blogHomepageSettingsRepository = blogHomepageSettingsRepository;
             _eventRepository = eventRepository;
             _profileRepository = profileRepository;
             _logger = logger;
@@ -95,8 +98,25 @@ namespace SuperBot.Core.Services
 
             var latestPosts = await _blogRepository.GetPublishedAsync(Math.Max(normalizedLimit, 6));
             var editorsPicks = await _blogRepository.GetEditorsPicksAsync(Math.Max(4, normalizedLimit));
+            var homepageSettings = await _blogHomepageSettingsRepository.GetAsync();
+            BlogPost configuredHeroPost = null;
 
-            var heroPost = editorsPicks.FirstOrDefault() ?? latestPosts.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(homepageSettings?.MainHeroPostId))
+            {
+                var configuredCandidate = await _blogRepository.GetByIdAsync(homepageSettings.MainHeroPostId);
+                if (configuredCandidate != null && string.Equals(configuredCandidate.Status, "PUBLISHED", StringComparison.OrdinalIgnoreCase))
+                {
+                    configuredHeroPost = configuredCandidate;
+                }
+            }
+
+            configuredHeroPost ??= await _blogRepository.GetBlogHomeFeaturedAsync();
+
+            var fallbackHeroPost = latestPosts.FirstOrDefault(post => !string.IsNullOrWhiteSpace(post.CoverUrl))
+                                   ?? latestPosts.FirstOrDefault()
+                                   ?? editorsPicks.FirstOrDefault();
+
+            var heroPost = configuredHeroPost ?? fallbackHeroPost;
             if (heroPost == null)
             {
                 return new BlogRecommendationsResult();

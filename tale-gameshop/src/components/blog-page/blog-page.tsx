@@ -18,10 +18,13 @@ import type {IBlogService} from "../../iterfaces/i-blog-service";
 import type {BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
 import PostCard from "../../pages/blog/components/PostCard";
 import {getAnonId} from "../../hooks/use-blog-tracking";
+import FeaturedEditorsPickCard from "./featured-editors-pick-card";
 import "./blog-page.css";
 
 const FALLBACK_COVER = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1600&q=80";
 const RECOMMENDATION_LIMIT = 6;
+const EDITORS_VISIBLE_ITEMS = 3;
+const EDITORS_FETCH_LIMIT = 9;
 
 const sortOptions = ["Newest", "Most popular", "Editor's picks"];
 
@@ -94,7 +97,7 @@ export default function BlogPage() {
                         anonId: getAnonId(),
                         limit: RECOMMENDATION_LIMIT
                     }),
-                    blogService.getPosts({ page: 1, pageSize: 5, featured: true })
+                    blogService.getPosts({ page: 1, pageSize: EDITORS_FETCH_LIMIT, featured: true })
                 ]);
 
                 setRecommendations(recommendationResponse);
@@ -102,8 +105,8 @@ export default function BlogPage() {
                 if (featuredResponse.items.length > 0) {
                     setEditorsSliderPosts(featuredResponse.items);
                 } else {
-                    const fallbackResponse = await blogService.getPosts({ page: 1, pageSize: 3 });
-                    setEditorsSliderPosts(fallbackResponse.items.slice(0, 3));
+                    const fallbackResponse = await blogService.getPosts({ page: 1, pageSize: EDITORS_FETCH_LIMIT });
+                    setEditorsSliderPosts(fallbackResponse.items);
                 }
             } catch (fetchError) {
                 console.error(fetchError);
@@ -158,20 +161,39 @@ export default function BlogPage() {
         return editorsSliderPosts.filter(matchesFilters);
     }, [editorsSliderPosts, matchesFilters]);
 
-    const activeEditorPost = editorSlides[activeEditorSlide] ?? null;
+    const editorPages = useMemo(() => {
+        const pages: BlogListItem[][] = [];
+        for (let index = 0; index < editorSlides.length; index += EDITORS_VISIBLE_ITEMS) {
+            pages.push(editorSlides.slice(index, index + EDITORS_VISIBLE_ITEMS));
+        }
+        return pages;
+    }, [editorSlides]);
+
+    const activeEditorPosts = editorPages[activeEditorSlide] ?? [];
+
+    useEffect(() => {
+        if (activeEditorSlide > 0 && activeEditorSlide >= editorPages.length) {
+            setActiveEditorSlide(Math.max(editorPages.length - 1, 0));
+        }
+    }, [activeEditorSlide, editorPages.length]);
 
     const handlePrevEditorSlide = () => {
-        if (editorSlides.length === 0) {
+        if (editorPages.length <= 1) {
             return;
         }
-        setActiveEditorSlide((prev) => (prev - 1 + editorSlides.length) % editorSlides.length);
+        setActiveEditorSlide((prev) => (prev - 1 + editorPages.length) % editorPages.length);
     };
 
     const handleNextEditorSlide = () => {
-        if (editorSlides.length === 0) {
+        if (editorPages.length <= 1) {
             return;
         }
-        setActiveEditorSlide((prev) => (prev + 1) % editorSlides.length);
+        setActiveEditorSlide((prev) => (prev + 1) % editorPages.length);
+    };
+
+    const getEditorMeta = (post: BlogListItem) => {
+        const readTime = post.readingTime ? `${post.readingTime} min read` : "";
+        return `${formatDate(post.publishedAt)}${readTime ? ` • ${readTime}` : ""}`;
     };
 
     const sortedPosts = useMemo(() => {
@@ -400,6 +422,7 @@ export default function BlogPage() {
 
             <section className="editors-picks section">
                 <div className="container editors-layout">
+                    <FeaturedEditorsPickCard post={featuredPost} fallbackCover={FALLBACK_COVER} />
                     <div className="editors-widget">
                         <div className="editors-list-header">
                             <h2>Editor&apos;s picks</h2>
@@ -408,34 +431,41 @@ export default function BlogPage() {
                                 <FontAwesomeIcon icon={faArrowRightLong} />
                             </Link>
                         </div>
-                        {activeEditorPost ? (
-                            <div className="editors-slide-card">
-                                <img src={getCover(activeEditorPost)} alt={activeEditorPost.title} />
-                                <h3>{activeEditorPost.title}</h3>
-                                <Link className="link-primary editors-read-link" to={`/blog/${activeEditorPost.slug}`}>
-                                    Read article
-                                    <FontAwesomeIcon icon={faArrowRightLong} />
-                                </Link>
+                        {activeEditorPosts.length > 0 ? (
+                            <div className="editors-posts-list" role="list">
+                                {activeEditorPosts.map((post) => (
+                                    <article className="editors-list-item" role="listitem" key={post.id}>
+                                        <img src={getCover(post)} alt={post.title} className="editors-list-item__thumb" />
+                                        <div className="editors-list-item__body">
+                                            <h3 className="line-clamp-2">{post.title}</h3>
+                                            <p className="editors-list-item__meta">{getEditorMeta(post)}</p>
+                                            <Link className="link-primary editors-read-link" to={`/blog/${post.slug}`}>
+                                                Read article
+                                                <FontAwesomeIcon icon={faArrowRightLong} />
+                                            </Link>
+                                        </div>
+                                    </article>
+                                ))}
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500">Once posts are marked as Editor&apos;s Pick, they will appear here.</p>
                         )}
                         <div className="editors-dots" aria-label="Editor picks slider controls">
-                            <button className="dot-btn" type="button" onClick={handlePrevEditorSlide} disabled={editorSlides.length <= 1}>
+                            <button className="dot-btn" type="button" onClick={handlePrevEditorSlide} disabled={editorPages.length <= 1}>
                                 <FontAwesomeIcon icon={faChevronLeft} />
                             </button>
                             <div className="dot-track">
-                                {editorSlides.map((slide, index) => (
+                                {editorPages.map((_, index) => (
                                     <button
-                                        key={slide.id}
+                                        key={`editor-page-${index}`}
                                         className={`dot ${index === activeEditorSlide ? "active" : ""}`}
                                         type="button"
-                                        aria-label={`Go to slide ${index + 1}`}
+                                        aria-label={`Go to editor page ${index + 1}`}
                                         onClick={() => setActiveEditorSlide(index)}
                                     />
                                 ))}
                             </div>
-                            <button className="dot-btn" type="button" onClick={handleNextEditorSlide} disabled={editorSlides.length <= 1}>
+                            <button className="dot-btn" type="button" onClick={handleNextEditorSlide} disabled={editorPages.length <= 1}>
                                 <FontAwesomeIcon icon={faChevronRight} />
                             </button>
                         </div>

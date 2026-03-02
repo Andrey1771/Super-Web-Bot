@@ -29,6 +29,9 @@ const BlogPostsPage: React.FC = () => {
   const [tag, setTag] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mainHeroPostId, setMainHeroPostId] = useState<string>("");
+  const [updatingMainHeroId, setUpdatingMainHeroId] = useState<string>("");
+  const [mainHeroPostPreview, setMainHeroPostPreview] = useState<BlogPost | null>(null);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -43,6 +46,24 @@ const BlogPostsPage: React.FC = () => {
       });
       setItems(response.items);
       setTotal(response.total);
+      const settings = await adminBlogService.getHomeSettings();
+      const selectedId = settings.mainHeroPostId ?? "";
+      setMainHeroPostId(selectedId);
+      if (!selectedId) {
+        setMainHeroPostPreview(null);
+      } else {
+        const fromList = response.items.find((item) => item.id === selectedId) ?? null;
+        if (fromList) {
+          setMainHeroPostPreview(fromList);
+        } else {
+          try {
+            const detail = await adminBlogService.getPost(selectedId);
+            setMainHeroPostPreview(detail.post);
+          } catch {
+            setMainHeroPostPreview(null);
+          }
+        }
+      }
     } catch (fetchError) {
       console.error("Failed to load blog posts", fetchError);
       setError("Unable to load blog posts.");
@@ -50,6 +71,31 @@ const BlogPostsPage: React.FC = () => {
       setLoading(false);
     }
   }, [adminBlogService, page, pageSize, status, search, tag]);
+
+  const handleSetMainHero = async (post: BlogPost) => {
+    if (post.status !== "PUBLISHED") {
+      addToast("Only published posts can be set as main hero.", "error");
+      return;
+    }
+
+    try {
+      setUpdatingMainHeroId(post.id);
+      const nextMainHeroId = mainHeroPostId === post.id ? undefined : post.id;
+      const result = await adminBlogService.setMainHeroPost(nextMainHeroId);
+      setMainHeroPostId(result.mainHeroPostId ?? "");
+      setMainHeroPostPreview(nextMainHeroId ? post : null);
+      addToast(nextMainHeroId ? "Main hero updated." : "Main hero removed.", "success");
+    } catch (updateError: any) {
+      const message = updateError?.response?.data ?? "Failed to update main hero.";
+      addToast(String(message), "error");
+    } finally {
+      setUpdatingMainHeroId("");
+    }
+  };
+
+  const currentMainHero = useMemo(() => {
+    return items.find((item) => item.id === mainHeroPostId) ?? mainHeroPostPreview;
+  }, [items, mainHeroPostId, mainHeroPostPreview]);
 
   useEffect(() => {
     fetchPosts();
@@ -173,7 +219,11 @@ const BlogPostsPage: React.FC = () => {
               columnAutoWidth
               columnHidingEnabled
               scrolling={{ mode: "standard", showScrollbar: "always" }}
-              onRowClick={(event) => navigate(`/admin/blog/${event.data.id}/edit`)}
+              onRowPrepared={(event: any) => {
+                if (event.rowType === "data" && event.data?.id === mainHeroPostId) {
+                  event.rowElement?.classList.add("admin-blog-main-hero-row");
+                }
+              }}
             >
               <Paging enabled={false} />
               <Column
@@ -206,6 +256,13 @@ const BlogPostsPage: React.FC = () => {
                   </span>
                 )}
               />
+              <Column
+                caption="Reading"
+                minWidth={110}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span>{cellData.data.readingTime ? `${cellData.data.readingTime} min` : "—"}</span>
+                )}
+              />
               <Column dataField="updatedAt" caption="Updated" minWidth={170} />
               <Column
                 dataField="slug"
@@ -231,11 +288,29 @@ const BlogPostsPage: React.FC = () => {
                 )}
               />
               <Column
+                caption="Main hero"
+                minWidth={120}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <button
+                    type="button"
+                    className={`admin-table-action px-3 py-1 rounded-full text-xs border transition-colors ${mainHeroPostId === cellData.data.id ? "bg-violet-100 text-violet-700 border-violet-300" : "bg-white text-slate-600 border-slate-300 hover:border-violet-300 hover:text-violet-700"}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleSetMainHero(cellData.data);
+                    }}
+                    disabled={updatingMainHeroId === cellData.data.id}
+                    title={cellData.data.status !== "PUBLISHED" ? "Only published posts can be main hero" : mainHeroPostId === cellData.data.id ? "Clear main hero" : "Set as main hero"}
+                  >
+                    {updatingMainHeroId === cellData.data.id ? "Updating..." : mainHeroPostId === cellData.data.id ? "Main Hero ✓" : "Set as main"}
+                  </button>
+                )}
+              />
+              <Column
                 caption="Actions"
                 width={140}
                 cellRender={(cellData: { data: BlogPost }) => (
                   <div className="flex gap-2">
-                    <Link className="btn btn-outline" to={`/admin/blog/${cellData.data.id}/edit`}>
+                    <Link className="btn btn-outline admin-table-action" to={`/admin/blog/${cellData.data.id}/edit`}>
                       Edit
                     </Link>
                   </div>
@@ -274,6 +349,21 @@ const BlogPostsPage: React.FC = () => {
                   Next
                 </button>
               </div>
+            </div>
+            <div className="mt-4 p-4 border rounded-xl bg-violet-50/60 border-violet-100">
+              <h4 className="text-sm font-semibold text-slate-800">Current Main Blog Hero</h4>
+              {currentMainHero ? (
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-700">
+                  <strong className="text-slate-900">{currentMainHero.title}</strong>
+                  <span className="text-slate-500">/{currentMainHero.slug}</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-white border border-violet-200 text-violet-700">{currentMainHero.status}</span>
+                  <Link className="btn btn-outline" to={`/admin/blog/${currentMainHero.id}/edit`}>
+                    Open
+                  </Link>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-600">No main hero selected. Choose a published article in the table above.</p>
+              )}
             </div>
           </>
         )}

@@ -68,5 +68,8 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("is_featured")]
         public bool Featured { get; set; }
+
+        [BsonElement("is_blog_home_featured")]
+        public bool BlogHomeFeatured { get; set; }
     }
 }

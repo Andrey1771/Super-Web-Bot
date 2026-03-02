@@ -90,8 +90,12 @@ export default function PostCard({
                     </Link>
                     <div className="meta-row">
                         <span>{formatDate(post.publishedAt)}</span>
-                        <span className="divider-dot" aria-hidden="true">•</span>
-                        <span>{post.readingTime ? `${post.readingTime} min read` : "Quick read"}</span>
+                        {post.readingTime ? (
+                            <>
+                                <span className="divider-dot" aria-hidden="true">•</span>
+                                <span>{`${post.readingTime} min read`}</span>
+                            </>
+                        ) : null}
                     </div>
                 </div>
             </article>
@@ -114,8 +118,12 @@ export default function PostCard({
                     <TitleTag className={`post-card__title ${titleClamp}`}>{post.title}</TitleTag>
                     <div className="meta-row">
                         <span>{formatDate(post.publishedAt)}</span>
-                        <span className="divider-dot" aria-hidden="true">•</span>
-                        <span>{post.readingTime ? `${post.readingTime} min read` : "Quick read"}</span>
+                        {post.readingTime ? (
+                            <>
+                                <span className="divider-dot" aria-hidden="true">•</span>
+                                <span>{`${post.readingTime} min read`}</span>
+                            </>
+                        ) : null}
                         {isFeatured && tag && <span className="meta-pill">{tag}</span>}
                     </div>
                     {!isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}

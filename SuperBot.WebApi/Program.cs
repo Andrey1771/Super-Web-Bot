@@ -121,6 +121,7 @@ builder.Services.AddScoped<IGameDetailsRepository, GameDetailsMongoDbRepository>
 builder.Services.AddScoped<IMediaAssetRepository, MediaAssetMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IBlogRepository, BlogMongoDbRepository>();
+builder.Services.AddScoped<IBlogHomepageSettingsRepository, BlogHomepageSettingsMongoDbRepository>();
 builder.Services.AddScoped<IBlogEventRepository, BlogEventMongoDbRepository>();
 builder.Services.AddScoped<IUserBlogProfileRepository, UserBlogProfileMongoDbRepository>();
 builder.Services.AddScoped<IAnalyticsSettingsRepository, AnalyticsSettingsMongoDbRepository>();
