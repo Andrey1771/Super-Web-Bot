@@ -29,18 +29,6 @@ const formatDate = (value?: string) => {
   });
 };
 
-const toListItem = (post: BlogPost): BlogListItem => ({
-  id: post.id,
-  slug: post.slug,
-  title: post.title,
-  excerpt: post.excerpt,
-  coverUrl: post.coverUrl,
-  imageUrl: post.imageUrl,
-  tags: post.tags,
-  publishedAt: post.publishedAt,
-  readingTime: post.readingTime
-});
-
 const buildTocAndInjectAnchors = (html: string): { contentHtml: string; headings: TocItem[] } => {
   if (!html) {
     return { contentHtml: "", headings: [] };
@@ -192,7 +180,13 @@ const BlogPostPage: React.FC = () => {
     fetchRelated();
   }, [blogService, post]);
 
-  const contentHtml = useMemo(() => renderMarkdown(version?.contentMarkdown ?? version?.contentHtml ?? ""), [version?.contentHtml, version?.contentMarkdown]);
+  const contentHtml = useMemo(() => {
+    if (version?.contentHtml?.trim()) {
+      return version.contentHtml;
+    }
+
+    return renderMarkdown(version?.contentMarkdown ?? "");
+  }, [version?.contentHtml, version?.contentMarkdown]);
 
   const articleContent = useMemo(() => buildTocAndInjectAnchors(contentHtml), [contentHtml]);
 
@@ -281,8 +275,6 @@ const BlogPostPage: React.FC = () => {
     );
   }
 
-  const postForCard = toListItem(post);
-
   return (
     <main className="blog-page">
       <section className="section blog-post-section">
@@ -298,6 +290,10 @@ const BlogPostPage: React.FC = () => {
           </nav>
 
           <header className="blog-post-hero surface">
+            <div className="blog-post-cover" role="img" aria-label={`${post.title} cover`}>
+              <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} loading="eager" />
+            </div>
+
             <div className="blog-post-hero__copy">
               {topic && <p className="badge blog-post-hero__topic">{topic}</p>}
               <h1>{post.title}</h1>
@@ -312,16 +308,16 @@ const BlogPostPage: React.FC = () => {
               )}
 
               <div className="blog-post-hero__actions">
-                <button className="btn btn-outline" type="button" onClick={() => trackBookmark(post.id)} aria-label="Save article">
-                  Save article
-                </button>
+                <Link className="btn btn-outline" to="/blog" aria-label="Back to blog list">
+                  Back to blog
+                </Link>
                 <a className="btn btn-ghost" href="#post-content">
                   Jump to content
                 </a>
+                <button className="btn btn-ghost" type="button" onClick={() => trackBookmark(post.id)} aria-label="Save article for later">
+                  Save
+                </button>
               </div>
-            </div>
-            <div className="blog-post-cover" role="img" aria-label={`${post.title} cover`}>
-              <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} loading="eager" />
             </div>
           </header>
 
@@ -350,22 +346,49 @@ const BlogPostPage: React.FC = () => {
               </aside>
             )}
 
-            <article id="post-content" className="blog-post-content surface" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
+            {articleContent.contentHtml ? (
+              <article id="post-content" className="blog-post-content surface" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
+            ) : (
+              <article id="post-content" className="blog-post-content surface blog-post-content--empty">
+                <h2>Article content is coming soon</h2>
+                <p className="muted">This post has metadata, but the main content is not available yet.</p>
+              </article>
+            )}
           </div>
 
           <footer className="blog-post-footer">
-            {post.tags.length > 0 && (
-              <div className="blog-post-footer__tags" aria-label="Post tags">
-                <h3>Tags</h3>
-                <div className="blog-post-tags">
-                  {post.tags.map((tag) => (
-                    <Link key={tag} to={`/blog?tag=${encodeURIComponent(tag)}`} className="blog-tag">
-                      #{tag}
-                    </Link>
-                  ))}
+            <div className="blog-post-footer__main surface">
+              {post.tags.length > 0 && (
+                <div className="blog-post-footer__group" aria-label="Post tags">
+                  <h3>Tags</h3>
+                  <div className="blog-post-tags">
+                    {post.tags.map((tag) => (
+                      <Link key={tag} to={`/blog?tag=${encodeURIComponent(tag)}`} className="blog-tag">
+                        #{tag}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="blog-post-footer__group" aria-label="Share article">
+                <h3>Share this article</h3>
+                <div className="blog-post-footer__share-row">
+                  <a className="btn btn-outline" href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(post.title)}`} target="_blank" rel="noreferrer">
+                    Share on X
+                  </a>
+                  <a className="btn btn-outline" href={`mailto:?subject=${encodeURIComponent(post.title)}&body=${encodeURIComponent(window.location.href)}`}>
+                    Share via email
+                  </a>
                 </div>
               </div>
-            )}
+
+              <div className="blog-post-footer__group">
+                <Link className="btn btn-primary" to="/blog">
+                  Back to blog
+                </Link>
+              </div>
+            </div>
 
             {post.authorName && (
               <div className="blog-post-author-card surface">
@@ -374,12 +397,6 @@ const BlogPostPage: React.FC = () => {
                 <p className="muted">Writes about games, updates, and practical buying guides at Tale Shop Blog.</p>
               </div>
             )}
-
-            <div className="blog-post-footer__cta">
-              <Link className="btn btn-outline" to="/blog">
-                Back to blog
-              </Link>
-            </div>
           </footer>
 
           <section className="related-posts-section" aria-labelledby="related-posts-title">
@@ -401,7 +418,7 @@ const BlogPostPage: React.FC = () => {
             ) : relatedPosts.length > 0 ? (
               <div className="related-posts-grid">
                 {relatedPosts.map((item) => (
-                  <PostCard key={item.id} post={item} variant="compact" />
+                  <PostCard key={item.id} post={item} variant="compact" className="related-post-card" />
                 ))}
               </div>
             ) : (
@@ -414,10 +431,6 @@ const BlogPostPage: React.FC = () => {
             )}
           </section>
 
-          <section className="blog-post-nav surface" aria-label="Post navigation">
-            <h3>Keep reading</h3>
-            <PostCard post={postForCard} variant="mini" />
-          </section>
         </div>
       </section>
     </main>
