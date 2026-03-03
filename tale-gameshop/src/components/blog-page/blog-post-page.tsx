@@ -29,6 +29,11 @@ const formatDate = (value?: string) => {
   });
 };
 
+const getReadableTextLength = (html: string): number => {
+  const plain = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return plain.length;
+};
+
 const buildTocAndInjectAnchors = (html: string): { contentHtml: string; headings: TocItem[] } => {
   if (!html) {
     return { contentHtml: "", headings: [] };
@@ -181,11 +186,22 @@ const BlogPostPage: React.FC = () => {
   }, [blogService, post]);
 
   const contentHtml = useMemo(() => {
-    if (version?.contentHtml?.trim()) {
-      return version.contentHtml;
+    const markdownSource = version?.contentMarkdown?.trim() ?? "";
+    const htmlFromMarkdown = markdownSource ? renderMarkdown(markdownSource) : "";
+    const rawHtml = version?.contentHtml?.trim() ?? "";
+
+    if (!rawHtml) {
+      return htmlFromMarkdown;
     }
 
-    return renderMarkdown(version?.contentMarkdown ?? "");
+    const rawHtmlLength = getReadableTextLength(rawHtml);
+    const markdownLength = getReadableTextLength(htmlFromMarkdown);
+
+    if (rawHtmlLength < 24 && markdownLength > rawHtmlLength + 20) {
+      return htmlFromMarkdown;
+    }
+
+    return rawHtml;
   }, [version?.contentHtml, version?.contentMarkdown]);
 
   const articleContent = useMemo(() => buildTocAndInjectAnchors(contentHtml), [contentHtml]);
@@ -347,7 +363,7 @@ const BlogPostPage: React.FC = () => {
             )}
 
             {articleContent.contentHtml ? (
-              <article id="post-content" className="blog-post-content surface" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
+              <article id="post-content" className="blog-post-content blog-post-content--article surface" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
             ) : (
               <article id="post-content" className="blog-post-content surface blog-post-content--empty">
                 <h2>Article content is coming soon</h2>
