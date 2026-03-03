@@ -232,10 +232,40 @@ const BlogPostPage: React.FC = () => {
   const topic = post?.topics?.[0] ?? post?.tags?.[0];
   const hasMeta = Boolean(post?.authorName || post?.publishedAt || post?.readingTime);
 
+  const shareUrl = useMemo(() => {
+    if (!post?.slug) {
+      return window.location.href;
+    }
+
+    return `${window.location.origin}/blog/${post.slug}`;
+  }, [post?.slug]);
+
+  const emailShareLink = useMemo(() => {
+    const subject = `Check out this article: ${post?.title ?? "Blog post"}`;
+    const excerptLine = post?.excerpt?.trim() ? `${post.excerpt.trim()}
+
+` : "";
+    const body = `I thought you might like this article:
+
+${excerptLine}${shareUrl}`;
+    return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }, [post?.excerpt, post?.title, shareUrl]);
+
   const handleCopyLink = useCallback(async () => {
-    const url = window.location.href;
     try {
-      await navigator.clipboard.writeText(url);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const helper = document.createElement("textarea");
+        helper.value = shareUrl;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "absolute";
+        helper.style.left = "-9999px";
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        document.body.removeChild(helper);
+      }
       setShareFeedback("Link copied");
     } catch (copyError) {
       console.error(copyError);
@@ -243,16 +273,19 @@ const BlogPostPage: React.FC = () => {
     } finally {
       window.setTimeout(() => setShareFeedback(""), 1800);
     }
-  }, []);
+  }, [shareUrl]);
 
   const handleShare = useCallback(async () => {
-    const url = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ title: post?.title, url });
+        await navigator.share({
+          title: post?.title,
+          text: post?.excerpt?.trim() || undefined,
+          url: shareUrl
+        });
         setShareFeedback("Shared");
       } catch {
-        // user canceled share dialog
+        // user canceled or browser denied share
       } finally {
         window.setTimeout(() => setShareFeedback(""), 1800);
       }
@@ -260,7 +293,7 @@ const BlogPostPage: React.FC = () => {
     }
 
     await handleCopyLink();
-  }, [handleCopyLink, post?.title]);
+  }, [handleCopyLink, post?.excerpt, post?.title, shareUrl]);
 
   if (loading) {
     return (
@@ -376,9 +409,9 @@ const BlogPostPage: React.FC = () => {
                 </ul>
                 <div className="blog-post-share">
                   <p className="blog-post-aside__title">Share</p>
-                  <button className="btn btn-outline" type="button" onClick={handleCopyLink}>Copy link</button>
+                  <button className="btn btn-outline" type="button" onClick={handleCopyLink}>{shareFeedback === "Link copied" ? "Copied" : "Copy link"}</button>
                   <button className="btn btn-ghost" type="button" onClick={handleShare}>Share</button>
-                  <a href={`mailto:?subject=${encodeURIComponent(post.title)}&body=${encodeURIComponent(window.location.href)}`}>
+                  <a href={emailShareLink}>
                     Share via email
                   </a>
                   {shareFeedback && <span className="blog-post-share__feedback">{shareFeedback}</span>}
@@ -420,7 +453,7 @@ const BlogPostPage: React.FC = () => {
                   <button className="btn btn-outline" type="button" onClick={handleShare}>
                     Share
                   </button>
-                  <a className="btn btn-outline" href={`mailto:?subject=${encodeURIComponent(post.title)}&body=${encodeURIComponent(window.location.href)}`}>
+                  <a className="btn btn-outline" href={emailShareLink}>
                     Share via email
                   </a>
                 </div>
