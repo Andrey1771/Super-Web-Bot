@@ -87,6 +87,7 @@ const BlogPostPage: React.FC = () => {
   const [relatedPosts, setRelatedPosts] = useState<BlogListItem[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [activeHeading, setActiveHeading] = useState<string | null>(null);
+  const [shareFeedback, setShareFeedback] = useState<string>("");
   const { trackOpen, trackReadProgress, trackReadComplete, trackBookmark } = useBlogTracking();
 
   useEffect(() => {
@@ -242,6 +243,36 @@ const BlogPostPage: React.FC = () => {
   const topic = post?.topics?.[0] ?? post?.tags?.[0];
   const hasMeta = Boolean(post?.authorName || post?.publishedAt || post?.readingTime);
 
+  const handleCopyLink = useCallback(async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareFeedback("Link copied");
+    } catch (copyError) {
+      console.error(copyError);
+      setShareFeedback("Could not copy link");
+    } finally {
+      window.setTimeout(() => setShareFeedback(""), 1800);
+    }
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: post?.title, url });
+        setShareFeedback("Shared");
+      } catch {
+        // user canceled share dialog
+      } finally {
+        window.setTimeout(() => setShareFeedback(""), 1800);
+      }
+      return;
+    }
+
+    await handleCopyLink();
+  }, [handleCopyLink, post?.title]);
+
   if (loading) {
     return (
       <main className="blog-page">
@@ -356,12 +387,12 @@ const BlogPostPage: React.FC = () => {
                 </ul>
                 <div className="blog-post-share">
                   <p className="blog-post-aside__title">Share</p>
-                  <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(post.title)}`} target="_blank" rel="noreferrer">
-                    Share on X
-                  </a>
+                  <button className="btn btn-outline" type="button" onClick={handleCopyLink}>Copy link</button>
+                  <button className="btn btn-ghost" type="button" onClick={handleShare}>Share</button>
                   <a href={`mailto:?subject=${encodeURIComponent(post.title)}&body=${encodeURIComponent(window.location.href)}`}>
                     Share via email
                   </a>
+                  {shareFeedback && <span className="blog-post-share__feedback">{shareFeedback}</span>}
                 </div>
               </aside>
             )}
@@ -394,13 +425,17 @@ const BlogPostPage: React.FC = () => {
               <div className="blog-post-footer__group" aria-label="Share article">
                 <h3>Share this article</h3>
                 <div className="blog-post-footer__share-row">
-                  <a className="btn btn-outline" href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(post.title)}`} target="_blank" rel="noreferrer">
-                    Share on X
-                  </a>
+                  <button className="btn btn-outline" type="button" onClick={handleCopyLink}>
+                    Copy link
+                  </button>
+                  <button className="btn btn-outline" type="button" onClick={handleShare}>
+                    Share
+                  </button>
                   <a className="btn btn-outline" href={`mailto:?subject=${encodeURIComponent(post.title)}&body=${encodeURIComponent(window.location.href)}`}>
                     Share via email
                   </a>
                 </div>
+                {shareFeedback && <p className="blog-post-share__feedback">{shareFeedback}</p>}
               </div>
 
               <div className="blog-post-footer__group">

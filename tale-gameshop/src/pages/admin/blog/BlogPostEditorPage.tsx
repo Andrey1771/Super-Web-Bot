@@ -67,6 +67,7 @@ const BlogPostEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(!isNew);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
+  const [contentMode, setContentMode] = useState<"markdown" | "html">("markdown");
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [changeNote, setChangeNote] = useState("");
   const [statusDraft, setStatusDraft] = useState<BlogStatus>("DRAFT");
@@ -128,7 +129,17 @@ const BlogPostEditorPage: React.FC = () => {
   const excerptCount = form.excerpt.trim().length;
   const tagsCount = form.tags.length;
 
-  const previewHtml = useMemo(() => renderMarkdown(form.contentMarkdown ?? ""), [form.contentMarkdown]);
+  const previewHtml = useMemo(() => {
+    if (contentMode === "html" && form.contentHtml?.trim()) {
+      return form.contentHtml;
+    }
+
+    if (form.contentMarkdown?.trim()) {
+      return renderMarkdown(form.contentMarkdown);
+    }
+
+    return form.contentHtml ?? "";
+  }, [contentMode, form.contentHtml, form.contentMarkdown]);
 
   const fetchPost = async () => {
     try {
@@ -155,6 +166,7 @@ const BlogPostEditorPage: React.FC = () => {
       formRef.current = nextForm;
       setForm(nextForm);
       setStatusDraft(response.post.status);
+      setContentMode(response.version.contentMarkdown ? "markdown" : "html");
       const nextScheduledAt = toDateTimeLocalValue(response.post.scheduledAt);
       const nextPublishedAt = toDateTimeLocalValue(response.post.publishedAt);
       scheduledAtRef.current = nextScheduledAt;
@@ -175,8 +187,13 @@ const BlogPostEditorPage: React.FC = () => {
 
   const handleSave = useCallback(async (statusOverride?: BlogStatus) => {
     const currentForm = formRef.current;
+    const normalizedMarkdown = currentForm.contentMarkdown?.trim() ?? "";
+    const normalizedHtml = (currentForm.contentHtml?.trim() || (normalizedMarkdown ? renderMarkdown(normalizedMarkdown) : ""));
+
     const payload: AdminBlogPayload = {
       ...currentForm,
+      contentMarkdown: normalizedMarkdown,
+      contentHtml: normalizedHtml,
       slug: currentForm.slug ? slugify(currentForm.slug) : slugify(currentForm.title),
       tags: currentForm.tags,
       status: statusOverride ?? currentForm.status,
@@ -413,23 +430,42 @@ const BlogPostEditorPage: React.FC = () => {
 
       <Card>
         <h3>Content</h3>
-        <div className="flex gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <button className={`btn ${activeTab === "write" ? "btn-primary" : "btn-outline"}`} onClick={() => setActiveTab("write")}>
             Write
           </button>
           <button className={`btn ${activeTab === "preview" ? "btn-primary" : "btn-outline"}`} onClick={() => setActiveTab("preview")}>
             Preview
           </button>
+          <div className="ml-auto flex items-center gap-2">
+            <label className="text-xs text-gray-500">Editor mode</label>
+            <select
+              className="p-2 border rounded"
+              value={contentMode}
+              onChange={(event) => setContentMode(event.target.value as "markdown" | "html")}
+            >
+              <option value="markdown">Markdown</option>
+              <option value="html">HTML</option>
+            </select>
+          </div>
         </div>
         {activeTab === "write" ? (
           <textarea
-            className="w-full p-2 border rounded min-h-[240px]"
-            value={form.contentMarkdown}
-            onChange={(event) => handleChange("contentMarkdown", event.target.value)}
+            className="w-full p-2 border rounded min-h-[260px]"
+            value={contentMode === "markdown" ? form.contentMarkdown : form.contentHtml}
+            onChange={(event) =>
+              contentMode === "markdown"
+                ? handleChange("contentMarkdown", event.target.value)
+                : handleChange("contentHtml", event.target.value)
+            }
+            placeholder={contentMode === "markdown" ? "Write article markdown here..." : "Write article HTML here..."}
           />
         ) : (
           <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: previewHtml }} />
         )}
+        <p className="text-xs text-gray-500 mt-2">
+          Main article body is saved into version content (Markdown/HTML) and displayed on the public post page.
+        </p>
       </Card>
 
       <Card>
@@ -581,7 +617,7 @@ const BlogPostEditorPage: React.FC = () => {
               <h3>Content preview</h3>
               <div
                 className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(selectedVersion.contentMarkdown ?? "") }}
+                dangerouslySetInnerHTML={{ __html: selectedVersion.contentHtml?.trim() || renderMarkdown(selectedVersion.contentMarkdown ?? "") }}
               />
             </Card>
           </div>

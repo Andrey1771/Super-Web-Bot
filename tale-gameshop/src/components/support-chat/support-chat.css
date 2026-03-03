@@ -311,3 +311,24 @@
     bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
+
+
+/* support final polish v2 */
+.support-chat {
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 1200px) {
+  .support-chat {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 680px) {
+  .support-chat {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
