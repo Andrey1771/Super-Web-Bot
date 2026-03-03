@@ -327,6 +327,7 @@ const BlogPostEditorPage: React.FC = () => {
           slug: refreshed.post.slug,
           excerpt: refreshed.post.excerpt,
           contentMarkdown: refreshed.version.contentMarkdown ?? "",
+          contentHtml: refreshed.version.contentHtml ?? "",
           coverAssetId: refreshed.post.coverAssetId ?? "",
           tags: refreshed.post.tags,
           status: refreshed.post.status,
@@ -450,16 +451,19 @@ const BlogPostEditorPage: React.FC = () => {
           </div>
         </div>
         {activeTab === "write" ? (
-          <textarea
-            className="w-full p-2 border rounded min-h-[260px]"
-            value={contentMode === "markdown" ? form.contentMarkdown : form.contentHtml}
+          <>
+            <label className="text-sm font-semibold mb-2 block">Article body ({contentMode === "markdown" ? "Markdown" : "HTML"})</label>
+            <textarea
+              className="w-full p-2 border rounded min-h-[260px]"
+              value={contentMode === "markdown" ? form.contentMarkdown : form.contentHtml}
             onChange={(event) =>
               contentMode === "markdown"
                 ? handleChange("contentMarkdown", event.target.value)
                 : handleChange("contentHtml", event.target.value)
             }
-            placeholder={contentMode === "markdown" ? "Write article markdown here..." : "Write article HTML here..."}
-          />
+              placeholder={contentMode === "markdown" ? "Write article markdown here..." : "Write article HTML here..."}
+            />
+          </>
         ) : (
           <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: previewHtml }} />
         )}

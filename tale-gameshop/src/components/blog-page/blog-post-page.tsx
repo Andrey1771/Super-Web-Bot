@@ -29,12 +29,6 @@ const formatDate = (value?: string) => {
   });
 };
 
-const getReadableTextLength = (html: string): number => {
-  const plain = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  return plain.length;
-};
-
-const MIN_ARTICLE_TEXT_LENGTH = 40;
 
 const buildTocAndInjectAnchors = (html: string): { contentHtml: string; headings: TocItem[] } => {
   if (!html) {
@@ -189,25 +183,20 @@ const BlogPostPage: React.FC = () => {
   }, [blogService, post]);
 
   const contentHtml = useMemo(() => {
-    const markdownSource = version?.contentMarkdown?.trim() ?? "";
-    const htmlFromMarkdown = markdownSource ? renderMarkdown(markdownSource) : "";
     const rawHtml = version?.contentHtml?.trim() ?? "";
-
-    const rawHtmlLength = getReadableTextLength(rawHtml);
-    const markdownLength = getReadableTextLength(htmlFromMarkdown);
-
-    if (!rawHtml && !htmlFromMarkdown) {
-      return "";
+    if (rawHtml) {
+      return rawHtml;
     }
 
-    if (rawHtmlLength >= markdownLength) {
-      return rawHtmlLength >= MIN_ARTICLE_TEXT_LENGTH ? rawHtml : htmlFromMarkdown;
-    }
-
-    return markdownLength >= MIN_ARTICLE_TEXT_LENGTH ? htmlFromMarkdown : rawHtml;
+    const markdownSource = version?.contentMarkdown?.trim() ?? "";
+    return markdownSource ? renderMarkdown(markdownSource) : "";
   }, [version?.contentHtml, version?.contentMarkdown]);
 
-  const articleHasMeaningfulContent = useMemo(() => getReadableTextLength(contentHtml) >= MIN_ARTICLE_TEXT_LENGTH, [contentHtml]);
+  const articleHasMeaningfulContent = useMemo(() => {
+    const hasHtml = Boolean(version?.contentHtml?.trim());
+    const hasMarkdown = Boolean(version?.contentMarkdown?.trim());
+    return hasHtml || hasMarkdown;
+  }, [version?.contentHtml, version?.contentMarkdown]);
 
   const articleContent = useMemo(() => buildTocAndInjectAnchors(contentHtml), [contentHtml]);
 
