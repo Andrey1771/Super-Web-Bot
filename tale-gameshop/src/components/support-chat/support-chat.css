@@ -267,3 +267,27 @@
     width: calc(100vw - 24px);
   }
 }
+
+/* blog/article overlap polish */
+.support-chat {
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 1200px) {
+  .support-chat {
+    right: 10px;
+  }
+}
+
+@media (max-width: 680px) {
+  .support-chat {
+    right: 8px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .support-chat__launcher {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+}
