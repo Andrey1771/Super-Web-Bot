@@ -307,7 +307,7 @@ const BlogPostPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="blog-post-hero__actions">
+              <div className="blog-post-hero__actions" aria-label="Article actions">
                 <Link className="btn btn-outline" to="/blog" aria-label="Back to blog list">
                   Back to blog
                 </Link>
@@ -315,14 +315,14 @@ const BlogPostPage: React.FC = () => {
                   Jump to content
                 </a>
                 <button className="btn btn-ghost" type="button" onClick={() => trackBookmark(post.id)} aria-label="Save article for later">
-                  Save
+                  Save for later
                 </button>
               </div>
             </div>
           </header>
 
           <div className="blog-post-layout">
-            {articleContent.headings.length > 0 && (
+            {articleContent.headings.length > 1 && (
               <aside className="blog-post-aside surface" aria-label="Article tools">
                 <p className="blog-post-aside__title">On this page</p>
                 <ul className="blog-post-toc">

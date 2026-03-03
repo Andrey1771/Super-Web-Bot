@@ -1,7 +1,7 @@
 .support-chat {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  right: 16px;
   z-index: 50;
   font-family: "Inter", "Segoe UI", sans-serif;
 }
@@ -251,8 +251,19 @@
   gap: 6px;
 }
 
+@media (max-width: 768px) {
+  .support-chat {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .support-chat__launcher {
+    padding: 10px 14px;
+  }
+}
+
 @media (max-width: 480px) {
   .support-chat__window {
-    width: calc(100vw - 32px);
+    width: calc(100vw - 24px);
   }
 }
