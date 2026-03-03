@@ -291,3 +291,23 @@
     font-size: 13px;
   }
 }
+
+/* final positioning pass: keep away from article footer/actions */
+.support-chat {
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 1200px) {
+  .support-chat {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 680px) {
+  .support-chat {
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}

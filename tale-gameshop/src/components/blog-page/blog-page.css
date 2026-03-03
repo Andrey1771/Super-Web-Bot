@@ -2115,3 +2115,56 @@
     justify-self: start;
   }
 }
+
+/* --- blog post page final polish pass v2 --- */
+.blog-post-hero__actions {
+  margin-top: 6px;
+  gap: 8px;
+}
+
+.blog-post-content--empty {
+  width: min(100%, 80ch);
+  margin-inline: auto;
+  justify-items: start;
+  padding-inline: clamp(20px, 2.2vw, 30px);
+}
+
+.blog-post-footer__main {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.blog-post-footer__group:last-child {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.blog-post-footer__group:last-child .btn {
+  min-width: 132px;
+}
+
+.related-post-card .post-card__content {
+  flex: 1;
+  gap: 10px;
+}
+
+.related-post-card .post-card__footer {
+  margin-top: 0;
+}
+
+.related-post-card .link-primary {
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .blog-post-footer__main {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .blog-post-footer__group:last-child {
+    justify-content: flex-start;
+  }
+}
