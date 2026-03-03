@@ -1978,3 +1978,44 @@
     align-items: stretch;
   }
 }
+
+
+/* --- blog post page refinement pass v4 (fix article layout source) --- */
+.blog-post-layout {
+  display: block;
+}
+
+.blog-post-layout--with-aside {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  align-items: start;
+  gap: 18px;
+}
+
+.blog-post-layout--with-aside .blog-post-aside {
+  order: 2;
+}
+
+.blog-post-layout--with-aside .blog-post-content {
+  order: 1;
+}
+
+.blog-post-content--article {
+  min-height: 0;
+  width: min(100%, 78ch);
+  margin: 0;
+}
+
+.blog-post-content--empty {
+  width: min(100%, 74ch);
+}
+
+@media (max-width: 1100px) {
+  .blog-post-layout--with-aside {
+    grid-template-columns: 1fr;
+  }
+
+  .blog-post-layout--with-aside .blog-post-aside {
+    order: 2;
+  }
+}

@@ -34,6 +34,8 @@ const getReadableTextLength = (html: string): number => {
   return plain.length;
 };
 
+const MIN_ARTICLE_TEXT_LENGTH = 40;
+
 const buildTocAndInjectAnchors = (html: string): { contentHtml: string; headings: TocItem[] } => {
   if (!html) {
     return { contentHtml: "", headings: [] };
@@ -190,19 +192,21 @@ const BlogPostPage: React.FC = () => {
     const htmlFromMarkdown = markdownSource ? renderMarkdown(markdownSource) : "";
     const rawHtml = version?.contentHtml?.trim() ?? "";
 
-    if (!rawHtml) {
-      return htmlFromMarkdown;
-    }
-
     const rawHtmlLength = getReadableTextLength(rawHtml);
     const markdownLength = getReadableTextLength(htmlFromMarkdown);
 
-    if (rawHtmlLength < 24 && markdownLength > rawHtmlLength + 20) {
-      return htmlFromMarkdown;
+    if (!rawHtml && !htmlFromMarkdown) {
+      return "";
     }
 
-    return rawHtml;
+    if (rawHtmlLength >= markdownLength) {
+      return rawHtmlLength >= MIN_ARTICLE_TEXT_LENGTH ? rawHtml : htmlFromMarkdown;
+    }
+
+    return markdownLength >= MIN_ARTICLE_TEXT_LENGTH ? htmlFromMarkdown : rawHtml;
   }, [version?.contentHtml, version?.contentMarkdown]);
+
+  const articleHasMeaningfulContent = useMemo(() => getReadableTextLength(contentHtml) >= MIN_ARTICLE_TEXT_LENGTH, [contentHtml]);
 
   const articleContent = useMemo(() => buildTocAndInjectAnchors(contentHtml), [contentHtml]);
 
@@ -337,7 +341,7 @@ const BlogPostPage: React.FC = () => {
             </div>
           </header>
 
-          <div className="blog-post-layout">
+          <div className={`blog-post-layout${articleContent.headings.length > 1 ? " blog-post-layout--with-aside" : ""}`}>
             {articleContent.headings.length > 1 && (
               <aside className="blog-post-aside surface" aria-label="Article tools">
                 <p className="blog-post-aside__title">On this page</p>
@@ -362,12 +366,12 @@ const BlogPostPage: React.FC = () => {
               </aside>
             )}
 
-            {articleContent.contentHtml ? (
+            {articleHasMeaningfulContent ? (
               <article id="post-content" className="blog-post-content blog-post-content--article surface" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
             ) : (
               <article id="post-content" className="blog-post-content surface blog-post-content--empty">
                 <h2>Article content is coming soon</h2>
-                <p className="muted">This post has metadata, but the main content is not available yet.</p>
+                <p className="muted">This post has metadata, but the full article body is not available yet.</p>
               </article>
             )}
           </div>
