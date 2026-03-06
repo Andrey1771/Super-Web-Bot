@@ -330,7 +330,7 @@ export default function BlogPage() {
                     </div>
                 </section>
             ) : (
-
+            <>
             <section className="blog-featured section">
                 <div className="container">
                     {loading ? (
@@ -555,7 +555,7 @@ export default function BlogPage() {
                     </div>
                 </div>
             </section>
-
+            </>
             )}
             <section className="cta-strip section">
                 <div className="container">
