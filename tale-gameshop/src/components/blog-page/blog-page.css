@@ -2333,3 +2333,51 @@
     align-items: flex-start;
   }
 }
+
+/* --- latest posts spacing consistency pass --- */
+.latest-posts {
+  padding-top: var(--space-20);
+  padding-bottom: var(--space-36);
+}
+
+.latest-header {
+  align-items: flex-end;
+  margin-bottom: var(--space-24);
+}
+
+.latest-posts .posts-grid {
+  gap: var(--space-20);
+}
+
+.posts-actions {
+  margin-top: var(--space-18);
+  padding-top: var(--space-16);
+}
+
+@media (max-width: 992px) {
+  .latest-posts {
+    padding-top: var(--space-20);
+    padding-bottom: var(--space-32);
+  }
+
+  .latest-header {
+    align-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .latest-header {
+    align-items: stretch;
+    gap: var(--space-12);
+    margin-bottom: var(--space-20);
+  }
+
+  .latest-header .sort-select {
+    align-self: flex-start;
+  }
+
+  .posts-actions {
+    margin-top: var(--space-14);
+    padding-top: var(--space-14);
+  }
+}
