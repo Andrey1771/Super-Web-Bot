@@ -1,4 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faArrowRightLong,
@@ -28,6 +29,22 @@ const EDITORS_VISIBLE_ITEMS = 3;
 const EDITORS_FETCH_LIMIT = 9;
 
 const sortOptions = ["Newest", "Most popular", "Editor's picks"];
+
+const sortPosts = (posts: BlogListItem[], sort: string): BlogListItem[] => {
+    if (sort === "Most popular") {
+        return [...posts].sort((a, b) => (b.readingTime ?? 0) - (a.readingTime ?? 0));
+    }
+
+    if (sort === "Editor's picks") {
+        return [...posts].sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return [...posts].sort((a, b) => {
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateB - dateA;
+    });
+};
 
 const topicCards = [
     {
@@ -79,13 +96,14 @@ const formatDate = (value?: string) => {
 export default function BlogPage() {
     const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
     const [activeTag, setActiveTag] = useState("All");
-    const [search, setSearch] = useState("");
+    const [searchInput, setSearchInput] = useState("");
     const [sort, setSort] = useState(sortOptions[0]);
     const [recommendations, setRecommendations] = useState<BlogRecommendationsResponse | null>(null);
     const [editorsSliderPosts, setEditorsSliderPosts] = useState<BlogListItem[]>([]);
     const [activeEditorSlide, setActiveEditorSlide] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const debouncedSearch = useDebouncedValue(searchInput, 320);
 
     useEffect(() => {
         const fetchRecommendations = async () => {
@@ -140,7 +158,7 @@ export default function BlogPage() {
     }, [recommendations]);
 
     const matchesFilters = useMemo(() => {
-        const normalizedSearch = search.trim().toLowerCase();
+        const normalizedSearch = debouncedSearch.trim().toLowerCase();
         return (post: BlogListItem) => {
             const matchesTag = activeTag === "All" || post.tags.includes(activeTag);
             if (!normalizedSearch) {
@@ -149,7 +167,7 @@ export default function BlogPage() {
             const text = `${post.title} ${post.excerpt}`.toLowerCase();
             return matchesTag && text.includes(normalizedSearch);
         };
-    }, [activeTag, search]);
+    }, [activeTag, debouncedSearch]);
 
     const featuredPost = recommendations?.heroPost;
     const latestPosts = (recommendations?.latestPosts ?? []).filter(matchesFilters);
@@ -196,21 +214,27 @@ export default function BlogPage() {
         return `${formatDate(post.publishedAt)}${readTime ? ` • ${readTime}` : ""}`;
     };
 
-    const sortedPosts = useMemo(() => {
-        if (sort === "Most popular") {
-            return [...latestPosts].sort((a, b) => (b.readingTime ?? 0) - (a.readingTime ?? 0));
-        }
+    const sortedPosts = useMemo(() => sortPosts(latestPosts, sort), [latestPosts, sort]);
 
-        if (sort === "Editor's picks") {
-            return [...latestPosts].sort((a, b) => a.title.localeCompare(b.title));
-        }
+    const allFilteredPosts = useMemo(() => {
+        const map = new Map<string, BlogListItem>();
+        [
+            ...(recommendations?.latestPosts ?? []),
+            ...(recommendations?.popularThisWeek ?? []),
+            ...(recommendations?.forYou ?? []),
+            ...(recommendations?.editorsPicks ?? []),
+            ...editorsSliderPosts
+        ].filter(matchesFilters).forEach((post) => map.set(post.id, post));
 
-        return [...latestPosts].sort((a, b) => {
-            const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-            const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-            return dateB - dateA;
-        });
-    }, [latestPosts, sort]);
+        return sortPosts(Array.from(map.values()), sort);
+    }, [editorsSliderPosts, matchesFilters, recommendations, sort]);
+
+    const isFiltering = Boolean(debouncedSearch.trim()) || activeTag !== "All";
+
+    const handleClearFilters = () => {
+        setSearchInput("");
+        setActiveTag("All");
+    };
 
     return (
         <main className="blog-page">
@@ -227,9 +251,19 @@ export default function BlogPage() {
                             <input
                                 type="search"
                                 placeholder="Search articles…"
-                                value={search}
-                                onChange={(event) => setSearch(event.target.value)}
+                                value={searchInput}
+                                onChange={(event) => setSearchInput(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Escape") {
+                                        handleClearFilters();
+                                    }
+                                }}
                             />
+                            {searchInput.trim() ? (
+                                <button className="icon-button search-clear" type="button" onClick={handleClearFilters} aria-label="Clear search">
+                                    ×
+                                </button>
+                            ) : null}
                         </label>
                         <div className="chip-row" role="list">
                             {tagFilters.map((filter) => (
@@ -247,6 +281,55 @@ export default function BlogPage() {
                     </div>
                 </div>
             </section>
+
+            {isFiltering ? (
+                <section className="latest-posts section blog-results-mode">
+                    <div className="container">
+                        <div className="latest-header latest-header--results">
+                            <div>
+                                <h2>Results</h2>
+                                <p className="muted">
+                                    Showing {allFilteredPosts.length} posts
+                                    {debouncedSearch.trim() ? ` for: "${debouncedSearch.trim()}"` : ""}
+                                    {activeTag !== "All" ? ` • Tag: ${activeTag}` : ""}
+                                </p>
+                            </div>
+                            <div className="latest-header__actions">
+                                <label className="sort-select">
+                                    <span className="visually-hidden">Sort posts</span>
+                                    <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                                        {sortOptions.map((option) => (
+                                            <option key={option}>{option}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <button className="btn btn-outline" type="button" onClick={handleClearFilters}>Clear filters</button>
+                            </div>
+                        </div>
+                        {loading ? (
+                            <div className="posts-grid">
+                                {Array.from({length: 6}).map((_, index) => (
+                                    <div className="post-card post-card--compact" key={`results-skeleton-${index}`}>
+                                        <div className="post-card__media post-card__media--compact"><div className="skeleton h-32" /></div>
+                                        <div className="post-card__body post-card__body--compact"><div className="skeleton h-6" /><div className="skeleton h-4 mt-3" /></div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : allFilteredPosts.length === 0 ? (
+                            <div className="results-empty surface">
+                                <p className="muted">No posts match your filters yet. Try a different search or tag.</p>
+                                <button className="btn btn-outline" type="button" onClick={handleClearFilters}>Clear filters</button>
+                            </div>
+                        ) : (
+                            <div className="posts-grid">
+                                {allFilteredPosts.map((post) => (
+                                    <PostCard post={post} key={post.id} variant="compact" />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </section>
+            ) : (
 
             <section className="blog-featured section">
                 <div className="container">
@@ -473,6 +556,7 @@ export default function BlogPage() {
                 </div>
             </section>
 
+            )}
             <section className="cta-strip section">
                 <div className="container">
                     <div className="cta-card">
