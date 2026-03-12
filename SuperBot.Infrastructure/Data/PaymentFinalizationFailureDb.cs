@@ -19,7 +19,5 @@ public class PaymentFinalizationFailureDb
     public string? TechnicalDetails { get; set; }
     public string TraceId { get; set; } = string.Empty;
     public string Status { get; set; } = "Open";
-
-    [BsonGuidRepresentation(GuidRepresentation.Standard)]
-    public Guid? OrderId { get; set; }
+    public string? OrderId { get; set; }
 }

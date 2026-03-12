@@ -12,9 +12,7 @@ public class PaymentFinalizationStateDb
     public string PaymentIntentId { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
     public string Status { get; set; } = "Processing";
-
-    [BsonGuidRepresentation(GuidRepresentation.Standard)]
-    public Guid? OrderId { get; set; }
+    public string? OrderId { get; set; }
 
     public int Attempts { get; set; }
     public string? LastErrorCode { get; set; }

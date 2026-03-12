@@ -10,10 +10,15 @@ namespace SuperBot.Infrastructure.Models
         {
             CreateMap<Order, OrderDb>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.OrderId, opt => opt.MapFrom(src => src.Id));
+                .ForMember(dest => dest.OrderId, opt => opt.MapFrom(src => src.Id.ToString()));
 
             CreateMap<OrderDb, Order>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.OrderId));
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => ParseOrderId(src.OrderId)));
+        }
+
+        private static Guid ParseOrderId(string? orderId)
+        {
+            return Guid.TryParse(orderId, out var parsed) ? parsed : Guid.Empty;
         }
     }
 }

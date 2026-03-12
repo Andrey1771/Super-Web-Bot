@@ -97,11 +97,11 @@ namespace SuperBot.WebApi.Controllers
                 .Find(item => item.PaymentIntentId == request.PaymentIntentId)
                 .FirstOrDefaultAsync();
 
-            if (state?.Status == FinalizationStatus.Succeeded && state.OrderId.HasValue)
+            if (state?.Status == FinalizationStatus.Succeeded && !string.IsNullOrWhiteSpace(state.OrderId))
             {
                 return Ok(new ConfirmPaymentIntentResponse
                 {
-                    OrderId = state.OrderId.Value.ToString(),
+                    OrderId = state.OrderId,
                     Status = "already_confirmed"
                 });
             }
@@ -177,8 +177,8 @@ namespace SuperBot.WebApi.Controllers
 
                 if (existing != null)
                 {
-                    await MarkSucceededAsync(request.PaymentIntentId, userId, attempts, existing.Id);
-                    await MarkFailureResolvedAsync(request.PaymentIntentId, existing.Id);
+                    await MarkSucceededAsync(request.PaymentIntentId, userId, attempts, existing.Id.ToString());
+                    await MarkFailureResolvedAsync(request.PaymentIntentId, existing.Id.ToString());
                     return Ok(new ConfirmPaymentIntentResponse
                     {
                         OrderId = existing.Id.ToString(),
@@ -213,8 +213,8 @@ namespace SuperBot.WebApi.Controllers
                 };
 
                 await _orderRepository.CreateOrderAsync(order);
-                await MarkSucceededAsync(request.PaymentIntentId, userId, attempts, order.Id);
-                await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id);
+                await MarkSucceededAsync(request.PaymentIntentId, userId, attempts, order.Id.ToString());
+                await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id.ToString());
 
                 return Ok(new ConfirmPaymentIntentResponse
                 {
@@ -246,7 +246,7 @@ namespace SuperBot.WebApi.Controllers
             }
         }
 
-        private async Task MarkSucceededAsync(string paymentIntentId, string userId, int attempts, Guid orderId)
+        private async Task MarkSucceededAsync(string paymentIntentId, string userId, int attempts, string orderId)
         {
             var update = Builders<PaymentFinalizationStateDb>.Update
                 .Set(item => item.UserId, userId)
@@ -305,7 +305,7 @@ namespace SuperBot.WebApi.Controllers
                 new UpdateOptions { IsUpsert = true });
         }
 
-        private async Task MarkFailureResolvedAsync(string paymentIntentId, Guid orderId)
+        private async Task MarkFailureResolvedAsync(string paymentIntentId, string orderId)
         {
             var update = Builders<PaymentFinalizationFailureDb>.Update
                 .Set(item => item.Status, "Resolved")

@@ -33,13 +33,13 @@ namespace SuperBot.Infrastructure.Repositories
                 newOrder.Id = ObjectId.GenerateNewId();
             }
 
-            if (newOrder.OrderId == Guid.Empty)
+            if (string.IsNullOrWhiteSpace(newOrder.OrderId))
             {
-                newOrder.OrderId = order.Id;
+                newOrder.OrderId = order.Id.ToString();
             }
 
             await _orders.InsertOneAsync(newOrder);
-            order.Id = newOrder.OrderId;
+            order.Id = Guid.TryParse(newOrder.OrderId, out var createdOrderId) ? createdOrderId : order.Id;
         }
 
         public async Task<Order> GetOrderByIdAsync(string orderId)
@@ -98,9 +98,9 @@ namespace SuperBot.Infrastructure.Repositories
             }
 
             var orderDb = _mapper.Map<OrderDb>(order);
-            if (orderDb.OrderId == Guid.Empty)
+            if (string.IsNullOrWhiteSpace(orderDb.OrderId))
             {
-                orderDb.OrderId = order.Id;
+                orderDb.OrderId = order.Id.ToString();
             }
 
             await _orders.ReplaceOneAsync(o => o.OrderId == orderDb.OrderId, orderDb);
@@ -223,7 +223,7 @@ namespace SuperBot.Infrastructure.Repositories
         {
             if (Guid.TryParse(orderId, out var orderGuid))
             {
-                return Builders<OrderDb>.Filter.Eq(order => order.OrderId, orderGuid);
+                return Builders<OrderDb>.Filter.Eq(order => order.OrderId, orderGuid.ToString());
             }
 
             if (ObjectId.TryParse(orderId, out var objectId))
@@ -231,7 +231,7 @@ namespace SuperBot.Infrastructure.Repositories
                 return Builders<OrderDb>.Filter.Eq(order => order.Id, objectId);
             }
 
-            return Builders<OrderDb>.Filter.Eq(order => order.OrderId, Guid.Empty);
+            return Builders<OrderDb>.Filter.Eq(order => order.OrderId, string.Empty);
         }
 
         private async Task EnsureOrderGuidsAsync(List<OrderDb> orders)
@@ -244,12 +244,12 @@ namespace SuperBot.Infrastructure.Repositories
 
         private async Task EnsureOrderGuidAsync(OrderDb order)
         {
-            if (order.OrderId != Guid.Empty)
+            if (Guid.TryParse(order.OrderId, out _))
             {
                 return;
             }
 
-            order.OrderId = CreateStableGuidFromObjectId(order.Id);
+            order.OrderId = CreateStableGuidFromObjectId(order.Id).ToString();
             await _orders.UpdateOneAsync(
                 o => o.Id == order.Id,
                 Builders<OrderDb>.Update.Set(o => o.OrderId, order.OrderId));

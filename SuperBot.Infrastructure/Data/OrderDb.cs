@@ -8,8 +8,7 @@ namespace SuperBot.Infrastructure.Data
         [BsonId]
         public ObjectId Id { get; set; }
 
-        [BsonGuidRepresentation(GuidRepresentation.Standard)]
-        public Guid OrderId { get; set; }
+        public string OrderId { get; set; } = string.Empty;
         public string GameId { get; set; }
         public string GameName { get; set; }
         public string UserName { get; set; }
