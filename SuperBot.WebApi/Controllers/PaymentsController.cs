@@ -127,24 +127,20 @@ namespace SuperBot.WebApi.Controllers
             }
 
             var attempts = (state?.Attempts ?? 0) + 1;
-            var processingState = state ?? new PaymentFinalizationStateDb
-            {
-                PaymentIntentId = request.PaymentIntentId,
-                UserId = userId,
-                CreatedAt = now
-            };
+            var processingUpdate = Builders<PaymentFinalizationStateDb>.Update
+                .Set(item => item.PaymentIntentId, request.PaymentIntentId)
+                .Set(item => item.UserId, userId)
+                .Set(item => item.Status, FinalizationStatus.Processing)
+                .Set(item => item.Attempts, attempts)
+                .Set(item => item.LastErrorCode, null)
+                .Set(item => item.LastErrorMessage, null)
+                .Set(item => item.UpdatedAt, now)
+                .SetOnInsert(item => item.CreatedAt, now);
 
-            processingState.UserId = userId;
-            processingState.Status = FinalizationStatus.Processing;
-            processingState.Attempts = attempts;
-            processingState.LastErrorCode = null;
-            processingState.LastErrorMessage = null;
-            processingState.UpdatedAt = now;
-
-            await _finalizationStates.ReplaceOneAsync(
+            await _finalizationStates.UpdateOneAsync(
                 item => item.PaymentIntentId == request.PaymentIntentId,
-                processingState,
-                new ReplaceOptions { IsUpsert = true });
+                processingUpdate,
+                new UpdateOptions { IsUpsert = true });
 
             try
             {
