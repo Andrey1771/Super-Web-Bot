@@ -1,9 +1,11 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using Stripe;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -12,13 +14,23 @@ namespace SuperBot.WebApi.Controllers
     [Authorize]
     public class PaymentsController : ControllerBase
     {
+        private const int MaxFinalizeAttempts = 3;
+        private static readonly TimeSpan ProcessingCooldown = TimeSpan.FromSeconds(60);
+
         private readonly IOrderRepository _orderRepository;
         private readonly ILogger<PaymentsController> _logger;
+        private readonly IMongoCollection<PaymentFinalizationStateDb> _finalizationStates;
+        private readonly IMongoCollection<PaymentFinalizationFailureDb> _finalizationFailures;
 
-        public PaymentsController(IOrderRepository orderRepository, ILogger<PaymentsController> logger)
+        public PaymentsController(
+            IOrderRepository orderRepository,
+            ILogger<PaymentsController> logger,
+            IMongoDatabase database)
         {
             _orderRepository = orderRepository;
             _logger = logger;
+            _finalizationStates = database.GetCollection<PaymentFinalizationStateDb>("PaymentFinalizationStates");
+            _finalizationFailures = database.GetCollection<PaymentFinalizationFailureDb>("PaymentFinalizationFailures");
         }
 
         [HttpPost("create-payment-intent")]
@@ -80,12 +92,67 @@ namespace SuperBot.WebApi.Controllers
                 return Unauthorized();
             }
 
+            var now = DateTime.UtcNow;
+            var state = await _finalizationStates
+                .Find(item => item.PaymentIntentId == request.PaymentIntentId)
+                .FirstOrDefaultAsync();
+
+            if (state?.Status == FinalizationStatus.Succeeded && state.OrderId.HasValue)
+            {
+                return Ok(new ConfirmPaymentIntentResponse
+                {
+                    OrderId = state.OrderId.Value.ToString(),
+                    Status = "already_confirmed"
+                });
+            }
+
+            if (state?.Status == FinalizationStatus.Processing && now - state.UpdatedAt < ProcessingCooldown)
+            {
+                return StatusCode(StatusCodes.Status409Conflict, new ApiErrorResponse
+                {
+                    Code = "FINALIZATION_ALREADY_PROCESSING",
+                    Message = "Your payment is already being processed. Please wait a moment and refresh.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
+            if (state?.Status == FinalizationStatus.Failed && state.Attempts >= MaxFinalizeAttempts)
+            {
+                return StatusCode(StatusCodes.Status429TooManyRequests, new ApiErrorResponse
+                {
+                    Code = "FINALIZATION_ATTEMPTS_EXCEEDED",
+                    Message = "We couldn't finalize your order yet. Please contact support with the reference below.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
+            var attempts = (state?.Attempts ?? 0) + 1;
+            var processingState = state ?? new PaymentFinalizationStateDb
+            {
+                PaymentIntentId = request.PaymentIntentId,
+                UserId = userId,
+                CreatedAt = now
+            };
+
+            processingState.UserId = userId;
+            processingState.Status = FinalizationStatus.Processing;
+            processingState.Attempts = attempts;
+            processingState.LastErrorCode = null;
+            processingState.LastErrorMessage = null;
+            processingState.UpdatedAt = now;
+
+            await _finalizationStates.ReplaceOneAsync(
+                item => item.PaymentIntentId == request.PaymentIntentId,
+                processingState,
+                new ReplaceOptions { IsUpsert = true });
+
             try
             {
                 var paymentIntentService = new PaymentIntentService();
                 var paymentIntent = await paymentIntentService.GetAsync(request.PaymentIntentId);
                 if (paymentIntent == null)
                 {
+                    await MarkFailedAsync(request.PaymentIntentId, userId, attempts, "PAYMENT_INTENT_NOT_FOUND", "Payment intent not found.", null);
                     return NotFound("Payment intent not found.");
                 }
 
@@ -95,11 +162,13 @@ namespace SuperBot.WebApi.Controllers
 
                 if (!string.IsNullOrWhiteSpace(metadataUserId) && !string.Equals(metadataUserId, userId, StringComparison.OrdinalIgnoreCase))
                 {
+                    await MarkFailedAsync(request.PaymentIntentId, userId, attempts, "PAYMENT_OWNER_MISMATCH", "Payment intent belongs to another user.", null);
                     return Forbid();
                 }
 
                 if (!string.Equals(paymentIntent.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
                 {
+                    await MarkFailedAsync(request.PaymentIntentId, userId, attempts, "PAYMENT_NOT_SUCCEEDED", $"Payment status: {paymentIntent.Status}", null);
                     return BadRequest($"Payment is not successful yet. Status: {paymentIntent.Status}.");
                 }
 
@@ -108,6 +177,8 @@ namespace SuperBot.WebApi.Controllers
 
                 if (existing != null)
                 {
+                    await MarkSucceededAsync(request.PaymentIntentId, userId, attempts, existing.Id);
+                    await MarkFailureResolvedAsync(request.PaymentIntentId, existing.Id);
                     return Ok(new ConfirmPaymentIntentResponse
                     {
                         OrderId = existing.Id.ToString(),
@@ -142,6 +213,8 @@ namespace SuperBot.WebApi.Controllers
                 };
 
                 await _orderRepository.CreateOrderAsync(order);
+                await MarkSucceededAsync(request.PaymentIntentId, userId, attempts, order.Id);
+                await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id);
 
                 return Ok(new ConfirmPaymentIntentResponse
                 {
@@ -156,6 +229,14 @@ namespace SuperBot.WebApi.Controllers
                     request.PaymentIntentId,
                     userId);
 
+                await MarkFailedAsync(
+                    request.PaymentIntentId,
+                    userId,
+                    attempts,
+                    "ORDER_CREATE_FAILED",
+                    "We couldn't finalize your order. Please try again or contact support.",
+                    ex);
+
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiErrorResponse
                 {
                     Code = "ORDER_CREATE_FAILED",
@@ -163,6 +244,77 @@ namespace SuperBot.WebApi.Controllers
                     TraceId = HttpContext.TraceIdentifier
                 });
             }
+        }
+
+        private async Task MarkSucceededAsync(string paymentIntentId, string userId, int attempts, Guid orderId)
+        {
+            var update = Builders<PaymentFinalizationStateDb>.Update
+                .Set(item => item.UserId, userId)
+                .Set(item => item.Status, FinalizationStatus.Succeeded)
+                .Set(item => item.OrderId, orderId)
+                .Set(item => item.Attempts, attempts)
+                .Set(item => item.LastErrorCode, null)
+                .Set(item => item.LastErrorMessage, null)
+                .Set(item => item.UpdatedAt, DateTime.UtcNow)
+                .SetOnInsert(item => item.CreatedAt, DateTime.UtcNow);
+
+            await _finalizationStates.UpdateOneAsync(
+                item => item.PaymentIntentId == paymentIntentId,
+                update,
+                new UpdateOptions { IsUpsert = true });
+        }
+
+        private async Task MarkFailedAsync(string paymentIntentId, string userId, int attempts, string code, string message, Exception? ex)
+        {
+            var traceId = HttpContext.TraceIdentifier;
+            var now = DateTime.UtcNow;
+
+            var stateUpdate = Builders<PaymentFinalizationStateDb>.Update
+                .Set(item => item.UserId, userId)
+                .Set(item => item.Status, FinalizationStatus.Failed)
+                .Set(item => item.Attempts, attempts)
+                .Set(item => item.LastErrorCode, code)
+                .Set(item => item.LastErrorMessage, message)
+                .Set(item => item.UpdatedAt, now)
+                .SetOnInsert(item => item.CreatedAt, now);
+
+            await _finalizationStates.UpdateOneAsync(
+                item => item.PaymentIntentId == paymentIntentId,
+                stateUpdate,
+                new UpdateOptions { IsUpsert = true });
+
+            var technicalDetails = ex == null
+                ? null
+                : $"{ex.GetType().Name}: {ex.Message}{Environment.NewLine}{ex.StackTrace}";
+
+            var failureUpdate = Builders<PaymentFinalizationFailureDb>.Update
+                .Set(item => item.UserId, userId)
+                .Set(item => item.LastSeenAt, now)
+                .Set(item => item.ErrorCode, code)
+                .Set(item => item.ErrorMessage, message)
+                .Set(item => item.TechnicalDetails, technicalDetails)
+                .Set(item => item.TraceId, traceId)
+                .Set(item => item.Attempts, attempts)
+                .Set(item => item.Status, "Open")
+                .SetOnInsert(item => item.PaymentIntentId, paymentIntentId)
+                .SetOnInsert(item => item.CreatedAt, now);
+
+            await _finalizationFailures.UpdateOneAsync(
+                item => item.PaymentIntentId == paymentIntentId,
+                failureUpdate,
+                new UpdateOptions { IsUpsert = true });
+        }
+
+        private async Task MarkFailureResolvedAsync(string paymentIntentId, Guid orderId)
+        {
+            var update = Builders<PaymentFinalizationFailureDb>.Update
+                .Set(item => item.Status, "Resolved")
+                .Set(item => item.LastSeenAt, DateTime.UtcNow)
+                .Set(item => item.OrderId, orderId);
+
+            await _finalizationFailures.UpdateOneAsync(
+                item => item.PaymentIntentId == paymentIntentId,
+                update);
         }
 
         private string GetCurrentUserId()
@@ -173,6 +325,13 @@ namespace SuperBot.WebApi.Controllers
         }
 
         private static string BuildPaymentNote(string paymentIntentId) => $"stripe_payment_intent:{paymentIntentId}";
+    }
+
+    public static class FinalizationStatus
+    {
+        public const string Processing = "Processing";
+        public const string Succeeded = "Succeeded";
+        public const string Failed = "Failed";
     }
 
     public class CreatePaymentIntentRequest

@@ -17,6 +17,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
     const elements = useElements();
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const publicAppUrl = window.__APP_CONFIG__?.publicAppUrl ?? window.location.origin;
 
     const handleSubmit = async (event: any) => {
@@ -29,6 +30,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             // Make sure to disable form submission until Stripe.js has loaded.
             return;
         }
+
+        setIsSubmitting(true);
+        setErrorMessage(null);
 
         const {error} = await stripe.confirmPayment({
             //`Elements` instance that was used to create the Payment Element
@@ -44,6 +48,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             // confirming the payment. Show error to your customer (for example, payment
             // details incomplete)
             setErrorMessage(error.message ?? 'Unable to process payment.');
+            setIsSubmitting(false);
         } else {
             // Your customer will be redirected to your `return_url`. For some payment
             // methods like iDEAL, your customer will be redirected to an intermediate
@@ -64,12 +69,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             <ExpressCheckoutElement onConfirm={handleConfirmExpressCheckout}/>
             <PaymentElement options={paymentElementOptions}/>
             <button
-                disabled={!stripe}
+                disabled={!stripe || isSubmitting}
                 className="btn btn-primary checkout-stripe-submit"
                 data-testid="place-order-button"
                 type="submit"
             >
-                Place Order
+                {isSubmitting ? 'Processing...' : 'Place Order'}
             </button>
             <Link to="/checkout/cancel" className="btn btn-outline checkout-stripe-submit">
                 Cancel

@@ -25,8 +25,21 @@ using SuperBot.WebApi.Support.Infrastructure;
 using SuperBot.WebApi.Support.Services;
 using SuperBot.WebApi.Services.Analytics;
 using Microsoft.AspNetCore.Diagnostics;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Bson;
 
 var builder = WebApplication.CreateBuilder(args);
+
+BsonDefaults.GuidRepresentationMode = GuidRepresentationMode.V3;
+try
+{
+    BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+}
+catch (BsonSerializationException)
+{
+    // Serializer may already be registered by test host / warm reload.
+}
 
 // !!!     
 builder.Services.Configure<ForwardedHeadersOptions>(options =>

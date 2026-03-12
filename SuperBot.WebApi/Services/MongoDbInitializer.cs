@@ -41,7 +41,9 @@ namespace SuperBot.WebApi.Services
                 "SupportChatSessions",
                 "SupportChatMessages",
                 "PromoCodes",
-                "PromoCodeUsages"
+                "PromoCodeUsages",
+                "PaymentFinalizationStates",
+                "PaymentFinalizationFailures"
             };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
@@ -308,6 +310,36 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_support_chat_messages_session_created" }
             );
             await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageSessionIndex);
+
+            var paymentStateCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>("PaymentFinalizationStates");
+            var paymentStateIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>(
+                Builders<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>.IndexKeys
+                    .Ascending(item => item.PaymentIntentId),
+                new CreateIndexOptions { Name = "ix_payment_state_intent", Unique = true }
+            );
+            var paymentStateUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>(
+                Builders<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Descending(item => item.UpdatedAt),
+                new CreateIndexOptions { Name = "ix_payment_state_user_updated" }
+            );
+            await paymentStateCollection.Indexes.CreateOneAsync(paymentStateIntentIndex);
+            await paymentStateCollection.Indexes.CreateOneAsync(paymentStateUserIndex);
+
+            var paymentFailureCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PaymentFinalizationFailureDb>("PaymentFinalizationFailures");
+            var paymentFailureIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationFailureDb>(
+                Builders<SuperBot.Infrastructure.Data.PaymentFinalizationFailureDb>.IndexKeys
+                    .Ascending(item => item.PaymentIntentId),
+                new CreateIndexOptions { Name = "ix_payment_failure_intent", Unique = true }
+            );
+            var paymentFailureStatusDateIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationFailureDb>(
+                Builders<SuperBot.Infrastructure.Data.PaymentFinalizationFailureDb>.IndexKeys
+                    .Ascending(item => item.Status)
+                    .Descending(item => item.LastSeenAt),
+                new CreateIndexOptions { Name = "ix_payment_failure_status_last_seen" }
+            );
+            await paymentFailureCollection.Indexes.CreateOneAsync(paymentFailureIntentIndex);
+            await paymentFailureCollection.Indexes.CreateOneAsync(paymentFailureStatusDateIndex);
 
             if (_environment.IsDevelopment())
             {

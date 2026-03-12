@@ -79,6 +79,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             icon: "🧾",
           },
           {
+            label: "Payment issues",
+            to: "/admin/payments/issues",
+            icon: "🚨",
+            roles: ["admin"],
+          },
+          {
             label: "Refunds",
             icon: "↩️",
             disabled: true,

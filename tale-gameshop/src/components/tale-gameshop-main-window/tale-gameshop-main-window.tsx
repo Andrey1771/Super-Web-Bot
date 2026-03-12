@@ -43,6 +43,7 @@ import CookieBanner from "../analytics/CookieBanner";
 import { analyticsClient } from "../../utils/analytics-client";
 import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
 import PromoCodesPage from "../../pages/admin/PromoCodesPage";
+import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -77,6 +78,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="siteChanger" element={<SiteChangerPage />} />
                         <Route path="cardAdder" element={<CardAdderPage />} />
                         <Route path="orders" element={<OrdersPage />} />
+                        <Route path="payments/issues" element={<PaymentIssuesPage />} />
                         <Route path="promo-codes" element={<PromoCodesPage />} />
                         <Route path="blog" element={<BlogPostsPage />} />
                         <Route path="blog/new" element={<BlogPostEditorPage />} />
