@@ -31,7 +31,6 @@ using MongoDB.Bson;
 
 var builder = WebApplication.CreateBuilder(args);
 
-BsonDefaults.GuidRepresentationMode = GuidRepresentationMode.V3;
 try
 {
     BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
