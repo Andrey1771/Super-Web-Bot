@@ -28,7 +28,7 @@ const AccountOverviewPage: React.FC = () => {
         isLoading: isOrdersLoading,
         error: ordersError,
         reload: reloadOrders
-    } = useOrders(3);
+    } = useOrders({ limit: 3, pageSize: 3 });
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -229,9 +229,9 @@ const AccountOverviewPage: React.FC = () => {
                         )}
                         {!isOrdersLoading && !ordersError && orders.map((order) => (
                             <tr key={order.id}>
-                                <td>{order.id}</td>
-                                <td>{order.gameName}</td>
-                                <td>{new Date(order.orderDate).toLocaleDateString()}</td>
+                                <td>{order.orderNumber}</td>
+                                <td>{order.firstItemTitle ?? 'Game purchase'}</td>
+                                <td>{new Date(order.createdAt).toLocaleDateString()}</td>
                                 <td>
                                     {order.currency} {order.totalAmount.toFixed(2)}
                                 </td>

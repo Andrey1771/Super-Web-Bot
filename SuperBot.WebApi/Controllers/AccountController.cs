@@ -6,6 +6,8 @@ using MongoDB.Driver;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.WebApi.Controllers;
@@ -21,11 +23,77 @@ public class AccountController : ControllerBase
 
     private readonly IMongoCollection<UserDb> _users;
     private readonly IWebHostEnvironment _environment;
+    private readonly IOrderRepository _orderRepository;
+    private readonly IGameRepository _gameRepository;
 
-    public AccountController(IMongoDatabase database, IWebHostEnvironment environment)
+    public AccountController(
+        IMongoDatabase database,
+        IWebHostEnvironment environment,
+        IOrderRepository orderRepository,
+        IGameRepository gameRepository)
     {
         _users = database.GetCollection<UserDb>("Users");
         _environment = environment;
+        _orderRepository = orderRepository;
+        _gameRepository = gameRepository;
+    }
+
+    [HttpGet("orders")]
+    public async Task<ActionResult<AccountOrdersResponse>> GetOrders(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string status = "all",
+        [FromQuery] string? q = null,
+        [FromQuery] string sort = "newest")
+    {
+        var identity = GetUserIdentity();
+        var userNames = ResolveUserAliases(identity).ToArray();
+        if (userNames.Length == 0)
+        {
+            return Unauthorized();
+        }
+
+        var query = new OrderQueryParameters
+        {
+            Page = page < 1 ? 1 : page,
+            PageSize = pageSize is < 1 or > 100 ? 10 : pageSize,
+            Search = string.IsNullOrWhiteSpace(q) ? null : q.Trim(),
+            Status = MapStatus(status),
+            Sort = MapSort(sort)
+        };
+
+        var (items, totalItems) = await _orderRepository.GetPagedByUsersAsync(userNames, query);
+        var mapped = await MapAccountOrdersAsync(items);
+        var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)query.PageSize);
+
+        return Ok(new AccountOrdersResponse
+        {
+            Items = mapped,
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalItems = (int)totalItems,
+            TotalPages = totalPages
+        });
+    }
+
+    [HttpGet("orders/{orderId}")]
+    public async Task<ActionResult<AccountOrderListItem>> GetOrderDetails([FromRoute] string orderId)
+    {
+        var identity = GetUserIdentity();
+        var userNames = ResolveUserAliases(identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (userNames.Count == 0)
+        {
+            return Unauthorized();
+        }
+
+        var order = await _orderRepository.GetOrderByIdAsync(orderId);
+        if (order == null || !userNames.Contains(order.UserName ?? string.Empty))
+        {
+            return NotFound();
+        }
+
+        var mapped = (await MapAccountOrdersAsync(new[] { order })).First();
+        return Ok(mapped);
     }
 
     [HttpGet("me")]
@@ -201,6 +269,106 @@ public class AccountController : ControllerBase
         return (userId, email, displayName);
     }
 
+    private static IEnumerable<string> ResolveUserAliases((string UserId, string? Email, string? DisplayName) identity)
+    {
+        var aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(identity.UserId))
+        {
+            aliases.Add(identity.UserId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(identity.Email))
+        {
+            aliases.Add(identity.Email);
+        }
+
+        if (!string.IsNullOrWhiteSpace(identity.DisplayName))
+        {
+            aliases.Add(identity.DisplayName);
+        }
+
+        return aliases;
+    }
+
+    private static string? MapStatus(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "completed" => "DELIVERED",
+            "refunded" => "REFUNDED",
+            "pending" => "PENDING",
+            "failed" => "FAILED",
+            _ => null
+        };
+    }
+
+    private static string MapSort(string? sort)
+    {
+        return sort?.Trim().ToLowerInvariant() switch
+        {
+            "oldest" => "createdAt:asc",
+            "total_desc" => "total:desc",
+            "total_asc" => "total:asc",
+            _ => "createdAt:desc"
+        };
+    }
+
+    private async Task<List<AccountOrderListItem>> MapAccountOrdersAsync(IEnumerable<Order> orders)
+    {
+        var orderList = orders.ToList();
+        var gameIds = orderList
+            .Select(order => order.GameId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
+
+        var games = gameIds.Count > 0
+            ? await _gameRepository.GetByIdsAsync(gameIds)
+            : new List<Game>();
+
+        var gameLookup = games.ToDictionary(game => game.Id, StringComparer.OrdinalIgnoreCase);
+
+        return orderList.Select(order =>
+        {
+            gameLookup.TryGetValue(order.GameId ?? string.Empty, out var game);
+            var title = string.IsNullOrWhiteSpace(order.GameName) ? game?.Name : order.GameName;
+
+            var status = ResolveStatus(order);
+            var totalAmount = order.TotalAmount ?? game?.Price ?? 0m;
+
+            return new AccountOrderListItem
+            {
+                Id = order.Id.ToString(),
+                OrderNumber = order.Id.ToString(),
+                CreatedAt = order.OrderDate.ToUniversalTime().ToString("O"),
+                Status = status,
+                TotalAmount = totalAmount,
+                Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
+                ItemsCount = 1,
+                PaymentMethod = order.PaymentStatus,
+                RefundedAmount = status == "REFUNDED" ? totalAmount : 0,
+                FirstItemTitle = title,
+                ItemTitles = string.IsNullOrWhiteSpace(title) ? new List<string>() : new List<string> { title }
+            };
+        }).ToList();
+    }
+
+    private static string ResolveStatus(Order order)
+    {
+        if (!string.IsNullOrWhiteSpace(order.Status))
+        {
+            return order.Status.ToUpperInvariant();
+        }
+
+        if (!order.IsPaid)
+        {
+            return "PENDING";
+        }
+
+        return order.IsFulfilled ? "DELIVERED" : "PROCESSING";
+    }
+
     private string? BuildAvatarUrl(string? avatarPath, DateTime? updatedAt)
     {
         if (string.IsNullOrWhiteSpace(avatarPath))
@@ -257,6 +425,30 @@ public class AccountController : ControllerBase
         var cleaned = Regex.Replace(userId, @"[^a-zA-Z0-9_-]", string.Empty);
         return string.IsNullOrWhiteSpace(cleaned) ? "user" : cleaned;
     }
+}
+
+public class AccountOrdersResponse
+{
+    public List<AccountOrderListItem> Items { get; set; } = new();
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalItems { get; set; }
+    public int TotalPages { get; set; }
+}
+
+public class AccountOrderListItem
+{
+    public string Id { get; set; } = string.Empty;
+    public string OrderNumber { get; set; } = string.Empty;
+    public string CreatedAt { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public decimal TotalAmount { get; set; }
+    public string Currency { get; set; } = "USD";
+    public int ItemsCount { get; set; }
+    public string? PaymentMethod { get; set; }
+    public decimal RefundedAmount { get; set; }
+    public string? FirstItemTitle { get; set; }
+    public List<string> ItemTitles { get; set; } = new();
 }
 
 public class AccountProfileUpdateRequest
