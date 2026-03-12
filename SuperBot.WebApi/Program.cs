@@ -24,6 +24,7 @@ using SuperBot.WebApi.Support;
 using SuperBot.WebApi.Support.Infrastructure;
 using SuperBot.WebApi.Support.Services;
 using SuperBot.WebApi.Services.Analytics;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -255,6 +256,46 @@ app.Lifetime.ApplicationStarted.Register(() =>
         ollamaBaseUrl, ollamaModel, streamingEnabled);
     startupLogger.LogInformation("CORS allowed origin: {Origin}",
         app.Configuration.GetSection("FrontendConfiguration:Uri").Value ?? "not configured");
+});
+
+app.UseExceptionHandler(exceptionApp =>
+{
+    exceptionApp.Run(async context =>
+    {
+        var logger = context.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("GlobalExceptionHandler");
+
+        var exceptionFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+        if (exceptionFeature?.Error != null)
+        {
+            logger.LogError(exceptionFeature.Error,
+                "Unhandled exception for {Method} {Path}. TraceId: {TraceId}",
+                context.Request.Method,
+                context.Request.Path,
+                context.TraceIdentifier);
+        }
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var isConfirmPaymentPath = context.Request.Path.StartsWithSegments("/api/payments/confirm-payment-intent");
+        var response = isConfirmPaymentPath
+            ? new
+            {
+                message = "We couldn't finalize your order. Please try again or contact support.",
+                traceId = context.TraceIdentifier,
+                code = "ORDER_CREATE_FAILED"
+            }
+            : new
+            {
+                message = "Something went wrong. Please try again.",
+                traceId = context.TraceIdentifier,
+                code = "INTERNAL_ERROR"
+            };
+
+        await context.Response.WriteAsJsonAsync(response);
+    });
 });
 
 if (app.Environment.IsDevelopment() && app.Configuration.GetSection("Diagnostics").GetValue<bool>("LogHttpRequests"))

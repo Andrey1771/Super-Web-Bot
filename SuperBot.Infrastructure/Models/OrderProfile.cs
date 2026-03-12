@@ -1,11 +1,6 @@
 ﻿using AutoMapper;
 using SuperBot.Core.Entities;
 using SuperBot.Infrastructure.Data;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SuperBot.Infrastructure.Models
 {
@@ -13,7 +8,12 @@ namespace SuperBot.Infrastructure.Models
     {
         public OrderProfile()
         {
-            CreateMap<Order, OrderDb>().ReverseMap();
+            CreateMap<Order, OrderDb>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.OrderId, opt => opt.MapFrom(src => src.Id));
+
+            CreateMap<OrderDb, Order>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.OrderId));
         }
     }
 }

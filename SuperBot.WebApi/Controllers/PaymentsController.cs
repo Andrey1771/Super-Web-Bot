@@ -13,10 +13,12 @@ namespace SuperBot.WebApi.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly IOrderRepository _orderRepository;
+        private readonly ILogger<PaymentsController> _logger;
 
-        public PaymentsController(IOrderRepository orderRepository)
+        public PaymentsController(IOrderRepository orderRepository, ILogger<PaymentsController> logger)
         {
             _orderRepository = orderRepository;
+            _logger = logger;
         }
 
         [HttpPost("create-payment-intent")]
@@ -78,72 +80,89 @@ namespace SuperBot.WebApi.Controllers
                 return Unauthorized();
             }
 
-            var paymentIntentService = new PaymentIntentService();
-            var paymentIntent = await paymentIntentService.GetAsync(request.PaymentIntentId);
-            if (paymentIntent == null)
+            try
             {
-                return NotFound("Payment intent not found.");
-            }
+                var paymentIntentService = new PaymentIntentService();
+                var paymentIntent = await paymentIntentService.GetAsync(request.PaymentIntentId);
+                if (paymentIntent == null)
+                {
+                    return NotFound("Payment intent not found.");
+                }
 
-            var metadataUserId = paymentIntent.Metadata.TryGetValue("userId", out var storedUserId)
-                ? storedUserId
-                : string.Empty;
+                var metadataUserId = paymentIntent.Metadata.TryGetValue("userId", out var storedUserId)
+                    ? storedUserId
+                    : string.Empty;
 
-            if (!string.IsNullOrWhiteSpace(metadataUserId) && !string.Equals(metadataUserId, userId, StringComparison.OrdinalIgnoreCase))
-            {
-                return Forbid();
-            }
+                if (!string.IsNullOrWhiteSpace(metadataUserId) && !string.Equals(metadataUserId, userId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Forbid();
+                }
 
-            if (!string.Equals(paymentIntent.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
-            {
-                return BadRequest($"Payment is not successful yet. Status: {paymentIntent.Status}.");
-            }
+                if (!string.Equals(paymentIntent.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest($"Payment is not successful yet. Status: {paymentIntent.Status}.");
+                }
 
-            var existing = (await _orderRepository.GetOrdersByUserAsync(userId))
-                .FirstOrDefault(order => string.Equals(order.Notes, BuildPaymentNote(request.PaymentIntentId), StringComparison.OrdinalIgnoreCase));
+                var existing = (await _orderRepository.GetOrdersByUserAsync(userId))
+                    .FirstOrDefault(order => string.Equals(order.Notes, BuildPaymentNote(request.PaymentIntentId), StringComparison.OrdinalIgnoreCase));
 
-            if (existing != null)
-            {
+                if (existing != null)
+                {
+                    return Ok(new ConfirmPaymentIntentResponse
+                    {
+                        OrderId = existing.Id.ToString(),
+                        Status = "already_confirmed"
+                    });
+                }
+
+                var gameId = paymentIntent.Metadata.TryGetValue("firstItemGameId", out var firstGameId)
+                    ? firstGameId
+                    : string.Empty;
+                var gameTitle = paymentIntent.Metadata.TryGetValue("firstItemTitle", out var firstTitle)
+                    ? firstTitle
+                    : "Checkout purchase";
+
+                var totalAmount = (paymentIntent.AmountReceived > 0 ? paymentIntent.AmountReceived : paymentIntent.Amount) / 100m;
+
+                var order = new Order
+                {
+                    GameId = gameId,
+                    GameName = gameTitle,
+                    UserName = userId,
+                    IsPaid = true,
+                    IsFulfilled = true,
+                    OrderDate = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Status = "DELIVERED",
+                    PaymentStatus = "PAID",
+                    FulfillmentStatus = "DELIVERED",
+                    TotalAmount = totalAmount,
+                    Currency = paymentIntent.Currency?.ToUpperInvariant() ?? "USD",
+                    Notes = BuildPaymentNote(request.PaymentIntentId)
+                };
+
+                await _orderRepository.CreateOrderAsync(order);
+
                 return Ok(new ConfirmPaymentIntentResponse
                 {
-                    OrderId = existing.Id.ToString(),
-                    Status = "already_confirmed"
+                    OrderId = order.Id.ToString(),
+                    Status = "confirmed"
                 });
             }
-
-            var gameId = paymentIntent.Metadata.TryGetValue("firstItemGameId", out var firstGameId)
-                ? firstGameId
-                : string.Empty;
-            var gameTitle = paymentIntent.Metadata.TryGetValue("firstItemTitle", out var firstTitle)
-                ? firstTitle
-                : "Checkout purchase";
-
-            var totalAmount = (paymentIntent.AmountReceived > 0 ? paymentIntent.AmountReceived : paymentIntent.Amount) / 100m;
-
-            var order = new Order
+            catch (Exception ex)
             {
-                GameId = gameId,
-                GameName = gameTitle,
-                UserName = userId,
-                IsPaid = true,
-                IsFulfilled = true,
-                OrderDate = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                Status = "DELIVERED",
-                PaymentStatus = "PAID",
-                FulfillmentStatus = "DELIVERED",
-                TotalAmount = totalAmount,
-                Currency = paymentIntent.Currency?.ToUpperInvariant() ?? "USD",
-                Notes = BuildPaymentNote(request.PaymentIntentId)
-            };
+                _logger.LogError(ex,
+                    "Failed to finalize order for payment intent {PaymentIntentId} and user {UserId}",
+                    request.PaymentIntentId,
+                    userId);
 
-            await _orderRepository.CreateOrderAsync(order);
-
-            return Ok(new ConfirmPaymentIntentResponse
-            {
-                OrderId = order.Id.ToString(),
-                Status = "confirmed"
-            });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiErrorResponse
+                {
+                    Code = "ORDER_CREATE_FAILED",
+                    Message = "We couldn't finalize your order. Please try again or contact support.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
         }
 
         private string GetCurrentUserId()
@@ -181,5 +200,12 @@ namespace SuperBot.WebApi.Controllers
     {
         public string OrderId { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+    }
+
+    public class ApiErrorResponse
+    {
+        public string Message { get; set; } = string.Empty;
+        public string TraceId { get; set; } = string.Empty;
+        public string Code { get; set; } = string.Empty;
     }
 }

@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using System.Security.Cryptography;
+using System.Text;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
@@ -20,25 +22,50 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task CreateOrderAsync(Order order)
         {
+            if (order.Id == Guid.Empty)
+            {
+                order.Id = Guid.NewGuid();
+            }
+
             var newOrder = _mapper.Map<OrderDb>(order);
+            if (newOrder.Id == ObjectId.Empty)
+            {
+                newOrder.Id = ObjectId.GenerateNewId();
+            }
+
+            if (newOrder.OrderId == Guid.Empty)
+            {
+                newOrder.OrderId = order.Id;
+            }
+
             await _orders.InsertOneAsync(newOrder);
+            order.Id = newOrder.OrderId;
         }
 
         public async Task<Order> GetOrderByIdAsync(string orderId)
         {
-            var orderDb = await _orders.Find(o => o.Id == orderId).FirstOrDefaultAsync();
+            var filter = BuildOrderIdentityFilter(orderId);
+            var orderDb = await _orders.Find(filter).FirstOrDefaultAsync();
+
+            if (orderDb != null)
+            {
+                await EnsureOrderGuidAsync(orderDb);
+            }
+
             return _mapper.Map<Order>(orderDb);
         }
 
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {
             var ordersDb = await _orders.Find(_ => true).ToListAsync();
+            await EnsureOrderGuidsAsync(ordersDb);
             return _mapper.Map<IEnumerable<Order>>(ordersDb);
         }
 
         public async Task<List<Order>> GetOrdersByUserAsync(string userName)
         {
             var ordersDb = await _orders.Find(order => order.UserName == userName).ToListAsync();
+            await EnsureOrderGuidsAsync(ordersDb);
             return _mapper.Map<List<Order>>(ordersDb);
         }
 
@@ -65,13 +92,24 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task UpdateOrderAsync(Order order)
         {
+            if (order.Id == Guid.Empty)
+            {
+                order.Id = Guid.NewGuid();
+            }
+
             var orderDb = _mapper.Map<OrderDb>(order);
-            await _orders.ReplaceOneAsync(o => o.Id == orderDb.Id, orderDb);
+            if (orderDb.OrderId == Guid.Empty)
+            {
+                orderDb.OrderId = order.Id;
+            }
+
+            await _orders.ReplaceOneAsync(o => o.OrderId == orderDb.OrderId, orderDb);
         }
 
         public async Task DeleteOrderAsync(string orderId)
         {
-            await _orders.DeleteOneAsync(o => o.Id == orderId);
+            var filter = BuildOrderIdentityFilter(orderId);
+            await _orders.DeleteOneAsync(filter);
         }
 
         private static FilterDefinition<OrderDb> BuildStatusFilter(string status)
@@ -126,8 +164,7 @@ namespace SuperBot.Infrastructure.Repositories
                 var regex = new BsonRegularExpression(query.Search, "i");
                 var searchFilter = Builders<OrderDb>.Filter.Or(
                     Builders<OrderDb>.Filter.Regex(order => order.GameName, regex),
-                    Builders<OrderDb>.Filter.Regex(order => order.UserName, regex),
-                    Builders<OrderDb>.Filter.Regex(order => order.Id, regex)
+                    Builders<OrderDb>.Filter.Regex(order => order.UserName, regex)
                 );
                 filter &= searchFilter;
             }
@@ -177,7 +214,53 @@ namespace SuperBot.Infrastructure.Repositories
                 .Limit(pageSize)
                 .ToListAsync();
 
+            await EnsureOrderGuidsAsync(ordersDb);
+
             return (_mapper.Map<IReadOnlyList<Order>>(ordersDb), total);
+        }
+
+        private static FilterDefinition<OrderDb> BuildOrderIdentityFilter(string orderId)
+        {
+            if (Guid.TryParse(orderId, out var orderGuid))
+            {
+                return Builders<OrderDb>.Filter.Eq(order => order.OrderId, orderGuid);
+            }
+
+            if (ObjectId.TryParse(orderId, out var objectId))
+            {
+                return Builders<OrderDb>.Filter.Eq(order => order.Id, objectId);
+            }
+
+            return Builders<OrderDb>.Filter.Eq(order => order.OrderId, Guid.Empty);
+        }
+
+        private async Task EnsureOrderGuidsAsync(List<OrderDb> orders)
+        {
+            foreach (var order in orders)
+            {
+                await EnsureOrderGuidAsync(order);
+            }
+        }
+
+        private async Task EnsureOrderGuidAsync(OrderDb order)
+        {
+            if (order.OrderId != Guid.Empty)
+            {
+                return;
+            }
+
+            order.OrderId = CreateStableGuidFromObjectId(order.Id);
+            await _orders.UpdateOneAsync(
+                o => o.Id == order.Id,
+                Builders<OrderDb>.Update.Set(o => o.OrderId, order.OrderId));
+        }
+
+        private static Guid CreateStableGuidFromObjectId(ObjectId objectId)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(objectId.ToString()));
+            var guidBytes = new byte[16];
+            Array.Copy(bytes, guidBytes, guidBytes.Length);
+            return new Guid(guidBytes);
         }
     }
 }

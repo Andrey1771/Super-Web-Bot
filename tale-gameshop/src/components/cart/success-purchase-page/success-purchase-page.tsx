@@ -34,8 +34,12 @@ const SuccessPurchasePage: React.FC = () => {
                 setMessage('Payment successful. Your order has been added to account orders.');
                 dispatch({ type: 'CLEAR_CART' });
             } catch (error: any) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.error('Failed to finalize payment intent:', error);
+                }
+
                 setStatus('error');
-                setMessage(error?.response?.data?.message ?? error?.response?.data ?? 'Payment was successful, but failed to finalize order.');
+                setMessage("Payment succeeded, but we couldn't finalize your order. Please refresh Orders or contact support.");
             }
         };
 
@@ -45,7 +49,9 @@ const SuccessPurchasePage: React.FC = () => {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
             <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment successful</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                    {status === 'error' ? 'Order finalization issue' : 'Payment successful'}
+                </h2>
                 <p className="text-gray-600 mb-4">{message}</p>
                 {orderId && <p className="text-gray-700 mb-6">Order #{orderId}</p>}
                 <div className="flex gap-3 justify-center">
