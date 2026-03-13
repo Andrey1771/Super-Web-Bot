@@ -29,6 +29,7 @@ const CheckoutPage: React.FC = () => {
     const totals = useMemo(() => calculateCheckoutTotals(state.items, promoDiscount), [state.items, promoDiscount]);
     const baseSubtotal = useMemo(() => calculateCheckoutTotals(state.items).subtotal, [state.items]);
     const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [paymentInitError, setPaymentInitError] = useState('');
     const hasTrackedCheckout = useRef(false);
 
     useEffect(() => {
@@ -46,34 +47,43 @@ const CheckoutPage: React.FC = () => {
         const fetchClientSecret = async () => {
             if (totals.total <= 0) {
                 setClientSecret(null);
+                setPaymentInitError('');
                 return;
             }
 
-            const {data} = await apiClient.api.post('/api/payments/create-payment-intent', {
-                amount: Math.round(totals.total),
-                currency: 'USD',
-                promoCode: promoCode || undefined,
-                subtotal: totals.subtotal,
-                discountTotal: totals.discount,
-                taxTotal: 0,
-                total: totals.total,
-                items: state.items.map((item) => ({
-                    productType: 'Game',
-                    gameId: item.gameId,
-                    title: item.name,
-                    coverUrl: item.image,
-                    quantity: item.quantity,
-                    unitPrice: item.price,
-                    discountPerUnit: 0,
-                    finalUnitPrice: item.price,
-                    lineTotal: item.price * item.quantity,
-                })),
-            });
-            setClientSecret(data.clientSecret ?? data.ClientSecret);
+            try {
+                setPaymentInitError('');
+                const {data} = await apiClient.api.post('/api/payments/create-payment-intent', {
+                    amount: Math.round(totals.total),
+                    currency: 'USD',
+                    promoCode: promoCode || undefined,
+                    subtotal: totals.subtotal,
+                    discountTotal: totals.discount,
+                    taxTotal: 0,
+                    total: totals.total,
+                    items: state.items.map((item) => ({
+                        productType: 'Game',
+                        gameId: item.gameId,
+                        title: item.name,
+                        coverUrl: item.image,
+                        quantity: item.quantity,
+                        unitPrice: item.price,
+                        discountPerUnit: 0,
+                        finalUnitPrice: item.price,
+                        lineTotal: item.price * item.quantity,
+                    })),
+                });
+                setClientSecret(data.clientSecret ?? data.ClientSecret ?? null);
+            } catch (error: any) {
+                setClientSecret(null);
+                setPaymentInitError(error?.response?.status === 401
+                    ? 'Please sign in to continue with payment.'
+                    : (error?.response?.data?.message ?? 'Unable to initialize payment. Please try again.'));
+            }
         };
 
         fetchClientSecret();
-    }, [apiClient.api, promoCode, state.items, totals.total]);
+    }, [apiClient.api, promoCode, state.items, totals.discount, totals.subtotal, totals.total]);
 
     const handleApplyPromo = async () => {
         setApplyingPromo(true);
@@ -139,7 +149,9 @@ const CheckoutPage: React.FC = () => {
                                         <CheckoutForm clientSecret={clientSecret} />
                                     </Elements>
                                 ) : (
-                                    <div className="checkout-page-stripe-placeholder">Payment details will appear once your order total is ready.</div>
+                                    <div className="checkout-page-stripe-placeholder">
+                                        {paymentInitError || 'Payment details will appear once your order total is ready.'}
+                                    </div>
                                 )}
                             </StripePaymentCard>
                         </aside>
