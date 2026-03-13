@@ -53,11 +53,20 @@ const CheckoutPage: React.FC = () => {
                 amount: Math.round(totals.total),
                 currency: 'USD',
                 promoCode: promoCode || undefined,
+                subtotal: totals.subtotal,
+                discountTotal: totals.discount,
+                taxTotal: 0,
+                total: totals.total,
                 items: state.items.map((item) => ({
+                    productType: 'Game',
                     gameId: item.gameId,
                     title: item.name,
+                    coverUrl: item.image,
                     quantity: item.quantity,
                     unitPrice: item.price,
+                    discountPerUnit: 0,
+                    finalUnitPrice: item.price,
+                    lineTotal: item.price * item.quantity,
                 })),
             });
             setClientSecret(data.clientSecret ?? data.ClientSecret);

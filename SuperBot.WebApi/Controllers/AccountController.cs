@@ -77,7 +77,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpGet("orders/{orderId}")]
-    public async Task<ActionResult<AccountOrderListItem>> GetOrderDetails([FromRoute] string orderId)
+    public async Task<ActionResult<AccountOrderDetailsResponse>> GetOrderDetails([FromRoute] string orderId)
     {
         var identity = GetUserIdentity();
         var userNames = ResolveUserAliases(identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -92,7 +92,7 @@ public class AccountController : ControllerBase
             return NotFound();
         }
 
-        var mapped = (await MapAccountOrdersAsync(new[] { order })).First();
+        var mapped = await MapOrderDetailsAsync(order);
         return Ok(mapped);
     }
 
@@ -314,44 +314,124 @@ public class AccountController : ControllerBase
         };
     }
 
-    private async Task<List<AccountOrderListItem>> MapAccountOrdersAsync(IEnumerable<Order> orders)
+    private Task<List<AccountOrderListItem>> MapAccountOrdersAsync(IEnumerable<Order> orders)
     {
-        var orderList = orders.ToList();
-        var gameIds = orderList
-            .Select(order => order.GameId)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Distinct()
-            .ToList();
-
-        var games = gameIds.Count > 0
-            ? await _gameRepository.GetByIdsAsync(gameIds)
-            : new List<Game>();
-
-        var gameLookup = games.ToDictionary(game => game.Id, StringComparer.OrdinalIgnoreCase);
-
-        return orderList.Select(order =>
+        var mapped = orders.Select(order =>
         {
-            gameLookup.TryGetValue(order.GameId ?? string.Empty, out var game);
-            var title = string.IsNullOrWhiteSpace(order.GameName) ? game?.Name : order.GameName;
-
             var status = ResolveStatus(order);
-            var totalAmount = order.TotalAmount ?? game?.Price ?? 0m;
+            var items = order.Items ?? new List<OrderItemSnapshot>();
+            var firstItem = items.FirstOrDefault();
+            var hasSnapshotItems = items.Count > 0;
+            var firstTitle = !string.IsNullOrWhiteSpace(firstItem?.Title)
+                ? firstItem.Title
+                : !string.IsNullOrWhiteSpace(firstItem?.TitleSnapshot)
+                    ? firstItem.TitleSnapshot
+                    : !string.IsNullOrWhiteSpace(order.GameName)
+                        ? order.GameName
+                        : "Game purchase";
+
+            var cover = firstItem?.CoverUrl ?? firstItem?.CoverUrlSnapshot;
+            var itemsCount = hasSnapshotItems
+                ? items.Sum(item => Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty))
+                : !string.IsNullOrWhiteSpace(order.GameName) || !string.IsNullOrWhiteSpace(order.GameId)
+                    ? 1
+                    : 0;
+
+            var orderNumber = string.IsNullOrWhiteSpace(order.OrderNumber)
+                ? order.Id.ToString()
+                : order.OrderNumber;
 
             return new AccountOrderListItem
             {
-                Id = order.Id.ToString(),
-                OrderNumber = order.Id.ToString(),
-                CreatedAt = order.OrderDate.ToUniversalTime().ToString("O"),
+                OrderId = orderNumber,
+                InternalId = order.Id.ToString(),
+                CreatedAt = (order.CreatedAt == default ? order.OrderDate : order.CreatedAt).ToUniversalTime().ToString("O"),
                 Status = status,
-                TotalAmount = totalAmount,
+                TotalAmount = order.TotalAmount ?? 0m,
                 Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
-                ItemsCount = 1,
+                ItemsCount = itemsCount,
                 PaymentMethod = order.PaymentStatus,
-                RefundedAmount = status == "REFUNDED" ? totalAmount : 0,
-                FirstItemTitle = title,
-                ItemTitles = string.IsNullOrWhiteSpace(title) ? new List<string>() : new List<string> { title }
+                RefundedAmount = status == "REFUNDED" ? (order.TotalAmount ?? 0m) : 0,
+                Preview = new AccountOrderPreview
+                {
+                    FirstTitle = firstTitle,
+                    FirstCoverUrl = cover,
+                    ExtraCount = Math.Max(0, itemsCount - 1)
+                },
+                LegacyDetailsUnavailable = !hasSnapshotItems
             };
         }).ToList();
+
+        return Task.FromResult(mapped);
+    }
+
+    private Task<AccountOrderDetailsResponse> MapOrderDetailsAsync(Order order)
+    {
+        var items = order.Items ?? new List<OrderItemSnapshot>();
+        var detailItems = items.Select(item =>
+        {
+            var title = !string.IsNullOrWhiteSpace(item.Title) ? item.Title : item.TitleSnapshot;
+            var quantity = item.Quantity > 0 ? item.Quantity : item.Qty;
+            var unitPrice = item.UnitPrice > 0 ? item.UnitPrice : item.UnitPriceSnapshot;
+            var discount = item.UnitDiscount > 0 ? item.UnitDiscount : item.DiscountSnapshot;
+            var finalUnit = item.FinalUnitPrice > 0 ? item.FinalUnitPrice : item.FinalUnitPriceSnapshot;
+            var lineTotal = item.LineTotal > 0 ? item.LineTotal : item.LineTotalSnapshot;
+
+            return new AccountOrderDetailItem
+            {
+                ItemId = item.ItemId,
+                ProductType = string.IsNullOrWhiteSpace(item.ProductType) ? "Game" : item.ProductType,
+                GameId = item.GameId,
+                Title = string.IsNullOrWhiteSpace(title) ? "Game purchase" : title,
+                CoverUrl = item.CoverUrl ?? item.CoverUrlSnapshot,
+                Platform = item.Platform ?? item.PlatformSnapshot,
+                Region = item.Region ?? item.RegionSnapshot,
+                Quantity = Math.Max(1, quantity),
+                UnitPrice = unitPrice,
+                Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
+                UnitDiscount = discount ?? 0m,
+                FinalUnitPrice = finalUnit,
+                LineTotal = lineTotal,
+                DeliveryType = item.Delivery?.DeliveryType ?? item.DeliveryType,
+                Keys = item.Delivery?.Keys?.Select(k => k.KeyMasked ?? string.Empty).Where(k => !string.IsNullOrWhiteSpace(k)).ToList() ?? new List<string>()
+            };
+        }).ToList();
+
+        var subtotal = order.SubtotalAmount ?? order.Totals.Subtotal;
+        var discountTotal = order.DiscountTotal ?? order.Totals.DiscountTotal;
+        var taxTotal = order.TaxTotal ?? order.Totals.TaxTotal;
+        var total = order.TotalAmount ?? order.Totals.Total;
+
+        if (subtotal <= 0)
+        {
+            subtotal = detailItems.Sum(item => item.UnitPrice * item.Quantity);
+        }
+        if (total <= 0)
+        {
+            total = detailItems.Sum(item => item.LineTotal) + taxTotal;
+        }
+
+        var response = new AccountOrderDetailsResponse
+        {
+            OrderId = string.IsNullOrWhiteSpace(order.OrderNumber) ? order.Id.ToString() : order.OrderNumber,
+            InternalId = order.Id.ToString(),
+            CreatedAt = (order.CreatedAt == default ? order.OrderDate : order.CreatedAt).ToUniversalTime().ToString("O"),
+            PaidAt = order.PaidAt?.ToUniversalTime().ToString("O"),
+            Status = ResolveStatus(order),
+            Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
+            Totals = new AccountOrderTotals
+            {
+                Subtotal = subtotal,
+                DiscountTotal = discountTotal,
+                TaxTotal = taxTotal,
+                Total = total
+            },
+            PaymentMethod = order.PaymentStatus,
+            LegacyDetailsUnavailable = detailItems.Count == 0,
+            Items = detailItems
+        };
+
+        return Task.FromResult(response);
     }
 
     private static string ResolveStatus(Order order)
@@ -438,8 +518,8 @@ public class AccountOrdersResponse
 
 public class AccountOrderListItem
 {
-    public string Id { get; set; } = string.Empty;
-    public string OrderNumber { get; set; } = string.Empty;
+    public string OrderId { get; set; } = string.Empty;
+    public string InternalId { get; set; } = string.Empty;
     public string CreatedAt { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public decimal TotalAmount { get; set; }
@@ -447,8 +527,56 @@ public class AccountOrderListItem
     public int ItemsCount { get; set; }
     public string? PaymentMethod { get; set; }
     public decimal RefundedAmount { get; set; }
-    public string? FirstItemTitle { get; set; }
-    public List<string> ItemTitles { get; set; } = new();
+    public AccountOrderPreview Preview { get; set; } = new();
+    public bool LegacyDetailsUnavailable { get; set; }
+}
+
+public class AccountOrderPreview
+{
+    public string FirstTitle { get; set; } = string.Empty;
+    public string? FirstCoverUrl { get; set; }
+    public int ExtraCount { get; set; }
+}
+
+public class AccountOrderDetailsResponse
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string InternalId { get; set; } = string.Empty;
+    public string CreatedAt { get; set; } = string.Empty;
+    public string? PaidAt { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string Currency { get; set; } = "USD";
+    public AccountOrderTotals Totals { get; set; } = new();
+    public string? PaymentMethod { get; set; }
+    public bool LegacyDetailsUnavailable { get; set; }
+    public List<AccountOrderDetailItem> Items { get; set; } = new();
+}
+
+public class AccountOrderTotals
+{
+    public decimal Subtotal { get; set; }
+    public decimal DiscountTotal { get; set; }
+    public decimal TaxTotal { get; set; }
+    public decimal Total { get; set; }
+}
+
+public class AccountOrderDetailItem
+{
+    public string ItemId { get; set; } = string.Empty;
+    public string ProductType { get; set; } = "Game";
+    public string? GameId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? CoverUrl { get; set; }
+    public string? Platform { get; set; }
+    public string? Region { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public string Currency { get; set; } = "USD";
+    public decimal UnitDiscount { get; set; }
+    public decimal FinalUnitPrice { get; set; }
+    public decimal LineTotal { get; set; }
+    public string? DeliveryType { get; set; }
+    public List<string> Keys { get; set; } = new();
 }
 
 public class AccountProfileUpdateRequest

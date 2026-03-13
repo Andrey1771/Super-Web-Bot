@@ -13,7 +13,8 @@ import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useOrders } from '../../../hooks/use-orders';
 import useDebouncedValue from '../../../hooks/useDebouncedValue';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import type { AccountOrderListItem } from '../../../types/account-orders';
+import { fetchAccountOrderDetails } from '../../../api/accountApi';
+import type { AccountOrderDetails, AccountOrderListItem } from '../../../types/account-orders';
 import './account-orders-page.css';
 
 const PAGE_SIZE = 10;
@@ -69,7 +70,35 @@ const buildPages = (current: number, total: number) => {
 
 const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
   const [expanded, setExpanded] = useState(false);
+  const [details, setDetails] = useState<AccountOrderDetails | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const statusMeta = toStatusMeta(order.status);
+
+  const previewText = order.itemsCount <= 1
+    ? `${order.itemsCount || 0} item • ${order.preview.firstTitle || 'Game purchase'}`
+    : `${order.itemsCount} items • ${order.preview.firstTitle || 'Game purchase'} +${order.preview.extraCount}`;
+
+  const handleToggle = async () => {
+    const nextExpanded = !expanded;
+    setExpanded(nextExpanded);
+
+    if (!nextExpanded || details || loadingDetails) {
+      return;
+    }
+
+    setLoadingDetails(true);
+    setDetailsError(null);
+    try {
+      const response = await fetchAccountOrderDetails(order.internalId);
+      setDetails(response);
+    } catch (error) {
+      console.error('Failed to load order details:', error);
+      setDetailsError('Unable to load order details.');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   return (
     <div className="card order-card">
@@ -78,27 +107,65 @@ const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
         <span className="order-amount">{formatCurrency(order.totalAmount, order.currency)}</span>
       </div>
       <div className="order-card-body">
-        <div className="order-cover" aria-hidden="true" />
+        <div className="order-cover" aria-hidden="true">
+          {order.preview.firstCoverUrl ? <img src={order.preview.firstCoverUrl} alt="" /> : null}
+        </div>
         <div className="order-details">
-          <strong>Order #{order.orderNumber}</strong>
+          <strong>Order #{order.orderId}</strong>
           <div className="order-items">
-            <span>{order.itemsCount} item(s)</span>
-            <span>{order.firstItemTitle ?? 'Game purchase'}</span>
+            <span>{previewText}</span>
           </div>
         </div>
         <div className="order-actions">
           <span className={`badge order-status ${statusMeta.className}`}>{statusMeta.label}</span>
-          <button type="button" className="btn btn-outline order-action-btn" onClick={() => setExpanded((prev) => !prev)}>
+          <button type="button" className="btn btn-outline order-action-btn" onClick={handleToggle}>
             {expanded ? 'Hide details' : 'View details'}
           </button>
         </div>
       </div>
       {expanded && (
         <div className="order-details-panel">
-          <strong>Items:</strong>
-          <ul>
-            {order.itemTitles.length > 0 ? order.itemTitles.map((item) => <li key={item}>{item}</li>) : <li>Game purchase</li>}
-          </ul>
+          {loadingDetails && <div className="order-details-state">Loading order details...</div>}
+          {!loadingDetails && detailsError && <div className="order-details-state order-details-error">{detailsError}</div>}
+          {!loadingDetails && !detailsError && details?.legacyDetailsUnavailable && (
+            <div className="order-details-state">Legacy order (details unavailable).</div>
+          )}
+          {!loadingDetails && !detailsError && details && !details.legacyDetailsUnavailable && (
+            <>
+              <div className="order-line-items">
+                {details.items.map((item) => (
+                  <div key={item.itemId} className="order-line-item">
+                    <div className="order-line-cover">
+                      {item.coverUrl ? <img src={item.coverUrl} alt={item.title} /> : <div className="order-line-cover-fallback" />}
+                    </div>
+                    <div className="order-line-main">
+                      <strong>{item.title}</strong>
+                      <div className="order-line-meta">
+                        <span>Qty: {item.quantity}</span>
+                        <span>{formatCurrency(item.finalUnitPrice, item.currency)} each</span>
+                        {item.platform ? <span>{item.platform}</span> : null}
+                        {item.region ? <span>{item.region}</span> : null}
+                        {item.gameId && <Link to={`/games/${item.gameId}`} className="order-line-link">View game</Link>}
+                      </div>
+                      {item.keys.length > 0 && (
+                        <div className="order-line-keys">
+                          <strong>Keys:</strong>
+                          {item.keys.map((key) => <span key={key}>{key}</span>)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="order-line-total">{formatCurrency(item.lineTotal, item.currency)}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="order-totals">
+                <div><span>Subtotal</span><strong>{formatCurrency(details.totals.subtotal, details.currency)}</strong></div>
+                <div><span>Discount</span><strong>-{formatCurrency(details.totals.discountTotal, details.currency)}</strong></div>
+                <div><span>Tax</span><strong>{formatCurrency(details.totals.taxTotal, details.currency)}</strong></div>
+                <div className="order-totals-grand"><span>Total</span><strong>{formatCurrency(details.totals.total, details.currency)}</strong></div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -239,7 +306,7 @@ const AccountOrdersPage: React.FC = () => {
         {!isOrdersLoading && !ordersError && orders.length === 0 && (
           <div className="card orders-state">No orders yet.</div>
         )}
-        {!isOrdersLoading && !ordersError && orders.map((order) => <OrderCard key={order.id} order={order} />)}
+        {!isOrdersLoading && !ordersError && orders.map((order) => <OrderCard key={order.internalId} order={order} />)}
       </div>
 
       <div className="orders-pagination">
@@ -266,58 +333,44 @@ const AccountOrdersPage: React.FC = () => {
               >
                 {item}
               </button>
-            ),
-          )}
+            ))}
           <button
             type="button"
             className="btn btn-outline orders-page-btn"
             aria-label="Next page"
-            onClick={() => setPage((prev) => Math.min(totalPages || 1, prev + 1))}
-            disabled={isOrdersLoading || page >= totalPages}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={isOrdersLoading || totalPages === 0 || page >= totalPages}
           >
             <FontAwesomeIcon icon={faChevronRight} />
           </button>
         </div>
-        <span className="orders-pagination-note">{ordersSubtitle}</span>
       </div>
 
-      <section className="orders-recommendations">
-        <div className="orders-recommendations-header">
-          <h3>Recommendations based on your wishlist</h3>
-          <div className="orders-recommendations-arrows">
-            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label="Scroll left">
-              <FontAwesomeIcon icon={faArrowLeft} />
-            </button>
-            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label="Scroll right">
-              <FontAwesomeIcon icon={faArrowRight} />
-            </button>
-          </div>
-        </div>
-        <RecommendationsSection
-          items={recommendations}
-          isLoading={isRecommendationsLoading}
-          error={recommendationsError}
-          onRetry={reloadRecommendations}
-          emptyMessage="Add games to your wishlist or view a few games to get recommendations."
-          listClassName="orders-recommendations-list"
-          stateClassName="orders-recommendations-state"
-          renderSkeleton={(index) => <div key={`rec-skeleton-${index}`} className="card orders-recommendation-card is-skeleton" />}
-          renderItem={(item) => (
-            <div key={item.game.id ?? item.game.title} className="card orders-recommendation-card">
-              <div className="orders-recommendation-media">
-                {item.game.imagePath ? <img src={item.game.imagePath} alt={item.game.title} /> : <div className="orders-recommendation-fallback" aria-hidden="true" />}
-              </div>
-              <div className="orders-recommendation-body">
-                <strong>{item.game.title}</strong>
-                <span className="orders-recommendation-price">${Number(item.game.price).toFixed(2)}</span>
-              </div>
-              <button type="button" className="btn btn-primary orders-recommendation-btn" disabled={!item.game.id}>
-                Add to cart
-              </button>
-            </div>
-          )}
-        />
-      </section>
+      <RecommendationsSection
+        title="Need more game keys?"
+        items={recommendations}
+        isLoading={isRecommendationsLoading}
+        error={recommendationsError}
+        onRetry={reloadRecommendations}
+        emptyText="Recommendations are currently unavailable."
+        variant="compact"
+        action={
+          <Link to="/catalog" className="btn btn-outline recommendations-action-btn">
+            Browse catalog
+          </Link>
+        }
+      />
+
+      <div className="orders-navigation card">
+        <Link to="/account/overview" className="orders-nav-link">
+          <FontAwesomeIcon icon={faArrowLeft} />
+          Back to account overview
+        </Link>
+        <Link to="/wishlist" className="orders-nav-link">
+          Go to wishlist
+          <FontAwesomeIcon icon={faArrowRight} />
+        </Link>
+      </div>
     </AccountShell>
   );
 };

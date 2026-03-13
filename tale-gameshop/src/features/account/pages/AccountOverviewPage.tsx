@@ -228,9 +228,9 @@ const AccountOverviewPage: React.FC = () => {
                             </tr>
                         )}
                         {!isOrdersLoading && !ordersError && orders.map((order) => (
-                            <tr key={order.id}>
-                                <td>{order.orderNumber}</td>
-                                <td>{order.firstItemTitle ?? 'Game purchase'}</td>
+                            <tr key={order.internalId}>
+                                <td>{order.orderId}</td>
+                                <td>{order.preview.firstTitle ?? 'Game purchase'}</td>
                                 <td>{new Date(order.createdAt).toLocaleDateString()}</td>
                                 <td>
                                     {order.currency} {order.totalAmount.toFixed(2)}
@@ -239,7 +239,7 @@ const AccountOverviewPage: React.FC = () => {
                                     <button
                                         type="button"
                                         className="btn btn-outline account-action-btn"
-                                        onClick={() => handleInvoiceView(order.id)}
+                                        onClick={() => handleInvoiceView(order.internalId)}
                                     >
                                         View
                                     </button>

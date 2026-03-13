@@ -6,8 +6,7 @@ namespace SuperBot.Infrastructure.Data;
 public class PaymentFinalizationFailureDb
 {
     [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = string.Empty;
+    public ObjectId Id { get; set; }
 
     public string PaymentIntentId { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;

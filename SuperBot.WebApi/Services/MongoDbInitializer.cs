@@ -311,6 +311,25 @@ namespace SuperBot.WebApi.Services
             );
             await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageSessionIndex);
 
+            var ordersCollection = _database.GetCollection<SuperBot.Infrastructure.Data.OrderDb>("Orders");
+            var ordersPaymentIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
+                Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.PaymentIntentId),
+                new CreateIndexOptions { Name = "ix_orders_payment_intent_unique", Unique = true, Sparse = true }
+            );
+            var ordersUserCreatedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
+                Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Descending(item => item.CreatedAt),
+                new CreateIndexOptions { Name = "ix_orders_user_created" }
+            );
+            var ordersStatusIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
+                Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.Status),
+                new CreateIndexOptions { Name = "ix_orders_status" }
+            );
+            await ordersCollection.Indexes.CreateOneAsync(ordersPaymentIntentIndex);
+            await ordersCollection.Indexes.CreateOneAsync(ordersUserCreatedIndex);
+            await ordersCollection.Indexes.CreateOneAsync(ordersStatusIndex);
+
             var paymentStateCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>("PaymentFinalizationStates");
             var paymentStateIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>(
                 Builders<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>.IndexKeys

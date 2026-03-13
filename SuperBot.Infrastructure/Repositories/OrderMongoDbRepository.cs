@@ -38,6 +38,21 @@ namespace SuperBot.Infrastructure.Repositories
                 newOrder.OrderId = order.Id.ToString();
             }
 
+            if (newOrder.OrderGuid == Guid.Empty)
+            {
+                newOrder.OrderGuid = order.Id;
+            }
+
+            if (string.IsNullOrWhiteSpace(newOrder.OrderNumber))
+            {
+                newOrder.OrderNumber = $"TS-{DateTime.UtcNow:yyyyMMdd}-{newOrder.OrderGuid.ToString("N")[..6].ToUpperInvariant()}";
+            }
+
+            if (string.IsNullOrWhiteSpace(newOrder.UserId))
+            {
+                newOrder.UserId = order.UserId;
+            }
+
             await _orders.InsertOneAsync(newOrder);
             order.Id = Guid.TryParse(newOrder.OrderId, out var createdOrderId) ? createdOrderId : order.Id;
         }
@@ -164,7 +179,10 @@ namespace SuperBot.Infrastructure.Repositories
                 var regex = new BsonRegularExpression(query.Search, "i");
                 var searchFilter = Builders<OrderDb>.Filter.Or(
                     Builders<OrderDb>.Filter.Regex(order => order.GameName, regex),
-                    Builders<OrderDb>.Filter.Regex(order => order.UserName, regex)
+                    Builders<OrderDb>.Filter.Regex(order => order.UserName, regex),
+                    Builders<OrderDb>.Filter.Regex(order => order.OrderNumber, regex),
+                    Builders<OrderDb>.Filter.ElemMatch(order => order.Items, Builders<OrderItemSnapshotDb>.Filter.Regex(item => item.Title, regex)),
+                    Builders<OrderDb>.Filter.ElemMatch(order => order.Items, Builders<OrderItemSnapshotDb>.Filter.Regex(item => item.TitleSnapshot, regex))
                 );
                 filter &= searchFilter;
             }
@@ -231,6 +249,11 @@ namespace SuperBot.Infrastructure.Repositories
                 return Builders<OrderDb>.Filter.Eq(order => order.Id, objectId);
             }
 
+            if (!string.IsNullOrWhiteSpace(orderId))
+            {
+                return Builders<OrderDb>.Filter.Eq(order => order.OrderNumber, orderId);
+            }
+
             return Builders<OrderDb>.Filter.Eq(order => order.OrderId, string.Empty);
         }
 
@@ -250,9 +273,20 @@ namespace SuperBot.Infrastructure.Repositories
             }
 
             order.OrderId = CreateStableGuidFromObjectId(order.Id).ToString();
+            if (order.OrderGuid == Guid.Empty)
+            {
+                order.OrderGuid = Guid.Parse(order.OrderId);
+            }
+            if (string.IsNullOrWhiteSpace(order.OrderNumber))
+            {
+                order.OrderNumber = $"TS-{order.OrderDate:yyyyMMdd}-{order.OrderGuid.ToString("N")[..6].ToUpperInvariant()}";
+            }
             await _orders.UpdateOneAsync(
                 o => o.Id == order.Id,
-                Builders<OrderDb>.Update.Set(o => o.OrderId, order.OrderId));
+                Builders<OrderDb>.Update
+                    .Set(o => o.OrderId, order.OrderId)
+                    .Set(o => o.OrderGuid, order.OrderGuid)
+                    .Set(o => o.OrderNumber, order.OrderNumber));
         }
 
         private static Guid CreateStableGuidFromObjectId(ObjectId objectId)
