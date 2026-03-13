@@ -68,6 +68,85 @@ const buildPages = (current: number, total: number) => {
   return [1, 'ellipsis', current - 1, current, current + 1, 'ellipsis', total] as const;
 };
 
+
+type OrderDetailItem = AccountOrderDetails['items'][number];
+
+const OrderItemRow: React.FC<{ item: OrderDetailItem }> = ({ item }) => {
+  const isClickable = Boolean(item.gameId);
+  const RowTag = isClickable ? Link : 'div';
+  const rowProps = isClickable
+    ? ({ to: `/games/${item.gameId}` } as const)
+    : ({} as const);
+
+  return (
+    <RowTag
+      {...rowProps}
+      className={`order-line-item ${isClickable ? 'is-clickable' : ''}`}
+      aria-label={isClickable ? `Open ${item.title}` : undefined}
+    >
+      <div className="order-line-cover">
+        {item.coverUrl ? <img src={item.coverUrl} alt={item.title} /> : <div className="order-line-cover-fallback" />}
+      </div>
+
+      <div className="order-line-main">
+        <strong className="order-line-title">{item.title}</strong>
+        {(item.platform || item.region) && (
+          <div className="order-line-secondary-meta">
+            {item.platform ? <span>{item.platform}</span> : null}
+            {item.region ? <span>{item.region}</span> : null}
+          </div>
+        )}
+        {item.keys.length > 0 && (
+          <div className="order-line-keys">
+            <strong>Keys:</strong>
+            {item.keys.map((key) => <span key={key}>{key}</span>)}
+          </div>
+        )}
+      </div>
+
+      <div className="order-line-pricing">
+        <span>Qty: {item.quantity}</span>
+        <span>{formatCurrency(item.finalUnitPrice, item.currency)} each</span>
+        <strong>{formatCurrency(item.lineTotal, item.currency)}</strong>
+      </div>
+    </RowTag>
+  );
+};
+
+const OrderSummaryCard: React.FC<{ details: AccountOrderDetails }> = ({ details }) => (
+  <aside className="order-summary-card">
+    <h4>Summary</h4>
+    <div className="order-summary-row">
+      <span>Subtotal</span>
+      <span>{formatCurrency(details.totals.subtotal, details.currency)}</span>
+    </div>
+    <div className="order-summary-row">
+      <span>Discount</span>
+      <span>-{formatCurrency(details.totals.discountTotal, details.currency)}</span>
+    </div>
+    <div className="order-summary-row">
+      <span>Tax</span>
+      <span>{formatCurrency(details.totals.taxTotal, details.currency)}</span>
+    </div>
+    <div className="order-summary-divider" />
+    <div className="order-summary-row order-summary-total">
+      <span>Total</span>
+      <span>{formatCurrency(details.totals.total, details.currency)}</span>
+    </div>
+  </aside>
+);
+
+const OrderDetails: React.FC<{ details: AccountOrderDetails }> = ({ details }) => (
+  <div className="order-details-layout">
+    <section className="order-line-items" aria-label="Order items">
+      {details.items.map((item) => (
+        <OrderItemRow key={item.itemId} item={item} />
+      ))}
+    </section>
+    <OrderSummaryCard details={details} />
+  </div>
+);
+
 const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
   const [expanded, setExpanded] = useState(false);
   const [details, setDetails] = useState<AccountOrderDetails | null>(null);
@@ -131,40 +210,7 @@ const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
             <div className="order-details-state">Legacy order (details unavailable).</div>
           )}
           {!loadingDetails && !detailsError && details && !details.legacyDetailsUnavailable && (
-            <>
-              <div className="order-line-items">
-                {details.items.map((item) => (
-                  <div key={item.itemId} className="order-line-item">
-                    <div className="order-line-cover">
-                      {item.coverUrl ? <img src={item.coverUrl} alt={item.title} /> : <div className="order-line-cover-fallback" />}
-                    </div>
-                    <div className="order-line-main">
-                      <strong>{item.title}</strong>
-                      <div className="order-line-meta">
-                        <span>Qty: {item.quantity}</span>
-                        <span>{formatCurrency(item.finalUnitPrice, item.currency)} each</span>
-                        {item.platform ? <span>{item.platform}</span> : null}
-                        {item.region ? <span>{item.region}</span> : null}
-                        {item.gameId && <Link to={`/games/${item.gameId}`} className="order-line-link">View game</Link>}
-                      </div>
-                      {item.keys.length > 0 && (
-                        <div className="order-line-keys">
-                          <strong>Keys:</strong>
-                          {item.keys.map((key) => <span key={key}>{key}</span>)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="order-line-total">{formatCurrency(item.lineTotal, item.currency)}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="order-totals">
-                <div><span>Subtotal</span><strong>{formatCurrency(details.totals.subtotal, details.currency)}</strong></div>
-                <div><span>Discount</span><strong>-{formatCurrency(details.totals.discountTotal, details.currency)}</strong></div>
-                <div><span>Tax</span><strong>{formatCurrency(details.totals.taxTotal, details.currency)}</strong></div>
-                <div className="order-totals-grand"><span>Total</span><strong>{formatCurrency(details.totals.total, details.currency)}</strong></div>
-              </div>
-            </>
+            <OrderDetails details={details} />
           )}
         </div>
       )}
