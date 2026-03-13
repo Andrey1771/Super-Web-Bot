@@ -7,7 +7,6 @@ import {
   faMagnifyingGlass,
   faArrowLeft,
   faArrowRight,
-  faFileInvoice,
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
@@ -203,12 +202,8 @@ const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
         </div>
         <div className="order-actions">
           <span className={`badge order-status ${statusMeta.className}`}>{statusMeta.label}</span>
-          <button type="button" className="btn btn-primary order-action-btn" onClick={handleToggle}>
+          <button type="button" className="btn btn-outline order-action-btn" onClick={handleToggle}>
             {expanded ? 'Hide details' : 'View details'}
-          </button>
-          <button type="button" className="btn btn-outline order-action-btn">
-            <FontAwesomeIcon icon={faFileInvoice} />
-            Invoice
           </button>
         </div>
       </div>
