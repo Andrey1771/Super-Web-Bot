@@ -18,6 +18,7 @@ import CardAdderPage from "../admin-panel/card-adder-page/card-adder-page";
 import {CartPage} from "../cart/cart-page/cart-page";
 import CheckoutPage from "../cart/checkout-page/checkout-page";
 import SuccessPurchasePage from "../cart/success-purchase-page/success-purchase-page";
+import CancelPurchasePage from "../cart/cancel-purchase-page";
 import ApologyPage from "../apology-page/apology-page";
 import SupportPage from "../support-page/support-page";
 import SupportDocPage from "../support-docs/support-doc-page";
@@ -42,6 +43,7 @@ import CookieBanner from "../analytics/CookieBanner";
 import { analyticsClient } from "../../utils/analytics-client";
 import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
 import PromoCodesPage from "../../pages/admin/PromoCodesPage";
+import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -76,6 +78,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="siteChanger" element={<SiteChangerPage />} />
                         <Route path="cardAdder" element={<CardAdderPage />} />
                         <Route path="orders" element={<OrdersPage />} />
+                        <Route path="payments/issues" element={<PaymentIssuesPage />} />
                         <Route path="promo-codes" element={<PromoCodesPage />} />
                         <Route path="blog" element={<BlogPostsPage />} />
                         <Route path="blog/new" element={<BlogPostEditorPage />} />
@@ -96,7 +99,9 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/callback" element={<CallbackPage/>}/>
                     <Route path="/cart" element={<CartPage/>}/>
                     <Route path="/checkout" element={<CheckoutPage/>}/>
-                    <Route path="/successPurchasePage" element={<SuccessPurchasePage/>}/>
+                    <Route path="/checkout/success" element={<SuccessPurchasePage/>}/>
+                    <Route path="/checkout/cancel" element={<CancelPurchasePage/>}/>
+                    <Route path="/successPurchasePage" element={<Navigate to="/checkout/success" replace />}/>
                     <Route path="/support" element={<SupportPage/>}/>
                     <Route path="/support/docs/:docId" element={<SupportDocPage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>

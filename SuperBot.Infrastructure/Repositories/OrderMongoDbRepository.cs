@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using System.Security.Cryptography;
+using System.Text;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
@@ -20,91 +22,109 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task CreateOrderAsync(Order order)
         {
+            if (order.Id == Guid.Empty)
+            {
+                order.Id = Guid.NewGuid();
+            }
+
             var newOrder = _mapper.Map<OrderDb>(order);
+            if (newOrder.Id == ObjectId.Empty)
+            {
+                newOrder.Id = ObjectId.GenerateNewId();
+            }
+
+            if (string.IsNullOrWhiteSpace(newOrder.OrderId))
+            {
+                newOrder.OrderId = order.Id.ToString();
+            }
+
+            if (newOrder.OrderGuid == Guid.Empty)
+            {
+                newOrder.OrderGuid = order.Id;
+            }
+
+            if (string.IsNullOrWhiteSpace(newOrder.OrderNumber))
+            {
+                newOrder.OrderNumber = $"TS-{DateTime.UtcNow:yyyyMMdd}-{newOrder.OrderGuid.ToString("N")[..6].ToUpperInvariant()}";
+            }
+
+            if (string.IsNullOrWhiteSpace(newOrder.UserId))
+            {
+                newOrder.UserId = order.UserId;
+            }
+
             await _orders.InsertOneAsync(newOrder);
+            order.Id = Guid.TryParse(newOrder.OrderId, out var createdOrderId) ? createdOrderId : order.Id;
         }
 
         public async Task<Order> GetOrderByIdAsync(string orderId)
         {
-            var orderDb = await _orders.Find(o => o.Id == orderId).FirstOrDefaultAsync();
+            var filter = BuildOrderIdentityFilter(orderId);
+            var orderDb = await _orders.Find(filter).FirstOrDefaultAsync();
+
+            if (orderDb != null)
+            {
+                await EnsureOrderGuidAsync(orderDb);
+            }
+
             return _mapper.Map<Order>(orderDb);
         }
 
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {
             var ordersDb = await _orders.Find(_ => true).ToListAsync();
+            await EnsureOrderGuidsAsync(ordersDb);
             return _mapper.Map<IEnumerable<Order>>(ordersDb);
         }
 
         public async Task<List<Order>> GetOrdersByUserAsync(string userName)
         {
             var ordersDb = await _orders.Find(order => order.UserName == userName).ToListAsync();
+            await EnsureOrderGuidsAsync(ordersDb);
             return _mapper.Map<List<Order>>(ordersDb);
+        }
+
+        public async Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(
+            IReadOnlyCollection<string> userNames,
+            OrderQueryParameters query)
+        {
+            if (userNames.Count == 0)
+            {
+                return (Array.Empty<Order>(), 0);
+            }
+
+            var filter = Builders<OrderDb>.Filter.In(order => order.UserName, userNames);
+            filter &= BuildFilter(query);
+
+            return await FetchPagedAsync(filter, query);
         }
 
         public async Task<(IReadOnlyList<Order> Items, long Total)> GetPagedAsync(OrderQueryParameters query)
         {
-            var filter = Builders<OrderDb>.Filter.Empty;
-
-            if (!string.IsNullOrWhiteSpace(query.Search))
-            {
-                var regex = new BsonRegularExpression(query.Search, "i");
-                var searchFilter = Builders<OrderDb>.Filter.Or(
-                    Builders<OrderDb>.Filter.Regex(order => order.GameName, regex),
-                    Builders<OrderDb>.Filter.Regex(order => order.UserName, regex),
-                    Builders<OrderDb>.Filter.Regex(order => order.Id, regex)
-                );
-                filter &= searchFilter;
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Status))
-            {
-                filter &= BuildStatusFilter(query.Status);
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.PaymentStatus))
-            {
-                filter &= BuildPaymentStatusFilter(query.PaymentStatus);
-            }
-
-            if (query.DateFrom.HasValue)
-            {
-                filter &= Builders<OrderDb>.Filter.Gte(order => order.OrderDate, query.DateFrom.Value);
-            }
-
-            if (query.DateTo.HasValue)
-            {
-                filter &= Builders<OrderDb>.Filter.Lte(order => order.OrderDate, query.DateTo.Value);
-            }
-
-            var total = await _orders.CountDocumentsAsync(filter);
-
-            var page = query.Page < 1 ? 1 : query.Page;
-            var pageSize = query.PageSize is < 1 or > 100 ? 20 : query.PageSize;
-
-            var sort = query.Sort?.ToLowerInvariant() == "createdat:asc"
-                ? Builders<OrderDb>.Sort.Ascending(order => order.OrderDate)
-                : Builders<OrderDb>.Sort.Descending(order => order.OrderDate);
-
-            var ordersDb = await _orders
-                .Find(filter)
-                .Sort(sort)
-                .Skip((page - 1) * pageSize)
-                .Limit(pageSize)
-                .ToListAsync();
-
-            return (_mapper.Map<IReadOnlyList<Order>>(ordersDb), total);
+            var filter = BuildFilter(query);
+            return await FetchPagedAsync(filter, query);
         }
 
         public async Task UpdateOrderAsync(Order order)
         {
+            if (order.Id == Guid.Empty)
+            {
+                order.Id = Guid.NewGuid();
+            }
+
             var orderDb = _mapper.Map<OrderDb>(order);
-            await _orders.ReplaceOneAsync(o => o.Id == orderDb.Id, orderDb);
+            if (string.IsNullOrWhiteSpace(orderDb.OrderId))
+            {
+                orderDb.OrderId = order.Id.ToString();
+            }
+
+            await _orders.ReplaceOneAsync(o => o.OrderId == orderDb.OrderId, orderDb);
         }
 
         public async Task DeleteOrderAsync(string orderId)
         {
-            await _orders.DeleteOneAsync(o => o.Id == orderId);
+            var filter = BuildOrderIdentityFilter(orderId);
+            await _orders.DeleteOneAsync(filter);
         }
 
         private static FilterDefinition<OrderDb> BuildStatusFilter(string status)
@@ -148,6 +168,133 @@ namespace SuperBot.Infrastructure.Repositories
                 "UNPAID" => Builders<OrderDb>.Filter.Or(paymentFilter, Builders<OrderDb>.Filter.Eq(order => order.IsPaid, false)),
                 _ => paymentFilter
             };
+        }
+
+        private static FilterDefinition<OrderDb> BuildFilter(OrderQueryParameters query)
+        {
+            var filter = Builders<OrderDb>.Filter.Empty;
+
+            if (!string.IsNullOrWhiteSpace(query.Search))
+            {
+                var regex = new BsonRegularExpression(query.Search, "i");
+                var searchFilter = Builders<OrderDb>.Filter.Or(
+                    Builders<OrderDb>.Filter.Regex(order => order.GameName, regex),
+                    Builders<OrderDb>.Filter.Regex(order => order.UserName, regex),
+                    Builders<OrderDb>.Filter.Regex(order => order.OrderNumber, regex),
+                    Builders<OrderDb>.Filter.ElemMatch(order => order.Items, Builders<OrderItemSnapshotDb>.Filter.Regex(item => item.Title, regex)),
+                    Builders<OrderDb>.Filter.ElemMatch(order => order.Items, Builders<OrderItemSnapshotDb>.Filter.Regex(item => item.TitleSnapshot, regex))
+                );
+                filter &= searchFilter;
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.Status))
+            {
+                filter &= BuildStatusFilter(query.Status);
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.PaymentStatus))
+            {
+                filter &= BuildPaymentStatusFilter(query.PaymentStatus);
+            }
+
+            if (query.DateFrom.HasValue)
+            {
+                filter &= Builders<OrderDb>.Filter.Gte(order => order.OrderDate, query.DateFrom.Value);
+            }
+
+            if (query.DateTo.HasValue)
+            {
+                filter &= Builders<OrderDb>.Filter.Lte(order => order.OrderDate, query.DateTo.Value);
+            }
+
+            return filter;
+        }
+
+        private async Task<(IReadOnlyList<Order> Items, long Total)> FetchPagedAsync(FilterDefinition<OrderDb> filter, OrderQueryParameters query)
+        {
+            var total = await _orders.CountDocumentsAsync(filter);
+
+            var page = query.Page < 1 ? 1 : query.Page;
+            var pageSize = query.PageSize is < 1 or > 100 ? 20 : query.PageSize;
+
+            var sort = query.Sort?.ToLowerInvariant() switch
+            {
+                "createdat:asc" => Builders<OrderDb>.Sort.Ascending(order => order.OrderDate),
+                "total:desc" => Builders<OrderDb>.Sort.Descending(order => order.TotalAmount),
+                "total:asc" => Builders<OrderDb>.Sort.Ascending(order => order.TotalAmount),
+                _ => Builders<OrderDb>.Sort.Descending(order => order.OrderDate)
+            };
+
+            var ordersDb = await _orders
+                .Find(filter)
+                .Sort(sort)
+                .Skip((page - 1) * pageSize)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            await EnsureOrderGuidsAsync(ordersDb);
+
+            return (_mapper.Map<IReadOnlyList<Order>>(ordersDb), total);
+        }
+
+        private static FilterDefinition<OrderDb> BuildOrderIdentityFilter(string orderId)
+        {
+            if (Guid.TryParse(orderId, out var orderGuid))
+            {
+                return Builders<OrderDb>.Filter.Eq(order => order.OrderId, orderGuid.ToString());
+            }
+
+            if (ObjectId.TryParse(orderId, out var objectId))
+            {
+                return Builders<OrderDb>.Filter.Eq(order => order.Id, objectId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(orderId))
+            {
+                return Builders<OrderDb>.Filter.Eq(order => order.OrderNumber, orderId);
+            }
+
+            return Builders<OrderDb>.Filter.Eq(order => order.OrderId, string.Empty);
+        }
+
+        private async Task EnsureOrderGuidsAsync(List<OrderDb> orders)
+        {
+            foreach (var order in orders)
+            {
+                await EnsureOrderGuidAsync(order);
+            }
+        }
+
+        private async Task EnsureOrderGuidAsync(OrderDb order)
+        {
+            if (Guid.TryParse(order.OrderId, out _))
+            {
+                return;
+            }
+
+            order.OrderId = CreateStableGuidFromObjectId(order.Id).ToString();
+            if (order.OrderGuid == Guid.Empty)
+            {
+                order.OrderGuid = Guid.Parse(order.OrderId);
+            }
+            if (string.IsNullOrWhiteSpace(order.OrderNumber))
+            {
+                order.OrderNumber = $"TS-{order.OrderDate:yyyyMMdd}-{order.OrderGuid.ToString("N")[..6].ToUpperInvariant()}";
+            }
+            await _orders.UpdateOneAsync(
+                o => o.Id == order.Id,
+                Builders<OrderDb>.Update
+                    .Set(o => o.OrderId, order.OrderId)
+                    .Set(o => o.OrderGuid, order.OrderGuid)
+                    .Set(o => o.OrderNumber, order.OrderNumber));
+        }
+
+        private static Guid CreateStableGuidFromObjectId(ObjectId objectId)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(objectId.ToString()));
+            var guidBytes = new byte[16];
+            Array.Copy(bytes, guidBytes, guidBytes.Length);
+            return new Guid(guidBytes);
         }
     }
 }

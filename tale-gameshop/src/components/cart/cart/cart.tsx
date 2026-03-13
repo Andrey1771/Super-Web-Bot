@@ -18,7 +18,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {Product} from "../../../reducers/cart-reducer";
-import SafeGameImage from "../../common/SafeGameImage";
 
 type CartItemRowProps = {
     item: Product;
@@ -43,10 +42,9 @@ const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, 
     return (
         <div className="flex flex-col gap-4 py-5 sm:flex-row sm:items-start sm:gap-6">
             <div className="shrink-0">
-                <SafeGameImage
-                    src={item.image}
-                    gameTitle={item.name}
-                    baseUrl={imageBaseUrl}
+                <img
+                    src={`${imageBaseUrl}/${item.image}`}
+                    alt={item.name}
                     className="h-28 w-28 rounded-2xl object-cover shadow-md shadow-purple-100"
                 />
             </div>
@@ -218,11 +216,15 @@ const RecommendedRow: React.FC = () => {
                         className="group flex flex-col overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm shadow-purple-100 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-100/80"
                     >
                         <div className="relative h-40 overflow-hidden bg-purple-50">
-                            <SafeGameImage
-                                src={item.game.imagePath}
-                                gameTitle={item.game.title}
-                                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                            />
+                            {item.game.imagePath ? (
+                                <img
+                                    src={item.game.imagePath}
+                                    alt={item.game.title}
+                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                />
+                            ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-purple-100 to-purple-50" />
+                            )}
                         </div>
                         <div className="space-y-2 p-4">
                             <h3 className="text-base font-semibold text-gray-900">{item.game.title}</h3>

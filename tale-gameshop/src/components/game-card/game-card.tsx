@@ -6,7 +6,6 @@ import container from "../../inversify.config";
 import {IUrlService} from "../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../constants/identifiers";
 import { analyticsClient } from "../../utils/analytics-client";
-import SafeGameImage from "../common/SafeGameImage";
 
 interface GameCardProps {
     game: Game;
@@ -67,13 +66,11 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
             tabIndex={0}
         >
             <div className="card-media" style={{ height: '180px' }}>
-                <SafeGameImage
-                    gameTitle={game.title}
+                <img
+                    alt={game.title}
                     height="180"
-                    src={game.imagePath}
-                    baseUrl={urlService.apiBaseUrl}
+                    src={`${urlService.apiBaseUrl}/${game.imagePath}`}
                     width="100%"
-                    style={{ objectFit: "cover" }}
                 />
             </div>
             <div className="flex-1 flex flex-col">

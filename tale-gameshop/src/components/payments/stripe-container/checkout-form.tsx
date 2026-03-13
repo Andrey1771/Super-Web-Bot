@@ -5,10 +5,11 @@ import {
     PaymentElement,
     ExpressCheckoutElement
 } from '@stripe/react-stripe-js';
+import { Link } from 'react-router-dom';
 import {StripePaymentElementOptions} from '@stripe/stripe-js';
 
 interface CheckoutFormProps {
-    clientSecret: string
+    clientSecret: string;
 }
 
 const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
@@ -16,6 +17,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
     const elements = useElements();
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const publicAppUrl = window.__APP_CONFIG__?.publicAppUrl ?? window.location.origin;
 
     const handleSubmit = async (event: any) => {
         // We don't want to let default form submission happen here,
@@ -28,11 +31,14 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             return;
         }
 
+        setIsSubmitting(true);
+        setErrorMessage(null);
+
         const {error} = await stripe.confirmPayment({
             //`Elements` instance that was used to create the Payment Element
             elements,
             confirmParams: {
-                return_url: 'https://example.com/order/123/complete',
+                return_url: `${publicAppUrl}/checkout/success`,
             },
         });
 
@@ -41,7 +47,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             // This point will only be reached if there is an immediate error when
             // confirming the payment. Show error to your customer (for example, payment
             // details incomplete)
-            //setErrorMessage(error.message ?? null);
+            setErrorMessage(error.message ?? 'Unable to process payment.');
+            setIsSubmitting(false);
         } else {
             // Your customer will be redirected to your `return_url`. For some payment
             // methods like iDEAL, your customer will be redirected to an intermediate
@@ -62,17 +69,20 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             <ExpressCheckoutElement onConfirm={handleConfirmExpressCheckout}/>
             <PaymentElement options={paymentElementOptions}/>
             <button
-                disabled={!stripe}
+                disabled={!stripe || isSubmitting}
                 className="btn btn-primary checkout-stripe-submit"
                 data-testid="place-order-button"
                 type="submit"
             >
-                Place Order
+                {isSubmitting ? 'Processing...' : 'Place Order'}
             </button>
+            <Link to="/checkout/cancel" className="btn btn-outline checkout-stripe-submit">
+                Cancel
+            </Link>
             {/* Show error message to your customers */}
             {errorMessage && <div>{errorMessage}</div>}
         </form>
-    )
+    );
 };
 
 export default CheckoutForm;

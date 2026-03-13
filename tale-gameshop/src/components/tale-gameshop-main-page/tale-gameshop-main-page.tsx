@@ -22,7 +22,6 @@ import IDENTIFIERS from "../../constants/identifiers";
 import {Game} from "../../models/game";
 import {Link} from "react-router-dom";
 import {IUrlService} from "../../iterfaces/i-url-service";
-import SafeGameImage from "../common/SafeGameImage";
 import TestimonialsCarousel from "../testimonials/TestimonialsCarousel";
 import type {BlogListItem} from "../../types/blog";
 
@@ -200,7 +199,11 @@ export default function TaleGameshopMainPage() {
     const renderGameCard = (game: Game, size: 'large' | 'small') => (
         <div className={`hero-card ${size === 'large' ? 'hero-card-large' : 'hero-card-small'}`}>
             <div className="hero-media">
-                <SafeGameImage gameTitle={game.title} src={game?.imagePath} baseUrl={urlService.apiBaseUrl} />
+                {game?.imagePath ? (
+                    <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
+                ) : (
+                    <div className="media-placeholder skeleton" aria-hidden="true" />
+                )}
             </div>
             <div className="hero-overlay">
                 <span className="hero-title">{game?.title}</span>
@@ -309,7 +312,11 @@ export default function TaleGameshopMainPage() {
                                     key={game.id || game.title}
                                 >
                                     <div className="featured-media">
-                                        <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
+                                        {game.imagePath ? (
+                                            <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
+                                        ) : (
+                                            <div className="media-placeholder skeleton" aria-hidden="true" />
+                                        )}
                                     </div>
                                     <div className="featured-meta">
                                         <span className="featured-title">{game.title}</span>

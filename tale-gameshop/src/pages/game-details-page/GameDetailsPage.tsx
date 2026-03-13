@@ -21,7 +21,6 @@ import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 import type { IGameDetailsService } from '../../iterfaces/i-game-details-service';
 import type { GameReviewFilters } from '../../types/game-details-service';
 import { getAnonId } from '../../hooks/use-blog-tracking';
-import SafeGameImage from '../../components/common/SafeGameImage';
 
 const formatPrice = (price: number, currency: string) => {
   const formatter = new Intl.NumberFormat('en-US', {
@@ -153,14 +152,14 @@ const GameMediaGallery = ({
                 onClick={() => setIsPlaying(true)}
                 aria-label="Play trailer"
               >
-                <SafeGameImage src={selectedMedia.posterUrl ?? selectedMedia.thumbUrl} gameTitle={title} fallbackAlt="Game trailer poster" />
+                <img src={selectedMedia.posterUrl ?? selectedMedia.thumbUrl} alt={`${title} trailer`} />
                 <span className="video-play">▶</span>
               </button>
             )}
           </div>
         ) : (
           <div className="game-media-image">
-            <SafeGameImage src={selectedMedia?.url} gameTitle={title} />
+            <img src={selectedMedia?.url} alt={`${title} cover`} />
           </div>
         )}
       </div>
@@ -183,7 +182,7 @@ const GameMediaGallery = ({
               className={`thumbnail-item ${selectedId === item.id ? 'is-active' : ''}`}
               onClick={() => setSelectedId(item.id)}
             >
-              <SafeGameImage src={item.thumbUrl} gameTitle={title} fallbackAlt="Game preview" loading="lazy" />
+              <img src={item.thumbUrl} alt={`${title} preview`} loading="lazy" />
               {item.type === 'video' && (
                 <span className="thumbnail-video">
                   <span className="play-badge" aria-hidden="true">▶</span>
@@ -509,7 +508,7 @@ const DLCList = ({ items }: { items: DLC[] }) => (
     <div className="dlc-list">
       {items.map((dlc) => (
         <div key={dlc.id} className="dlc-item">
-          <SafeGameImage src={dlc.coverUrl} gameTitle={dlc.title} />
+          <img src={dlc.coverUrl} alt={`${dlc.title} cover`} />
           <div>
             <p className="dlc-title">{dlc.title}</p>
             <span className="dlc-price">{formatPrice(dlc.price, 'USD')}</span>
@@ -789,7 +788,7 @@ const RecommendationsCarousel = ({ items }: { items: GameCardItem[] }) => {
         {items.map((item) => (
           <div key={item.id} className="recommendation-card">
             <Link to={`/games/${item.slug}`} className="recommendation-link">
-              <SafeGameImage src={item.coverUrl} gameTitle={item.title} loading="lazy" />
+              <img src={item.coverUrl} alt={item.title} loading="lazy" />
               <p className="line-clamp-2">{item.title}</p>
             </Link>
             <div className="recommendation-meta">

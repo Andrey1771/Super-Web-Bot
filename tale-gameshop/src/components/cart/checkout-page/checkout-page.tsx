@@ -49,12 +49,31 @@ const CheckoutPage: React.FC = () => {
                 return;
             }
 
-            const {data} = await apiClient.api.post('/api/payments/create-payment-intent', { amount: Math.round(totals.total) });
+            const {data} = await apiClient.api.post('/api/payments/create-payment-intent', {
+                amount: Math.round(totals.total),
+                currency: 'USD',
+                promoCode: promoCode || undefined,
+                subtotal: totals.subtotal,
+                discountTotal: totals.discount,
+                taxTotal: 0,
+                total: totals.total,
+                items: state.items.map((item) => ({
+                    productType: 'Game',
+                    gameId: item.gameId,
+                    title: item.name,
+                    coverUrl: item.image,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                    discountPerUnit: 0,
+                    finalUnitPrice: item.price,
+                    lineTotal: item.price * item.quantity,
+                })),
+            });
             setClientSecret(data.clientSecret ?? data.ClientSecret);
         };
 
         fetchClientSecret();
-    }, [apiClient.api, totals.total]);
+    }, [apiClient.api, promoCode, state.items, totals.total]);
 
     const handleApplyPromo = async () => {
         setApplyingPromo(true);

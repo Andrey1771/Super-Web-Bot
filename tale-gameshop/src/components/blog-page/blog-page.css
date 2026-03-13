@@ -2349,6 +2349,19 @@
   gap: var(--space-20);
 }
 
+.latest-posts .post-card__body {
+  padding: var(--space-20) var(--space-20) var(--space-24);
+  gap: var(--space-10);
+}
+
+.latest-posts .post-card__content {
+  gap: 12px;
+}
+
+.latest-posts .post-card__excerpt {
+  font-size: 15px;
+}
+
 .posts-actions {
   margin-top: var(--space-18);
   padding-top: var(--space-16);

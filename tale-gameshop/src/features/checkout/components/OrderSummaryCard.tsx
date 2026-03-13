@@ -1,8 +1,7 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {Link} from 'react-router-dom';
 import {Product} from '../../../reducers/cart-reducer';
 import './order-summary-card.css';
-import SafeGameImage from '../../../components/common/SafeGameImage';
 
 type CheckoutTotals = {
     subtotal: number;
@@ -30,15 +29,33 @@ type OrderSummaryCardProps = {
 };
 
 const formatPrice = (value: number) => `$${value.toFixed(2)}`;
+const normalizeImagePath = (imagePath: string) => imagePath.replace(/^\/?wwwroot\//, '/');
+
+const resolveCoverUrl = (imageBaseUrl: string, imagePath?: string) => {
+    if (!imagePath) return '';
+    const normalizedPath = normalizeImagePath(imagePath);
+    if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) return normalizedPath;
+    if (normalizedPath.startsWith('/')) return `${imageBaseUrl}${normalizedPath}`;
+    return `${imageBaseUrl}/${normalizedPath}`;
+};
+
 const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({items, imageBaseUrl, totals, promo, onPromoCodeChange, onApplyPromo, onRemovePromo}) => {
+    const fallbackImage = useMemo(
+        () =>
+            'data:image/svg+xml;utf8,' +
+            encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112"><rect width="100%" height="100%" rx="16" fill="#f0edff"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-size="18" fill="#6f64a8">No image</text></svg>'),
+        []
+    );
+
     return (
         <div className="card order-summary-card" data-testid="order-summary-card">
             <div className="order-summary-header"><div><h2>Order summary</h2><p>Check your items before completing payment.</p></div><span className="badge">Secure checkout</span></div>
             <div className="order-summary-items">
                 {items.length === 0 ? <div className="order-summary-empty">Your cart is empty.</div> : items.map((item) => {
                     const itemTotal = item.price * item.quantity;
+                    const coverUrl = resolveCoverUrl(imageBaseUrl, item.image);
                     return <div key={item.gameId} className="order-summary-item">
-                        <div className="order-summary-item-media"><SafeGameImage src={item.image} gameTitle={item.name} baseUrl={imageBaseUrl} /></div>
+                        <div className="order-summary-item-media"><img src={coverUrl || fallbackImage} alt={item.name} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = fallbackImage; }} /></div>
                         <div className="order-summary-item-content"><div className="order-summary-item-title">{item.name}</div><div className="order-summary-item-qty">Qty {item.quantity} × {formatPrice(item.price)}</div></div>
                         <div className="order-summary-item-total">{formatPrice(itemTotal)}</div>
                     </div>;

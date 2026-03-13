@@ -2,6 +2,7 @@ const origin = window.location.origin;
 
 window.__APP_CONFIG__ = window.__APP_CONFIG__ || {
   apiBaseUrl: origin,
+  publicAppUrl: origin,
   stripePublishableKey: "",
   keycloak: {
     url: origin,

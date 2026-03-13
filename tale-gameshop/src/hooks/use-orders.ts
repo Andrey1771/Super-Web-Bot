@@ -1,66 +1,69 @@
 import { useCallback, useEffect, useState } from 'react';
-import container from '../inversify.config';
-import IDENTIFIERS from '../constants/identifiers';
-import type { IOrdersService } from '../iterfaces/i-orders-service';
-import type { IKeycloakService } from '../iterfaces/i-keycloak-service';
-import type { Order } from '../models/order';
+import { fetchAccountOrders } from '../api/accountApi';
+import type { AccountOrderListItem, FetchAccountOrdersParams } from '../types/account-orders';
 
-const getUserIdentifier = (keycloakService: IKeycloakService) => {
-    const parsedToken = keycloakService.keycloak?.tokenParsed as
-        | { email?: string; preferred_username?: string; sub?: string }
-        | undefined;
-    return parsedToken?.email ?? parsedToken?.preferred_username ?? parsedToken?.sub ?? '';
+type UseOrdersOptions = {
+  limit?: number | null;
+  page?: number;
+  pageSize?: number;
+  status?: FetchAccountOrdersParams['status'];
+  q?: string;
+  sort?: FetchAccountOrdersParams['sort'];
 };
 
-export const useOrders = (limit: number | null = 3) => {
-    const ordersService = container.get<IOrdersService>(IDENTIFIERS.IOrdersService);
-    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
-    const [items, setItems] = useState<Order[]>([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+export const useOrders = (options: UseOrdersOptions = {}) => {
+  const {
+    limit = null,
+    page = 1,
+    pageSize = 10,
+    status = 'all',
+    q = '',
+    sort = 'newest',
+  } = options;
 
-    const load = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const data = await ordersService.getOrders();
-            const userId = getUserIdentifier(keycloakService);
-            const filtered = userId ? data.filter((order) => order.userName === userId) : data;
-            const sorted = [...filtered].sort((a, b) => {
-                const dateA = new Date(a.orderDate).getTime();
-                const dateB = new Date(b.orderDate).getTime();
-                return dateB - dateA;
-            });
-            setTotalCount(filtered.length);
-            setItems(limit === null ? sorted : sorted.slice(0, limit));
-        } catch (err) {
-            console.error('Failed to load orders:', err);
-            setError('Unable to load orders.');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [keycloakService, limit, ordersService]);
+  const [items, setItems] = useState<AccountOrderListItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        load();
-    }, [load]);
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAccountOrders({
+        page,
+        pageSize,
+        status,
+        q,
+        sort,
+      });
 
-    useEffect(() => {
-        const handleAuth = () => {
-            load();
-        };
-        keycloakService.stateChangedEmitter.on('onAuthSuccess', handleAuth);
-        return () => {
-            keycloakService.stateChangedEmitter.off('onAuthSuccess', handleAuth);
-        };
-    }, [keycloakService, load]);
+      const nextItems = limit === null ? data.items : data.items.slice(0, limit);
+      setItems(nextItems);
+      setTotalCount(data.totalItems);
+      setTotalPages(data.totalPages);
+    } catch (err) {
+      console.error('Failed to load account orders:', err);
+      setError('Unable to load orders.');
+      setItems([]);
+      setTotalCount(0);
+      setTotalPages(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [limit, page, pageSize, q, sort, status]);
 
-    return {
-        items,
-        totalCount,
-        isLoading,
-        error,
-        reload: load
-    };
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return {
+    items,
+    totalCount,
+    totalPages,
+    isLoading,
+    error,
+    reload: load,
+  };
 };

@@ -15,7 +15,6 @@ import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 import type { IRecommendationsService } from '../../iterfaces/i-recommendations-service';
 import { analyticsClient } from '../../utils/analytics-client';
 import { slugify } from '../../utils/slugify';
-import SafeGameImage from '../common/SafeGameImage';
 
 const categoryOrder = [
     'Educational Games',
@@ -31,6 +30,7 @@ const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+    const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
     const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
@@ -449,17 +449,74 @@ const TaleGameshopGameList: React.FC = () => {
         }
     };
 
+    const fallbackImage =
+        'data:image/svg+xml;utf8,' +
+        encodeURIComponent(
+            '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"360\">' +
+                '<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">' +
+                '<stop offset=\"0%\" stop-color=\"#c7bfff\"/><stop offset=\"100%\" stop-color=\"#f7f4ff\"/>' +
+                '</linearGradient></defs>' +
+                '<rect width=\"100%\" height=\"100%\" fill=\"url(#g)\"/>' +
+                '<text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-size=\"24\" fill=\"#6f64a8\">No image</text>' +
+            '</svg>'
+        );
 
-    const renderImage = (game: Game) => (
-        <SafeGameImage
-            gameTitle={game.title}
-            src={game.imagePath}
-            baseUrl={services.urlService.apiBaseUrl}
-            className="h-full w-full object-cover pointer-events-none"
-            loading="lazy"
-        />
-    );
+    const normalizeImagePath = (imagePath: string) => imagePath.replace(/^\/?wwwroot\//, '/');
 
+    const resolveImageUrl = (imagePath: string) => {
+        const normalizedPath = normalizeImagePath(imagePath);
+
+        if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+            return normalizedPath;
+        }
+
+        const baseUrl = services.urlService.apiBaseUrl.replace(/\/$/, '');
+        const urlPath = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
+
+        return `${baseUrl}${urlPath}`;
+    };
+
+    const handleImageError = (src: string, event: React.SyntheticEvent<HTMLImageElement>) => {
+        const target = event.currentTarget;
+        target.onerror = null;
+        target.src = fallbackImage;
+        setBrokenImageUrls((prev) => new Set(prev).add(src));
+    };
+
+    const renderImage = (game: Game) => {
+        if (!game.imagePath || game.imagePath === 'string') {
+            return (
+                <img
+                    alt={`${game.title} placeholder`}
+                    className="h-full w-full object-cover pointer-events-none"
+                    src={fallbackImage}
+                    loading="lazy"
+                />
+            );
+        }
+
+        const src = resolveImageUrl(game.imagePath);
+        if (brokenImageUrls.has(src)) {
+            return (
+                <img
+                    alt={`${game.title} placeholder`}
+                    className="h-full w-full object-cover pointer-events-none"
+                    src={fallbackImage}
+                    loading="lazy"
+                />
+            );
+        }
+
+        return (
+            <img
+                alt={game.title}
+                className="h-full w-full object-cover pointer-events-none"
+                src={src}
+                onError={(event) => handleImageError(src, event)}
+                loading="lazy"
+            />
+        );
+    };
 
     const CategoryIcon = ({ variant }: { variant: 'cap' | 'bolt' | 'rpg' | 'strategy' | 'sports' }) => {
         const baseClass = 'h-8 w-8 text-[#6b3ff2]';
