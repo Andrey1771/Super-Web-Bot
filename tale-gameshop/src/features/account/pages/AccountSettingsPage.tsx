@@ -6,6 +6,7 @@ import AccountShell from '../components/AccountShell';
 import AvatarCropModal from '../components/AvatarCropModal';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import ModalConfirm from '../../../components/ui/ModalConfirm';
 import { useToast } from '../../../components/ui/ToastProvider';
 import { fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
@@ -358,11 +359,7 @@ const AccountSettingsPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="card settings-recommendation-card">
                             <div className="settings-recommendation-media">
-                                {item.game.imagePath ? (
-                                    <img src={item.game.imagePath} alt={item.game.title} />
-                                ) : (
-                                    <div className="settings-recommendation-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="settings-recommendation-body">
                                 <strong>{item.game.title}</strong>

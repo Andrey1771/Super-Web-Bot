@@ -13,6 +13,7 @@ import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useViewedGames } from '../../../hooks/use-viewed-games';
 import { useGameKeys } from '../../../hooks/use-game-keys';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-keys-page.css';
 
 const AccountKeysPage: React.FC = () => {
@@ -241,11 +242,7 @@ const AccountKeysPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="card keys-card">
                             <div className="keys-card-media">
-                                {item.game.imagePath ? (
-                                    <img src={item.game.imagePath} alt={item.game.title} />
-                                ) : (
-                                    <div className="keys-card-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="keys-card-body">
                                 <strong>{item.game.title}</strong>
@@ -285,11 +282,7 @@ const AccountKeysPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="card keys-card">
                             <div className="keys-card-media keys-card-media--wide">
-                                {item.game.imagePath ? (
-                                    <img src={item.game.imagePath} alt={item.game.title} />
-                                ) : (
-                                    <div className="keys-card-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="keys-card-body">
                                 <strong>{item.game.title}</strong>

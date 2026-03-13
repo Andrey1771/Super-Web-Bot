@@ -14,13 +14,13 @@ import container from '../../../inversify.config';
 import { Game } from '../../../models/game';
 import type { IWishlistService } from '../../../iterfaces/i-wishlist-service';
 import type { IKeycloakService } from '../../../iterfaces/i-keycloak-service';
-import type { IUrlService } from '../../../iterfaces/i-url-service';
 import type { IGameService } from '../../../iterfaces/i-game-service';
 import { useCart } from '../../../context/cart-context';
 import { Product } from '../../../reducers/cart-reducer';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useViewedGames } from '../../../hooks/use-viewed-games';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-saved-items-page.css';
 
 const WISHLIST_GUEST_KEY = 'wishlist_guest';
@@ -30,11 +30,9 @@ const AccountSavedItemsPage: React.FC = () => {
     const viewMode: 'comfortable' | 'compact' = 'comfortable';
     const [games, setGames] = useState<Game[]>([]);
     const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
-    const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
     const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
-    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
     const gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const { dispatch } = useCart();
     const didMergeRef = useRef(false);
@@ -213,41 +211,8 @@ const AccountSavedItemsPage: React.FC = () => {
         });
     };
 
-    const fallbackImage =
-        'data:image/svg+xml;utf8,' +
-        encodeURIComponent(
-            '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"360\">' +
-                '<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">' +
-                '<stop offset=\"0%\" stop-color=\"#c7bfff\"/><stop offset=\"100%\" stop-color=\"#f7f4ff\"/>' +
-                '</linearGradient></defs>' +
-                '<rect width=\"100%\" height=\"100%\" fill=\"url(#g)\"/>' +
-                '<text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-size=\"24\" fill=\"#6f64a8\">No image</text>' +
-            '</svg>'
-        );
 
-    const normalizeImagePath = (imagePath: string) =>
-        imagePath.replace(/^\/?wwwroot\//, '/');
 
-    const resolveCoverUrl = (imagePath: string) => {
-        const normalizedPath = normalizeImagePath(imagePath);
-
-        if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
-            return normalizedPath;
-        }
-
-        if (normalizedPath.startsWith('/')) {
-            return `${urlService.apiBaseUrl}${normalizedPath}`;
-        }
-
-        return `${urlService.apiBaseUrl}/${normalizedPath}`;
-    };
-
-    const handleCoverError = (src: string, event: React.SyntheticEvent<HTMLImageElement>) => {
-        const target = event.currentTarget;
-        target.onerror = null;
-        target.src = fallbackImage;
-        setBrokenImageUrls((prev) => new Set(prev).add(src));
-    };
 
     return (
         <AccountShell
@@ -300,20 +265,11 @@ const AccountSavedItemsPage: React.FC = () => {
                         ? wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card">
                                 <div className="saved-item-cover" aria-hidden="true">
-                                    {item.imagePath && item.imagePath !== 'string' && (() => {
-                                        const src = resolveCoverUrl(item.imagePath);
-                                        if (brokenImageUrls.has(src)) {
-                                            return null;
-                                        }
-                                        return (
-                                            <img
-                                                alt=""
-                                                className="saved-item-image"
-                                                src={src}
-                                                onError={(event) => handleCoverError(src, event)}
-                                            />
-                                        );
-                                    })()}
+                                    <SafeGameImage
+                                        src={item.imagePath}
+                                        gameTitle={item.title}
+                                        className="saved-item-image"
+                                    />
                                 </div>
                                 <div className="saved-item-body">
                                     <div className="saved-item-title-row">
@@ -352,20 +308,11 @@ const AccountSavedItemsPage: React.FC = () => {
                         : wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card compact">
                                 <div className="saved-item-compact-cover" aria-hidden="true">
-                                    {item.imagePath && item.imagePath !== 'string' && (() => {
-                                        const src = resolveCoverUrl(item.imagePath);
-                                        if (brokenImageUrls.has(src)) {
-                                            return null;
-                                        }
-                                        return (
-                                            <img
-                                                alt=""
-                                                className="saved-item-image"
-                                                src={src}
-                                                onError={(event) => handleCoverError(src, event)}
-                                            />
-                                        );
-                                    })()}
+                                    <SafeGameImage
+                                        src={item.imagePath}
+                                        gameTitle={item.title}
+                                        className="saved-item-image"
+                                    />
                                 </div>
                                 <div className="saved-item-compact-body">
                                     <div className="saved-item-compact-header">
@@ -455,11 +402,7 @@ const AccountSavedItemsPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card">
                             <div className="saved-horizontal-cover">
-                                {item.game.imagePath && item.game.imagePath !== 'string' ? (
-                                    <img src={resolveCoverUrl(item.game.imagePath)} alt={item.game.title} />
-                                ) : (
-                                    <div className="saved-horizontal-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="saved-horizontal-body">
                                 <strong>{item.game.title}</strong>
@@ -501,11 +444,7 @@ const AccountSavedItemsPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card">
                             <div className="saved-horizontal-cover">
-                                {item.game.imagePath && item.game.imagePath !== 'string' ? (
-                                    <img src={resolveCoverUrl(item.game.imagePath)} alt={item.game.title} />
-                                ) : (
-                                    <div className="saved-horizontal-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="saved-horizontal-body">
                                 <strong>{item.game.title}</strong>

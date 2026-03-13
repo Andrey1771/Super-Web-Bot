@@ -4,6 +4,7 @@ import {faChevronLeft, faChevronRight} from '@fortawesome/free-solid-svg-icons';
 import {useRecommendations} from '../../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../../components/recommendations/recommendations-section';
 import {useCart} from '../../../../context/cart-context';
+import SafeGameImage from '../../../../components/common/SafeGameImage';
 
 const RecommendationsRow: React.FC = () => {
     const {dispatch} = useCart();
@@ -54,11 +55,7 @@ const RecommendationsRow: React.FC = () => {
                 renderItem={(item) => (
                     <div key={item.game.id ?? item.game.title} className="card security-recommendation-card">
                         <div className="security-recommendation-media">
-                            {item.game.imagePath ? (
-                                <img src={item.game.imagePath} alt={item.game.title} />
-                            ) : (
-                                <div className="security-recommendation-fallback" aria-hidden="true" />
-                            )}
+                            <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                         </div>
                         <div className="security-recommendation-body">
                             <strong>{item.game.title}</strong>

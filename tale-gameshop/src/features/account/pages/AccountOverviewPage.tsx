@@ -17,6 +17,7 @@ import { useOrders } from '../../../hooks/use-orders';
 import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
 import { usePaymentMethodsSummary } from '../../../hooks/use-payment-methods-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-overview-page.css';
 
 const AccountOverviewPage: React.FC = () => {
@@ -28,7 +29,7 @@ const AccountOverviewPage: React.FC = () => {
         isLoading: isOrdersLoading,
         error: ordersError,
         reload: reloadOrders
-    } = useOrders({ limit: 3, pageSize: 3 });
+    } = useOrders(3);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -228,10 +229,10 @@ const AccountOverviewPage: React.FC = () => {
                             </tr>
                         )}
                         {!isOrdersLoading && !ordersError && orders.map((order) => (
-                            <tr key={order.internalId}>
-                                <td>{order.orderId}</td>
-                                <td>{order.preview.firstTitle ?? 'Game purchase'}</td>
-                                <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                            <tr key={order.id}>
+                                <td>{order.id}</td>
+                                <td>{order.gameName}</td>
+                                <td>{new Date(order.orderDate).toLocaleDateString()}</td>
                                 <td>
                                     {order.currency} {order.totalAmount.toFixed(2)}
                                 </td>
@@ -239,7 +240,7 @@ const AccountOverviewPage: React.FC = () => {
                                     <button
                                         type="button"
                                         className="btn btn-outline account-action-btn"
-                                        onClick={() => handleInvoiceView(order.internalId)}
+                                        onClick={() => handleInvoiceView(order.id)}
                                     >
                                         View
                                     </button>
@@ -356,11 +357,7 @@ const AccountOverviewPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="account-recommendation-card">
                             <div className="account-recommendation-media">
-                                {item.game.imagePath ? (
-                                    <img src={item.game.imagePath} alt={item.game.title} />
-                                ) : (
-                                    <div className="account-recommendation-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="account-recommendation-body">
                                 <strong>{item.game.title}</strong>

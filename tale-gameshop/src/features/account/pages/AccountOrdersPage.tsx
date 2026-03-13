@@ -1,424 +1,261 @@
-import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, {useMemo} from 'react';
+import {Link} from 'react-router-dom';
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
-  faChevronLeft,
-  faChevronRight,
-  faMagnifyingGlass,
-  faArrowLeft,
-  faArrowRight,
+    faChevronLeft,
+    faChevronRight,
+    faFileInvoice,
+    faMagnifyingGlass,
+    faArrowLeft,
+    faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useOrders } from '../../../hooks/use-orders';
-import useDebouncedValue from '../../../hooks/useDebouncedValue';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import { fetchAccountOrderDetails } from '../../../api/accountApi';
-import type { AccountOrderDetails, AccountOrderListItem } from '../../../types/account-orders';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-orders-page.css';
+import type { Order } from '../../../models/order';
 
-const PAGE_SIZE = 10;
-
-type StatusFilter = 'all' | 'completed' | 'refunded' | 'pending' | 'failed';
-type SortOption = 'newest' | 'oldest' | 'total_desc' | 'total_asc';
-
-const formatCurrency = (value: number, currency = 'USD') =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value);
+const formatCurrency = (value: number, currency = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency
+    }).format(value);
+};
 
 const formatDate = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
-};
-
-const toStatusMeta = (status: string) => {
-  const normalized = status.toUpperCase();
-  if (normalized === 'DELIVERED') {
-    return { label: 'Completed', className: 'status-completed' };
-  }
-  if (normalized === 'REFUNDED') {
-    return { label: 'Refunded', className: 'status-refunded' };
-  }
-  if (normalized === 'FAILED') {
-    return { label: 'Failed', className: 'status-failed' };
-  }
-  if (normalized === 'PENDING') {
-    return { label: 'Pending', className: 'status-processing' };
-  }
-
-  return { label: 'Processing', className: 'status-processing' };
-};
-
-const buildPages = (current: number, total: number) => {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1);
-  }
-
-  if (current <= 3) {
-    return [1, 2, 3, 4, 'ellipsis', total - 1, total] as const;
-  }
-
-  if (current >= total - 2) {
-    return [1, 2, 'ellipsis', total - 3, total - 2, total - 1, total] as const;
-  }
-
-  return [1, 'ellipsis', current - 1, current, current + 1, 'ellipsis', total] as const;
-};
-
-
-type OrderDetailItem = AccountOrderDetails['items'][number];
-
-const OrderItemRow: React.FC<{ item: OrderDetailItem }> = ({ item }) => {
-  const isClickable = Boolean(item.gameId);
-  const RowTag = isClickable ? Link : 'div';
-  const rowProps = isClickable
-    ? ({ to: `/games/${item.gameId}` } as const)
-    : ({} as const);
-
-  return (
-    <RowTag
-      {...rowProps}
-      className={`order-line-item ${isClickable ? 'is-clickable' : ''}`}
-      aria-label={isClickable ? `Open ${item.title}` : undefined}
-    >
-      <div className="order-line-cover">
-        {item.coverUrl ? <img src={item.coverUrl} alt={item.title} /> : <div className="order-line-cover-fallback" />}
-      </div>
-
-      <div className="order-line-main">
-        <strong className="order-line-title">{item.title}</strong>
-        {(item.platform || item.region) && (
-          <div className="order-line-secondary-meta">
-            {item.platform ? <span>{item.platform}</span> : null}
-            {item.region ? <span>{item.region}</span> : null}
-          </div>
-        )}
-        {item.keys.length > 0 && (
-          <div className="order-line-keys">
-            <strong>Keys:</strong>
-            {item.keys.map((key) => <span key={key}>{key}</span>)}
-          </div>
-        )}
-      </div>
-
-      <div className="order-line-pricing">
-        <span>Qty: {item.quantity}</span>
-        <span>{formatCurrency(item.finalUnitPrice, item.currency)} each</span>
-        <strong>{formatCurrency(item.lineTotal, item.currency)}</strong>
-      </div>
-    </RowTag>
-  );
-};
-
-const OrderSummaryCard: React.FC<{ details: AccountOrderDetails }> = ({ details }) => (
-  <aside className="order-summary-card">
-    <h4>Summary</h4>
-    <div className="order-summary-row">
-      <span>Subtotal</span>
-      <span>{formatCurrency(details.totals.subtotal, details.currency)}</span>
-    </div>
-    <div className="order-summary-row">
-      <span>Discount</span>
-      <span>-{formatCurrency(details.totals.discountTotal, details.currency)}</span>
-    </div>
-    <div className="order-summary-row">
-      <span>Tax</span>
-      <span>{formatCurrency(details.totals.taxTotal, details.currency)}</span>
-    </div>
-    <div className="order-summary-divider" />
-    <div className="order-summary-row order-summary-total">
-      <span>Total</span>
-      <span>{formatCurrency(details.totals.total, details.currency)}</span>
-    </div>
-  </aside>
-);
-
-const OrderDetails: React.FC<{ details: AccountOrderDetails }> = ({ details }) => (
-  <div className="order-details-layout">
-    <section className="order-line-items" aria-label="Order items">
-      {details.items.map((item) => (
-        <OrderItemRow key={item.itemId} item={item} />
-      ))}
-    </section>
-    <OrderSummaryCard details={details} />
-  </div>
-);
-
-const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [details, setDetails] = useState<AccountOrderDetails | null>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [detailsError, setDetailsError] = useState<string | null>(null);
-  const statusMeta = toStatusMeta(order.status);
-
-  const previewText = order.itemsCount <= 1
-    ? `${order.itemsCount || 0} item • ${order.preview.firstTitle || 'Game purchase'}`
-    : `${order.itemsCount} items • ${order.preview.firstTitle || 'Game purchase'} +${order.preview.extraCount}`;
-
-  const handleToggle = async () => {
-    const nextExpanded = !expanded;
-    setExpanded(nextExpanded);
-
-    if (!nextExpanded || details || loadingDetails) {
-      return;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
     }
+    return new Intl.DateTimeFormat('en-US', {month: 'long', day: 'numeric', year: 'numeric'}).format(date);
+};
 
-    setLoadingDetails(true);
-    setDetailsError(null);
-    try {
-      const response = await fetchAccountOrderDetails(order.internalId);
-      setDetails(response);
-    } catch (error) {
-      console.error('Failed to load order details:', error);
-      setDetailsError('Unable to load order details.');
-    } finally {
-      setLoadingDetails(false);
-    }
-  };
-
-  return (
-    <div className="card order-card">
-      <div className="order-card-header">
-        <span className="order-date">{formatDate(order.createdAt)}</span>
-        <span className="order-amount">{formatCurrency(order.totalAmount, order.currency)}</span>
-      </div>
-      <div className="order-card-body">
-        <div className="order-cover" aria-hidden="true">
-          {order.preview.firstCoverUrl ? <img src={order.preview.firstCoverUrl} alt="" /> : null}
-        </div>
-        <div className="order-details">
-          <strong>Order #{order.orderId}</strong>
-          <div className="order-items">
-            <span>{previewText}</span>
-          </div>
-        </div>
-        <div className="order-actions">
-          <span className={`badge order-status ${statusMeta.className}`}>{statusMeta.label}</span>
-          <button type="button" className="btn btn-outline order-action-btn" onClick={handleToggle}>
-            {expanded ? 'Hide details' : 'View details'}
-          </button>
-        </div>
-      </div>
-      {expanded && (
-        <div className="order-details-panel">
-          {loadingDetails && <div className="order-details-state">Loading order details...</div>}
-          {!loadingDetails && detailsError && <div className="order-details-state order-details-error">{detailsError}</div>}
-          {!loadingDetails && !detailsError && details?.legacyDetailsUnavailable && (
-            <div className="order-details-state">Legacy order (details unavailable).</div>
-          )}
-          {!loadingDetails && !detailsError && details && !details.legacyDetailsUnavailable && (
-            <OrderDetails details={details} />
-          )}
-        </div>
-      )}
-    </div>
-  );
+const getStatusMeta = (order: Order) => {
+    const isCompleted = order.status === 'Completed' || (order.isPaid && order.isFulfilled);
+    return {
+        label: order.status || (order.isPaid ? 'Completed' : 'Payment pending'),
+        className: isCompleted ? 'status-completed' : 'status-processing',
+        isCompleted
+    };
 };
 
 const AccountOrdersPage: React.FC = () => {
-  const [status, setStatus] = useState<StatusFilter>('all');
-  const [sort, setSort] = useState<SortOption>('newest');
-  const [searchInput, setSearchInput] = useState('');
-  const [page, setPage] = useState(1);
-  const debouncedSearch = useDebouncedValue(searchInput, 400);
+    const {
+        items: recommendations,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(6);
+    const {
+        items: orders,
+        totalCount,
+        isLoading: isOrdersLoading,
+        error: ordersError,
+        reload: reloadOrders
+    } = useOrders(null);
 
-  const {
-    items: recommendations,
-    isLoading: isRecommendationsLoading,
-    error: recommendationsError,
-    reload: reloadRecommendations,
-  } = useRecommendations(6);
-
-  const {
-    items: orders,
-    totalCount,
-    totalPages,
-    isLoading: isOrdersLoading,
-    error: ordersError,
-    reload: reloadOrders,
-  } = useOrders({
-    page,
-    pageSize: PAGE_SIZE,
-    status,
-    q: debouncedSearch,
-    sort,
-  });
-
-  const ordersTitle = isOrdersLoading ? 'Orders' : `Orders (${totalCount})`;
-  const from = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const to = totalCount === 0 ? 0 : Math.min(page * PAGE_SIZE, totalCount);
-  const ordersSubtitle = isOrdersLoading
-    ? 'Loading your orders...'
-    : ordersError
-      ? 'Unable to load orders right now.'
-      : totalCount === 0
-        ? 'No orders yet'
-        : `Showing ${from}-${to} of ${totalCount}`;
-
-  const pages = useMemo(() => buildPages(page, totalPages), [page, totalPages]);
-
-  const applyStatus = (nextStatus: StatusFilter) => {
-    setStatus(nextStatus);
-    setPage(1);
-  };
-
-  const applySort = (nextSort: SortOption) => {
-    setSort(nextSort);
-    setPage(1);
-  };
-
-  const onSearchChange = (value: string) => {
-    setSearchInput(value);
-    setPage(1);
-  };
-
-  return (
-    <AccountShell
-      title="My account"
-      sectionLabel="Orders"
-      subtitle={<h2 className="orders-title">{ordersTitle}</h2>}
-      actions={(
-        <>
-          <Link to="/account/settings" className="btn btn-outline account-action-btn">
-            Edit profile
-          </Link>
-          <Link to="/support" className="btn btn-primary account-action-btn">
-            Support
-          </Link>
-        </>
-      )}
-    >
-      <div className="card orders-toolbar">
-        <div className="orders-toolbar-top">
-          <div className="orders-search">
-            <FontAwesomeIcon icon={faMagnifyingGlass} className="orders-search-icon" />
-            <input
-              type="search"
-              placeholder="Search in orders..."
-              value={searchInput}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-          </div>
-        </div>
-        <div className="orders-toolbar-row">
-          <div className="orders-sort">
-            <span>Sort:</span>
-            <select className="orders-select" value={sort} onChange={(event) => applySort(event.target.value as SortOption)}>
-              <option value="newest">Newest</option>
-              <option value="oldest">Oldest</option>
-              <option value="total_desc">Highest price</option>
-              <option value="total_asc">Lowest price</option>
-            </select>
-          </div>
-          <div className="orders-status" role="tablist" aria-label="Order status filter">
-            {([
-              ['all', 'All'],
-              ['completed', 'Completed'],
-              ['refunded', 'Refunded'],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={status === value}
-                className={`btn btn-outline orders-status-btn ${status === value ? 'is-active' : ''}`}
-                onClick={() => applyStatus(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="orders-toolbar-footer">
-          <span>{ordersSubtitle}</span>
-        </div>
-      </div>
-
-      <div className="orders-list">
-        {isOrdersLoading && Array.from({ length: 3 }, (_, index) => (
-          <div key={`orders-skeleton-${index}`} className="card orders-state orders-state-skeleton">Loading order...</div>
-        ))}
-        {!isOrdersLoading && ordersError && (
-          <div className="card orders-state orders-state-error">
-            <span>{ordersError}</span>
-            <button type="button" className="btn btn-outline" onClick={reloadOrders}>
-              Try again
-            </button>
-          </div>
-        )}
-        {!isOrdersLoading && !ordersError && orders.length === 0 && (
-          <div className="card orders-state">No orders yet.</div>
-        )}
-        {!isOrdersLoading && !ordersError && orders.map((order) => <OrderCard key={order.internalId} order={order} />)}
-      </div>
-
-      <div className="orders-pagination">
-        <div className="orders-pagination-controls">
-          <button
-            type="button"
-            className="btn btn-outline orders-page-btn"
-            aria-label="Previous page"
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            disabled={isOrdersLoading || page <= 1}
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-          </button>
-          {pages.map((item, index) =>
-            item === 'ellipsis' ? (
-              <span key={`ellipsis-${index}`} className="orders-page-ellipsis">…</span>
-            ) : (
-              <button
-                key={item}
-                type="button"
-                className={`btn btn-outline orders-page-btn ${item === page ? 'is-active' : ''}`}
-                onClick={() => setPage(item)}
-                disabled={isOrdersLoading}
-              >
-                {item}
-              </button>
-            ))}
-          <button
-            type="button"
-            className="btn btn-outline orders-page-btn"
-            aria-label="Next page"
-            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-            disabled={isOrdersLoading || totalPages === 0 || page >= totalPages}
-          >
-            <FontAwesomeIcon icon={faChevronRight} />
-          </button>
-        </div>
-      </div>
-
-      <RecommendationsSection
-        title="Need more game keys?"
-        items={recommendations}
-        isLoading={isRecommendationsLoading}
-        error={recommendationsError}
-        onRetry={reloadRecommendations}
-        emptyText="Recommendations are currently unavailable."
-        variant="compact"
-        action={
-          <Link to="/catalog" className="btn btn-outline recommendations-action-btn">
-            Browse catalog
-          </Link>
+    const ordersTitle = useMemo(() => {
+        if (isOrdersLoading) {
+            return 'Orders';
         }
-      />
+        return `Orders (${totalCount})`;
+    }, [isOrdersLoading, totalCount]);
 
-      <div className="orders-navigation card">
-        <Link to="/account/overview" className="orders-nav-link">
-          <FontAwesomeIcon icon={faArrowLeft} />
-          Back to account overview
-        </Link>
-        <Link to="/wishlist" className="orders-nav-link">
-          Go to wishlist
-          <FontAwesomeIcon icon={faArrowRight} />
-        </Link>
-      </div>
-    </AccountShell>
-  );
+    const ordersSubtitle = useMemo(() => {
+        if (isOrdersLoading) {
+            return 'Loading your orders...';
+        }
+        if (ordersError) {
+            return 'Unable to load orders right now.';
+        }
+        if (totalCount === 0) {
+            return 'No orders yet';
+        }
+        return `Showing 1-${orders.length} of ${totalCount}`;
+    }, [isOrdersLoading, ordersError, orders.length, totalCount]);
+
+    return (
+        <AccountShell
+            title="My account"
+            sectionLabel="Orders"
+            subtitle={<h2 className="orders-title">{ordersTitle}</h2>}
+            actions={(
+                <>
+                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
+                        Edit profile
+                    </Link>
+                    <Link to="/support" className="btn btn-primary account-action-btn">
+                        Support
+                    </Link>
+                </>
+            )}
+        >
+            <div className="card orders-toolbar">
+                <div className="orders-toolbar-top">
+                    <div className="orders-search">
+                        <FontAwesomeIcon icon={faMagnifyingGlass} className="orders-search-icon" />
+                        <input type="text" placeholder="Search in orders..." />
+                    </div>
+                </div>
+                <div className="orders-toolbar-row">
+                    <div className="orders-sort">
+                        <span>Sort:</span>
+                        <select className="orders-select" defaultValue="Newest">
+                            <option>Newest</option>
+                            <option>Oldest</option>
+                            <option>Highest price</option>
+                        </select>
+                    </div>
+                    <div className="orders-status">
+                        <button type="button" className="btn btn-outline orders-status-btn">
+                            All
+                        </button>
+                        <button type="button" className="btn btn-outline orders-status-btn is-active">
+                            Completed
+                        </button>
+                        <button type="button" className="btn btn-outline orders-status-btn">
+                            Refunded
+                        </button>
+                    </div>
+                </div>
+                <div className="orders-toolbar-footer">
+                    <span>{ordersSubtitle}</span>
+                </div>
+            </div>
+
+            <div className="orders-list">
+                {isOrdersLoading && (
+                    <div className="card orders-state">Loading your orders…</div>
+                )}
+                {!isOrdersLoading && ordersError && (
+                    <div className="card orders-state orders-state-error">
+                        <span>{ordersError}</span>
+                        <button type="button" className="btn btn-outline" onClick={reloadOrders}>
+                            Try again
+                        </button>
+                    </div>
+                )}
+                {!isOrdersLoading && !ordersError && orders.length === 0 && (
+                    <div className="card orders-state">Your orders will appear here after checkout.</div>
+                )}
+                {!isOrdersLoading && !ordersError && orders.map((order) => {
+                    const statusMeta = getStatusMeta(order);
+                    const orderItems = [order.gameName ? `1 × ${order.gameName}` : '1 × Game'];
+                    const amount = formatCurrency(order.totalAmount ?? 0, order.currency ?? 'USD');
+                    const viewLabel = order.isPaid ? 'View keys' : 'Awaiting payment';
+
+                    return (
+                        <div key={order.id} className="card order-card">
+                            <div className="order-card-header">
+                                <span className="order-date">{formatDate(order.orderDate)}</span>
+                                <span className="order-amount">{amount}</span>
+                            </div>
+                            <div className="order-card-body">
+                                <div className="order-cover" aria-hidden="true" />
+                                <div className="order-details">
+                                    <strong>Order #{order.id}</strong>
+                                    <div className="order-items">
+                                        {orderItems.map((item) => (
+                                            <span key={item}>{item}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="order-actions">
+                                    <span className={`badge order-status ${statusMeta.className}`}>
+                                        {statusMeta.label}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary order-action-btn"
+                                        disabled={!order.isPaid}
+                                    >
+                                        {viewLabel}
+                                    </button>
+                                    <button type="button" className="btn btn-outline order-action-btn">
+                                        <FontAwesomeIcon icon={faFileInvoice} />
+                                        Invoice
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="orders-pagination">
+                <div className="orders-pagination-controls">
+                    <button type="button" className="btn btn-outline orders-page-btn" aria-label="Previous page">
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                    </button>
+                    <button type="button" className="btn btn-outline orders-page-btn is-active">
+                        1
+                    </button>
+                    <button type="button" className="btn btn-outline orders-page-btn">
+                        2
+                    </button>
+                    <button type="button" className="btn btn-outline orders-page-btn">
+                        3
+                    </button>
+                    <span className="orders-page-ellipsis">…</span>
+                    <button type="button" className="btn btn-outline orders-page-btn">
+                        6
+                    </button>
+                    <button type="button" className="btn btn-outline orders-page-btn" aria-label="Next page">
+                        <FontAwesomeIcon icon={faChevronRight} />
+                    </button>
+                </div>
+                <span className="orders-pagination-note">{ordersSubtitle}</span>
+            </div>
+
+            <section className="orders-recommendations">
+                <div className="orders-recommendations-header">
+                    <h3>Recommendations based on your wishlist</h3>
+                    <div className="orders-recommendations-arrows">
+                        <button type="button" className="btn btn-outline orders-arrow-btn" aria-label="Scroll left">
+                            <FontAwesomeIcon icon={faArrowLeft} />
+                        </button>
+                        <button type="button" className="btn btn-outline orders-arrow-btn" aria-label="Scroll right">
+                            <FontAwesomeIcon icon={faArrowRight} />
+                        </button>
+                    </div>
+                </div>
+                <RecommendationsSection
+                    items={recommendations}
+                    isLoading={isRecommendationsLoading}
+                    error={recommendationsError}
+                    onRetry={reloadRecommendations}
+                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    listClassName="orders-recommendations-list"
+                    stateClassName="orders-recommendations-state"
+                    renderSkeleton={(index) => (
+                        <div key={`rec-skeleton-${index}`} className="card orders-recommendation-card is-skeleton" />
+                    )}
+                    renderItem={(item) => (
+                        <div key={item.game.id ?? item.game.title} className="card orders-recommendation-card">
+                            <div className="orders-recommendation-media">
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
+                            </div>
+                            <div className="orders-recommendation-body">
+                                <strong>{item.game.title}</strong>
+                                <span className="orders-recommendation-price">
+                                    ${Number(item.game.price).toFixed(2)}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-primary orders-recommendation-btn"
+                                disabled={!item.game.id}
+                            >
+                                Add to cart
+                            </button>
+                        </div>
+                    )}
+                />
+            </section>
+        </AccountShell>
+    );
 };
 
 export default AccountOrdersPage;
