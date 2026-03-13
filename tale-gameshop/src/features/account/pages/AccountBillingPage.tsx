@@ -11,6 +11,7 @@ import {
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-billing-page.css';
 import AddCardModal from '../../../components/billing/AddCardModal';
 import container from '../../../inversify.config';
@@ -592,19 +593,12 @@ const AccountBillingPage: React.FC = () => {
                     )}
                     renderItem={(item) => {
                         const safeTitle = item.game?.title ?? 'Untitled game';
-                        const imagePath = item.game?.imagePath
-                            ? `${urlService.apiBaseUrl}/${item.game.imagePath}`
-                            : '';
                         const priceValue = Number(item.game?.price);
                         const priceLabel = Number.isFinite(priceValue) ? `$${priceValue.toFixed(2)}` : '—';
                         return (
                         <div key={item.game?.id ?? item.game?.title ?? safeTitle} className="card billing-recommendation-card">
                             <div className="billing-recommendation-media">
-                                {imagePath ? (
-                                    <img src={imagePath} alt={safeTitle} />
-                                ) : (
-                                    <div className="billing-recommendation-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game?.imagePath} gameTitle={safeTitle} baseUrl={urlService.apiBaseUrl} />
                             </div>
                             <div className="billing-recommendation-body">
                                 <strong>{safeTitle}</strong>

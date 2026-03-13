@@ -17,6 +17,7 @@ import { useOrders } from '../../../hooks/use-orders';
 import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
 import { usePaymentMethodsSummary } from '../../../hooks/use-payment-methods-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-overview-page.css';
 
 const AccountOverviewPage: React.FC = () => {
@@ -356,11 +357,7 @@ const AccountOverviewPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="account-recommendation-card">
                             <div className="account-recommendation-media">
-                                {item.game.imagePath ? (
-                                    <img src={item.game.imagePath} alt={item.game.title} />
-                                ) : (
-                                    <div className="account-recommendation-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="account-recommendation-body">
                                 <strong>{item.game.title}</strong>

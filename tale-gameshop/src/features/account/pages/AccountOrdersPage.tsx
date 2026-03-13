@@ -13,6 +13,7 @@ import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useOrders } from '../../../hooks/use-orders';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-orders-page.css';
 import type { Order } from '../../../models/order';
 
@@ -234,11 +235,7 @@ const AccountOrdersPage: React.FC = () => {
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="card orders-recommendation-card">
                             <div className="orders-recommendation-media">
-                                {item.game.imagePath ? (
-                                    <img src={item.game.imagePath} alt={item.game.title} />
-                                ) : (
-                                    <div className="orders-recommendation-fallback" aria-hidden="true" />
-                                )}
+                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
                             </div>
                             <div className="orders-recommendation-body">
                                 <strong>{item.game.title}</strong>
