@@ -84,36 +84,22 @@ export default function TaleGameshopMainPage() {
     };
 
     const featuredGames = useMemo(() => games.slice(0, 10), [games]);
-    const [selectedFeaturedId, setSelectedFeaturedId] = useState<string | null>(null);
-    const hoverSelectTimeoutRef = useRef<number | null>(null);
-    const filmstripGames = useMemo(() => featuredGames.slice(0, 6), [featuredGames]);
-    const selectedGame = useMemo(() => {
-        if (!filmstripGames.length) {
-            return null;
-        }
-
-        return filmstripGames.find((game) => (game.id || game.title) === selectedFeaturedId) ?? filmstripGames[0];
-    }, [filmstripGames, selectedFeaturedId]);
+    const featuredRailGames = useMemo(() => featuredGames.slice(0, 6), [featuredGames]);
+    const [selectedFeaturedIndex, setSelectedFeaturedIndex] = useState(0);
+    const billboardSurfaceRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        if (!filmstripGames.length) {
-            setSelectedFeaturedId(null);
+        if (!featuredRailGames.length) {
+            setSelectedFeaturedIndex(0);
             return;
         }
 
-        const hasSelected = filmstripGames.some((game) => (game.id || game.title) === selectedFeaturedId);
-        if (!hasSelected) {
-            setSelectedFeaturedId(filmstripGames[0].id || filmstripGames[0].title);
+        if (selectedFeaturedIndex > featuredRailGames.length - 1) {
+            setSelectedFeaturedIndex(0);
         }
-    }, [filmstripGames, selectedFeaturedId]);
+    }, [featuredRailGames, selectedFeaturedIndex]);
 
-    useEffect(() => {
-        return () => {
-            if (hoverSelectTimeoutRef.current) {
-                window.clearTimeout(hoverSelectTimeoutRef.current);
-            }
-        };
-    }, []);
+    const selectedGame = featuredRailGames[selectedFeaturedIndex] ?? null;
     const heroPrimary = latestGame ?? games[0] ?? null;
     const heroSecondary = randomGame ?? games[1] ?? null;
     const isLoading = games.length === 0;
@@ -257,18 +243,45 @@ export default function TaleGameshopMainPage() {
     );
 
 
-    const selectFeaturedGame = (identifier: string) => {
-        setSelectedFeaturedId(identifier);
-    };
-
-    const handleFeaturedHover = (identifier: string) => {
-        if (hoverSelectTimeoutRef.current) {
-            window.clearTimeout(hoverSelectTimeoutRef.current);
+    const handleNextFeatured = () => {
+        if (featuredRailGames.length <= 1) {
+            return;
         }
 
-        hoverSelectTimeoutRef.current = window.setTimeout(() => {
-            setSelectedFeaturedId(identifier);
-        }, 90);
+        setSelectedFeaturedIndex((prev) => (prev + 1) % featuredRailGames.length);
+    };
+
+    const handleBillboardMouseMove: React.MouseEventHandler<HTMLDivElement> = (event) => {
+        const surface = billboardSurfaceRef.current;
+        if (!surface) {
+            return;
+        }
+
+        const rect = surface.getBoundingClientRect();
+        if (!rect.width || !rect.height) {
+            return;
+        }
+
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+        const mx = Math.max(0, Math.min(1, x));
+        const my = Math.max(0, Math.min(1, y));
+
+        surface.style.setProperty('--mx', String(mx));
+        surface.style.setProperty('--my', String(my));
+    };
+
+    const getBillboardDescription = (game: Game | null) => {
+        if (!game) {
+            return '';
+        }
+
+        const cleanDescription = game.description?.trim();
+        if (cleanDescription) {
+            return cleanDescription.length > 132 ? `${cleanDescription.slice(0, 129)}...` : cleanDescription;
+        }
+
+        return 'Instant key delivery with secure checkout and curated picks for your next session.';
     };
 
     return (
@@ -315,109 +328,109 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className="featured-section">
+            <section className="featured-billboard">
                 <div className="container">
-                    <div className="section-header">
+                    <div className="billboard-header">
                         <div>
-                            <div className="eyebrow">Featured / Popular</div>
+                            <div className="eyebrow">FEATURED / POPULAR</div>
                             <h2>Featured / Popular games</h2>
-                            <p className="featured-subtitle muted">10 picks • Updated weekly</p>
+                            <div className="billboard-sub">{featuredGames.length} picks • Updated weekly</div>
                         </div>
-                        <div className="carousel-actions">
-                            <Link to={`/games`} className="icon-button" aria-label="Browse more games">
+                        <div className="billboard-actions">
+                            <Link className="billboard-link" to="/games">Browse all</Link>
+                            <button
+                                type="button"
+                                className="billboard-next"
+                                aria-label="Next pick"
+                                onClick={handleNextFeatured}
+                                disabled={featuredRailGames.length <= 1}
+                            >
                                 <FontAwesomeIcon icon={faArrowRight} />
-                            </Link>
+                            </button>
                         </div>
                     </div>
 
-                    <div className="featured-showcase">
+                    <div
+                        className="billboard-surface"
+                        ref={billboardSurfaceRef}
+                        onMouseMove={handleBillboardMouseMove}
+                    >
                         {isLoading ? (
                             <>
-                                <article className="featured-hero-card skeleton-card" aria-hidden="true">
-                                    <div className="featured-hero-media">
+                                <div className="billboard-left">
+                                    <div className="billboard-frame skeleton-card" aria-hidden="true">
                                         <div className="media-placeholder skeleton" />
                                     </div>
-                                    <div className="featured-hero-overlay">
+                                    <div className="billboard-copy">
+                                        <span className="skeleton-line skeleton" />
                                         <span className="skeleton-line skeleton" />
                                         <span className="skeleton-line skeleton-line-short skeleton" />
                                     </div>
-                                </article>
-                                <aside className="featured-filmstrip-panel">
+                                </div>
+                                <aside className="billboard-rail" aria-hidden="true">
                                     {Array.from({length: 5}).map((_, index) => (
-                                        <div className="featured-strip-item skeleton-card" key={`featured-skeleton-${index}`} aria-hidden="true">
-                                            <div className="featured-strip-media">
-                                                <div className="media-placeholder skeleton" />
-                                            </div>
-                                            <div className="featured-strip-meta">
-                                                <span className="skeleton-line skeleton" />
-                                            </div>
+                                        <div className="rail-item skeleton-card" key={`featured-skeleton-${index}`}>
+                                            <span className="skeleton-line skeleton" />
                                         </div>
                                     ))}
                                 </aside>
                             </>
                         ) : selectedGame ? (
                             <>
-                                <article className="featured-hero-card" key={selectedGame.id || selectedGame.title}>
-                                    <div className="featured-hero-media">
-                                        <SafeGameImage gameTitle={selectedGame.title} src={selectedGame.imagePath} baseUrl={urlService.apiBaseUrl} />
-                                    </div>
-                                    <div className="featured-hero-overlay">
-                                        <span className="featured-badge">Featured • Popular this week</span>
-                                        <h3 className="featured-hero-title">{selectedGame.title}</h3>
-                                        <div className="featured-hero-row">
-                                            {selectedGame.price !== undefined && (
-                                                <span className="featured-hero-price">${selectedGame.price.toFixed(2)}</span>
-                                            )}
-                                            <span className="featured-tagline">Instant key delivery • Verified payments</span>
+                                <div className="billboard-left">
+                                    <div className="billboard-frame" key={selectedGame.id || selectedGame.title}>
+                                        <SafeGameImage
+                                            className="billboard-cover"
+                                            gameTitle={selectedGame.title}
+                                            src={selectedGame.imagePath}
+                                            baseUrl={urlService.apiBaseUrl}
+                                        />
+                                        <div className="billboard-sticker">
+                                            <div className="sticker-label">This week</div>
+                                            <div className="sticker-price">${selectedGame.price?.toFixed(2) ?? '--'}</div>
                                         </div>
-                                        <Link className="btn btn-primary featured-hero-cta" to={`/games?filterCategory=${encodeURIComponent(selectedGame.title)}`}>
-                                            View game
-                                        </Link>
                                     </div>
-                                </article>
 
-                                <aside className="featured-filmstrip-panel" aria-label="Featured game picks">
-                                    <div className="featured-strip-list" role="listbox" aria-label="Select featured game">
-                                        {filmstripGames.map((game) => {
-                                            const itemId = game.id || game.title;
-                                            const isActive = selectedFeaturedId === itemId;
+                                    <div className="billboard-copy">
+                                        <div className="billboard-badge">Featured pick</div>
+                                        <h3 className="billboard-title">{selectedGame.title}</h3>
+                                        <p className="billboard-desc muted">{getBillboardDescription(selectedGame)}</p>
 
-                                            return (
-                                                <button
-                                                    type="button"
-                                                    key={itemId}
-                                                    className={`featured-strip-item ${isActive ? 'is-active' : ''}`}
-                                                    onClick={() => selectFeaturedGame(itemId)}
-                                                    onFocus={() => selectFeaturedGame(itemId)}
-                                                    onMouseEnter={() => handleFeaturedHover(itemId)}
-                                                    aria-selected={isActive}
-                                                    role="option"
-                                                >
-                                                    <div className="featured-strip-media">
-                                                        <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
-                                                    </div>
-                                                    <div className="featured-strip-meta">
-                                                        <span className="featured-strip-title">{game.title}</span>
-                                                        {game.price !== undefined && (
-                                                            <span className="featured-strip-price">${game.price.toFixed(2)}</span>
-                                                        )}
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
+                                        <div className="billboard-cta">
+                                            <Link className="btn btn-primary" to={`/games?filterCategory=${encodeURIComponent(selectedGame.title)}`}>
+                                                View game
+                                            </Link>
+                                            <Link className="btn btn-outline" to="/games">
+                                                Explore store
+                                            </Link>
+                                        </div>
+
+                                        <div className="billboard-trust" aria-label="Store trust points">
+                                            <span>Instant delivery</span>
+                                            <span>Verified payments</span>
+                                            <span>Refund policy</span>
+                                        </div>
                                     </div>
-                                    <Link className="featured-view-all" to="/games">
-                                        View all picks <FontAwesomeIcon icon={faArrowRight} />
-                                    </Link>
+                                </div>
+
+                                <aside className="billboard-rail" aria-label="Featured picks list">
+                                    {featuredRailGames.map((game, idx) => (
+                                        <button
+                                            type="button"
+                                            key={game.id || game.title}
+                                            className={`rail-item ${idx === selectedFeaturedIndex ? 'active' : ''}`}
+                                            onClick={() => setSelectedFeaturedIndex(idx)}
+                                            aria-pressed={idx === selectedFeaturedIndex}
+                                        >
+                                            <span className="rail-index">{String(idx + 1).padStart(2, '0')}</span>
+                                            <span className="rail-name">{game.title}</span>
+                                            <span className="rail-price">${game.price.toFixed(2)}</span>
+                                        </button>
+                                    ))}
+                                    <Link className="rail-all" to="/games">View all picks <FontAwesomeIcon icon={faArrowRight} /></Link>
                                 </aside>
                             </>
                         ) : null}
-                    </div>
-
-                    <div className="featured-chips" aria-label="Storefront benefits">
-                        <span className="featured-chip">Instant delivery</span>
-                        <span className="featured-chip">Refund policy</span>
-                        <span className="featured-chip">Curated picks</span>
                     </div>
                 </div>
             </section>
