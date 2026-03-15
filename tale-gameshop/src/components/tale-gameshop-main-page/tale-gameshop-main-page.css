@@ -207,9 +207,9 @@
 .main-page .featured-billboard {
   padding: 72px 0 88px;
   background:
-    radial-gradient(circle at 8% 12%, rgba(124, 58, 237, 0.08), transparent 42%),
-    radial-gradient(circle at 80% 2%, rgba(56, 189, 248, 0.08), transparent 38%),
-    #f3f4fb;
+    radial-gradient(circle at 8% 12%, rgba(124, 58, 237, 0.06), transparent 42%),
+    radial-gradient(circle at 80% 2%, rgba(56, 189, 248, 0.05), transparent 38%),
+    #f4f5fa;
 }
 
 .main-page .billboard-header {
@@ -217,7 +217,7 @@
   justify-content: space-between;
   align-items: flex-end;
   gap: var(--space-20);
-  margin-bottom: var(--space-20);
+  margin-bottom: var(--space-24);
 }
 
 .main-page .billboard-header h2 {
@@ -249,19 +249,18 @@
   display: inline-flex;
   align-items: center;
   height: 38px;
-  padding: 0 14px;
+  padding: 0 8px;
   font-weight: 600;
   color: var(--color-text);
   text-decoration: none;
-  border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.72);
+  background: transparent;
 }
 
 .main-page .billboard-next {
   height: 38px;
   width: 38px;
-  border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.9);
+  border: 0;
+  background: rgba(255, 255, 255, 0.62);
   color: var(--color-text);
   display: inline-flex;
   align-items: center;
@@ -279,16 +278,17 @@
   --my: 0.4;
   position: relative;
   padding: 28px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--color-border));
-  clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+  border: 1px solid rgba(139, 146, 185, 0.2);
+  border-radius: 20px;
   display: grid;
   grid-template-columns: 1fr 360px;
   gap: 24px;
+  align-items: start;
   background:
-    radial-gradient(620px circle at calc(var(--mx) * 100%) calc(var(--my) * 100%), rgba(124, 58, 237, 0.2), transparent 62%),
-    linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(255, 255, 255, 0.02) 42%),
-    rgba(248, 250, 255, 0.95);
-  box-shadow: 0 18px 40px rgba(31, 37, 69, 0.12);
+    radial-gradient(620px circle at calc(var(--mx) * 100%) calc(var(--my) * 100%), rgba(124, 58, 237, 0.12), transparent 62%),
+    linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(255, 255, 255, 0.05) 42%),
+    rgba(249, 250, 255, 0.94);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
@@ -299,7 +299,7 @@
   pointer-events: none;
   background-image: radial-gradient(rgba(34, 34, 46, 0.05) 0.65px, transparent 0.65px);
   background-size: 3px 3px;
-  opacity: 0.14;
+  opacity: 0.06;
 }
 
 .main-page .billboard-left {
@@ -312,15 +312,15 @@
   aspect-ratio: 16 / 9;
   max-height: 380px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+  border-radius: 16px;
   background: #dfe3ee;
   transform-style: preserve-3d;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
-  box-shadow: 0 12px 26px rgba(18, 20, 42, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .main-page .billboard-surface:hover .billboard-frame {
-  transform: perspective(1200px) rotateX(2deg) rotateY(-2.6deg) translateY(-2px);
+  transform: perspective(1200px) rotateX(1.4deg) rotateY(-1.8deg) translateY(-1px);
 }
 
 .main-page .billboard-cover {
@@ -332,26 +332,30 @@
 
 .main-page .billboard-sticker {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  min-width: 122px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
-  clip-path: polygon(0 0, 87% 0, 100% 25%, 100% 100%, 0 100%);
+  top: 14px;
+  right: 14px;
+  min-width: 102px;
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(133, 107, 232, 0.24);
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(43, 36, 78, 0.12);
+  backdrop-filter: blur(3px);
 }
 
 .main-page .sticker-label {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   color: var(--color-muted);
   font-weight: 700;
 }
 
 .main-page .sticker-price {
-  margin-top: 2px;
-  font-size: 24px;
+  font-size: 16px;
   line-height: 1;
   font-weight: 800;
   color: #26164f;
@@ -366,40 +370,42 @@
 .main-page .billboard-badge {
   display: inline-flex;
   align-items: center;
-  height: 26px;
+  height: 28px;
   padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
+  border: 0;
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
   color: color-mix(in srgb, var(--color-primary) 74%, #1f1d37);
-  background: rgba(255, 255, 255, 0.64);
+  background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
 }
 
 .main-page .billboard-title {
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   font-size: clamp(30px, 4vw, 48px);
-  line-height: 0.98;
+  line-height: 1.02;
 }
 
 .main-page .billboard-desc {
-  margin: 14px 0 0;
+  margin: 8px 0 0;
   max-width: 76ch;
 }
 
 .main-page .billboard-cta {
-  margin-top: 18px;
+  margin-top: 12px;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .main-page .billboard-trust {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 16px;
+  overflow-x: auto;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 600;
   color: #31265a;
@@ -424,18 +430,34 @@
 .main-page .billboard-rail {
   position: relative;
   z-index: 1;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--color-border));
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.46);
+  border-radius: 16px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
+  align-self: start;
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+
+.main-page .rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 0 8px;
 }
 
 .main-page .rail-item {
   border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, #ffffff);
+  border-bottom: 1px solid rgba(123, 132, 172, 0.2);
   background: transparent;
-  padding: 11px 4px 11px 0;
+  padding: 11px 6px 11px 2px;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
@@ -448,11 +470,11 @@
 }
 
 .main-page .rail-item:last-of-type {
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, #ffffff);
+  border-bottom: 0;
 }
 
 .main-page .rail-item:hover {
-  background: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.64);
 }
 
 .main-page .rail-item:focus-visible {
@@ -461,16 +483,16 @@
 }
 
 .main-page .rail-item.active {
-  background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+  background: color-mix(in srgb, var(--color-primary) 7%, #ffffff);
 }
 
 .main-page .rail-item.active::before {
   content: '';
   position: absolute;
-  left: -12px;
+  left: -8px;
   top: 10px;
   bottom: 10px;
-  width: 3px;
+  width: 2px;
   background: color-mix(in srgb, var(--color-primary) 76%, #ffffff);
 }
 
@@ -497,8 +519,8 @@
 }
 
 .main-page .rail-all {
-  margin-top: 10px;
-  padding-top: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -688,7 +710,7 @@
   font-weight: 600;
   font-size: 12px;
   border: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+  background: color-mix(in srgb, var(--color-primary) 7%, #ffffff);
   color: var(--color-primary);
 }
 
@@ -1154,8 +1176,10 @@
     grid-auto-flow: column;
     grid-auto-columns: minmax(220px, 1fr);
     overflow-x: auto;
+    overflow-y: hidden;
     gap: 0;
     padding: 8px;
+    max-height: none;
   }
 
   .main-page .rail-item {
@@ -1174,9 +1198,15 @@
     right: 0;
   }
 
+  .main-page .rail-head {
+    min-width: 160px;
+    border-right: 1px solid rgba(123, 132, 172, 0.2);
+    padding: 10px 12px;
+  }
+
   .main-page .rail-all {
     min-width: 180px;
-    border-left: 1px solid color-mix(in srgb, var(--color-border) 82%, #ffffff);
+    border-left: 1px solid rgba(123, 132, 172, 0.2);
     margin: 0;
     padding: 10px 12px;
   }
@@ -1285,7 +1315,7 @@
   }
 
   .main-page .sticker-price {
-    font-size: 20px;
+    font-size: 15px;
   }
 
   .main-page .billboard-title {
@@ -1294,6 +1324,13 @@
 
   .main-page .billboard-rail {
     grid-auto-columns: minmax(198px, 1fr);
+  }
+
+  .main-page .billboard-trust {
+    flex-wrap: wrap;
+    white-space: normal;
+    overflow: visible;
+    gap: 10px;
   }
 
   .main-page .rail-item {

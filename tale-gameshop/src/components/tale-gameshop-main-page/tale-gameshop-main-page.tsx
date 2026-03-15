@@ -100,6 +100,7 @@ export default function TaleGameshopMainPage() {
     }, [featuredRailGames, selectedFeaturedIndex]);
 
     const selectedGame = featuredRailGames[selectedFeaturedIndex] ?? null;
+    const selectedPickCounter = selectedGame ? `${selectedFeaturedIndex + 1}/${featuredGames.length || 1}` : null;
     const heroPrimary = latestGame ?? games[0] ?? null;
     const heroSecondary = randomGame ?? games[1] ?? null;
     const isLoading = games.length === 0;
@@ -277,11 +278,11 @@ export default function TaleGameshopMainPage() {
         }
 
         const cleanDescription = game.description?.trim();
-        if (cleanDescription) {
-            return cleanDescription.length > 132 ? `${cleanDescription.slice(0, 129)}...` : cleanDescription;
+        if (!cleanDescription) {
+            return null;
         }
 
-        return 'Instant key delivery with secure checkout and curated picks for your next session.';
+        return cleanDescription.length > 132 ? `${cleanDescription.slice(0, 129)}...` : cleanDescription;
     };
 
     return (
@@ -338,15 +339,16 @@ export default function TaleGameshopMainPage() {
                         </div>
                         <div className="billboard-actions">
                             <Link className="billboard-link" to="/games">Browse all</Link>
-                            <button
-                                type="button"
-                                className="billboard-next"
-                                aria-label="Next pick"
-                                onClick={handleNextFeatured}
-                                disabled={featuredRailGames.length <= 1}
-                            >
-                                <FontAwesomeIcon icon={faArrowRight} />
-                            </button>
+                            {featuredRailGames.length > 1 && (
+                                <button
+                                    type="button"
+                                    className="billboard-next"
+                                    aria-label="Next pick"
+                                    onClick={handleNextFeatured}
+                                >
+                                    <FontAwesomeIcon icon={faArrowRight} />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -386,15 +388,17 @@ export default function TaleGameshopMainPage() {
                                             baseUrl={urlService.apiBaseUrl}
                                         />
                                         <div className="billboard-sticker">
-                                            <div className="sticker-label">This week</div>
-                                            <div className="sticker-price">${selectedGame.price?.toFixed(2) ?? '--'}</div>
+                                            <span className="sticker-label">This week</span>
+                                            <span className="sticker-price">${selectedGame.price?.toFixed(2) ?? '--'}</span>
                                         </div>
                                     </div>
 
                                     <div className="billboard-copy">
                                         <div className="billboard-badge">Featured pick</div>
                                         <h3 className="billboard-title">{selectedGame.title}</h3>
-                                        <p className="billboard-desc muted">{getBillboardDescription(selectedGame)}</p>
+                                        {getBillboardDescription(selectedGame) && (
+                                            <p className="billboard-desc muted">{getBillboardDescription(selectedGame)}</p>
+                                        )}
 
                                         <div className="billboard-cta">
                                             <Link className="btn btn-primary" to={`/games?filterCategory=${encodeURIComponent(selectedGame.title)}`}>
@@ -414,6 +418,10 @@ export default function TaleGameshopMainPage() {
                                 </div>
 
                                 <aside className="billboard-rail" aria-label="Featured picks list">
+                                    <div className="rail-head">
+                                        <span>Picks</span>
+                                        <span>{selectedPickCounter ?? `${featuredGames.length} picks`}</span>
+                                    </div>
                                     {featuredRailGames.map((game, idx) => (
                                         <button
                                             type="button"
