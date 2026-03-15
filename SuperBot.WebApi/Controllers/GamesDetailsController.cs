@@ -47,17 +47,11 @@ public class GamesDetailsController : ControllerBase
         if (details == null)
         {
             var game = await _gameRepository.GetBySlugAsync(normalizedSlug)
-                ?? (normalizedSlug != slug ? await _gameRepository.GetBySlugAsync(slug) : null);
+                ?? (normalizedSlug != slug ? await _gameRepository.GetBySlugAsync(slug) : null)
+                ?? await FindGameByIdentifierAsync(slug, normalizedSlug);
             if (game == null)
             {
-                var games = await _gameRepository.GetAllAsync();
-                game = games.FirstOrDefault(candidate =>
-                    NormalizeSlug(candidate?.Slug) == normalizedSlug
-                    || NormalizeSlug(candidate?.Title ?? candidate?.Name) == normalizedSlug);
-                if (game == null)
-                {
-                    return NotFound();
-                }
+                return NotFound();
             }
 
             details = BuildDefaultDetails(game);
@@ -91,6 +85,18 @@ public class GamesDetailsController : ControllerBase
             recommendations,
             userContext
         });
+    }
+
+    private async Task<Game?> FindGameByIdentifierAsync(string slug, string normalizedSlug)
+    {
+        var games = await _gameRepository.GetAllAsync();
+        return games.FirstOrDefault(candidate =>
+            candidate != null &&
+            (
+                string.Equals(candidate.Id, slug, StringComparison.OrdinalIgnoreCase)
+                || NormalizeSlug(candidate.Slug) == normalizedSlug
+                || NormalizeSlug(candidate.Title ?? candidate.Name) == normalizedSlug
+            ));
     }
 
     [HttpGet("{slug}/recommendations")]
