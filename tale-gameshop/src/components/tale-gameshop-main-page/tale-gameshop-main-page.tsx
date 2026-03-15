@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import './tale-gameshop-main-page.css';
 import '../../font-awesome.ts';
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
@@ -84,6 +84,36 @@ export default function TaleGameshopMainPage() {
     };
 
     const featuredGames = useMemo(() => games.slice(0, 10), [games]);
+    const [selectedFeaturedId, setSelectedFeaturedId] = useState<string | null>(null);
+    const hoverSelectTimeoutRef = useRef<number | null>(null);
+    const filmstripGames = useMemo(() => featuredGames.slice(0, 6), [featuredGames]);
+    const selectedGame = useMemo(() => {
+        if (!filmstripGames.length) {
+            return null;
+        }
+
+        return filmstripGames.find((game) => (game.id || game.title) === selectedFeaturedId) ?? filmstripGames[0];
+    }, [filmstripGames, selectedFeaturedId]);
+
+    useEffect(() => {
+        if (!filmstripGames.length) {
+            setSelectedFeaturedId(null);
+            return;
+        }
+
+        const hasSelected = filmstripGames.some((game) => (game.id || game.title) === selectedFeaturedId);
+        if (!hasSelected) {
+            setSelectedFeaturedId(filmstripGames[0].id || filmstripGames[0].title);
+        }
+    }, [filmstripGames, selectedFeaturedId]);
+
+    useEffect(() => {
+        return () => {
+            if (hoverSelectTimeoutRef.current) {
+                window.clearTimeout(hoverSelectTimeoutRef.current);
+            }
+        };
+    }, []);
     const heroPrimary = latestGame ?? games[0] ?? null;
     const heroSecondary = randomGame ?? games[1] ?? null;
     const isLoading = games.length === 0;
@@ -226,6 +256,21 @@ export default function TaleGameshopMainPage() {
         </div>
     );
 
+
+    const selectFeaturedGame = (identifier: string) => {
+        setSelectedFeaturedId(identifier);
+    };
+
+    const handleFeaturedHover = (identifier: string) => {
+        if (hoverSelectTimeoutRef.current) {
+            window.clearTimeout(hoverSelectTimeoutRef.current);
+        }
+
+        hoverSelectTimeoutRef.current = window.setTimeout(() => {
+            setSelectedFeaturedId(identifier);
+        }, 90);
+    };
+
     return (
         <div className="main-page">
             <section className="hero">
@@ -276,6 +321,7 @@ export default function TaleGameshopMainPage() {
                         <div>
                             <div className="eyebrow">Featured / Popular</div>
                             <h2>Featured / Popular games</h2>
+                            <p className="featured-subtitle muted">10 picks • Updated weekly</p>
                         </div>
                         <div className="carousel-actions">
                             <Link to={`/games`} className="icon-button" aria-label="Browse more games">
@@ -284,42 +330,94 @@ export default function TaleGameshopMainPage() {
                         </div>
                     </div>
 
-                    <div className="featured-scroller">
+                    <div className="featured-showcase">
                         {isLoading ? (
-                            Array.from({length: 6}).map((_, index) => (
-                                <div
-                                    className="featured-card skeleton-card"
-                                    key={`featured-skeleton-${index}`}
-                                    aria-hidden="true"
-                                >
-                                    <div className="featured-media">
+                            <>
+                                <article className="featured-hero-card skeleton-card" aria-hidden="true">
+                                    <div className="featured-hero-media">
                                         <div className="media-placeholder skeleton" />
                                     </div>
-                                    <div className="featured-meta">
+                                    <div className="featured-hero-overlay">
                                         <span className="skeleton-line skeleton" />
                                         <span className="skeleton-line skeleton-line-short skeleton" />
                                     </div>
-                                </div>
-                            ))
-                        ) : (
-                            featuredGames.map((game) => (
-                                <Link
-                                    to={`/games?filterCategory=${game.title}`}
-                                    className="featured-card"
-                                    key={game.id || game.title}
-                                >
-                                    <div className="featured-media">
-                                        <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
+                                </article>
+                                <aside className="featured-filmstrip-panel">
+                                    {Array.from({length: 5}).map((_, index) => (
+                                        <div className="featured-strip-item skeleton-card" key={`featured-skeleton-${index}`} aria-hidden="true">
+                                            <div className="featured-strip-media">
+                                                <div className="media-placeholder skeleton" />
+                                            </div>
+                                            <div className="featured-strip-meta">
+                                                <span className="skeleton-line skeleton" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </aside>
+                            </>
+                        ) : selectedGame ? (
+                            <>
+                                <article className="featured-hero-card" key={selectedGame.id || selectedGame.title}>
+                                    <div className="featured-hero-media">
+                                        <SafeGameImage gameTitle={selectedGame.title} src={selectedGame.imagePath} baseUrl={urlService.apiBaseUrl} />
                                     </div>
-                                    <div className="featured-meta">
-                                        <span className="featured-title">{game.title}</span>
-                                        {game.price !== undefined && (
-                                            <span className="featured-price">${game.price.toFixed(2)}</span>
-                                        )}
+                                    <div className="featured-hero-overlay">
+                                        <span className="featured-badge">Featured • Popular this week</span>
+                                        <h3 className="featured-hero-title">{selectedGame.title}</h3>
+                                        <div className="featured-hero-row">
+                                            {selectedGame.price !== undefined && (
+                                                <span className="featured-hero-price">${selectedGame.price.toFixed(2)}</span>
+                                            )}
+                                            <span className="featured-tagline">Instant key delivery • Verified payments</span>
+                                        </div>
+                                        <Link className="btn btn-primary featured-hero-cta" to={`/games?filterCategory=${encodeURIComponent(selectedGame.title)}`}>
+                                            View game
+                                        </Link>
                                     </div>
-                                </Link>
-                            ))
-                        )}
+                                </article>
+
+                                <aside className="featured-filmstrip-panel" aria-label="Featured game picks">
+                                    <div className="featured-strip-list" role="listbox" aria-label="Select featured game">
+                                        {filmstripGames.map((game) => {
+                                            const itemId = game.id || game.title;
+                                            const isActive = selectedFeaturedId === itemId;
+
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={itemId}
+                                                    className={`featured-strip-item ${isActive ? 'is-active' : ''}`}
+                                                    onClick={() => selectFeaturedGame(itemId)}
+                                                    onFocus={() => selectFeaturedGame(itemId)}
+                                                    onMouseEnter={() => handleFeaturedHover(itemId)}
+                                                    aria-selected={isActive}
+                                                    role="option"
+                                                >
+                                                    <div className="featured-strip-media">
+                                                        <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
+                                                    </div>
+                                                    <div className="featured-strip-meta">
+                                                        <span className="featured-strip-title">{game.title}</span>
+                                                        {game.price !== undefined && (
+                                                            <span className="featured-strip-price">${game.price.toFixed(2)}</span>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <Link className="featured-view-all" to="/games">
+                                        View all picks <FontAwesomeIcon icon={faArrowRight} />
+                                    </Link>
+                                </aside>
+                            </>
+                        ) : null}
+                    </div>
+
+                    <div className="featured-chips" aria-label="Storefront benefits">
+                        <span className="featured-chip">Instant delivery</span>
+                        <span className="featured-chip">Refund policy</span>
+                        <span className="featured-chip">Curated picks</span>
                     </div>
                 </div>
             </section>
