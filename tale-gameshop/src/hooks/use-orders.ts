@@ -11,7 +11,8 @@ type UseOrdersOptions = {
   sort?: FetchAccountOrdersParams['sort'];
 };
 
-export const useOrders = (options: UseOrdersOptions = {}) => {
+export const useOrders = (options: UseOrdersOptions | null = {}) => {
+  const normalizedOptions = options ?? {};
   const {
     limit = null,
     page = 1,
@@ -19,7 +20,7 @@ export const useOrders = (options: UseOrdersOptions = {}) => {
     status = 'all',
     q = '',
     sort = 'newest',
-  } = options;
+  } = normalizedOptions;
 
   const [items, setItems] = useState<AccountOrderListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
