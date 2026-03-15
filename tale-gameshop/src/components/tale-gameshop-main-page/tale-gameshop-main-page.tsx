@@ -32,7 +32,10 @@ export default function TaleGameshopMainPage() {
     const [games, setGames] = useState<Game[]>([]);
     const [blogPosts, setBlogPosts] = useState<BlogListItem[]>([]);
     const [blogLoading, setBlogLoading] = useState(true);
+    const [selectedFeaturedIndex, setSelectedFeaturedIndex] = useState(0);
+    const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
+    const billboardSurfaceRef = useRef<HTMLDivElement | null>(null);
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     useEffect(() => {
@@ -85,8 +88,6 @@ export default function TaleGameshopMainPage() {
 
     const featuredGames = useMemo(() => games.slice(0, 10), [games]);
     const featuredRailGames = useMemo(() => featuredGames.slice(0, 6), [featuredGames]);
-    const [selectedFeaturedIndex, setSelectedFeaturedIndex] = useState(0);
-    const billboardSurfaceRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (!featuredRailGames.length) {
@@ -100,13 +101,12 @@ export default function TaleGameshopMainPage() {
     }, [featuredRailGames, selectedFeaturedIndex]);
 
     const selectedGame = featuredRailGames[selectedFeaturedIndex] ?? null;
-    const selectedPickCounter = selectedGame ? `${selectedFeaturedIndex + 1}/${featuredGames.length || 1}` : null;
     const heroPrimary = latestGame ?? games[0] ?? null;
     const heroSecondary = randomGame ?? games[1] ?? null;
     const isLoading = games.length === 0;
 
     const perks = [
-        "Shop se payments",
+        "Secure payments",
         "Instant delivery",
         "Curated picks"
     ];
@@ -125,6 +125,7 @@ export default function TaleGameshopMainPage() {
         const highlights = blogPosts.slice(3, 5);
         return highlights.length ? highlights : blogPosts.slice(0, 2);
     }, [blogPosts]);
+
     const blogFallbackCover = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=800&q=80";
 
     const reasons = [
@@ -208,20 +209,45 @@ export default function TaleGameshopMainPage() {
         }
     ];
 
-    const [openFaqIndex, setOpenFaqIndex] = useState(0);
-
     const toggleFaq = (index: number) => {
         setOpenFaqIndex((prev) => (prev === index ? -1 : index));
+    };
+
+    const getGameHref = (game: Game) =>
+        `/games?filterCategory=${encodeURIComponent(game.title)}`;
+
+    const getRailMeta = (game: Game) => {
+        const year = game.releaseDate ? new Date(game.releaseDate).getFullYear() : null;
+        return year && !Number.isNaN(year)
+            ? `${year} • Instant delivery`
+            : 'Instant delivery';
+    };
+
+    const getBillboardDescription = (game: Game | null) => {
+        if (!game) {
+            return '';
+        }
+
+        const cleanDescription = game.description?.trim();
+        if (cleanDescription) {
+            return cleanDescription.length > 132 ? `${cleanDescription.slice(0, 129)}...` : cleanDescription;
+        }
+
+        return 'Hand-picked for this week’s spotlight with instant delivery, verified checkout, and curated quality.';
     };
 
     const renderGameCard = (game: Game, size: 'large' | 'small') => (
         <div className={`hero-card ${size === 'large' ? 'hero-card-large' : 'hero-card-small'}`}>
             <div className="hero-media">
-                <SafeGameImage gameTitle={game.title} src={game?.imagePath} baseUrl={urlService.apiBaseUrl} />
+                <SafeGameImage
+                    gameTitle={game.title}
+                    src={game.imagePath}
+                    baseUrl={urlService.apiBaseUrl}
+                />
             </div>
             <div className="hero-overlay">
-                <span className="hero-title">{game?.title}</span>
-                {game?.price !== undefined && (
+                <span className="hero-title">{game.title}</span>
+                {game.price !== undefined && (
                     <span className="hero-price">${game.price.toFixed(2)}</span>
                 )}
             </div>
@@ -242,7 +268,6 @@ export default function TaleGameshopMainPage() {
             </div>
         </div>
     );
-
 
     const handleNextFeatured = () => {
         if (featuredRailGames.length <= 1) {
@@ -272,19 +297,6 @@ export default function TaleGameshopMainPage() {
         surface.style.setProperty('--my', String(my));
     };
 
-    const getBillboardDescription = (game: Game | null) => {
-        if (!game) {
-            return '';
-        }
-
-        const cleanDescription = game.description?.trim();
-        if (!cleanDescription) {
-            return null;
-        }
-
-        return cleanDescription.length > 132 ? `${cleanDescription.slice(0, 129)}...` : cleanDescription;
-    };
-
     return (
         <div className="main-page">
             <section className="hero">
@@ -295,6 +307,7 @@ export default function TaleGameshopMainPage() {
                         <p className="hero-subtext">
                             A curated marketplace built for PC gamers. Browse premium picks, pay securely, and jump in instantly.
                         </p>
+
                         <div className="hero-perks">
                             {perks.map((perk) => (
                                 <div className="hero-perk" key={perk}>
@@ -303,8 +316,9 @@ export default function TaleGameshopMainPage() {
                                 </div>
                             ))}
                         </div>
+
                         <div className="hero-actions">
-                            <Link to={`/games?filterCategory`} className="btn btn-primary">
+                            <Link to="/games" className="btn btn-primary">
                                 Shop
                             </Link>
                             <Link to="/about" className="btn btn-outline">
@@ -337,8 +351,12 @@ export default function TaleGameshopMainPage() {
                             <h2>Featured / Popular games</h2>
                             <div className="billboard-sub">{featuredGames.length} picks • Updated weekly</div>
                         </div>
+
                         <div className="billboard-actions">
-                            <Link className="billboard-link" to="/games">Browse all</Link>
+                            <Link className="billboard-link" to="/games">
+                                Browse all
+                            </Link>
+
                             {featuredRailGames.length > 1 && (
                                 <button
                                     type="button"
@@ -363,14 +381,16 @@ export default function TaleGameshopMainPage() {
                                     <div className="billboard-frame skeleton-card" aria-hidden="true">
                                         <div className="media-placeholder skeleton" />
                                     </div>
+
                                     <div className="billboard-copy">
                                         <span className="skeleton-line skeleton" />
                                         <span className="skeleton-line skeleton" />
                                         <span className="skeleton-line skeleton-line-short skeleton" />
                                     </div>
                                 </div>
+
                                 <aside className="billboard-rail" aria-hidden="true">
-                                    {Array.from({length: 5}).map((_, index) => (
+                                    {Array.from({length: 4}).map((_, index) => (
                                         <div className="rail-item skeleton-card" key={`featured-skeleton-${index}`}>
                                             <span className="skeleton-line skeleton" />
                                         </div>
@@ -380,62 +400,92 @@ export default function TaleGameshopMainPage() {
                         ) : selectedGame ? (
                             <>
                                 <div className="billboard-left">
-                                    <div className="billboard-frame" key={selectedGame.id || selectedGame.title}>
-                                        <SafeGameImage
-                                            className="billboard-cover"
-                                            gameTitle={selectedGame.title}
-                                            src={selectedGame.imagePath}
-                                            baseUrl={urlService.apiBaseUrl}
-                                        />
-                                        <div className="billboard-sticker">
-                                            <span className="sticker-label">This week</span>
-                                            <span className="sticker-price">${selectedGame.price?.toFixed(2) ?? '--'}</span>
-                                        </div>
-                                    </div>
+                                    <Link
+                                        className="billboard-hero-link"
+                                        to={getGameHref(selectedGame)}
+                                    >
+                                        <div className="billboard-frame" key={selectedGame.id || selectedGame.title}>
+                                            <SafeGameImage
+                                                className="billboard-cover"
+                                                gameTitle={selectedGame.title}
+                                                src={selectedGame.imagePath}
+                                                baseUrl={urlService.apiBaseUrl}
+                                            />
 
-                                    <div className="billboard-copy">
-                                        <div className="billboard-badge">Featured pick</div>
-                                        <h3 className="billboard-title">{selectedGame.title}</h3>
-                                        {getBillboardDescription(selectedGame) && (
-                                            <p className="billboard-desc muted">{getBillboardDescription(selectedGame)}</p>
-                                        )}
+                                            <div className="billboard-sticker">
+                                                <span className="sticker-label">This week</span>
+                                                <span className="sticker-price">
+                                                    ${selectedGame.price?.toFixed(2) ?? '--'}
+                                                </span>
+                                            </div>
 
-                                        <div className="billboard-cta">
-                                            <Link className="btn btn-primary" to={`/games?filterCategory=${encodeURIComponent(selectedGame.title)}`}>
-                                                View game
-                                            </Link>
-                                            <Link className="btn btn-outline" to="/games">
-                                                Explore store
-                                            </Link>
+                                            <div className="billboard-media-glow" aria-hidden="true" />
                                         </div>
 
-                                        <div className="billboard-trust" aria-label="Store trust points">
-                                            <span>Instant delivery</span>
-                                            <span>Verified payments</span>
-                                            <span>Refund policy</span>
+                                        <div className="billboard-copy">
+                                            <div className="billboard-topline">
+                                                <span className="billboard-badge">Featured pick</span>
+                                                <span className="billboard-inline-price">
+                                                    ${selectedGame.price?.toFixed(2) ?? '--'}
+                                                </span>
+                                            </div>
+
+                                            <h3 className="billboard-title">{selectedGame.title}</h3>
+
+                                            <p className="billboard-desc muted">
+                                                {getBillboardDescription(selectedGame)}
+                                            </p>
+
+                                            <div className="billboard-trust" aria-label="Store trust points">
+                                                <span>Instant delivery</span>
+                                                <span>Verified payments</span>
+                                                <span>Refund policy</span>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 </div>
 
                                 <aside className="billboard-rail" aria-label="Featured picks list">
                                     <div className="rail-head">
                                         <span>Picks</span>
-                                        <span>{selectedPickCounter ?? `${featuredGames.length} picks`}</span>
+                                        <span>{featuredGames.length} available</span>
                                     </div>
-                                    {featuredRailGames.map((game, idx) => (
-                                        <button
-                                            type="button"
-                                            key={game.id || game.title}
-                                            className={`rail-item ${idx === selectedFeaturedIndex ? 'active' : ''}`}
-                                            onClick={() => setSelectedFeaturedIndex(idx)}
-                                            aria-pressed={idx === selectedFeaturedIndex}
-                                        >
-                                            <span className="rail-index">{String(idx + 1).padStart(2, '0')}</span>
-                                            <span className="rail-name">{game.title}</span>
-                                            <span className="rail-price">${game.price.toFixed(2)}</span>
-                                        </button>
-                                    ))}
-                                    <Link className="rail-all" to="/games">View all picks <FontAwesomeIcon icon={faArrowRight} /></Link>
+
+                                    <div className="rail-list">
+                                        {featuredRailGames.map((game, idx) => (
+                                            <Link
+                                                key={game.id || game.title}
+                                                to={getGameHref(game)}
+                                                className={`rail-item ${idx === selectedFeaturedIndex ? 'active' : ''}`}
+                                                onMouseEnter={() => setSelectedFeaturedIndex(idx)}
+                                                onFocus={() => setSelectedFeaturedIndex(idx)}
+                                                aria-current={idx === selectedFeaturedIndex ? 'true' : undefined}
+                                            >
+                                                <div className="rail-left">
+                                                    <div className="rail-thumb">
+                                                        <SafeGameImage
+                                                            className="rail-thumb-image"
+                                                            gameTitle={game.title}
+                                                            src={game.imagePath}
+                                                            baseUrl={urlService.apiBaseUrl}
+                                                        />
+                                                    </div>
+
+                                                    <div className="rail-text">
+                                                        <span className="rail-name">{game.title}</span>
+                                                        <span className="rail-meta">{getRailMeta(game)}</span>
+                                                    </div>
+                                                </div>
+
+                                                <span className="rail-price">${game.price.toFixed(2)}</span>
+                                            </Link>
+                                        ))}
+                                    </div>
+
+                                    <Link className="rail-all" to="/games">
+                                        <span>View all picks</span>
+                                        <FontAwesomeIcon icon={faArrowRight} />
+                                    </Link>
                                 </aside>
                             </>
                         ) : null}
@@ -451,23 +501,27 @@ export default function TaleGameshopMainPage() {
                                 <h3>Explore our games</h3>
                                 <p className="muted">Genres curated for every kind of player.</p>
                             </div>
+
                             <div className="genre-grid">
                                 {genres.map((genre) => (
                                     <div className="genre-card" key={genre.title}>
                                         <div className="genre-icon">
                                             <FontAwesomeIcon icon={genre.icon} />
                                         </div>
+
                                         <div className="genre-copy">
                                             <div className="genre-title">{genre.title}</div>
                                             <div className="genre-description muted">{genre.description}</div>
                                         </div>
+
                                         <Link className="genre-link" to={`/games?filterCategory=${genre.title}`}>
                                             View
                                         </Link>
                                     </div>
                                 ))}
                             </div>
-                            <Link className="btn btn-outline full-width" to={`/games`}>
+
+                            <Link className="btn btn-outline full-width" to="/games">
                                 Browse all genres
                             </Link>
                         </div>
@@ -477,6 +531,7 @@ export default function TaleGameshopMainPage() {
                                 <h3>Latest blog posts</h3>
                                 <p className="muted">Fresh drops from our editorial team.</p>
                             </div>
+
                             <div className="blog-list">
                                 {blogLoading ? (
                                     Array.from({length: 3}).map((_, index) => (
@@ -509,6 +564,7 @@ export default function TaleGameshopMainPage() {
                                     ))
                                 )}
                             </div>
+
                             <Link className="btn btn-ghost" to="/blog">
                                 Go to blog
                             </Link>
@@ -519,6 +575,7 @@ export default function TaleGameshopMainPage() {
                                 <h3>Highlights from blog</h3>
                                 <p className="muted">Hand-picked stories worth reading.</p>
                             </div>
+
                             <div className="highlight-stack">
                                 {blogLoading ? (
                                     Array.from({length: 2}).map((_, index) => (
@@ -543,7 +600,9 @@ export default function TaleGameshopMainPage() {
                                             />
                                             <div className="highlight-body">
                                                 <div className="highlight-header">
-                                                    <span className="highlight-badge">{item.tags[0] ?? (index === 0 ? "Weekly" : "New")}</span>
+                                                    <span className="highlight-badge">
+                                                        {item.tags[0] ?? (index === 0 ? "Weekly" : "New")}
+                                                    </span>
                                                     <Link className="text-link" to={`/blog/${item.slug}`}>
                                                         Read more
                                                     </Link>
@@ -566,6 +625,7 @@ export default function TaleGameshopMainPage() {
                         <h2>Why choose us</h2>
                         <p className="muted">Curated games, secure payments, and delivery in moments.</p>
                     </div>
+
                     <div className="why-grid">
                         {reasons.map((reason) => (
                             <div className="why-card" key={reason.title}>
@@ -588,6 +648,7 @@ export default function TaleGameshopMainPage() {
                         <h2>How it works</h2>
                         <p className="muted">Three simple steps from browsing to playing.</p>
                     </div>
+
                     <div className="steps-grid">
                         {steps.map((step, index) => (
                             <div className="step-card" key={step.label}>
@@ -599,6 +660,7 @@ export default function TaleGameshopMainPage() {
                             </div>
                         ))}
                     </div>
+
                     <div className="trust-row muted">
                         Refund policy • Verified payments • Instant email delivery
                     </div>
@@ -612,11 +674,12 @@ export default function TaleGameshopMainPage() {
                             <h3>Ready to explore the Store?</h3>
                             <p className="muted">Discover the full catalog and weekly deals.</p>
                         </div>
+
                         <div className="cta-actions">
                             <Link to="/games" className="btn btn-primary">
                                 Go to Store
                             </Link>
-                            <Link to={`/games?filterCategory`} className="btn btn-outline">
+                            <Link to="/games" className="btn btn-outline">
                                 Browse genres
                             </Link>
                         </div>
@@ -631,6 +694,7 @@ export default function TaleGameshopMainPage() {
                     <div className="trust-heading">
                         <h3>Trusted payment & delivery</h3>
                     </div>
+
                     <div className="trust-items">
                         {trustPoints.map((point) => (
                             <div className="trust-item" key={point.title}>
@@ -649,6 +713,7 @@ export default function TaleGameshopMainPage() {
                             <h3>Get weekly deals & rare picks</h3>
                             <p className="muted">No spam. Unsubscribe anytime.</p>
                         </div>
+
                         <form className="newsletter-form" onSubmit={(e) => e.preventDefault()}>
                             <div className="input-row">
                                 <div className="input-icon">
@@ -657,6 +722,7 @@ export default function TaleGameshopMainPage() {
                                 <input type="email" placeholder="Enter your email" required />
                                 <button className="btn btn-primary" type="submit">Subscribe</button>
                             </div>
+
                             <label className="checkbox-row">
                                 <input type="checkbox" defaultChecked />
                                 <span>Notify me about price drops</span>
@@ -672,6 +738,7 @@ export default function TaleGameshopMainPage() {
                         <h3>Quick FAQ</h3>
                         <p className="muted">Answers to common questions about delivery and payments.</p>
                     </div>
+
                     <div className="faq-list">
                         {faqs.map((item, index) => (
                             <div
@@ -698,9 +765,10 @@ export default function TaleGameshopMainPage() {
                             <h3>Find your next game today</h3>
                             <p className="muted">Step into the full catalog with weekly deals and curated picks.</p>
                         </div>
+
                         <div className="store-prefooter-actions">
                             <Link to="/games" className="btn btn-primary">Go to Store</Link>
-                            <Link to={`/games?filterCategory`} className="btn btn-outline">Browse genres</Link>
+                            <Link to="/games" className="btn btn-outline">Browse genres</Link>
                         </div>
                     </div>
                 </div>
