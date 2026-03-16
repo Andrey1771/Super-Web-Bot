@@ -135,7 +135,7 @@
       <workItem from="1769429516705" duration="503000" />
       <workItem from="1773417354514" duration="501000" />
       <workItem from="1773601706242" duration="700000" />
-      <workItem from="1773604941249" duration="5233000" />
+      <workItem from="1773604941249" duration="9662000" />
     </task>
     <servers />
   </component>
@@ -162,21 +162,6 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/callback-page/callback-page.tsx</url>
           <option name="timeStamp" value="6" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>166</line>
-          <option name="timeStamp" value="12" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>167</line>
-          <option name="timeStamp" value="13" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>168</line>
-          <option name="timeStamp" value="14" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/cart/cart-icon/cart-icon.tsx</url>
