@@ -48,6 +48,8 @@ namespace SuperBot.Core.Entities
         public bool IsActive { get; set; }
         public bool IsNew { get; set; }
         public bool IsTopRated { get; set; }
+        public bool ShowInFeaturedStorefront { get; set; }
+        public int FeaturedStorefrontPriority { get; set; }
         public GameKeyType KeyType { get; set; } = GameKeyType.SteamKey;
 
         public List<string> KeyFeatures { get; set; } = new();

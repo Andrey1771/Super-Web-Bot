@@ -12,15 +12,18 @@ namespace SuperBot.WebApi.Controllers
     {
         private readonly IGameRepository _gameRepository;
         private readonly IGameDiscountRepository _gameDiscountRepository;
+        private readonly IGameDetailsRepository _gameDetailsRepository;
         private readonly IMapper _mapper;
 
         public GameController(
             IGameRepository gameRepository,
             IGameDiscountRepository gameDiscountRepository,
+            IGameDetailsRepository gameDetailsRepository,
             IMapper mapper)
         {
             _gameRepository = gameRepository;
             _gameDiscountRepository = gameDiscountRepository;
+            _gameDetailsRepository = gameDetailsRepository;
             _mapper = mapper;
         }
 
@@ -29,15 +32,22 @@ namespace SuperBot.WebApi.Controllers
         {
             var games = await _gameRepository.GetAllAsync();
             var discounts = await _gameDiscountRepository.GetByGameIdsAsync(games.Select(game => game.Id));
+            var gameDetails = await _gameDetailsRepository.GetByGameIdsAsync(games.Select(game => game.Id));
             var discountByGameId = discounts.ToDictionary(discount => discount.GameId, discount => discount);
+            var detailsByGameId = gameDetails
+                .Where(details => !string.IsNullOrWhiteSpace(details.GameId))
+                .ToDictionary(details => details.GameId!, details => details);
             var utcNow = DateTime.UtcNow;
 
             var result = games.Select(game =>
             {
                 discountByGameId.TryGetValue(game.Id, out var discount);
+                detailsByGameId.TryGetValue(game.Id, out var details);
                 var discountActive = discount is not null && discount.IsActiveAt(utcNow);
                 var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
                 var finalPrice = CalculateFinalPrice(game.Price, discountPercent);
+                var genres = details?.Genres?.Where(item => !string.IsNullOrWhiteSpace(item)).ToArray()
+                    ?? Array.Empty<string>();
 
                 return new
                 {
@@ -52,7 +62,10 @@ namespace SuperBot.WebApi.Controllers
                     price = game.Price,
                     finalPrice,
                     discountPercent,
-                    discountActive
+                    discountActive,
+                    genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },
+                    showInFeaturedStorefront = details?.ShowInFeaturedStorefront ?? false,
+                    featuredStorefrontPriority = details?.FeaturedStorefrontPriority ?? int.MaxValue
                 };
             });
 
@@ -69,9 +82,12 @@ namespace SuperBot.WebApi.Controllers
             }
 
             var discount = await _gameDiscountRepository.GetByGameIdAsync(id);
+            var details = await _gameDetailsRepository.GetByGameIdAsync(id);
             var discountActive = discount is not null && discount.IsActiveAt(DateTime.UtcNow);
             var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
             var finalPrice = CalculateFinalPrice(game.Price, discountPercent);
+            var genres = details?.Genres?.Where(item => !string.IsNullOrWhiteSpace(item)).ToArray()
+                ?? Array.Empty<string>();
 
             return Ok(new
             {
@@ -86,7 +102,10 @@ namespace SuperBot.WebApi.Controllers
                 price = game.Price,
                 finalPrice,
                 discountPercent,
-                discountActive
+                discountActive,
+                genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },
+                showInFeaturedStorefront = details?.ShowInFeaturedStorefront ?? false,
+                featuredStorefrontPriority = details?.FeaturedStorefrontPriority ?? int.MaxValue
             });
         }
 
