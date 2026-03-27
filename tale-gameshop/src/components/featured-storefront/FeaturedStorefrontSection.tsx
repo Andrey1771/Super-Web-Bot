@@ -85,7 +85,6 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
   }, [activeIndex]);
 
   const activeGame = featuredGames[activeIndex] ?? null;
-  const activePriceInfo = activeGame ? getPriceInfo(activeGame) : null;
 
   const getGameHref = (game: Game) => {
     const fallbackSlug = slugify(game.slug?.trim() || game.title || game.name || "game");
@@ -139,6 +138,8 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
 
     return gameTypeLabels[game.gameType] ?? "Game";
   };
+
+  const activePriceInfo = activeGame ? getPriceInfo(activeGame) : null;
 
   return (
     <section className="featured-billboard">
