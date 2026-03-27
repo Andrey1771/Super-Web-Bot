@@ -195,45 +195,47 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                   </Link>
 
                   <div className="billboard-info-card">
-                    <div className="billboard-title-row">
-                      <h3 className="billboard-title">{activeGame.title}</h3>
-                    </div>
+                    <div className="billboard-info-grid">
+                      <div className="billboard-main-content">
+                        <h3 className="billboard-title">{activeGame.title}</h3>
 
-                    <div className="billboard-genres" aria-label="Game genres">
-                      {(activeGame.genres ?? []).slice(0, 4).map((genre) => (
-                        <span className="billboard-genre-chip" key={`${activeGame.id}-${genre}`}>
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
+                        <div className="billboard-genres" aria-label="Game genres">
+                          {(activeGame.genres ?? []).slice(0, 4).map((genre) => (
+                            <span className="billboard-genre-chip" key={`${activeGame.id}-${genre}`}>
+                              {genre}
+                            </span>
+                          ))}
+                        </div>
 
-                    <div className="billboard-price-row">
-                      {activePriceInfo?.hasDiscount ? (
-                        <>
-                          <span className="billboard-price-old">${activePriceInfo.regularPrice.toFixed(2)}</span>
-                          <span className="billboard-price-current">${activePriceInfo.discountedPrice.toFixed(2)}</span>
-                          <span className="billboard-discount-badge">-{activePriceInfo.discountPercent}%</span>
-                        </>
-                      ) : (
-                        <span className="billboard-price-current">
-                          ${activePriceInfo?.discountedPrice.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
+                        <p className="billboard-desc muted">{getDescription(activeGame)}</p>
 
-                    <p className="billboard-desc muted">{getDescription(activeGame)}</p>
-
-                    <div className="billboard-footer">
-                      <div className="billboard-trust" aria-label="Store trust points">
-                        {storefrontPerks.map((perk) => (
-                          <span key={perk}>{perk}</span>
-                        ))}
+                        <div className="billboard-trust" aria-label="Store trust points">
+                          {storefrontPerks.map((perk) => (
+                            <span key={perk}>{perk}</span>
+                          ))}
+                        </div>
                       </div>
 
-                      <Link className="billboard-cta" to={getGameHref(activeGame)}>
-                        Open game
-                        <FontAwesomeIcon icon={faArrowRight} />
-                      </Link>
+                      <div className="billboard-commerce-content">
+                        <div className="billboard-price-row">
+                          {activePriceInfo?.hasDiscount ? (
+                            <>
+                              <span className="billboard-price-old">${activePriceInfo.regularPrice.toFixed(2)}</span>
+                              <span className="billboard-price-current">${activePriceInfo.discountedPrice.toFixed(2)}</span>
+                              <span className="billboard-discount-badge">-{activePriceInfo.discountPercent}%</span>
+                            </>
+                          ) : (
+                            <span className="billboard-price-current">
+                              ${activePriceInfo?.discountedPrice.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+
+                        <Link className="billboard-cta" to={getGameHref(activeGame)}>
+                          Open game
+                          <FontAwesomeIcon icon={faArrowRight} />
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -245,7 +247,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                   <span>{featuredGames.length} available</span>
                 </div>
 
-                <div className="rail-list" ref={railListRef}>
+                <div className={`rail-list ${featuredGames.length <= 3 ? "is-compact" : ""}`} ref={railListRef}>
                   {featuredGames.map((game, index) => {
                     const priceInfo = getPriceInfo(game);
 
@@ -255,7 +257,6 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                         type="button"
                         className={`rail-item ${index === activeIndex ? "active" : ""}`}
                         onClick={() => setActiveIndex(index)}
-                        onMouseEnter={() => setActiveIndex(index)}
                         onFocus={() => setActiveIndex(index)}
                         aria-pressed={index === activeIndex}
                       >
@@ -288,6 +289,9 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                     );
                   })}
                 </div>
+                {featuredGames.length <= 1 && (
+                  <p className="rail-helper-text">Add more featured games in admin to expand Top Picks.</p>
+                )}
               </aside>
             </>
           ) : (
