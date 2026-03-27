@@ -16,6 +16,20 @@ type FeaturedStorefrontSectionProps = {
 };
 
 const storefrontPerks = ["Instant delivery", "Verified payments", "Refund policy"];
+const gameTypeLabels: Record<number, string> = {
+  0: "Action",
+  1: "Adventure",
+  2: "RPG",
+  3: "Simulation",
+  4: "Strategy",
+  5: "Puzzle",
+  6: "Sports",
+  7: "Card & Board",
+  8: "MMO",
+  9: "Horror",
+  10: "Casual",
+  11: "Educational"
+};
 
 const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ games, isLoading }) => {
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
@@ -71,6 +85,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
   }, [activeIndex]);
 
   const activeGame = featuredGames[activeIndex] ?? null;
+  const activePriceInfo = activeGame ? getPriceInfo(activeGame) : null;
 
   const getGameHref = (game: Game) => {
     const fallbackSlug = slugify(game.slug?.trim() || game.title || game.name || "game");
@@ -116,6 +131,15 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
     return value;
   };
 
+  const getGameTypeLabel = (game: Game) => {
+    const primaryGenre = game.genres?.[0]?.trim();
+    if (primaryGenre) {
+      return primaryGenre;
+    }
+
+    return gameTypeLabels[game.gameType] ?? "Game";
+  };
+
   return (
     <section className="featured-billboard">
       <div className="container">
@@ -156,20 +180,23 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
           ) : activeGame ? (
             <>
               <div className="billboard-left">
-                <Link className="billboard-hero-link" to={getGameHref(activeGame)}>
-                  <div className="billboard-frame" key={activeGame.id || activeGame.title}>
-                    <SafeGameImage
-                      className="billboard-cover"
-                      gameTitle={activeGame.title}
-                      src={activeGame.imagePath}
-                      baseUrl={urlService.apiBaseUrl}
-                    />
-                    <div className="billboard-frame-badge">Top pick</div>
-                  </div>
+                <article className="featured-card-shell">
+                  <Link className="billboard-hero-link" to={getGameHref(activeGame)} aria-label={`Open ${activeGame.title}`}>
+                    <div className="billboard-frame" key={activeGame.id || activeGame.title}>
+                      <SafeGameImage
+                        className="billboard-cover"
+                        gameTitle={activeGame.title}
+                        src={activeGame.imagePath}
+                        baseUrl={urlService.apiBaseUrl}
+                      />
+                      <div className="billboard-frame-badge">FEATURED PICK</div>
+                    </div>
+                  </Link>
 
                   <div className="billboard-info-card">
-                    <span className="billboard-meta">{getMeta(activeGame)}</span>
-                    <h3 className="billboard-title">{activeGame.title}</h3>
+                    <div className="billboard-title-row">
+                      <h3 className="billboard-title">{activeGame.title}</h3>
+                    </div>
 
                     <div className="billboard-genres" aria-label="Game genres">
                       {(activeGame.genres ?? []).slice(0, 4).map((genre) => (
@@ -179,25 +206,21 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                       ))}
                     </div>
 
-                    <p className="billboard-desc muted">{getDescription(activeGame)}</p>
-
                     <div className="billboard-price-row">
-                      {getPriceInfo(activeGame).hasDiscount ? (
+                      {activePriceInfo?.hasDiscount ? (
                         <>
-                          <span className="billboard-price-current">
-                            ${getPriceInfo(activeGame).discountedPrice.toFixed(2)}
-                          </span>
-                          <span className="billboard-price-old">
-                            ${getPriceInfo(activeGame).regularPrice.toFixed(2)}
-                          </span>
-                          <span className="billboard-discount-badge">-{getPriceInfo(activeGame).discountPercent}%</span>
+                          <span className="billboard-price-old">${activePriceInfo.regularPrice.toFixed(2)}</span>
+                          <span className="billboard-price-current">${activePriceInfo.discountedPrice.toFixed(2)}</span>
+                          <span className="billboard-discount-badge">-{activePriceInfo.discountPercent}%</span>
                         </>
                       ) : (
                         <span className="billboard-price-current">
-                          ${getPriceInfo(activeGame).discountedPrice.toFixed(2)}
+                          ${activePriceInfo?.discountedPrice.toFixed(2)}
                         </span>
                       )}
                     </div>
+
+                    <p className="billboard-desc muted">{getDescription(activeGame)}</p>
 
                     <div className="billboard-footer">
                       <div className="billboard-trust" aria-label="Store trust points">
@@ -206,13 +229,13 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                         ))}
                       </div>
 
-                      <span className="billboard-cta">
+                      <Link className="billboard-cta" to={getGameHref(activeGame)}>
                         Open game
                         <FontAwesomeIcon icon={faArrowRight} />
-                      </span>
+                      </Link>
                     </div>
                   </div>
-                </Link>
+                </article>
               </div>
 
               <aside className="billboard-rail" aria-label="Featured picks list">
@@ -246,7 +269,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                           </div>
                           <div className="rail-text">
                             <span className="rail-name">{game.title}</span>
-                            <span className="rail-meta">{getMeta(game)}</span>
+                            <span className="rail-meta">{getGameTypeLabel(game)} • {getMeta(game)}</span>
                           </div>
                         </div>
 
