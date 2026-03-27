@@ -1,3 +1,10 @@
+.main-page .featured-billboard > .container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
 .main-page .billboard-surface.premium-storefront {
   background: linear-gradient(180deg, #fcfcff 0%, #f7f6fc 100%);
   border: 1px solid #e7e4f2;
@@ -5,8 +12,10 @@
   box-shadow: 0 16px 34px rgba(26, 18, 59, 0.08);
   padding: 22px;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.95fr) minmax(320px, 0.85fr);
+  gap: 16px;
+  width: 100%;
+  align-items: start;
 }
 
 .main-page .premium-storefront .billboard-left,
@@ -20,6 +29,7 @@
   overflow: hidden;
   background: #fff;
   box-shadow: 0 12px 24px rgba(37, 29, 77, 0.09);
+  width: 100%;
 }
 
 .main-page .premium-storefront .billboard-hero-link {
@@ -31,7 +41,7 @@
   border-radius: 18px 18px 0 0;
   overflow: hidden;
   border-bottom: 1px solid #eeeaf8;
-  height: 430px;
+  height: 458px;
 }
 
 .main-page .premium-storefront .billboard-cover {
@@ -62,14 +72,14 @@
 }
 
 .main-page .premium-storefront .billboard-info-card {
-  padding: 20px 22px;
+  padding: 16px 18px;
   background: #fbfafe;
 }
 
 .main-page .premium-storefront .billboard-info-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 20px;
+  gap: 14px;
   align-items: end;
 }
 
@@ -82,12 +92,13 @@
   flex-direction: column;
   justify-content: flex-end;
   align-items: flex-end;
-  gap: 12px;
+  gap: 10px;
+  min-width: 180px;
 }
 
 .main-page .premium-storefront .billboard-title {
   margin: 0;
-  font-size: 1.76rem;
+  font-size: 1.7rem;
   line-height: 1.16;
   color: #171328;
   display: -webkit-box;
@@ -97,8 +108,8 @@
 }
 
 .main-page .premium-storefront .billboard-genres {
-  margin-top: 12px;
-  margin-bottom: 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -115,7 +126,7 @@
 }
 
 .main-page .premium-storefront .billboard-desc {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: #57506f;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -126,7 +137,7 @@
 .main-page .premium-storefront .billboard-trust {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px 10px;
 }
 
 .main-page .premium-storefront .billboard-trust span {
@@ -135,7 +146,7 @@
 }
 
 .main-page .premium-storefront .billboard-price-row {
-  margin-bottom: 2px;
+  margin-bottom: 0;
   display: flex;
   align-items: baseline;
   gap: 10px;
@@ -175,7 +186,7 @@
   background: #4d38bb;
   color: #fff;
   border: 1px solid #4d38bb;
-  padding: 11px 16px;
+  padding: 10px 15px;
   font-size: 0.86rem;
   font-weight: 600;
   transition: background-color 0.2s ease;
@@ -189,19 +200,20 @@
   border: 1px solid #ece8f5;
   border-radius: 18px;
   background: #fff;
-  padding: 14px;
+  padding: 12px;
   display: grid;
   grid-template-rows: auto auto auto;
   align-content: start;
   align-self: start;
-  height: fit-content;
+  height: auto;
+  width: 100%;
 }
 
 .main-page .premium-storefront .rail-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .main-page .premium-storefront .rail-head span:first-child {
@@ -216,7 +228,7 @@
 
 .main-page .premium-storefront .rail-list {
   overflow-y: auto;
-  max-height: 560px;
+  max-height: 520px;
   padding-right: 4px;
 }
 
@@ -228,14 +240,14 @@
 .main-page .premium-storefront .rail-item {
   width: 100%;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 10px;
   background: transparent;
-  padding: 10px;
+  padding: 9px 10px;
   text-align: left;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -262,8 +274,8 @@
 }
 
 .main-page .premium-storefront .rail-thumb {
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #ece8f8;
@@ -304,6 +316,7 @@
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
+  gap: 2px;
 }
 
 .main-page .premium-storefront .rail-price {
@@ -347,5 +360,10 @@
 
   .main-page .premium-storefront .billboard-frame {
     height: 330px;
+  }
+
+  .main-page .featured-billboard > .container {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }

@@ -139,6 +139,8 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
     return gameTypeLabels[game.gameType] ?? "Game";
   };
 
+  const getPickCountLabel = (count: number) => `${count} ${count === 1 ? "pick" : "picks"} available`;
+
   const activePriceInfo = activeGame ? getPriceInfo(activeGame) : null;
 
   return (
@@ -148,7 +150,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
           <div>
             <div className="eyebrow">FEATURED / POPULAR</div>
             <h2>Featured / Popular games</h2>
-            <div className="billboard-sub">{featuredGames.length} picks available</div>
+            <div className="billboard-sub">{getPickCountLabel(featuredGames.length)}</div>
           </div>
           <div className="billboard-actions">
             <Link className="billboard-link" to="/games">
@@ -244,7 +246,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
               <aside className="billboard-rail" aria-label="Featured picks list">
                 <div className="rail-head">
                   <span>Top Picks</span>
-                  <span>{featuredGames.length} available</span>
+                  <span>{getPickCountLabel(featuredGames.length)}</span>
                 </div>
 
                 <div className={`rail-list ${featuredGames.length <= 3 ? "is-compact" : ""}`} ref={railListRef}>
