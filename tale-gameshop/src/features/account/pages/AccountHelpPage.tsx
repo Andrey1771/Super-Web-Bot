@@ -1,64 +1,121 @@
-import React from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faChevronDown, faFileLines} from '@fortawesome/free-solid-svg-icons';
+import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
+import NewSupportRequestModal from '../components/NewSupportRequestModal';
+import {listSupportTickets} from '../support/supportApi';
+import type {SupportTicket, SupportTicketStatus} from '../support/types';
+import TicketDetailsModal from '../../../pages/account/help/components/TicketDetailsModal';
+import type {TicketSummary} from '../../../types/support';
+import {faqItems} from '../../../content/support/faq';
+import {supportDocs} from '../../../content/support/docs';
 import './account-help-page.css';
-
-const supportRequests = [
-    {
-        id: '#10482',
-        issue: 'Payment failed',
-        status: 'Open',
-        updated: '2 hours ago',
-        statusStyle: 'open'
-    },
-    {
-        id: '#10411',
-        issue: 'Key delivery delay',
-        status: 'Waiting for response',
-        updated: 'Yesterday',
-        statusStyle: 'waiting'
-    },
-    {
-        id: '#10377',
-        issue: 'Refund request',
-        status: 'Resolved',
-        updated: '5 days ago',
-        statusStyle: 'resolved'
-    }
-];
-
-const faqItems = [
-    {
-        question: 'Where is my game key?',
-        answer:
-            'Keys are delivered instantly after payment, but some banks need additional checks. ' +
-            'If it has been more than 30 minutes, refresh your orders page or contact support.'
-    },
-    {question: 'How do refunds work?'},
-    {question: 'Payment was charged but order is missing'},
-    {question: 'How to download an invoice?'},
-    {question: 'How to activate a Steam key?'},
-    {question: 'How to secure my account?'}
-];
-
-const guideLinks = ['Activation guide', 'Refund policy', 'Payment methods', 'Regional restrictions'];
 
 const systemStatuses = [
     {label: 'Store', status: 'Operational'},
     {label: 'Checkout', status: 'Operational'},
     {label: 'Key delivery', status: 'Operational'},
-    {label: 'Support чат', status: 'Operational'}
+    {label: 'Support chat', status: 'Operational'}
 ];
 
 const AccountHelpPage: React.FC = () => {
+    const [tickets, setTickets] = useState<SupportTicket[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const newRequestButtonRef = React.useRef<HTMLButtonElement | null>(null);
+    const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+    const [selectedTicketSummary, setSelectedTicketSummary] = useState<TicketSummary | undefined>();
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [openFaqId, setOpenFaqId] = useState<string | null>(faqItems[0]?.id ?? null);
+
+    const formatRelativeTime = (value: string) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        const diffMs = Date.now() - date.getTime();
+        const diffMinutes = Math.floor(diffMs / 60000);
+        if (diffMinutes < 1) {
+            return 'Just now';
+        }
+        if (diffMinutes < 60) {
+            return `${diffMinutes} min ago`;
+        }
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (diffHours < 24) {
+            return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+        }
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    };
+
+    const statusLabelFor = (status: SupportTicketStatus) => {
+        if (typeof status === 'number') {
+            const statusMap: Record<number, string> = {
+                0: 'Open',
+                1: 'WaitingForUser',
+                2: 'WaitingForSupport',
+                3: 'Resolved',
+                4: 'Closed'
+            };
+            return statusMap[status] ?? 'Open';
+        }
+        return status;
+    };
+
+    const statusClassFor = (status: SupportTicketStatus) => {
+        const normalized = statusLabelFor(status).toLowerCase();
+        if (normalized.includes('wait') || normalized.includes('pending')) {
+            return 'waiting';
+        }
+        if (normalized.includes('resolve') || normalized.includes('closed')) {
+            return 'resolved';
+        }
+        return 'open';
+    };
+
+    const fetchTickets = useCallback(async () => {
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const data = await listSupportTickets();
+            setTickets(data);
+        } catch (error) {
+            console.error('Failed to load support tickets', error);
+            setLoadError('Unable to load requests right now.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchTickets();
+    }, [fetchTickets]);
+
+    useEffect(() => {
+        if (!toastMessage) {
+            return;
+        }
+        const timeout = window.setTimeout(() => setToastMessage(null), 3000);
+        return () => window.clearTimeout(timeout);
+    }, [toastMessage]);
+
     return (
         <AccountShell title="Help" sectionLabel="Help">
             <div className="help-page">
                 <section className="card help-support">
                     <div className="help-section-header">
                         <h2>My support requests</h2>
-                        <button type="button" className="btn btn-primary help-action-btn">
+                        <button
+                            type="button"
+                            className="btn btn-primary help-action-btn"
+                            ref={newRequestButtonRef}
+                            onClick={() => setIsModalOpen(true)}
+                        >
                             New request
                         </button>
                     </div>
@@ -70,17 +127,41 @@ const AccountHelpPage: React.FC = () => {
                             <span>Updated</span>
                             <span />
                         </div>
-                        {supportRequests.map((request) => (
-                            <div className="help-requests-row" key={request.id}>
-                                <strong>{request.id}</strong>
-                                <span>{request.issue}</span>
-                                <span className={`help-status-pill ${request.statusStyle}`}>{request.status}</span>
-                                <span className="help-muted">{request.updated}</span>
-                                <button type="button" className="btn btn-outline help-view-btn">
-                                    View
-                                </button>
-                            </div>
-                        ))}
+                        {isLoading && <div className="help-requests-empty">Loading support requests...</div>}
+                        {!isLoading && loadError && <div className="help-requests-empty">{loadError}</div>}
+                        {!isLoading && !loadError && tickets.length === 0 && (
+                            <div className="help-requests-empty">No support requests yet.</div>
+                        )}
+                        {!isLoading &&
+                            !loadError &&
+                            tickets.map((ticket) => (
+                                <div className="help-requests-row" key={ticket.id}>
+                                    <strong>{ticket.id.startsWith('#') ? ticket.id : `#${ticket.id}`}</strong>
+                                    <span>{ticket.subject || ticket.category}</span>
+                                    <span className={`help-status-pill ${statusClassFor(ticket.status)}`}>
+                                        {statusLabelFor(ticket.status)}
+                                    </span>
+                                    <span className="help-muted">{formatRelativeTime(ticket.updatedAt)}</span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline help-view-btn"
+                                        onClick={() => {
+                                            setSelectedTicketId(ticket.id);
+                                            setSelectedTicketSummary({
+                                                id: ticket.id,
+                                                publicId: ticket.publicId ?? ticket.id,
+                                                subject: ticket.subject,
+                                                category: ticket.category,
+                                                status: statusLabelFor(ticket.status),
+                                                updatedAt: ticket.updatedAt
+                                            });
+                                            setIsTicketModalOpen(true);
+                                        }}
+                                    >
+                                        View
+                                    </button>
+                                </div>
+                            ))}
                     </div>
                 </section>
 
@@ -90,19 +171,37 @@ const AccountHelpPage: React.FC = () => {
                     </div>
                     <div className="help-accordion">
                         {faqItems.map((item, index) => {
-                            const isOpen = index === 0;
+                            const isOpen = item.id === openFaqId;
+                            const contentId = `${item.id}-content`;
+                            const buttonId = `${item.id}-button`;
 
                             return (
                                 <div
-                                    key={item.question}
+                                    key={item.id}
                                     className={`help-accordion-item${isOpen ? ' is-open' : ''}`}
                                 >
-                                    <button type="button" className="help-accordion-trigger">
+                                    <button
+                                        id={buttonId}
+                                        type="button"
+                                        className="help-accordion-trigger"
+                                        aria-expanded={isOpen}
+                                        aria-controls={contentId}
+                                        onClick={() =>
+                                            setOpenFaqId((prev) => (prev === item.id ? null : item.id))
+                                        }
+                                    >
                                         <span>{item.question}</span>
                                         <FontAwesomeIcon icon={faChevronDown} />
                                     </button>
                                     {isOpen && (
-                                        <p className="help-accordion-content">{item.answer}</p>
+                                        <p
+                                            id={contentId}
+                                            className="help-accordion-content"
+                                            role="region"
+                                            aria-labelledby={buttonId}
+                                        >
+                                            {item.answer}
+                                        </p>
                                     )}
                                 </div>
                             );
@@ -114,12 +213,12 @@ const AccountHelpPage: React.FC = () => {
                     <section className="card help-guides">
                         <h3>Guides &amp; policies</h3>
                         <ul>
-                            {guideLinks.map((guide) => (
-                                <li key={guide}>
+                            {supportDocs.map((guide) => (
+                                <li key={guide.id}>
                                     <span className="help-doc-icon" aria-hidden="true">
                                         <FontAwesomeIcon icon={faFileLines} />
                                     </span>
-                                    <span>{guide}</span>
+                                    <Link to={guide.route}>{guide.title}</Link>
                                 </li>
                             ))}
                         </ul>
@@ -160,6 +259,27 @@ const AccountHelpPage: React.FC = () => {
                     </div>
                 </section>
             </div>
+            <NewSupportRequestModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                openerRef={newRequestButtonRef}
+                onSubmitted={async (ticket) => {
+                    setTickets((prev) => [ticket, ...prev]);
+                    setToastMessage('Request submitted');
+                    await fetchTickets();
+                }}
+            />
+            <TicketDetailsModal
+                isOpen={isTicketModalOpen}
+                ticketId={selectedTicketId}
+                initialTicket={selectedTicketSummary}
+                onClose={() => {
+                    setIsTicketModalOpen(false);
+                    setSelectedTicketId(null);
+                    setSelectedTicketSummary(undefined);
+                }}
+            />
+            {toastMessage && <div className="help-toast">{toastMessage}</div>}
         </AccountShell>
     );
 };

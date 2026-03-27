@@ -1,5 +1,6 @@
 import React, {useState} from "react";
 import './registration-page.css'
+import { analyticsClient } from "../../utils/analytics-client";
 
 export default function RegistrationPage() {
     const [email, setEmail] = useState('');
@@ -24,6 +25,7 @@ export default function RegistrationPage() {
 
         try {
             setSuccess('Registration successful!');
+            analyticsClient.trackEvent("sign_up");
         } catch (error) {
             setError('Failed to register. Please try again.');
             console.error('Error registering:', error);

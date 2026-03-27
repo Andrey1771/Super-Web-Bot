@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import './styles/tokens.css';
+@import './styles/admin.css';
 
 * {
   box-sizing: border-box;

@@ -7,7 +7,10 @@ namespace SuperBot.Core.Interfaces.IRepositories
     {
         Task<List<Game>> GetAllAsync();
         Task<Game> GetByIdAsync(string id);
+        Task<Game> GetByExternalIdAsync(string externalId);
+        Task<Game> GetBySlugAsync(string slug);
         Task<List<Game>> GetByIdsAsync(IEnumerable<string> ids);
+        Task<List<Game>> GetByCoverMediaIdAsync(string mediaId);
         Task CreateAsync(Game game);
         Task UpdateAsync(string id, Game updatedGame);
         Task DeleteAsync(string id);

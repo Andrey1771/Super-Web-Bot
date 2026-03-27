@@ -8,6 +8,7 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<Order> GetOrderByIdAsync(string orderId);
         Task<IEnumerable<Order>> GetAllOrdersAsync();
         Task<List<Order>> GetOrdersByUserAsync(string userName);
+        Task<(IReadOnlyList<Order> Items, long Total)> GetPagedAsync(OrderQueryParameters query);
         Task UpdateOrderAsync(Order order);
         Task DeleteOrderAsync(string orderId);
     }

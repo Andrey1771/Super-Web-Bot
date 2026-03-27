@@ -5,7 +5,7 @@ import type { IApiClient } from '../iterfaces/i-api-client';
 import type { IOrdersService } from '../iterfaces/i-orders-service';
 import type { Order } from '../models/order';
 
-const API_URL = '/api/order';
+const API_URL = '/api/order/summary';
 
 @injectable()
 export class OrdersService implements IOrdersService {

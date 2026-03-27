@@ -12,7 +12,7 @@ const getUserIdentifier = (keycloakService: IKeycloakService) => {
     return parsedToken?.email ?? parsedToken?.preferred_username ?? parsedToken?.sub ?? '';
 };
 
-export const useOrders = (limit = 3) => {
+export const useOrders = (limit: number | null = 3) => {
     const ordersService = container.get<IOrdersService>(IDENTIFIERS.IOrdersService);
     const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
     const [items, setItems] = useState<Order[]>([]);
@@ -33,7 +33,7 @@ export const useOrders = (limit = 3) => {
                 return dateB - dateA;
             });
             setTotalCount(filtered.length);
-            setItems(sorted.slice(0, limit));
+            setItems(limit === null ? sorted : sorted.slice(0, limit));
         } catch (err) {
             console.error('Failed to load orders:', err);
             setError('Unable to load orders.');

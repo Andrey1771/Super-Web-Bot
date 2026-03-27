@@ -87,6 +87,12 @@ namespace SuperBot.Tests
 
             public Task<Game> GetByIdAsync(string id) => Task.FromResult(_games.FirstOrDefault(game => game.Id == id));
 
+            public Task<Game> GetByExternalIdAsync(string externalId) =>
+                Task.FromResult(_games.FirstOrDefault(game => game.ExternalId == externalId));
+
+            public Task<Game> GetBySlugAsync(string slug) =>
+                Task.FromResult(_games.FirstOrDefault(game => game.Slug == slug));
+
             public Task<List<Game>> GetByIdsAsync(IEnumerable<string> ids)
             {
                 var idSet = ids.ToHashSet();
@@ -96,6 +102,8 @@ namespace SuperBot.Tests
             public Task CreateAsync(Game game) => Task.CompletedTask;
 
             public Task UpdateAsync(string id, Game updatedGame) => Task.CompletedTask;
+
+            public Task DeleteAsync(string id) => Task.CompletedTask;
         }
 
         private class TestWishlistRepository : IWishlistRepository

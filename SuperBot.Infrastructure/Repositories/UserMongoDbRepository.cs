@@ -55,6 +55,8 @@ namespace SuperBot.Infrastructure.Repositories
                 .Set(u => u.Discount, user.Discount)
                 .Set(u => u.QuantityBeforeIncrease, user.QuantityBeforeIncrease)
                 .Set(u => u.WishlistGameIds, user.WishlistGameIds)
+                .Set(u => u.AvatarPath, user.AvatarPath)
+                .Set(u => u.AvatarUpdatedAt, user.AvatarUpdatedAt)
                 .Set(u => u.UpdatedAt, DateTime.UtcNow);
 
             await _usersCollection.UpdateOneAsync(filter, update);

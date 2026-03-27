@@ -1,69 +1,22 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import {
-    CardElement,
     useStripe,
     useElements,
     PaymentElement,
-    AuBankAccountElement,
-    EpsBankElement, PaymentRequestButtonElement, P24BankElement,
-    useCheckout,
-    ExpressCheckoutElement, AddressElement
+    ExpressCheckoutElement
 } from '@stripe/react-stripe-js';
-import {Order, StripeElementsOptionsClientSecret, StripePaymentElementOptions} from '@stripe/stripe-js';
-import axios from "axios";
-import {Game} from "../../../models/game";
+import {StripePaymentElementOptions} from '@stripe/stripe-js';
 
 interface CheckoutFormProps {
     clientSecret: string
 }
 
-type Mode = 'payment' | 'setup' | 'subscription';
-
 const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
     const stripe = useStripe();
     const elements = useElements();
 
-    const [errorMessage, setErrorMessage] = useState(null);
-    const [paymentRequest, setPaymentRequest] = useState<any>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    useEffect(() => {
-        /*if (!stripe) {
-            return;
-        }
-
-        /!*const elements = stripe.elements({
-            mode: 'setup',
-            amount: 1099,
-            currency: 'usd',
-            setupFutureUsage: 'off_session',
-            paymentMethodCreation: 'manual'
-        })*!/
-
-        const pr = stripe.paymentRequest({
-            country: 'US', // Замените на вашу страну
-            currency: 'usd', // Замените на вашу валюту
-            total: {
-                label: 'Total',
-                amount: 1000, // Сумма в центах
-            },
-            requestPayerName: true,
-            requestPayerEmail: true,
-        });
-
-        pr.canMakePayment().then((result) => {
-            if (result) {
-                setPaymentRequest(pr);
-            } else {
-                console.error('PaymentRequest not supported on this device');
-                setErrorMessage('PaymentRequest не поддерживается на вашем устройстве.');
-            }
-        });*/
-
-    }, [stripe]);
-
-    const handlePaymentRequestSuccess = () => {
-        console.log('PaymentRequest completed successfully');
-    };
     const handleSubmit = async (event: any) => {
         // We don't want to let default form submission happen here,
         // which would refresh the page.
@@ -114,7 +67,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
                 data-testid="place-order-button"
                 type="submit"
             >
-                Place order
+                Place Order
             </button>
             {/* Show error message to your customers */}
             {errorMessage && <div>{errorMessage}</div>}

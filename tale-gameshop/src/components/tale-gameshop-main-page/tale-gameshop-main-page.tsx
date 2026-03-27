@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import './tale-gameshop-main-page.css'
+import './tale-gameshop-main-page.css';
 import '../../font-awesome.ts';
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
@@ -13,25 +13,33 @@ import {
     faLeaf,
     faPuzzlePiece,
     faShieldAlt,
-    faStar,
     faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import container from "../../inversify.config";
 import type {IApiClient} from "../../iterfaces/i-api-client";
+import type {IBlogService} from "../../iterfaces/i-blog-service";
 import IDENTIFIERS from "../../constants/identifiers";
 import {Game} from "../../models/game";
 import {Link} from "react-router-dom";
 import {IUrlService} from "../../iterfaces/i-url-service";
+import TestimonialsCarousel from "../testimonials/TestimonialsCarousel";
+import type {BlogListItem} from "../../types/blog";
 
 export default function TaleGameshopMainPage() {
     const [latestGame, setLatestGame] = useState<Game | null>(null);
     const [randomGame, setRandomGame] = useState<Game | null>(null);
     const [games, setGames] = useState<Game[]>([]);
+    const [blogPosts, setBlogPosts] = useState<BlogListItem[]>([]);
+    const [blogLoading, setBlogLoading] = useState(true);
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
     useEffect(() => {
         fetchGames();
+    }, []);
+
+    useEffect(() => {
+        fetchBlogPosts();
     }, []);
 
     const fetchGames = async () => {
@@ -60,9 +68,24 @@ export default function TaleGameshopMainPage() {
         }
     };
 
+    const fetchBlogPosts = async () => {
+        try {
+            setBlogLoading(true);
+            const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
+            const response = await blogService.getPosts({page: 1, pageSize: 5});
+            setBlogPosts(response.items);
+        } catch (err) {
+            console.error(err);
+            setBlogPosts([]);
+        } finally {
+            setBlogLoading(false);
+        }
+    };
+
     const featuredGames = useMemo(() => games.slice(0, 10), [games]);
-    const heroPrimary = latestGame ?? games[0];
-    const heroSecondary = randomGame ?? games[1];
+    const heroPrimary = latestGame ?? games[0] ?? null;
+    const heroSecondary = randomGame ?? games[1] ?? null;
+    const isLoading = games.length === 0;
 
     const perks = [
         "Shop se payments",
@@ -79,26 +102,12 @@ export default function TaleGameshopMainPage() {
         {title: 'Co-op', description: 'Jump in together and beat the odds.', icon: faUsers},
     ];
 
-    const blogPosts = [
-        {title: 'Top strategy releases to try this month', snippet: 'Quick picks across tactics, city-builders, and RTS.', link: '/blog'},
-        {title: 'Why cozy sims are perfect for weekends', snippet: 'Slow-life games that help you unwind and reset.', link: '/blog'},
-        {title: 'Essential RPGs for story-first players', snippet: 'Narrative-driven worlds with unforgettable casts.', link: '/blog'},
-    ];
-
-    const highlights = [
-        {
-            title: 'Weekly spotlight: Atmospheric adventures',
-            snippet: 'Lose yourself in moody worlds with strong art direction.',
-            badge: 'Weekly',
-            link: '/blog'
-        },
-        {
-            title: 'New: Building the perfect co-op night',
-            snippet: 'Snackable missions, balanced roles, and low-friction lobbies.',
-            badge: 'New',
-            link: '/blog'
-        }
-    ];
+    const featuredBlogPosts = useMemo(() => blogPosts.slice(0, 3), [blogPosts]);
+    const highlightPosts = useMemo(() => {
+        const highlights = blogPosts.slice(3, 5);
+        return highlights.length ? highlights : blogPosts.slice(0, 2);
+    }, [blogPosts]);
+    const blogFallbackCover = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=800&q=80";
 
     const reasons = [
         {
@@ -188,15 +197,34 @@ export default function TaleGameshopMainPage() {
     };
 
     const renderGameCard = (game: Game, size: 'large' | 'small') => (
-        <div className={`hero-card ${size}`}>
-            {game?.imagePath && (
-                <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
-            )}
-            <div className="hero-overlay">
-                <span className="title">{game?.title}</span>
-                {game?.price !== undefined && (
-                    <span className="price">${game.price.toFixed(2)}</span>
+        <div className={`hero-card ${size === 'large' ? 'hero-card-large' : 'hero-card-small'}`}>
+            <div className="hero-media">
+                {game?.imagePath ? (
+                    <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
+                ) : (
+                    <div className="media-placeholder skeleton" aria-hidden="true" />
                 )}
+            </div>
+            <div className="hero-overlay">
+                <span className="hero-title">{game?.title}</span>
+                {game?.price !== undefined && (
+                    <span className="hero-price">${game.price.toFixed(2)}</span>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderHeroSkeleton = (size: 'large' | 'small') => (
+        <div
+            className={`hero-card ${size === 'large' ? 'hero-card-large' : 'hero-card-small'} skeleton-card`}
+            aria-hidden="true"
+        >
+            <div className="hero-media">
+                <div className="media-placeholder skeleton" />
+            </div>
+            <div className="hero-overlay">
+                <span className="skeleton-line skeleton" />
+                <span className="skeleton-line skeleton-line-short skeleton" />
             </div>
         </div>
     );
@@ -204,7 +232,7 @@ export default function TaleGameshopMainPage() {
     return (
         <div className="main-page">
             <section className="hero">
-                <div className="container hero-grid">
+                <div className="container hero-grid hero-container">
                     <div className="hero-copy">
                         <div className="eyebrow">PARE GAMES</div>
                         <h1>Discover Your Next Favourite Computer Game</h1>
@@ -230,8 +258,17 @@ export default function TaleGameshopMainPage() {
                     </div>
 
                     <div className="hero-showcase">
-                        {heroPrimary && renderGameCard(heroPrimary, 'large')}
-                        {heroSecondary && renderGameCard(heroSecondary, 'small')}
+                        {isLoading ? (
+                            <>
+                                {renderHeroSkeleton('large')}
+                                {renderHeroSkeleton('small')}
+                            </>
+                        ) : (
+                            <>
+                                {heroPrimary && renderGameCard(heroPrimary, 'large')}
+                                {heroSecondary && renderGameCard(heroSecondary, 'small')}
+                            </>
+                        )}
                     </div>
                 </div>
             </section>
@@ -251,21 +288,45 @@ export default function TaleGameshopMainPage() {
                     </div>
 
                     <div className="featured-scroller">
-                        {featuredGames.map((game) => (
-                            <Link to={`/games?filterCategory=${game.title}`} className="featured-card" key={game.id || game.title}>
-                                <div className="featured-media">
-                                    {game.imagePath && (
-                                        <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
-                                    )}
+                        {isLoading ? (
+                            Array.from({length: 6}).map((_, index) => (
+                                <div
+                                    className="featured-card skeleton-card"
+                                    key={`featured-skeleton-${index}`}
+                                    aria-hidden="true"
+                                >
+                                    <div className="featured-media">
+                                        <div className="media-placeholder skeleton" />
+                                    </div>
+                                    <div className="featured-meta">
+                                        <span className="skeleton-line skeleton" />
+                                        <span className="skeleton-line skeleton-line-short skeleton" />
+                                    </div>
                                 </div>
-                                <div className="featured-meta">
-                                    <span className="title">{game.title}</span>
-                                    {game.price !== undefined && (
-                                        <span className="price">${game.price.toFixed(2)}</span>
-                                    )}
-                                </div>
-                            </Link>
-                        ))}
+                            ))
+                        ) : (
+                            featuredGames.map((game) => (
+                                <Link
+                                    to={`/games?filterCategory=${game.title}`}
+                                    className="featured-card"
+                                    key={game.id || game.title}
+                                >
+                                    <div className="featured-media">
+                                        {game.imagePath ? (
+                                            <img alt={game.title} src={`${urlService.apiBaseUrl}/${game.imagePath}`}/>
+                                        ) : (
+                                            <div className="media-placeholder skeleton" aria-hidden="true" />
+                                        )}
+                                    </div>
+                                    <div className="featured-meta">
+                                        <span className="featured-title">{game.title}</span>
+                                        {game.price !== undefined && (
+                                            <span className="featured-price">${game.price.toFixed(2)}</span>
+                                        )}
+                                    </div>
+                                </Link>
+                            ))
+                        )}
                     </div>
                 </div>
             </section>
@@ -305,18 +366,36 @@ export default function TaleGameshopMainPage() {
                                 <p className="muted">Fresh drops from our editorial team.</p>
                             </div>
                             <div className="blog-list">
-                                {blogPosts.map((post) => (
-                                    <div className="blog-item" key={post.title}>
-                                        <div className="blog-thumb" aria-hidden="true" />
-                                        <div className="blog-copy">
-                                            <div className="blog-title">{post.title}</div>
-                                            <div className="blog-snippet muted">{post.snippet}</div>
+                                {blogLoading ? (
+                                    Array.from({length: 3}).map((_, index) => (
+                                        <div className="blog-item" key={`blog-skeleton-${index}`}>
+                                            <div className="blog-thumb skeleton" aria-hidden="true" />
+                                            <div className="blog-copy">
+                                                <div className="skeleton h-5" />
+                                                <div className="skeleton h-4 mt-2" />
+                                            </div>
                                         </div>
-                                        <Link className="text-link" to={post.link}>
-                                            Read
-                                        </Link>
-                                    </div>
-                                ))}
+                                    ))
+                                ) : featuredBlogPosts.length === 0 ? (
+                                    <div className="muted">Blog posts will appear here once published.</div>
+                                ) : (
+                                    featuredBlogPosts.map((post) => (
+                                        <div className="blog-item" key={post.id}>
+                                            <div
+                                                className="blog-thumb"
+                                                aria-hidden="true"
+                                                style={{backgroundImage: `url(${post.coverUrl || blogFallbackCover})`}}
+                                            />
+                                            <div className="blog-copy">
+                                                <div className="blog-title">{post.title}</div>
+                                                <div className="blog-snippet muted">{post.excerpt}</div>
+                                            </div>
+                                            <Link className="text-link" to={`/blog/${post.slug}`}>
+                                                Read
+                                            </Link>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                             <Link className="btn btn-ghost" to="/blog">
                                 Go to blog
@@ -329,21 +408,40 @@ export default function TaleGameshopMainPage() {
                                 <p className="muted">Hand-picked stories worth reading.</p>
                             </div>
                             <div className="highlight-stack">
-                                {highlights.map((item) => (
-                                    <div className="highlight-card" key={item.title}>
-                                        <div className="highlight-media" aria-hidden="true" />
-                                        <div className="highlight-body">
-                                            <div className="highlight-header">
-                                                <span className="badge">{item.badge}</span>
-                                                <Link className="text-link" to={item.link}>
-                                                    Read more
-                                                </Link>
+                                {blogLoading ? (
+                                    Array.from({length: 2}).map((_, index) => (
+                                        <div className="highlight-card" key={`highlight-skeleton-${index}`}>
+                                            <div className="highlight-media skeleton" aria-hidden="true" />
+                                            <div className="highlight-body">
+                                                <div className="skeleton h-4 w-24" />
+                                                <div className="skeleton h-5 mt-2" />
+                                                <div className="skeleton h-4 mt-2" />
                                             </div>
-                                            <div className="highlight-title">{item.title}</div>
-                                            <div className="highlight-snippet muted">{item.snippet}</div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                ) : highlightPosts.length === 0 ? (
+                                    <div className="muted">Check back soon for highlight stories.</div>
+                                ) : (
+                                    highlightPosts.map((item, index) => (
+                                        <div className="highlight-card" key={item.id}>
+                                            <div
+                                                className="highlight-media"
+                                                aria-hidden="true"
+                                                style={{backgroundImage: `url(${item.coverUrl || blogFallbackCover})`}}
+                                            />
+                                            <div className="highlight-body">
+                                                <div className="highlight-header">
+                                                    <span className="highlight-badge">{item.tags[0] ?? (index === 0 ? "Weekly" : "New")}</span>
+                                                    <Link className="text-link" to={`/blog/${item.slug}`}>
+                                                        Read more
+                                                    </Link>
+                                                </div>
+                                                <div className="highlight-title">{item.title}</div>
+                                                <div className="highlight-snippet muted">{item.excerpt}</div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
@@ -414,41 +512,7 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className="testimonials-section">
-                <div className="container">
-                    <div className="section-heading">
-                        <h2>Loved by players</h2>
-                        <p className="muted">Trusted by thousands for fast delivery and curated picks.</p>
-                    </div>
-                    <div className="testimonials-grid">
-                        <div className="rating-card">
-                            <div className="stars" aria-label="4.8 out of 5 stars">
-                                {[...Array(5)].map((_, idx) => (
-                                    <FontAwesomeIcon key={idx} icon={faStar} />
-                                ))}
-                            </div>
-                            <div className="rating-score">4.8/5</div>
-                            <div className="rating-helper muted">based on 2,300 reviews</div>
-                        </div>
-
-                        <div className="testimonial-cards">
-                            {testimonials.map((item) => (
-                                <div className="testimonial-card" key={item.name}>
-                                    <p className="testimonial-quote">{item.quote}</p>
-                                    <div className="testimonial-footer">
-                                        <div className="avatar" aria-hidden="true">{item.name.charAt(0)}</div>
-                                        <div className="testimonial-meta">
-                                            <div className="testimonial-name">{item.name}</div>
-                                            <div className="testimonial-role muted">{item.role}</div>
-                                        </div>
-                                        <span className="badge subtle">{item.badge}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <TestimonialsCarousel testimonials={testimonials} />
 
             <section className="trust-section">
                 <div className="container">
@@ -498,7 +562,10 @@ export default function TaleGameshopMainPage() {
                     </div>
                     <div className="faq-list">
                         {faqs.map((item, index) => (
-                            <div className={`faq-item ${openFaqIndex === index ? 'open' : ''}`} key={item.question}>
+                            <div
+                                className={`faq-item ${openFaqIndex === index ? 'open' : ''}`}
+                                key={item.question}
+                            >
                                 <button className="faq-trigger" onClick={() => toggleFaq(index)}>
                                     <span>{item.question}</span>
                                     <FontAwesomeIcon icon={faChevronDown} />

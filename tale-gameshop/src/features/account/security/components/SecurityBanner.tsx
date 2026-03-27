@@ -1,4 +1,6 @@
 import React from 'react';
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
+import {faShieldHalved} from '@fortawesome/free-solid-svg-icons';
 
 type SecurityBannerProps = {
     show: boolean;
@@ -12,6 +14,9 @@ const SecurityBanner: React.FC<SecurityBannerProps> = ({show, onSetup2fa}) => {
 
     return (
         <section className="card security-alert" data-testid="security-alert">
+            <div className="security-alert-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faShieldHalved} />
+            </div>
             <div className="security-alert-content">
                 <h2>Your account is not fully protected</h2>
                 <p>Enable two-factor authentication (2FA) to enhance the security of your account.</p>

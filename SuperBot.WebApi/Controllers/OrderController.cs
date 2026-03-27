@@ -1,16 +1,25 @@
 ﻿using AutoMapper;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using SuperBot.Core.Interfaces;
 
 namespace SuperBot.WebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OrderController(IOrderRepository _orderRepository, IMapper _mapper, IMediator _mediator) : Controller
+    public class OrderController(
+        IOrderRepository _orderRepository,
+        IGameRepository _gameRepository,
+        IMapper _mapper,
+        IMediator _mediator,
+        IPromoCodeService _promoCodeService) : Controller
     {
         [HttpPost("confirm/{orderId}")]
         public async Task<IActionResult> SetPaidSteamOrder(string orderId)
@@ -49,6 +58,46 @@ namespace SuperBot.WebApi.Controllers
             return Ok(orderDtos);
         }
 
+        // GET: api/order/summary
+        [HttpGet("summary")]
+        public async Task<ActionResult<IEnumerable<OrderSummaryDto>>> GetOrderSummaries()
+        {
+            var orders = (await _orderRepository.GetAllOrdersAsync()).ToList();
+            var gameIds = orders
+                .Select(order => order.GameId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            var games = gameIds.Count > 0
+                ? await _gameRepository.GetByIdsAsync(gameIds)
+                : new List<Game>();
+
+            var gameLookup = games.ToDictionary(game => game.Id, StringComparer.OrdinalIgnoreCase);
+
+            var summaries = orders.Select(order =>
+            {
+                gameLookup.TryGetValue(order.GameId ?? string.Empty, out var game);
+                var totalAmount = game?.Price ?? 0m;
+
+                return new OrderSummaryDto
+                {
+                    Id = order.Id,
+                    GameId = order.GameId,
+                    GameName = string.IsNullOrWhiteSpace(order.GameName) ? game?.Name : order.GameName,
+                    UserName = order.UserName,
+                    IsPaid = order.IsPaid,
+                    IsFulfilled = order.IsFulfilled,
+                    OrderDate = order.OrderDate,
+                    TotalAmount = totalAmount,
+                    Currency = "USD",
+                    Status = ResolveStatus(order)
+                };
+            });
+
+            return Ok(summaries);
+        }
+
         // POST: api/order
         [HttpPost]
         public async Task<ActionResult> CreateOrder([FromBody] Order orderDto)
@@ -59,9 +108,41 @@ namespace SuperBot.WebApi.Controllers
             }
 
             var order = _mapper.Map<Order>(orderDto);
+            order.OrderDate = order.OrderDate == default ? DateTime.UtcNow : order.OrderDate;
+
+            if (!string.IsNullOrWhiteSpace(order.PromoCode) && order.TotalAmount.HasValue)
+            {
+                var validation = await _promoCodeService.ValidateAsync(new PromoValidationRequest
+                {
+                    Code = order.PromoCode,
+                    CartSubtotal = order.TotalAmount.Value,
+                    UserName = order.UserName
+                });
+
+                if (!validation.Valid)
+                {
+                    return BadRequest(new { message = validation.Message });
+                }
+
+                order.PromoCode = validation.NormalizedCode;
+                order.PromoDiscountAmount = validation.DiscountAmount;
+                order.TotalAmount = validation.FinalTotal;
+            }
+
             await _orderRepository.CreateOrderAsync(order);
 
-            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, orderDto);
+            if (!string.IsNullOrWhiteSpace(order.PromoCode) && order.TotalAmount.HasValue)
+            {
+                await _promoCodeService.RecordUsageAsync(new PromoApplyRequest
+                {
+                    Code = order.PromoCode,
+                    CartSubtotal = order.TotalAmount.Value + (order.PromoDiscountAmount ?? 0),
+                    UserName = order.UserName,
+                    OrderId = order.Id.ToString()
+                });
+            }
+
+            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, order);
         }
 
         // PUT: api/order/{id}
@@ -101,5 +182,33 @@ namespace SuperBot.WebApi.Controllers
             return NoContent(); // Successful delete
         }
 
+        private static string ResolveStatus(Order order)
+        {
+            if (!order.IsPaid)
+            {
+                return "Payment pending";
+            }
+
+            if (!order.IsFulfilled)
+            {
+                return "Processing";
+            }
+
+            return "Completed";
+        }
+    }
+
+    public class OrderSummaryDto
+    {
+        public Guid Id { get; set; }
+        public string GameId { get; set; }
+        public string GameName { get; set; }
+        public string UserName { get; set; }
+        public bool IsPaid { get; set; }
+        public bool IsFulfilled { get; set; }
+        public DateTime OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Currency { get; set; }
+        public string Status { get; set; }
     }
 }

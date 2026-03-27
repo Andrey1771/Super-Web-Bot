@@ -20,6 +20,10 @@ using SuperBot.Application.Commands.Telegram;
 using Telegram.Bot;
 using SuperBot.WebApi.Types;
 using SuperBot.Core.Interfaces.IBotStateService;
+using SuperBot.WebApi.Support;
+using SuperBot.WebApi.Support.Infrastructure;
+using SuperBot.WebApi.Support.Services;
+using SuperBot.WebApi.Services.Analytics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +74,9 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
 
 builder.Services.AddControllers();
+builder.Services.Configure<SupportOptions>(builder.Configuration.GetSection("Support"));
+builder.Services.Configure<SupportRoleOptions>(builder.Configuration.GetSection("Support:Roles"));
+builder.Services.Configure<SuperBot.WebApi.Support.Chat.SupportChatOptions>(builder.Configuration.GetSection("SupportChat"));
 
 var domainAssembly = typeof(GetMainMenuCommand).Assembly;
 builder.Services
@@ -109,20 +116,53 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
 builder.Services.AddScoped<MongoDbInitializer>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepository>();
+builder.Services.AddScoped<IGameDetailsRepository, GameDetailsMongoDbRepository>();
+builder.Services.AddScoped<IMediaAssetRepository, MediaAssetMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
+builder.Services.AddScoped<IBlogRepository, BlogMongoDbRepository>();
+builder.Services.AddScoped<IBlogEventRepository, BlogEventMongoDbRepository>();
+builder.Services.AddScoped<IUserBlogProfileRepository, UserBlogProfileMongoDbRepository>();
+builder.Services.AddScoped<IAnalyticsSettingsRepository, AnalyticsSettingsMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
 builder.Services.AddScoped<IViewedGameRepository, ViewedGameMongoDbRepository>();
 builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
+builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();
+builder.Services.AddScoped<IGameReviewHelpfulRepository, GameReviewHelpfulMongoDbRepository>();
+builder.Services.AddScoped<IGameQuestionRepository, GameQuestionMongoDbRepository>();
+builder.Services.AddScoped<IGameTrackingRepository, GameTrackingMongoDbRepository>();
 builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
+builder.Services.AddScoped<IBlogRecommendationsService, BlogRecommendationsService>();
+builder.Services.AddScoped<IPromoCodeService, PromoCodeService>();
 builder.Services.AddScoped<ISteamOrderRepository, SteamOrderMongoDbRepository>();
 builder.Services.AddScoped<ISettingsRepository, SettingsMongoDbRepository>();
 builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
+builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
+builder.Services.AddScoped<IPromoCodeRepository, PromoCodeMongoDbRepository>();
+builder.Services.AddScoped<IPromoCodeUsageRepository, PromoCodeUsageMongoDbRepository>();
+builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
+builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
+builder.Services.AddScoped<SupportRoleEvaluator>();
+builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.IOllamaChatClient, SuperBot.WebApi.Support.Chat.Services.OllamaChatClient>();
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportChatService, SuperBot.WebApi.Support.Chat.Services.SupportChatService>();
 
 
 
 builder.Services.AddAutoMapper(typeof(GameProfile));
+builder.Services.AddAutoMapper(typeof(GameDiscountProfile));
+builder.Services.AddAutoMapper(typeof(GameDetailsProfile));
 builder.Services.AddAutoMapper(typeof(CartGameProfile));
+builder.Services.AddAutoMapper(typeof(MediaAssetProfile));
+builder.Services.AddAutoMapper(typeof(BlogProfile));
+builder.Services.AddAutoMapper(typeof(AnalyticsSettingsProfile));
+builder.Services.AddAutoMapper(typeof(ImportJobProfile));
+builder.Services.AddAutoMapper(typeof(PromoCodeProfile));
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<Ga4Client>();
+builder.Services.AddScoped<YandexMetrikaClient>();
+builder.Services.AddHostedService<SuperBot.WebApi.Support.Chat.Services.OllamaStartupLogger>();
 
 //TODO     ,     ,   
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
@@ -179,20 +219,56 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>((httpClient) =>
     httpClient.BaseAddress = new Uri(uri);
     return new KeycloakClient(httpClient, uri);
 });
-builder.Services.AddHttpClient<KeycloakAdminClient>();
 
 builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddTransient<IClaimsTransformation, KeycloakClaimsTransformation>();
+builder.Services.AddAuthorization(options =>
+{
+    var supportRoles = builder.Configuration.GetSection("Support:Roles").Get<SupportRoleOptions>()?.Roles
+        ?? new List<string> { "admin", "support" };
+    options.AddPolicy("SupportAgent", policy => policy.RequireRole(supportRoles.ToArray()));
+});
 
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
     logging.AddDebug();
 });
+builder.Logging.AddProvider(new SuperBot.WebApi.Services.SupportChatConsoleLoggerProvider());
 
 var app = builder.Build();
+var startupLogger = app.Logger;
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var supportChatSection = app.Configuration.GetSection("SupportChat");
+    var ollamaBaseUrl = supportChatSection.GetValue<string>("OllamaBaseUrl") ?? "n/a";
+    var ollamaModel = supportChatSection.GetValue<string>("OllamaModel") ?? "n/a";
+    var streamingEnabled = supportChatSection.GetValue<bool>("StreamingEnabled");
+
+    startupLogger.LogInformation("SuperBot.WebApi started. Environment: {Environment}", app.Environment.EnvironmentName);
+    startupLogger.LogInformation("Support chat AI: {OllamaBaseUrl} (model={OllamaModel}, streaming={StreamingEnabled})",
+        ollamaBaseUrl, ollamaModel, streamingEnabled);
+    startupLogger.LogInformation("CORS allowed origin: {Origin}",
+        app.Configuration.GetSection("FrontendConfiguration:Uri").Value ?? "not configured");
+});
+
+if (app.Environment.IsDevelopment() && app.Configuration.GetSection("Diagnostics").GetValue<bool>("LogHttpRequests"))
+{
+    app.Use(async (context, next) =>
+    {
+        var requestLogger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("HttpRequestLogger");
+        requestLogger.LogInformation("HTTP {Method} {Path} started.", context.Request.Method, context.Request.Path);
+        await next();
+        requestLogger.LogInformation("HTTP {Method} {Path} finished with {StatusCode}.",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode);
+    });
+}
 
 // !!!     HTTP-     
 app.UseForwardedHeaders();
@@ -211,8 +287,10 @@ if (app.Environment.IsDevelopment())
 //    DI-   
 using (var scope = app.Services.CreateScope())
 {
+    startupLogger.LogInformation("Initializing MongoDB collections and indexes...");
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
     await mongoDbInitializer.InitializeAsync(); //   
+    startupLogger.LogInformation("MongoDB initialization completed.");
 }
 
 //  
@@ -243,6 +321,8 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
@@ -254,8 +334,5 @@ using (var scope = app.Services.CreateScope())
         () => scope.ServiceProvider.GetRequiredService<IBackgroundTaskService>().ScheduleClearOutdatedDataJob(),
         Cron.Daily);
 }
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.Run();

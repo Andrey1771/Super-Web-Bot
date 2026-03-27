@@ -40,6 +40,28 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<Game>(gamesDb.FirstOrDefault());
         }
 
+        public async Task<Game> GetByExternalIdAsync(string externalId)
+        {
+            if (string.IsNullOrWhiteSpace(externalId))
+            {
+                return null;
+            }
+
+            var gameDb = await _games.Find(game => game.ExternalId == externalId).FirstOrDefaultAsync();
+            return _mapper.Map<Game>(gameDb);
+        }
+
+        public async Task<Game> GetBySlugAsync(string slug)
+        {
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                return null;
+            }
+
+            var gameDb = await _games.Find(game => game.Slug == slug).FirstOrDefaultAsync();
+            return _mapper.Map<Game>(gameDb);
+        }
+
         public async Task<List<Game>> GetByIdsAsync(IEnumerable<string> ids)
         {
             var idList = ids?.ToList() ?? new List<string>();
@@ -49,6 +71,17 @@ namespace SuperBot.Infrastructure.Repositories
             }
 
             var gamesDb = await _games.Find(game => idList.Contains(game.Id)).ToListAsync();
+            return _mapper.Map<List<Game>>(gamesDb);
+        }
+
+        public async Task<List<Game>> GetByCoverMediaIdAsync(string mediaId)
+        {
+            if (string.IsNullOrWhiteSpace(mediaId))
+            {
+                return new List<Game>();
+            }
+
+            var gamesDb = await _games.Find(game => game.CoverMediaId == mediaId).ToListAsync();
             return _mapper.Map<List<Game>>(gamesDb);
         }
 

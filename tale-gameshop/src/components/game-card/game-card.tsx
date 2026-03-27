@@ -5,6 +5,7 @@ import { Product } from '../../reducers/cart-reducer';
 import container from "../../inversify.config";
 import {IUrlService} from "../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../constants/identifiers";
+import { analyticsClient } from "../../utils/analytics-client";
 
 interface GameCardProps {
     game: Game;
@@ -14,6 +15,23 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
     const { dispatch } = useCart();
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+    const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
+    const finalPrice = Number.isFinite(game.finalPrice ?? game.price) ? Number(game.finalPrice ?? game.price) : regularPrice;
+    const hasActiveDiscount = Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0 && finalPrice < regularPrice);
+
+    const buildItem = () => ({
+        item_id: game.id ?? "",
+        item_name: game.title,
+        price: finalPrice,
+        item_category: String(game.gameType),
+        quantity: 1
+    });
+
+    const handleViewItem = () => {
+        analyticsClient.trackEcommerce("view_item", {
+            items: [buildItem()]
+        });
+    };
 
     const handleAddToCart = () => {
         dispatch({
@@ -21,15 +39,32 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
             payload: {
                 gameId: game.id ?? "",
                 name: game.name,
-                price: game.price,
+                price: finalPrice,
                 quantity: 1,
                 image: game.imagePath
             } as Product,
         });
+
+        analyticsClient.trackEcommerce("add_to_cart", {
+            currency: "UAH",
+            value: finalPrice,
+            items: [buildItem()]
+        });
     };
 
     return (
-        <div key={game.id} className="card h-full flex flex-col">
+        <div
+            key={game.id}
+            className="card h-full flex flex-col"
+            onClick={handleViewItem}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    handleViewItem();
+                }
+            }}
+            role="button"
+            tabIndex={0}
+        >
             <div className="card-media" style={{ height: '180px' }}>
                 <img
                     alt={game.title}
@@ -46,10 +81,23 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                 >
                     {game.title.length > 44 ? `${game.title.slice(0, 44)}...` : game.title}
                 </h2>
-                <p className="muted mb-4">${game.price}</p>
+                <div className="muted mb-4">
+                    {hasActiveDiscount ? (
+                        <>
+                            <span className="line-through mr-2">${regularPrice.toFixed(2)}</span>
+                            <span className="font-semibold">${finalPrice.toFixed(2)}</span>
+                            <span className="ml-2">-{Number(game.discountPercent).toFixed(0)}%</span>
+                        </>
+                    ) : (
+                        <span>${finalPrice.toFixed(2)}</span>
+                    )}
+                </div>
                 <button
                     className="btn btn-primary w-full justify-center mt-auto"
-                    onClick={handleAddToCart}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        handleAddToCart();
+                    }}
                 >
                     Add to Cart
                 </button>

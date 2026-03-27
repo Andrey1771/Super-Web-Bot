@@ -18,6 +18,18 @@ export default (env, { mode }) => {
         throw new Error(`[webpack] Missing ${appConfigFile}.`);
     }
 
+    const mkcertKeyPath = path.resolve(__dirname, 'certs/localhost-key.pem');
+    const mkcertCertPath = path.resolve(__dirname, 'certs/localhost.pem');
+    const legacyKeyPath = path.resolve(__dirname, 'public/private.key');
+    const legacyCertPath = path.resolve(__dirname, 'public/private.crt');
+    const hasMkcert = fs.existsSync(mkcertKeyPath) && fs.existsSync(mkcertCertPath);
+
+    if (!hasMkcert) {
+        console.warn(
+            '[webpack-dev-server] mkcert files not found. Run `npm run cert:dev` to generate trusted localhost certs.'
+        );
+    }
+
     return ({
     mode: mode === 'production' ? 'production' : 'development',
     cache: mode === 'production'
@@ -148,39 +160,33 @@ export default (env, { mode }) => {
                 errors: true,
                 warnings: false,
             },
-            webSocketURL: {
-                protocol: 'wss',
-                hostname: 'localhost',
-                port: 3000,
-                pathname: '/ws',
-            },
+            webSocketURL: hasMkcert
+                ? {
+                    protocol: 'wss',
+                    hostname: 'localhost',
+                    port: 3000,
+                    pathname: '/ws',
+                }
+                : {
+                    protocol: 'ws',
+                    hostname: 'localhost',
+                    port: 3000,
+                    pathname: '/ws',
+                },
         },
-        server: (() => {
-            const mkcertKeyPath = path.resolve(__dirname, 'certs/localhost-key.pem');
-            const mkcertCertPath = path.resolve(__dirname, 'certs/localhost.pem');
-            const legacyKeyPath = path.resolve(__dirname, 'public/private.key');
-            const legacyCertPath = path.resolve(__dirname, 'public/private.crt');
-            const hasMkcert = fs.existsSync(mkcertKeyPath) && fs.existsSync(mkcertCertPath);
-
-            if (!hasMkcert) {
-                console.warn(
-                    '[webpack-dev-server] mkcert files not found. Run `npm run cert:dev` to generate trusted localhost certs.'
-                );
-            }
-
-            const keyPath = hasMkcert ? mkcertKeyPath : legacyKeyPath;
-            const certPath = hasMkcert ? mkcertCertPath : legacyCertPath;
-
-            return {
+        server: hasMkcert
+            ? {
                 type: 'https',
                 options: {
-                    key: fs.readFileSync(keyPath),
-                    cert: fs.readFileSync(certPath),
+                    key: fs.readFileSync(mkcertKeyPath),
+                    cert: fs.readFileSync(mkcertCertPath),
                     requestCert: false,
                 },
-            };
-        })(),
+            }
+            : {
+                type: 'http',
+            },
     },
     devtool: (mode === 'production') ? 'source-map' : 'eval-cheap-module-source-map',
-});
+    });
 };
