@@ -311,7 +311,7 @@
 .main-page .premium-storefront .rail-item.active {
   border-color: #4d38bb;
   background: #f5f2ff;
-  box-shadow: inset 0 0 0 1px rgba(77, 56, 187, 0.18);
+  box-shadow: none;
 }
 
 .main-page .premium-storefront .rail-left {
