@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import type { Game } from "../../models/game";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IUrlService } from "../../iterfaces/i-url-service";
+import { useCart } from "../../context/cart-context";
+import type { Product } from "../../reducers/cart-reducer";
 import SafeGameImage from "../common/SafeGameImage";
 import { slugify } from "../../utils/slugify";
 import "./featured-storefront-section.css";
@@ -33,6 +35,8 @@ const gameTypeLabels: Record<number, string> = {
 
 const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ games, isLoading }) => {
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+  const navigate = useNavigate();
+  const { dispatch } = useCart();
   const railListRef = useRef<HTMLDivElement | null>(null);
 
   const featuredGames = useMemo(() => {
@@ -89,6 +93,29 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
   const getGameHref = (game: Game) => {
     const fallbackSlug = slugify(game.slug?.trim() || game.title || game.name || "game");
     return `/games/${fallbackSlug}`;
+  };
+
+  const openGamePage = (game: Game) => {
+    navigate(getGameHref(game));
+  };
+
+  const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>, game: Game) => {
+    event.stopPropagation();
+    const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
+    const finalPrice = Number.isFinite(game.finalPrice ?? game.price)
+      ? Number(game.finalPrice ?? game.price)
+      : regularPrice;
+
+    dispatch({
+      type: "ADD_TO_CART",
+      payload: {
+        gameId: game.id ?? "",
+        name: game.name,
+        price: finalPrice,
+        quantity: 1,
+        image: game.imagePath
+      } as Product
+    });
   };
 
   const getPriceInfo = (game: Game) => {
@@ -197,21 +224,31 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
           ) : activeGame ? (
             <>
               <div className="billboard-left">
-                <article className="featured-card-shell">
-                  <Link className="billboard-hero-link" to={getGameHref(activeGame)} aria-label={`Open ${activeGame.title}`}>
-                    <div className="billboard-frame" key={activeGame.id || activeGame.title}>
-                      <SafeGameImage
-                        className="billboard-cover"
-                        gameTitle={activeGame.title}
-                        src={activeGame.imagePath}
-                        baseUrl={urlService.apiBaseUrl}
-                      />
-                      <div className="billboard-frame-badge">
-                        <span className="billboard-frame-badge-spark" aria-hidden="true">◆</span>
-                        <span>FEATURED PICK</span>
-                      </div>
+                <article
+                  className="featured-card-shell"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Open ${activeGame.title}`}
+                  onClick={() => openGamePage(activeGame)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openGamePage(activeGame);
+                    }
+                  }}
+                >
+                  <div className="billboard-frame" key={activeGame.id || activeGame.title}>
+                    <SafeGameImage
+                      className="billboard-cover"
+                      gameTitle={activeGame.title}
+                      src={activeGame.imagePath}
+                      baseUrl={urlService.apiBaseUrl}
+                    />
+                    <div className="billboard-frame-badge">
+                      <span className="billboard-frame-badge-spark" aria-hidden="true">◆</span>
+                      <span>FEATURED PICK</span>
                     </div>
-                  </Link>
+                  </div>
 
                   <div className="billboard-info-card">
                     <div className="billboard-info-grid">
@@ -247,10 +284,15 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                           )}
                         </div>
 
-                        <Link className="billboard-cta" to={getGameHref(activeGame)}>
-                          Open game
+                        <button
+                          type="button"
+                          className="billboard-cta"
+                          onClick={(event) => handleAddToCart(event, activeGame)}
+                          aria-label={`Add ${activeGame.title} to cart`}
+                        >
+                          Add to cart
                           <FontAwesomeIcon icon={faArrowRight} />
-                        </Link>
+                        </button>
                       </div>
 
                       <div className="billboard-trust" aria-label="Store trust points">

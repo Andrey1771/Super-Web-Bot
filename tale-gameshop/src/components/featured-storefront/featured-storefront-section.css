@@ -33,17 +33,26 @@
   padding: 0;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-.main-page .premium-storefront .billboard-hero-link {
-  display: block;
+.main-page .premium-storefront .featured-card-shell:hover {
+  border-color: #ddd7f2;
+  box-shadow: 0 18px 34px rgba(37, 29, 77, 0.12);
+  transform: translateY(-1px);
+}
+
+.main-page .premium-storefront .featured-card-shell:focus-visible {
+  outline: 2px solid #4d38bb;
+  outline-offset: 2px;
 }
 
 .main-page .premium-storefront .billboard-frame {
   position: relative;
   border-radius: 0;
   overflow: hidden;
-  border-bottom: 1px solid #eeeaf8;
+  border-bottom: none;
   height: 458px;
 }
 
@@ -54,7 +63,7 @@
   transition: transform 0.28s ease;
 }
 
-.main-page .premium-storefront .billboard-hero-link:hover .billboard-cover {
+.main-page .premium-storefront .featured-card-shell:hover .billboard-cover {
   transform: scale(1.02);
 }
 
@@ -83,13 +92,14 @@
 
 .main-page .premium-storefront .billboard-info-card {
   padding: 18px 20px 16px;
-  background: #fbfafe;
+  background: #fff;
   border-radius: 0;
   width: 100%;
   max-width: none;
   margin: 0;
   align-self: stretch;
   box-sizing: border-box;
+  border-top: 1px solid #eeeaf8;
 }
 
 .main-page .premium-storefront .billboard-info-grid {
@@ -223,6 +233,7 @@
   font-size: 0.86rem;
   font-weight: 600;
   transition: background-color 0.2s ease;
+  cursor: pointer;
 }
 
 .main-page .premium-storefront .billboard-cta:hover {
