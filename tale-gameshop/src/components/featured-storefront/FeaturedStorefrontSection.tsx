@@ -196,22 +196,17 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                         <h3 className="billboard-title">{activeGame.title}</h3>
 
                         <div className="billboard-genres" aria-label="Game genres">
-                          {(activeGame.genres ?? []).slice(0, 4).map((genre) => (
+                          {(activeGame.genres ?? []).slice(0, 3).map((genre) => (
                             <span className="billboard-genre-chip" key={`${activeGame.id}-${genre}`}>
                               {genre}
                             </span>
                           ))}
                         </div>
 
-                        <div className="billboard-trust" aria-label="Store trust points">
-                          {storefrontPerks.map((perk) => (
-                            <span key={perk}>{perk}</span>
-                          ))}
-                        </div>
                       </div>
 
                       <div className="billboard-commerce-content">
-                        <div className="billboard-price-prefix">From</div>
+                        {activePriceInfo?.hasDiscount && <div className="billboard-price-prefix">From</div>}
                         <div className="billboard-price-row">
                           {activePriceInfo?.hasDiscount ? (
                             <>
@@ -230,6 +225,12 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                           Open game
                           <FontAwesomeIcon icon={faArrowRight} />
                         </Link>
+                      </div>
+
+                      <div className="billboard-trust" aria-label="Store trust points">
+                        {storefrontPerks.map((perk) => (
+                          <span key={perk}>{perk}</span>
+                        ))}
                       </div>
                     </div>
                   </div>
