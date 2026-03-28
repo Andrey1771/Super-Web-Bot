@@ -121,15 +121,6 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
     return "Instant delivery";
   };
 
-  const getDescription = (game: Game) => {
-    const value = game.description?.trim();
-    if (!value) {
-      return "Premium pick with instant delivery and secure checkout.";
-    }
-
-    return value;
-  };
-
   const getGameTypeLabel = (game: Game) => {
     const primaryGenre = game.genres?.[0]?.trim();
     if (primaryGenre) {
@@ -150,7 +141,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
           <div>
             <div className="eyebrow">FEATURED / POPULAR</div>
             <h2>Featured / Popular games</h2>
-            <div className="billboard-sub">{getPickCountLabel(featuredGames.length)}</div>
+            <div className="billboard-sub">Top picks • Updated weekly</div>
           </div>
           <div className="billboard-actions">
             <Link className="billboard-link" to="/games">
@@ -199,6 +190,9 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                   <div className="billboard-info-card">
                     <div className="billboard-info-grid">
                       <div className="billboard-main-content">
+                        <div className="billboard-meta-line">
+                          {getGameTypeLabel(activeGame)} • Instant delivery
+                        </div>
                         <h3 className="billboard-title">{activeGame.title}</h3>
 
                         <div className="billboard-genres" aria-label="Game genres">
@@ -209,8 +203,6 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                           ))}
                         </div>
 
-                        <p className="billboard-desc muted">{getDescription(activeGame)}</p>
-
                         <div className="billboard-trust" aria-label="Store trust points">
                           {storefrontPerks.map((perk) => (
                             <span key={perk}>{perk}</span>
@@ -219,6 +211,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                       </div>
 
                       <div className="billboard-commerce-content">
+                        <div className="billboard-price-prefix">From</div>
                         <div className="billboard-price-row">
                           {activePriceInfo?.hasDiscount ? (
                             <>
@@ -291,9 +284,10 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                     );
                   })}
                 </div>
-                {featuredGames.length <= 1 && (
-                  <p className="rail-helper-text">Add more featured games in admin to expand Top Picks.</p>
-                )}
+                <Link className="rail-browse-all" to="/games">
+                  <span>Browse all picks</span>
+                  <FontAwesomeIcon icon={faArrowRight} />
+                </Link>
               </aside>
             </>
           ) : (
