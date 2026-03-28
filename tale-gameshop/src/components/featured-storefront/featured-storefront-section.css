@@ -10,7 +10,7 @@
   border: 1px solid #e7e4f2;
   border-radius: 24px;
   box-shadow: 0 16px 34px rgba(26, 18, 59, 0.08);
-  padding: 22px;
+  padding: 26px;
   display: grid;
   grid-template-columns: minmax(0, 1.95fr) minmax(320px, 0.85fr);
   gap: 16px;
@@ -30,7 +30,7 @@
   background: #fff;
   box-shadow: 0 12px 24px rgba(37, 29, 77, 0.09);
   width: 100%;
-  padding: 10px;
+  padding: 12px;
 }
 
 .main-page .premium-storefront .billboard-hero-link {
@@ -80,7 +80,7 @@
 }
 
 .main-page .premium-storefront .billboard-info-card {
-  padding: 16px 18px 14px;
+  padding: 18px 20px 16px;
   background: #fbfafe;
   border-radius: 0 0 14px 14px;
   width: 100%;
@@ -90,11 +90,15 @@
 .main-page .premium-storefront .billboard-info-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main commerce"
+    "trust trust";
   gap: 10px 14px;
   align-items: end;
 }
 
 .main-page .premium-storefront .billboard-main-content {
+  grid-area: main;
   min-width: 0;
 }
 
@@ -105,11 +109,12 @@
 }
 
 .main-page .premium-storefront .billboard-commerce-content {
+  grid-area: commerce;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
   min-width: 172px;
 }
 
@@ -147,7 +152,7 @@
 }
 
 .main-page .premium-storefront .billboard-trust {
-  grid-column: 1 / -1;
+  grid-area: trust;
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
@@ -222,7 +227,7 @@
   border: 1px solid #ece8f5;
   border-radius: 18px;
   background: #fff;
-  padding: 12px 12px 11px;
+  padding: 11px 11px 10px;
   display: grid;
   grid-template-rows: auto auto auto;
   align-content: start;
@@ -323,6 +328,7 @@
 
 .main-page .premium-storefront .rail-text {
   min-width: 0;
+  flex: 1 1 auto;
   max-width: 100%;
 }
 
@@ -373,7 +379,7 @@
 .main-page .premium-storefront .rail-browse-all {
   margin-top: 10px;
   border-top: 1px solid #efecf9;
-  padding: 11px 4px 0;
+  padding: 10px 6px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -399,10 +405,15 @@
 @media (max-width: 1180px) {
   .main-page .billboard-surface.premium-storefront {
     grid-template-columns: 1fr;
+    padding: 20px;
   }
 
   .main-page .premium-storefront .billboard-info-grid {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "commerce"
+      "trust";
   }
 
   .main-page .premium-storefront .billboard-commerce-content {
