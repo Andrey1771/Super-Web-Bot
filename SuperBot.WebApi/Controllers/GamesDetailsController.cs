@@ -131,10 +131,13 @@ public class GamesDetailsController : ControllerBase
             Cover = string.IsNullOrWhiteSpace(game.ImagePath)
                 ? null
                 : new GameCover { Url = game.ImagePath, Alt = game.Title ?? game.Name },
+            Genres = new List<string> { GameTypeMapper.DescriptionsCategories[game.GameType] },
             BasePrice = game.Price,
             Currency = "USD",
             FinalPrice = game.Price,
             IsActive = true,
+            ShowInFeaturedStorefront = false,
+            FeaturedStorefrontPriority = 0,
             Platforms = new GamePlatforms { Windows = true },
             ReleaseDate = game.ReleaseDate
         };

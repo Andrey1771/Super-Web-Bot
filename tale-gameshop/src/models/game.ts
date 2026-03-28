@@ -7,6 +7,9 @@ export interface Game {
     finalPrice?: number;
     discountPercent?: number;
     discountActive?: boolean;
+    genres?: string[];
+    showInFeaturedStorefront?: boolean;
+    featuredStorefrontPriority?: number;
     title: string;
     gameType: number;
     imagePath: string;
