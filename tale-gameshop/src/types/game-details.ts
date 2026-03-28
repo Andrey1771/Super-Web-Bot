@@ -25,6 +25,8 @@ export interface GameDetails {
   isActive: boolean;
   isNew: boolean;
   isTopRated: boolean;
+  showInFeaturedStorefront: boolean;
+  featuredStorefrontPriority: number;
   keyType: string;
   keyFeatures: string[];
   awards: AwardBadge[];

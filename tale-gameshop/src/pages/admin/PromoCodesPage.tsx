@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import PageHeader from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
 import { useToast } from '../../components/ui/ToastProvider';
@@ -76,6 +77,10 @@ const PromoCodesPage: React.FC = () => {
     <div className="admin-grid">
       <PageHeader title="Promo codes" description="Manage checkout promo campaigns." breadcrumbs={['Promo codes', 'Admin']} />
       <Card>
+        <div className="flex gap-2 mb-4">
+          <Link className="btn btn-primary" to="/admin/promo-codes">Promo Codes</Link>
+          <Link className="btn btn-outline" to="/admin/game-discounts">Game Discounts</Link>
+        </div>
         <div className="admin-grid admin-grid--3">
           <input className="input" placeholder="Code" value={draft.code} onChange={(e) => setDraft((prev) => ({ ...prev, code: e.target.value }))} />
           <select className="input" value={draft.type} onChange={(e) => setDraft((prev) => ({ ...prev, type: e.target.value as PromoCodeType }))}><option value="percentage">Percentage</option><option value="fixed">Fixed</option></select>
