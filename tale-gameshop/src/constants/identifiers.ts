@@ -19,6 +19,7 @@ const IDENTIFIERS = {
     IAdminAnalyticsService: Symbol.for("IAdminAnalyticsService"),
     IAdminGameDetailsService: Symbol.for("IAdminGameDetailsService"),
     IAdminPromoCodesService: Symbol.for("IAdminPromoCodesService"),
+    IAdminGameDiscountsService: Symbol.for("IAdminGameDiscountsService"),
 };
 
 export default IDENTIFIERS;

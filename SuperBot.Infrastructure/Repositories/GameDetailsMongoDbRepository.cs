@@ -39,6 +39,18 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<GameDetails>(detailsDb);
         }
 
+        public async Task<List<GameDetails>> GetByGameIdsAsync(IEnumerable<string> gameIds)
+        {
+            var ids = gameIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+            if (ids == null || ids.Count == 0)
+            {
+                return new List<GameDetails>();
+            }
+
+            var details = await _details.Find(item => ids.Contains(item.GameId)).ToListAsync();
+            return _mapper.Map<List<GameDetails>>(details);
+        }
+
         public async Task CreateAsync(GameDetails details)
         {
             var db = _mapper.Map<GameDetailsDb>(details);

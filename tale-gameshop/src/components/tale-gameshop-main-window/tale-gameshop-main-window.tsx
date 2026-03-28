@@ -44,6 +44,7 @@ import { analyticsClient } from "../../utils/analytics-client";
 import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
 import PromoCodesPage from "../../pages/admin/PromoCodesPage";
 import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
+import GameDiscountsPage from "../../pages/admin/GameDiscountsPage";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -80,6 +81,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="orders" element={<OrdersPage />} />
                         <Route path="payments/issues" element={<PaymentIssuesPage />} />
                         <Route path="promo-codes" element={<PromoCodesPage />} />
+                        <Route path="game-discounts" element={<GameDiscountsPage />} />
                         <Route path="blog" element={<BlogPostsPage />} />
                         <Route path="blog/new" element={<BlogPostEditorPage />} />
                         <Route path="blog/:id/edit" element={<BlogPostEditorPage />} />

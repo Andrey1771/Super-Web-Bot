@@ -35,6 +35,8 @@ const emptyDetails = (gameId: string, slug: string, title: string): GameDetails 
   isActive: true,
   isNew: false,
   isTopRated: false,
+  showInFeaturedStorefront: false,
+  featuredStorefrontPriority: 0,
   keyType: "SteamKey",
   keyFeatures: [],
   awards: [],
@@ -460,6 +462,40 @@ const GameDetailsEditorPage: React.FC = () => {
         <div className="mt-3 flex gap-2">
           <button className="btn btn-outline" onClick={handleSaveDiscount}>Save discount</button>
           <button className="btn btn-outline" onClick={handleDeleteDiscount}>Delete discount</button>
+        </div>
+      </div>
+
+      <div className="admin-card">
+        <h3>Featured storefront settings</h3>
+        <div className="admin-grid admin-grid--3">
+          <label>
+            Show in homepage Featured / Top Picks
+            <select
+              className="input"
+              value={details.showInFeaturedStorefront ? "yes" : "no"}
+              onChange={(event) => updateDetails({ showInFeaturedStorefront: event.target.value === "yes" })}
+            >
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </label>
+          <label>
+            Top Picks priority (lower first)
+            <input
+              className="input"
+              type="number"
+              value={details.featuredStorefrontPriority}
+              onChange={(event) => updateDetails({ featuredStorefrontPriority: Number(event.target.value) || 0 })}
+            />
+          </label>
+          <label>
+            Genres shown in storefront
+            <input
+              className="input"
+              value={details.genres.join(", ")}
+              readOnly
+            />
+          </label>
         </div>
       </div>
 

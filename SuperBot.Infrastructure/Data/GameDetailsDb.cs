@@ -86,6 +86,12 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("isTopRated")]
         public bool IsTopRated { get; set; }
 
+        [BsonElement("showInFeaturedStorefront")]
+        public bool ShowInFeaturedStorefront { get; set; }
+
+        [BsonElement("featuredStorefrontPriority")]
+        public int FeaturedStorefrontPriority { get; set; }
+
         [BsonElement("keyType")]
         public string KeyType { get; set; }
 
