@@ -269,7 +269,6 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                       </div>
 
                       <div className="billboard-commerce-content">
-                        {activePriceInfo?.hasDiscount && <div className="billboard-price-prefix">From</div>}
                         <div className="billboard-price-row">
                           {activePriceInfo?.hasDiscount ? (
                             <>

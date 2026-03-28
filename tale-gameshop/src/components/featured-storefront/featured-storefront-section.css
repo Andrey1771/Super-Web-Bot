@@ -52,7 +52,7 @@
 
 .main-page .premium-storefront .billboard-frame {
   position: relative;
-  border-radius: 0;
+  border-radius: 20px 20px 0 0;
   overflow: hidden;
   border-bottom: none;
   height: 458px;
@@ -97,7 +97,7 @@
 .main-page .premium-storefront .billboard-info-card {
   padding: 18px 20px 16px;
   background: #fff;
-  border-radius: 0;
+  border-radius: 0 0 20px 20px;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -183,14 +183,6 @@
 .main-page .premium-storefront .billboard-trust span {
   font-size: 0.77rem;
   color: #5a5373;
-}
-
-.main-page .premium-storefront .billboard-price-prefix {
-  font-size: 0.82rem;
-  color: #68627f;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .main-page .premium-storefront .billboard-price-row {
