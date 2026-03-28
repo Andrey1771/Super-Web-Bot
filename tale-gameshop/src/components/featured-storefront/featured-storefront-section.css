@@ -314,6 +314,11 @@
   box-shadow: none;
 }
 
+.main-page .premium-storefront .rail-item.active::before {
+  content: none;
+  display: none;
+}
+
 .main-page .premium-storefront .rail-left {
   min-width: 0;
   display: grid;
