@@ -353,6 +353,9 @@ const CardAdderPage: React.FC = () => {
       imagePath: payload.coverMediaId ? "" : payload.imagePath ?? "",
     };
 
+    if (!payload.id?.trim()) {
+      delete cleaned.id;
+    }
     if (!payload.releaseDate) {
       delete cleaned.releaseDate;
     }
