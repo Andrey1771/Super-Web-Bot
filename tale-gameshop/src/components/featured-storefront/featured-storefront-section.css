@@ -409,8 +409,9 @@
 
 .main-page .premium-storefront .rail-browse-all {
   margin-top: 10px;
+  border: 1px solid transparent;
   border-top: 1px solid #efecf9;
-  padding: 10px 6px 0;
+  padding: 10px 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -424,17 +425,26 @@
   border-radius: 8px;
   text-decoration: none;
   transition: background-color 0.2s ease, color 0.2s ease;
+  transform: none;
+}
+
+.main-page .premium-storefront .rail-browse-all > span {
+  min-width: 0;
 }
 
 .main-page .premium-storefront .rail-browse-all svg {
   flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
   transform: none;
 }
 
 .main-page .premium-storefront .rail-browse-all:hover {
-  background: #f7f4ff;
+  background-color: #f7f4ff;
   color: #272041;
   text-decoration: none;
+  border-color: transparent;
+  transform: none;
 }
 
 .main-page .premium-storefront .rail-browse-all:hover svg,
