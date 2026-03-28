@@ -31,6 +31,8 @@
   box-shadow: 0 12px 24px rgba(37, 29, 77, 0.09);
   width: 100%;
   padding: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-page .premium-storefront .billboard-hero-link {
@@ -84,7 +86,10 @@
   background: #fbfafe;
   border-radius: 0 0 14px 14px;
   width: 100%;
+  max-width: none;
   margin: 0;
+  align-self: stretch;
+  box-sizing: border-box;
 }
 
 .main-page .premium-storefront .billboard-info-grid {
@@ -116,6 +121,7 @@
   align-items: flex-end;
   gap: 8px;
   min-width: 172px;
+  flex: 0 0 auto;
 }
 
 .main-page .premium-storefront .billboard-title {
@@ -304,7 +310,7 @@
 
 .main-page .premium-storefront .rail-left {
   min-width: 0;
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -330,10 +336,12 @@
   min-width: 0;
   flex: 1 1 auto;
   max-width: 100%;
+  overflow: hidden;
 }
 
 .main-page .premium-storefront .rail-name {
   margin: 0;
+  display: block;
   color: #221c3a;
   font-size: 0.9rem;
   font-weight: 600;
@@ -342,6 +350,9 @@
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .main-page .premium-storefront .rail-meta {
@@ -349,19 +360,20 @@
   font-size: 0.74rem;
   display: block;
   margin-top: 1px;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .main-page .premium-storefront .rail-price-column {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  flex: 0 0 78px;
+  flex: 0 0 auto;
   width: 78px;
   gap: 2px;
+  margin-left: 12px;
 }
 
 .main-page .premium-storefront .rail-price {
