@@ -30,6 +30,7 @@
   background: #fff;
   box-shadow: 0 12px 24px rgba(37, 29, 77, 0.09);
   width: 100%;
+  padding: 10px;
 }
 
 .main-page .premium-storefront .billboard-hero-link {
@@ -38,7 +39,7 @@
 
 .main-page .premium-storefront .billboard-frame {
   position: relative;
-  border-radius: 18px 18px 0 0;
+  border-radius: 14px 14px 0 0;
   overflow: hidden;
   border-bottom: 1px solid #eeeaf8;
   height: 458px;
@@ -81,6 +82,9 @@
 .main-page .premium-storefront .billboard-info-card {
   padding: 16px 18px 14px;
   background: #fbfafe;
+  border-radius: 0 0 14px 14px;
+  width: 100%;
+  margin: 0;
 }
 
 .main-page .premium-storefront .billboard-info-grid {
@@ -106,7 +110,7 @@
   justify-content: flex-end;
   align-items: flex-end;
   gap: 10px;
-  min-width: 180px;
+  min-width: 172px;
 }
 
 .main-page .premium-storefront .billboard-title {
@@ -225,6 +229,7 @@
   align-self: start;
   height: auto;
   width: 100%;
+  overflow: hidden;
 }
 
 .main-page .premium-storefront .rail-head {
@@ -248,8 +253,10 @@
 
 .main-page .premium-storefront .rail-list {
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: 476px;
-  padding-right: 4px;
+  padding-right: 0;
+  width: 100%;
 }
 
 .main-page .premium-storefront .rail-list.is-compact {
@@ -271,6 +278,7 @@
   gap: 8px;
   transition: border-color 0.2s ease, background-color 0.2s ease;
   overflow: hidden;
+  min-width: 0;
 }
 
 .main-page .premium-storefront .rail-item + .rail-item {
@@ -284,16 +292,18 @@
 }
 
 .main-page .premium-storefront .rail-item.active {
-  border-color: #4d38bb;
+  border-color: transparent;
   background: #f5f2ff;
+  box-shadow: inset 0 0 0 1px #4d38bb;
 }
 
 .main-page .premium-storefront .rail-left {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   display: flex;
   align-items: center;
   gap: 10px;
+  max-width: calc(100% - 86px);
 }
 
 .main-page .premium-storefront .rail-thumb {
@@ -343,7 +353,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  flex-shrink: 0;
+  flex: 0 0 78px;
   width: 78px;
   gap: 2px;
 }
