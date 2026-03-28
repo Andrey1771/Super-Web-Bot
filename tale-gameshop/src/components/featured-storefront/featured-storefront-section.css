@@ -10,7 +10,7 @@
   border: 1px solid #e7e4f2;
   border-radius: 24px;
   box-shadow: 0 16px 34px rgba(26, 18, 59, 0.08);
-  padding: 26px;
+  padding: 24px;
   display: grid;
   grid-template-columns: minmax(0, 1.95fr) minmax(320px, 0.85fr);
   gap: 16px;
@@ -30,7 +30,7 @@
   background: #fff;
   box-shadow: 0 12px 24px rgba(37, 29, 77, 0.09);
   width: 100%;
-  padding: 12px;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
@@ -41,7 +41,7 @@
 
 .main-page .premium-storefront .billboard-frame {
   position: relative;
-  border-radius: 14px 14px 0 0;
+  border-radius: 0;
   overflow: hidden;
   border-bottom: 1px solid #eeeaf8;
   height: 458px;
@@ -84,7 +84,7 @@
 .main-page .premium-storefront .billboard-info-card {
   padding: 18px 20px 16px;
   background: #fbfafe;
-  border-radius: 0 0 14px 14px;
+  border-radius: 0;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -120,7 +120,7 @@
   justify-content: flex-end;
   align-items: flex-end;
   gap: 8px;
-  min-width: 172px;
+  min-width: 168px;
   flex: 0 0 auto;
 }
 
@@ -233,7 +233,7 @@
   border: 1px solid #ece8f5;
   border-radius: 18px;
   background: #fff;
-  padding: 11px 11px 10px;
+  padding: 10px 10px 9px;
   display: grid;
   grid-template-rows: auto auto auto;
   align-content: start;
@@ -314,7 +314,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: calc(100% - 86px);
+  max-width: calc(100% - 90px);
 }
 
 .main-page .premium-storefront .rail-thumb {
@@ -371,7 +371,7 @@
   flex-direction: column;
   align-items: flex-end;
   flex: 0 0 auto;
-  width: 78px;
+  width: 74px;
   gap: 2px;
   margin-left: 12px;
 }
