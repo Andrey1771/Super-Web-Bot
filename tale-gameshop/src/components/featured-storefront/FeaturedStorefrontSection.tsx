@@ -130,6 +130,19 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
     return gameTypeLabels[game.gameType] ?? "Game";
   };
 
+  const getDisplayGenres = (game: Game) => {
+    const genres = (game.genres ?? [])
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+
+    if (genres.length > 0) {
+      return genres;
+    }
+
+    return [getGameTypeLabel(game)];
+  };
+
   const getPickCountLabel = (count: number) => `${count} ${count === 1 ? "pick" : "picks"} available`;
 
   const activePriceInfo = activeGame ? getPriceInfo(activeGame) : null;
@@ -183,7 +196,10 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                         src={activeGame.imagePath}
                         baseUrl={urlService.apiBaseUrl}
                       />
-                      <div className="billboard-frame-badge">FEATURED PICK</div>
+                      <div className="billboard-frame-badge">
+                        <span className="billboard-frame-badge-spark" aria-hidden="true">◆</span>
+                        <span>FEATURED PICK</span>
+                      </div>
                     </div>
                   </Link>
 
@@ -196,7 +212,7 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                         <h3 className="billboard-title">{activeGame.title}</h3>
 
                         <div className="billboard-genres" aria-label="Game genres">
-                          {(activeGame.genres ?? []).slice(0, 3).map((genre) => (
+                          {getDisplayGenres(activeGame).map((genre) => (
                             <span className="billboard-genre-chip" key={`${activeGame.id}-${genre}`}>
                               {genre}
                             </span>

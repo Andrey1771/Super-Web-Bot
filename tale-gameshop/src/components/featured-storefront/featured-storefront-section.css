@@ -69,10 +69,17 @@
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.07em;
+  gap: 6px;
+}
+
+.main-page .premium-storefront .billboard-frame-badge-spark {
+  font-size: 0.72rem;
+  line-height: 1;
+  color: #dccdff;
 }
 
 .main-page .premium-storefront .billboard-info-card {
-  padding: 14px 16px 12px;
+  padding: 16px 18px 14px;
   background: #fbfafe;
 }
 
@@ -129,6 +136,10 @@
   background: #f8f7fc;
   font-size: 0.74rem;
   font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .main-page .premium-storefront .billboard-trust {
@@ -193,7 +204,7 @@
   background: #4d38bb;
   color: #fff;
   border: 1px solid #4d38bb;
-  padding: 10px 18px;
+  padding: 11px 20px;
   font-size: 0.86rem;
   font-weight: 600;
   transition: background-color 0.2s ease;
@@ -207,7 +218,7 @@
   border: 1px solid #ece8f5;
   border-radius: 18px;
   background: #fff;
-  padding: 11px 11px 10px;
+  padding: 12px 12px 11px;
   display: grid;
   grid-template-rows: auto auto auto;
   align-content: start;
@@ -248,6 +259,7 @@
 
 .main-page .premium-storefront .rail-item {
   width: 100%;
+  box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
@@ -258,6 +270,7 @@
   justify-content: space-between;
   gap: 8px;
   transition: border-color 0.2s ease, background-color 0.2s ease;
+  overflow: hidden;
 }
 
 .main-page .premium-storefront .rail-item + .rail-item {
@@ -277,6 +290,7 @@
 
 .main-page .premium-storefront .rail-left {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -299,6 +313,7 @@
 
 .main-page .premium-storefront .rail-text {
   min-width: 0;
+  max-width: 100%;
 }
 
 .main-page .premium-storefront .rail-name {
@@ -329,7 +344,7 @@
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
-  width: 86px;
+  width: 78px;
   gap: 2px;
 }
 
@@ -355,6 +370,12 @@
   color: #272041;
   font-size: 0.94rem;
   font-weight: 600;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.main-page .premium-storefront .rail-browse-all:hover {
+  background: #f7f4ff;
 }
 
 .main-page .premium-storefront .billboard-empty-state {
