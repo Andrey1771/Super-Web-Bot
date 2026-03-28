@@ -414,15 +414,36 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 12px;
   color: #272041;
   font-size: 0.94rem;
   font-weight: 600;
+  line-height: 1.2;
   border-radius: 8px;
-  transition: background-color 0.2s ease;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.main-page .premium-storefront .rail-browse-all svg {
+  flex: 0 0 auto;
+  transform: none;
 }
 
 .main-page .premium-storefront .rail-browse-all:hover {
   background: #f7f4ff;
+  color: #272041;
+  text-decoration: none;
+}
+
+.main-page .premium-storefront .rail-browse-all:hover svg,
+.main-page .premium-storefront .rail-browse-all:focus-visible svg {
+  transform: none;
+}
+
+.main-page .premium-storefront .rail-browse-all:focus-visible {
+  text-decoration: none;
 }
 
 .main-page .premium-storefront .billboard-empty-state {
