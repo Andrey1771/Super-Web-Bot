@@ -355,13 +355,14 @@ const CardAdderPage: React.FC = () => {
     const generatedId = Array.from(crypto.getRandomValues(new Uint8Array(12)))
       .map((value) => value.toString(16).padStart(2, "0"))
       .join("");
+    const resolvedImagePath = (payload.imagePath ?? "").trim() || selectedMedia?.url || "";
 
     const cleaned: Record<string, unknown> = {
       ...payload,
       id: payload.id || generatedId,
       price: payload.price ? Number(payload.price) : 0,
       gameType: payload.gameType ? Number(payload.gameType) : 0,
-      imagePath: payload.coverMediaId ? "" : payload.imagePath ?? "",
+      imagePath: resolvedImagePath,
       slug: generatedSlug,
       externalId: generatedExternalId,
     };
