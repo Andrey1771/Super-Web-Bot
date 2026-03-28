@@ -193,11 +193,6 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
             <h2>Featured / Popular games</h2>
             <div className="billboard-sub">Top picks • Updated weekly</div>
           </div>
-          <div className="billboard-actions">
-            <Link className="billboard-link" to="/games">
-              Browse all
-            </Link>
-          </div>
         </div>
 
         <div className="billboard-surface premium-storefront">
