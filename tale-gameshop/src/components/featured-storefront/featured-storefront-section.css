@@ -286,10 +286,10 @@
   background: transparent;
   padding: 8px 9px;
   text-align: left;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   transition: border-color 0.2s ease, background-color 0.2s ease;
   overflow: hidden;
   min-width: 0;
@@ -316,8 +316,8 @@
 
 .main-page .premium-storefront .rail-left {
   min-width: 0;
-  flex: 1 1 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   overflow: hidden;
@@ -340,8 +340,7 @@
 
 .main-page .premium-storefront .rail-text {
   min-width: 0;
-  flex: 1 1 auto;
-  max-width: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -352,9 +351,6 @@
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -377,9 +373,10 @@
   flex-direction: column;
   align-items: flex-end;
   flex: 0 0 auto;
-  min-width: 74px;
+  min-width: 82px;
   gap: 2px;
   margin-left: 12px;
+  text-align: right;
 }
 
 .main-page .premium-storefront .rail-price {

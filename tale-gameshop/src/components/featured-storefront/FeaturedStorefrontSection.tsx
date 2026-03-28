@@ -130,6 +130,16 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
     return gameTypeLabels[game.gameType] ?? "Game";
   };
 
+  const getRailMeta = (game: Game) => {
+    const compactType = gameTypeLabels[game.gameType] ?? "Game";
+    const releaseYear = game.releaseDate ? new Date(game.releaseDate).getFullYear() : null;
+    if (releaseYear && !Number.isNaN(releaseYear)) {
+      return `${compactType} • ${releaseYear}`;
+    }
+
+    return `${compactType} • Instant`;
+  };
+
   const getDisplayGenres = (game: Game) => {
     const genres = (game.genres ?? [])
       .map((item) => item.trim())
@@ -282,8 +292,8 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                             />
                           </div>
                           <div className="rail-text">
-                            <span className="rail-name">{game.title}</span>
-                            <span className="rail-meta">{getGameTypeLabel(game)} • {getMeta(game)}</span>
+                            <span className="rail-name" title={game.title}>{game.title}</span>
+                            <span className="rail-meta" title={`${getGameTypeLabel(game)} • ${getMeta(game)}`}>{getRailMeta(game)}</span>
                           </div>
                         </div>
 
