@@ -155,6 +155,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-14);
+  align-items: center;
 }
 
 .main-page .hero-card {
@@ -188,18 +189,22 @@
   max-height: 520px;
 }
 
-.main-page .hero-card-small {
-  aspect-ratio: 16 / 11;
-  width: 100%;
-  max-width: 320px;
-  margin-left: auto;
-  max-height: 240px;
+.main-page .hero-carousel-module {
+  display: grid;
+  gap: 12px;
 }
 
-.main-page .hero-preview-stack {
-  display: grid;
-  justify-items: end;
-  gap: 10px;
+.main-page .hero-carousel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 11 / 10;
+  min-height: 360px;
+  max-height: 500px;
+}
+
+.main-page .hero-carousel-track {
+  position: absolute;
+  inset: 0;
 }
 
 .main-page .hero-media {
@@ -236,13 +241,7 @@
 
 .main-page .hero-overlay-large {
   padding: 22px 22px 20px;
-  min-height: 122px;
-}
-
-.main-page .hero-overlay-small {
-  padding: 12px 14px;
-  min-height: 66px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.06) 0%, rgba(8, 10, 16, 0.74) 72%);
+  min-height: 108px;
 }
 
 .main-page .hero-title {
@@ -254,28 +253,16 @@
 
 .main-page .hero-title-large {
   font-weight: 700;
-  font-size: 20px;
+  font-size: 24px;
   line-height: 1.25;
   -webkit-line-clamp: 2;
-}
-
-.main-page .hero-title-small {
-  font-size: 14px;
-  line-height: 1.2;
-  font-weight: 700;
-  max-width: 68%;
-  -webkit-line-clamp: 1;
 }
 
 .main-page .hero-price {
   font-weight: 700;
   color: #d6cbff;
   white-space: nowrap;
-  font-size: 17px;
-}
-
-.main-page .hero-overlay-small .hero-price {
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .main-page .hero-nav {
@@ -286,6 +273,10 @@
   border-radius: 999px;
   background: color-mix(in srgb, #11192d 80%, #ffffff);
   border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.main-page .hero-carousel-controls {
+  justify-self: center;
 }
 
 .main-page .hero-nav-btn {
@@ -1448,12 +1439,7 @@
   }
 
   .main-page .hero-showcase {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-
-  .main-page .hero-card-small {
-    max-width: 100%;
-    margin: 0;
+    grid-template-columns: 1fr;
   }
 
   .main-page .explore-grid {
@@ -1494,8 +1480,8 @@
     grid-template-columns: 1fr;
   }
 
-  .main-page .hero-card-small {
-    display: none;
+  .main-page .hero-carousel {
+    max-height: 420px;
   }
 
   .main-page .hero-perks {

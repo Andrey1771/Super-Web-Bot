@@ -116,9 +116,6 @@ export default function TaleGameshopMainPage() {
     }, [heroGames.length]);
 
     const heroPrimary = heroGames[heroIndex] ?? null;
-    const heroSecondary = heroGames.length > 1
-        ? heroGames[(heroIndex + 1) % heroGames.length]
-        : null;
 
     const getGameHref = (game: Game) => {
         const fallbackSlug = slugify(game.slug?.trim() || game.title || game.name || "game");
@@ -154,34 +151,37 @@ const genres = [ { title: "Action", description: "High-impact firefights and fas
         setOpenFaqIndex((prev) => (prev === index ? -1 : index));
     };
 
-    const renderGameCard = (game: Game, size: "large" | "small") => {
+    const renderHeroSlide = (game: Game) => {
         const href = getGameHref(game);
         const price = formatHeroPrice(getHeroPrice(game));
-        const isLarge = size === "large";
 
         return (
             <Link
                 to={href}
-                className={`hero-card hero-card-link ${isLarge ? "hero-card-large" : "hero-card-small"}`}
+                className="hero-carousel hero-card-link"
                 aria-label={`Open game ${game.title}`}
             >
-                <div className="hero-media">
+                <div className="hero-carousel-track">
+                    <div className="hero-media">
                     <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
+                    </div>
                 </div>
-                <div className={`hero-overlay ${isLarge ? "hero-overlay-large" : "hero-overlay-small"}`}>
-                    <span className={`hero-title ${isLarge ? "hero-title-large" : "hero-title-small"}`}>{game.title}</span>
+                <div className="hero-overlay hero-overlay-large">
+                    <span className="hero-title hero-title-large">{game.title}</span>
                     <span className="hero-price">{price}</span>
                 </div>
             </Link>
         );
     };
 
-const renderHeroSkeleton = (size: "large" | "small") => (
-        <div className={`hero-card ${size === "large" ? "hero-card-large" : "hero-card-small"} skeleton-card`} aria-hidden="true">
-            <div className="hero-media">
-                <div className="media-placeholder skeleton" />
+const renderHeroSkeleton = () => (
+        <div className="hero-carousel hero-card skeleton-card" aria-hidden="true">
+            <div className="hero-carousel-track">
+                <div className="hero-media">
+                    <div className="media-placeholder skeleton" />
+                </div>
             </div>
-            <div className={`hero-overlay ${size === "large" ? "hero-overlay-large" : "hero-overlay-small"}`}>
+            <div className="hero-overlay hero-overlay-large">
                 <span className="skeleton-line skeleton" />
                 <span className="skeleton-line skeleton-line-short skeleton" />
             </div>
@@ -214,28 +214,20 @@ const renderHeroSkeleton = (size: "large" | "small") => (
 
                     <div className="hero-showcase">
                         {isLoading ? (
-                            <>
-                                {renderHeroSkeleton("large")}
-                                {renderHeroSkeleton("small")}
-                            </>
+                            renderHeroSkeleton()
                         ) : heroPrimary ? (
-                            <>
-                                {renderGameCard(heroPrimary, "large")}
-                                {heroSecondary && (
-                                    <div className="hero-preview-stack">
-                                        {renderGameCard(heroSecondary, "small")}
-                                        {heroGames.length > 1 && (
-                                            <div className="hero-nav" aria-label="Hero game carousel controls">
-                                                <button type="button" className="hero-nav-btn" onClick={goToPrevHero} aria-label="Previous game">‹</button>
-                                                <span className="hero-nav-status">{heroIndex + 1}/{heroGames.length}</span>
-                                                <button type="button" className="hero-nav-btn" onClick={goToNextHero} aria-label="Next game">›</button>
-                                            </div>
-                                        )}
+                            <div className="hero-carousel-module">
+                                {renderHeroSlide(heroPrimary)}
+                                {heroGames.length > 1 && (
+                                    <div className="hero-nav hero-carousel-controls" aria-label="Hero game carousel controls">
+                                        <button type="button" className="hero-nav-btn" onClick={goToPrevHero} aria-label="Previous game">‹</button>
+                                        <span className="hero-nav-status hero-carousel-counter">{heroIndex + 1} / {heroGames.length}</span>
+                                        <button type="button" className="hero-nav-btn" onClick={goToNextHero} aria-label="Next game">›</button>
                                     </div>
                                 )}
-                            </>
+                            </div>
                         ) : (
-                            renderHeroSkeleton("large")
+                            renderHeroSkeleton()
                         )}
                     </div>
                 </div>
