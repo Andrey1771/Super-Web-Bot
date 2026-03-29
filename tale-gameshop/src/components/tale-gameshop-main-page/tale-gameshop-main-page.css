@@ -329,8 +329,8 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0.01;
-  transition: opacity 0.25s ease, background-color 0.25s ease;
+  opacity: 0;
+  transition: opacity 0.24s ease, background-color 0.24s ease;
   z-index: 2;
 }
 
@@ -338,35 +338,52 @@
   font-size: 24px;
   font-weight: 700;
   opacity: 0;
-  transform: translateY(-6px) scale(0.94);
+  transform: translateY(-6px) scale(0.92);
   text-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.main-page .hero-carousel-hotspot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.24s ease;
+  pointer-events: none;
 }
 
 .main-page .hero-carousel-hotspot-prev {
   left: 0;
-  background: linear-gradient(90deg, rgba(10, 14, 28, 0.5) 0%, rgba(10, 14, 28, 0) 100%);
+  background: linear-gradient(90deg, rgba(12, 16, 34, 0.66) 0%, rgba(12, 16, 34, 0) 100%);
+}
+
+.main-page .hero-carousel-hotspot-prev::after {
+  background: linear-gradient(90deg, rgba(120, 80, 255, 0.28) 0%, rgba(120, 80, 255, 0) 74%);
 }
 
 .main-page .hero-carousel-hotspot-next {
   right: 0;
-  background: linear-gradient(270deg, rgba(10, 14, 28, 0.5) 0%, rgba(10, 14, 28, 0) 100%);
+  background: linear-gradient(270deg, rgba(12, 16, 34, 0.66) 0%, rgba(12, 16, 34, 0) 100%);
 }
 
-.main-page .hero-carousel:hover .hero-carousel-hotspot,
-.main-page .hero-carousel:focus-within .hero-carousel-hotspot {
-  opacity: 0.12;
+.main-page .hero-carousel-hotspot-next::after {
+  background: linear-gradient(270deg, rgba(120, 80, 255, 0.28) 0%, rgba(120, 80, 255, 0) 74%);
 }
 
 .main-page .hero-carousel-hotspot:hover,
 .main-page .hero-carousel-hotspot:focus-visible {
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .main-page .hero-carousel-hotspot:hover span,
 .main-page .hero-carousel-hotspot:focus-visible span {
   opacity: 1;
-  transform: translateY(-6px) scale(1);
+  transform: translateY(-6px) scale(1.03);
+}
+
+.main-page .hero-carousel-hotspot:hover::after,
+.main-page .hero-carousel-hotspot:focus-visible::after {
+  opacity: 1;
 }
 
 .main-page .hero-carousel-hotspot:focus-visible {
