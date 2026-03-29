@@ -200,6 +200,15 @@
   aspect-ratio: 11 / 10;
   min-height: 360px;
   max-height: 500px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.main-page .hero-carousel-link {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 .main-page .hero-carousel-track {
@@ -277,27 +286,9 @@
 
 .main-page .hero-carousel-controls {
   justify-self: center;
-}
-
-.main-page .hero-nav-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f7f8ff;
-  cursor: pointer;
-  transition: background-color 0.18s ease, border-color 0.18s ease;
-}
-
-.main-page .hero-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
-.main-page .hero-nav-btn:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
-  outline-offset: 2px;
+  min-width: 84px;
+  justify-content: center;
+  padding-inline: 14px;
 }
 
 .main-page .hero-nav-status {
@@ -306,6 +297,55 @@
   letter-spacing: 0.03em;
   min-width: 54px;
   text-align: center;
+}
+
+.main-page .hero-carousel-hotspot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(54px, 14%, 96px);
+  border: none;
+  background: transparent;
+  color: #f5f6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  z-index: 2;
+}
+
+.main-page .hero-carousel-hotspot span {
+  font-size: 24px;
+  font-weight: 700;
+  transform: translateY(-6px);
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+.main-page .hero-carousel-hotspot-prev {
+  left: 0;
+  background: linear-gradient(90deg, rgba(10, 14, 28, 0.35) 0%, rgba(10, 14, 28, 0) 100%);
+}
+
+.main-page .hero-carousel-hotspot-next {
+  right: 0;
+  background: linear-gradient(270deg, rgba(10, 14, 28, 0.35) 0%, rgba(10, 14, 28, 0) 100%);
+}
+
+.main-page .hero-carousel:hover .hero-carousel-hotspot,
+.main-page .hero-carousel:focus-within .hero-carousel-hotspot {
+  opacity: 0.14;
+}
+
+.main-page .hero-carousel-hotspot:hover,
+.main-page .hero-carousel-hotspot:focus-visible {
+  opacity: 1;
+}
+
+.main-page .hero-carousel-hotspot:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
+  outline-offset: -2px;
 }
 
 /* Featured billboard */

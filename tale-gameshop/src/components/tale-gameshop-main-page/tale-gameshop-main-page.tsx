@@ -156,21 +156,44 @@ const genres = [ { title: "Action", description: "High-impact firefights and fas
         const price = formatHeroPrice(getHeroPrice(game));
 
         return (
-            <Link
-                to={href}
-                className="hero-carousel hero-card-link"
-                aria-label={`Open game ${game.title}`}
-            >
-                <div className="hero-carousel-track">
-                    <div className="hero-media">
-                    <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
+            <div className="hero-carousel hero-card">
+                <Link
+                    to={href}
+                    className="hero-card-link hero-carousel-link"
+                    aria-label={`Open game ${game.title}`}
+                >
+                    <div className="hero-carousel-track">
+                        <div className="hero-media">
+                        <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
+                        </div>
                     </div>
-                </div>
-                <div className="hero-overlay hero-overlay-large">
-                    <span className="hero-title hero-title-large">{game.title}</span>
-                    <span className="hero-price">{price}</span>
-                </div>
-            </Link>
+                    <div className="hero-overlay hero-overlay-large">
+                        <span className="hero-title hero-title-large">{game.title}</span>
+                        <span className="hero-price">{price}</span>
+                    </div>
+                </Link>
+
+                {heroGames.length > 1 && (
+                    <>
+                        <button
+                            type="button"
+                            className="hero-carousel-hotspot hero-carousel-hotspot-prev"
+                            onClick={goToPrevHero}
+                            aria-label="Previous game"
+                        >
+                            <span aria-hidden="true">‹</span>
+                        </button>
+                        <button
+                            type="button"
+                            className="hero-carousel-hotspot hero-carousel-hotspot-next"
+                            onClick={goToNextHero}
+                            aria-label="Next game"
+                        >
+                            <span aria-hidden="true">›</span>
+                        </button>
+                    </>
+                )}
+            </div>
         );
     };
 
@@ -219,10 +242,8 @@ const renderHeroSkeleton = () => (
                             <div className="hero-carousel-module">
                                 {renderHeroSlide(heroPrimary)}
                                 {heroGames.length > 1 && (
-                                    <div className="hero-nav hero-carousel-controls" aria-label="Hero game carousel controls">
-                                        <button type="button" className="hero-nav-btn" onClick={goToPrevHero} aria-label="Previous game">‹</button>
+                                    <div className="hero-nav hero-carousel-controls" aria-label="Hero game carousel position">
                                         <span className="hero-nav-status hero-carousel-counter">{heroIndex + 1} / {heroGames.length}</span>
-                                        <button type="button" className="hero-nav-btn" onClick={goToNextHero} aria-label="Next game">›</button>
                                     </div>
                                 )}
                             </div>
