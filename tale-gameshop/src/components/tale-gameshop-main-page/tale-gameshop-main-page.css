@@ -174,9 +174,9 @@
 }
 
 .main-page .hero-card-link:hover {
-  transform: translateY(-1px);
-  border-color: rgba(186, 156, 255, 0.38);
-  box-shadow: 0 18px 40px rgba(9, 12, 23, 0.28);
+  transform: translateY(0);
+  border-color: rgba(186, 156, 255, 0.3);
+  box-shadow: 0 14px 38px rgba(9, 12, 23, 0.22);
 }
 
 .main-page .hero-card-link:focus-visible {
@@ -207,25 +207,25 @@
 }
 
 .main-page .hero-carousel-stage-is-animating .hero-carousel-layer-enter.hero-carousel-layer-next {
-  animation: heroSlideEnterNext 500ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: heroSlideEnterNext 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
 }
 
 .main-page .hero-carousel-stage-is-animating .hero-carousel-layer-enter.hero-carousel-layer-prev {
-  animation: heroSlideEnterPrev 500ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: heroSlideEnterPrev 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
 }
 
 .main-page .hero-carousel-stage-is-animating .hero-carousel-layer-leave.hero-carousel-layer-next {
-  animation: heroSlideLeaveNext 500ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: heroSlideLeaveNext 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
 }
 
 .main-page .hero-carousel-stage-is-animating .hero-carousel-layer-leave.hero-carousel-layer-prev {
-  animation: heroSlideLeavePrev 500ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: heroSlideLeavePrev 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
 }
 
 @keyframes heroSlideEnterNext {
   from {
-    opacity: 0;
-    transform: translateX(14px) scale(0.992);
+    opacity: 0.74;
+    transform: translateX(6px) scale(0.996);
   }
 
   to {
@@ -236,8 +236,8 @@
 
 @keyframes heroSlideEnterPrev {
   from {
-    opacity: 0;
-    transform: translateX(-14px) scale(0.992);
+    opacity: 0.74;
+    transform: translateX(-6px) scale(0.996);
   }
 
   to {
@@ -253,8 +253,8 @@
   }
 
   to {
-    opacity: 0;
-    transform: translateX(-10px) scale(1.004);
+    opacity: 0.36;
+    transform: translateX(-4px) scale(1.002);
   }
 }
 
@@ -265,8 +265,8 @@
   }
 
   to {
-    opacity: 0;
-    transform: translateX(10px) scale(1.004);
+    opacity: 0.36;
+    transform: translateX(4px) scale(1.002);
   }
 }
 
@@ -311,7 +311,7 @@
 }
 
 .main-page .hero-carousel:hover .hero-media img {
-  transform: scale(1.02);
+  transform: scale(1.01);
 }
 
 .main-page .media-placeholder {
@@ -372,7 +372,7 @@
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.34s cubic-bezier(0.22, 0.61, 0.36, 1), background-color 0.34s ease;
+  transition: opacity 0.42s cubic-bezier(0.25, 0.55, 0.3, 1), background-color 0.42s ease;
   z-index: 2;
 }
 
@@ -380,9 +380,9 @@
   font-size: 24px;
   font-weight: 700;
   opacity: 0;
-  transform: translateY(-6px) scale(0.92);
+  transform: translateY(-4px) scale(0.96);
   text-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  transition: opacity 0.34s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 0.42s cubic-bezier(0.25, 0.55, 0.3, 1), transform 0.42s cubic-bezier(0.25, 0.55, 0.3, 1);
 }
 
 .main-page .hero-carousel-hotspot::after {
@@ -390,37 +390,37 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 0.42s cubic-bezier(0.25, 0.55, 0.3, 1);
   pointer-events: none;
 }
 
 .main-page .hero-carousel-hotspot-prev {
   left: 0;
-  background: linear-gradient(90deg, rgba(12, 16, 34, 0.66) 0%, rgba(12, 16, 34, 0) 100%);
+  background: linear-gradient(90deg, rgba(12, 16, 34, 0.4) 0%, rgba(12, 16, 34, 0) 100%);
 }
 
 .main-page .hero-carousel-hotspot-prev::after {
-  background: linear-gradient(90deg, rgba(120, 80, 255, 0.28) 0%, rgba(120, 80, 255, 0) 74%);
+  background: linear-gradient(90deg, rgba(120, 80, 255, 0.2) 0%, rgba(120, 80, 255, 0) 74%);
 }
 
 .main-page .hero-carousel-hotspot-next {
   right: 0;
-  background: linear-gradient(270deg, rgba(12, 16, 34, 0.66) 0%, rgba(12, 16, 34, 0) 100%);
+  background: linear-gradient(270deg, rgba(12, 16, 34, 0.4) 0%, rgba(12, 16, 34, 0) 100%);
 }
 
 .main-page .hero-carousel-hotspot-next::after {
-  background: linear-gradient(270deg, rgba(120, 80, 255, 0.28) 0%, rgba(120, 80, 255, 0) 74%);
+  background: linear-gradient(270deg, rgba(120, 80, 255, 0.2) 0%, rgba(120, 80, 255, 0) 74%);
 }
 
 .main-page .hero-carousel-hotspot:hover,
 .main-page .hero-carousel-hotspot:focus-visible {
-  opacity: 0.46;
+  opacity: 0.32;
 }
 
 .main-page .hero-carousel-hotspot:hover span,
 .main-page .hero-carousel-hotspot:focus-visible span {
   opacity: 1;
-  transform: translateY(-6px) scale(1);
+  transform: translateY(-4px) scale(1);
 }
 
 .main-page .hero-carousel-hotspot:hover::after,
