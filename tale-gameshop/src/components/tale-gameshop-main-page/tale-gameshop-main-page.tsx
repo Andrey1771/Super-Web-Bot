@@ -51,6 +51,7 @@ export default function TaleGameshopMainPage() {
     const [blogLoading, setBlogLoading] = useState(true);
     const [openFaqIndex, setOpenFaqIndex] = useState(0);
     const [heroIndex, setHeroIndex] = useState(0);
+    const [heroDirection, setHeroDirection] = useState<"next" | "prev">("next");
     const urlService = container.get < IUrlService > (IDENTIFIERS.IUrlService);
     useEffect(() => {
         fetchGames();
@@ -109,6 +110,7 @@ export default function TaleGameshopMainPage() {
         }
 
         const intervalId = window.setInterval(() => {
+            setHeroDirection("next");
             setHeroIndex((prev) => (prev + 1) % heroGames.length);
         }, 6500);
 
@@ -135,6 +137,7 @@ export default function TaleGameshopMainPage() {
         if (heroGames.length <= 1) {
             return;
         }
+        setHeroDirection("next");
         setHeroIndex((prev) => (prev + 1) % heroGames.length);
     };
 
@@ -142,6 +145,7 @@ export default function TaleGameshopMainPage() {
         if (heroGames.length <= 1) {
             return;
         }
+        setHeroDirection("prev");
         setHeroIndex((prev) => (prev - 1 + heroGames.length) % heroGames.length);
     };
 
@@ -240,12 +244,9 @@ const renderHeroSkeleton = () => (
                             renderHeroSkeleton()
                         ) : heroPrimary ? (
                             <div className="hero-carousel-module">
-                                {renderHeroSlide(heroPrimary)}
-                                {heroGames.length > 1 && (
-                                    <div className="hero-nav hero-carousel-controls" aria-label="Hero game carousel position">
-                                        <span className="hero-nav-status hero-carousel-counter">{heroIndex + 1} / {heroGames.length}</span>
-                                    </div>
-                                )}
+                                <div className={`hero-carousel-stage hero-carousel-stage-${heroDirection}`} key={`hero-${heroPrimary.id ?? heroIndex}`}>
+                                    {renderHeroSlide(heroPrimary)}
+                                </div>
                             </div>
                         ) : (
                             renderHeroSkeleton()
