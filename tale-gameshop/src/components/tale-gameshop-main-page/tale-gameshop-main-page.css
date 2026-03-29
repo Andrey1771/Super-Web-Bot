@@ -170,13 +170,13 @@
 .main-page .hero-card-link {
   text-decoration: none;
   color: inherit;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 0.61, 0.36, 1), border-color 0.35s ease;
 }
 
 .main-page .hero-card-link:hover {
-  transform: translateY(-2px);
-  border-color: rgba(186, 156, 255, 0.55);
-  box-shadow: 0 24px 56px rgba(9, 12, 23, 0.5);
+  transform: translateY(-1px);
+  border-color: rgba(186, 156, 255, 0.38);
+  box-shadow: 0 18px 40px rgba(9, 12, 23, 0.28);
 }
 
 .main-page .hero-card-link:focus-visible {
@@ -195,23 +195,27 @@
 }
 
 .main-page .hero-carousel-stage {
-  animation-duration: 420ms;
-  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+.main-page .hero-carousel-stage-is-animating.hero-carousel-stage-next {
+  animation-name: heroSlideInNext;
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.2, 0.65, 0.2, 1);
   animation-fill-mode: both;
 }
 
-.main-page .hero-carousel-stage-next {
-  animation-name: heroSlideInNext;
-}
-
-.main-page .hero-carousel-stage-prev {
+.main-page .hero-carousel-stage-is-animating.hero-carousel-stage-prev {
   animation-name: heroSlideInPrev;
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.2, 0.65, 0.2, 1);
+  animation-fill-mode: both;
 }
 
 @keyframes heroSlideInNext {
   from {
-    opacity: 0.24;
-    transform: translateX(14px) scale(0.988);
+    opacity: 0.62;
+    transform: translateX(8px) scale(0.996);
   }
 
   to {
@@ -222,8 +226,8 @@
 
 @keyframes heroSlideInPrev {
   from {
-    opacity: 0.24;
-    transform: translateX(-14px) scale(0.988);
+    opacity: 0.62;
+    transform: translateX(-8px) scale(0.996);
   }
 
   to {
@@ -330,7 +334,7 @@
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.24s ease, background-color 0.24s ease;
+  transition: opacity 0.34s cubic-bezier(0.22, 0.61, 0.36, 1), background-color 0.34s ease;
   z-index: 2;
 }
 
@@ -340,7 +344,7 @@
   opacity: 0;
   transform: translateY(-6px) scale(0.92);
   text-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  transition: opacity 0.24s ease, transform 0.24s ease;
+  transition: opacity 0.34s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .main-page .hero-carousel-hotspot::after {
@@ -348,7 +352,7 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.24s ease;
+  transition: opacity 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
   pointer-events: none;
 }
 
@@ -372,13 +376,13 @@
 
 .main-page .hero-carousel-hotspot:hover,
 .main-page .hero-carousel-hotspot:focus-visible {
-  opacity: 0.85;
+  opacity: 0.62;
 }
 
 .main-page .hero-carousel-hotspot:hover span,
 .main-page .hero-carousel-hotspot:focus-visible span {
   opacity: 1;
-  transform: translateY(-6px) scale(1.03);
+  transform: translateY(-6px) scale(1);
 }
 
 .main-page .hero-carousel-hotspot:hover::after,

@@ -52,6 +52,7 @@ export default function TaleGameshopMainPage() {
     const [openFaqIndex, setOpenFaqIndex] = useState(0);
     const [heroIndex, setHeroIndex] = useState(0);
     const [heroDirection, setHeroDirection] = useState<"next" | "prev">("next");
+    const [isHeroAnimating, setIsHeroAnimating] = useState(false);
     const urlService = container.get < IUrlService > (IDENTIFIERS.IUrlService);
     useEffect(() => {
         fetchGames();
@@ -118,6 +119,16 @@ export default function TaleGameshopMainPage() {
     }, [heroGames.length]);
 
     const heroPrimary = heroGames[heroIndex] ?? null;
+
+    useEffect(() => {
+        if (!heroGames.length) {
+            setIsHeroAnimating(false);
+            return;
+        }
+        setIsHeroAnimating(true);
+        const timeoutId = window.setTimeout(() => setIsHeroAnimating(false), 480);
+        return () => window.clearTimeout(timeoutId);
+    }, [heroGames.length, heroIndex]);
 
     const getGameHref = (game: Game) => {
         const fallbackSlug = slugify(game.slug?.trim() || game.title || game.name || "game");
@@ -244,7 +255,15 @@ const renderHeroSkeleton = () => (
                             renderHeroSkeleton()
                         ) : heroPrimary ? (
                             <div className="hero-carousel-module">
-                                <div className={`hero-carousel-stage hero-carousel-stage-${heroDirection}`} key={`hero-${heroPrimary.id ?? heroIndex}`}>
+                                <div
+                                    className={[
+                                        "hero-carousel-stage",
+                                        isHeroAnimating ? "hero-carousel-stage-is-animating" : "",
+                                        isHeroAnimating ? `hero-carousel-stage-${heroDirection}` : "",
+                                    ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                >
                                     {renderHeroSlide(heroPrimary)}
                                 </div>
                             </div>
