@@ -1,5 +1,6 @@
 import React, {
     useEffect,
+    useRef,
     useMemo,
     useState
 } from "react";
@@ -53,6 +54,9 @@ export default function TaleGameshopMainPage() {
     const [heroIndex, setHeroIndex] = useState(0);
     const [heroDirection, setHeroDirection] = useState<"next" | "prev">("next");
     const [isHeroAnimating, setIsHeroAnimating] = useState(false);
+    const [activeHero, setActiveHero] = useState<Game | null>(null);
+    const [previousHero, setPreviousHero] = useState<Game | null>(null);
+    const activeHeroRef = useRef<Game | null>(null);
     const urlService = container.get < IUrlService > (IDENTIFIERS.IUrlService);
     useEffect(() => {
         fetchGames();
@@ -121,14 +125,30 @@ export default function TaleGameshopMainPage() {
     const heroPrimary = heroGames[heroIndex] ?? null;
 
     useEffect(() => {
-        if (!heroGames.length) {
+        if (!heroPrimary) {
+            setActiveHero(null);
+            setPreviousHero(null);
             setIsHeroAnimating(false);
+            activeHeroRef.current = null;
             return;
         }
+
+        const prevHero = activeHeroRef.current;
+        if (prevHero && prevHero.id !== heroPrimary.id) {
+            setPreviousHero(prevHero);
+        } else {
+            setPreviousHero(null);
+        }
+
+        setActiveHero(heroPrimary);
+        activeHeroRef.current = heroPrimary;
         setIsHeroAnimating(true);
-        const timeoutId = window.setTimeout(() => setIsHeroAnimating(false), 480);
+        const timeoutId = window.setTimeout(() => {
+            setIsHeroAnimating(false);
+            setPreviousHero(null);
+        }, 500);
         return () => window.clearTimeout(timeoutId);
-    }, [heroGames.length, heroIndex]);
+    }, [heroPrimary]);
 
     const getGameHref = (game: Game) => {
         const fallbackSlug = slugify(game.slug?.trim() || game.title || game.name || "game");
@@ -166,16 +186,23 @@ const genres = [ { title: "Action", description: "High-impact firefights and fas
         setOpenFaqIndex((prev) => (prev === index ? -1 : index));
     };
 
-    const renderHeroSlide = (game: Game) => {
+    const renderHeroSlide = (game: Game, interactive = true, layerClassName = "") => {
         const href = getGameHref(game);
         const price = formatHeroPrice(getHeroPrice(game));
+        const rootClassName = ["hero-carousel hero-card", layerClassName].filter(Boolean).join(" ");
+        const linkClassName = [
+            "hero-carousel-link",
+            interactive ? "hero-card-link" : "hero-carousel-link-passive"
+        ].join(" ");
 
         return (
-            <div className="hero-carousel hero-card">
+            <div className={rootClassName}>
                 <Link
                     to={href}
-                    className="hero-card-link hero-carousel-link"
+                    className={linkClassName}
                     aria-label={`Open game ${game.title}`}
+                    tabIndex={interactive ? 0 : -1}
+                    aria-hidden={!interactive}
                 >
                     <div className="hero-carousel-track">
                         <div className="hero-media">
@@ -188,7 +215,7 @@ const genres = [ { title: "Action", description: "High-impact firefights and fas
                     </div>
                 </Link>
 
-                {heroGames.length > 1 && (
+                {interactive && heroGames.length > 1 && (
                     <>
                         <button
                             type="button"
@@ -264,7 +291,16 @@ const renderHeroSkeleton = () => (
                                         .filter(Boolean)
                                         .join(" ")}
                                 >
-                                    {renderHeroSlide(heroPrimary)}
+                                    {previousHero && isHeroAnimating && renderHeroSlide(
+                                        previousHero,
+                                        false,
+                                        `hero-carousel-layer hero-carousel-layer-leave hero-carousel-layer-${heroDirection}`
+                                    )}
+                                    {renderHeroSlide(
+                                        activeHero ?? heroPrimary,
+                                        true,
+                                        `hero-carousel-layer hero-carousel-layer-enter hero-carousel-layer-${heroDirection}`
+                                    )}
                                 </div>
                             </div>
                         ) : (
