@@ -18,6 +18,7 @@ import { useDirtyState } from "../../../hooks/useDirtyState";
 import { useToast } from "../../ui/ToastProvider";
 import MediaPickerModal from "../media-library/MediaPickerModal";
 import type { MediaAsset } from "../../../types/media";
+import { slugify } from "../../../utils/slugify";
 
 type DrawerMode = "edit" | "create" | null;
 
@@ -346,11 +347,24 @@ const CardAdderPage: React.FC = () => {
   };
 
   const buildPayload = (payload: Form) => {
+    const normalizedTitle = (payload.title ?? "").trim();
+    const normalizedName = (payload.name ?? "").trim();
+    const slugSource = normalizedTitle || normalizedName || "game";
+    const generatedSlug = slugify(slugSource);
+    const generatedExternalId = `web-${generatedSlug}-${Date.now().toString(36)}`;
+    const generatedId = Array.from(crypto.getRandomValues(new Uint8Array(12)))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+    const resolvedImagePath = (payload.imagePath ?? "").trim() || selectedMedia?.url || "";
+
     const cleaned: Record<string, unknown> = {
       ...payload,
+      id: payload.id || generatedId,
       price: payload.price ? Number(payload.price) : 0,
       gameType: payload.gameType ? Number(payload.gameType) : 0,
-      imagePath: payload.coverMediaId ? "" : payload.imagePath ?? "",
+      imagePath: resolvedImagePath,
+      slug: generatedSlug,
+      externalId: generatedExternalId,
     };
 
     if (!payload.releaseDate) {
