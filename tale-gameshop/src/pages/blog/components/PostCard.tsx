@@ -34,7 +34,8 @@ export default function PostCard({
     showCategoryBadge = true,
     showFeaturedBadge = true,
     showActions = true,
-    onTagSelect
+    onTagSelect,
+    engagement
 }: PostCardProps) {
     const {trackImpression, trackOpen} = useBlogTracking();
     const navigate = useNavigate();
