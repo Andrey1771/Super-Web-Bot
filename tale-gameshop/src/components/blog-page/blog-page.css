@@ -282,6 +282,31 @@
   color: #6c6880;
 }
 
+.post-card__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.post-card__reaction-btn {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid #e5def8;
+  background: #faf8ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #585272;
+}
+
+.post-card__reaction-btn.active {
+  border-color: #ccb7fb;
+  background: #f0e8ff;
+  color: #5c2fcf;
+}
+
 .post-card__footer {
   margin-top: auto;
 }

@@ -16,7 +16,7 @@ import IDENTIFIERS from "../../constants/identifiers";
 import type {IBlogService} from "../../iterfaces/i-blog-service";
 import type {BlogEngagementSummary, BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
 import PostCard from "../../pages/blog/components/PostCard";
-import {getAnonId} from "../../hooks/use-blog-tracking";
+import {getAnonId, getSessionId} from "../../hooks/use-blog-tracking";
 import SafeBlogImage from "./SafeBlogImage";
 import {getBlogPostCoverUrl} from "../../utils/blog-cover";
 import "./blog-page.css";
@@ -274,6 +274,20 @@ export default function BlogPage() {
         setActiveTag("All");
     };
 
+    const handleReaction = async (postId: string, reaction: string) => {
+        try {
+            const summary = await blogService.setReaction({
+                postId,
+                reaction,
+                anonId: getAnonId(),
+                sessionId: getSessionId()
+            });
+            setEngagementMap((prev) => ({...prev, [postId]: summary}));
+        } catch (reactionError) {
+            console.warn("Failed to set reaction", reactionError);
+        }
+    };
+
     const editorialInsert = compactEditorPicks[0] ?? featuredPost;
 
     return (
@@ -305,6 +319,7 @@ export default function BlogPage() {
                                 showFeaturedBadge
                                 onTagSelect={setActiveTag}
                                 engagement={engagementMap[featuredPost.id]}
+                                onReact={handleReaction}
                             />
                         ) : (
                             <div className="blog-fallback-copy">
@@ -331,7 +346,7 @@ export default function BlogPage() {
                         ) : compactEditorPicks.length > 0 ? (
                             <div className="blog-mini-list">
                                 {compactEditorPicks.map((post) => (
-                                    <PostCard key={`mini-${post.id}`} post={post} variant="mini" engagement={engagementMap[post.id]} />
+                                    <PostCard key={`mini-${post.id}`} post={post} variant="mini" engagement={engagementMap[post.id]} onReact={handleReaction} />
                                 ))}
                             </div>
                         ) : (
@@ -412,7 +427,13 @@ export default function BlogPage() {
                         <>
                             <div className="posts-grid">
                                 {filteredFeed.map((post, index) => (
-                                    <PostCard key={`feed-${post.id}-${index}`} post={post} variant="compact" engagement={engagementMap[post.id]} />
+                                    <PostCard
+                                        key={`feed-${post.id}-${index}`}
+                                        post={post}
+                                        variant="compact"
+                                        engagement={engagementMap[post.id]}
+                                        onReact={handleReaction}
+                                    />
                                 ))}
                             </div>
 

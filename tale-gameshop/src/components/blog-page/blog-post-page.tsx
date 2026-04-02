@@ -424,7 +424,7 @@ ${excerptLine}${shareUrl}`;
                   {post.authorName && <span>By {post.authorName}</span>}
                   {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
                   {post.readingTime && <span>{post.readingTime} min read</span>}
-                  {typeof engagement?.viewsCount === "number" && <span>{engagement.viewsCount} views</span>}
+                  {typeof engagement?.viewsCount === "number" && engagement.viewsCount > 0 && <span>{engagement.viewsCount} views</span>}
                 </div>
               )}
 

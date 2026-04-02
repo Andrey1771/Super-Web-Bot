@@ -17,7 +17,8 @@ type PostCardProps = {
     showFeaturedBadge?: boolean;
     showActions?: boolean;
     onTagSelect?: (tag: string) => void;
-    engagement?: { viewsCount?: number; totalReactions?: number };
+    engagement?: { viewsCount?: number; totalReactions?: number; myReaction?: string; reactions?: Record<string, number> };
+    onReact?: (postId: string, reaction: string) => void;
 };
 
 const formatDate = (value?: string) => {
@@ -35,7 +36,8 @@ export default function PostCard({
     showFeaturedBadge = true,
     showActions = true,
     onTagSelect,
-    engagement
+    engagement,
+    onReact
 }: PostCardProps) {
     const {trackImpression, trackOpen} = useBlogTracking();
     const navigate = useNavigate();
@@ -54,8 +56,9 @@ export default function PostCard({
     }, [isFeatured, isMini]);
     const excerptClamp = isFeatured ? "line-clamp-4" : "line-clamp-3";
     const TitleTag = (isFeatured ? "h2" : isMini ? "h4" : "h3") as React.ElementType;
-    const viewsText = typeof engagement?.viewsCount === "number" ? `${engagement.viewsCount} views` : "";
+    const viewsText = typeof engagement?.viewsCount === "number" && engagement.viewsCount > 0 ? `${engagement.viewsCount} views` : "";
     const reactionsText = typeof engagement?.totalReactions === "number" && engagement.totalReactions > 0 ? `${engagement.totalReactions} reactions` : "";
+    const reactionOptions = ["👍", "❤️", "🔥", "🎮", "👀"];
 
     const isInteractiveTarget = (target: EventTarget | null) => {
         if (!(target instanceof HTMLElement)) {
@@ -189,6 +192,25 @@ export default function PostCard({
                     </div>
                     {!isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}
                     {isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}
+                    {!isMini && onReact ? (
+                        <div className="post-card__reactions" aria-label="Quick reactions">
+                            {reactionOptions.map((emoji) => {
+                                const count = engagement?.reactions?.[emoji] ?? 0;
+                                const isActive = engagement?.myReaction === emoji;
+                                return (
+                                    <button
+                                        key={`${post.id}-${emoji}`}
+                                        className={`post-card__reaction-btn ${isActive ? "active" : ""}`}
+                                        type="button"
+                                        onClick={() => onReact(post.id, emoji)}
+                                    >
+                                        <span>{emoji}</span>
+                                        {count > 0 ? <span>{count}</span> : null}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : null}
                 </div>
                 <div className={`post-card__footer${isFeatured ? " post-card__footer--featured" : ""}`}>
                     {isFeatured ? (
