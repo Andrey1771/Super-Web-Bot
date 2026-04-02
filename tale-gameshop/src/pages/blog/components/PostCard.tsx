@@ -56,7 +56,8 @@ export default function PostCard({
     }, [isFeatured, isMini]);
     const excerptClamp = isFeatured ? "line-clamp-4" : "line-clamp-3";
     const TitleTag = (isFeatured ? "h2" : isMini ? "h4" : "h3") as React.ElementType;
-    const viewsText = typeof engagement?.viewsCount === "number" ? `${engagement.viewsCount} views` : "";
+    const resolvedViews = typeof engagement?.viewsCount === "number" ? engagement.viewsCount : post.viewsCount;
+    const viewsText = typeof resolvedViews === "number" ? `${resolvedViews} views` : "";
     const reactionsText = typeof engagement?.totalReactions === "number" && engagement.totalReactions > 0 ? `${engagement.totalReactions} reactions` : "";
     const reactionOptions = ["👍", "❤️", "🔥", "🎮", "👀"];
 

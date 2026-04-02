@@ -17,6 +17,23 @@ type TocItem = {
   level: number;
 };
 
+const VIEW_TRACK_KEY = "tale_blog_post_view_tracked";
+const READ_TRACK_KEY = "tale_blog_post_read_tracked";
+
+const getSessionGuard = (key: string, slug: string) => {
+  if (typeof window === "undefined" || !slug) {
+    return false;
+  }
+  return window.sessionStorage.getItem(`${key}:${slug}`) === "1";
+};
+
+const setSessionGuard = (key: string, slug: string) => {
+  if (typeof window === "undefined" || !slug) {
+    return;
+  }
+  window.sessionStorage.setItem(`${key}:${slug}`, "1");
+};
+
 const formatDate = (value?: string) => {
   if (!value) {
     return "Draft";
@@ -129,17 +146,40 @@ const BlogPostPage: React.FC = () => {
       return;
     }
 
-    const timer = window.setTimeout(() => {
+    if (getSessionGuard(VIEW_TRACK_KEY, slug)) {
+      return;
+    }
+
+    let disposed = false;
+    let visibleMs = 0;
+    const interval = window.setInterval(() => {
+      if (disposed || document.visibilityState !== "visible") {
+        return;
+      }
+
+      visibleMs += 500;
+      if (visibleMs < 3000) {
+        return;
+      }
+
+      disposed = true;
+      setSessionGuard(VIEW_TRACK_KEY, slug);
+      window.clearInterval(interval);
       blogService.trackPostView({
         slug,
         anonId: getAnonId(),
         sessionKey: getSessionId()
       })
         .then((stats) => setPostStats(stats))
-        .catch((trackingError) => console.warn("Failed to track post view", trackingError));
-    }, 3000);
+        .catch((trackingError) => {
+          console.warn("Failed to track post view", trackingError);
+        });
+    }, 500);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+    };
   }, [blogService, post, slug]);
 
   useEffect(() => {
@@ -147,23 +187,30 @@ const BlogPostPage: React.FC = () => {
       return;
     }
 
+    if (getSessionGuard(READ_TRACK_KEY, slug)) {
+      readTrackedRef.current = true;
+      return;
+    }
+
     readTrackedRef.current = false;
-    const start = Date.now();
-    const minReadTimeMs = 30000;
+    let visibleMs = 0;
+    const minReadTimeMs = 10000;
     const interval = window.setInterval(() => {
-      if (readTrackedRef.current) {
+      if (readTrackedRef.current || document.visibilityState !== "visible") {
         return;
       }
 
+      visibleMs += 500;
       const doc = document.documentElement;
       const scrollTop = window.scrollY || doc.scrollTop;
       const viewportHeight = window.innerHeight;
       const scrollHeight = doc.scrollHeight;
       const scrollDepth = scrollHeight ? Math.min((scrollTop + viewportHeight) / scrollHeight, 1) : 0;
-      const dwellMs = Date.now() - start;
+      const dwellMs = visibleMs;
 
-      if (scrollDepth >= 0.8 && dwellMs >= minReadTimeMs) {
+      if (scrollDepth >= 0.7 && dwellMs >= minReadTimeMs) {
         readTrackedRef.current = true;
+        setSessionGuard(READ_TRACK_KEY, slug);
         blogService.trackCompletedRead({
           slug,
           anonId: getAnonId(),
@@ -172,10 +219,11 @@ const BlogPostPage: React.FC = () => {
           .then((stats) => setPostStats(stats))
           .catch((trackingError) => {
             readTrackedRef.current = false;
+            window.sessionStorage.removeItem(`${READ_TRACK_KEY}:${slug}`);
             console.warn("Failed to track completed read", trackingError);
           });
       }
-    }, 4000);
+    }, 500);
 
     return () => window.clearInterval(interval);
   }, [blogService, post, slug]);

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
+using System.Security.Claims;
 using System.Linq;
 
 namespace SuperBot.WebApi.Controllers;
@@ -135,7 +136,8 @@ public class BlogController : ControllerBase
         }
 
         request ??= new BlogTrackRequest();
-        var actorKey = BuildActorKey(request.UserId, request.AnonId, request.SessionKey);
+        var userId = GetCurrentUserId();
+        var actorKey = BuildActorKey(userId, request.AnonId, request.SessionKey);
         if (string.IsNullOrWhiteSpace(actorKey))
         {
             return BadRequest("Identity is required.");
@@ -154,7 +156,7 @@ public class BlogController : ControllerBase
                 PostId = post.Id,
                 EventType = eventType,
                 Timestamp = DateTime.UtcNow,
-                UserId = request.UserId,
+                UserId = userId,
                 AnonId = request.AnonId,
                 SessionId = request.SessionKey
             });
@@ -168,18 +170,14 @@ public class BlogController : ControllerBase
     {
         var events = await _blogRecommendationsService.GetEventsByPostAsync(postId, DateTime.UtcNow.AddYears(-3));
         var views = events
-            .Where(item => string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
-            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Distinct(StringComparer.Ordinal)
-            .Count();
+            .Count(item =>
+                string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(BuildActorKey(item.UserId, item.AnonId, item.SessionId)));
 
         var reads = events
-            .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
-            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Distinct(StringComparer.Ordinal)
-            .Count();
+            .Count(item =>
+                string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(BuildActorKey(item.UserId, item.AnonId, item.SessionId)));
 
         return new BlogPostStatsResponse
         {
@@ -215,6 +213,16 @@ public class BlogController : ControllerBase
             return $"s:{sessionKey}";
         }
         return string.Empty;
+    }
+
+    private string GetCurrentUserId()
+    {
+        return User?.FindFirst("email")?.Value
+               ?? User?.FindFirst(ClaimTypes.Email)?.Value
+               ?? User?.FindFirst("preferred_username")?.Value
+               ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+               ?? User?.FindFirst("sub")?.Value
+               ?? string.Empty;
     }
 }
 
