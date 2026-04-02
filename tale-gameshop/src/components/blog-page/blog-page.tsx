@@ -115,7 +115,20 @@ export default function BlogPage() {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [headerOffset, setHeaderOffset] = useState(88);
     const debouncedSearch = useDebouncedValue(searchInput, 320);
+
+    useEffect(() => {
+        const updateHeaderOffset = () => {
+            const header = document.querySelector(".header-nav") as HTMLElement | null;
+            const nextOffset = header?.offsetHeight ?? 72;
+            setHeaderOffset(nextOffset + 10);
+        };
+
+        updateHeaderOffset();
+        window.addEventListener("resize", updateHeaderOffset);
+        return () => window.removeEventListener("resize", updateHeaderOffset);
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -232,7 +245,12 @@ export default function BlogPage() {
     const editorialInsert = compactEditorPicks[0] ?? featuredPost;
 
     return (
-        <main className="blog-page">
+        <main
+            className="blog-page"
+            style={{
+                ["--blog-header-offset" as string]: `${headerOffset}px`
+            }}
+        >
             <section className="blog-hero section">
                 <div className="container blog-hero__inner">
                     <div className="blog-hero__copy">
@@ -327,16 +345,15 @@ export default function BlogPage() {
                                 Clear filters
                             </button>
                         ) : null}
+
+                        <p className="blog-toolbar__summary muted">{toolbarSummary}</p>
                     </div>
                 </div>
             </section>
 
             <section className="blog-feed section">
                 <div className="container">
-                    <div className="blog-feed__summary">
-                        <p className="muted">{toolbarSummary}</p>
-                        {error ? <p className="blog-feed__warning">{error}</p> : null}
-                    </div>
+                    {error ? <p className="blog-feed__warning">{error}</p> : null}
 
                     {loading ? (
                         <div className="posts-grid">
