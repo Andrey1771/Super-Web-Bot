@@ -331,7 +331,7 @@ export default function BlogPage() {
                         ) : compactEditorPicks.length > 0 ? (
                             <div className="blog-mini-list">
                                 {compactEditorPicks.map((post) => (
-                                    <PostCard key={post.id} post={post} variant="mini" engagement={engagementMap[post.id]} />
+                                    <PostCard key={`mini-${post.id}`} post={post} variant="mini" engagement={engagementMap[post.id]} />
                                 ))}
                             </div>
                         ) : (
@@ -411,8 +411,8 @@ export default function BlogPage() {
                     ) : filteredFeed.length > 0 ? (
                         <>
                             <div className="posts-grid">
-                                {filteredFeed.map((post) => (
-                                    <PostCard key={post.id} post={post} variant="compact" engagement={engagementMap[post.id]} />
+                                {filteredFeed.map((post, index) => (
+                                    <PostCard key={`feed-${post.id}-${index}`} post={post} variant="compact" engagement={engagementMap[post.id]} />
                                 ))}
                             </div>
 
