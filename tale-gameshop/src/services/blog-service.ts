@@ -3,7 +3,7 @@ import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import type { BlogEventPayload, IBlogService } from "../iterfaces/i-blog-service";
-import type { BlogListResponse, BlogPost, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
+import type { BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
 
 @injectable()
 export class BlogService implements IBlogService {
@@ -60,5 +60,31 @@ export class BlogService implements IBlogService {
       referrer: payload.referrer,
       meta: payload.meta
     });
+  }
+
+  async getEngagementSummary(postIds: string[], anonId?: string): Promise<BlogEngagementSummary[]> {
+    if (!postIds.length) {
+      return [];
+    }
+
+    const query = new URLSearchParams();
+    query.append("postIds", postIds.join(","));
+    if (anonId) {
+      query.append("anonId", anonId);
+    }
+
+    const response = await this._apiClient.api.get(`/api/blog/events/summary?${query.toString()}`);
+    return (response.data?.items ?? []) as BlogEngagementSummary[];
+  }
+
+  async setReaction(params: { postId: string; reaction: string; anonId?: string; sessionId?: string }): Promise<BlogEngagementSummary> {
+    const response = await this._apiClient.api.post("/api/blog/events/reaction", {
+      postId: params.postId,
+      reaction: params.reaction,
+      anonId: params.anonId,
+      sessionId: params.sessionId
+    });
+
+    return response.data as BlogEngagementSummary;
   }
 }

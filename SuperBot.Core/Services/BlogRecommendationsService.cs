@@ -178,6 +178,16 @@ namespace SuperBot.Core.Services
             return await _blogRepository.GetByIdsAsync(ids);
         }
 
+        public Task<IReadOnlyList<BlogEvent>> GetEventsByPostAsync(string postId, DateTime fromUtc)
+        {
+            if (string.IsNullOrWhiteSpace(postId))
+            {
+                return Task.FromResult<IReadOnlyList<BlogEvent>>(Array.Empty<BlogEvent>());
+            }
+
+            return _eventRepository.GetRecentByPostAsync(postId, fromUtc);
+        }
+
         private async Task<UserBlogProfile> ResolveProfileAsync(string userId, string anonId)
         {
             if (!string.IsNullOrWhiteSpace(userId))

@@ -1,7 +1,7 @@
-import React, {useEffect, useMemo, useRef} from "react";
+import React, {KeyboardEvent, MouseEvent, useEffect, useMemo, useRef} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faArrowRightLong} from "@fortawesome/free-solid-svg-icons";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import type {BlogListItem} from "../../../types/blog";
 import {useBlogTracking} from "../../../hooks/use-blog-tracking";
 import SafeBlogImage from "../../../components/blog-page/SafeBlogImage";
@@ -17,6 +17,7 @@ type PostCardProps = {
     showFeaturedBadge?: boolean;
     showActions?: boolean;
     onTagSelect?: (tag: string) => void;
+    engagement?: { viewsCount?: number; totalReactions?: number };
 };
 
 const formatDate = (value?: string) => {
@@ -36,6 +37,7 @@ export default function PostCard({
     onTagSelect
 }: PostCardProps) {
     const {trackImpression, trackOpen} = useBlogTracking();
+    const navigate = useNavigate();
     const cardRef = useRef<HTMLElement | null>(null);
     const tag = post.tags[0];
     const isFeatured = variant === "featured";
@@ -51,6 +53,39 @@ export default function PostCard({
     }, [isFeatured, isMini]);
     const excerptClamp = isFeatured ? "line-clamp-4" : "line-clamp-3";
     const TitleTag = (isFeatured ? "h2" : isMini ? "h4" : "h3") as React.ElementType;
+    const viewsText = typeof engagement?.viewsCount === "number" ? `${engagement.viewsCount} views` : "";
+    const reactionsText = typeof engagement?.totalReactions === "number" && engagement.totalReactions > 0 ? `${engagement.totalReactions} reactions` : "";
+
+    const isInteractiveTarget = (target: EventTarget | null) => {
+        if (!(target instanceof HTMLElement)) {
+            return false;
+        }
+
+        return Boolean(target.closest("a,button,input,select,textarea,[role='button']"));
+    };
+
+    const openPost = () => {
+        trackOpen(post.id);
+        navigate(`/blog/${post.slug}`);
+    };
+
+    const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+        if (isInteractiveTarget(event.target)) {
+            return;
+        }
+        openPost();
+    };
+
+    const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+            return;
+        }
+        if (isInteractiveTarget(event.target)) {
+            return;
+        }
+        event.preventDefault();
+        openPost();
+    };
 
     useEffect(() => {
         const node = cardRef.current;
@@ -79,6 +114,10 @@ export default function PostCard({
             <article
                 className={`post-card post-card--mini${className ? ` ${className}` : ""}`}
                 ref={cardRef}
+                role="link"
+                tabIndex={0}
+                onClick={handleCardClick}
+                onKeyDown={handleCardKeyDown}
             >
                 <div className="post-card__media post-card__media--mini" aria-hidden="true">
                     <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} />
@@ -95,6 +134,12 @@ export default function PostCard({
                                 <span>{`${post.readingTime} min read`}</span>
                             </>
                         ) : null}
+                        {viewsText ? (
+                            <>
+                                <span className="divider-dot" aria-hidden="true">•</span>
+                                <span>{viewsText}</span>
+                            </>
+                        ) : null}
                     </div>
                 </div>
             </article>
@@ -105,6 +150,10 @@ export default function PostCard({
         <article
             className={`post-card post-card--${variant}${className ? ` ${className}` : ""}`}
             ref={cardRef}
+            role="link"
+            tabIndex={0}
+            onClick={handleCardClick}
+            onKeyDown={handleCardKeyDown}
         >
             <div className={`post-card__media post-card__media--${variant}`} aria-hidden="true">
                 {showCategoryBadge && tag && !isFeatured && <span className="badge category-badge">{tag}</span>}
@@ -124,6 +173,18 @@ export default function PostCard({
                             </>
                         ) : null}
                         {isFeatured && tag && <span className="meta-pill">{tag}</span>}
+                        {viewsText ? (
+                            <>
+                                <span className="divider-dot" aria-hidden="true">•</span>
+                                <span>{viewsText}</span>
+                            </>
+                        ) : null}
+                        {reactionsText ? (
+                            <>
+                                <span className="divider-dot" aria-hidden="true">•</span>
+                                <span>{reactionsText}</span>
+                            </>
+                        ) : null}
                     </div>
                     {!isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}
                     {isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}

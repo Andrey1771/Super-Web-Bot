@@ -228,11 +228,17 @@
   box-shadow: 0 8px 20px rgba(71, 45, 140, 0.08);
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
 }
 
 .post-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 24px rgba(71, 45, 140, 0.12);
+}
+
+.post-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  outline-offset: 2px;
 }
 
 .post-card--compact .post-card__media {
@@ -1126,6 +1132,49 @@
 
 .related-post-card {
   height: 100%;
+}
+
+.post-reactions {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #e6defa;
+  background: #fbf9ff;
+}
+
+.post-reactions__title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6f678e;
+}
+
+.post-reactions__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.post-reactions__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e4dcfa;
+  background: #ffffff;
+  color: #4d4668;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.post-reactions__chip.active {
+  border-color: #ccb8fb;
+  background: #f2ebff;
+  color: #5e30cd;
 }
 
 .related-post-card .post-card__body {

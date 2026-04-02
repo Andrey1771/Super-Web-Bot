@@ -3,9 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IBlogService } from "../../iterfaces/i-blog-service";
-import type { BlogListItem, BlogPost, BlogPostVersion } from "../../types/blog";
+import type { BlogEngagementSummary, BlogListItem, BlogPost, BlogPostVersion } from "../../types/blog";
 import { renderMarkdown } from "../../utils/markdown";
-import { useBlogTracking } from "../../hooks/use-blog-tracking";
+import { getAnonId, getSessionId, useBlogTracking } from "../../hooks/use-blog-tracking";
 import SafeBlogImage from "./SafeBlogImage";
 import { getBlogPostCoverUrl } from "../../utils/blog-cover";
 import PostCard from "../../pages/blog/components/PostCard";
@@ -82,7 +82,10 @@ const BlogPostPage: React.FC = () => {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [activeHeading, setActiveHeading] = useState<string | null>(null);
   const [shareFeedback, setShareFeedback] = useState<string>("");
+  const [engagement, setEngagement] = useState<BlogEngagementSummary | null>(null);
+  const [reactionLoading, setReactionLoading] = useState<string | null>(null);
   const { trackOpen, trackReadProgress, trackReadComplete, trackBookmark } = useBlogTracking();
+  const reactions = ["👍", "❤️", "🔥", "🎮", "👀"];
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -117,7 +120,12 @@ const BlogPostPage: React.FC = () => {
     if (!post) {
       return;
     }
-    trackOpen(post.id);
+
+    const timer = window.setTimeout(() => {
+      trackOpen(post.id);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
   }, [post, trackOpen]);
 
   useEffect(() => {
@@ -228,6 +236,45 @@ const BlogPostPage: React.FC = () => {
 
     return () => observer.disconnect();
   }, [articleContent]);
+
+  useEffect(() => {
+    const fetchEngagement = async () => {
+      if (!post) {
+        setEngagement(null);
+        return;
+      }
+
+      try {
+        const items = await blogService.getEngagementSummary([post.id], getAnonId());
+        setEngagement(items[0] ?? null);
+      } catch (engagementError) {
+        console.warn("Failed to load engagement summary", engagementError);
+      }
+    };
+
+    fetchEngagement();
+  }, [blogService, post]);
+
+  const handleReaction = useCallback(async (reaction: string) => {
+    if (!post) {
+      return;
+    }
+
+    setReactionLoading(reaction);
+    try {
+      const summary = await blogService.setReaction({
+        postId: post.id,
+        reaction,
+        anonId: getAnonId(),
+        sessionId: getSessionId()
+      });
+      setEngagement(summary);
+    } catch (reactionError) {
+      console.warn("Failed to set reaction", reactionError);
+    } finally {
+      setReactionLoading(null);
+    }
+  }, [blogService, post]);
 
   const topic = post?.topics?.[0] ?? post?.tags?.[0];
   const hasMeta = Boolean(post?.authorName || post?.publishedAt || post?.readingTime);
@@ -377,6 +424,7 @@ ${excerptLine}${shareUrl}`;
                   {post.authorName && <span>By {post.authorName}</span>}
                   {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
                   {post.readingTime && <span>{post.readingTime} min read</span>}
+                  {typeof engagement?.viewsCount === "number" && <span>{engagement.viewsCount} views</span>}
                 </div>
               )}
 
@@ -390,6 +438,28 @@ ${excerptLine}${shareUrl}`;
                 <button className="btn btn-ghost" type="button" onClick={() => trackBookmark(post.id)} aria-label="Save article for later">
                   Save for later
                 </button>
+              </div>
+
+              <div className="post-reactions surface" aria-label="Post reactions">
+                <p className="post-reactions__title">React to this post</p>
+                <div className="post-reactions__list">
+                  {reactions.map((emoji) => {
+                    const count = engagement?.reactions?.[emoji] ?? 0;
+                    const isActive = engagement?.myReaction === emoji;
+                    return (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className={`post-reactions__chip ${isActive ? "active" : ""}`}
+                        onClick={() => handleReaction(emoji)}
+                        disabled={Boolean(reactionLoading)}
+                      >
+                        <span>{emoji}</span>
+                        {count > 0 ? <span>{count}</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </header>

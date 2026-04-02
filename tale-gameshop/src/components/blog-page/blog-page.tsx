@@ -14,7 +14,7 @@ import useDebouncedValue from "../../hooks/useDebouncedValue";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type {IBlogService} from "../../iterfaces/i-blog-service";
-import type {BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
+import type {BlogEngagementSummary, BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
 import PostCard from "../../pages/blog/components/PostCard";
 import {getAnonId} from "../../hooks/use-blog-tracking";
 import SafeBlogImage from "./SafeBlogImage";
@@ -118,6 +118,7 @@ export default function BlogPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [headerOffset, setHeaderOffset] = useState(88);
+    const [engagementMap, setEngagementMap] = useState<Record<string, BlogEngagementSummary>>({});
     const debouncedSearch = useDebouncedValue(searchInput, 320);
 
     useEffect(() => {
@@ -191,6 +192,35 @@ export default function BlogPage() {
 
         return withSoftFallback(stableBase, data.fallbackPosts);
     }, [data]);
+
+    useEffect(() => {
+        const fetchEngagement = async () => {
+            const anonId = getAnonId();
+            const ids = uniqById([
+                ...baseFeed,
+                ...compactEditorPicks,
+                ...(featuredPost ? [featuredPost] : [])
+            ]).map((post) => post.id);
+
+            if (!ids.length) {
+                setEngagementMap({});
+                return;
+            }
+
+            try {
+                const items = await blogService.getEngagementSummary(ids, anonId);
+                const nextMap = items.reduce<Record<string, BlogEngagementSummary>>((acc, item) => {
+                    acc[item.postId] = item;
+                    return acc;
+                }, {});
+                setEngagementMap(nextMap);
+            } catch (engagementError) {
+                console.warn("Failed to load engagement summary", engagementError);
+            }
+        };
+
+        fetchEngagement();
+    }, [baseFeed, blogService, compactEditorPicks, featuredPost]);
 
     const tagFilters = useMemo(() => {
         const allTags = new Set<string>();
@@ -269,7 +299,13 @@ export default function BlogPage() {
                         {loading ? (
                             <div className="skeleton h-80" />
                         ) : featuredPost ? (
-                            <PostCard post={featuredPost} variant="featured" showFeaturedBadge onTagSelect={setActiveTag} />
+                            <PostCard
+                                post={featuredPost}
+                                variant="featured"
+                                showFeaturedBadge
+                                onTagSelect={setActiveTag}
+                                engagement={engagementMap[featuredPost.id]}
+                            />
                         ) : (
                             <div className="blog-fallback-copy">
                                 <h2>No published posts yet</h2>
@@ -295,7 +331,7 @@ export default function BlogPage() {
                         ) : compactEditorPicks.length > 0 ? (
                             <div className="blog-mini-list">
                                 {compactEditorPicks.map((post) => (
-                                    <PostCard key={post.id} post={post} variant="mini" />
+                                    <PostCard key={post.id} post={post} variant="mini" engagement={engagementMap[post.id]} />
                                 ))}
                             </div>
                         ) : (
@@ -376,7 +412,7 @@ export default function BlogPage() {
                         <>
                             <div className="posts-grid">
                                 {filteredFeed.map((post) => (
-                                    <PostCard key={post.id} post={post} variant="compact" />
+                                    <PostCard key={post.id} post={post} variant="compact" engagement={engagementMap[post.id]} />
                                 ))}
                             </div>
 

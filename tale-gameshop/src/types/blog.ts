@@ -63,3 +63,12 @@ export type BlogListResponse = {
   items: BlogListItem[];
   total: number;
 };
+
+export type BlogEngagementSummary = {
+  postId: string;
+  viewsCount: number;
+  completedReadsCount: number;
+  reactions: Record<string, number>;
+  totalReactions: number;
+  myReaction?: string;
+};
