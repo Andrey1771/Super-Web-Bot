@@ -78,7 +78,7 @@ public class BlogController : ControllerBase
                 post.Title,
                 post.Excerpt,
                 post.CoverUrl,
-                post.ImageUrl,
+                ImageUrl = post.CoverUrl,
                 post.Status,
                 post.PublishedAt,
                 post.ScheduledAt,
