@@ -17,6 +17,8 @@ import type {IBlogService} from "../../iterfaces/i-blog-service";
 import type {BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
 import PostCard from "../../pages/blog/components/PostCard";
 import {getAnonId} from "../../hooks/use-blog-tracking";
+import SafeBlogImage from "./SafeBlogImage";
+import {getBlogPostCoverUrl} from "../../utils/blog-cover";
 import "./blog-page.css";
 
 const RECOMMENDATION_LIMIT = 8;
@@ -380,7 +382,14 @@ export default function BlogPage() {
 
                             {editorialInsert ? (
                                 <article className="editorial-insert surface">
-                                    <div>
+                                    <Link className="editorial-insert__thumb-link" to={`/blog/${editorialInsert.slug}`} aria-label={editorialInsert.title}>
+                                        <SafeBlogImage
+                                            src={getBlogPostCoverUrl(editorialInsert)}
+                                            alt={editorialInsert.title}
+                                            className="editorial-insert__thumb"
+                                        />
+                                    </Link>
+                                    <div className="editorial-insert__body">
                                         <div className="eyebrow">Picked by Tale team</div>
                                         <h3>{editorialInsert.title}</h3>
                                         <p className="muted">{editorialInsert.excerpt}</p>
