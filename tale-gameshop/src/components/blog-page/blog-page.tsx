@@ -17,10 +17,11 @@ import {getAnonId} from "../../hooks/use-blog-tracking";
 import "./blog-page.css";
 
 const RECOMMENDATION_LIMIT = 6;
-const EDITORIAL_FETCH_LIMIT = 9;
+const FEATURED_FETCH_LIMIT = 9;
+const MAIN_FEED_FETCH_LIMIT = 24;
 const sortOptions = ["Newest", "Most popular", "Editor's picks"] as const;
 
-const formatSort = (value: typeof sortOptions[number]) => value;
+type SortOption = typeof sortOptions[number];
 
 const byPublishedAtDesc = (a: BlogListItem, b: BlogListItem) => {
     const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
@@ -59,12 +60,16 @@ const buildPriorityIds = (...groups: Array<BlogListItem[] | undefined>) => {
 };
 
 const sortWithPriority = (posts: BlogListItem[], priorityIds: string[]) => {
-    const priorityRank = new Map<string, number>();
-    priorityIds.forEach((id, index) => priorityRank.set(id, index));
+    if (priorityIds.length === 0) {
+        return [...posts].sort(byPublishedAtDesc);
+    }
+
+    const rank = new Map<string, number>();
+    priorityIds.forEach((id, index) => rank.set(id, index));
 
     return [...posts].sort((a, b) => {
-        const rankA = priorityRank.get(a.id);
-        const rankB = priorityRank.get(b.id);
+        const rankA = rank.get(a.id);
+        const rankB = rank.get(b.id);
 
         if (rankA !== undefined && rankB !== undefined) {
             return rankA - rankB;
@@ -87,47 +92,50 @@ export default function BlogPage() {
 
     const [activeTag, setActiveTag] = useState("All");
     const [searchInput, setSearchInput] = useState("");
-    const [sort, setSort] = useState<typeof sortOptions[number]>(sortOptions[0]);
+    const [sort, setSort] = useState<SortOption>("Newest");
     const [recommendations, setRecommendations] = useState<BlogRecommendationsResponse | null>(null);
-    const [supplementalPosts, setSupplementalPosts] = useState<BlogListItem[]>([]);
+    const [featuredPool, setFeaturedPool] = useState<BlogListItem[]>([]);
+    const [fallbackPosts, setFallbackPosts] = useState<BlogListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const debouncedSearch = useDebouncedValue(searchInput, 320);
 
     useEffect(() => {
-        const fetchRecommendations = async () => {
-            try {
-                setLoading(true);
-                setError(null);
+        const loadData = async () => {
+            setLoading(true);
+            setError(null);
 
-                const [recommendationResponse, featuredResponse] = await Promise.all([
-                    blogService.getHomeRecommendations({
-                        anonId: getAnonId(),
-                        limit: RECOMMENDATION_LIMIT
-                    }),
-                    blogService.getPosts({page: 1, pageSize: EDITORIAL_FETCH_LIMIT, featured: true})
-                ]);
+            const [recommendationsResult, featuredResult, fallbackResult] = await Promise.allSettled([
+                blogService.getHomeRecommendations({anonId: getAnonId(), limit: RECOMMENDATION_LIMIT}),
+                blogService.getPosts({page: 1, pageSize: FEATURED_FETCH_LIMIT, featured: true}),
+                blogService.getPosts({page: 1, pageSize: MAIN_FEED_FETCH_LIMIT})
+            ]);
 
-                let fallbackPool = featuredResponse.items;
-                if (fallbackPool.length === 0) {
-                    const fallbackResponse = await blogService.getPosts({page: 1, pageSize: EDITORIAL_FETCH_LIMIT});
-                    fallbackPool = fallbackResponse.items;
-                }
+            const nextRecommendations = recommendationsResult.status === "fulfilled"
+                ? recommendationsResult.value
+                : null;
 
-                setRecommendations(recommendationResponse);
-                setSupplementalPosts(fallbackPool);
-            } catch (fetchError) {
-                console.error(fetchError);
+            const featuredItems = featuredResult.status === "fulfilled"
+                ? featuredResult.value.items
+                : [];
+
+            const fallbackItems = fallbackResult.status === "fulfilled"
+                ? fallbackResult.value.items
+                : [];
+
+            setRecommendations(nextRecommendations);
+            setFeaturedPool(buildUniquePosts(featuredItems, fallbackItems));
+            setFallbackPosts(fallbackItems);
+
+            if (!nextRecommendations && fallbackItems.length === 0) {
                 setError("Unable to load blog posts.");
-                setRecommendations(null);
-                setSupplementalPosts([]);
-            } finally {
-                setLoading(false);
             }
+
+            setLoading(false);
         };
 
-        fetchRecommendations();
+        void loadData();
     }, [blogService]);
 
     const heroPost = useMemo(() => {
@@ -135,127 +143,132 @@ export default function BlogPage() {
             return recommendations.heroPost;
         }
 
-        const fallback = buildUniquePosts(
+        return buildUniquePosts(
             recommendations?.latestPosts,
             recommendations?.editorsPicks,
             recommendations?.popularThisWeek,
-            recommendations?.forYou,
-            supplementalPosts
-        );
+            featuredPool,
+            fallbackPosts
+        )[0] ?? null;
+    }, [fallbackPosts, featuredPool, recommendations]);
 
-        return fallback[0] ?? null;
-    }, [recommendations, supplementalPosts]);
-
-    const editorialStack = useMemo(() => {
-        const picks = buildUniquePosts(
+    const editorPicksRail = useMemo(() => {
+        return buildUniquePosts(
             recommendations?.editorsPicks,
-            supplementalPosts,
+            featuredPool,
             recommendations?.popularThisWeek,
             recommendations?.forYou,
-            recommendations?.latestPosts
-        );
-
-        return picks
+            fallbackPosts
+        )
             .filter((post) => post.id !== heroPost?.id)
             .slice(0, 3);
-    }, [heroPost?.id, recommendations, supplementalPosts]);
+    }, [fallbackPosts, featuredPool, heroPost?.id, recommendations]);
 
-    const allSourcePosts = useMemo(() => {
+    const allKnownPosts = useMemo(() => {
         return buildUniquePosts(
             heroPost ? [heroPost] : undefined,
+            fallbackPosts,
             recommendations?.latestPosts,
             recommendations?.popularThisWeek,
             recommendations?.forYou,
             recommendations?.editorsPicks,
-            supplementalPosts
+            featuredPool
         );
-    }, [heroPost, recommendations, supplementalPosts]);
+    }, [fallbackPosts, featuredPool, heroPost, recommendations]);
+
+    const mainFeedSource = useMemo(() => {
+        if (fallbackPosts.length > 0) {
+            return fallbackPosts;
+        }
+
+        return buildUniquePosts(
+            recommendations?.latestPosts,
+            recommendations?.popularThisWeek,
+            recommendations?.forYou,
+            recommendations?.editorsPicks,
+            featuredPool,
+            heroPost ? [heroPost] : undefined
+        );
+    }, [fallbackPosts, featuredPool, heroPost, recommendations]);
 
     const tagFilters = useMemo(() => {
-        const tagSet = new Set<string>();
+        const tags = new Set<string>();
 
-        allSourcePosts.forEach((post) => {
-            post.tags.forEach((tag) => tagSet.add(tag));
+        allKnownPosts.forEach((post) => {
+            post.tags.forEach((tag) => tags.add(tag));
         });
 
-        const orderedTags = Array.from(tagSet)
-            .sort((a, b) => a.localeCompare(b))
-            .slice(0, 7);
-
-        return ["All", ...orderedTags];
-    }, [allSourcePosts]);
+        return ["All", ...Array.from(tags).sort((a, b) => a.localeCompare(b)).slice(0, 8)];
+    }, [allKnownPosts]);
 
     const matchesFilters = useMemo(() => {
         const normalizedSearch = debouncedSearch.trim().toLowerCase();
         const normalizedActiveTag = normalizeTag(activeTag);
 
         return (post: BlogListItem) => {
-            const matchesTag =
-                normalizedActiveTag === "all" ||
-                post.tags.some((tag) => normalizeTag(tag) === normalizedActiveTag);
-
-            if (!normalizedSearch) {
-                return matchesTag;
+            const matchesTag = normalizedActiveTag === "all" || post.tags.some((tag) => normalizeTag(tag) === normalizedActiveTag);
+            if (!matchesTag) {
+                return false;
             }
 
-            const text = `${post.title} ${post.excerpt} ${post.tags.join(" ")}`.toLowerCase();
-            return matchesTag && text.includes(normalizedSearch);
+            if (!normalizedSearch) {
+                return true;
+            }
+
+            const searchText = `${post.title} ${post.excerpt} ${post.tags.join(" ")}`.toLowerCase();
+            return searchText.includes(normalizedSearch);
         };
     }, [activeTag, debouncedSearch]);
 
-    const filteredSourcePosts = useMemo(() => {
-        return allSourcePosts.filter(matchesFilters);
-    }, [allSourcePosts, matchesFilters]);
+    const filteredMainSource = useMemo(() => mainFeedSource.filter(matchesFilters), [mainFeedSource, matchesFilters]);
 
-    const popularPriorityIds = useMemo(
+    const popularPriority = useMemo(
         () => buildPriorityIds(recommendations?.popularThisWeek, recommendations?.forYou),
         [recommendations?.forYou, recommendations?.popularThisWeek]
     );
 
-    const editorialPriorityIds = useMemo(
-        () => buildPriorityIds(heroPost ? [heroPost] : undefined, recommendations?.editorsPicks, supplementalPosts),
-        [heroPost, recommendations?.editorsPicks, supplementalPosts]
+    const editorPriority = useMemo(
+        () => buildPriorityIds(heroPost ? [heroPost] : undefined, recommendations?.editorsPicks, featuredPool),
+        [featuredPool, heroPost, recommendations?.editorsPicks]
     );
 
-    const sortedFeedSource = useMemo(() => {
+    const sortedMainPosts = useMemo(() => {
         if (sort === "Most popular") {
-            return sortWithPriority(filteredSourcePosts, popularPriorityIds);
+            return sortWithPriority(filteredMainSource, popularPriority);
         }
 
         if (sort === "Editor's picks") {
-            return sortWithPriority(filteredSourcePosts, editorialPriorityIds);
+            return sortWithPriority(filteredMainSource, editorPriority);
         }
 
-        return [...filteredSourcePosts].sort(byPublishedAtDesc);
-    }, [editorialPriorityIds, filteredSourcePosts, popularPriorityIds, sort]);
-
-    const excludedIds = useMemo(() => {
-        const ids = new Set<string>();
-        if (heroPost) {
-            ids.add(heroPost.id);
-        }
-
-        editorialStack.forEach((post) => ids.add(post.id));
-        return ids;
-    }, [editorialStack, heroPost]);
-
-    const feedPosts = useMemo(() => {
-        return sortedFeedSource.filter((post) => !excludedIds.has(post.id));
-    }, [excludedIds, sortedFeedSource]);
+        return [...filteredMainSource].sort(byPublishedAtDesc);
+    }, [editorPriority, filteredMainSource, popularPriority, sort]);
 
     const isFiltering = Boolean(debouncedSearch.trim()) || activeTag !== "All";
-    const resultsCount = sortedFeedSource.length;
+
+    const feedPosts = useMemo(() => {
+        if (isFiltering) {
+            return sortedMainPosts;
+        }
+
+        if (sortedMainPosts.length <= 6) {
+            return sortedMainPosts;
+        }
+
+        const exclusionIds = new Set<string>();
+        if (heroPost) {
+            exclusionIds.add(heroPost.id);
+        }
+        editorPicksRail.forEach((post) => exclusionIds.add(post.id));
+
+        const withoutTopPosts = sortedMainPosts.filter((post) => !exclusionIds.has(post.id));
+        return withoutTopPosts.length >= 4 ? withoutTopPosts : sortedMainPosts;
+    }, [editorPicksRail, heroPost, isFiltering, sortedMainPosts]);
 
     const handleClearFilters = () => {
         setSearchInput("");
         setActiveTag("All");
     };
-
-    const toolbarSkeleton = (
-        <div className="blog-toolbar blog-toolbar--skeleton">
-            <div className="skeleton h-12" />
-        </div>
-    );
 
     return (
         <main className="blog-page blog-page--editorial">
@@ -280,13 +293,6 @@ export default function BlogPage() {
                                 <div className="skeleton h-28" />
                             </div>
                         </div>
-                    ) : error ? (
-                        <div className="featured-card featured-card--fallback">
-                            <div className="featured-content">
-                                <h2>Unable to load blog posts</h2>
-                                <p className="featured-text">{error}</p>
-                            </div>
-                        </div>
                     ) : heroPost ? (
                         <div className="blog-featured-layout">
                             <PostCard
@@ -296,7 +302,7 @@ export default function BlogPage() {
                                 showActions
                                 onTagSelect={(tag) => setActiveTag(tag || "All")}
                             />
-                            <aside className="featured-editors-inline surface" aria-label="Top picks">
+                            <aside className="featured-editors-inline surface" aria-label="Editor picks">
                                 <div className="featured-editors-inline__header">
                                     <span className="eyebrow eyebrow--inline">Editor picks</span>
                                     <Link className="link-primary" to="/blog">
@@ -304,22 +310,22 @@ export default function BlogPage() {
                                         <FontAwesomeIcon icon={faArrowRightLong} />
                                     </Link>
                                 </div>
-                                {editorialStack.length > 0 ? (
+                                {editorPicksRail.length > 0 ? (
                                     <div className="featured-editors-inline__list">
-                                        {editorialStack.map((post) => (
+                                        {editorPicksRail.map((post) => (
                                             <PostCard key={post.id} post={post} variant="mini" />
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="muted">More curated picks will appear here as new posts are published.</p>
+                                    <p className="muted">New editorial picks will appear here soon.</p>
                                 )}
                             </aside>
                         </div>
                     ) : (
                         <div className="featured-card featured-card--fallback">
                             <div className="featured-content">
-                                <h2>No posts yet</h2>
-                                <p className="featured-text">Once posts are published, the first highlight will appear here.</p>
+                                <h2>Blog is preparing fresh content</h2>
+                                <p className="featured-text">{error ?? "Posts will appear here as soon as they are published."}</p>
                             </div>
                         </div>
                     )}
@@ -328,55 +334,50 @@ export default function BlogPage() {
 
             <section className="blog-toolbar-section section" aria-label="Blog filters">
                 <div className="container">
-                    {loading ? toolbarSkeleton : (
-                        <div className="blog-toolbar">
-                            <label className="search-field blog-toolbar__search" aria-label="Search articles">
-                                <FontAwesomeIcon icon={faMagnifyingGlass} />
-                                <input
-                                    type="search"
-                                    placeholder="Search articles…"
-                                    value={searchInput}
-                                    onChange={(event) => setSearchInput(event.target.value)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Escape") {
-                                            handleClearFilters();
-                                        }
-                                    }}
-                                />
-                                {searchInput.trim() ? (
-                                    <button className="icon-button search-clear" type="button" onClick={handleClearFilters} aria-label="Clear search">
-                                        <FontAwesomeIcon icon={faXmark} />
-                                    </button>
-                                ) : null}
-                            </label>
-                            <div className="chip-row blog-toolbar__chips" role="list" aria-label="Filter by tag">
-                                {tagFilters.map((filter) => (
-                                    <button
-                                        key={filter}
-                                        className={`chip ${filter === activeTag ? "chip-active" : ""}`}
-                                        onClick={() => setActiveTag(filter)}
-                                        type="button"
-                                        role="listitem"
-                                    >
-                                        {filter}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="blog-toolbar__sort-row">
-                                <label className="sort-select">
-                                    <span className="visually-hidden">Sort posts</span>
-                                    <select value={sort} onChange={(event) => setSort(event.target.value as typeof sortOptions[number])}>
-                                        {sortOptions.map((option) => (
-                                            <option key={option} value={option}>{formatSort(option)}</option>
-                                        ))}
-                                    </select>
-                                </label>
-                                {isFiltering ? (
-                                    <button className="btn btn-outline" type="button" onClick={handleClearFilters}>Clear filters</button>
-                                ) : null}
-                            </div>
+                    <div className="blog-toolbar">
+                        <label className="search-field blog-toolbar__search" aria-label="Search articles">
+                            <FontAwesomeIcon icon={faMagnifyingGlass} />
+                            <input
+                                type="search"
+                                placeholder="Search articles…"
+                                value={searchInput}
+                                onChange={(event) => setSearchInput(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Escape") {
+                                        handleClearFilters();
+                                    }
+                                }}
+                            />
+                            {searchInput.trim() ? (
+                                <button className="icon-button search-clear" type="button" onClick={handleClearFilters} aria-label="Clear search">
+                                    <FontAwesomeIcon icon={faXmark} />
+                                </button>
+                            ) : null}
+                        </label>
+                        <div className="chip-row blog-toolbar__chips" role="list" aria-label="Filter by tag">
+                            {tagFilters.map((tag) => (
+                                <button
+                                    key={tag}
+                                    type="button"
+                                    role="listitem"
+                                    className={`chip ${tag === activeTag ? "chip-active" : ""}`}
+                                    onClick={() => setActiveTag(tag)}
+                                >
+                                    {tag}
+                                </button>
+                            ))}
                         </div>
-                    )}
+                        <div className="blog-toolbar__sort-row">
+                            <label className="sort-select">
+                                <span className="visually-hidden">Sort posts</span>
+                                <select value={sort} onChange={(event) => setSort(event.target.value as SortOption)}>
+                                    {sortOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -387,7 +388,7 @@ export default function BlogPage() {
                             <div className="feed-summary__text">
                                 <FontAwesomeIcon icon={faSparkles} />
                                 <span>
-                                    Found {resultsCount} posts
+                                    Found {feedPosts.length} posts
                                     {debouncedSearch.trim() ? ` for “${debouncedSearch.trim()}”` : ""}
                                     {activeTag !== "All" ? ` in ${activeTag}` : ""}
                                 </span>
@@ -398,30 +399,29 @@ export default function BlogPage() {
 
                     {loading ? (
                         <div className="posts-grid blog-feed-grid">
-                            {Array.from({length: 8}).map((_, index) => (
+                            {Array.from({length: 9}).map((_, index) => (
                                 <div className="post-card post-card--compact" key={`feed-skeleton-${index}`}>
                                     <div className="post-card__media post-card__media--compact"><div className="skeleton h-32" /></div>
                                     <div className="post-card__body post-card__body--compact"><div className="skeleton h-6" /><div className="skeleton h-4 mt-3" /></div>
                                 </div>
                             ))}
                         </div>
-                    ) : error ? (
-                        <div className="results-empty surface">
-                            <p className="muted">{error}</p>
-                        </div>
-                    ) : feedPosts.length === 0 ? (
-                        <div className="results-empty surface">
-                            <h3>No posts found</h3>
-                            <p className="muted">Try changing search text or selecting another topic.</p>
-                            {isFiltering ? (
-                                <button className="btn btn-outline" type="button" onClick={handleClearFilters}>Clear filters</button>
-                            ) : null}
-                        </div>
-                    ) : (
+                    ) : feedPosts.length > 0 ? (
                         <div className="posts-grid blog-feed-grid">
                             {feedPosts.map((post) => (
-                                <PostCard post={post} key={post.id} variant="compact" />
+                                <PostCard key={post.id} post={post} variant="compact" />
                             ))}
+                        </div>
+                    ) : isFiltering ? (
+                        <div className="results-empty surface">
+                            <h3>No posts found</h3>
+                            <p className="muted">Try changing the search query or selecting a different tag.</p>
+                            <button className="btn btn-outline" type="button" onClick={handleClearFilters}>Clear filters</button>
+                        </div>
+                    ) : (
+                        <div className="results-empty surface">
+                            <h3>No posts yet</h3>
+                            <p className="muted">We are preparing the first blog articles.</p>
                         </div>
                     )}
                 </div>
