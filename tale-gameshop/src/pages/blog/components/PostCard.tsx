@@ -47,7 +47,7 @@ export default function PostCard({
         if (isMini) {
             return "line-clamp-2";
         }
-        return "line-clamp-2";
+        return "line-clamp-3";
     }, [isFeatured, isMini]);
     const excerptClamp = isFeatured ? "line-clamp-4" : "line-clamp-3";
     const TitleTag = (isFeatured ? "h2" : isMini ? "h4" : "h3") as React.ElementType;

@@ -384,6 +384,7 @@ export default function BlogPage() {
                                         <div className="eyebrow">Picked by Tale team</div>
                                         <h3>{editorialInsert.title}</h3>
                                         <p className="muted">{editorialInsert.excerpt}</p>
+                                        <p className="editorial-insert__note">A curated read from our editors to help you decide faster this week.</p>
                                         <p className="editorial-insert__meta">
                                             {formatDate(editorialInsert.publishedAt)}
                                             {editorialInsert.readingTime ? ` • ${editorialInsert.readingTime} min read` : ""}
