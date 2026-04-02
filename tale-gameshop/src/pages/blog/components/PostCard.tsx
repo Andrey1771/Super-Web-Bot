@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faArrowRightLong} from "@fortawesome/free-solid-svg-icons";
+import {faArrowRightLong, faBookOpen, faBullhorn, faGamepad, faShieldHalved, faTags, faUsers} from "@fortawesome/free-solid-svg-icons";
 import {Link} from "react-router-dom";
 import type {BlogListItem} from "../../../types/blog";
 import {useBlogTracking} from "../../../hooks/use-blog-tracking";
@@ -17,6 +17,32 @@ type PostCardProps = {
     showFeaturedBadge?: boolean;
     showActions?: boolean;
     onTagSelect?: (tag: string) => void;
+};
+
+
+const tagIconMap: Record<string, typeof faBookOpen> = {
+    guides: faBookOpen,
+    deals: faTags,
+    reviews: faGamepad,
+    updates: faBullhorn,
+    security: faShieldHalved,
+    community: faUsers
+};
+
+const normalizeTag = (tag: string) => tag.trim().toLowerCase();
+
+const resolveTagIcon = (tag?: string) => {
+    if (!tag) {
+        return null;
+    }
+
+    const normalized = normalizeTag(tag);
+    if (tagIconMap[normalized]) {
+        return tagIconMap[normalized];
+    }
+
+    const match = Object.keys(tagIconMap).find((key) => normalized.includes(key));
+    return match ? tagIconMap[match] : null;
 };
 
 const formatDate = (value?: string) => {
@@ -38,6 +64,7 @@ export default function PostCard({
     const {trackImpression, trackOpen} = useBlogTracking();
     const cardRef = useRef<HTMLElement | null>(null);
     const tag = post.tags[0];
+    const tagIcon = resolveTagIcon(tag);
     const isFeatured = variant === "featured";
     const isMini = variant === "mini";
     const titleClamp = useMemo(() => {
@@ -107,7 +134,12 @@ export default function PostCard({
             ref={cardRef}
         >
             <div className={`post-card__media post-card__media--${variant}`} aria-hidden="true">
-                {showCategoryBadge && tag && !isFeatured && <span className="badge category-badge">{tag}</span>}
+                {showCategoryBadge && tag && !isFeatured && (
+                    <span className="badge category-badge">
+                        {tagIcon ? <span className="tag-icon" aria-hidden="true"><FontAwesomeIcon icon={tagIcon} /></span> : null}
+                        {tag}
+                    </span>
+                )}
                 <div className="media-overlay" />
                 <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} />
             </div>
@@ -123,7 +155,12 @@ export default function PostCard({
                                 <span>{`${post.readingTime} min read`}</span>
                             </>
                         ) : null}
-                        {isFeatured && tag && <span className="meta-pill">{tag}</span>}
+                        {isFeatured && tag && (
+                            <span className="meta-pill post-card__meta-tag">
+                                {tagIcon ? <span className="tag-icon" aria-hidden="true"><FontAwesomeIcon icon={tagIcon} /></span> : null}
+                                {tag}
+                            </span>
+                        )}
                     </div>
                     {!isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}
                     {isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}
