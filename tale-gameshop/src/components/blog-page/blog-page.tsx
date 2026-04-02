@@ -9,7 +9,7 @@ import {
     faSparkles,
     faTags
 } from "@fortawesome/free-solid-svg-icons";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
@@ -107,6 +107,7 @@ const getTagIcon = (tag: string) => {
 
 export default function BlogPage() {
     const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
+    const navigate = useNavigate();
     const [activeTag, setActiveTag] = useState("All");
     const [searchInput, setSearchInput] = useState("");
     const [sort, setSort] = useState<SortOption>("Newest");
@@ -289,6 +290,21 @@ export default function BlogPage() {
     };
 
     const editorialInsert = compactEditorPicks[0] ?? featuredPost;
+    const editorialEngagement = editorialInsert ? engagementMap[editorialInsert.id] : undefined;
+
+    const isInteractiveTarget = (target: EventTarget | null) => {
+        if (!(target instanceof HTMLElement)) {
+            return false;
+        }
+        return Boolean(target.closest("a,button,input,select,textarea,[role='button']"));
+    };
+
+    const openEditorialInsert = () => {
+        if (!editorialInsert) {
+            return;
+        }
+        navigate(`/blog/${editorialInsert.slug}`);
+    };
 
     return (
         <main
@@ -438,14 +454,34 @@ export default function BlogPage() {
                             </div>
 
                             {editorialInsert ? (
-                                <article className="editorial-insert surface">
-                                    <Link className="editorial-insert__thumb-link" to={`/blog/${editorialInsert.slug}`} aria-label={editorialInsert.title}>
+                                <article
+                                    className="editorial-insert surface"
+                                    role="link"
+                                    tabIndex={0}
+                                    onClick={(event) => {
+                                        if (isInteractiveTarget(event.target)) {
+                                            return;
+                                        }
+                                        openEditorialInsert();
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (event.key !== "Enter" && event.key !== " ") {
+                                            return;
+                                        }
+                                        if (isInteractiveTarget(event.target)) {
+                                            return;
+                                        }
+                                        event.preventDefault();
+                                        openEditorialInsert();
+                                    }}
+                                >
+                                    <div className="editorial-insert__thumb-link" aria-hidden="true">
                                         <SafeBlogImage
                                             src={getBlogPostCoverUrl(editorialInsert)}
                                             alt={editorialInsert.title}
                                             className="editorial-insert__thumb"
                                         />
-                                    </Link>
+                                    </div>
                                     <div className="editorial-insert__body">
                                         <div className="eyebrow">Picked by Tale team</div>
                                         <h3>{editorialInsert.title}</h3>
@@ -454,6 +490,7 @@ export default function BlogPage() {
                                         <p className="editorial-insert__meta">
                                             {formatDate(editorialInsert.publishedAt)}
                                             {editorialInsert.readingTime ? ` • ${editorialInsert.readingTime} min read` : ""}
+                                            {typeof editorialEngagement?.viewsCount === "number" ? ` • ${editorialEngagement.viewsCount} views` : ""}
                                         </p>
                                     </div>
                                     <Link className="btn btn-primary" to={`/blog/${editorialInsert.slug}`}>

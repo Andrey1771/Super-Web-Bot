@@ -460,6 +460,19 @@
   align-items: center;
   gap: 24px;
   background: linear-gradient(132deg, #f3edff 0%, #ffffff 65%);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.editorial-insert:hover {
+  transform: translateY(-1px);
+  border-color: #d9ccfa;
+  box-shadow: 0 12px 24px rgba(87, 56, 165, 0.13);
+}
+
+.editorial-insert:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  outline-offset: 2px;
 }
 
 .editorial-insert__thumb-link {
