@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IBlogService } from "../../iterfaces/i-blog-service";
-import type { BlogEngagementSummary, BlogListItem, BlogPost, BlogPostVersion } from "../../types/blog";
+import type { BlogEngagementSummary, BlogListItem, BlogPost, BlogPostStats, BlogPostVersion } from "../../types/blog";
 import { renderMarkdown } from "../../utils/markdown";
 import { getAnonId, getSessionId, useBlogTracking } from "../../hooks/use-blog-tracking";
 import SafeBlogImage from "./SafeBlogImage";
@@ -83,8 +83,10 @@ const BlogPostPage: React.FC = () => {
   const [activeHeading, setActiveHeading] = useState<string | null>(null);
   const [shareFeedback, setShareFeedback] = useState<string>("");
   const [engagement, setEngagement] = useState<BlogEngagementSummary | null>(null);
+  const [postStats, setPostStats] = useState<BlogPostStats | null>(null);
   const [reactionLoading, setReactionLoading] = useState<string | null>(null);
-  const { trackOpen, trackReadProgress, trackReadComplete, trackBookmark } = useBlogTracking();
+  const readTrackedRef = useRef(false);
+  const { trackBookmark } = useBlogTracking();
   const reactions = ["👍", "❤️", "🔥", "🎮", "👀"];
 
   useEffect(() => {
@@ -103,10 +105,16 @@ const BlogPostPage: React.FC = () => {
         const response = await blogService.getPostBySlug(slug);
         setPost(response.post);
         setVersion(response.version);
+        setPostStats(response.stats ?? {
+          postId: response.post.id,
+          viewsCount: response.post.viewCount ?? 0,
+          completedReadsCount: response.post.completedReadsCount ?? 0
+        });
       } catch (fetchError) {
         console.error(fetchError);
         setPost(null);
         setVersion(null);
+        setPostStats(null);
         setError("Unable to load blog post.");
       } finally {
         setLoading(false);
@@ -117,25 +125,36 @@ const BlogPostPage: React.FC = () => {
   }, [blogService, slug]);
 
   useEffect(() => {
-    if (!post) {
+    if (!post || !slug) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      trackOpen(post.id);
+      blogService.trackPostView({
+        slug,
+        anonId: getAnonId(),
+        sessionKey: getSessionId()
+      })
+        .then((stats) => setPostStats(stats))
+        .catch((trackingError) => console.warn("Failed to track post view", trackingError));
     }, 3000);
 
     return () => window.clearTimeout(timer);
-  }, [post, trackOpen]);
+  }, [blogService, post, slug]);
 
   useEffect(() => {
-    if (!post) {
+    if (!post || !slug) {
       return;
     }
 
+    readTrackedRef.current = false;
     const start = Date.now();
     const minReadTimeMs = 30000;
     const interval = window.setInterval(() => {
+      if (readTrackedRef.current) {
+        return;
+      }
+
       const doc = document.documentElement;
       const scrollTop = window.scrollY || doc.scrollTop;
       const viewportHeight = window.innerHeight;
@@ -143,15 +162,23 @@ const BlogPostPage: React.FC = () => {
       const scrollDepth = scrollHeight ? Math.min((scrollTop + viewportHeight) / scrollHeight, 1) : 0;
       const dwellMs = Date.now() - start;
 
-      trackReadProgress(post.id, scrollDepth, dwellMs);
-
       if (scrollDepth >= 0.8 && dwellMs >= minReadTimeMs) {
-        trackReadComplete(post.id, dwellMs);
+        readTrackedRef.current = true;
+        blogService.trackCompletedRead({
+          slug,
+          anonId: getAnonId(),
+          sessionKey: getSessionId()
+        })
+          .then((stats) => setPostStats(stats))
+          .catch((trackingError) => {
+            readTrackedRef.current = false;
+            console.warn("Failed to track completed read", trackingError);
+          });
       }
     }, 4000);
 
     return () => window.clearInterval(interval);
-  }, [post, trackReadComplete, trackReadProgress]);
+  }, [blogService, post, slug]);
 
   useEffect(() => {
     const fetchRelated = async () => {
@@ -424,7 +451,7 @@ ${excerptLine}${shareUrl}`;
                   {post.authorName && <span>By {post.authorName}</span>}
                   {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
                   {post.readingTime && <span>{post.readingTime} min read</span>}
-                  {typeof engagement?.viewsCount === "number" && <span>{engagement.viewsCount} views</span>}
+                  {typeof postStats?.viewsCount === "number" && <span>{postStats.viewsCount} views</span>}
                 </div>
               )}
 

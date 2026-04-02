@@ -3,7 +3,7 @@ import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import type { BlogEventPayload, IBlogService } from "../iterfaces/i-blog-service";
-import type { BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
+import type { BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostStats, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
 
 @injectable()
 export class BlogService implements IBlogService {
@@ -31,9 +31,9 @@ export class BlogService implements IBlogService {
     return response.data as BlogListResponse;
   }
 
-  async getPostBySlug(slug: string): Promise<{ post: BlogPost; version: BlogPostVersion }> {
+  async getPostBySlug(slug: string): Promise<{ post: BlogPost; version: BlogPostVersion; stats?: BlogPostStats }> {
     const response = await this._apiClient.api.get(`/api/blog/posts/${slug}`);
-    return response.data as { post: BlogPost; version: BlogPostVersion };
+    return response.data as { post: BlogPost; version: BlogPostVersion; stats?: BlogPostStats };
   }
 
   async getHomeRecommendations(params: { anonId?: string; limit?: number }): Promise<BlogRecommendationsResponse> {
@@ -86,5 +86,26 @@ export class BlogService implements IBlogService {
     });
 
     return response.data as BlogEngagementSummary;
+  }
+
+  async getPostStats(slug: string): Promise<BlogPostStats> {
+    const response = await this._apiClient.api.get(`/api/blog/posts/${slug}/stats`);
+    return response.data as BlogPostStats;
+  }
+
+  async trackPostView(params: { slug: string; anonId?: string; sessionKey?: string }): Promise<BlogPostStats> {
+    const response = await this._apiClient.api.post(`/api/blog/posts/${params.slug}/track-view`, {
+      anonId: params.anonId,
+      sessionKey: params.sessionKey
+    });
+    return response.data as BlogPostStats;
+  }
+
+  async trackCompletedRead(params: { slug: string; anonId?: string; sessionKey?: string }): Promise<BlogPostStats> {
+    const response = await this._apiClient.api.post(`/api/blog/posts/${params.slug}/track-read`, {
+      anonId: params.anonId,
+      sessionKey: params.sessionKey
+    });
+    return response.data as BlogPostStats;
   }
 }
