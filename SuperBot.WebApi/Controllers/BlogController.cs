@@ -137,7 +137,7 @@ public class BlogController : ControllerBase
 
         request ??= new BlogTrackRequest();
         var userId = GetCurrentUserId();
-        var actorKey = BuildActorKey(userId, request.AnonId, request.SessionKey);
+        var actorKey = BuildEventActorKey(eventType, userId, request.AnonId, request.SessionKey);
         if (string.IsNullOrWhiteSpace(actorKey))
         {
             return BadRequest("Identity is required.");
@@ -150,7 +150,7 @@ public class BlogController : ControllerBase
         var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
         var alreadyTracked = events.Any(item =>
             string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
+            string.Equals(BuildEventActorKey(eventType, item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
 
         if (!alreadyTracked)
         {
@@ -216,6 +216,32 @@ public class BlogController : ControllerBase
             return $"s:{sessionKey}";
         }
         return string.Empty;
+    }
+
+    private static string BuildEventActorKey(string eventType, string userId, string anonId, string sessionKey)
+    {
+        if (string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.IsNullOrWhiteSpace(userId) && !string.IsNullOrWhiteSpace(sessionKey))
+            {
+                return $"us:{userId}:{sessionKey}";
+            }
+            if (!string.IsNullOrWhiteSpace(sessionKey))
+            {
+                return $"s:{sessionKey}";
+            }
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                return $"u:{userId}";
+            }
+            if (!string.IsNullOrWhiteSpace(anonId))
+            {
+                return $"a:{anonId}";
+            }
+            return string.Empty;
+        }
+
+        return BuildActorKey(userId, anonId, sessionKey);
     }
 
     private string GetCurrentUserId()

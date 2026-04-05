@@ -121,6 +121,7 @@ export default function BlogPage() {
     const [error, setError] = useState<string | null>(null);
     const [headerOffset, setHeaderOffset] = useState(88);
     const [engagementMap, setEngagementMap] = useState<Record<string, BlogEngagementSummary>>({});
+    const [refreshTick, setRefreshTick] = useState(0);
     const debouncedSearch = useDebouncedValue(searchInput, 320);
 
     useEffect(() => {
@@ -133,6 +134,16 @@ export default function BlogPage() {
         updateHeaderOffset();
         window.addEventListener("resize", updateHeaderOffset);
         return () => window.removeEventListener("resize", updateHeaderOffset);
+    }, []);
+
+    useEffect(() => {
+        const handleFocus = () => setRefreshTick((value) => value + 1);
+        window.addEventListener("focus", handleFocus);
+        window.addEventListener("pageshow", handleFocus);
+        return () => {
+            window.removeEventListener("focus", handleFocus);
+            window.removeEventListener("pageshow", handleFocus);
+        };
     }, []);
 
     useEffect(() => {
@@ -161,7 +172,7 @@ export default function BlogPage() {
         };
 
         fetchData();
-    }, [blogService, location.key]);
+    }, [blogService, location.key, refreshTick]);
 
     const featuredPost = useMemo(() => {
         return data.recommendations?.heroPost
