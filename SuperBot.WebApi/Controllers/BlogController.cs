@@ -137,33 +137,37 @@ public class BlogController : ControllerBase
 
         request ??= new BlogTrackRequest();
         var userId = GetCurrentUserId();
-        var actorKey = BuildEventActorKey(eventType, userId, request.AnonId, request.SessionKey);
+        var actorKey = BuildActorKey(userId, request.AnonId, request.SessionKey);
         if (string.IsNullOrWhiteSpace(actorKey))
         {
             return BadRequest("Identity is required.");
         }
 
-        var dedupeWindow = string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase)
-            ? TimeSpan.FromMinutes(1)
-            : TimeSpan.FromHours(24);
-        var fromUtc = DateTime.UtcNow.Subtract(dedupeWindow);
-        var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
-        var alreadyTracked = events.Any(item =>
-            string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(BuildEventActorKey(eventType, item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
-
-        if (!alreadyTracked)
+        var shouldDedupe = string.Equals(eventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase);
+        if (shouldDedupe)
         {
-            await _blogRecommendationsService.TrackEventAsync(new BlogEvent
+            var fromUtc = DateTime.UtcNow.AddHours(-24);
+            var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
+            var alreadyTracked = events.Any(item =>
+                string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
+
+            if (alreadyTracked)
             {
-                PostId = post.Id,
-                EventType = eventType,
-                Timestamp = DateTime.UtcNow,
-                UserId = userId,
-                AnonId = request.AnonId,
-                SessionId = request.SessionKey
-            });
+                var dedupedStats = await BuildStatsAsync(post.Id);
+                return Ok(dedupedStats);
+            }
         }
+
+        await _blogRecommendationsService.TrackEventAsync(new BlogEvent
+        {
+            PostId = post.Id,
+            EventType = eventType,
+            Timestamp = DateTime.UtcNow,
+            UserId = userId,
+            AnonId = request.AnonId,
+            SessionId = request.SessionKey
+        });
 
         var stats = await BuildStatsAsync(post.Id);
         return Ok(stats);
@@ -216,32 +220,6 @@ public class BlogController : ControllerBase
             return $"s:{sessionKey}";
         }
         return string.Empty;
-    }
-
-    private static string BuildEventActorKey(string eventType, string userId, string anonId, string sessionKey)
-    {
-        if (string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!string.IsNullOrWhiteSpace(userId) && !string.IsNullOrWhiteSpace(sessionKey))
-            {
-                return $"us:{userId}:{sessionKey}";
-            }
-            if (!string.IsNullOrWhiteSpace(sessionKey))
-            {
-                return $"s:{sessionKey}";
-            }
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                return $"u:{userId}";
-            }
-            if (!string.IsNullOrWhiteSpace(anonId))
-            {
-                return $"a:{anonId}";
-            }
-            return string.Empty;
-        }
-
-        return BuildActorKey(userId, anonId, sessionKey);
     }
 
     private string GetCurrentUserId()
