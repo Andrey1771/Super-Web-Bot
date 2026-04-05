@@ -39,7 +39,7 @@ export default function PostCard({
     engagement,
     onReact
 }: PostCardProps) {
-    const {trackImpression, trackOpen} = useBlogTracking();
+    const {trackImpression} = useBlogTracking();
     const navigate = useNavigate();
     const cardRef = useRef<HTMLElement | null>(null);
     const tag = post.tags[0];
@@ -70,7 +70,6 @@ export default function PostCard({
     };
 
     const openPost = () => {
-        trackOpen(post.id);
         navigate(`/blog/${post.slug}`);
     };
 
@@ -128,7 +127,7 @@ export default function PostCard({
                     <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} />
                 </div>
                 <div className="post-card__body post-card__body--mini">
-                    <Link className="post-card__title-link" to={`/blog/${post.slug}`} onClick={() => trackOpen(post.id)}>
+                    <Link className="post-card__title-link" to={`/blog/${post.slug}`}>
                         <TitleTag className={`post-card__title ${titleClamp}`}>{post.title}</TitleTag>
                     </Link>
                     <div className="meta-row">
@@ -216,7 +215,7 @@ export default function PostCard({
                 <div className={`post-card__footer${isFeatured ? " post-card__footer--featured" : ""}`}>
                     {isFeatured ? (
                         <>
-                            <Link className="btn btn-primary" to={`/blog/${post.slug}`} onClick={() => trackOpen(post.id)}>
+                            <Link className="btn btn-primary" to={`/blog/${post.slug}`}>
                                 Read article
                             </Link>
                             {showActions && onTagSelect && (
@@ -231,7 +230,7 @@ export default function PostCard({
                             )}
                         </>
                     ) : (
-                        <Link className="link-primary" to={`/blog/${post.slug}`} onClick={() => trackOpen(post.id)}>
+                        <Link className="link-primary" to={`/blog/${post.slug}`}>
                             Read more
                             <FontAwesomeIcon icon={faArrowRightLong} />
                         </Link>

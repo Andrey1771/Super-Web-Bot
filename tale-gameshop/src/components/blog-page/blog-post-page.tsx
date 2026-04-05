@@ -34,6 +34,15 @@ const setSessionGuard = (key: string, slug: string) => {
   window.sessionStorage.setItem(`${key}:${slug}`, "1");
 };
 
+const getArticleReadProgress = (articleElement: HTMLElement): number => {
+  const rect = articleElement.getBoundingClientRect();
+  const articleTop = rect.top + window.scrollY;
+  const articleHeight = Math.max(articleElement.scrollHeight, 1);
+  const viewportBottom = window.scrollY + window.innerHeight;
+  const consumed = viewportBottom - articleTop;
+  return Math.max(0, Math.min(consumed / articleHeight, 1));
+};
+
 const formatDate = (value?: string) => {
   if (!value) {
     return "Draft";
@@ -200,12 +209,13 @@ const BlogPostPage: React.FC = () => {
         return;
       }
 
+      const articleElement = document.getElementById("post-content");
+      if (!(articleElement instanceof HTMLElement)) {
+        return;
+      }
+
       visibleMs += 500;
-      const doc = document.documentElement;
-      const scrollTop = window.scrollY || doc.scrollTop;
-      const viewportHeight = window.innerHeight;
-      const scrollHeight = doc.scrollHeight;
-      const scrollDepth = scrollHeight ? Math.min((scrollTop + viewportHeight) / scrollHeight, 1) : 0;
+      const scrollDepth = getArticleReadProgress(articleElement);
       const dwellMs = visibleMs;
 
       if (scrollDepth >= 0.7 && dwellMs >= minReadTimeMs) {
