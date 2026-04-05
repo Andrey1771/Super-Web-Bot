@@ -144,7 +144,7 @@ public class BlogController : ControllerBase
         }
 
         var dedupeWindow = string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase)
-            ? TimeSpan.FromMinutes(30)
+            ? TimeSpan.FromMinutes(1)
             : TimeSpan.FromHours(24);
         var fromUtc = DateTime.UtcNow.Subtract(dedupeWindow);
         var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
