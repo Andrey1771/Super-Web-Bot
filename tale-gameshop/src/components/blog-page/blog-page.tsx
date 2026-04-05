@@ -9,7 +9,7 @@ import {
     faSparkles,
     faTags
 } from "@fortawesome/free-solid-svg-icons";
-import {Link, useNavigate} from "react-router-dom";
+import {Link, useLocation, useNavigate} from "react-router-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
@@ -108,6 +108,7 @@ const getTagIcon = (tag: string) => {
 export default function BlogPage() {
     const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
     const navigate = useNavigate();
+    const location = useLocation();
     const [activeTag, setActiveTag] = useState("All");
     const [searchInput, setSearchInput] = useState("");
     const [sort, setSort] = useState<SortOption>("Newest");
@@ -160,7 +161,7 @@ export default function BlogPage() {
         };
 
         fetchData();
-    }, [blogService]);
+    }, [blogService, location.key]);
 
     const featuredPost = useMemo(() => {
         return data.recommendations?.heroPost

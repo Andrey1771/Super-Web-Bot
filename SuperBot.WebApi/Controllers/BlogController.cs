@@ -143,7 +143,10 @@ public class BlogController : ControllerBase
             return BadRequest("Identity is required.");
         }
 
-        var fromUtc = DateTime.UtcNow.AddHours(-24);
+        var dedupeWindow = string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase)
+            ? TimeSpan.FromMinutes(30)
+            : TimeSpan.FromHours(24);
+        var fromUtc = DateTime.UtcNow.Subtract(dedupeWindow);
         var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
         var alreadyTracked = events.Any(item =>
             string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&

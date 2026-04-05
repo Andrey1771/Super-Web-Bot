@@ -17,7 +17,6 @@ type TocItem = {
   level: number;
 };
 
-const VIEW_TRACK_KEY = "tale_blog_post_view_tracked";
 const READ_TRACK_KEY = "tale_blog_post_read_tracked";
 
 const getSessionGuard = (key: string, slug: string) => {
@@ -155,10 +154,6 @@ const BlogPostPage: React.FC = () => {
       return;
     }
 
-    if (getSessionGuard(VIEW_TRACK_KEY, slug)) {
-      return;
-    }
-
     let disposed = false;
     let visibleMs = 0;
     const interval = window.setInterval(() => {
@@ -172,7 +167,6 @@ const BlogPostPage: React.FC = () => {
       }
 
       disposed = true;
-      setSessionGuard(VIEW_TRACK_KEY, slug);
       window.clearInterval(interval);
       blogService.trackPostView({
         slug,
