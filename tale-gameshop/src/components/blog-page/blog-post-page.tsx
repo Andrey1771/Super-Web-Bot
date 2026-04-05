@@ -110,7 +110,6 @@ const BlogPostPage: React.FC = () => {
   const [engagement, setEngagement] = useState<BlogEngagementSummary | null>(null);
   const [postStats, setPostStats] = useState<BlogPostStats | null>(null);
   const [reactionLoading, setReactionLoading] = useState<string | null>(null);
-  const viewTrackedRef = useRef<string | null>(null);
   const readTrackedRef = useRef(false);
   const { trackBookmark } = useBlogTracking();
   const reactions = ["👍", "❤️", "🔥", "🎮", "👀"];
@@ -147,31 +146,8 @@ const BlogPostPage: React.FC = () => {
       }
     };
 
-    viewTrackedRef.current = null;
     fetchPost();
   }, [blogService, slug]);
-
-  useEffect(() => {
-    if (!post || !slug) {
-      return;
-    }
-
-    if (viewTrackedRef.current === slug) {
-      return;
-    }
-
-    viewTrackedRef.current = slug;
-    blogService.trackPostView({
-      slug,
-      anonId: getAnonId(),
-      sessionKey: getSessionId()
-    })
-      .then((stats) => setPostStats(stats))
-      .catch((trackingError) => {
-        viewTrackedRef.current = null;
-        console.warn("Failed to track post view", trackingError);
-      });
-  }, [blogService, post, slug]);
 
   useEffect(() => {
     if (!post || !slug) {

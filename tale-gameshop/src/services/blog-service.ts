@@ -4,6 +4,7 @@ import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import type { BlogEventPayload, IBlogService } from "../iterfaces/i-blog-service";
 import type { BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostStats, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
+import { getAnonId, getSessionId } from "../hooks/use-blog-tracking";
 
 @injectable()
 export class BlogService implements IBlogService {
@@ -32,7 +33,17 @@ export class BlogService implements IBlogService {
   }
 
   async getPostBySlug(slug: string): Promise<{ post: BlogPost; version: BlogPostVersion; stats?: BlogPostStats }> {
-    const response = await this._apiClient.api.get(`/api/blog/posts/${slug}`);
+    const query = new URLSearchParams();
+    const anonId = getAnonId();
+    const sessionKey = getSessionId();
+    if (anonId) {
+      query.append("anonId", anonId);
+    }
+    if (sessionKey) {
+      query.append("sessionKey", sessionKey);
+    }
+    const suffix = query.toString();
+    const response = await this._apiClient.api.get(`/api/blog/posts/${slug}${suffix ? `?${suffix}` : ""}`);
     return response.data as { post: BlogPost; version: BlogPostVersion; stats?: BlogPostStats };
   }
 
