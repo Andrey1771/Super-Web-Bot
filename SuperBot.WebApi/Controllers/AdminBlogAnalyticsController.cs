@@ -206,11 +206,11 @@ public class AdminBlogAnalyticsController : ControllerBase
                 postId = post.Id,
                 title = post.Title,
                 slug = post.Slug,
-                value,
+                value = value,
                 publicViews = counters.PublicUniqueViews,
                 authViews = counters.AuthenticatedUniqueViews,
                 guestViews = counters.GuestUniqueViewsTotal,
-                totalReactions,
+                totalReactions = totalReactions,
                 reactionsByEmoji = reactions
             });
         }
