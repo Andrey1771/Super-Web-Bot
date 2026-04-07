@@ -247,13 +247,14 @@ public class AdminBlogAnalyticsController : ControllerBase
             return 0;
         }
 
+        var normalizedEmoji = NormalizeReaction(emoji);
         var filtered = events.Where(item =>
             string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) &&
             new DateTime(item.Timestamp.Year, item.Timestamp.Month, item.Timestamp.Day, item.Timestamp.Hour, 0, 0, DateTimeKind.Utc) == bucket.Value);
 
-        if (!string.IsNullOrWhiteSpace(emoji))
+        if (!string.IsNullOrWhiteSpace(normalizedEmoji))
         {
-            filtered = filtered.Where(item => GetReaction(item) == emoji);
+            filtered = filtered.Where(item => GetReaction(item) == normalizedEmoji);
         }
 
         return filtered.Count();
@@ -334,7 +335,17 @@ public class AdminBlogAnalyticsController : ControllerBase
         {
             return string.Empty;
         }
-        return item.Meta.TryGetValue("reaction", out var reaction) ? reaction : string.Empty;
+        return item.Meta.TryGetValue("reaction", out var reaction) ? NormalizeReaction(reaction) : string.Empty;
+    }
+
+    private static string NormalizeReaction(string reaction)
+    {
+        if (string.IsNullOrWhiteSpace(reaction))
+        {
+            return string.Empty;
+        }
+
+        return reaction.Trim().Replace("\uFE0E", string.Empty).Replace("\uFE0F", string.Empty);
     }
 
     private static Dictionary<string, int> CountReactions(IReadOnlyList<BlogEvent> events)
