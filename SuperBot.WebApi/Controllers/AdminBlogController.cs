@@ -95,7 +95,7 @@ public class AdminBlogController : ControllerBase
             return NotFound();
         }
 
-        var analytics = await BuildPostAnalyticsAsync(id);
+        var analytics = await BuildPostAnalyticsAsync(post, includeDetails: true);
         return Ok(analytics);
     }
 
@@ -116,7 +116,13 @@ public class AdminBlogController : ControllerBase
         var list = new List<object>(ids.Count);
         foreach (var id in ids)
         {
-            list.Add(await BuildPostAnalyticsAsync(id));
+            var post = await _blogRepository.GetByIdAsync(id);
+            if (post == null)
+            {
+                continue;
+            }
+
+            list.Add(await BuildPostAnalyticsAsync(post, includeDetails: false));
         }
 
         return Ok(new { items = list });
@@ -640,10 +646,10 @@ public class AdminBlogController : ControllerBase
         return slug.Trim('-');
     }
 
-    private async Task<object> BuildPostAnalyticsAsync(string postId)
+    private async Task<object> BuildPostAnalyticsAsync(BlogPost post, bool includeDetails)
     {
-        var uniqueViewCounters = await _blogPostUniqueViewRepository.GetCountersByPostIdAsync(postId);
-        var events = await _blogRecommendationsService.GetEventsByPostAsync(postId, DateTime.UtcNow.AddYears(-5));
+        var uniqueViewCounters = await _blogPostUniqueViewRepository.GetCountersByPostIdAsync(post.Id);
+        var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, DateTime.UtcNow.AddYears(-5));
         var readsCount = events
             .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
             .Select(item => BuildActorKey(item))
@@ -668,14 +674,16 @@ public class AdminBlogController : ControllerBase
                 timestamp = item.Timestamp,
                 actorType = string.IsNullOrWhiteSpace(item.UserId) ? "guest" : "authenticated",
                 actorDisplay = BuildActorDisplay(item),
-                eventType = item.EventType,
+                eventType = NormalizeEventType(item.EventType),
                 reaction = GetReaction(item)
             })
             .ToList();
 
-        return new
+        var result = new
         {
-            postId,
+            postId = post.Id,
+            title = post.Title,
+            slug = post.Slug,
             publicUniqueViews = uniqueViewCounters.PublicUniqueViews,
             authenticatedUniqueViews = uniqueViewCounters.AuthenticatedUniqueViews,
             guestUniqueViewsTotal = uniqueViewCounters.GuestUniqueViewsTotal,
@@ -689,6 +697,26 @@ public class AdminBlogController : ControllerBase
             reactionsTimeline = reactionPoints,
             latestEvents
         };
+
+        if (!includeDetails)
+        {
+            return new
+            {
+                result.postId,
+                result.title,
+                result.slug,
+                result.publicUniqueViews,
+                result.authenticatedUniqueViews,
+                result.guestUniqueViewsTotal,
+                result.guestUniqueViewsCounted,
+                result.guestUniqueViewsExcluded,
+                result.completedReads,
+                result.totalReactions,
+                result.topReaction
+            };
+        }
+
+        return result;
     }
 
     private static string BuildActorKey(BlogEvent item)
@@ -781,9 +809,38 @@ public class AdminBlogController : ControllerBase
             .Select(group => (object)new
             {
                 bucketStart = group.Key,
-                count = group.Count()
+                count = group.Count(),
+                reactionsByEmoji = new Dictionary<string, int>(StringComparer.Ordinal)
+                {
+                    ["👍"] = group.Count(item => GetReaction(item) == "👍"),
+                    ["❤️"] = group.Count(item => GetReaction(item) == "❤️"),
+                    ["🔥"] = group.Count(item => GetReaction(item) == "🔥"),
+                    ["🎮"] = group.Count(item => GetReaction(item) == "🎮"),
+                    ["👀"] = group.Count(item => GetReaction(item) == "👀")
+                }
             })
             .ToList();
+    }
+
+    private static string NormalizeEventType(string eventType)
+    {
+        if (string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return "view";
+        }
+
+        if (string.Equals(eventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
+        {
+            return "completed_read";
+        }
+
+        if (string.Equals(eventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(eventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
+        {
+            return "reaction";
+        }
+
+        return eventType?.ToLowerInvariant() ?? string.Empty;
     }
 
     private static string BuildActorDisplay(BlogEvent item)

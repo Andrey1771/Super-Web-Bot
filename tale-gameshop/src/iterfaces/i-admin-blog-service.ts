@@ -2,6 +2,8 @@ import type { BlogPost, BlogPostVersion, BlogStatus } from "../types/blog";
 
 export type AdminBlogPostAnalytics = {
   postId: string;
+  title: string;
+  slug: string;
   publicUniqueViews: number;
   authenticatedUniqueViews: number;
   guestUniqueViewsTotal: number;
@@ -9,17 +11,33 @@ export type AdminBlogPostAnalytics = {
   guestUniqueViewsExcluded: number;
   completedReads: number;
   totalReactions: number;
-  reactionsByEmoji: Record<string, number>;
+  reactionsByEmoji: AdminBlogReactionBreakdown;
   topReaction: string;
-  viewsTimeline: Array<{ bucketStart: string; count: number }>;
-  reactionsTimeline: Array<{ bucketStart: string; count: number }>;
-  latestEvents: Array<{
-    timestamp: string;
-    actorType: "authenticated" | "guest";
-    actorDisplay: string;
-    eventType: string;
-    reaction?: string;
-  }>;
+  viewsTimeline: AdminBlogTimelinePoint[];
+  reactionsTimeline: AdminBlogTimelinePoint[];
+  latestEvents: AdminBlogLatestEvent[];
+};
+
+export type AdminBlogTimelinePoint = {
+  bucketStart: string;
+  count: number;
+  reactionsByEmoji?: AdminBlogReactionBreakdown;
+};
+
+export type AdminBlogLatestEvent = {
+  timestamp: string;
+  actorType: "authenticated" | "guest";
+  actorDisplay: string;
+  eventType: string;
+  reaction?: string;
+};
+
+export type AdminBlogReactionBreakdown = {
+  "👍": number;
+  "❤️": number;
+  "🔥": number;
+  "🎮": number;
+  "👀": number;
 };
 
 export interface IAdminBlogService {

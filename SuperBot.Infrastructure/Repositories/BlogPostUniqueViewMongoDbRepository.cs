@@ -147,7 +147,7 @@ namespace SuperBot.Infrastructure.Repositories
                     Authenticated = group.Sum(item => !item.IsGuest && !item.IsExcludedFromPublicCounts ? 1 : 0),
                     GuestTotal = group.Sum(item => item.IsGuest ? 1 : 0),
                     GuestCounted = group.Sum(item => item.IsGuest && item.CountedInPublicCounts && !item.IsExcludedFromPublicCounts ? 1 : 0),
-                    GuestExcluded = group.Sum(item => item.IsGuest && item.IsExcludedFromPublicCounts ? 1 : 0)
+                    GuestExcluded = group.Sum(item => item.IsGuest && (item.IsExcludedFromPublicCounts || !item.CountedInPublicCounts) ? 1 : 0)
                 })
                 .ToListAsync();
 
@@ -174,7 +174,7 @@ namespace SuperBot.Infrastructure.Repositories
                     Authenticated = group.Sum(item => !item.IsGuest && !item.IsExcludedFromPublicCounts ? 1 : 0),
                     GuestTotal = group.Sum(item => item.IsGuest ? 1 : 0),
                     GuestCounted = group.Sum(item => item.IsGuest && item.CountedInPublicCounts && !item.IsExcludedFromPublicCounts ? 1 : 0),
-                    GuestExcluded = group.Sum(item => item.IsGuest && item.IsExcludedFromPublicCounts ? 1 : 0)
+                    GuestExcluded = group.Sum(item => item.IsGuest && (item.IsExcludedFromPublicCounts || !item.CountedInPublicCounts) ? 1 : 0)
                 })
                 .FirstOrDefaultAsync();
 

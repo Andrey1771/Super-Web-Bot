@@ -162,7 +162,7 @@ const BlogPostsPage: React.FC = () => {
 
   const openAnalytics = async (postId: string) => {
     setAnalyticsPostId(postId);
-    if (analyticsByPostId[postId]) {
+    if (analyticsByPostId[postId]?.latestEvents) {
       return;
     }
 
@@ -267,6 +267,9 @@ const BlogPostsPage: React.FC = () => {
           <p className="text-xs text-slate-500">
             This toggle only controls whether new guest unique views are counted in public counters.
           </p>
+          <p className="text-xs text-slate-500">
+            Existing guest views are excluded only by the Exclude action and removed only by the Delete action.
+          </p>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -285,10 +288,10 @@ const BlogPostsPage: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="btn btn-outline" disabled={viewSettingsBusy} onClick={handleExcludeGuestViews}>
-              Exclude guest views from public counts
+              Exclude existing guest views from public counts
             </button>
             <button className="btn btn-outline" disabled={viewSettingsBusy} onClick={handleDeleteGuestViews}>
-              Delete guest views
+              Delete all guest unique views
             </button>
           </div>
         </div>
@@ -528,7 +531,7 @@ const BlogPostsPage: React.FC = () => {
         title="Post analytics"
         onClose={() => setAnalyticsPostId("")}
       >
-        {analyticsLoading && !activeAnalytics ? (
+        {analyticsLoading && (!activeAnalytics || !activeAnalytics.latestEvents) ? (
           <div className="text-sm text-slate-500">Loading analytics...</div>
         ) : !activeAnalytics ? (
           <div className="text-sm text-slate-500">No analytics data.</div>
@@ -540,6 +543,8 @@ const BlogPostsPage: React.FC = () => {
               <div className="p-2 rounded bg-slate-100">Auth views: <strong>{activeAnalytics.authenticatedUniqueViews}</strong></div>
               <div className="p-2 rounded bg-slate-100">Total reactions: <strong>{activeAnalytics.totalReactions}</strong></div>
               <div className="p-2 rounded bg-slate-100">Guest total: <strong>{activeAnalytics.guestUniqueViewsTotal}</strong></div>
+              <div className="p-2 rounded bg-slate-100">Guest counted: <strong>{activeAnalytics.guestUniqueViewsCounted}</strong></div>
+              <div className="p-2 rounded bg-slate-100">Guest excluded: <strong>{activeAnalytics.guestUniqueViewsExcluded}</strong></div>
               <div className="p-2 rounded bg-slate-100">Top emoji: <strong>{activeAnalytics.topReaction || "—"}</strong></div>
             </div>
 
@@ -563,8 +568,17 @@ const BlogPostsPage: React.FC = () => {
                   <div key={`${item.bucketStart}-r`} className="flex items-center gap-2 text-xs">
                     <span className="w-40 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
                     <div className="h-2 bg-rose-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
-                    <span>{item.count}</span>
+                    <span>{item.count} ({Object.entries(item.reactionsByEmoji ?? {}).map(([emoji, value]) => `${emoji} ${value}`).join(" ")})</span>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Reaction distribution</h4>
+              <div className="flex flex-wrap gap-2 text-xs">
+                {Object.entries(activeAnalytics.reactionsByEmoji ?? {}).map(([emoji, count]) => (
+                  <span key={emoji} className="px-2 py-1 rounded bg-slate-100">{emoji} {count}</span>
                 ))}
               </div>
             </div>
@@ -583,7 +597,7 @@ const BlogPostsPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {activeAnalytics.latestEvents.map((item, index) => (
+                    {(activeAnalytics.latestEvents ?? []).map((item, index) => (
                       <tr key={`${item.timestamp}-${index}`} className="border-t">
                         <td className="p-2">{new Date(item.timestamp).toLocaleString()}</td>
                         <td className="p-2">{item.actorDisplay}</td>
