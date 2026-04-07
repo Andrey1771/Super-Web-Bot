@@ -210,14 +210,18 @@ public class BlogEventsController : ControllerBase
     private static BlogEngagementSummary BuildSummaryForPost(IReadOnlyList<BlogEvent> events, string userId, string anonId)
     {
         var views = events
-            .Count(item =>
-                string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(BuildActorKey(item.UserId, item.AnonId, item.SessionId)));
+            .Where(item => string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
+            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .Count();
 
         var reads = events
-            .Count(item =>
-                string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(BuildActorKey(item.UserId, item.AnonId, item.SessionId)));
+            .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
+            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .Count();
 
         var latestByActor = events
             .Where(item =>

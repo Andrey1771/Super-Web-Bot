@@ -110,6 +110,8 @@ const BlogPostPage: React.FC = () => {
   const [engagement, setEngagement] = useState<BlogEngagementSummary | null>(null);
   const [postStats, setPostStats] = useState<BlogPostStats | null>(null);
   const [reactionLoading, setReactionLoading] = useState<string | null>(null);
+  const viewTrackedRef = useRef(false);
+  const interactedRef = useRef(false);
   const readTrackedRef = useRef(false);
   const { trackBookmark } = useBlogTracking();
   const reactions = ["👍", "❤️", "🔥", "🎮", "👀"];
@@ -146,8 +148,59 @@ const BlogPostPage: React.FC = () => {
       }
     };
 
+    viewTrackedRef.current = false;
+    interactedRef.current = false;
     fetchPost();
   }, [blogService, slug]);
+
+  useEffect(() => {
+    interactedRef.current = false;
+    const markInteraction = () => {
+      interactedRef.current = true;
+    };
+
+    window.addEventListener("scroll", markInteraction, { passive: true });
+    window.addEventListener("keydown", markInteraction);
+    window.addEventListener("pointerdown", markInteraction);
+
+    return () => {
+      window.removeEventListener("scroll", markInteraction);
+      window.removeEventListener("keydown", markInteraction);
+      window.removeEventListener("pointerdown", markInteraction);
+    };
+  }, [slug]);
+
+  useEffect(() => {
+    if (!post || !slug || viewTrackedRef.current) {
+      return;
+    }
+
+    let visibleMs = 0;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        visibleMs += 500;
+      }
+
+      if (visibleMs < 5000 || !interactedRef.current || viewTrackedRef.current) {
+        return;
+      }
+
+      viewTrackedRef.current = true;
+      window.clearInterval(interval);
+      blogService.trackPostView({
+        slug,
+        anonId: getAnonId(),
+        sessionKey: getSessionId()
+      })
+        .then((stats) => setPostStats(stats))
+        .catch((trackingError) => {
+          viewTrackedRef.current = false;
+          console.warn("Failed to track post view", trackingError);
+        });
+    }, 500);
+
+    return () => window.clearInterval(interval);
+  }, [blogService, post, slug]);
 
   useEffect(() => {
     if (!post || !slug) {

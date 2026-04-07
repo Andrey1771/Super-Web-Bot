@@ -60,10 +60,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpGet("{slug}")]
-    public async Task<IActionResult> GetPostBySlug(
-        string slug,
-        [FromQuery] string anonId = "",
-        [FromQuery] string sessionKey = "")
+    public async Task<IActionResult> GetPostBySlug(string slug)
     {
         var post = await _blogRepository.GetBySlugAsync(slug);
         if (post == null || post.Status != "PUBLISHED")
@@ -71,8 +68,6 @@ public class BlogController : ControllerBase
             return NotFound();
         }
 
-        var userId = GetCurrentUserId();
-        await TrackPostOpenAsync(post.Id, userId, anonId, sessionKey);
         var version = await _blogRepository.GetVersionByIdAsync(post.Id, post.CurrentVersionId);
         var stats = await BuildStatsAsync(post.Id);
         return Ok(new
@@ -148,20 +143,16 @@ public class BlogController : ControllerBase
             return BadRequest("Identity is required.");
         }
 
-        var shouldDedupe = string.Equals(eventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase);
-        if (shouldDedupe)
-        {
-            var fromUtc = DateTime.UtcNow.AddHours(-24);
-            var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
-            var alreadyTracked = events.Any(item =>
-                string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
+        var fromUtc = DateTime.UnixEpoch;
+        var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
+        var alreadyTracked = events.Any(item =>
+            string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
 
-            if (alreadyTracked)
-            {
-                var dedupedStats = await BuildStatsAsync(post.Id);
-                return Ok(dedupedStats);
-            }
+        if (alreadyTracked)
+        {
+            var dedupedStats = await BuildStatsAsync(post.Id);
+            return Ok(dedupedStats);
         }
 
         await _blogRecommendationsService.TrackEventAsync(new BlogEvent
@@ -182,14 +173,18 @@ public class BlogController : ControllerBase
     {
         var events = await _blogRecommendationsService.GetEventsByPostAsync(postId, DateTime.UtcNow.AddYears(-3));
         var views = events
-            .Count(item =>
-                string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(BuildActorKey(item.UserId, item.AnonId, item.SessionId)));
+            .Where(item => string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
+            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .Count();
 
         var reads = events
-            .Count(item =>
-                string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(BuildActorKey(item.UserId, item.AnonId, item.SessionId)));
+            .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
+            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .Count();
 
         return new BlogPostStatsResponse
         {
@@ -225,53 +220,6 @@ public class BlogController : ControllerBase
             return $"s:{sessionKey}";
         }
         return string.Empty;
-    }
-
-    private static string BuildViewActorKey(string userId, string anonId, string sessionKey)
-    {
-        if (!string.IsNullOrWhiteSpace(sessionKey))
-        {
-            return $"s:{sessionKey}";
-        }
-        if (!string.IsNullOrWhiteSpace(userId))
-        {
-            return $"u:{userId}";
-        }
-        if (!string.IsNullOrWhiteSpace(anonId))
-        {
-            return $"a:{anonId}";
-        }
-        return string.Empty;
-    }
-
-    private async Task TrackPostOpenAsync(string postId, string userId, string anonId, string sessionKey)
-    {
-        var actorKey = BuildViewActorKey(userId, anonId, sessionKey);
-        if (string.IsNullOrWhiteSpace(actorKey))
-        {
-            return;
-        }
-
-        var fromUtc = DateTime.UtcNow.AddMinutes(-30);
-        var events = await _blogRecommendationsService.GetEventsByPostAsync(postId, fromUtc);
-        var alreadyTracked = events.Any(item =>
-            string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(BuildViewActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
-
-        if (alreadyTracked)
-        {
-            return;
-        }
-
-        await _blogRecommendationsService.TrackEventAsync(new BlogEvent
-        {
-            PostId = postId,
-            EventType = "POST_OPEN",
-            Timestamp = DateTime.UtcNow,
-            UserId = userId,
-            AnonId = anonId,
-            SessionId = sessionKey
-        });
     }
 
     private string GetCurrentUserId()
