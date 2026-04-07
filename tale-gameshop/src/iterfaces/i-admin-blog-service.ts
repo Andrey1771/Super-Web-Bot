@@ -1,5 +1,27 @@
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../types/blog";
 
+export type AdminBlogPostAnalytics = {
+  postId: string;
+  publicUniqueViews: number;
+  authenticatedUniqueViews: number;
+  guestUniqueViewsTotal: number;
+  guestUniqueViewsCounted: number;
+  guestUniqueViewsExcluded: number;
+  completedReads: number;
+  totalReactions: number;
+  reactionsByEmoji: Record<string, number>;
+  topReaction: string;
+  viewsTimeline: Array<{ bucketStart: string; count: number }>;
+  reactionsTimeline: Array<{ bucketStart: string; count: number }>;
+  latestEvents: Array<{
+    timestamp: string;
+    actorType: "authenticated" | "guest";
+    actorDisplay: string;
+    eventType: string;
+    reaction?: string;
+  }>;
+};
+
 export interface IAdminBlogService {
   getPosts(params: {
     page: number;
@@ -17,10 +39,19 @@ export interface IAdminBlogService {
   archivePost(id: string): Promise<BlogPost>;
   getHomeSettings(): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
   setMainHeroPost(postId?: string): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
-  getViewSettings(): Promise<{ countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number }>;
+  getViewSettings(): Promise<{
+    countGuestViewsInPublicCounts: boolean;
+    publicUniqueViews: number;
+    authenticatedUniqueViews: number;
+    guestUniqueViewsTotal: number;
+    guestUniqueViewsCounted: number;
+    guestUniqueViewsExcluded: number;
+  }>;
   updateViewSettings(params: { countGuestViewsInPublicCounts: boolean }): Promise<{ countGuestViewsInPublicCounts: boolean }>;
   excludeGuestViews(): Promise<{ modified: number }>;
   deleteGuestViews(): Promise<{ deleted: number }>;
+  getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics>;
+  getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]>;
 }
 
 export type AdminBlogPayload = {

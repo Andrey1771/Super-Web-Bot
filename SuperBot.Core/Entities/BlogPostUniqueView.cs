@@ -14,6 +14,7 @@ namespace SuperBot.Core.Entities
         public string LastSessionId { get; set; }
         public string UserAgentHash { get; set; }
         public string IpHash { get; set; }
+        public bool CountedInPublicCounts { get; set; } = true;
         public bool IsExcludedFromPublicCounts { get; set; }
         public string Source { get; set; } = "blog-detail";
         public DateTime CreatedAt { get; set; }

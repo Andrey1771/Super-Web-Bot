@@ -3,12 +3,13 @@ import { DataGrid } from "devextreme-react";
 import { Column, Paging } from "devextreme-react/data-grid";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
+import Drawer from "../../../components/ui/Drawer";
 import EmptyState from "../../../components/ui/EmptyState";
 import { useToast } from "../../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
-import type { IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
+import type { AdminBlogPostAnalytics, IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogStatus } from "../../../types/blog";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -32,8 +33,18 @@ const BlogPostsPage: React.FC = () => {
   const [mainHeroPostId, setMainHeroPostId] = useState<string>("");
   const [updatingMainHeroId, setUpdatingMainHeroId] = useState<string>("");
   const [mainHeroPostPreview, setMainHeroPostPreview] = useState<BlogPost | null>(null);
-  const [viewSettings, setViewSettings] = useState<{ countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number } | null>(null);
+  const [viewSettings, setViewSettings] = useState<{
+    countGuestViewsInPublicCounts: boolean;
+    publicUniqueViews: number;
+    authenticatedUniqueViews: number;
+    guestUniqueViewsTotal: number;
+    guestUniqueViewsCounted: number;
+    guestUniqueViewsExcluded: number;
+  } | null>(null);
   const [viewSettingsBusy, setViewSettingsBusy] = useState(false);
+  const [analyticsByPostId, setAnalyticsByPostId] = useState<Record<string, AdminBlogPostAnalytics>>({});
+  const [analyticsPostId, setAnalyticsPostId] = useState<string>("");
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -50,8 +61,14 @@ const BlogPostsPage: React.FC = () => {
       setTotal(response.total);
       const settings = await adminBlogService.getHomeSettings();
       const views = await adminBlogService.getViewSettings();
+      const analytics = await adminBlogService.getPostsAnalytics(response.items.map((item) => item.id));
+      const analyticsMap = analytics.reduce<Record<string, AdminBlogPostAnalytics>>((acc, entry) => {
+        acc[entry.postId] = entry;
+        return acc;
+      }, {});
       const selectedId = settings.mainHeroPostId ?? "";
       setViewSettings(views);
+      setAnalyticsByPostId(analyticsMap);
       setMainHeroPostId(selectedId);
       if (!selectedId) {
         setMainHeroPostPreview(null);
@@ -143,6 +160,24 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
+  const openAnalytics = async (postId: string) => {
+    setAnalyticsPostId(postId);
+    if (analyticsByPostId[postId]) {
+      return;
+    }
+
+    try {
+      setAnalyticsLoading(true);
+      const data = await adminBlogService.getPostAnalytics(postId);
+      setAnalyticsByPostId((prev) => ({ ...prev, [postId]: data }));
+    } catch {
+      addToast("Failed to load post analytics.", "error");
+      setAnalyticsPostId("");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
@@ -159,6 +194,8 @@ const BlogPostsPage: React.FC = () => {
     setTag("");
     setPage(1);
   };
+
+  const activeAnalytics = analyticsPostId ? analyticsByPostId[analyticsPostId] : null;
 
   const filteredTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -227,6 +264,9 @@ const BlogPostsPage: React.FC = () => {
       <Card>
         <div className="flex flex-col gap-3">
           <h4 className="text-sm font-semibold text-slate-800">Public blog view settings</h4>
+          <p className="text-xs text-slate-500">
+            This toggle only controls whether new guest unique views are counted in public counters.
+          </p>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -239,7 +279,9 @@ const BlogPostsPage: React.FC = () => {
           <div className="flex flex-wrap gap-3 text-sm text-slate-700">
             <span className="px-2 py-1 rounded bg-slate-100">Public unique views: {viewSettings?.publicUniqueViews ?? 0}</span>
             <span className="px-2 py-1 rounded bg-slate-100">Authenticated unique views: {viewSettings?.authenticatedUniqueViews ?? 0}</span>
-            <span className="px-2 py-1 rounded bg-slate-100">Guest unique views: {viewSettings?.guestUniqueViews ?? 0}</span>
+            <span className="px-2 py-1 rounded bg-slate-100">Guest unique views total: {viewSettings?.guestUniqueViewsTotal ?? 0}</span>
+            <span className="px-2 py-1 rounded bg-slate-100">Guest counted: {viewSettings?.guestUniqueViewsCounted ?? 0}</span>
+            <span className="px-2 py-1 rounded bg-slate-100">Guest excluded: {viewSettings?.guestUniqueViewsExcluded ?? 0}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="btn btn-outline" disabled={viewSettingsBusy} onClick={handleExcludeGuestViews}>
@@ -362,6 +404,41 @@ const BlogPostsPage: React.FC = () => {
                 )}
               />
               <Column
+                caption="Public views"
+                minWidth={110}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span>{analyticsByPostId[cellData.data.id]?.publicUniqueViews ?? 0}</span>
+                )}
+              />
+              <Column
+                caption="Auth views"
+                minWidth={95}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span>{analyticsByPostId[cellData.data.id]?.authenticatedUniqueViews ?? 0}</span>
+                )}
+              />
+              <Column
+                caption="Guest views"
+                minWidth={100}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span>{analyticsByPostId[cellData.data.id]?.guestUniqueViewsTotal ?? 0}</span>
+                )}
+              />
+              <Column
+                caption="Reactions"
+                minWidth={90}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span>{analyticsByPostId[cellData.data.id]?.totalReactions ?? 0}</span>
+                )}
+              />
+              <Column
+                caption="Top emoji"
+                minWidth={90}
+                cellRender={(cellData: { data: BlogPost }) => (
+                  <span>{analyticsByPostId[cellData.data.id]?.topReaction || "—"}</span>
+                )}
+              />
+              <Column
                 caption="Main hero"
                 minWidth={120}
                 cellRender={(cellData: { data: BlogPost }) => (
@@ -381,9 +458,12 @@ const BlogPostsPage: React.FC = () => {
               />
               <Column
                 caption="Actions"
-                width={140}
+                width={210}
                 cellRender={(cellData: { data: BlogPost }) => (
                   <div className="flex gap-2">
+                    <button className="btn btn-outline admin-table-action" onClick={() => openAnalytics(cellData.data.id)}>
+                      Analytics
+                    </button>
                     <Link className="btn btn-outline admin-table-action" to={`/admin/blog/${cellData.data.id}/edit`}>
                       Edit
                     </Link>
@@ -442,6 +522,83 @@ const BlogPostsPage: React.FC = () => {
           </>
         )}
       </Card>
+
+      <Drawer
+        isOpen={Boolean(analyticsPostId)}
+        title="Post analytics"
+        onClose={() => setAnalyticsPostId("")}
+      >
+        {analyticsLoading && !activeAnalytics ? (
+          <div className="text-sm text-slate-500">Loading analytics...</div>
+        ) : !activeAnalytics ? (
+          <div className="text-sm text-slate-500">No analytics data.</div>
+        ) : (
+          <div className="flex flex-col gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 rounded bg-slate-100">Public views: <strong>{activeAnalytics.publicUniqueViews}</strong></div>
+              <div className="p-2 rounded bg-slate-100">Completed reads: <strong>{activeAnalytics.completedReads}</strong></div>
+              <div className="p-2 rounded bg-slate-100">Auth views: <strong>{activeAnalytics.authenticatedUniqueViews}</strong></div>
+              <div className="p-2 rounded bg-slate-100">Total reactions: <strong>{activeAnalytics.totalReactions}</strong></div>
+              <div className="p-2 rounded bg-slate-100">Guest total: <strong>{activeAnalytics.guestUniqueViewsTotal}</strong></div>
+              <div className="p-2 rounded bg-slate-100">Top emoji: <strong>{activeAnalytics.topReaction || "—"}</strong></div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Views timeline (hourly)</h4>
+              <div className="space-y-1 max-h-40 overflow-auto">
+                {activeAnalytics.viewsTimeline.slice(-20).map((item) => (
+                  <div key={`${item.bucketStart}-v`} className="flex items-center gap-2 text-xs">
+                    <span className="w-40 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
+                    <div className="h-2 bg-violet-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
+                    <span>{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Reactions timeline (hourly)</h4>
+              <div className="space-y-1 max-h-40 overflow-auto">
+                {activeAnalytics.reactionsTimeline.slice(-20).map((item) => (
+                  <div key={`${item.bucketStart}-r`} className="flex items-center gap-2 text-xs">
+                    <span className="w-40 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
+                    <div className="h-2 bg-rose-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
+                    <span>{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Latest events</h4>
+              <div className="max-h-56 overflow-auto border rounded">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="text-left p-2">Time</th>
+                      <th className="text-left p-2">Actor</th>
+                      <th className="text-left p-2">Type</th>
+                      <th className="text-left p-2">Event</th>
+                      <th className="text-left p-2">Reaction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeAnalytics.latestEvents.map((item, index) => (
+                      <tr key={`${item.timestamp}-${index}`} className="border-t">
+                        <td className="p-2">{new Date(item.timestamp).toLocaleString()}</td>
+                        <td className="p-2">{item.actorDisplay}</td>
+                        <td className="p-2">{item.actorType}</td>
+                        <td className="p-2">{item.eventType}</td>
+                        <td className="p-2">{item.reaction || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 };

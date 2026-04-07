@@ -162,19 +162,23 @@ public class BlogController : ControllerBase
         if (existing == null)
         {
             var now = DateTime.UtcNow;
+            var settings = await _blogViewSettingsRepository.GetAsync();
+            var countGuestInPublicCounts = settings?.CountGuestViewsInPublicCounts ?? true;
+            var isGuest = string.IsNullOrWhiteSpace(userId);
             await _blogPostUniqueViewRepository.CreateAsync(new BlogPostUniqueView
             {
                 PostId = post.Id,
                 ViewerKey = viewerKey,
                 UserId = userId,
                 AnonId = request.AnonId,
-                IsGuest = string.IsNullOrWhiteSpace(userId),
+                IsGuest = isGuest,
                 FirstViewedAt = now,
                 LastViewedAt = now,
                 FirstSessionId = request.SessionId,
                 LastSessionId = request.SessionId,
                 UserAgentHash = userAgentHash,
                 IpHash = ipHash,
+                CountedInPublicCounts = !isGuest || countGuestInPublicCounts,
                 IsExcludedFromPublicCounts = false,
                 Source = "blog-detail",
                 CreatedAt = now,
@@ -240,9 +244,7 @@ public class BlogController : ControllerBase
 
     private async Task<BlogPostStatsResponse> BuildStatsAsync(string postId)
     {
-        var settings = await _blogViewSettingsRepository.GetAsync();
-        var includeGuestViews = settings?.CountGuestViewsInPublicCounts ?? true;
-        var views = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdAsync(postId, includeGuestViews);
+        var views = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdAsync(postId);
 
         var events = await _blogRecommendationsService.GetEventsByPostAsync(postId, DateTime.UtcNow.AddYears(-3));
         var reads = events
@@ -264,9 +266,7 @@ public class BlogController : ControllerBase
     private async Task<Dictionary<string, BlogPostStatsResponse>> BuildStatsMapAsync(IEnumerable<string> postIds)
     {
         var ids = postIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var settings = await _blogViewSettingsRepository.GetAsync();
-        var includeGuestViews = settings?.CountGuestViewsInPublicCounts ?? true;
-        var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids, includeGuestViews);
+        var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids);
 
         var map = new Dictionary<string, BlogPostStatsResponse>(StringComparer.OrdinalIgnoreCase);
         foreach (var postId in ids)

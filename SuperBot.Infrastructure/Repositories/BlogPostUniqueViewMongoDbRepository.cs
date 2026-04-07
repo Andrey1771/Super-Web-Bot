@@ -47,7 +47,7 @@ namespace SuperBot.Infrastructure.Repositories
             await _views.UpdateOneAsync(item => item.Id == id, update);
         }
 
-        public async Task<Dictionary<string, int>> CountPublicViewsByPostIdsAsync(IEnumerable<string> postIds, bool includeGuestViews)
+        public async Task<Dictionary<string, int>> CountPublicViewsByPostIdsAsync(IEnumerable<string> postIds)
         {
             var ids = postIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>();
             if (ids.Count == 0)
@@ -57,10 +57,11 @@ namespace SuperBot.Infrastructure.Repositories
 
             var filterBuilder = Builders<BlogPostUniqueViewDb>.Filter;
             var filter = filterBuilder.In(item => item.PostId, ids) & filterBuilder.Eq(item => item.IsExcludedFromPublicCounts, false);
-            if (!includeGuestViews)
-            {
-                filter &= filterBuilder.Eq(item => item.IsGuest, false);
-            }
+            filter &= filterBuilder.Or(
+                filterBuilder.Eq(item => item.IsGuest, false),
+                filterBuilder.And(
+                    filterBuilder.Eq(item => item.IsGuest, true),
+                    filterBuilder.Eq(item => item.CountedInPublicCounts, true)));
 
             var grouped = await _views.Aggregate()
                 .Match(filter)
@@ -75,9 +76,9 @@ namespace SuperBot.Infrastructure.Repositories
             return map;
         }
 
-        public async Task<int> CountPublicViewsByPostIdAsync(string postId, bool includeGuestViews)
+        public async Task<int> CountPublicViewsByPostIdAsync(string postId)
         {
-            var map = await CountPublicViewsByPostIdsAsync(new[] { postId }, includeGuestViews);
+            var map = await CountPublicViewsByPostIdsAsync(new[] { postId });
             return map.TryGetValue(postId, out var count) ? count : 0;
         }
 
@@ -117,12 +118,79 @@ namespace SuperBot.Infrastructure.Repositories
             return result.DeletedCount;
         }
 
-        public async Task<(int PublicUniqueViews, int AuthenticatedUniqueViews, int GuestUniqueViews)> GetGlobalCountersAsync(bool includeGuestViewsInPublicCounts)
+        public async Task<BlogUniqueViewCounters> GetCountersByPostIdAsync(string postId)
         {
-            var auth = (int)await _views.CountDocumentsAsync(item => !item.IsGuest && !item.IsExcludedFromPublicCounts);
-            var guest = (int)await _views.CountDocumentsAsync(item => item.IsGuest && !item.IsExcludedFromPublicCounts);
-            var total = includeGuestViewsInPublicCounts ? auth + guest : auth;
-            return (total, auth, guest);
+            var map = await GetCountersByPostIdsAsync(new[] { postId });
+            return map.TryGetValue(postId, out var counters) ? counters : new BlogUniqueViewCounters();
+        }
+
+        public async Task<Dictionary<string, BlogUniqueViewCounters>> GetCountersByPostIdsAsync(IEnumerable<string> postIds)
+        {
+            var ids = postIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>();
+            if (ids.Count == 0)
+            {
+                return new Dictionary<string, BlogUniqueViewCounters>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            var counters = new Dictionary<string, BlogUniqueViewCounters>(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in ids)
+            {
+                counters[id] = new BlogUniqueViewCounters();
+            }
+
+            var filter = Builders<BlogPostUniqueViewDb>.Filter.In(item => item.PostId, ids);
+            var grouped = await _views.Aggregate()
+                .Match(filter)
+                .Group(item => item.PostId, group => new
+                {
+                    PostId = group.Key,
+                    Authenticated = group.Sum(item => !item.IsGuest && !item.IsExcludedFromPublicCounts ? 1 : 0),
+                    GuestTotal = group.Sum(item => item.IsGuest ? 1 : 0),
+                    GuestCounted = group.Sum(item => item.IsGuest && item.CountedInPublicCounts && !item.IsExcludedFromPublicCounts ? 1 : 0),
+                    GuestExcluded = group.Sum(item => item.IsGuest && item.IsExcludedFromPublicCounts ? 1 : 0)
+                })
+                .ToListAsync();
+
+            foreach (var item in grouped)
+            {
+                counters[item.PostId] = new BlogUniqueViewCounters
+                {
+                    AuthenticatedUniqueViews = item.Authenticated,
+                    GuestUniqueViewsTotal = item.GuestTotal,
+                    GuestUniqueViewsCounted = item.GuestCounted,
+                    GuestUniqueViewsExcluded = item.GuestExcluded,
+                    PublicUniqueViews = item.Authenticated + item.GuestCounted
+                };
+            }
+
+            return counters;
+        }
+
+        public async Task<BlogUniqueViewCounters> GetGlobalCountersAsync()
+        {
+            var aggregate = await _views.Aggregate()
+                .Group(item => 1, group => new
+                {
+                    Authenticated = group.Sum(item => !item.IsGuest && !item.IsExcludedFromPublicCounts ? 1 : 0),
+                    GuestTotal = group.Sum(item => item.IsGuest ? 1 : 0),
+                    GuestCounted = group.Sum(item => item.IsGuest && item.CountedInPublicCounts && !item.IsExcludedFromPublicCounts ? 1 : 0),
+                    GuestExcluded = group.Sum(item => item.IsGuest && item.IsExcludedFromPublicCounts ? 1 : 0)
+                })
+                .FirstOrDefaultAsync();
+
+            if (aggregate == null)
+            {
+                return new BlogUniqueViewCounters();
+            }
+
+            return new BlogUniqueViewCounters
+            {
+                AuthenticatedUniqueViews = aggregate.Authenticated,
+                GuestUniqueViewsTotal = aggregate.GuestTotal,
+                GuestUniqueViewsCounted = aggregate.GuestCounted,
+                GuestUniqueViewsExcluded = aggregate.GuestExcluded,
+                PublicUniqueViews = aggregate.Authenticated + aggregate.GuestCounted
+            };
         }
     }
 }

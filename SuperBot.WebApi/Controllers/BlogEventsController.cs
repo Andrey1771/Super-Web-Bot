@@ -14,16 +14,13 @@ public class BlogEventsController : ControllerBase
 {
     private readonly IBlogRecommendationsService _blogRecommendationsService;
     private readonly IBlogPostUniqueViewRepository _blogPostUniqueViewRepository;
-    private readonly IBlogViewSettingsRepository _blogViewSettingsRepository;
 
     public BlogEventsController(
         IBlogRecommendationsService blogRecommendationsService,
-        IBlogPostUniqueViewRepository blogPostUniqueViewRepository,
-        IBlogViewSettingsRepository blogViewSettingsRepository)
+        IBlogPostUniqueViewRepository blogPostUniqueViewRepository)
     {
         _blogRecommendationsService = blogRecommendationsService;
         _blogPostUniqueViewRepository = blogPostUniqueViewRepository;
-        _blogViewSettingsRepository = blogViewSettingsRepository;
     }
 
     [HttpPost]
@@ -93,9 +90,7 @@ public class BlogEventsController : ControllerBase
         var fromUtc = DateTime.UtcNow.AddYears(-3);
         var userId = GetCurrentUserId();
         var items = new List<object>();
-        var settings = await _blogViewSettingsRepository.GetAsync();
-        var includeGuestViews = settings?.CountGuestViewsInPublicCounts ?? true;
-        var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids, includeGuestViews);
+        var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids);
 
         foreach (var postId in ids)
         {
@@ -159,9 +154,7 @@ public class BlogEventsController : ControllerBase
 
         await _blogRecommendationsService.TrackEventAsync(blogEvent);
         var updated = await _blogRecommendationsService.GetEventsByPostAsync(request.PostId, fromUtc);
-        var settings = await _blogViewSettingsRepository.GetAsync();
-        var includeGuestViews = settings?.CountGuestViewsInPublicCounts ?? true;
-        var viewsCount = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdAsync(request.PostId, includeGuestViews);
+        var viewsCount = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdAsync(request.PostId);
         var summary = BuildSummaryForPost(updated, userId, request.AnonId, viewsCount);
 
         return Ok(new

@@ -24,14 +24,16 @@ public class AdminBlogViewSettingsController : ControllerBase
     public async Task<IActionResult> Get()
     {
         var settings = await _settingsRepository.GetAsync() ?? new BlogViewSettings();
-        var counters = await _uniqueViewRepository.GetGlobalCountersAsync(settings.CountGuestViewsInPublicCounts);
+        var counters = await _uniqueViewRepository.GetGlobalCountersAsync();
 
         return Ok(new
         {
             countGuestViewsInPublicCounts = settings.CountGuestViewsInPublicCounts,
             publicUniqueViews = counters.PublicUniqueViews,
             authenticatedUniqueViews = counters.AuthenticatedUniqueViews,
-            guestUniqueViews = counters.GuestUniqueViews
+            guestUniqueViewsTotal = counters.GuestUniqueViewsTotal,
+            guestUniqueViewsCounted = counters.GuestUniqueViewsCounted,
+            guestUniqueViewsExcluded = counters.GuestUniqueViewsExcluded
         });
     }
 

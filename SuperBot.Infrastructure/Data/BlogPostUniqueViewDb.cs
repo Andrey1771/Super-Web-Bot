@@ -42,6 +42,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("ipHash")]
         public string IpHash { get; set; }
 
+        [BsonElement("countedInPublicCounts")]
+        public bool CountedInPublicCounts { get; set; } = true;
+
         [BsonElement("isExcludedFromPublicCounts")]
         public bool IsExcludedFromPublicCounts { get; set; }
 

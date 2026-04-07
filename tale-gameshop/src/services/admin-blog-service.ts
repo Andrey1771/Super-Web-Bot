@@ -2,7 +2,7 @@ import { injectable } from "inversify";
 import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
-import type { IAdminBlogService, AdminBlogPayload } from "../iterfaces/i-admin-blog-service";
+import type { IAdminBlogService, AdminBlogPayload, AdminBlogPostAnalytics } from "../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../types/blog";
 
 @injectable()
@@ -86,9 +86,23 @@ export class AdminBlogService implements IAdminBlogService {
     return response.data as { mainHeroPostId?: string; updatedAt?: string; updatedBy?: string };
   }
 
-  async getViewSettings(): Promise<{ countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number }> {
+  async getViewSettings(): Promise<{
+    countGuestViewsInPublicCounts: boolean;
+    publicUniqueViews: number;
+    authenticatedUniqueViews: number;
+    guestUniqueViewsTotal: number;
+    guestUniqueViewsCounted: number;
+    guestUniqueViewsExcluded: number;
+  }> {
     const response = await this._apiClient.api.get(`/api/admin/blog/view-settings`);
-    return response.data as { countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number };
+    return response.data as {
+      countGuestViewsInPublicCounts: boolean;
+      publicUniqueViews: number;
+      authenticatedUniqueViews: number;
+      guestUniqueViewsTotal: number;
+      guestUniqueViewsCounted: number;
+      guestUniqueViewsExcluded: number;
+    };
   }
 
   async updateViewSettings(params: { countGuestViewsInPublicCounts: boolean }): Promise<{ countGuestViewsInPublicCounts: boolean }> {
@@ -106,5 +120,21 @@ export class AdminBlogService implements IAdminBlogService {
   async deleteGuestViews(): Promise<{ deleted: number }> {
     const response = await this._apiClient.api.delete(`/api/admin/blog/view-settings/guest-views`);
     return response.data as { deleted: number };
+  }
+
+  async getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics> {
+    const response = await this._apiClient.api.get(`/api/admin/blog/posts/${id}/analytics`);
+    return response.data as AdminBlogPostAnalytics;
+  }
+
+  async getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]> {
+    if (!postIds.length) {
+      return [];
+    }
+
+    const query = new URLSearchParams();
+    query.append("postIds", postIds.join(","));
+    const response = await this._apiClient.api.get(`/api/admin/blog/posts/analytics?${query.toString()}`);
+    return (response.data?.items ?? []) as AdminBlogPostAnalytics[];
   }
 }

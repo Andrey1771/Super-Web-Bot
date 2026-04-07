@@ -224,11 +224,16 @@ namespace SuperBot.WebApi.Services
                 Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys.Ascending(item => item.IsExcludedFromPublicCounts),
                 new CreateIndexOptions { Name = "ix_blog_unique_views_excluded" }
             );
+            var uniqueViewsCountedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys.Ascending(item => item.CountedInPublicCounts),
+                new CreateIndexOptions { Name = "ix_blog_unique_views_counted_public" }
+            );
 
             await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewerIndex);
             await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsPostIndex);
             await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsGuestIndex);
             await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsExcludedIndex);
+            await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsCountedIndex);
 
             var blogProfilesCollection = _database.GetCollection<SuperBot.Infrastructure.Data.UserBlogProfileDb>("UserBlogProfiles");
             var blogProfileUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(
