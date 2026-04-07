@@ -649,6 +649,8 @@ public class AdminBlogController : ControllerBase
     private async Task<object> BuildPostAnalyticsAsync(BlogPost post, bool includeDetails)
     {
         var uniqueViewCounters = await _blogPostUniqueViewRepository.GetCountersByPostIdAsync(post.Id);
+        var viewTimeline = await _blogPostUniqueViewRepository.GetPublicViewTimelineByPostIdAsync(post.Id);
+        var latestUniqueViews = await _blogPostUniqueViewRepository.GetLatestViewsByPostIdAsync(post.Id, 40);
         var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, DateTime.UtcNow.AddYears(-5));
         var readsCount = events
             .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
@@ -664,12 +666,12 @@ public class AdminBlogController : ControllerBase
             .ThenBy(item => item.Key, StringComparer.Ordinal)
             .FirstOrDefault();
 
-        var viewPoints = BuildViewTimeline(events);
+        var viewPoints = BuildViewTimeline(viewTimeline);
         var reactionPoints = BuildReactionTimeline(events);
         var latestEvents = events
             .OrderByDescending(item => item.Timestamp)
             .Take(40)
-            .Select(item => new
+            .Select(item => new AdminLatestEventItem
             {
                 timestamp = item.Timestamp,
                 actorType = string.IsNullOrWhiteSpace(item.UserId) ? "guest" : "authenticated",
@@ -677,6 +679,17 @@ public class AdminBlogController : ControllerBase
                 eventType = NormalizeEventType(item.EventType),
                 reaction = GetReaction(item)
             })
+            .Concat(latestUniqueViews.Select(item => new AdminLatestEventItem
+            {
+                timestamp = item.LastViewedAt,
+                actorType = string.IsNullOrWhiteSpace(item.UserId) ? "guest" : "authenticated",
+                actorDisplay = BuildActorDisplay(item.UserId, item.AnonId, item.LastSessionId),
+                eventType = "view",
+                reaction = string.Empty
+            }))
+            .OrderByDescending(item => item.timestamp)
+            .Take(40)
+            .Cast<object>()
             .ToList();
 
         var result = new
@@ -786,16 +799,14 @@ public class AdminBlogController : ControllerBase
         return counts;
     }
 
-    private static List<object> BuildViewTimeline(IReadOnlyList<BlogEvent> events)
+    private static List<object> BuildViewTimeline(IReadOnlyList<(DateTime BucketStart, int Count)> timeline)
     {
-        return events
-            .Where(item => string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(item => new DateTime(item.Timestamp.Year, item.Timestamp.Month, item.Timestamp.Day, item.Timestamp.Hour, 0, 0, DateTimeKind.Utc))
-            .OrderBy(group => group.Key)
-            .Select(group => (object)new
+        return timeline
+            .OrderBy(item => item.BucketStart)
+            .Select(item => (object)new
             {
-                bucketStart = group.Key,
-                count = group.Count()
+                bucketStart = item.BucketStart,
+                count = item.Count
             })
             .ToList();
     }
@@ -845,24 +856,38 @@ public class AdminBlogController : ControllerBase
 
     private static string BuildActorDisplay(BlogEvent item)
     {
-        if (!string.IsNullOrWhiteSpace(item.UserId))
+        return BuildActorDisplay(item.UserId, item.AnonId, item.SessionId);
+    }
+
+    private static string BuildActorDisplay(string userId, string anonId, string sessionId)
+    {
+        if (!string.IsNullOrWhiteSpace(userId))
         {
-            return item.UserId;
+            return userId;
         }
 
-        if (!string.IsNullOrWhiteSpace(item.AnonId))
+        if (!string.IsNullOrWhiteSpace(anonId))
         {
-            var suffix = item.AnonId.Length <= 8 ? item.AnonId : item.AnonId.Substring(0, 8);
+            var suffix = anonId.Length <= 8 ? anonId : anonId.Substring(0, 8);
             return $"Guest a:{suffix}";
         }
 
-        if (!string.IsNullOrWhiteSpace(item.SessionId))
+        if (!string.IsNullOrWhiteSpace(sessionId))
         {
-            var suffix = item.SessionId.Length <= 6 ? item.SessionId : item.SessionId.Substring(0, 6);
+            var suffix = sessionId.Length <= 6 ? sessionId : sessionId.Substring(0, 6);
             return $"Guest #{suffix}";
         }
 
         return "Guest";
+    }
+
+    private sealed class AdminLatestEventItem
+    {
+        public DateTime timestamp { get; set; }
+        public string actorType { get; set; } = "guest";
+        public string actorDisplay { get; set; } = string.Empty;
+        public string eventType { get; set; } = string.Empty;
+        public string reaction { get; set; } = string.Empty;
     }
 }
 

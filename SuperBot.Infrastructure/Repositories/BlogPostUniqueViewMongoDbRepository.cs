@@ -118,6 +118,28 @@ namespace SuperBot.Infrastructure.Repositories
             return result.DeletedCount;
         }
 
+        public async Task<List<(DateTime BucketStart, int Count)>> GetPublicViewTimelineByPostIdAsync(string postId)
+        {
+            var grouped = await _views.Aggregate()
+                .Match(item => item.PostId == postId && !item.IsExcludedFromPublicCounts && (!item.IsGuest || item.CountedInPublicCounts))
+                .Group(
+                    item => new DateTime(item.FirstViewedAt.Year, item.FirstViewedAt.Month, item.FirstViewedAt.Day, item.FirstViewedAt.Hour, 0, 0, DateTimeKind.Utc),
+                    group => new { BucketStart = group.Key, Count = group.Count() })
+                .SortBy(item => item.BucketStart)
+                .ToListAsync();
+
+            return grouped.Select(item => (item.BucketStart, item.Count)).ToList();
+        }
+
+        public async Task<IReadOnlyList<BlogPostUniqueView>> GetLatestViewsByPostIdAsync(string postId, int limit)
+        {
+            var items = await _views.Find(item => item.PostId == postId)
+                .SortByDescending(item => item.LastViewedAt)
+                .Limit(limit)
+                .ToListAsync();
+            return items.Select(item => _mapper.Map<BlogPostUniqueView>(item)).ToList();
+        }
+
         public async Task<BlogUniqueViewCounters> GetCountersByPostIdAsync(string postId)
         {
             var map = await GetCountersByPostIdsAsync(new[] { postId });

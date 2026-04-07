@@ -21,6 +21,8 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<Dictionary<string, int>> GetGuestViewCountsAsync(IEnumerable<string> postIds);
         Task<BlogUniqueViewCounters> GetCountersByPostIdAsync(string postId);
         Task<Dictionary<string, BlogUniqueViewCounters>> GetCountersByPostIdsAsync(IEnumerable<string> postIds);
+        Task<List<(DateTime BucketStart, int Count)>> GetPublicViewTimelineByPostIdAsync(string postId);
+        Task<IReadOnlyList<BlogPostUniqueView>> GetLatestViewsByPostIdAsync(string postId, int limit);
         Task<long> ExcludeGuestViewsAsync();
         Task<long> DeleteGuestViewsAsync();
         Task<BlogUniqueViewCounters> GetGlobalCountersAsync();
