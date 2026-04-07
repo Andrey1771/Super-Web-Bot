@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid } from "devextreme-react";
 import { Column, Paging } from "devextreme-react/data-grid";
+import Highcharts from "highcharts";
+import HighchartsReact from "highcharts-react-official";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
 import EmptyState from "../../../components/ui/EmptyState";
@@ -8,7 +10,7 @@ import { useToast } from "../../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
-import type { AdminBlogPostAnalytics, IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
+import type { AdminBlogOverviewAnalytics, AdminBlogPostAnalytics, IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogStatus } from "../../../types/blog";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -44,6 +46,8 @@ const BlogPostsPage: React.FC = () => {
   const [analyticsByPostId, setAnalyticsByPostId] = useState<Record<string, AdminBlogPostAnalytics>>({});
   const [analyticsPostId, setAnalyticsPostId] = useState<string>("");
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsMode, setAnalyticsMode] = useState<"overview" | "post">("overview");
+  const [overviewAnalytics, setOverviewAnalytics] = useState<AdminBlogOverviewAnalytics | null>(null);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -169,6 +173,7 @@ const BlogPostsPage: React.FC = () => {
   };
 
   const openAnalytics = async (postId: string) => {
+    setAnalyticsMode("post");
     setAnalyticsPostId(postId);
     const analyticsSection = document.getElementById("post-analytics-section");
     analyticsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -206,6 +211,52 @@ const BlogPostsPage: React.FC = () => {
   };
 
   const activeAnalytics = analyticsPostId ? analyticsByPostId[analyticsPostId] : null;
+  const currentAnalytics = analyticsMode === "overview" ? overviewAnalytics : activeAnalytics;
+
+  const loadOverviewAnalytics = useCallback(async () => {
+    try {
+      setAnalyticsLoading(true);
+      const overview = await adminBlogService.getOverviewAnalytics();
+      setOverviewAnalytics(overview);
+    } catch {
+      addToast("Failed to load overview analytics.", "error");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [addToast, adminBlogService]);
+
+  useEffect(() => {
+    if (analyticsMode === "overview" && !overviewAnalytics) {
+      loadOverviewAnalytics();
+    }
+  }, [analyticsMode, overviewAnalytics, loadOverviewAnalytics]);
+
+  const viewsChartOptions: Highcharts.Options = {
+    chart: { type: "area", height: 280 },
+    title: { text: "Views over time" },
+    xAxis: { categories: (currentAnalytics?.viewsTimeline ?? []).map((item) => new Date(item.bucketStart).toLocaleDateString()) },
+    series: [{ type: "area", name: "Views", data: (currentAnalytics?.viewsTimeline ?? []).map((item) => item.count) }],
+    credits: { enabled: false }
+  };
+
+  const reactionsChartOptions: Highcharts.Options = {
+    chart: { type: "column", height: 280 },
+    title: { text: "Reactions over time" },
+    xAxis: { categories: (currentAnalytics?.reactionsTimeline ?? []).map((item) => new Date(item.bucketStart).toLocaleDateString()) },
+    series: [{ type: "column", name: "Reactions", data: (currentAnalytics?.reactionsTimeline ?? []).map((item) => item.count) }],
+    credits: { enabled: false }
+  };
+
+  const distributionOptions: Highcharts.Options = {
+    chart: { type: "pie", height: 280 },
+    title: { text: "Reaction distribution" },
+    series: [{
+      type: "pie",
+      name: "Reactions",
+      data: Object.entries(currentAnalytics?.reactionsByEmoji ?? {}).map(([name, y]) => ({ name, y }))
+    }],
+    credits: { enabled: false }
+  };
 
   const filteredTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -309,71 +360,72 @@ const BlogPostsPage: React.FC = () => {
 
       <Card>
         <div id="post-analytics-section" className="flex flex-col gap-4">
-          <h4 className="text-sm font-semibold text-slate-800">Post analytics</h4>
-          <p className="text-xs text-slate-500">Select a post and inspect detailed analytics on this same page.</p>
-          <div className="flex flex-wrap gap-2 items-center">
-            <label className="text-xs text-slate-500">Selected post</label>
-            <select
-              className="p-2 border rounded min-w-[320px]"
-              value={analyticsPostId}
-              onChange={(event) => openAnalytics(event.target.value)}
-              disabled={items.length === 0}
-            >
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center justify-between gap-4">
+            <h4 className="text-sm font-semibold text-slate-800">Post analytics</h4>
+            <div className="flex gap-2">
+              <button className={`btn ${analyticsMode === "overview" ? "btn-primary" : "btn-outline"}`} onClick={() => setAnalyticsMode("overview")}>
+                Overview
+              </button>
+              <button className={`btn ${analyticsMode === "post" ? "btn-primary" : "btn-outline"}`} onClick={() => setAnalyticsMode("post")}>
+                Selected post
+              </button>
+            </div>
           </div>
 
-          {analyticsLoading && !activeAnalytics ? (
+          {analyticsMode === "post" && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <label className="text-xs text-slate-500">Selected post</label>
+              <select
+                className="p-2 border rounded min-w-[320px]"
+                value={analyticsPostId}
+                onChange={(event) => openAnalytics(event.target.value)}
+                disabled={items.length === 0}
+              >
+                {items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+              {analyticsPostId && (
+                <Link className="btn btn-outline" to={`/admin/blog/${analyticsPostId}/edit`}>Open edit</Link>
+              )}
+            </div>
+          )}
+
+          {analyticsLoading && !currentAnalytics ? (
             <div className="text-sm text-slate-500">Loading analytics...</div>
-          ) : !activeAnalytics ? (
+          ) : !currentAnalytics ? (
             <div className="text-sm text-slate-500">No analytics selected yet.</div>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <div className="p-2 rounded bg-slate-100">Public views: <strong>{activeAnalytics.publicUniqueViews}</strong></div>
-                <div className="p-2 rounded bg-slate-100">Auth views: <strong>{activeAnalytics.authenticatedUniqueViews}</strong></div>
-                <div className="p-2 rounded bg-slate-100">Guest views: <strong>{activeAnalytics.guestUniqueViewsTotal}</strong></div>
-                <div className="p-2 rounded bg-slate-100">Completed reads: <strong>{activeAnalytics.completedReads}</strong></div>
-                <div className="p-2 rounded bg-slate-100">Reactions: <strong>{activeAnalytics.totalReactions}</strong></div>
-                <div className="p-2 rounded bg-slate-100">Top emoji: <strong>{activeAnalytics.topReaction || "—"}</strong></div>
-                <div className="p-2 rounded bg-slate-100">Guest counted: <strong>{activeAnalytics.guestUniqueViewsCounted}</strong></div>
-                <div className="p-2 rounded bg-slate-100">Guest excluded: <strong>{activeAnalytics.guestUniqueViewsExcluded}</strong></div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 rounded-xl border bg-white">Public views<br /><strong className="text-lg">{currentAnalytics.publicUniqueViews}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">Auth views<br /><strong className="text-lg">{currentAnalytics.authenticatedUniqueViews}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">Guest views<br /><strong className="text-lg">{currentAnalytics.guestUniqueViewsTotal}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">Completed reads<br /><strong className="text-lg">{currentAnalytics.completedReads}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">Reactions<br /><strong className="text-lg">{currentAnalytics.totalReactions}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">Top emoji<br /><strong className="text-lg">{currentAnalytics.topReaction || "—"}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">Guest counted<br /><strong className="text-lg">{currentAnalytics.guestUniqueViewsCounted}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">Guest excluded<br /><strong className="text-lg">{currentAnalytics.guestUniqueViewsExcluded}</strong></div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Views over time</h4>
-                  <div className="space-y-1 max-h-44 overflow-auto">
-                    {(activeAnalytics.viewsTimeline ?? []).slice(-20).map((item) => (
-                      <div key={`${item.bucketStart}-v-block`} className="flex items-center gap-2 text-xs">
-                        <span className="w-36 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
-                        <div className="h-2 bg-violet-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
-                        <span>{item.count}</span>
-                      </div>
-                    ))}
+                <HighchartsReact highcharts={Highcharts} options={viewsChartOptions} />
+                <HighchartsReact highcharts={Highcharts} options={reactionsChartOptions} />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <HighchartsReact highcharts={Highcharts} options={distributionOptions} />
+                {analyticsMode === "overview" && overviewAnalytics ? (
+                  <div className="border rounded-xl p-3 bg-white">
+                    <h4 className="text-sm font-semibold mb-2">Top posts</h4>
+                    <div className="text-xs space-y-1">
+                      {overviewAnalytics.topPostsByViews.slice(0, 8).map((post) => (
+                        <div key={`top-view-${post.postId}`} className="flex justify-between"><span>{post.title}</span><strong>{post.views}</strong></div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Reactions over time</h4>
-                  <div className="space-y-1 max-h-44 overflow-auto">
-                    {(activeAnalytics.reactionsTimeline ?? []).slice(-20).map((item) => (
-                      <div key={`${item.bucketStart}-r-block`} className="flex items-center gap-2 text-xs">
-                        <span className="w-36 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
-                        <div className="h-2 bg-rose-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
-                        <span>{item.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    {Object.entries(activeAnalytics.reactionsByEmoji ?? {}).map(([emoji, count]) => (
-                      <span key={`${emoji}-dist`} className="px-2 py-1 rounded bg-slate-100">{emoji} {count}</span>
-                    ))}
-                  </div>
-                </div>
+                ) : <div />}
               </div>
 
               <div>
@@ -389,12 +441,19 @@ const BlogPostsPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {(activeAnalytics.latestEvents ?? []).map((item, index) => (
+                      {(currentAnalytics.latestEvents ?? []).map((item, index) => (
                         <tr key={`${item.timestamp}-inline-${index}`} className="border-t">
                           <td className="p-2">{new Date(item.timestamp).toLocaleString()}</td>
-                          <td className="p-2">{item.actorDisplay}</td>
-                          <td className="p-2">{item.eventType}</td>
-                          <td className="p-2">{item.reaction || "—"}</td>
+                          <td className="p-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] mr-1 ${item.actorType === "authenticated" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                              {item.actorType === "authenticated" ? "Auth" : "Guest"}
+                            </span>
+                            {item.actorDisplay}
+                          </td>
+                          <td className="p-2">
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-violet-100 text-violet-700">{item.eventType}</span>
+                          </td>
+                          <td className="p-2">{item.reaction ? <span className="text-lg">{item.reaction}</span> : "—"}</td>
                         </tr>
                       ))}
                     </tbody>

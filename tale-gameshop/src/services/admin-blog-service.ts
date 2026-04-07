@@ -2,7 +2,7 @@ import { injectable } from "inversify";
 import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
-import type { IAdminBlogService, AdminBlogPayload, AdminBlogPostAnalytics } from "../iterfaces/i-admin-blog-service";
+import type { IAdminBlogService, AdminBlogPayload, AdminBlogPostAnalytics, AdminBlogOverviewAnalytics } from "../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../types/blog";
 
 @injectable()
@@ -136,5 +136,10 @@ export class AdminBlogService implements IAdminBlogService {
     query.append("postIds", postIds.join(","));
     const response = await this._apiClient.api.get(`/api/admin/blog/posts/analytics?${query.toString()}`);
     return (response.data?.items ?? []) as AdminBlogPostAnalytics[];
+  }
+
+  async getOverviewAnalytics(): Promise<AdminBlogOverviewAnalytics> {
+    const response = await this._apiClient.api.get(`/api/admin/blog/analytics/overview`);
+    return response.data as AdminBlogOverviewAnalytics;
   }
 }

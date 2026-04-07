@@ -40,6 +40,23 @@ export type AdminBlogReactionBreakdown = {
   "👀": number;
 };
 
+export type AdminBlogOverviewAnalytics = {
+  publicUniqueViews: number;
+  authenticatedUniqueViews: number;
+  guestUniqueViewsTotal: number;
+  guestUniqueViewsCounted: number;
+  guestUniqueViewsExcluded: number;
+  completedReads: number;
+  totalReactions: number;
+  topReaction: string;
+  reactionsByEmoji: AdminBlogReactionBreakdown;
+  topPostsByViews: Array<{ postId: string; title: string; slug: string; views: number }>;
+  topPostsByReactions: Array<{ postId: string; title: string; slug: string; reactions: number }>;
+  viewsTimeline: AdminBlogTimelinePoint[];
+  reactionsTimeline: AdminBlogTimelinePoint[];
+  latestEvents: AdminBlogLatestEvent[];
+};
+
 export interface IAdminBlogService {
   getPosts(params: {
     page: number;
@@ -70,6 +87,7 @@ export interface IAdminBlogService {
   deleteGuestViews(): Promise<{ deleted: number }>;
   getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics>;
   getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]>;
+  getOverviewAnalytics(): Promise<AdminBlogOverviewAnalytics>;
 }
 
 export type AdminBlogPayload = {
