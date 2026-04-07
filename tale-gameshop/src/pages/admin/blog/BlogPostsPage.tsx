@@ -3,7 +3,6 @@ import { DataGrid } from "devextreme-react";
 import { Column, Paging } from "devextreme-react/data-grid";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
-import Drawer from "../../../components/ui/Drawer";
 import EmptyState from "../../../components/ui/EmptyState";
 import { useToast } from "../../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
@@ -70,6 +69,15 @@ const BlogPostsPage: React.FC = () => {
       setViewSettings(views);
       setAnalyticsByPostId(analyticsMap);
       setMainHeroPostId(selectedId);
+      const defaultAnalyticsId = analyticsPostId
+        || response.items.find((item) => item.status === "PUBLISHED")?.id
+        || response.items[0]?.id
+        || "";
+      if (defaultAnalyticsId) {
+        setAnalyticsPostId(defaultAnalyticsId);
+        const full = await adminBlogService.getPostAnalytics(defaultAnalyticsId);
+        setAnalyticsByPostId((prev) => ({ ...prev, [defaultAnalyticsId]: full }));
+      }
       if (!selectedId) {
         setMainHeroPostPreview(null);
       } else {
@@ -91,7 +99,7 @@ const BlogPostsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [adminBlogService, page, pageSize, status, search, tag]);
+  }, [adminBlogService, page, pageSize, status, search, tag, analyticsPostId]);
 
   const handleSetMainHero = async (post: BlogPost) => {
     if (post.status !== "PUBLISHED") {
@@ -162,6 +170,9 @@ const BlogPostsPage: React.FC = () => {
 
   const openAnalytics = async (postId: string) => {
     setAnalyticsPostId(postId);
+    const analyticsSection = document.getElementById("post-analytics-section");
+    analyticsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+
     if (analyticsByPostId[postId]?.latestEvents) {
       return;
     }
@@ -172,7 +183,6 @@ const BlogPostsPage: React.FC = () => {
       setAnalyticsByPostId((prev) => ({ ...prev, [postId]: data }));
     } catch {
       addToast("Failed to load post analytics.", "error");
-      setAnalyticsPostId("");
     } finally {
       setAnalyticsLoading(false);
     }
@@ -294,6 +304,105 @@ const BlogPostsPage: React.FC = () => {
               Delete all guest unique views
             </button>
           </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div id="post-analytics-section" className="flex flex-col gap-4">
+          <h4 className="text-sm font-semibold text-slate-800">Post analytics</h4>
+          <p className="text-xs text-slate-500">Select a post and inspect detailed analytics on this same page.</p>
+          <div className="flex flex-wrap gap-2 items-center">
+            <label className="text-xs text-slate-500">Selected post</label>
+            <select
+              className="p-2 border rounded min-w-[320px]"
+              value={analyticsPostId}
+              onChange={(event) => openAnalytics(event.target.value)}
+              disabled={items.length === 0}
+            >
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {analyticsLoading && !activeAnalytics ? (
+            <div className="text-sm text-slate-500">Loading analytics...</div>
+          ) : !activeAnalytics ? (
+            <div className="text-sm text-slate-500">No analytics selected yet.</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <div className="p-2 rounded bg-slate-100">Public views: <strong>{activeAnalytics.publicUniqueViews}</strong></div>
+                <div className="p-2 rounded bg-slate-100">Auth views: <strong>{activeAnalytics.authenticatedUniqueViews}</strong></div>
+                <div className="p-2 rounded bg-slate-100">Guest views: <strong>{activeAnalytics.guestUniqueViewsTotal}</strong></div>
+                <div className="p-2 rounded bg-slate-100">Completed reads: <strong>{activeAnalytics.completedReads}</strong></div>
+                <div className="p-2 rounded bg-slate-100">Reactions: <strong>{activeAnalytics.totalReactions}</strong></div>
+                <div className="p-2 rounded bg-slate-100">Top emoji: <strong>{activeAnalytics.topReaction || "—"}</strong></div>
+                <div className="p-2 rounded bg-slate-100">Guest counted: <strong>{activeAnalytics.guestUniqueViewsCounted}</strong></div>
+                <div className="p-2 rounded bg-slate-100">Guest excluded: <strong>{activeAnalytics.guestUniqueViewsExcluded}</strong></div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Views over time</h4>
+                  <div className="space-y-1 max-h-44 overflow-auto">
+                    {activeAnalytics.viewsTimeline.slice(-20).map((item) => (
+                      <div key={`${item.bucketStart}-v-block`} className="flex items-center gap-2 text-xs">
+                        <span className="w-36 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
+                        <div className="h-2 bg-violet-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
+                        <span>{item.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Reactions over time</h4>
+                  <div className="space-y-1 max-h-44 overflow-auto">
+                    {activeAnalytics.reactionsTimeline.slice(-20).map((item) => (
+                      <div key={`${item.bucketStart}-r-block`} className="flex items-center gap-2 text-xs">
+                        <span className="w-36 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
+                        <div className="h-2 bg-rose-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
+                        <span>{item.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {Object.entries(activeAnalytics.reactionsByEmoji ?? {}).map(([emoji, count]) => (
+                      <span key={`${emoji}-dist`} className="px-2 py-1 rounded bg-slate-100">{emoji} {count}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Latest activity</h4>
+                <div className="max-h-56 overflow-auto border rounded">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="text-left p-2">Time</th>
+                        <th className="text-left p-2">Actor</th>
+                        <th className="text-left p-2">Type</th>
+                        <th className="text-left p-2">Reaction</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(activeAnalytics.latestEvents ?? []).map((item, index) => (
+                        <tr key={`${item.timestamp}-inline-${index}`} className="border-t">
+                          <td className="p-2">{new Date(item.timestamp).toLocaleString()}</td>
+                          <td className="p-2">{item.actorDisplay}</td>
+                          <td className="p-2">{item.eventType}</td>
+                          <td className="p-2">{item.reaction || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
@@ -465,7 +574,7 @@ const BlogPostsPage: React.FC = () => {
                 cellRender={(cellData: { data: BlogPost }) => (
                   <div className="flex gap-2">
                     <button className="btn btn-outline admin-table-action" onClick={() => openAnalytics(cellData.data.id)}>
-                      Analytics
+                      View analytics
                     </button>
                     <Link className="btn btn-outline admin-table-action" to={`/admin/blog/${cellData.data.id}/edit`}>
                       Edit
@@ -526,93 +635,6 @@ const BlogPostsPage: React.FC = () => {
         )}
       </Card>
 
-      <Drawer
-        isOpen={Boolean(analyticsPostId)}
-        title="Post analytics"
-        onClose={() => setAnalyticsPostId("")}
-      >
-        {analyticsLoading && (!activeAnalytics || !activeAnalytics.latestEvents) ? (
-          <div className="text-sm text-slate-500">Loading analytics...</div>
-        ) : !activeAnalytics ? (
-          <div className="text-sm text-slate-500">No analytics data.</div>
-        ) : (
-          <div className="flex flex-col gap-4 mt-4">
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2 rounded bg-slate-100">Public views: <strong>{activeAnalytics.publicUniqueViews}</strong></div>
-              <div className="p-2 rounded bg-slate-100">Completed reads: <strong>{activeAnalytics.completedReads}</strong></div>
-              <div className="p-2 rounded bg-slate-100">Auth views: <strong>{activeAnalytics.authenticatedUniqueViews}</strong></div>
-              <div className="p-2 rounded bg-slate-100">Total reactions: <strong>{activeAnalytics.totalReactions}</strong></div>
-              <div className="p-2 rounded bg-slate-100">Guest total: <strong>{activeAnalytics.guestUniqueViewsTotal}</strong></div>
-              <div className="p-2 rounded bg-slate-100">Guest counted: <strong>{activeAnalytics.guestUniqueViewsCounted}</strong></div>
-              <div className="p-2 rounded bg-slate-100">Guest excluded: <strong>{activeAnalytics.guestUniqueViewsExcluded}</strong></div>
-              <div className="p-2 rounded bg-slate-100">Top emoji: <strong>{activeAnalytics.topReaction || "—"}</strong></div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Views timeline (hourly)</h4>
-              <div className="space-y-1 max-h-40 overflow-auto">
-                {activeAnalytics.viewsTimeline.slice(-20).map((item) => (
-                  <div key={`${item.bucketStart}-v`} className="flex items-center gap-2 text-xs">
-                    <span className="w-40 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
-                    <div className="h-2 bg-violet-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
-                    <span>{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Reactions timeline (hourly)</h4>
-              <div className="space-y-1 max-h-40 overflow-auto">
-                {activeAnalytics.reactionsTimeline.slice(-20).map((item) => (
-                  <div key={`${item.bucketStart}-r`} className="flex items-center gap-2 text-xs">
-                    <span className="w-40 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
-                    <div className="h-2 bg-rose-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
-                    <span>{item.count} ({Object.entries(item.reactionsByEmoji ?? {}).map(([emoji, value]) => `${emoji} ${value}`).join(" ")})</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Reaction distribution</h4>
-              <div className="flex flex-wrap gap-2 text-xs">
-                {Object.entries(activeAnalytics.reactionsByEmoji ?? {}).map(([emoji, count]) => (
-                  <span key={emoji} className="px-2 py-1 rounded bg-slate-100">{emoji} {count}</span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Latest events</h4>
-              <div className="max-h-56 overflow-auto border rounded">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="text-left p-2">Time</th>
-                      <th className="text-left p-2">Actor</th>
-                      <th className="text-left p-2">Type</th>
-                      <th className="text-left p-2">Event</th>
-                      <th className="text-left p-2">Reaction</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(activeAnalytics.latestEvents ?? []).map((item, index) => (
-                      <tr key={`${item.timestamp}-${index}`} className="border-t">
-                        <td className="p-2">{new Date(item.timestamp).toLocaleString()}</td>
-                        <td className="p-2">{item.actorDisplay}</td>
-                        <td className="p-2">{item.actorType}</td>
-                        <td className="p-2">{item.eventType}</td>
-                        <td className="p-2">{item.reaction || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-      </Drawer>
     </div>
   );
 };
