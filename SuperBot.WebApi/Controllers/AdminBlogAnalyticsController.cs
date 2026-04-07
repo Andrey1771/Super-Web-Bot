@@ -165,6 +165,115 @@ public class AdminBlogAnalyticsController : ControllerBase
         });
     }
 
+    [HttpGet("breakdown")]
+    public async Task<IActionResult> GetBreakdown([FromQuery] string metric, [FromQuery] string bucket = "", [FromQuery] string emoji = "")
+    {
+        var posts = await _blogRepository.GetAllAsync();
+        var ids = posts.Select(item => item.Id).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (ids.Count == 0)
+        {
+            return Ok(new { title = "Analytics breakdown", items = Array.Empty<object>() });
+        }
+
+        var countersByPost = await _uniqueViewRepository.GetCountersByPostIdsAsync(ids);
+        var parsedBucket = DateTime.TryParse(bucket, out var bucketDt)
+            ? new DateTime(bucketDt.ToUniversalTime().Year, bucketDt.ToUniversalTime().Month, bucketDt.ToUniversalTime().Day, bucketDt.ToUniversalTime().Hour, 0, 0, DateTimeKind.Utc)
+            : (DateTime?)null;
+
+        var rows = new List<BreakdownRow>();
+        foreach (var post in posts)
+        {
+            countersByPost.TryGetValue(post.Id, out var counters);
+            counters ??= new BlogUniqueViewCounters();
+
+            var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, DateTime.UtcNow.AddYears(-5));
+            var reactions = CountReactions(events);
+            var totalReactions = reactions.Values.Sum();
+            var value = metric switch
+            {
+                "public_views" => counters.PublicUniqueViews,
+                "auth_views" => counters.AuthenticatedUniqueViews,
+                "guest_views" => counters.GuestUniqueViewsTotal,
+                "reactions" => totalReactions,
+                "emoji" => reactions.TryGetValue(emoji, out var emojiCount) ? emojiCount : 0,
+                "views_bucket" => await CountViewsForBucketAsync(post.Id, parsedBucket),
+                "reactions_bucket" => CountReactionsForBucket(events, parsedBucket, emoji),
+                _ => 0
+            };
+
+            rows.Add(new BreakdownRow
+            {
+                postId = post.Id,
+                title = post.Title,
+                slug = post.Slug,
+                value,
+                publicViews = counters.PublicUniqueViews,
+                authViews = counters.AuthenticatedUniqueViews,
+                guestViews = counters.GuestUniqueViewsTotal,
+                totalReactions,
+                reactionsByEmoji = reactions
+            });
+        }
+
+        return Ok(new
+        {
+            title = BuildBreakdownTitle(metric, emoji, parsedBucket),
+            metric,
+            bucket = parsedBucket,
+            emoji,
+            items = rows
+                .OrderByDescending(item => item.value)
+                .Take(20)
+                .Cast<object>()
+                .ToList()
+        });
+    }
+
+    private async Task<int> CountViewsForBucketAsync(string postId, DateTime? bucket)
+    {
+        if (!bucket.HasValue)
+        {
+            return 0;
+        }
+
+        var timeline = await _uniqueViewRepository.GetPublicViewTimelineByPostIdAsync(postId);
+        return timeline.Where(item => item.BucketStart == bucket.Value).Sum(item => item.Count);
+    }
+
+    private static int CountReactionsForBucket(IReadOnlyList<BlogEvent> events, DateTime? bucket, string emoji)
+    {
+        if (!bucket.HasValue)
+        {
+            return 0;
+        }
+
+        var filtered = events.Where(item =>
+            string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) &&
+            new DateTime(item.Timestamp.Year, item.Timestamp.Month, item.Timestamp.Day, item.Timestamp.Hour, 0, 0, DateTimeKind.Utc) == bucket.Value);
+
+        if (!string.IsNullOrWhiteSpace(emoji))
+        {
+            filtered = filtered.Where(item => GetReaction(item) == emoji);
+        }
+
+        return filtered.Count();
+    }
+
+    private static string BuildBreakdownTitle(string metric, string emoji, DateTime? bucket)
+    {
+        return metric switch
+        {
+            "public_views" => "Posts contributing to all-post public views",
+            "auth_views" => "Posts contributing to all-post auth views",
+            "guest_views" => "Posts contributing to all-post guest views",
+            "reactions" => "Posts contributing to all-post reactions",
+            "emoji" => $"Posts contributing to {emoji} reactions",
+            "views_bucket" => $"Posts contributing to views bucket {bucket:yyyy-MM-dd HH:mm}",
+            "reactions_bucket" => $"Posts contributing to reactions bucket {bucket:yyyy-MM-dd HH:mm}",
+            _ => "Analytics breakdown"
+        };
+    }
+
     private static string BuildActorKey(BlogEvent item)
     {
         if (!string.IsNullOrWhiteSpace(item.UserId))
@@ -270,5 +379,18 @@ public class AdminBlogAnalyticsController : ControllerBase
         public string actorDisplay { get; set; } = string.Empty;
         public string eventType { get; set; } = string.Empty;
         public string reaction { get; set; } = string.Empty;
+    }
+
+    private sealed class BreakdownRow
+    {
+        public string postId { get; set; } = string.Empty;
+        public string title { get; set; } = string.Empty;
+        public string slug { get; set; } = string.Empty;
+        public int value { get; set; }
+        public int publicViews { get; set; }
+        public int authViews { get; set; }
+        public int guestViews { get; set; }
+        public int totalReactions { get; set; }
+        public Dictionary<string, int> reactionsByEmoji { get; set; } = new();
     }
 }

@@ -57,6 +57,24 @@ export type AdminBlogOverviewAnalytics = {
   latestEvents: AdminBlogLatestEvent[];
 };
 
+export type AdminBlogBreakdown = {
+  title: string;
+  metric: string;
+  bucket?: string;
+  emoji?: string;
+  items: Array<{
+    postId: string;
+    title: string;
+    slug: string;
+    value: number;
+    publicViews: number;
+    authViews: number;
+    guestViews: number;
+    totalReactions: number;
+    reactionsByEmoji: AdminBlogReactionBreakdown;
+  }>;
+};
+
 export interface IAdminBlogService {
   getPosts(params: {
     page: number;
@@ -88,6 +106,7 @@ export interface IAdminBlogService {
   getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics>;
   getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]>;
   getOverviewAnalytics(): Promise<AdminBlogOverviewAnalytics>;
+  getOverviewBreakdown(params: { metric: string; bucket?: string; emoji?: string }): Promise<AdminBlogBreakdown>;
 }
 
 export type AdminBlogPayload = {

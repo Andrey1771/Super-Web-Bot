@@ -10,7 +10,7 @@ import { useToast } from "../../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
-import type { AdminBlogOverviewAnalytics, AdminBlogPostAnalytics, IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
+import type { AdminBlogBreakdown, AdminBlogOverviewAnalytics, AdminBlogPostAnalytics, IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogStatus } from "../../../types/blog";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -49,6 +49,7 @@ const BlogPostsPage: React.FC = () => {
   const [analyticsMode, setAnalyticsMode] = useState<"overview" | "post">("overview");
   const [overviewAnalytics, setOverviewAnalytics] = useState<AdminBlogOverviewAnalytics | null>(null);
   const [postSearchTerm, setPostSearchTerm] = useState("");
+  const [breakdown, setBreakdown] = useState<AdminBlogBreakdown | null>(null);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -237,6 +238,22 @@ const BlogPostsPage: React.FC = () => {
     chart: { type: "area", height: 280 },
     title: { text: analyticsMode === "overview" ? "Views over time - All posts" : `Views over time - ${selectedPost?.title ?? "Selected post"}` },
     xAxis: { categories: (currentAnalytics?.viewsTimeline ?? []).map((item) => new Date(item.bucketStart).toLocaleDateString()) },
+    plotOptions: {
+      series: {
+        point: {
+          events: {
+            click: function (this: any) {
+              if (analyticsMode === "overview") {
+                const point = currentAnalytics?.viewsTimeline?.[this.index as number];
+                if (point) {
+                  adminBlogService.getOverviewBreakdown({ metric: "views_bucket", bucket: point.bucketStart }).then(setBreakdown);
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     series: [{ type: "area", name: "Views", data: (currentAnalytics?.viewsTimeline ?? []).map((item) => item.count) }],
     credits: { enabled: false }
   };
@@ -245,6 +262,22 @@ const BlogPostsPage: React.FC = () => {
     chart: { type: "column", height: 280 },
     title: { text: analyticsMode === "overview" ? "Reactions over time - All posts" : `Reactions over time - ${selectedPost?.title ?? "Selected post"}` },
     xAxis: { categories: (currentAnalytics?.reactionsTimeline ?? []).map((item) => new Date(item.bucketStart).toLocaleDateString()) },
+    plotOptions: {
+      series: {
+        point: {
+          events: {
+            click: function (this: any) {
+              if (analyticsMode === "overview") {
+                const point = currentAnalytics?.reactionsTimeline?.[this.index as number];
+                if (point) {
+                  adminBlogService.getOverviewBreakdown({ metric: "reactions_bucket", bucket: point.bucketStart }).then(setBreakdown);
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     series: [{ type: "column", name: "Reactions", data: (currentAnalytics?.reactionsTimeline ?? []).map((item) => item.count) }],
     credits: { enabled: false }
   };
@@ -255,7 +288,16 @@ const BlogPostsPage: React.FC = () => {
     series: [{
       type: "pie",
       name: "Reactions",
-      data: Object.entries(currentAnalytics?.reactionsByEmoji ?? {}).map(([name, y]) => ({ name, y }))
+      data: Object.entries(currentAnalytics?.reactionsByEmoji ?? {}).map(([name, y]) => ({ name, y })),
+      point: {
+        events: {
+          click: function (this: any) {
+            if (analyticsMode === "overview") {
+              adminBlogService.getOverviewBreakdown({ metric: "emoji", emoji: this.name }).then(setBreakdown);
+            }
+          }
+        }
+      }
     }],
     credits: { enabled: false }
   };
@@ -428,30 +470,30 @@ const BlogPostsPage: React.FC = () => {
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                <div className="p-3 rounded-xl border bg-white">
+                <button className="p-3 rounded-xl border bg-white text-left" onClick={() => analyticsMode === "overview" && adminBlogService.getOverviewBreakdown({ metric: "public_views" }).then(setBreakdown)}>
                   <div className="text-slate-500">{analyticsMode === "overview" ? "All posts public views" : "This post public views"}</div>
                   <strong className="text-lg">{currentAnalytics.publicUniqueViews}</strong>
-                </div>
-                <div className="p-3 rounded-xl border bg-white">
+                </button>
+                <button className="p-3 rounded-xl border bg-white text-left" onClick={() => analyticsMode === "overview" && adminBlogService.getOverviewBreakdown({ metric: "auth_views" }).then(setBreakdown)}>
                   <div className="text-slate-500">{analyticsMode === "overview" ? "All posts auth views" : "This post auth views"}</div>
                   <strong className="text-lg">{currentAnalytics.authenticatedUniqueViews}</strong>
-                </div>
-                <div className="p-3 rounded-xl border bg-white">
+                </button>
+                <button className="p-3 rounded-xl border bg-white text-left" onClick={() => analyticsMode === "overview" && adminBlogService.getOverviewBreakdown({ metric: "guest_views" }).then(setBreakdown)}>
                   <div className="text-slate-500">{analyticsMode === "overview" ? "All posts guest views" : "This post guest views"}</div>
                   <strong className="text-lg">{currentAnalytics.guestUniqueViewsTotal}</strong>
-                </div>
+                </button>
                 <div className="p-3 rounded-xl border bg-white">
                   <div className="text-slate-500">{analyticsMode === "overview" ? "All posts completed reads" : "This post completed reads"}</div>
                   <strong className="text-lg">{currentAnalytics.completedReads}</strong>
                 </div>
-                <div className="p-3 rounded-xl border bg-white">
+                <button className="p-3 rounded-xl border bg-white text-left" onClick={() => analyticsMode === "overview" && adminBlogService.getOverviewBreakdown({ metric: "reactions" }).then(setBreakdown)}>
                   <div className="text-slate-500">{analyticsMode === "overview" ? "All posts reactions" : "This post reactions"}</div>
                   <strong className="text-lg">{currentAnalytics.totalReactions}</strong>
-                </div>
-                <div className="p-3 rounded-xl border bg-white">
+                </button>
+                <button className="p-3 rounded-xl border bg-white text-left" onClick={() => analyticsMode === "overview" && currentAnalytics.topReaction && adminBlogService.getOverviewBreakdown({ metric: "emoji", emoji: currentAnalytics.topReaction }).then(setBreakdown)}>
                   <div className="text-slate-500">{analyticsMode === "overview" ? "Top emoji across all posts" : "Top emoji for this post"}</div>
                   <strong className="text-lg">{currentAnalytics.topReaction || "—"}</strong>
-                </div>
+                </button>
                 <div className="p-3 rounded-xl border bg-white">
                   <div className="text-slate-500">Guest counted</div>
                   <strong className="text-lg">{currentAnalytics.guestUniqueViewsCounted}</strong>
@@ -476,10 +518,13 @@ const BlogPostsPage: React.FC = () => {
                         <button
                           key={`top-view-${post.postId}`}
                           className="flex justify-between w-full text-left hover:bg-slate-50 px-2 py-1 rounded"
-                          onClick={() => openAnalytics(post.postId)}
+                            onClick={() => {
+                              adminBlogService.getOverviewBreakdown({ metric: "public_views" }).then(setBreakdown);
+                              openAnalytics(post.postId);
+                            }}
                         >
                           <span>{post.title}</span>
-                          <strong>{post.views}</strong>
+                          <span className="flex items-center gap-2"><strong>{post.views}</strong><span className="text-[10px] text-violet-600">Inspect</span></span>
                         </button>
                       ))}
                     </div>
@@ -523,6 +568,38 @@ const BlogPostsPage: React.FC = () => {
                   </table>
                 </div>
               </div>
+
+              {breakdown && (
+                <div className="border rounded-xl p-3 bg-white">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Analytics breakdown</h4>
+                    <button className="btn btn-outline" onClick={() => setBreakdown(null)}>Clear breakdown</button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">{breakdown.title}</p>
+                  <div className="max-h-56 overflow-auto mt-2 border rounded">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left p-2">Post</th>
+                          <th className="text-left p-2">Value</th>
+                          <th className="text-left p-2">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {breakdown.items.map((item) => (
+                          <tr key={`bd-${item.postId}`} className="border-t">
+                            <td className="p-2">{item.title}</td>
+                            <td className="p-2">{item.value}</td>
+                            <td className="p-2">
+                              <button className="btn btn-outline" onClick={() => openAnalytics(item.postId)}>Open post analytics</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
