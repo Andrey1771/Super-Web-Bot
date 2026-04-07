@@ -120,15 +120,20 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task<List<(DateTime BucketStart, int Count)>> GetPublicViewTimelineByPostIdAsync(string postId)
         {
-            var grouped = await _views.Aggregate()
-                .Match(item => item.PostId == postId && !item.IsExcludedFromPublicCounts && (!item.IsGuest || item.CountedInPublicCounts))
-                .Group(
-                    item => new DateTime(item.FirstViewedAt.Year, item.FirstViewedAt.Month, item.FirstViewedAt.Day, item.FirstViewedAt.Hour, 0, 0, DateTimeKind.Utc),
-                    group => new { BucketStart = group.Key, Count = group.Count() })
-                .SortBy(item => item.BucketStart)
+            var timestamps = await _views.Find(item =>
+                    item.PostId == postId &&
+                    !item.IsExcludedFromPublicCounts &&
+                    (!item.IsGuest || item.CountedInPublicCounts))
+                .Project(item => item.FirstViewedAt)
                 .ToListAsync();
 
-            return grouped.Select(item => (item.BucketStart, item.Count)).ToList();
+            return timestamps
+                .Select(ts => ts.Kind == DateTimeKind.Utc ? ts : DateTime.SpecifyKind(ts, DateTimeKind.Utc))
+                .Select(ts => new DateTime(ts.Year, ts.Month, ts.Day, ts.Hour, 0, 0, DateTimeKind.Utc))
+                .GroupBy(bucket => bucket)
+                .OrderBy(group => group.Key)
+                .Select(group => (group.Key, group.Count()))
+                .ToList();
         }
 
         public async Task<IReadOnlyList<BlogPostUniqueView>> GetLatestViewsByPostIdAsync(string postId, int limit)
