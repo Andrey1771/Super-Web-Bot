@@ -362,8 +362,12 @@ public class AdminBlogAnalyticsController : ControllerBase
         var latestByActor = events
             .Where(item => string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
                            string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(BuildActorKey)
-            .Where(group => !string.IsNullOrWhiteSpace(group.Key))
+            .GroupBy(item => new
+            {
+                postId = item.PostId,
+                actorKey = BuildActorKey(item)
+            })
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key.postId) && !string.IsNullOrWhiteSpace(group.Key.actorKey))
             .Select(group => group.OrderByDescending(item => item.Timestamp).First())
             .ToList();
 
