@@ -104,10 +104,13 @@ export class BlogService implements IBlogService {
     return response.data as BlogPostStats;
   }
 
-  async trackPostView(params: { slug: string; anonId?: string; sessionKey?: string }): Promise<BlogPostStats> {
-    const response = await this._apiClient.api.post(`/api/blog/posts/${params.slug}/track-view`, {
+  async trackPostView(params: { slug: string; anonId?: string; sessionId?: string; isVisible: boolean; hasInteraction: boolean; activeDwellMs: number }): Promise<BlogPostStats> {
+    const response = await this._apiClient.api.post(`/api/blog/posts/${params.slug}/register-unique-view`, {
       anonId: params.anonId,
-      sessionKey: params.sessionKey
+      sessionId: params.sessionId,
+      isVisible: params.isVisible,
+      hasInteraction: params.hasInteraction,
+      activeDwellMs: params.activeDwellMs
     });
     return response.data as BlogPostStats;
   }

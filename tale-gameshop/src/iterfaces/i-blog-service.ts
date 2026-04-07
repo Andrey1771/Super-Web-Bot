@@ -8,7 +8,7 @@ export interface IBlogService {
   getEngagementSummary(postIds: string[], anonId?: string): Promise<BlogEngagementSummary[]>;
   setReaction(params: { postId: string; reaction: string; anonId?: string; sessionId?: string }): Promise<BlogEngagementSummary>;
   getPostStats(slug: string): Promise<BlogPostStats>;
-  trackPostView(params: { slug: string; anonId?: string; sessionKey?: string }): Promise<BlogPostStats>;
+  trackPostView(params: { slug: string; anonId?: string; sessionId?: string; isVisible: boolean; hasInteraction: boolean; activeDwellMs: number }): Promise<BlogPostStats>;
   trackCompletedRead(params: { slug: string; anonId?: string; sessionKey?: string }): Promise<BlogPostStats>;
 }
 

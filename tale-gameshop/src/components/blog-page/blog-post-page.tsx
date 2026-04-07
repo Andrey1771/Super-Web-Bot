@@ -190,7 +190,10 @@ const BlogPostPage: React.FC = () => {
       blogService.trackPostView({
         slug,
         anonId: getAnonId(),
-        sessionKey: getSessionId()
+        sessionId: getSessionId(),
+        isVisible: true,
+        hasInteraction: true,
+        activeDwellMs: visibleMs
       })
         .then((stats) => setPostStats(stats))
         .catch((trackingError) => {

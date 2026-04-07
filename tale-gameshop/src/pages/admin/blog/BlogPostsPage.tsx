@@ -32,6 +32,8 @@ const BlogPostsPage: React.FC = () => {
   const [mainHeroPostId, setMainHeroPostId] = useState<string>("");
   const [updatingMainHeroId, setUpdatingMainHeroId] = useState<string>("");
   const [mainHeroPostPreview, setMainHeroPostPreview] = useState<BlogPost | null>(null);
+  const [viewSettings, setViewSettings] = useState<{ countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number } | null>(null);
+  const [viewSettingsBusy, setViewSettingsBusy] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -47,7 +49,9 @@ const BlogPostsPage: React.FC = () => {
       setItems(response.items);
       setTotal(response.total);
       const settings = await adminBlogService.getHomeSettings();
+      const views = await adminBlogService.getViewSettings();
       const selectedId = settings.mainHeroPostId ?? "";
+      setViewSettings(views);
       setMainHeroPostId(selectedId);
       if (!selectedId) {
         setMainHeroPostPreview(null);
@@ -96,6 +100,48 @@ const BlogPostsPage: React.FC = () => {
   const currentMainHero = useMemo(() => {
     return items.find((item) => item.id === mainHeroPostId) ?? mainHeroPostPreview;
   }, [items, mainHeroPostId, mainHeroPostPreview]);
+
+  const handleToggleGuestViews = async (nextValue: boolean) => {
+    try {
+      setViewSettingsBusy(true);
+      await adminBlogService.updateViewSettings({ countGuestViewsInPublicCounts: nextValue });
+      const fresh = await adminBlogService.getViewSettings();
+      setViewSettings(fresh);
+      addToast("View settings updated.", "success");
+    } catch {
+      addToast("Failed to update view settings.", "error");
+    } finally {
+      setViewSettingsBusy(false);
+    }
+  };
+
+  const handleExcludeGuestViews = async () => {
+    try {
+      setViewSettingsBusy(true);
+      await adminBlogService.excludeGuestViews();
+      const fresh = await adminBlogService.getViewSettings();
+      setViewSettings(fresh);
+      addToast("Guest views excluded from public counters.", "success");
+    } catch {
+      addToast("Failed to exclude guest views.", "error");
+    } finally {
+      setViewSettingsBusy(false);
+    }
+  };
+
+  const handleDeleteGuestViews = async () => {
+    try {
+      setViewSettingsBusy(true);
+      await adminBlogService.deleteGuestViews();
+      const fresh = await adminBlogService.getViewSettings();
+      setViewSettings(fresh);
+      addToast("Guest unique views deleted.", "success");
+    } catch {
+      addToast("Failed to delete guest views.", "error");
+    } finally {
+      setViewSettingsBusy(false);
+    }
+  };
 
   useEffect(() => {
     fetchPosts();
@@ -175,6 +221,34 @@ const BlogPostsPage: React.FC = () => {
           <button className="btn btn-primary" onClick={fetchPosts}>
             Apply
           </button>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex flex-col gap-3">
+          <h4 className="text-sm font-semibold text-slate-800">Public blog view settings</h4>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={viewSettings?.countGuestViewsInPublicCounts ?? true}
+              disabled={viewSettingsBusy}
+              onChange={(event) => handleToggleGuestViews(event.target.checked)}
+            />
+            Count guest views in public blog counters
+          </label>
+          <div className="flex flex-wrap gap-3 text-sm text-slate-700">
+            <span className="px-2 py-1 rounded bg-slate-100">Public unique views: {viewSettings?.publicUniqueViews ?? 0}</span>
+            <span className="px-2 py-1 rounded bg-slate-100">Authenticated unique views: {viewSettings?.authenticatedUniqueViews ?? 0}</span>
+            <span className="px-2 py-1 rounded bg-slate-100">Guest unique views: {viewSettings?.guestUniqueViews ?? 0}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-outline" disabled={viewSettingsBusy} onClick={handleExcludeGuestViews}>
+              Exclude guest views from public counts
+            </button>
+            <button className="btn btn-outline" disabled={viewSettingsBusy} onClick={handleDeleteGuestViews}>
+              Delete guest views
+            </button>
+          </div>
         </div>
       </Card>
 

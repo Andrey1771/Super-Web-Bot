@@ -17,6 +17,10 @@ export interface IAdminBlogService {
   archivePost(id: string): Promise<BlogPost>;
   getHomeSettings(): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
   setMainHeroPost(postId?: string): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
+  getViewSettings(): Promise<{ countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number }>;
+  updateViewSettings(params: { countGuestViewsInPublicCounts: boolean }): Promise<{ countGuestViewsInPublicCounts: boolean }>;
+  excludeGuestViews(): Promise<{ modified: number }>;
+  deleteGuestViews(): Promise<{ deleted: number }>;
 }
 
 export type AdminBlogPayload = {

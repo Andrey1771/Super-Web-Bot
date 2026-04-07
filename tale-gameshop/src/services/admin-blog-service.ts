@@ -85,4 +85,26 @@ export class AdminBlogService implements IAdminBlogService {
     });
     return response.data as { mainHeroPostId?: string; updatedAt?: string; updatedBy?: string };
   }
+
+  async getViewSettings(): Promise<{ countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number }> {
+    const response = await this._apiClient.api.get(`/api/admin/blog/view-settings`);
+    return response.data as { countGuestViewsInPublicCounts: boolean; publicUniqueViews: number; authenticatedUniqueViews: number; guestUniqueViews: number };
+  }
+
+  async updateViewSettings(params: { countGuestViewsInPublicCounts: boolean }): Promise<{ countGuestViewsInPublicCounts: boolean }> {
+    const response = await this._apiClient.api.put(`/api/admin/blog/view-settings`, {
+      countGuestViewsInPublicCounts: params.countGuestViewsInPublicCounts,
+    });
+    return response.data as { countGuestViewsInPublicCounts: boolean };
+  }
+
+  async excludeGuestViews(): Promise<{ modified: number }> {
+    const response = await this._apiClient.api.post(`/api/admin/blog/view-settings/exclude-guest-views`);
+    return response.data as { modified: number };
+  }
+
+  async deleteGuestViews(): Promise<{ deleted: number }> {
+    const response = await this._apiClient.api.delete(`/api/admin/blog/view-settings/guest-views`);
+    return response.data as { deleted: number };
+  }
 }

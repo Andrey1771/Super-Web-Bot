@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Linq;
@@ -12,10 +13,17 @@ namespace SuperBot.WebApi.Controllers;
 public class BlogEventsController : ControllerBase
 {
     private readonly IBlogRecommendationsService _blogRecommendationsService;
+    private readonly IBlogPostUniqueViewRepository _blogPostUniqueViewRepository;
+    private readonly IBlogViewSettingsRepository _blogViewSettingsRepository;
 
-    public BlogEventsController(IBlogRecommendationsService blogRecommendationsService)
+    public BlogEventsController(
+        IBlogRecommendationsService blogRecommendationsService,
+        IBlogPostUniqueViewRepository blogPostUniqueViewRepository,
+        IBlogViewSettingsRepository blogViewSettingsRepository)
     {
         _blogRecommendationsService = blogRecommendationsService;
+        _blogPostUniqueViewRepository = blogPostUniqueViewRepository;
+        _blogViewSettingsRepository = blogViewSettingsRepository;
     }
 
     [HttpPost]
@@ -85,11 +93,14 @@ public class BlogEventsController : ControllerBase
         var fromUtc = DateTime.UtcNow.AddYears(-3);
         var userId = GetCurrentUserId();
         var items = new List<object>();
+        var settings = await _blogViewSettingsRepository.GetAsync();
+        var includeGuestViews = settings?.CountGuestViewsInPublicCounts ?? true;
+        var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids, includeGuestViews);
 
         foreach (var postId in ids)
         {
             var events = await _blogRecommendationsService.GetEventsByPostAsync(postId, fromUtc);
-            var summary = BuildSummaryForPost(events, userId, anonId);
+            var summary = BuildSummaryForPost(events, userId, anonId, viewsMap.TryGetValue(postId, out var viewsCount) ? viewsCount : 0);
             items.Add(new
             {
                 postId,
@@ -148,7 +159,10 @@ public class BlogEventsController : ControllerBase
 
         await _blogRecommendationsService.TrackEventAsync(blogEvent);
         var updated = await _blogRecommendationsService.GetEventsByPostAsync(request.PostId, fromUtc);
-        var summary = BuildSummaryForPost(updated, userId, request.AnonId);
+        var settings = await _blogViewSettingsRepository.GetAsync();
+        var includeGuestViews = settings?.CountGuestViewsInPublicCounts ?? true;
+        var viewsCount = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdAsync(request.PostId, includeGuestViews);
+        var summary = BuildSummaryForPost(updated, userId, request.AnonId, viewsCount);
 
         return Ok(new
         {
@@ -207,15 +221,8 @@ public class BlogEventsController : ControllerBase
             .FirstOrDefault(reaction => reaction != null) ?? string.Empty;
     }
 
-    private static BlogEngagementSummary BuildSummaryForPost(IReadOnlyList<BlogEvent> events, string userId, string anonId)
+    private static BlogEngagementSummary BuildSummaryForPost(IReadOnlyList<BlogEvent> events, string userId, string anonId, int viewsCount)
     {
-        var views = events
-            .Where(item => string.Equals(item.EventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
-            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Distinct(StringComparer.Ordinal)
-            .Count();
-
         var reads = events
             .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
             .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
@@ -263,7 +270,7 @@ public class BlogEventsController : ControllerBase
 
         return new BlogEngagementSummary
         {
-            ViewsCount = views,
+            ViewsCount = viewsCount,
             CompletedReadsCount = reads,
             ReactionCounts = counts,
             TotalReactions = counts.Values.Sum(),
