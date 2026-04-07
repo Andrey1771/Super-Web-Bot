@@ -48,6 +48,7 @@ const BlogPostsPage: React.FC = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsMode, setAnalyticsMode] = useState<"overview" | "post">("overview");
   const [overviewAnalytics, setOverviewAnalytics] = useState<AdminBlogOverviewAnalytics | null>(null);
+  const [postSearchTerm, setPostSearchTerm] = useState("");
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -212,6 +213,7 @@ const BlogPostsPage: React.FC = () => {
 
   const activeAnalytics = analyticsPostId ? analyticsByPostId[analyticsPostId] : null;
   const currentAnalytics = analyticsMode === "overview" ? overviewAnalytics : activeAnalytics;
+  const selectedPost = items.find((item) => item.id === analyticsPostId) ?? null;
 
   const loadOverviewAnalytics = useCallback(async () => {
     try {
@@ -233,7 +235,7 @@ const BlogPostsPage: React.FC = () => {
 
   const viewsChartOptions: Highcharts.Options = {
     chart: { type: "area", height: 280 },
-    title: { text: "Views over time" },
+    title: { text: analyticsMode === "overview" ? "Views over time - All posts" : `Views over time - ${selectedPost?.title ?? "Selected post"}` },
     xAxis: { categories: (currentAnalytics?.viewsTimeline ?? []).map((item) => new Date(item.bucketStart).toLocaleDateString()) },
     series: [{ type: "area", name: "Views", data: (currentAnalytics?.viewsTimeline ?? []).map((item) => item.count) }],
     credits: { enabled: false }
@@ -241,7 +243,7 @@ const BlogPostsPage: React.FC = () => {
 
   const reactionsChartOptions: Highcharts.Options = {
     chart: { type: "column", height: 280 },
-    title: { text: "Reactions over time" },
+    title: { text: analyticsMode === "overview" ? "Reactions over time - All posts" : `Reactions over time - ${selectedPost?.title ?? "Selected post"}` },
     xAxis: { categories: (currentAnalytics?.reactionsTimeline ?? []).map((item) => new Date(item.bucketStart).toLocaleDateString()) },
     series: [{ type: "column", name: "Reactions", data: (currentAnalytics?.reactionsTimeline ?? []).map((item) => item.count) }],
     credits: { enabled: false }
@@ -249,7 +251,7 @@ const BlogPostsPage: React.FC = () => {
 
   const distributionOptions: Highcharts.Options = {
     chart: { type: "pie", height: 280 },
-    title: { text: "Reaction distribution" },
+    title: { text: analyticsMode === "overview" ? "Reaction distribution - All posts" : `Reaction distribution - ${selectedPost?.title ?? "Selected post"}` },
     series: [{
       type: "pie",
       name: "Reactions",
@@ -263,6 +265,13 @@ const BlogPostsPage: React.FC = () => {
     items.forEach((post) => post.tags.forEach((value) => tagSet.add(value)));
     return Array.from(tagSet);
   }, [items]);
+
+  const drillDownOptions = useMemo(() => {
+    const term = postSearchTerm.trim().toLowerCase();
+    return items
+      .filter((item) => !term || item.title.toLowerCase().includes(term) || item.slug.toLowerCase().includes(term))
+      .slice(0, 12);
+  }, [items, postSearchTerm]);
 
   return (
     <div className="admin-grid">
@@ -361,35 +370,54 @@ const BlogPostsPage: React.FC = () => {
       <Card>
         <div id="post-analytics-section" className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4">
-            <h4 className="text-sm font-semibold text-slate-800">Post analytics</h4>
-            <div className="flex gap-2">
-              <button className={`btn ${analyticsMode === "overview" ? "btn-primary" : "btn-outline"}`} onClick={() => setAnalyticsMode("overview")}>
-                Overview
-              </button>
-              <button className={`btn ${analyticsMode === "post" ? "btn-primary" : "btn-outline"}`} onClick={() => setAnalyticsMode("post")}>
-                Selected post
-              </button>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-800">Post analytics</h4>
+              <p className="text-xs text-slate-500">
+                Scope: {analyticsMode === "overview" ? "All posts" : `All posts / ${selectedPost?.title ?? "Selected post"}`}
+              </p>
+            </div>
+            <div className="flex gap-2 items-center">
+              {analyticsMode === "post" && (
+                <button className="btn btn-outline" onClick={() => setAnalyticsMode("overview")}>
+                  Back to overview
+                </button>
+              )}
+              <div className="relative">
+                <input
+                  className="p-2 border rounded min-w-[260px]"
+                  placeholder="Open post analytics..."
+                  value={postSearchTerm}
+                  onChange={(event) => setPostSearchTerm(event.target.value)}
+                />
+                {postSearchTerm && (
+                  <div className="absolute z-10 mt-1 w-full max-h-56 overflow-auto bg-white border rounded shadow">
+                    {drillDownOptions.map((item) => (
+                      <button
+                        key={`drill-${item.id}`}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                        onClick={() => {
+                          setPostSearchTerm("");
+                          openAnalytics(item.id);
+                        }}
+                      >
+                        <div className="font-medium">{item.title}</div>
+                        <div className="text-xs text-slate-500">/{item.slug}</div>
+                      </button>
+                    ))}
+                    {drillDownOptions.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">No posts found</div>}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {analyticsMode === "post" && (
-            <div className="flex flex-wrap gap-2 items-center">
-              <label className="text-xs text-slate-500">Selected post</label>
-              <select
-                className="p-2 border rounded min-w-[320px]"
-                value={analyticsPostId}
-                onChange={(event) => openAnalytics(event.target.value)}
-                disabled={items.length === 0}
-              >
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-              {analyticsPostId && (
-                <Link className="btn btn-outline" to={`/admin/blog/${analyticsPostId}/edit`}>Open edit</Link>
-              )}
+          {analyticsMode === "post" && analyticsPostId && (
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-slate-50">
+              <div className="text-sm">
+                <div className="text-slate-500 text-xs">Selected post</div>
+                <div className="font-medium">{selectedPost?.title ?? analyticsPostId}</div>
+              </div>
+              <Link className="btn btn-outline" to={`/admin/blog/${analyticsPostId}/edit`}>Open edit</Link>
             </div>
           )}
 
@@ -400,14 +428,38 @@ const BlogPostsPage: React.FC = () => {
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                <div className="p-3 rounded-xl border bg-white">Public views<br /><strong className="text-lg">{currentAnalytics.publicUniqueViews}</strong></div>
-                <div className="p-3 rounded-xl border bg-white">Auth views<br /><strong className="text-lg">{currentAnalytics.authenticatedUniqueViews}</strong></div>
-                <div className="p-3 rounded-xl border bg-white">Guest views<br /><strong className="text-lg">{currentAnalytics.guestUniqueViewsTotal}</strong></div>
-                <div className="p-3 rounded-xl border bg-white">Completed reads<br /><strong className="text-lg">{currentAnalytics.completedReads}</strong></div>
-                <div className="p-3 rounded-xl border bg-white">Reactions<br /><strong className="text-lg">{currentAnalytics.totalReactions}</strong></div>
-                <div className="p-3 rounded-xl border bg-white">Top emoji<br /><strong className="text-lg">{currentAnalytics.topReaction || "—"}</strong></div>
-                <div className="p-3 rounded-xl border bg-white">Guest counted<br /><strong className="text-lg">{currentAnalytics.guestUniqueViewsCounted}</strong></div>
-                <div className="p-3 rounded-xl border bg-white">Guest excluded<br /><strong className="text-lg">{currentAnalytics.guestUniqueViewsExcluded}</strong></div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">{analyticsMode === "overview" ? "All posts public views" : "This post public views"}</div>
+                  <strong className="text-lg">{currentAnalytics.publicUniqueViews}</strong>
+                </div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">{analyticsMode === "overview" ? "All posts auth views" : "This post auth views"}</div>
+                  <strong className="text-lg">{currentAnalytics.authenticatedUniqueViews}</strong>
+                </div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">{analyticsMode === "overview" ? "All posts guest views" : "This post guest views"}</div>
+                  <strong className="text-lg">{currentAnalytics.guestUniqueViewsTotal}</strong>
+                </div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">{analyticsMode === "overview" ? "All posts completed reads" : "This post completed reads"}</div>
+                  <strong className="text-lg">{currentAnalytics.completedReads}</strong>
+                </div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">{analyticsMode === "overview" ? "All posts reactions" : "This post reactions"}</div>
+                  <strong className="text-lg">{currentAnalytics.totalReactions}</strong>
+                </div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">{analyticsMode === "overview" ? "Top emoji across all posts" : "Top emoji for this post"}</div>
+                  <strong className="text-lg">{currentAnalytics.topReaction || "—"}</strong>
+                </div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">Guest counted</div>
+                  <strong className="text-lg">{currentAnalytics.guestUniqueViewsCounted}</strong>
+                </div>
+                <div className="p-3 rounded-xl border bg-white">
+                  <div className="text-slate-500">Guest excluded</div>
+                  <strong className="text-lg">{currentAnalytics.guestUniqueViewsExcluded}</strong>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -421,7 +473,14 @@ const BlogPostsPage: React.FC = () => {
                     <h4 className="text-sm font-semibold mb-2">Top posts</h4>
                     <div className="text-xs space-y-1">
                       {overviewAnalytics.topPostsByViews.slice(0, 8).map((post) => (
-                        <div key={`top-view-${post.postId}`} className="flex justify-between"><span>{post.title}</span><strong>{post.views}</strong></div>
+                        <button
+                          key={`top-view-${post.postId}`}
+                          className="flex justify-between w-full text-left hover:bg-slate-50 px-2 py-1 rounded"
+                          onClick={() => openAnalytics(post.postId)}
+                        >
+                          <span>{post.title}</span>
+                          <strong>{post.views}</strong>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -429,7 +488,11 @@ const BlogPostsPage: React.FC = () => {
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold mb-2">Latest activity</h4>
+                <h4 className="text-sm font-semibold mb-2">
+                  {analyticsMode === "overview"
+                    ? "Latest activity across all posts"
+                    : `Latest activity for ${selectedPost?.title ?? "selected post"}`}
+                </h4>
                 <div className="max-h-56 overflow-auto border rounded">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-50">
