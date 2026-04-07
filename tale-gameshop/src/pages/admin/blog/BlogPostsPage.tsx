@@ -348,7 +348,7 @@ const BlogPostsPage: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Views over time</h4>
                   <div className="space-y-1 max-h-44 overflow-auto">
-                    {activeAnalytics.viewsTimeline.slice(-20).map((item) => (
+                    {(activeAnalytics.viewsTimeline ?? []).slice(-20).map((item) => (
                       <div key={`${item.bucketStart}-v-block`} className="flex items-center gap-2 text-xs">
                         <span className="w-36 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
                         <div className="h-2 bg-violet-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
@@ -360,7 +360,7 @@ const BlogPostsPage: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Reactions over time</h4>
                   <div className="space-y-1 max-h-44 overflow-auto">
-                    {activeAnalytics.reactionsTimeline.slice(-20).map((item) => (
+                    {(activeAnalytics.reactionsTimeline ?? []).slice(-20).map((item) => (
                       <div key={`${item.bucketStart}-r-block`} className="flex items-center gap-2 text-xs">
                         <span className="w-36 truncate">{new Date(item.bucketStart).toLocaleString()}</span>
                         <div className="h-2 bg-rose-500 rounded" style={{ width: `${Math.max(8, item.count * 8)}px` }} />
