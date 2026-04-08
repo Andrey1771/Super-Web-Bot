@@ -688,15 +688,6 @@ const TaleGameshopGameList: React.FC = () => {
     const totalPages = Math.max(1, Math.ceil(filteredGames.length / pageSize));
     const safeCurrentPage = Math.min(currentPage, totalPages);
     const paginatedGames = filteredGames.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
-    const totalResults = filteredGames.length;
-    const showingFrom = totalResults === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1;
-    const showingTo = Math.min(safeCurrentPage * pageSize, totalResults);
-    const hasActiveFilters =
-        Boolean(filterCategory) ||
-        Boolean(filterName) ||
-        selectedPlatforms.length > 0 ||
-        minPriceFilter !== availablePrices.min ||
-        maxPriceFilter !== availablePrices.max;
 
     const updateParams = (patchFn: (params: URLSearchParams) => void) => {
         patchSearchParams((params) => {
@@ -736,8 +727,8 @@ const TaleGameshopGameList: React.FC = () => {
                     </label>
                 </div>
 
-                <section className="catalog-layout mt-8">
-                    <aside className="catalog-sidebar">
+                <section className="mt-4 grid gap-6 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
+                    <aside className="rounded-[22px] border border-[#ece8ff] bg-white p-5 shadow-[0_18px_38px_rgba(92,69,160,0.12)]">
                         <h2 className="text-2xl font-semibold text-[#2b2350]">Filters</h2>
 
                         <div className="mt-6 border-t border-[#f0ebff] pt-5">
@@ -864,23 +855,11 @@ const TaleGameshopGameList: React.FC = () => {
                         </div>
                     </aside>
 
-                    <div className="catalog-products">
-                        <div className="catalog-toolbar">
-                            <div className="catalog-toolbar-summary">
-                                <p className="catalog-results-label">Showing {showingFrom}-{showingTo} of {totalResults} games</p>
-                                {hasActiveFilters && (
-                                    <button
-                                        type="button"
-                                        className="catalog-clear-filters"
-                                        onClick={clearAllFilters}
-                                    >
-                                        Clear filters
-                                    </button>
-                                )}
-                            </div>
-                            <div className="relative catalog-sort-wrap">
+                    <div>
+                        <div className="mb-5 flex items-center justify-end">
+                            <div className="relative">
                                 <select
-                                    className="h-11 w-full rounded-[12px] border border-[#e6e1ff] bg-white px-4 pr-9 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none"
+                                    className="h-11 rounded-[12px] border border-[#e6e1ff] bg-white px-4 pr-9 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none"
                                     value={sortBy}
                                     onChange={(event) =>
                                         updateParams((params) => {
@@ -903,7 +882,7 @@ const TaleGameshopGameList: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="catalog-grid">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {paginatedGames.map(({ category, game }, index) => {
                                 const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
                                 const finalPrice = Number(game.finalPrice ?? game.price);
@@ -913,9 +892,9 @@ const TaleGameshopGameList: React.FC = () => {
                                 return (
                                     <article
                                         key={`${game.id ?? index}-${category}`}
-                                        className="catalog-game-card group"
+                                        className="group overflow-hidden rounded-xl border border-[#ece8ff] bg-white shadow-sm transition hover:shadow-md"
                                     >
-                                        <div className="catalog-game-image">
+                                        <div className="relative h-44 overflow-hidden">
                                             <Link
                                                 to={`/games/${gameSlug}`}
                                                 className="absolute inset-0 z-[1]"
@@ -944,23 +923,23 @@ const TaleGameshopGameList: React.FC = () => {
                                             </button>
                                         </div>
 
-                                        <div className="catalog-game-body">
-                                            <h3 className="catalog-game-title">
+                                        <div className="space-y-3 p-4">
+                                            <h3 className="text-[28px] leading-tight font-semibold text-[#2c2354]">
                                                 <Link to={`/games/${gameSlug}`} onClick={() => handleRecordViewed(game)}>
                                                     {game.title}
                                                 </Link>
                                             </h3>
-                                            <span className="catalog-game-chip">
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#5b21b6]">
                                                 <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none">
                                                     <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
                                                     <circle cx="10" cy="10" r="1.8" fill="currentColor" />
                                                 </svg>
                                                 {category}
                                             </span>
-                                            <div className="catalog-game-footer">
-                                                <span className="catalog-game-price">${finalPrice.toFixed(2)}</span>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-2xl font-semibold text-[#2b2350]">${finalPrice.toFixed(2)}</span>
                                                 <button
-                                                    className="catalog-game-cta"
+                                                    className="rounded-[12px] bg-[#6b3ff2] px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(107,63,242,0.28)]"
                                                     onClick={() => handleAddToCart(game)}
                                                 >
                                                     Add to Cart

@@ -6,15 +6,20 @@ import type {AccountSession} from '../types';
 type ActiveSessionsCardProps = {
     sessions: AccountSession[];
     isLoading: boolean;
+    canManageSessions: boolean;
+    unavailableReason?: string;
     onLogoutSession: (id: string) => void;
     onLogoutAll: () => void;
 };
 
-const formatTimestamp = (value: number) => new Date(value).toLocaleString();
+const normalizeTimestamp = (value: number) => (value < 1_000_000_000_000 ? value * 1000 : value);
+const formatTimestamp = (value: number) => new Date(normalizeTimestamp(value)).toLocaleString();
 
 const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
     sessions,
     isLoading,
+    canManageSessions,
+    unavailableReason,
     onLogoutSession,
     onLogoutAll
 }) => {
@@ -41,15 +46,19 @@ const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
                             type="button"
                             className="btn btn-outline security-secondary-btn"
                             onClick={() => onLogoutSession(session.id)}
+                            disabled={!canManageSessions}
                         >
                             Log out
                             <FontAwesomeIcon icon={faChevronRight} />
                         </button>
                     </div>
                 ))}
-                <button type="button" className="btn btn-outline security-logout-all" onClick={onLogoutAll} disabled={isLoading}>
+                <button type="button" className="btn btn-outline security-logout-all" onClick={onLogoutAll} disabled={isLoading || !canManageSessions}>
                     Log out all sessions
                 </button>
+                {!canManageSessions && unavailableReason && (
+                    <div className="security-session-empty">{unavailableReason}</div>
+                )}
             </div>
         </div>
     );

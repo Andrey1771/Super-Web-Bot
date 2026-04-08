@@ -177,6 +177,10 @@ builder.Services.AddAutoMapper(typeof(ImportJobProfile));
 builder.Services.AddAutoMapper(typeof(PromoCodeProfile));
 
 builder.Services.AddHttpClient();
+builder.Services.AddOptions<KeycloakAdminOptions>()
+    .Bind(builder.Configuration.GetSection("Keycloak:Admin"))
+    .ValidateDataAnnotations();
+builder.Services.AddHttpClient<KeycloakAdminClient>();
 builder.Services.AddScoped<Ga4Client>();
 builder.Services.AddScoped<YandexMetrikaClient>();
 builder.Services.AddHostedService<SuperBot.WebApi.Support.Chat.Services.OllamaStartupLogger>();

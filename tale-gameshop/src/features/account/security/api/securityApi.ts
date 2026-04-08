@@ -14,8 +14,9 @@ export const resendVerificationEmail = async (): Promise<void> => {
     await apiClient().post('/api/account/security/email/resend');
 };
 
-export const changeEmail = async (payload: { newEmail: string; password: string }): Promise<void> => {
-    await apiClient().post('/api/account/security/email/change', payload);
+export const changeEmail = async (payload: { newEmail: string; password: string }): Promise<SecurityActionResponse> => {
+    const response = await apiClient().post('/api/account/security/email/change', payload);
+    return response.data;
 };
 
 export const changePassword = async (payload: { currentPassword: string; newPassword: string }): Promise<SecurityActionResponse> => {
@@ -28,8 +29,9 @@ export const setupTwoFactor = async (): Promise<SecurityActionResponse> => {
     return response.data;
 };
 
-export const sendResetPasswordEmail = async (): Promise<void> => {
-    await apiClient().post('/api/account/security/password/reset-email');
+export const sendResetPasswordEmail = async (): Promise<SecurityActionResponse> => {
+    const response = await apiClient().post('/api/account/security/password/reset-email');
+    return response.data;
 };
 
 export const revokeSession = async (sessionId: string): Promise<void> => {
@@ -45,6 +47,7 @@ export const downloadSecurityReport = async (): Promise<Blob> => {
     return response.data;
 };
 
-export const deleteAccount = async (payload: { confirmation: string; password: string; twoFactorCode?: string }): Promise<void> => {
-    await apiClient().post('/api/account/security/delete-account', payload);
+export const deactivateAccount = async (payload: { confirmation: string; password: string }): Promise<SecurityActionResponse> => {
+    const response = await apiClient().post('/api/account/security/deactivate-account', payload);
+    return response.data;
 };

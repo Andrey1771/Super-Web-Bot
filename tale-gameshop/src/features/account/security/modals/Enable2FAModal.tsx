@@ -39,10 +39,10 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({
                 </div>
                 <div className="security-modal-body">
                     <p>
-                        We&apos;ll guide you through enabling 2FA in your Keycloak security settings.
+                        2FA setup is handled in your Keycloak account security settings.
                     </p>
                     <div className="security-info-banner">
-                        {action?.message ?? 'Follow the prompts to configure your authenticator app.'}
+                        {action?.message ?? 'Open Keycloak account console and follow prompts to configure an authenticator app.'}
                     </div>
                 </div>
                 <div className="security-modal-footer">
@@ -55,7 +55,7 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({
                         onClick={handleOpenAccount}
                         disabled={isSubmitting || !action?.redirectUrl}
                     >
-                        Open setup
+                        Open Keycloak security settings
                     </button>
                 </div>
             </div>
