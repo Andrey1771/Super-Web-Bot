@@ -9,6 +9,7 @@ namespace SuperBot.Core.Interfaces.IRepositories
         public int GuestUniqueViewsTotal { get; set; }
         public int GuestUniqueViewsCounted { get; set; }
         public int GuestUniqueViewsExcluded { get; set; }
+        public int GuestUniqueViewsNotCountedBySetting { get; set; }
     }
 
     public interface IBlogPostUniqueViewRepository
@@ -24,6 +25,7 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<List<(DateTime BucketStart, int Count)>> GetPublicViewTimelineByPostIdAsync(string postId);
         Task<IReadOnlyList<BlogPostUniqueView>> GetLatestViewsByPostIdAsync(string postId, int limit);
         Task<long> ExcludeGuestViewsAsync();
+        Task<long> RestoreExcludedGuestViewsAsync();
         Task<long> DeleteGuestViewsAsync();
         Task<BlogUniqueViewCounters> GetGlobalCountersAsync();
     }

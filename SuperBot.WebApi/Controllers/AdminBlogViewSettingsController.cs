@@ -33,7 +33,8 @@ public class AdminBlogViewSettingsController : ControllerBase
             authenticatedUniqueViews = counters.AuthenticatedUniqueViews,
             guestUniqueViewsTotal = counters.GuestUniqueViewsTotal,
             guestUniqueViewsCounted = counters.GuestUniqueViewsCounted,
-            guestUniqueViewsExcluded = counters.GuestUniqueViewsExcluded
+            guestUniqueViewsExcluded = counters.GuestUniqueViewsExcluded,
+            guestUniqueViewsNotCountedBySetting = counters.GuestUniqueViewsNotCountedBySetting
         });
     }
 
@@ -52,6 +53,13 @@ public class AdminBlogViewSettingsController : ControllerBase
     public async Task<IActionResult> ExcludeGuestViews()
     {
         var modified = await _uniqueViewRepository.ExcludeGuestViewsAsync();
+        return Ok(new { modified });
+    }
+
+    [HttpPost("restore-guest-views")]
+    public async Task<IActionResult> RestoreGuestViews()
+    {
+        var modified = await _uniqueViewRepository.RestoreExcludedGuestViewsAsync();
         return Ok(new { modified });
     }
 

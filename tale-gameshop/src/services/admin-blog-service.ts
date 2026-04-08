@@ -93,6 +93,7 @@ export class AdminBlogService implements IAdminBlogService {
     guestUniqueViewsTotal: number;
     guestUniqueViewsCounted: number;
     guestUniqueViewsExcluded: number;
+    guestUniqueViewsNotCountedBySetting: number;
   }> {
     const response = await this._apiClient.api.get(`/api/admin/blog/view-settings`);
     return response.data as {
@@ -102,6 +103,7 @@ export class AdminBlogService implements IAdminBlogService {
       guestUniqueViewsTotal: number;
       guestUniqueViewsCounted: number;
       guestUniqueViewsExcluded: number;
+      guestUniqueViewsNotCountedBySetting: number;
     };
   }
 
@@ -114,6 +116,11 @@ export class AdminBlogService implements IAdminBlogService {
 
   async excludeGuestViews(): Promise<{ modified: number }> {
     const response = await this._apiClient.api.post(`/api/admin/blog/view-settings/exclude-guest-views`);
+    return response.data as { modified: number };
+  }
+
+  async restoreGuestViews(): Promise<{ modified: number }> {
+    const response = await this._apiClient.api.post(`/api/admin/blog/view-settings/restore-guest-views`);
     return response.data as { modified: number };
   }
 

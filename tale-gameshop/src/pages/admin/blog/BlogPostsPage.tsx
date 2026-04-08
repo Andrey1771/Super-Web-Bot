@@ -41,6 +41,7 @@ const BlogPostsPage: React.FC = () => {
     guestUniqueViewsTotal: number;
     guestUniqueViewsCounted: number;
     guestUniqueViewsExcluded: number;
+    guestUniqueViewsNotCountedBySetting: number;
   } | null>(null);
   const [viewSettingsBusy, setViewSettingsBusy] = useState(false);
   const [analyticsByPostId, setAnalyticsByPostId] = useState<Record<string, AdminBlogPostAnalytics>>({});
@@ -169,6 +170,20 @@ const BlogPostsPage: React.FC = () => {
       addToast("Guest unique views deleted.", "success");
     } catch {
       addToast("Failed to delete guest views.", "error");
+    } finally {
+      setViewSettingsBusy(false);
+    }
+  };
+
+  const handleRestoreGuestViews = async () => {
+    try {
+      setViewSettingsBusy(true);
+      await adminBlogService.restoreGuestViews();
+      const fresh = await adminBlogService.getViewSettings();
+      setViewSettings(fresh);
+      addToast("Excluded guest views restored to public counters.", "success");
+    } catch {
+      addToast("Failed to restore guest views.", "error");
     } finally {
       setViewSettingsBusy(false);
     }
@@ -397,10 +412,18 @@ const BlogPostsPage: React.FC = () => {
             <span className="px-2 py-1 rounded bg-slate-100">Guest unique views total: {viewSettings?.guestUniqueViewsTotal ?? 0}</span>
             <span className="px-2 py-1 rounded bg-slate-100">Guest counted: {viewSettings?.guestUniqueViewsCounted ?? 0}</span>
             <span className="px-2 py-1 rounded bg-slate-100">Guest excluded: {viewSettings?.guestUniqueViewsExcluded ?? 0}</span>
+            <span className="px-2 py-1 rounded bg-slate-100">Guest not counted by setting: {viewSettings?.guestUniqueViewsNotCountedBySetting ?? 0}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="btn btn-outline" disabled={viewSettingsBusy} onClick={handleExcludeGuestViews}>
               Exclude existing guest views from public counts
+            </button>
+            <button
+              className="btn btn-outline"
+              disabled={viewSettingsBusy || (viewSettings?.guestUniqueViewsExcluded ?? 0) === 0}
+              onClick={handleRestoreGuestViews}
+            >
+              Restore excluded guest views
             </button>
             <button className="btn btn-outline" disabled={viewSettingsBusy} onClick={handleDeleteGuestViews}>
               Delete all guest unique views

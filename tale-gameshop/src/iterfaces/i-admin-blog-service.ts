@@ -99,9 +99,11 @@ export interface IAdminBlogService {
     guestUniqueViewsTotal: number;
     guestUniqueViewsCounted: number;
     guestUniqueViewsExcluded: number;
+    guestUniqueViewsNotCountedBySetting: number;
   }>;
   updateViewSettings(params: { countGuestViewsInPublicCounts: boolean }): Promise<{ countGuestViewsInPublicCounts: boolean }>;
   excludeGuestViews(): Promise<{ modified: number }>;
+  restoreGuestViews(): Promise<{ modified: number }>;
   deleteGuestViews(): Promise<{ deleted: number }>;
   getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics>;
   getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]>;

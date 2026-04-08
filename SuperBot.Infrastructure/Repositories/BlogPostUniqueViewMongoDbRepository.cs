@@ -108,7 +108,16 @@ namespace SuperBot.Infrastructure.Repositories
             var update = Builders<BlogPostUniqueViewDb>.Update
                 .Set(item => item.IsExcludedFromPublicCounts, true)
                 .Set(item => item.UpdatedAt, DateTime.UtcNow);
-            var result = await _views.UpdateManyAsync(item => item.IsGuest && !item.IsExcludedFromPublicCounts, update);
+            var result = await _views.UpdateManyAsync(item => item.IsGuest && item.CountedInPublicCounts && !item.IsExcludedFromPublicCounts, update);
+            return result.ModifiedCount;
+        }
+
+        public async Task<long> RestoreExcludedGuestViewsAsync()
+        {
+            var update = Builders<BlogPostUniqueViewDb>.Update
+                .Set(item => item.IsExcludedFromPublicCounts, false)
+                .Set(item => item.UpdatedAt, DateTime.UtcNow);
+            var result = await _views.UpdateManyAsync(item => item.IsGuest && item.IsExcludedFromPublicCounts, update);
             return result.ModifiedCount;
         }
 
@@ -174,7 +183,8 @@ namespace SuperBot.Infrastructure.Repositories
                     Authenticated = group.Sum(item => !item.IsGuest && !item.IsExcludedFromPublicCounts ? 1 : 0),
                     GuestTotal = group.Sum(item => item.IsGuest ? 1 : 0),
                     GuestCounted = group.Sum(item => item.IsGuest && item.CountedInPublicCounts && !item.IsExcludedFromPublicCounts ? 1 : 0),
-                    GuestExcluded = group.Sum(item => item.IsGuest && (item.IsExcludedFromPublicCounts || !item.CountedInPublicCounts) ? 1 : 0)
+                    GuestExcluded = group.Sum(item => item.IsGuest && item.IsExcludedFromPublicCounts ? 1 : 0),
+                    GuestNotCountedBySetting = group.Sum(item => item.IsGuest && !item.CountedInPublicCounts ? 1 : 0)
                 })
                 .ToListAsync();
 
@@ -186,6 +196,7 @@ namespace SuperBot.Infrastructure.Repositories
                     GuestUniqueViewsTotal = item.GuestTotal,
                     GuestUniqueViewsCounted = item.GuestCounted,
                     GuestUniqueViewsExcluded = item.GuestExcluded,
+                    GuestUniqueViewsNotCountedBySetting = item.GuestNotCountedBySetting,
                     PublicUniqueViews = item.Authenticated + item.GuestCounted
                 };
             }
@@ -201,7 +212,8 @@ namespace SuperBot.Infrastructure.Repositories
                     Authenticated = group.Sum(item => !item.IsGuest && !item.IsExcludedFromPublicCounts ? 1 : 0),
                     GuestTotal = group.Sum(item => item.IsGuest ? 1 : 0),
                     GuestCounted = group.Sum(item => item.IsGuest && item.CountedInPublicCounts && !item.IsExcludedFromPublicCounts ? 1 : 0),
-                    GuestExcluded = group.Sum(item => item.IsGuest && (item.IsExcludedFromPublicCounts || !item.CountedInPublicCounts) ? 1 : 0)
+                    GuestExcluded = group.Sum(item => item.IsGuest && item.IsExcludedFromPublicCounts ? 1 : 0),
+                    GuestNotCountedBySetting = group.Sum(item => item.IsGuest && !item.CountedInPublicCounts ? 1 : 0)
                 })
                 .FirstOrDefaultAsync();
 
@@ -216,6 +228,7 @@ namespace SuperBot.Infrastructure.Repositories
                 GuestUniqueViewsTotal = aggregate.GuestTotal,
                 GuestUniqueViewsCounted = aggregate.GuestCounted,
                 GuestUniqueViewsExcluded = aggregate.GuestExcluded,
+                GuestUniqueViewsNotCountedBySetting = aggregate.GuestNotCountedBySetting,
                 PublicUniqueViews = aggregate.Authenticated + aggregate.GuestCounted
             };
         }
