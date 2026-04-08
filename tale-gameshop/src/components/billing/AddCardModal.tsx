@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CardCvcElement, CardExpiryElement, CardNumberElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
 import type { StripeCardNumberElementOptions } from '@stripe/stripe-js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock } from '@fortawesome/free-solid-svg-icons';
+import { createStripePromise } from '../../utils/stripe-loader';
 
 const stripePublishableKey = typeof window !== 'undefined'
     ? window.__APP_CONFIG__?.stripePublishableKey ?? ''
     : '';
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+const stripePromise = createStripePromise(stripePublishableKey);
 
 const elementStyle = {
     style: {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Text.RegularExpressions;
 using SuperBot.WebApi.Services;
@@ -13,6 +14,8 @@ namespace SuperBot.WebApi.Controllers;
 public class AdminBlogController : ControllerBase
 {
     private readonly IBlogRepository _blogRepository;
+    private readonly IBlogRecommendationsService _blogRecommendationsService;
+    private readonly IBlogPostUniqueViewRepository _blogPostUniqueViewRepository;
     private readonly IMediaAssetRepository _mediaRepository;
     private readonly IImageMetadataReader _imageMetadataReader;
     private const int TitleMinLength = 10;
@@ -33,9 +36,16 @@ public class AdminBlogController : ControllerBase
         "image/webp"
     };
 
-    public AdminBlogController(IBlogRepository blogRepository, IMediaAssetRepository mediaRepository, IImageMetadataReader imageMetadataReader)
+    public AdminBlogController(
+        IBlogRepository blogRepository,
+        IBlogRecommendationsService blogRecommendationsService,
+        IBlogPostUniqueViewRepository blogPostUniqueViewRepository,
+        IMediaAssetRepository mediaRepository,
+        IImageMetadataReader imageMetadataReader)
     {
         _blogRepository = blogRepository;
+        _blogRecommendationsService = blogRecommendationsService;
+        _blogPostUniqueViewRepository = blogPostUniqueViewRepository;
         _mediaRepository = mediaRepository;
         _imageMetadataReader = imageMetadataReader;
     }
@@ -74,6 +84,48 @@ public class AdminBlogController : ControllerBase
 
         var version = await _blogRepository.GetVersionByIdAsync(post.Id, post.CurrentVersionId);
         return Ok(new { post, version });
+    }
+
+    [HttpGet("{id}/analytics")]
+    public async Task<IActionResult> GetPostAnalytics(string id)
+    {
+        var post = await _blogRepository.GetByIdAsync(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        var analytics = await BuildPostAnalyticsAsync(post, includeDetails: true);
+        return Ok(analytics);
+    }
+
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetPostsAnalytics([FromQuery] string postIds)
+    {
+        var ids = (postIds ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(50)
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            return Ok(new { items = Array.Empty<object>() });
+        }
+
+        var list = new List<object>(ids.Count);
+        foreach (var id in ids)
+        {
+            var post = await _blogRepository.GetByIdAsync(id);
+            if (post == null)
+            {
+                continue;
+            }
+
+            list.Add(await BuildPostAnalyticsAsync(post, includeDetails: false));
+        }
+
+        return Ok(new { items = list });
     }
 
     [HttpPost]
@@ -592,6 +644,250 @@ public class AdminBlogController : ControllerBase
         slug = Regex.Replace(slug, @"\s+", "-");
         slug = Regex.Replace(slug, @"-+", "-");
         return slug.Trim('-');
+    }
+
+    private async Task<object> BuildPostAnalyticsAsync(BlogPost post, bool includeDetails)
+    {
+        var uniqueViewCounters = await _blogPostUniqueViewRepository.GetCountersByPostIdAsync(post.Id);
+        var viewTimeline = await _blogPostUniqueViewRepository.GetPublicViewTimelineByPostIdAsync(post.Id);
+        var latestUniqueViews = await _blogPostUniqueViewRepository.GetLatestViewsByPostIdAsync(post.Id, 40);
+        var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, DateTime.UtcNow.AddYears(-5));
+        var readsCount = events
+            .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
+            .Select(item => BuildActorKey(item))
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+
+        var reactionsByEmoji = BuildReactionCounts(events);
+        var totalReactions = reactionsByEmoji.Values.Sum();
+        var topReaction = reactionsByEmoji
+            .OrderByDescending(item => item.Value)
+            .ThenBy(item => item.Key, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        var viewPoints = BuildViewTimeline(viewTimeline);
+        var reactionPoints = BuildReactionTimeline(events);
+        var latestEvents = events
+            .OrderByDescending(item => item.Timestamp)
+            .Take(40)
+            .Select(item => new AdminLatestEventItem
+            {
+                timestamp = item.Timestamp,
+                actorType = string.IsNullOrWhiteSpace(item.UserId) ? "guest" : "authenticated",
+                actorDisplay = BuildActorDisplay(item),
+                eventType = NormalizeEventType(item.EventType),
+                reaction = GetReaction(item)
+            })
+            .Concat(latestUniqueViews.Select(item => new AdminLatestEventItem
+            {
+                timestamp = item.LastViewedAt,
+                actorType = string.IsNullOrWhiteSpace(item.UserId) ? "guest" : "authenticated",
+                actorDisplay = BuildActorDisplay(item.UserId, item.AnonId, item.LastSessionId),
+                eventType = "view",
+                reaction = string.Empty
+            }))
+            .OrderByDescending(item => item.timestamp)
+            .Take(40)
+            .Cast<object>()
+            .ToList();
+
+        var result = new
+        {
+            postId = post.Id,
+            title = post.Title,
+            slug = post.Slug,
+            publicUniqueViews = uniqueViewCounters.PublicUniqueViews,
+            authenticatedUniqueViews = uniqueViewCounters.AuthenticatedUniqueViews,
+            guestUniqueViewsTotal = uniqueViewCounters.GuestUniqueViewsTotal,
+            guestUniqueViewsCounted = uniqueViewCounters.GuestUniqueViewsCounted,
+            guestUniqueViewsExcluded = uniqueViewCounters.GuestUniqueViewsExcluded,
+            completedReads = readsCount,
+            totalReactions,
+            reactionsByEmoji,
+            topReaction = topReaction.Value > 0 ? topReaction.Key : string.Empty,
+            viewsTimeline = viewPoints,
+            reactionsTimeline = reactionPoints,
+            latestEvents
+        };
+
+        if (!includeDetails)
+        {
+            return new
+            {
+                result.postId,
+                result.title,
+                result.slug,
+                result.publicUniqueViews,
+                result.authenticatedUniqueViews,
+                result.guestUniqueViewsTotal,
+                result.guestUniqueViewsCounted,
+                result.guestUniqueViewsExcluded,
+                result.completedReads,
+                result.totalReactions,
+                result.topReaction
+            };
+        }
+
+        return result;
+    }
+
+    private static string BuildActorKey(BlogEvent item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.UserId))
+        {
+            return $"u:{item.UserId}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.AnonId))
+        {
+            return $"a:{item.AnonId}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.SessionId))
+        {
+            return $"s:{item.SessionId}";
+        }
+
+        return string.Empty;
+    }
+
+    private static string GetReaction(BlogEvent item)
+    {
+        if (item.Meta == null)
+        {
+            return string.Empty;
+        }
+
+        return item.Meta.TryGetValue("reaction", out var reaction) ? reaction : string.Empty;
+    }
+
+    private static Dictionary<string, int> BuildReactionCounts(IReadOnlyList<BlogEvent> events)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["👍"] = 0,
+            ["❤️"] = 0,
+            ["🔥"] = 0,
+            ["🎮"] = 0,
+            ["👀"] = 0
+        };
+
+        var latestByActor = events
+            .Where(item =>
+                string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(BuildActorKey)
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key))
+            .Select(group => group.OrderByDescending(item => item.Timestamp).First())
+            .ToList();
+
+        foreach (var item in latestByActor)
+        {
+            if (string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var reaction = GetReaction(item);
+            if (!string.IsNullOrWhiteSpace(reaction) && counts.ContainsKey(reaction))
+            {
+                counts[reaction] += 1;
+            }
+        }
+
+        return counts;
+    }
+
+    private static List<object> BuildViewTimeline(IReadOnlyList<(DateTime BucketStart, int Count)> timeline)
+    {
+        return timeline
+            .OrderBy(item => item.BucketStart)
+            .Select(item => (object)new
+            {
+                bucketStart = item.BucketStart,
+                count = item.Count
+            })
+            .ToList();
+    }
+
+    private static List<object> BuildReactionTimeline(IReadOnlyList<BlogEvent> events)
+    {
+        return events
+            .Where(item => string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(item => new DateTime(item.Timestamp.Year, item.Timestamp.Month, item.Timestamp.Day, item.Timestamp.Hour, 0, 0, DateTimeKind.Utc))
+            .OrderBy(group => group.Key)
+            .Select(group => (object)new
+            {
+                bucketStart = group.Key,
+                count = group.Count(),
+                reactionsByEmoji = new Dictionary<string, int>(StringComparer.Ordinal)
+                {
+                    ["👍"] = group.Count(item => GetReaction(item) == "👍"),
+                    ["❤️"] = group.Count(item => GetReaction(item) == "❤️"),
+                    ["🔥"] = group.Count(item => GetReaction(item) == "🔥"),
+                    ["🎮"] = group.Count(item => GetReaction(item) == "🎮"),
+                    ["👀"] = group.Count(item => GetReaction(item) == "👀")
+                }
+            })
+            .ToList();
+    }
+
+    private static string NormalizeEventType(string eventType)
+    {
+        if (string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return "view";
+        }
+
+        if (string.Equals(eventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
+        {
+            return "completed_read";
+        }
+
+        if (string.Equals(eventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(eventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
+        {
+            return "reaction";
+        }
+
+        return eventType?.ToLowerInvariant() ?? string.Empty;
+    }
+
+    private static string BuildActorDisplay(BlogEvent item)
+    {
+        return BuildActorDisplay(item.UserId, item.AnonId, item.SessionId);
+    }
+
+    private static string BuildActorDisplay(string userId, string anonId, string sessionId)
+    {
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            return userId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(anonId))
+        {
+            var suffix = anonId.Length <= 8 ? anonId : anonId.Substring(0, 8);
+            return $"Guest a:{suffix}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            var suffix = sessionId.Length <= 6 ? sessionId : sessionId.Substring(0, 6);
+            return $"Guest #{suffix}";
+        }
+
+        return "Guest";
+    }
+
+    private sealed class AdminLatestEventItem
+    {
+        public DateTime timestamp { get; set; }
+        public string actorType { get; set; } = "guest";
+        public string actorDisplay { get; set; } = string.Empty;
+        public string eventType { get; set; } = string.Empty;
+        public string reaction { get; set; } = string.Empty;
     }
 }
 

@@ -7,5 +7,6 @@ namespace SuperBot.Core.Interfaces
         Task<BlogRecommendationsResult> GetHomeRecommendationsAsync(string userId, string anonId, int limit);
         Task<IReadOnlyList<BlogPost>> GetReadingHistoryAsync(string userId, int limit);
         Task TrackEventAsync(BlogEvent blogEvent);
+        Task<IReadOnlyList<BlogEvent>> GetEventsByPostAsync(string postId, DateTime fromUtc);
     }
 }

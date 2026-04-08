@@ -2,7 +2,7 @@ import { injectable } from "inversify";
 import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
-import type { IAdminBlogService, AdminBlogPayload } from "../iterfaces/i-admin-blog-service";
+import type { IAdminBlogService, AdminBlogPayload, AdminBlogPostAnalytics, AdminBlogOverviewAnalytics, AdminBlogBreakdown } from "../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../types/blog";
 
 @injectable()
@@ -84,5 +84,82 @@ export class AdminBlogService implements IAdminBlogService {
       mainHeroPostId: postId ?? null,
     });
     return response.data as { mainHeroPostId?: string; updatedAt?: string; updatedBy?: string };
+  }
+
+  async getViewSettings(): Promise<{
+    countGuestViewsInPublicCounts: boolean;
+    publicUniqueViews: number;
+    authenticatedUniqueViews: number;
+    guestUniqueViewsTotal: number;
+    guestUniqueViewsCounted: number;
+    guestUniqueViewsExcluded: number;
+    guestUniqueViewsNotCountedBySetting: number;
+  }> {
+    const response = await this._apiClient.api.get(`/api/admin/blog/view-settings`);
+    return response.data as {
+      countGuestViewsInPublicCounts: boolean;
+      publicUniqueViews: number;
+      authenticatedUniqueViews: number;
+      guestUniqueViewsTotal: number;
+      guestUniqueViewsCounted: number;
+      guestUniqueViewsExcluded: number;
+      guestUniqueViewsNotCountedBySetting: number;
+    };
+  }
+
+  async updateViewSettings(params: { countGuestViewsInPublicCounts: boolean }): Promise<{ countGuestViewsInPublicCounts: boolean }> {
+    const response = await this._apiClient.api.put(`/api/admin/blog/view-settings`, {
+      countGuestViewsInPublicCounts: params.countGuestViewsInPublicCounts,
+    });
+    return response.data as { countGuestViewsInPublicCounts: boolean };
+  }
+
+  async excludeGuestViews(): Promise<{ modified: number }> {
+    const response = await this._apiClient.api.post(`/api/admin/blog/view-settings/exclude-guest-views`);
+    return response.data as { modified: number };
+  }
+
+  async restoreGuestViews(): Promise<{ modified: number }> {
+    const response = await this._apiClient.api.post(`/api/admin/blog/view-settings/restore-guest-views`);
+    return response.data as { modified: number };
+  }
+
+  async deleteGuestViews(): Promise<{ deleted: number }> {
+    const response = await this._apiClient.api.delete(`/api/admin/blog/view-settings/guest-views`);
+    return response.data as { deleted: number };
+  }
+
+  async getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics> {
+    const response = await this._apiClient.api.get(`/api/admin/blog/posts/${id}/analytics`);
+    return response.data as AdminBlogPostAnalytics;
+  }
+
+  async getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]> {
+    if (!postIds.length) {
+      return [];
+    }
+
+    const query = new URLSearchParams();
+    query.append("postIds", postIds.join(","));
+    const response = await this._apiClient.api.get(`/api/admin/blog/posts/analytics?${query.toString()}`);
+    return (response.data?.items ?? []) as AdminBlogPostAnalytics[];
+  }
+
+  async getOverviewAnalytics(): Promise<AdminBlogOverviewAnalytics> {
+    const response = await this._apiClient.api.get(`/api/admin/blog/analytics/overview`);
+    return response.data as AdminBlogOverviewAnalytics;
+  }
+
+  async getOverviewBreakdown(params: { metric: string; bucket?: string; emoji?: string }): Promise<AdminBlogBreakdown> {
+    const query = new URLSearchParams();
+    query.append("metric", params.metric);
+    if (params.bucket) {
+      query.append("bucket", params.bucket);
+    }
+    if (params.emoji) {
+      query.append("emoji", params.emoji);
+    }
+    const response = await this._apiClient.api.get(`/api/admin/blog/analytics/breakdown?${query.toString()}`);
+    return response.data as AdminBlogBreakdown;
   }
 }

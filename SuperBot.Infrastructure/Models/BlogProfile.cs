@@ -11,6 +11,8 @@ namespace SuperBot.Infrastructure.Models
             CreateMap<BlogPost, BlogPostDb>().ReverseMap();
             CreateMap<BlogPostVersion, BlogPostVersionDb>().ReverseMap();
             CreateMap<BlogEvent, BlogEventDb>().ReverseMap();
+            CreateMap<BlogPostUniqueView, BlogPostUniqueViewDb>().ReverseMap();
+            CreateMap<BlogViewSettings, BlogViewSettingsDb>().ReverseMap();
             CreateMap<UserBlogProfile, UserBlogProfileDb>().ReverseMap();
             CreateMap<BlogReadingHistoryItem, BlogReadingHistoryItemDb>().ReverseMap();
             CreateMap<BlogShownItem, BlogShownItemDb>().ReverseMap();

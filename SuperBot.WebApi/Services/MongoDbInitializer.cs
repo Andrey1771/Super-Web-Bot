@@ -33,6 +33,8 @@ namespace SuperBot.WebApi.Services
                 "BlogPosts",
                 "BlogPostVersions",
                 "BlogEvents",
+                "BlogPostUniqueViews",
+                "BlogViewSettings",
                 "UserBlogProfiles",
                 "SupportTickets",
                 "SupportMessages",
@@ -202,6 +204,36 @@ namespace SuperBot.WebApi.Services
             await blogEventsCollection.Indexes.CreateOneAsync(blogEventUserIndex);
             await blogEventsCollection.Indexes.CreateOneAsync(blogEventAnonIndex);
             await blogEventsCollection.Indexes.CreateOneAsync(blogEventTypeIndex);
+
+            var blogUniqueViewsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>("BlogPostUniqueViews");
+            var uniqueViewerIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys
+                    .Ascending(item => item.PostId)
+                    .Ascending(item => item.ViewerKey),
+                new CreateIndexOptions { Name = "ix_blog_unique_views_post_viewer", Unique = true }
+            );
+            var uniqueViewsPostIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys.Ascending(item => item.PostId),
+                new CreateIndexOptions { Name = "ix_blog_unique_views_post" }
+            );
+            var uniqueViewsGuestIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys.Ascending(item => item.IsGuest),
+                new CreateIndexOptions { Name = "ix_blog_unique_views_guest" }
+            );
+            var uniqueViewsExcludedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys.Ascending(item => item.IsExcludedFromPublicCounts),
+                new CreateIndexOptions { Name = "ix_blog_unique_views_excluded" }
+            );
+            var uniqueViewsCountedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys.Ascending(item => item.CountedInPublicCounts),
+                new CreateIndexOptions { Name = "ix_blog_unique_views_counted_public" }
+            );
+
+            await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewerIndex);
+            await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsPostIndex);
+            await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsGuestIndex);
+            await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsExcludedIndex);
+            await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsCountedIndex);
 
             var blogProfilesCollection = _database.GetCollection<SuperBot.Infrastructure.Data.UserBlogProfileDb>("UserBlogProfiles");
             var blogProfileUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(

@@ -20,6 +20,7 @@ export type BlogPost = {
   readingTime?: number;
   currentVersionId: string;
   viewCount?: number;
+  completedReadsCount?: number;
   editorScore?: number;
   featured?: boolean;
   blogHomeFeatured?: boolean;
@@ -49,6 +50,8 @@ export type BlogListItem = {
   tags: string[];
   publishedAt?: string;
   readingTime?: number;
+  viewsCount?: number;
+  completedReadsCount?: number;
 };
 
 export type BlogRecommendationsResponse = {
@@ -62,4 +65,20 @@ export type BlogRecommendationsResponse = {
 export type BlogListResponse = {
   items: BlogListItem[];
   total: number;
+};
+
+export type BlogEngagementSummary = {
+  postId: string;
+  viewsCount: number;
+  completedReadsCount: number;
+  reactions: Record<string, number>;
+  totalReactions: number;
+  myReaction?: string;
+};
+
+export type BlogPostStats = {
+  postId: string;
+  viewsCount: number;
+  completedReadsCount: number;
+  updatedAt?: string;
 };

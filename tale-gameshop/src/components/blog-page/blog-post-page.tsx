@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IBlogService } from "../../iterfaces/i-blog-service";
-import type { BlogListItem, BlogPost, BlogPostVersion } from "../../types/blog";
+import type { BlogEngagementSummary, BlogListItem, BlogPost, BlogPostStats, BlogPostVersion } from "../../types/blog";
 import { renderMarkdown } from "../../utils/markdown";
-import { useBlogTracking } from "../../hooks/use-blog-tracking";
+import { getAnonId, getSessionId, useBlogTracking } from "../../hooks/use-blog-tracking";
 import SafeBlogImage from "./SafeBlogImage";
 import { getBlogPostCoverUrl } from "../../utils/blog-cover";
 import PostCard from "../../pages/blog/components/PostCard";
@@ -15,6 +15,31 @@ type TocItem = {
   id: string;
   text: string;
   level: number;
+};
+
+const READ_TRACK_KEY = "tale_blog_post_read_tracked";
+
+const getSessionGuard = (key: string, slug: string) => {
+  if (typeof window === "undefined" || !slug) {
+    return false;
+  }
+  return window.sessionStorage.getItem(`${key}:${slug}`) === "1";
+};
+
+const setSessionGuard = (key: string, slug: string) => {
+  if (typeof window === "undefined" || !slug) {
+    return;
+  }
+  window.sessionStorage.setItem(`${key}:${slug}`, "1");
+};
+
+const getArticleReadProgress = (articleElement: HTMLElement): number => {
+  const rect = articleElement.getBoundingClientRect();
+  const articleTop = rect.top + window.scrollY;
+  const articleHeight = Math.max(articleElement.scrollHeight, 1);
+  const viewportBottom = window.scrollY + window.innerHeight;
+  const consumed = viewportBottom - articleTop;
+  return Math.max(0, Math.min(consumed / articleHeight, 1));
 };
 
 const formatDate = (value?: string) => {
@@ -82,7 +107,14 @@ const BlogPostPage: React.FC = () => {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [activeHeading, setActiveHeading] = useState<string | null>(null);
   const [shareFeedback, setShareFeedback] = useState<string>("");
-  const { trackOpen, trackReadProgress, trackReadComplete, trackBookmark } = useBlogTracking();
+  const [engagement, setEngagement] = useState<BlogEngagementSummary | null>(null);
+  const [postStats, setPostStats] = useState<BlogPostStats | null>(null);
+  const [reactionLoading, setReactionLoading] = useState<string | null>(null);
+  const viewTrackedRef = useRef(false);
+  const interactedRef = useRef(false);
+  const readTrackedRef = useRef(false);
+  const { trackBookmark } = useBlogTracking();
+  const reactions = ["👍", "❤️", "🔥", "🎮", "👀"];
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -100,50 +132,125 @@ const BlogPostPage: React.FC = () => {
         const response = await blogService.getPostBySlug(slug);
         setPost(response.post);
         setVersion(response.version);
+        setPostStats(response.stats ?? {
+          postId: response.post.id,
+          viewsCount: response.post.viewCount ?? 0,
+          completedReadsCount: response.post.completedReadsCount ?? 0
+        });
       } catch (fetchError) {
         console.error(fetchError);
         setPost(null);
         setVersion(null);
+        setPostStats(null);
         setError("Unable to load blog post.");
       } finally {
         setLoading(false);
       }
     };
 
+    viewTrackedRef.current = false;
+    interactedRef.current = false;
     fetchPost();
   }, [blogService, slug]);
 
   useEffect(() => {
-    if (!post) {
-      return;
-    }
-    trackOpen(post.id);
-  }, [post, trackOpen]);
+    interactedRef.current = false;
+    const markInteraction = () => {
+      interactedRef.current = true;
+    };
+
+    window.addEventListener("scroll", markInteraction, { passive: true });
+    window.addEventListener("keydown", markInteraction);
+    window.addEventListener("pointerdown", markInteraction);
+
+    return () => {
+      window.removeEventListener("scroll", markInteraction);
+      window.removeEventListener("keydown", markInteraction);
+      window.removeEventListener("pointerdown", markInteraction);
+    };
+  }, [slug]);
 
   useEffect(() => {
-    if (!post) {
+    if (!post || !slug || viewTrackedRef.current) {
       return;
     }
 
-    const start = Date.now();
-    const minReadTimeMs = 30000;
+    let visibleMs = 0;
     const interval = window.setInterval(() => {
-      const doc = document.documentElement;
-      const scrollTop = window.scrollY || doc.scrollTop;
-      const viewportHeight = window.innerHeight;
-      const scrollHeight = doc.scrollHeight;
-      const scrollDepth = scrollHeight ? Math.min((scrollTop + viewportHeight) / scrollHeight, 1) : 0;
-      const dwellMs = Date.now() - start;
-
-      trackReadProgress(post.id, scrollDepth, dwellMs);
-
-      if (scrollDepth >= 0.8 && dwellMs >= minReadTimeMs) {
-        trackReadComplete(post.id, dwellMs);
+      if (document.visibilityState === "visible") {
+        visibleMs += 500;
       }
-    }, 4000);
+
+      if (visibleMs < 5000 || !interactedRef.current || viewTrackedRef.current) {
+        return;
+      }
+
+      viewTrackedRef.current = true;
+      window.clearInterval(interval);
+      blogService.trackPostView({
+        slug,
+        anonId: getAnonId(),
+        sessionId: getSessionId(),
+        isVisible: true,
+        hasInteraction: true,
+        activeDwellMs: visibleMs
+      })
+        .then((stats) => setPostStats(stats))
+        .catch((trackingError) => {
+          viewTrackedRef.current = false;
+          console.warn("Failed to track post view", trackingError);
+        });
+    }, 500);
 
     return () => window.clearInterval(interval);
-  }, [post, trackReadComplete, trackReadProgress]);
+  }, [blogService, post, slug]);
+
+  useEffect(() => {
+    if (!post || !slug) {
+      return;
+    }
+
+    if (getSessionGuard(READ_TRACK_KEY, slug)) {
+      readTrackedRef.current = true;
+      return;
+    }
+
+    readTrackedRef.current = false;
+    let visibleMs = 0;
+    const minReadTimeMs = 10000;
+    const interval = window.setInterval(() => {
+      if (readTrackedRef.current || document.visibilityState !== "visible") {
+        return;
+      }
+
+      const articleElement = document.getElementById("post-content");
+      if (!(articleElement instanceof HTMLElement)) {
+        return;
+      }
+
+      visibleMs += 500;
+      const scrollDepth = getArticleReadProgress(articleElement);
+      const dwellMs = visibleMs;
+
+      if (scrollDepth >= 0.7 && dwellMs >= minReadTimeMs) {
+        readTrackedRef.current = true;
+        setSessionGuard(READ_TRACK_KEY, slug);
+        blogService.trackCompletedRead({
+          slug,
+          anonId: getAnonId(),
+          sessionKey: getSessionId()
+        })
+          .then((stats) => setPostStats(stats))
+          .catch((trackingError) => {
+            readTrackedRef.current = false;
+            window.sessionStorage.removeItem(`${READ_TRACK_KEY}:${slug}`);
+            console.warn("Failed to track completed read", trackingError);
+          });
+      }
+    }, 500);
+
+    return () => window.clearInterval(interval);
+  }, [blogService, post, slug]);
 
   useEffect(() => {
     const fetchRelated = async () => {
@@ -228,6 +335,45 @@ const BlogPostPage: React.FC = () => {
 
     return () => observer.disconnect();
   }, [articleContent]);
+
+  useEffect(() => {
+    const fetchEngagement = async () => {
+      if (!post) {
+        setEngagement(null);
+        return;
+      }
+
+      try {
+        const items = await blogService.getEngagementSummary([post.id], getAnonId());
+        setEngagement(items[0] ?? null);
+      } catch (engagementError) {
+        console.warn("Failed to load engagement summary", engagementError);
+      }
+    };
+
+    fetchEngagement();
+  }, [blogService, post]);
+
+  const handleReaction = useCallback(async (reaction: string) => {
+    if (!post) {
+      return;
+    }
+
+    setReactionLoading(reaction);
+    try {
+      const summary = await blogService.setReaction({
+        postId: post.id,
+        reaction,
+        anonId: getAnonId(),
+        sessionId: getSessionId()
+      });
+      setEngagement(summary);
+    } catch (reactionError) {
+      console.warn("Failed to set reaction", reactionError);
+    } finally {
+      setReactionLoading(null);
+    }
+  }, [blogService, post]);
 
   const topic = post?.topics?.[0] ?? post?.tags?.[0];
   const hasMeta = Boolean(post?.authorName || post?.publishedAt || post?.readingTime);
@@ -377,6 +523,7 @@ ${excerptLine}${shareUrl}`;
                   {post.authorName && <span>By {post.authorName}</span>}
                   {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
                   {post.readingTime && <span>{post.readingTime} min read</span>}
+                  {typeof postStats?.viewsCount === "number" && <span>{postStats.viewsCount} views</span>}
                 </div>
               )}
 
@@ -390,6 +537,28 @@ ${excerptLine}${shareUrl}`;
                 <button className="btn btn-ghost" type="button" onClick={() => trackBookmark(post.id)} aria-label="Save article for later">
                   Save for later
                 </button>
+              </div>
+
+              <div className="post-reactions surface" aria-label="Post reactions">
+                <p className="post-reactions__title">React to this post</p>
+                <div className="post-reactions__list">
+                  {reactions.map((emoji) => {
+                    const count = engagement?.reactions?.[emoji] ?? 0;
+                    const isActive = engagement?.myReaction === emoji;
+                    return (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className={`post-reactions__chip ${isActive ? "active" : ""}`}
+                        onClick={() => handleReaction(emoji)}
+                        disabled={Boolean(reactionLoading)}
+                      >
+                        <span>{emoji}</span>
+                        {count > 0 ? <span>{count}</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </header>

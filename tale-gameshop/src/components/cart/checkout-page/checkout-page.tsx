@@ -1,6 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Elements} from '@stripe/react-stripe-js';
-import {loadStripe} from '@stripe/stripe-js';
 import {useCart} from '../../../context/cart-context';
 import CheckoutForm from '../../payments/stripe-container/checkout-form';
 import './checkout-page.css';
@@ -12,8 +11,9 @@ import OrderSummaryCard from '../../../features/checkout/components/OrderSummary
 import StripePaymentCard from '../../../features/checkout/components/StripePaymentCard';
 import {calculateCheckoutTotals} from '../../../features/checkout/utils/checkout-totals';
 import { analyticsClient } from '../../../utils/analytics-client';
+import { createStripePromise } from '../../../utils/stripe-loader';
 
-const stripePromise = loadStripe('pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW');
+const stripePromise = createStripePromise('pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW');
 
 const CheckoutPage: React.FC = () => {
     const {state} = useCart();
@@ -144,13 +144,15 @@ const CheckoutPage: React.FC = () => {
                         </div>
                         <aside className="checkout-page-aside">
                             <StripePaymentCard>
-                                {clientSecret ? (
+                                {clientSecret && stripePromise ? (
                                     <Elements stripe={stripePromise} options={options} mode="payment">
                                         <CheckoutForm clientSecret={clientSecret} />
                                     </Elements>
                                 ) : (
                                     <div className="checkout-page-stripe-placeholder">
-                                        {paymentInitError || 'Payment details will appear once your order total is ready.'}
+                                        {paymentInitError || !stripePromise
+                                            ? (paymentInitError || 'Stripe is temporarily unavailable. Please try again later.')
+                                            : 'Payment details will appear once your order total is ready.'}
                                     </div>
                                 )}
                             </StripePaymentCard>

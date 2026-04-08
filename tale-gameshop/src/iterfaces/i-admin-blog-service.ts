@@ -1,5 +1,80 @@
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../types/blog";
 
+export type AdminBlogPostAnalytics = {
+  postId: string;
+  title: string;
+  slug: string;
+  publicUniqueViews: number;
+  authenticatedUniqueViews: number;
+  guestUniqueViewsTotal: number;
+  guestUniqueViewsCounted: number;
+  guestUniqueViewsExcluded: number;
+  completedReads: number;
+  totalReactions: number;
+  reactionsByEmoji: AdminBlogReactionBreakdown;
+  topReaction: string;
+  viewsTimeline: AdminBlogTimelinePoint[];
+  reactionsTimeline: AdminBlogTimelinePoint[];
+  latestEvents: AdminBlogLatestEvent[];
+};
+
+export type AdminBlogTimelinePoint = {
+  bucketStart: string;
+  count: number;
+  reactionsByEmoji?: AdminBlogReactionBreakdown;
+};
+
+export type AdminBlogLatestEvent = {
+  timestamp: string;
+  actorType: "authenticated" | "guest";
+  actorDisplay: string;
+  eventType: string;
+  reaction?: string;
+};
+
+export type AdminBlogReactionBreakdown = {
+  "👍": number;
+  "❤️": number;
+  "🔥": number;
+  "🎮": number;
+  "👀": number;
+};
+
+export type AdminBlogOverviewAnalytics = {
+  publicUniqueViews: number;
+  authenticatedUniqueViews: number;
+  guestUniqueViewsTotal: number;
+  guestUniqueViewsCounted: number;
+  guestUniqueViewsExcluded: number;
+  completedReads: number;
+  totalReactions: number;
+  topReaction: string;
+  reactionsByEmoji: AdminBlogReactionBreakdown;
+  topPostsByViews: Array<{ postId: string; title: string; slug: string; views: number }>;
+  topPostsByReactions: Array<{ postId: string; title: string; slug: string; reactions: number }>;
+  viewsTimeline: AdminBlogTimelinePoint[];
+  reactionsTimeline: AdminBlogTimelinePoint[];
+  latestEvents: AdminBlogLatestEvent[];
+};
+
+export type AdminBlogBreakdown = {
+  title: string;
+  metric: string;
+  bucket?: string;
+  emoji?: string;
+  items: Array<{
+    postId: string;
+    title: string;
+    slug: string;
+    value: number;
+    publicViews: number;
+    authViews: number;
+    guestViews: number;
+    totalReactions: number;
+    reactionsByEmoji: AdminBlogReactionBreakdown;
+  }>;
+};
+
 export interface IAdminBlogService {
   getPosts(params: {
     page: number;
@@ -17,6 +92,23 @@ export interface IAdminBlogService {
   archivePost(id: string): Promise<BlogPost>;
   getHomeSettings(): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
   setMainHeroPost(postId?: string): Promise<{ mainHeroPostId?: string; updatedAt?: string; updatedBy?: string }>;
+  getViewSettings(): Promise<{
+    countGuestViewsInPublicCounts: boolean;
+    publicUniqueViews: number;
+    authenticatedUniqueViews: number;
+    guestUniqueViewsTotal: number;
+    guestUniqueViewsCounted: number;
+    guestUniqueViewsExcluded: number;
+    guestUniqueViewsNotCountedBySetting: number;
+  }>;
+  updateViewSettings(params: { countGuestViewsInPublicCounts: boolean }): Promise<{ countGuestViewsInPublicCounts: boolean }>;
+  excludeGuestViews(): Promise<{ modified: number }>;
+  restoreGuestViews(): Promise<{ modified: number }>;
+  deleteGuestViews(): Promise<{ deleted: number }>;
+  getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics>;
+  getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]>;
+  getOverviewAnalytics(): Promise<AdminBlogOverviewAnalytics>;
+  getOverviewBreakdown(params: { metric: string; bucket?: string; emoji?: string }): Promise<AdminBlogBreakdown>;
 }
 
 export type AdminBlogPayload = {
