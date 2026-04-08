@@ -2,6 +2,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 
 namespace SuperBot.WebApi.Services
@@ -71,8 +72,19 @@ namespace SuperBot.WebApi.Services
                     ["client_secret"] = ClientSecret
                 });
 
-                var response = await _httpClient.PostAsync($"{BaseUrl}/realms/{Realm}/protocol/openid-connect/token", content);
-                await EnsureSuccessfulResponse(response, "Unable to request Keycloak admin access token.");
+                using var response = await _httpClient.PostAsync($"{BaseUrl}/realms/{Realm}/protocol/openid-connect/token", content);
+                try
+                {
+                    await EnsureSuccessfulResponse(response, "Unable to request Keycloak admin access token.");
+                }
+                catch (KeycloakAdminApiException ex) when (
+                    ex.StatusCode == HttpStatusCode.Unauthorized ||
+                    ex.Message.Contains("invalid_client", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("unauthorized_client", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new KeycloakAdminConfigurationException(
+                        "Unable to obtain Keycloak admin token. Check Keycloak:Admin:ClientId/ClientSecret and ensure service account is enabled.");
+                }
 
                 var payload = await response.Content.ReadFromJsonAsync<TokenResponse>();
                 _accessToken = payload?.AccessToken;
@@ -182,16 +194,33 @@ namespace SuperBot.WebApi.Services
 
         public async Task UpdateEmailAsync(string userId, string email, bool emailVerified)
         {
+            var userRepresentation = await GetUserRepresentationAsync(userId);
+            if (userRepresentation == null)
+            {
+                throw new KeycloakAdminApiException(HttpStatusCode.NotFound, "User not found.");
+            }
+
+            userRepresentation["email"] = email;
+            userRepresentation["emailVerified"] = emailVerified;
+
             using var request = await CreateAdminRequestAsync(HttpMethod.Put, $"{AdminUsersPath}/{userId}");
-            request.Content = JsonContent.Create(new { email, emailVerified });
+            request.Content = JsonContent.Create(userRepresentation);
             using var response = await _httpClient.SendAsync(request);
             await EnsureSuccessfulResponse(response, "Unable to update email.");
         }
 
         public async Task DisableUserAsync(string userId)
         {
+            var userRepresentation = await GetUserRepresentationAsync(userId);
+            if (userRepresentation == null)
+            {
+                throw new KeycloakAdminApiException(HttpStatusCode.NotFound, "User not found.");
+            }
+
+            userRepresentation["enabled"] = false;
+
             using var request = await CreateAdminRequestAsync(HttpMethod.Put, $"{AdminUsersPath}/{userId}");
-            request.Content = JsonContent.Create(new { enabled = false });
+            request.Content = JsonContent.Create(userRepresentation);
             using var response = await _httpClient.SendAsync(request);
             await EnsureSuccessfulResponse(response, "Unable to deactivate account.");
         }
@@ -201,7 +230,7 @@ namespace SuperBot.WebApi.Services
             EnsureConfigured();
             if (string.IsNullOrWhiteSpace(PublicClientId))
             {
-                return false;
+                throw new KeycloakAdminConfigurationException("Keycloak:Admin:PublicClientId is required for password validation.");
             }
 
             var content = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -213,7 +242,34 @@ namespace SuperBot.WebApi.Services
             });
 
             using var response = await _httpClient.PostAsync($"{BaseUrl}/realms/{Realm}/protocol/openid-connect/token", content);
-            return response.IsSuccessStatusCode;
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+
+            var details = await response.Content.ReadAsStringAsync();
+            var tokenError = ParseTokenError(details);
+
+            if (response.StatusCode == HttpStatusCode.BadRequest && string.Equals(tokenError.Error, "invalid_grant", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadRequest && string.Equals(tokenError.Error, "unauthorized_client", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new KeycloakAdminApiException(
+                    HttpStatusCode.BadRequest,
+                    "Direct Access Grants are disabled for the configured PublicClientId. Enable Direct Access Grants in Keycloak to validate current password.");
+            }
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized || string.Equals(tokenError.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new KeycloakAdminConfigurationException("Keycloak client credentials are invalid for password validation flow.");
+            }
+
+            var reason = TryExtractKeycloakError(details);
+            var message = string.IsNullOrWhiteSpace(reason) ? "Unable to validate password with Keycloak." : reason;
+            throw new KeycloakAdminApiException(response.StatusCode, message);
         }
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -259,6 +315,11 @@ namespace SuperBot.WebApi.Services
                 {
                     return error.GetString();
                 }
+
+                if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                {
+                    return message.GetString();
+                }
             }
             catch
             {
@@ -272,6 +333,45 @@ namespace SuperBot.WebApi.Services
         {
             public string AccessToken { get; set; } = string.Empty;
             public int ExpiresIn { get; set; }
+        }
+
+        private async Task<JsonObject?> GetUserRepresentationAsync(string userId)
+        {
+            using var request = await CreateAdminRequestAsync(HttpMethod.Get, $"{AdminUsersPath}/{userId}");
+            using var response = await _httpClient.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            await EnsureSuccessfulResponse(response, "Unable to load Keycloak user profile.");
+            var payload = await response.Content.ReadAsStringAsync();
+            return JsonNode.Parse(payload) as JsonObject;
+        }
+
+        private static (string? Error, string? ErrorDescription) ParseTokenError(string payload)
+        {
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return (null, null);
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(payload);
+                var root = doc.RootElement;
+                var error = root.TryGetProperty("error", out var errorProp) && errorProp.ValueKind == JsonValueKind.String
+                    ? errorProp.GetString()
+                    : null;
+                var description = root.TryGetProperty("error_description", out var descProp) && descProp.ValueKind == JsonValueKind.String
+                    ? descProp.GetString()
+                    : null;
+                return (error, description);
+            }
+            catch
+            {
+                return (null, payload);
+            }
         }
     }
 

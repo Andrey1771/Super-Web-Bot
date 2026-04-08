@@ -197,6 +197,136 @@ public class AccountSecurityControllerTests
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, objectResult.StatusCode);
     }
 
+    [Fact]
+    public async Task ChangeEmail_UpdatesEmailAndSendsVerifyEmail()
+    {
+        var updatedEmailSeen = false;
+        var verifyTriggered = false;
+
+        var handler = new StubHttpMessageHandler((request) =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/protocol/openid-connect/token"))
+            {
+                if (request.Content != null)
+                {
+                    var body = request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    if (body.Contains("grant_type=password"))
+                    {
+                        return Json(HttpStatusCode.OK, new { access_token = "password-token", expires_in = 3600 });
+                    }
+                }
+
+                return Json(HttpStatusCode.OK, new { access_token = "admin-token", expires_in = 3600 });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1") && request.Method == HttpMethod.Get)
+            {
+                return Json(HttpStatusCode.OK, new { id = "user-1", username = "user-1", enabled = true, email = "old@mail.com", emailVerified = true });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1") && request.Method == HttpMethod.Put)
+            {
+                var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                updatedEmailSeen = body.Contains("\"email\":\"new@mail.com\"") && body.Contains("\"emailVerified\":false");
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1/send-verify-email") && request.Method == HttpMethod.Put)
+            {
+                verifyTriggered = true;
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var controller = CreateController(handler, ValidOptions());
+
+        var result = await controller.ChangeEmail(new ChangeEmailRequest
+        {
+            NewEmail = "new@mail.com",
+            Password = "valid-password"
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(ok.Value);
+        Assert.True(updatedEmailSeen);
+        Assert.True(verifyTriggered);
+    }
+
+    [Fact]
+    public async Task SendResetPasswordEmail_UsesExecuteActionsEmailUpdatePassword()
+    {
+        var updatePasswordActionTriggered = false;
+
+        var handler = new StubHttpMessageHandler((request) =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/protocol/openid-connect/token"))
+            {
+                return Json(HttpStatusCode.OK, new { access_token = "admin-token", expires_in = 3600 });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1/execute-actions-email") && request.Method == HttpMethod.Put)
+            {
+                var query = request.RequestUri.Query;
+                var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                updatePasswordActionTriggered = query.Contains("client_id=public") &&
+                                               query.Contains("redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Faccount%2Fsecurity") &&
+                                               body.Contains("UPDATE_PASSWORD");
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var controller = CreateController(handler, ValidOptions());
+
+        var result = await controller.SendResetPasswordEmail();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(ok.Value);
+        Assert.True(updatePasswordActionTriggered);
+    }
+
+    [Fact]
+    public async Task GetStatus_NormalizesSessionTimestampsToMilliseconds()
+    {
+        var handler = new StubHttpMessageHandler((request) =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/protocol/openid-connect/token"))
+            {
+                return Json(HttpStatusCode.OK, new { access_token = "token", expires_in = 3600 });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1") && request.Method == HttpMethod.Get)
+            {
+                return Json(HttpStatusCode.OK, new { id = "user-1", email = "user@mail.com", emailVerified = true });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1/credentials"))
+            {
+                return Json(HttpStatusCode.OK, new[] { new { type = "otp" } });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1/sessions"))
+            {
+                return Json(HttpStatusCode.OK, new[] { new { id = "s1", ipAddress = "127.0.0.1", start = 1710000000L, lastAccess = 1710000300L, browser = "Chrome", os = "Windows" } });
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var controller = CreateController(handler, ValidOptions());
+
+        var result = await controller.GetStatus();
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<AccountSecurityStatusResponse>(ok.Value);
+
+        Assert.Single(payload.Sessions);
+        Assert.Equal(1710000000000L, payload.Sessions[0].Start);
+        Assert.Equal(1710000300000L, payload.Sessions[0].LastAccess);
+    }
+
     private static AccountSecurityController CreateController(HttpMessageHandler handler, KeycloakAdminOptions options)
     {
         var client = new KeycloakAdminClient(

@@ -69,8 +69,8 @@ namespace SuperBot.WebApi.Controllers
                     {
                         Id = session.Id,
                         IpAddress = session.IpAddress,
-                        Start = session.Start,
-                        LastAccess = session.LastAccess,
+                        Start = NormalizeEpochToMilliseconds(session.Start),
+                        LastAccess = NormalizeEpochToMilliseconds(session.LastAccess),
                         Device = BuildDeviceLabel(session)
                     }).ToList()
                 });
@@ -134,12 +134,7 @@ namespace SuperBot.WebApi.Controllers
             try
             {
                 await _keycloakAdminClient.UpdateEmailAsync(userId, request.NewEmail, false);
-                await _keycloakAdminClient.ExecuteActionsEmailAsync(
-                    userId,
-                    new[] { "VERIFY_EMAIL" },
-                    BuildRedirectUri(),
-                    BuildPublicClientId()
-                );
+                await _keycloakAdminClient.SendVerifyEmailAsync(userId);
 
                 return Ok(new SecurityActionResponse
                 {
@@ -505,6 +500,11 @@ namespace SuperBot.WebApi.Controllers
             var browser = string.IsNullOrWhiteSpace(session.Browser) ? "Unknown browser" : session.Browser;
             var os = string.IsNullOrWhiteSpace(session.Os) ? "Unknown OS" : session.Os;
             return $"{browser} on {os}";
+        }
+
+        private static long NormalizeEpochToMilliseconds(long value)
+        {
+            return value < 1_000_000_000_000 ? value * 1000 : value;
         }
     }
 

@@ -37,7 +37,8 @@ namespace SuperBot.WebApi.Services
                 return null;
             }
 
-            return "Security integration unavailable. Set Keycloak:Admin:BaseUrl, Realm, ClientId and ClientSecret.";
+            return "Security integration unavailable. Set Keycloak:Admin:BaseUrl, Realm, ClientId and ClientSecret. " +
+                   "For password validation flow also configure PublicClientId with Direct Access Grants enabled.";
         }
     }
 }
