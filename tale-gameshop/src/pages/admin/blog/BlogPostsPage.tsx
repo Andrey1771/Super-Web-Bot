@@ -133,10 +133,9 @@ const BlogPostsPage: React.FC = () => {
     return items.find((item) => item.id === mainHeroPostId) ?? mainHeroPostPreview;
   }, [items, mainHeroPostId, mainHeroPostPreview]);
 
-  const hasViewSettings = viewSettings !== null;
-  const canExcludeGuestViews = !hasViewSettings || (viewSettings?.guestUniqueViewsCounted ?? 0) > 0;
-  const canRestoreGuestViews = !hasViewSettings || (viewSettings?.guestUniqueViewsExcluded ?? 0) > 0;
-  const canDeleteGuestViews = !hasViewSettings || (viewSettings?.guestUniqueViewsTotal ?? 0) > 0;
+  const canExcludeGuestViews = (viewSettings?.guestUniqueViewsCounted ?? 0) > 0;
+  const canRestoreGuestViews = (viewSettings?.guestUniqueViewsExcluded ?? 0) > 0;
+  const canDeleteGuestViews = (viewSettings?.guestUniqueViewsTotal ?? 0) > 0;
 
   const handleToggleGuestViews = async (nextValue: boolean) => {
     try {
@@ -435,9 +434,9 @@ const BlogPostsPage: React.FC = () => {
             </button>
           </div>
           <div className="flex flex-col gap-1 text-xs text-slate-500">
-            {hasViewSettings && !canExcludeGuestViews && <p>No counted guest views available to exclude.</p>}
-            {hasViewSettings && !canRestoreGuestViews && <p>No manually excluded guest views available to restore.</p>}
-            {hasViewSettings && !canDeleteGuestViews && <p>No guest views available to delete.</p>}
+            {!canExcludeGuestViews && <p>No counted guest views available to exclude.</p>}
+            {!canRestoreGuestViews && <p>No manually excluded guest views available to restore.</p>}
+            {!canDeleteGuestViews && <p>No guest unique views available to delete.</p>}
           </div>
         </div>
       </Card>
