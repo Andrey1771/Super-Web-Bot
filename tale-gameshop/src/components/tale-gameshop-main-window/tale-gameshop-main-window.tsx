@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import TaleGameshopHeader from "../header/tale-gameshop-header/tale-gameshop-header";
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
 import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-page";
@@ -40,7 +40,6 @@ import AnalyticsOverviewPage from "../../pages/admin/analytics/AnalyticsOverview
 import AnalyticsSettingsPage from "../../pages/admin/analytics/AnalyticsSettingsPage";
 import AnalyticsProvider from "../analytics/AnalyticsProvider";
 import CookieBanner from "../analytics/CookieBanner";
-import { analyticsClient } from "../../utils/analytics-client";
 import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
 import PromoCodesPage from "../../pages/admin/PromoCodesPage";
 import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
@@ -50,15 +49,11 @@ export default function TaleGameshopMainWindow() {
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith("/admin");
 
-    useEffect(() => {
-        analyticsClient.trackPageView(location.pathname + location.search, document.title);
-    }, [location.pathname, location.search]);
-
     return (
-        <div>
-            {!isAdminRoute && <TaleGameshopHeader></TaleGameshopHeader>}
-            {!isAdminRoute && <div className="main-page-down-header-padding"></div>}
-                {!isAdminRoute && <AnalyticsProvider />}
+        <AnalyticsProvider isAdminRoute={isAdminRoute}>
+            <div>
+                {!isAdminRoute && <TaleGameshopHeader></TaleGameshopHeader>}
+                {!isAdminRoute && <div className="main-page-down-header-padding"></div>}
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
@@ -118,9 +113,10 @@ export default function TaleGameshopMainWindow() {
                         }
                     />
                 </Routes>
-            {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
-            {!isAdminRoute && <ChatWidget />}
-            {!isAdminRoute && <CookieBanner />}
-        </div>
+                {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
+                {!isAdminRoute && <ChatWidget />}
+                {!isAdminRoute && <CookieBanner />}
+            </div>
+        </AnalyticsProvider>
     );
 }

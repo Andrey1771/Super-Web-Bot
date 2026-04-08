@@ -57,6 +57,21 @@
   color: var(--color-primary);
 }
 
+
+.footer-link-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #c9cce1;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.footer-link-button:hover {
+  color: var(--color-primary);
+}
+
 .language-switch {
   display: inline-flex;
   align-items: center;

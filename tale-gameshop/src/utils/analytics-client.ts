@@ -1,5 +1,5 @@
 import type { AnalyticsPublicSettings } from "../types/analytics";
-import { shouldLoadAnalytics } from "./analytics-consent";
+import { isAnalyticsAvailable } from "./analytics-state";
 
 type EcommerceItem = {
   item_id: string;
@@ -18,6 +18,11 @@ type EcommercePayload = {
 
 type EventPayload = Record<string, string | number | boolean | undefined>;
 
+type PageViewPayload = {
+  path: string;
+  title?: string;
+};
+
 declare global {
   interface Window {
     dataLayer?: Array<any>;
@@ -27,7 +32,10 @@ declare global {
 }
 
 let settings: AnalyticsPublicSettings | null = null;
+let consentGranted = false;
 let initialized = false;
+let initializingPromise: Promise<void> | null = null;
+let pendingPageView: PageViewPayload | null = null;
 
 const loadScript = (src: string, id: string) =>
   new Promise<void>((resolve, reject) => {
@@ -35,6 +43,7 @@ const loadScript = (src: string, id: string) =>
       resolve();
       return;
     }
+
     const script = document.createElement("script");
     script.id = id;
     script.async = true;
@@ -72,53 +81,105 @@ const initYandex = async (counterId: string) => {
   });
 };
 
-const canTrack = () => !!settings && settings.isEnabled && shouldLoadAnalytics();
+const canInitialize = () => Boolean(consentGranted && isAnalyticsAvailable(settings));
+
+const trackPageViewNow = (path: string, title?: string) => {
+  if (!settings) {
+    return;
+  }
+
+  if (settings.gaMeasurementId && window.gtag) {
+    window.gtag("event", "page_view", {
+      page_location: window.location.href,
+      page_path: path,
+      page_title: title ?? document.title,
+    });
+  }
+
+  if (settings.yandexCounterId && window.ym) {
+    window.ym(Number(settings.yandexCounterId), "hit", path, { title: title ?? document.title });
+  }
+};
+
+const flushPendingPageView = () => {
+  if (!pendingPageView || !initialized || !canInitialize()) {
+    return;
+  }
+
+  const nextPageView = pendingPageView;
+  pendingPageView = null;
+  trackPageViewNow(nextPageView.path, nextPageView.title);
+};
 
 export const analyticsClient = {
   configure(nextSettings: AnalyticsPublicSettings | null) {
     settings = nextSettings;
-    if (settings && canTrack()) {
-      this.initialize();
+    if (!isAnalyticsAvailable(settings)) {
+      pendingPageView = null;
+      return;
+    }
+
+    if (consentGranted) {
+      void this.initialize();
+    }
+  },
+
+  setConsent(granted: boolean) {
+    consentGranted = granted;
+
+    if (!granted) {
+      pendingPageView = null;
+      return;
+    }
+
+    if (isAnalyticsAvailable(settings)) {
+      void this.initialize();
     }
   },
 
   async initialize() {
-    if (initialized || !settings || !canTrack()) {
+    if (initialized || initializingPromise || !settings || !canInitialize()) {
       return;
     }
 
-    if (settings.gaMeasurementId) {
-      await initGa(settings.gaMeasurementId);
+    initializingPromise = (async () => {
+      if (settings?.gaMeasurementId) {
+        await initGa(settings.gaMeasurementId);
+      }
+      if (settings?.gtmContainerId) {
+        await initGtm(settings.gtmContainerId);
+      }
+      if (settings?.yandexCounterId) {
+        await initYandex(settings.yandexCounterId);
+      }
+
+      initialized = true;
+      flushPendingPageView();
+    })();
+
+    try {
+      await initializingPromise;
+    } finally {
+      initializingPromise = null;
     }
-    if (settings.gtmContainerId) {
-      await initGtm(settings.gtmContainerId);
-    }
-    if (settings.yandexCounterId) {
-      await initYandex(settings.yandexCounterId);
-    }
-    initialized = true;
   },
 
   trackPageView(path: string, title?: string) {
-    if (!canTrack() || !settings) {
+    if (!consentGranted || !isAnalyticsAvailable(settings)) {
       return;
     }
 
-    if (settings.gaMeasurementId && window.gtag) {
-      window.gtag("event", "page_view", {
-        page_location: window.location.href,
-        page_path: path,
-        page_title: title ?? document.title,
-      });
+    if (!initialized) {
+      pendingPageView = { path, title };
+      void this.initialize();
+      return;
     }
 
-    if (settings.yandexCounterId && window.ym) {
-      window.ym(Number(settings.yandexCounterId), "hit", path, { title: title ?? document.title });
-    }
+    trackPageViewNow(path, title);
   },
 
   trackEvent(name: string, params: EventPayload = {}) {
-    if (!canTrack() || !settings) {
+    if (!canInitialize() || !initialized || !settings) {
       return;
     }
 
@@ -133,7 +194,7 @@ export const analyticsClient = {
   },
 
   trackEcommerce(eventName: string, payload: EcommercePayload) {
-    if (!canTrack() || !settings) {
+    if (!canInitialize() || !initialized || !settings) {
       return;
     }
 
@@ -153,5 +214,13 @@ export const analyticsClient = {
         })),
       });
     }
+  },
+
+  resetForTests() {
+    settings = null;
+    consentGranted = false;
+    initialized = false;
+    initializingPromise = null;
+    pendingPageView = null;
   },
 };
