@@ -1,4 +1,5 @@
 using AutoMapper;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -26,6 +27,16 @@ namespace SuperBot.Infrastructure.Repositories
         public async Task<BlogViewSettings> UpsertAsync(BlogViewSettings settings)
         {
             var db = _mapper.Map<BlogViewSettingsDb>(settings);
+            var existing = await _settings.Find(_ => true).FirstOrDefaultAsync();
+            if (existing != null)
+            {
+                db.Id = existing.Id;
+            }
+            else if (string.IsNullOrWhiteSpace(db.Id) || !ObjectId.TryParse(db.Id, out _))
+            {
+                db.Id = ObjectId.GenerateNewId().ToString();
+            }
+
             await _settings.ReplaceOneAsync(item => item.Id == db.Id, db, new ReplaceOptions { IsUpsert = true });
             return _mapper.Map<BlogViewSettings>(db);
         }
