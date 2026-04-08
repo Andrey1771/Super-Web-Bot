@@ -500,6 +500,31 @@
     font-size: 13px;
 }
 
+.security-unavailable-banner {
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, #ffffff);
+    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+    border-radius: var(--radius-lg);
+    padding: var(--space-16) var(--space-18);
+    margin-bottom: var(--space-16);
+}
+
+.security-unavailable-banner h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+}
+
+.security-unavailable-banner p {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.security-unavailable-hint {
+    margin-top: 6px !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px !important;
+}
+
 .security-toast {
     position: fixed;
     bottom: 24px;

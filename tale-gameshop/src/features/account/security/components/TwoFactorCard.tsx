@@ -6,7 +6,7 @@ type TwoFactorCardProps = {
     isEnabled: boolean;
     backupCodesGenerated?: boolean | null;
     canManage: boolean;
-    unavailableReason?: string;
+    readOnlyHint?: string;
     isLoading: boolean;
     onPrimaryAction: () => void;
 };
@@ -15,7 +15,7 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
     isEnabled,
     backupCodesGenerated,
     canManage,
-    unavailableReason,
+    readOnlyHint,
     isLoading,
     onPrimaryAction
 }) => {
@@ -51,8 +51,8 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
             <p className="security-muted">
                 {backupLabel}
             </p>
-            {!canManage && unavailableReason && (
-                <p className="security-muted">{unavailableReason}</p>
+            {!canManage && readOnlyHint && (
+                <p className="security-muted">{readOnlyHint}</p>
             )}
         </div>
     );

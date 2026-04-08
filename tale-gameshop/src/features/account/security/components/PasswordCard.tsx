@@ -7,7 +7,7 @@ type PasswordCardProps = {
     lastUpdatedLabel: string;
     canChangeInline: boolean;
     canSendResetEmail: boolean;
-    unavailableReason?: string;
+    readOnlyHint?: string;
     onSubmit: (payload: { currentPassword: string; newPassword: string; confirmPassword: string }) => void;
     onReset: () => void;
 };
@@ -17,7 +17,7 @@ const PasswordCard: React.FC<PasswordCardProps> = ({
     lastUpdatedLabel,
     canChangeInline,
     canSendResetEmail,
-    unavailableReason,
+    readOnlyHint,
     onSubmit,
     onReset
 }) => {
@@ -105,7 +105,7 @@ const PasswordCard: React.FC<PasswordCardProps> = ({
                     <button type="button" className="btn btn-primary security-update-btn" onClick={handleSubmit} disabled={isSubmitting || !canChangeInline}>
                         Update password
                     </button>
-                    {!canChangeInline && unavailableReason && <p className="security-muted">{unavailableReason}</p>}
+                    {!canChangeInline && readOnlyHint && <p className="security-muted">{readOnlyHint}</p>}
                 </div>
                 <div className="security-password-info">
                         <div className="security-info-card">

@@ -76,6 +76,7 @@ const AccountSecurityPage: React.FC = () => {
     const [isEnable2faOpen, setIsEnable2faOpen] = useState(false);
     const [isManage2faOpen, setIsManage2faOpen] = useState(false);
     const [twoFactorAction, setTwoFactorAction] = useState<SecurityActionResponse | null>(null);
+    const readOnlyHint = 'Unavailable in current environment.';
 
     const showToast = useCallback((message: string) => {
         setToast(message);
@@ -99,6 +100,10 @@ const AccountSecurityPage: React.FC = () => {
     }, [fetchStatus]);
 
     const handleResendEmail = async () => {
+        if (!status?.capabilities?.canResendVerificationEmail) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             await resendVerificationEmail();
@@ -111,6 +116,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handleChangeEmail = async (payload: { newEmail: string; password: string }) => {
+        if (!status?.capabilities?.canChangeEmail) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await changeEmail(payload);
@@ -125,6 +134,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handlePasswordChange = async (payload: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+        if (!status?.capabilities?.canChangePasswordInline) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await changePassword({
@@ -145,6 +158,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handlePasswordReset = async () => {
+        if (!status?.capabilities?.canSendPasswordResetEmail) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await sendResetPasswordEmail();
@@ -157,6 +174,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handleSetup2fa = async () => {
+        if (!status?.capabilities?.canManageTwoFactor) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await setupTwoFactor();
@@ -178,6 +199,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handleLogoutSession = async (sessionId: string) => {
+        if (!status?.capabilities?.canManageSessions) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             await revokeSession(sessionId);
@@ -191,6 +216,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handleLogoutAll = async () => {
+        if (!status?.capabilities?.canManageSessions) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             await revokeAllSessions();
@@ -204,6 +233,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handleDownloadReport = async () => {
+        if (!status?.capabilities?.canDownloadSecurityReport) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const blob = await downloadSecurityReport();
@@ -222,6 +255,10 @@ const AccountSecurityPage: React.FC = () => {
     };
 
     const handleDeactivateAccount = async (payload: { confirmation: string; password: string }) => {
+        if (!status?.capabilities?.canDeactivateAccount) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await deactivateAccount(payload);
@@ -238,6 +275,7 @@ const AccountSecurityPage: React.FC = () => {
     const bannerVisible = Boolean(status?.keycloakAdminConfigured) && (!status?.twoFactorEnabled || !status?.emailVerified);
     const passwordUpdatedLabel = useMemo(() => getPasswordInfoLabel(status?.passwordUpdatedAt ?? null), [status?.passwordUpdatedAt]);
     const unavailableConfigurationReason = status?.unavailableReasons?.configuration;
+    const isReadOnly = status?.keycloakAdminConfigured === false;
 
     return (
         <AccountShell
@@ -256,8 +294,12 @@ const AccountSecurityPage: React.FC = () => {
             )}
             headerTestId="security-header"
         >
-            {!status?.keycloakAdminConfigured && unavailableConfigurationReason && (
-                <div className="security-info-banner">{unavailableConfigurationReason}</div>
+            {isReadOnly && (
+                <div className="security-unavailable-banner">
+                    <h3>Read-only security status</h3>
+                    <p>Keycloak Admin security integration is not configured. Some actions are unavailable in this environment.</p>
+                    <p className="security-unavailable-hint">{unavailableConfigurationReason}</p>
+                </div>
             )}
             <SecurityBanner show={bannerVisible} onSetup2fa={handleSetup2fa} />
 
@@ -266,13 +308,16 @@ const AccountSecurityPage: React.FC = () => {
                     isEnabled={Boolean(status?.twoFactorEnabled)}
                     backupCodesGenerated={status?.backupCodesGenerated}
                     canManage={Boolean(status?.capabilities?.canManageTwoFactor)}
-                    unavailableReason={unavailableConfigurationReason}
+                    readOnlyHint={!status?.capabilities?.canManageTwoFactor ? readOnlyHint : undefined}
                     isLoading={isLoading}
                     onPrimaryAction={status?.twoFactorEnabled ? handleOpenManage2fa : handleSetup2fa}
                 />
                 <EmailVerificationCard
                     emailVerified={Boolean(status?.emailVerified)}
-                    isLoading={isLoading || isSubmitting || !status?.capabilities?.canChangeEmail}
+                    isLoading={isLoading || isSubmitting}
+                    canResendVerification={Boolean(status?.capabilities?.canResendVerificationEmail)}
+                    canChangeEmail={Boolean(status?.capabilities?.canChangeEmail)}
+                    readOnlyHint={isReadOnly ? readOnlyHint : undefined}
                     onResend={handleResendEmail}
                     onChangeEmail={() => setIsChangeEmailOpen(true)}
                 />
@@ -283,7 +328,7 @@ const AccountSecurityPage: React.FC = () => {
                 lastUpdatedLabel={passwordUpdatedLabel}
                 canChangeInline={Boolean(status?.capabilities?.canChangePasswordInline)}
                 canSendResetEmail={Boolean(status?.capabilities?.canSendPasswordResetEmail)}
-                unavailableReason={unavailableConfigurationReason}
+                readOnlyHint={!status?.capabilities?.canChangePasswordInline ? readOnlyHint : undefined}
                 onSubmit={handlePasswordChange}
                 onReset={handlePasswordReset}
             />
@@ -293,13 +338,14 @@ const AccountSecurityPage: React.FC = () => {
                     sessions={status?.sessions ?? []}
                     isLoading={isLoading}
                     canManageSessions={Boolean(status?.capabilities?.canManageSessions)}
-                    unavailableReason={unavailableConfigurationReason}
+                    readOnlyHint={!status?.capabilities?.canManageSessions ? readOnlyHint : undefined}
                     onLogoutSession={handleLogoutSession}
                     onLogoutAll={handleLogoutAll}
                 />
                 <DangerZoneCard
                     canDeactivate={Boolean(status?.capabilities?.canDeactivateAccount)}
-                    unavailableReason={unavailableConfigurationReason}
+                    canDownloadReport={Boolean(status?.capabilities?.canDownloadSecurityReport)}
+                    readOnlyHint={isReadOnly ? readOnlyHint : undefined}
                     onDeactivate={() => setIsDeactivateAccountOpen(true)}
                     onDownloadReport={handleDownloadReport}
                 />

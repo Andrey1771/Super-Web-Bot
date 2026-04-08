@@ -35,6 +35,8 @@ const statusFixture = {
         canSendPasswordResetEmail: true,
         canManageSessions: true,
         canChangeEmail: true,
+        canResendVerificationEmail: true,
+        canDownloadSecurityReport: true,
         canDeactivateAccount: true
     },
     unavailableReasons: {
@@ -82,6 +84,8 @@ describe('AccountSecurityPage', () => {
             capabilities: {
                 ...statusFixture.capabilities,
                 canManageTwoFactor: false,
+                canResendVerificationEmail: false,
+                canDownloadSecurityReport: false,
                 canDeactivateAccount: false
             },
             unavailableReasons: {
@@ -97,6 +101,7 @@ describe('AccountSecurityPage', () => {
         );
 
         expect(await screen.findByText('Keycloak admin integration is not configured.')).toBeInTheDocument();
+        expect(screen.getAllByText('Keycloak admin integration is not configured.')).toHaveLength(1);
         expect(screen.getByRole('button', {name: 'Enable 2FA'})).toBeDisabled();
         expect(screen.getByRole('button', {name: 'Deactivate account'})).toBeDisabled();
     });

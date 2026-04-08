@@ -457,6 +457,8 @@ namespace SuperBot.WebApi.Controllers
                 CanSendPasswordResetEmail = isConfigured,
                 CanManageSessions = isConfigured,
                 CanChangeEmail = isConfigured,
+                CanResendVerificationEmail = isConfigured,
+                CanDownloadSecurityReport = isConfigured,
                 CanDeactivateAccount = isConfigured
             };
         }
@@ -527,6 +529,8 @@ namespace SuperBot.WebApi.Controllers
         public bool CanSendPasswordResetEmail { get; set; }
         public bool CanManageSessions { get; set; }
         public bool CanChangeEmail { get; set; }
+        public bool CanResendVerificationEmail { get; set; }
+        public bool CanDownloadSecurityReport { get; set; }
         public bool CanDeactivateAccount { get; set; }
     }
 

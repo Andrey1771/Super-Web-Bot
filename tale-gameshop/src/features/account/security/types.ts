@@ -25,6 +25,8 @@ export type AccountSecurityCapabilities = {
     canSendPasswordResetEmail: boolean;
     canManageSessions: boolean;
     canChangeEmail: boolean;
+    canResendVerificationEmail: boolean;
+    canDownloadSecurityReport: boolean;
     canDeactivateAccount: boolean;
 };
 

@@ -58,6 +58,8 @@ public class AccountSecurityControllerTests
 
         Assert.True(payload.KeycloakAdminConfigured);
         Assert.True(payload.Capabilities.CanManageTwoFactor);
+        Assert.True(payload.Capabilities.CanResendVerificationEmail);
+        Assert.True(payload.Capabilities.CanDownloadSecurityReport);
         Assert.True(payload.TwoFactorEnabled);
         Assert.Null(payload.BackupCodesGenerated);
         Assert.Null(payload.PasswordUpdatedAt);

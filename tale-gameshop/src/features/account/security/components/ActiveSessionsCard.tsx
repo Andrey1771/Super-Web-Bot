@@ -7,7 +7,7 @@ type ActiveSessionsCardProps = {
     sessions: AccountSession[];
     isLoading: boolean;
     canManageSessions: boolean;
-    unavailableReason?: string;
+    readOnlyHint?: string;
     onLogoutSession: (id: string) => void;
     onLogoutAll: () => void;
 };
@@ -19,7 +19,7 @@ const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
     sessions,
     isLoading,
     canManageSessions,
-    unavailableReason,
+    readOnlyHint,
     onLogoutSession,
     onLogoutAll
 }) => {
@@ -56,8 +56,8 @@ const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
                 <button type="button" className="btn btn-outline security-logout-all" onClick={onLogoutAll} disabled={isLoading || !canManageSessions}>
                     Log out all sessions
                 </button>
-                {!canManageSessions && unavailableReason && (
-                    <div className="security-session-empty">{unavailableReason}</div>
+                {!canManageSessions && readOnlyHint && (
+                    <div className="security-session-empty">{readOnlyHint}</div>
                 )}
             </div>
         </div>

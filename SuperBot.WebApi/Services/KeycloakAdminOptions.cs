@@ -37,7 +37,7 @@ namespace SuperBot.WebApi.Services
                 return null;
             }
 
-            return "Keycloak admin integration is not configured. Configure Keycloak:Admin:BaseUrl, Realm, ClientId and ClientSecret.";
+            return "Security integration unavailable. Set Keycloak:Admin:BaseUrl, Realm, ClientId and ClientSecret.";
         }
     }
 }
