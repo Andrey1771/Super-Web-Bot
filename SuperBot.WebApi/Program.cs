@@ -178,8 +178,7 @@ builder.Services.AddAutoMapper(typeof(PromoCodeProfile));
 
 builder.Services.AddHttpClient();
 builder.Services.AddOptions<KeycloakAdminOptions>()
-    .Bind(builder.Configuration.GetSection("Keycloak:Admin"))
-    .ValidateDataAnnotations();
+    .Bind(builder.Configuration.GetSection("Keycloak:Admin"));
 builder.Services.AddHttpClient<KeycloakAdminClient>();
 builder.Services.AddScoped<Ga4Client>();
 builder.Services.AddScoped<YandexMetrikaClient>();
