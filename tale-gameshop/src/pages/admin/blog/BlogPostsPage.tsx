@@ -44,6 +44,7 @@ const BlogPostsPage: React.FC = () => {
     guestUniqueViewsNotCountedBySetting: number;
   } | null>(null);
   const [viewSettingsBusy, setViewSettingsBusy] = useState(false);
+  const [canRestoreExcludedGuestViews, setCanRestoreExcludedGuestViews] = useState(false);
   const [analyticsByPostId, setAnalyticsByPostId] = useState<Record<string, AdminBlogPostAnalytics>>({});
   const [analyticsPostId, setAnalyticsPostId] = useState<string>("");
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -74,6 +75,7 @@ const BlogPostsPage: React.FC = () => {
       }, {});
       const selectedId = settings.mainHeroPostId ?? "";
       setViewSettings(views);
+      setCanRestoreExcludedGuestViews((views.guestUniqueViewsExcluded ?? 0) > 0);
       setAnalyticsByPostId(analyticsMap);
       setMainHeroPostId(selectedId);
       const defaultAnalyticsId = analyticsPostId
@@ -139,6 +141,7 @@ const BlogPostsPage: React.FC = () => {
       await adminBlogService.updateViewSettings({ countGuestViewsInPublicCounts: nextValue });
       const fresh = await adminBlogService.getViewSettings();
       setViewSettings(fresh);
+      setCanRestoreExcludedGuestViews((fresh.guestUniqueViewsExcluded ?? 0) > 0);
       addToast("View settings updated.", "success");
     } catch {
       addToast("Failed to update view settings.", "error");
@@ -150,10 +153,11 @@ const BlogPostsPage: React.FC = () => {
   const handleExcludeGuestViews = async () => {
     try {
       setViewSettingsBusy(true);
-      await adminBlogService.excludeGuestViews();
+      const result = await adminBlogService.excludeGuestViews();
       const fresh = await adminBlogService.getViewSettings();
       setViewSettings(fresh);
-      addToast("Guest views excluded from public counters.", "success");
+      setCanRestoreExcludedGuestViews((fresh.guestUniqueViewsExcluded ?? 0) > 0 || result.modified > 0);
+      addToast(result.modified > 0 ? "Guest views excluded from public counters." : "No counted guest views found to exclude.", "success");
     } catch {
       addToast("Failed to exclude guest views.", "error");
     } finally {
@@ -167,6 +171,7 @@ const BlogPostsPage: React.FC = () => {
       await adminBlogService.deleteGuestViews();
       const fresh = await adminBlogService.getViewSettings();
       setViewSettings(fresh);
+      setCanRestoreExcludedGuestViews((fresh.guestUniqueViewsExcluded ?? 0) > 0);
       addToast("Guest unique views deleted.", "success");
     } catch {
       addToast("Failed to delete guest views.", "error");
@@ -181,6 +186,7 @@ const BlogPostsPage: React.FC = () => {
       await adminBlogService.restoreGuestViews();
       const fresh = await adminBlogService.getViewSettings();
       setViewSettings(fresh);
+      setCanRestoreExcludedGuestViews((fresh.guestUniqueViewsExcluded ?? 0) > 0);
       addToast("Excluded guest views restored to public counters.", "success");
     } catch {
       addToast("Failed to restore guest views.", "error");
@@ -420,7 +426,7 @@ const BlogPostsPage: React.FC = () => {
             </button>
             <button
               className="btn btn-outline"
-              disabled={viewSettingsBusy || (viewSettings?.guestUniqueViewsExcluded ?? 0) === 0}
+              disabled={viewSettingsBusy || !canRestoreExcludedGuestViews}
               onClick={handleRestoreGuestViews}
             >
               Restore excluded guest views
