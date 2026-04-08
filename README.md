@@ -90,3 +90,164 @@ The account settings page supports avatar uploads and removal.
 * Upload endpoint: `POST /api/account/avatar` (multipart file, max 2MB, PNG/JPG/WebP)
 * Remove endpoint: `DELETE /api/account/avatar`
 * Avatars are stored under `wwwroot/uploads/avatars` and served via `/uploads/avatars/...`.
+
+## Debug-only Keycloak 26.0.6 Docker setup (local development)
+
+> This is a **separate local/debug Keycloak setup**.
+> It **does not replace** the production flow and **does not modify** the main production-oriented `docker-compose.yml`.
+
+This repository now contains an additive debug-only Keycloak stack that can be started with one command and is ready for the site without manual realm/client/user creation in Keycloak Admin Console.
+
+### Where the debug setup lives
+
+Debug-only files:
+
+- `docker-compose.keycloak-debug.yml`
+- `keycloak-debug/realm/taleshop-debug-realm.json`
+- `keycloak-debug/themes/tale-shop/login/theme.properties`
+- `keycloak-debug/backend-keycloak-admin.debug.json`
+- `keycloak-debug/scripts/start-keycloak-debug.sh`
+- `keycloak-debug/README.md` (extended dedicated documentation)
+
+### What this setup is for
+
+Use this setup to run Keycloak locally for development/testing of:
+
+- website login/logout flows,
+- role-based admin access (`admin` role for `tale-shop-app`),
+- backend Account/Security integration via Keycloak Admin API (`Keycloak:Admin:*` settings),
+- security actions (sessions, verify email, reset password, 2FA delegated actions, deactivate flow).
+
+### Important separation from production
+
+- Production Docker flow remains the same.
+- Main `docker-compose.yml` is not used/rewritten by this setup.
+- Debug realm is **separate** (`TaleShopDebug`) and does not overwrite production realm.
+
+---
+
+### Step-by-step practical guide
+
+### 1) Prerequisites before start
+
+Make sure you have:
+
+- Docker + Docker Compose available locally.
+- Free local ports (default debug setup uses `8088` for Keycloak).
+- Backend/frontend local run instructions already working from this repository.
+
+Optional but recommended:
+
+- Open `keycloak-debug/README.md` for full debug details.
+
+### 2) Start debug Keycloak
+
+From repository root, run:
+
+```bash
+./keycloak-debug/scripts/start-keycloak-debug.sh
+```
+
+Alternative (direct compose):
+
+```bash
+docker compose -f docker-compose.keycloak-debug.yml up -d
+```
+
+### 3) What happens automatically after startup
+
+The debug stack boots and imports everything automatically:
+
+- Keycloak `26.0.6` in Docker,
+- dedicated Postgres for debug Keycloak,
+- debug realm: `TaleShopDebug`,
+- debug users and credentials,
+- required clients and roles,
+- service account permissions for backend security admin client,
+- realm login theme set to `tale-shop`.
+
+No manual Keycloak admin steps are required for the baseline debug flow.
+
+### 4) Realm, users, credentials (auto-created)
+
+Realm:
+
+- `TaleShopDebug`
+
+Users:
+
+- **admin**
+  - username: `admin`
+  - password: `admin`
+  - email: `admin@debug.local`
+- **user**
+  - username: `user`
+  - password: `user`
+  - email: `user@debug.local`
+
+### 5) Clients and roles (auto-created)
+
+Clients:
+
+- `tale-shop-app` (public): frontend login client.
+- `tale-shop-account` (public + Direct Access Grants enabled): used by backend password validation flow.
+- `tale-shop-security-admin` (confidential + service account): used by backend Keycloak Admin API integration.
+
+Roles:
+
+- client role `admin` exists in `tale-shop-app`.
+- user `admin` is assigned `tale-shop-app:admin`.
+- user `user` does not have admin role.
+- service account for `tale-shop-security-admin` has realm-management roles required for security operations.
+
+### 6) Connect backend to debug Keycloak
+
+Use local debug values from:
+
+- `keycloak-debug/backend-keycloak-admin.debug.json`
+
+Key values to apply in local backend config:
+
+- `Keycloak:Admin:BaseUrl = http://localhost:8088`
+- `Keycloak:Admin:Realm = TaleShopDebug`
+- `Keycloak:Admin:ClientId = tale-shop-security-admin`
+- `Keycloak:Admin:ClientSecret = debug-security-admin-secret`
+- `Keycloak:Admin:PublicClientId = tale-shop-account`
+- `Keycloak:Admin:SecurityRedirectUri = http://localhost:3000/account/security`
+- `Keycloak:Admin:AccountConsoleUrl = http://localhost:8088/realms/TaleShopDebug/account`
+
+Also ensure frontend local Keycloak config points to:
+
+- URL: `http://localhost:8088/`
+- realm: `TaleShopDebug`
+- clientId: `tale-shop-app`
+
+### 7) Run backend + frontend with debug Keycloak
+
+1. Start debug Keycloak (command above).
+2. Start backend with local debug Keycloak values.
+3. Start frontend with local debug realm/client values.
+4. Open site and test auth/admin/security flows.
+
+---
+
+### Manual verification checklist
+
+Use this checklist to verify the debug setup end-to-end:
+
+- [ ] Keycloak login page opens on `http://localhost:8088`.
+- [ ] Custom Tale Shop login theme is visible (realm `TaleShopDebug` uses `tale-shop` login theme).
+- [ ] `admin/admin` can log in.
+- [ ] `user/user` can log in.
+- [ ] `admin` has access to site admin capabilities (based on `tale-shop-app` admin role).
+- [ ] `user` does **not** have admin privileges.
+- [ ] Account **Security page** works against debug Keycloak realm.
+- [ ] Backend successfully uses Keycloak Admin integration (`Keycloak:Admin:*`) for security actions.
+
+---
+
+### Additional debug documentation
+
+For complete debug setup details, see:
+
+- `keycloak-debug/README.md`
