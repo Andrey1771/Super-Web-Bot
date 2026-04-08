@@ -1,0 +1,161 @@
+{
+  "realm": "TaleShopDebug",
+  "enabled": true,
+  "displayName": "Tale Shop Debug",
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "loginTheme": "tale-shop",
+  "defaultRoles": [
+    "offline_access",
+    "uma_authorization"
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Debug realm admin role for Tale Shop"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "tale-shop-app",
+      "name": "Tale Shop Frontend (Debug)",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": [],
+      "roles": [
+        {
+          "name": "admin",
+          "description": "Admin access to Tale Shop UI"
+        }
+      ]
+    },
+    {
+      "clientId": "tale-shop-account",
+      "name": "Tale Shop Password Validation Client (Debug)",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://localhost:3000"
+      ],
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": []
+    },
+    {
+      "clientId": "tale-shop-security-admin",
+      "name": "Tale Shop Security Admin API Client (Debug)",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "debug-security-admin-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "protocolMappers": []
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@debug.local",
+      "emailVerified": true,
+      "firstName": "Debug",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ],
+      "clientRoles": {
+        "tale-shop-app": [
+          "admin"
+        ]
+      }
+    },
+    {
+      "username": "user",
+      "enabled": true,
+      "email": "user@debug.local",
+      "emailVerified": true,
+      "firstName": "Debug",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-tale-shop-security-admin",
+      "serviceAccountClientId": "tale-shop-security-admin",
+      "enabled": true,
+      "clientRoles": {
+        "realm-management": [
+          "query-users",
+          "view-users",
+          "manage-users"
+        ]
+      }
+    }
+  ]
+}
