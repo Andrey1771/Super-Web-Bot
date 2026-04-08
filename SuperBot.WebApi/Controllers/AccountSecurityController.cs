@@ -491,7 +491,7 @@ namespace SuperBot.WebApi.Controllers
                 case KeycloakAdminApiException apiException:
                     _logger.LogWarning(apiException, "Keycloak admin request failed with status {StatusCode}.", apiException.StatusCode);
                     var mappedStatus = apiException.StatusCode == HttpStatusCode.Unauthorized || apiException.StatusCode == HttpStatusCode.Forbidden
-                        ? StatusCodes.Status502BadGateway
+                        ? StatusCodes.Status503ServiceUnavailable
                         : (int)apiException.StatusCode;
                     return StatusCode(mappedStatus, new { message = apiException.Message });
                 default:

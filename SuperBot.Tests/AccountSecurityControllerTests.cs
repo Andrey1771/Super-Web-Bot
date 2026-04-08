@@ -166,6 +166,37 @@ public class AccountSecurityControllerTests
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, objectResult.StatusCode);
     }
 
+    [Fact]
+    public async Task ResendEmailVerification_Returns503_WhenKeycloakReturnsForbidden()
+    {
+        var handler = new StubHttpMessageHandler((request) =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/protocol/openid-connect/token"))
+            {
+                return Json(HttpStatusCode.OK, new { access_token = "token", expires_in = 3600 });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/users/user-1") && request.Method == HttpMethod.Get)
+            {
+                return Json(HttpStatusCode.OK, new { id = "user-1", email = "user@mail.com", emailVerified = false });
+            }
+
+            if (request.RequestUri!.AbsolutePath.EndsWith("/send-verify-email") && request.Method == HttpMethod.Put)
+            {
+                return Json(HttpStatusCode.Forbidden, new { error = "forbidden", error_description = "insufficient_scope" });
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var controller = CreateController(handler, ValidOptions());
+
+        var result = await controller.ResendEmailVerification();
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, objectResult.StatusCode);
+    }
+
     private static AccountSecurityController CreateController(HttpMessageHandler handler, KeycloakAdminOptions options)
     {
         var client = new KeycloakAdminClient(
