@@ -1,0 +1,84 @@
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) {
+  scroll-behavior: auto !important;
+}
+
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) body {
+  overscroll-behavior: auto !important;
+}
+
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) *,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) *::before,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* Keep header in normal document flow so stitched full-page capture does not duplicate it. */
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .header-nav {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 8px 18px rgba(87, 68, 144, 0.1) !important;
+  background: #ffffff !important;
+}
+
+/* Remove runtime spacer that compensates fixed header height in normal mode. */
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .main-page-down-header-padding {
+  display: none !important;
+  margin-top: 0 !important;
+}
+
+/* Known sticky/fixed UI that can duplicate in stitched captures. */
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .blog-toolbar-wrap,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .blog-post-aside,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .support-chat,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .cookie-banner,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .catalog-sidebar,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .checkout-page-aside,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .game-details-tabs,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .account-sidebar,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-topbar,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-table th,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-drawer__footer,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-drawer,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-modal,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-sticky-bar,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-toast-container,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .admin-sidebar,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .lightbox,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .ticket-modal__overlay,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .billing-modal-overlay,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .billing-toast,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .security-modal-overlay,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .security-toast,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .help-toast,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .ts-modal-overlay,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .new-request-modal-overlay {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+/* Optional generic hook for future floating UI without changing this file. */
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) [data-capture-safe="disable-floating"] {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+/* Blur effects can trigger compositing artifacts during capture. */
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .blog-toolbar,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .header-nav,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .cookie-banner,
+:is(html[data-capture-mode="true"], body[data-capture-mode="true"]) .support-chat__window {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
