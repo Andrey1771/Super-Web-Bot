@@ -1,26 +1,46 @@
-# Capture mode (DevTools)
+# Screenshot capture from DevTools (one command)
 
-Capture mode is **opt-in** and does not affect normal runtime UX.
+No manual `enableCaptureMode()` step is required.
 
-## Enable before full-page screenshot
-
-```js
-await window.__TALE_ENABLE_CAPTURE_MODE__({ scrollToTop: true, settleFrames: 2 });
-window.__TALE_VERIFY_CAPTURE_MODE__();
-```
-
-Expected verify output:
-- `enabled: true`
-- `attributeTarget: "html"`
-- `headerPosition: "static"`
-
-## Disable after capture
+## One-command full-page capture
 
 ```js
-window.__TALE_DISABLE_CAPTURE_MODE__();
-window.__TALE_VERIFY_CAPTURE_MODE__();
+const result = await window.__TALE_CAPTURE_PAGE__();
 ```
 
-Expected verify output:
-- `enabled: false`
-- `headerPosition: "fixed"` (on pages where header is mounted)
+Alternative namespace:
+
+```js
+const result = await window.__TALE_SCREENSHOT__.capturePage();
+```
+
+## What helper does automatically
+
+1. Enables capture mode (`data-capture-mode="true"`).
+2. Waits at least 2 animation frames.
+3. Scrolls to top.
+4. Runs stitched full-page capture pass through the page.
+5. Downloads screenshot file automatically.
+6. Always disables capture mode in `finally` and restores original scroll position.
+
+## Return value
+
+`result` includes:
+- `blob` — screenshot payload
+- `dataUrl` — base64 data URL
+- `width`, `height` — final canvas size
+- `segments` — number of stitched viewport segments
+- `modeVerification` — capture-mode diagnostic snapshot
+- `fileName` — downloaded file name
+
+## Optional call options
+
+```js
+await window.__TALE_CAPTURE_PAGE__({
+  fileName: 'blog-full-page.png',
+  format: 'image/png',
+  scale: 1,
+  settleFrames: 2,
+  autoDownload: true
+});
+```

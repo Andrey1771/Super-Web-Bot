@@ -14,6 +14,7 @@ import {IKeycloakService} from "./iterfaces/i-keycloak-service";
 import IDENTIFIERS from "./constants/identifiers";
 import {CartProvider} from './context/cart-context';
 import {installCaptureModeDevBridge} from './utils/capture-mode';
+import {installScreenshotDevBridge} from './utils/screenshot-capture';
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
@@ -24,6 +25,7 @@ const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakSer
 
 if (process.env.NODE_ENV !== 'production') {
     installCaptureModeDevBridge();
+    installScreenshotDevBridge();
 }
 
 root.render(
