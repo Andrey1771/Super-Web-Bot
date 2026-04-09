@@ -745,6 +745,31 @@ const TaleGameshopGameList: React.FC = () => {
         window.setTimeout(scrollToCatalog, 80);
     }, [scrollToCatalog, updateParams]);
 
+    const handleUnderHundredClick = useCallback(() => {
+        updateParams((params) => {
+            params.set('filterMaxPrice', '100');
+            params.set('filterMinPrice', String(availablePrices.min));
+            params.set('page', '1');
+        });
+        window.setTimeout(scrollToCatalog, 80);
+    }, [availablePrices.min, scrollToCatalog, updateParams]);
+
+    const handlePriceAscClick = useCallback(() => {
+        updateParams((params) => {
+            params.set('sortBy', 'price-asc');
+            params.set('page', '1');
+        });
+        window.setTimeout(scrollToCatalog, 80);
+    }, [scrollToCatalog, updateParams]);
+
+    const handleQuickCategoryClick = useCallback((category: string) => {
+        updateParams((params) => {
+            params.set('filterCategory', category);
+            params.set('page', '1');
+        });
+        window.setTimeout(scrollToCatalog, 80);
+    }, [scrollToCatalog, updateParams]);
+
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
             <div className="pointer-events-none fixed left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(204,190,255,0.55)_0%,rgba(246,242,251,0.1)_70%)] blur-3xl" />
@@ -1058,6 +1083,10 @@ const TaleGameshopGameList: React.FC = () => {
                     <CatalogPostSections
                         onMostPopularClick={handleMostPopularClick}
                         onViewDealsClick={handleViewDealsClick}
+                        onUnderHundredClick={handleUnderHundredClick}
+                        onPriceAscClick={handlePriceAscClick}
+                        onQuickCategoryClick={handleQuickCategoryClick}
+                        quickCategoryOptions={categoriesForDisplay.slice(0, 2)}
                     />
                 </section>
             </main>
