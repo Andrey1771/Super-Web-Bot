@@ -162,7 +162,7 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                 className="rounded-[20px] border border-[#e9e2ff] bg-white/95 p-5 shadow-[0_18px_32px_rgba(108,85,164,0.12)]"
                 aria-label="Catalog social proof"
             >
-                <div className="grid gap-4 lg:grid-cols-[1.95fr_1fr] lg:items-stretch">
+                <div className="grid gap-4 lg:grid-cols-[2fr_1fr] lg:items-start">
                     <div className="flex h-full flex-col rounded-[16px] border border-[#f0ebff] bg-[#fefcff] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b72ab]">Player feedback</p>
                         <h2 className="mt-2 text-xl font-semibold text-[#2b2350]">Trusted by active buyers</h2>
@@ -227,14 +227,14 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                                     />
                                 ))}
                             </div>
-                            <p className="text-xs text-[#7b72ab]">Auto-scroll pauses on hover</p>
+                            <span className="text-[11px] font-medium text-[#8a7eb9]">Swipe or drag</span>
                         </div>
                     </div>
 
-                    <aside className="flex h-full flex-col justify-center rounded-[16px] border border-[#efeaff] bg-[#fbf9ff] p-4">
+                    <aside className="rounded-[14px] border border-[#efeaff] bg-[#fbf9ff] p-3.5 lg:mt-2">
                         <p className="text-sm font-semibold text-[#2b2350]">Rating breakdown</p>
                         <p className="mt-1 text-xs text-[#7b72ab]">Distribution across verified reviews</p>
-                        <div className="mt-4 space-y-2.5">
+                        <div className="mt-3.5 space-y-2">
                             {[
                                 { label: '5', value: 78 },
                                 { label: '4', value: 15 },
@@ -264,30 +264,17 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                 <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.22)_0%,rgba(107,63,242,0)_72%)]" />
                 <div className="pointer-events-none absolute -left-16 -bottom-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.15)_0%,rgba(107,63,242,0)_72%)]" />
 
-                <div className="relative z-10 grid gap-4 lg:grid-cols-[1.5fr_auto] lg:items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold text-[#2b2350]">Still choosing?</h2>
-                        <p className="mt-1 max-w-xl text-sm text-[#6f64a8]">
-                            Browse active deals or jump to the most popular picks in this catalog.
-                        </p>
-                        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                            {quickPicks.slice(0, 5).map((pick, index) => (
-                                <button
-                                    key={pick.label}
-                                    type="button"
-                                    className={`justify-self-start rounded-full border border-[#d8ccff] bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#4c3c8d] shadow-[0_6px_14px_rgba(107,63,242,0.12)] transition hover:bg-white ${
-                                        index % 2 === 0 ? 'sm:translate-x-0' : 'sm:translate-x-3'
-                                    }`}
-                                    onClick={pick.onClick}
-                                >
-                                    {pick.label}
-                                </button>
-                            ))}
+                <div className="relative z-10 grid gap-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="max-w-2xl">
+                            <h2 className="text-2xl font-semibold text-[#2b2350]">Still choosing?</h2>
+                            <p className="mt-1 text-sm text-[#5f528e]">
+                                Use smart shortcuts to narrow this catalog by deals, budget, and sorting in one click.
+                            </p>
+                            <p className="mt-1 text-xs text-[#7c70ab]">
+                                Each action updates live filters and brings you back to the game grid instantly.
+                            </p>
                         </div>
-                    </div>
-
-                    <div className="rounded-[14px] border border-[#dacbff] bg-white/90 p-3 shadow-[0_10px_24px_rgba(107,63,242,0.15)]">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Quick actions</p>
                         <div className="flex flex-wrap gap-2">
                             <button
                                 type="button"
@@ -303,6 +290,24 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                             >
                                 View Deals
                             </button>
+                        </div>
+                    </div>
+
+                    <div className="rounded-[14px] border border-[#e1d5ff] bg-white/88 p-3 shadow-[0_10px_20px_rgba(107,63,242,0.12)]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Quick picks</p>
+                        <div className="mt-2 grid gap-x-2 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {quickPicks.slice(0, 5).map((pick, index) => (
+                                <button
+                                    key={pick.label}
+                                    type="button"
+                                    className={`justify-self-start rounded-full border border-[#d8ccff] bg-white px-3 py-1.5 text-xs font-semibold text-[#4c3c8d] shadow-[0_6px_14px_rgba(107,63,242,0.1)] transition hover:bg-[#fcfaff] ${
+                                        index % 2 === 0 ? 'sm:translate-x-0' : 'sm:translate-x-2'
+                                    }`}
+                                    onClick={pick.onClick}
+                                >
+                                    {pick.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
