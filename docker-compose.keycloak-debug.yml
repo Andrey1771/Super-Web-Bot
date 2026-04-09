@@ -1,0 +1,45 @@
+services:
+  keycloak-debug-db:
+    image: postgres:16-alpine
+    container_name: keycloak-debug-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak_debug
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - keycloak_debug_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak_debug"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  keycloak-debug:
+    image: quay.io/keycloak/keycloak:26.0.6
+    container_name: keycloak-debug
+    restart: unless-stopped
+    depends_on:
+      keycloak-debug-db:
+        condition: service_healthy
+    command:
+      - start-dev
+      - --http-port=8088
+      - --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-debug-db
+      KC_DB_URL_DATABASE: keycloak_debug
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HTTP_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: kcadmin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: kcadmin
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./keycloak-debug/realm:/opt/keycloak/data/import:ro
+      - ./keycloak-debug/themes:/opt/keycloak/themes:ro
+
+volumes:
+  keycloak_debug_db_data:

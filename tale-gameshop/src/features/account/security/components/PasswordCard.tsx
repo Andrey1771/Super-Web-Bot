@@ -5,11 +5,22 @@ import {faEye, faEyeSlash} from '@fortawesome/free-solid-svg-icons';
 type PasswordCardProps = {
     isSubmitting: boolean;
     lastUpdatedLabel: string;
+    canChangeInline: boolean;
+    canSendResetEmail: boolean;
+    readOnlyHint?: string;
     onSubmit: (payload: { currentPassword: string; newPassword: string; confirmPassword: string }) => void;
     onReset: () => void;
 };
 
-const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLabel, onSubmit, onReset}) => {
+const PasswordCard: React.FC<PasswordCardProps> = ({
+    isSubmitting,
+    lastUpdatedLabel,
+    canChangeInline,
+    canSendResetEmail,
+    readOnlyHint,
+    onSubmit,
+    onReset
+}) => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -91,18 +102,19 @@ const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLab
                         </div>
                         {errors.confirm && <span className="security-error">{errors.confirm}</span>}
                     </label>
-                    <button type="button" className="btn btn-primary security-update-btn" onClick={handleSubmit} disabled={isSubmitting}>
+                    <button type="button" className="btn btn-primary security-update-btn" onClick={handleSubmit} disabled={isSubmitting || !canChangeInline}>
                         Update password
                     </button>
+                    {!canChangeInline && readOnlyHint && <p className="security-muted">{readOnlyHint}</p>}
                 </div>
                 <div className="security-password-info">
                         <div className="security-info-card">
                             <div>
                                 <h4>Password</h4>
-                                <p>Your password was updated {lastUpdatedLabel}.</p>
+                                <p>{lastUpdatedLabel}</p>
                                 <p>Resetting your password signs you out of active sessions.</p>
                             </div>
-                        <button type="button" className="btn btn-outline security-secondary-btn" onClick={onReset}>
+                        <button type="button" className="btn btn-outline security-secondary-btn" onClick={onReset} disabled={!canSendResetEmail}>
                             Reset
                         </button>
                     </div>

@@ -4,14 +4,26 @@ import {faChevronDown} from '@fortawesome/free-solid-svg-icons';
 
 type TwoFactorCardProps = {
     isEnabled: boolean;
-    backupCodesGenerated: boolean;
+    backupCodesGenerated?: boolean | null;
+    canManage: boolean;
+    readOnlyHint?: string;
     isLoading: boolean;
     onPrimaryAction: () => void;
 };
 
-const TwoFactorCard: React.FC<TwoFactorCardProps> = ({isEnabled, backupCodesGenerated, isLoading, onPrimaryAction}) => {
+const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
+    isEnabled,
+    backupCodesGenerated,
+    canManage,
+    readOnlyHint,
+    isLoading,
+    onPrimaryAction
+}) => {
     const statusLabel = isLoading ? 'Loading' : isEnabled ? 'Enabled' : 'Disabled';
     const primaryLabel = isEnabled ? 'Manage 2FA' : 'Enable 2FA';
+    const backupLabel = backupCodesGenerated == null
+        ? 'Backup code status is managed in Keycloak.'
+        : backupCodesGenerated ? 'Backup codes are configured.' : 'Backup codes are not configured.';
 
     return (
         <div className="card security-card" data-testid="security-2fa-card">
@@ -23,7 +35,12 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({isEnabled, backupCodesGene
                 </span>
             </div>
             <div className="security-card-actions">
-                <button type="button" className="btn btn-primary security-action-btn" onClick={onPrimaryAction} disabled={isLoading}>
+                <button
+                    type="button"
+                    className="btn btn-primary security-action-btn"
+                    onClick={onPrimaryAction}
+                    disabled={isLoading || !canManage}
+                >
                     {primaryLabel}
                 </button>
                 <a className="security-link" href="https://www.keycloak.org/docs/latest/server_admin/#_two-factor-authentication" target="_blank" rel="noreferrer">
@@ -32,8 +49,11 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({isEnabled, backupCodesGene
             </div>
             <div className="security-divider" aria-hidden="true" />
             <p className="security-muted">
-                Backup codes: {backupCodesGenerated ? 'generated' : 'not generated'}
+                {backupLabel}
             </p>
+            {!canManage && readOnlyHint && (
+                <p className="security-muted">{readOnlyHint}</p>
+            )}
         </div>
     );
 };

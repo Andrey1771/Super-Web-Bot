@@ -35,7 +35,7 @@ const Manage2FAModal: React.FC<Manage2FAModalProps> = ({
                 </div>
                 <div className="security-modal-body">
                     <p>
-                        Update your authenticator app, regenerate backup codes, or disable 2FA from your account console.
+                        2FA management is delegated to Keycloak account console, including authenticator devices and backup codes.
                     </p>
                 </div>
                 <div className="security-modal-footer">
@@ -48,7 +48,7 @@ const Manage2FAModal: React.FC<Manage2FAModalProps> = ({
                         onClick={handleOpenAccount}
                         disabled={isSubmitting || !accountConsoleUrl}
                     >
-                        Open security settings
+                        Open Keycloak security settings
                     </button>
                 </div>
             </div>

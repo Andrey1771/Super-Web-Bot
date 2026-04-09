@@ -5,6 +5,9 @@ import {faChevronRight} from '@fortawesome/free-solid-svg-icons';
 type EmailVerificationCardProps = {
     emailVerified: boolean;
     isLoading: boolean;
+    canResendVerification: boolean;
+    canChangeEmail: boolean;
+    readOnlyHint?: string;
     onResend: () => void;
     onChangeEmail: () => void;
 };
@@ -12,6 +15,9 @@ type EmailVerificationCardProps = {
 const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
     emailVerified,
     isLoading,
+    canResendVerification,
+    canChangeEmail,
+    readOnlyHint,
     onResend,
     onChangeEmail
 }) => {
@@ -30,15 +36,21 @@ const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
                     type="button"
                     className="btn btn-outline security-secondary-btn"
                     onClick={onResend}
-                    disabled={isLoading || emailVerified}
+                    disabled={isLoading || emailVerified || !canResendVerification}
                 >
                     Resend verification email
                 </button>
-                <button type="button" className="btn btn-outline security-secondary-btn" onClick={onChangeEmail}>
+                <button
+                    type="button"
+                    className="btn btn-outline security-secondary-btn"
+                    onClick={onChangeEmail}
+                    disabled={!canChangeEmail}
+                >
                     Change email
                     <FontAwesomeIcon icon={faChevronRight} />
                 </button>
             </div>
+            {readOnlyHint && <p className="security-muted">{readOnlyHint}</p>}
         </div>
     );
 };

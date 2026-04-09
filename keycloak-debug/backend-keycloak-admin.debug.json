@@ -1,0 +1,16 @@
+{
+  "Keycloak": {
+    "Uri": "http://localhost:8088",
+    "Realm": "TaleShopDebug",
+    "Audience": "account",
+    "Admin": {
+      "BaseUrl": "http://localhost:8088",
+      "Realm": "TaleShopDebug",
+      "ClientId": "tale-shop-security-admin",
+      "ClientSecret": "debug-security-admin-secret",
+      "PublicClientId": "tale-shop-account",
+      "SecurityRedirectUri": "http://localhost:3000/account/security",
+      "AccountConsoleUrl": "http://localhost:8088/realms/TaleShopDebug/account"
+    }
+  }
+}

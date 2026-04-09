@@ -4,7 +4,7 @@ type DeleteAccountModalProps = {
     isOpen: boolean;
     isSubmitting: boolean;
     onClose: () => void;
-    onConfirm: (payload: { confirmation: string; password: string; twoFactorCode?: string }) => void;
+    onConfirm: (payload: { confirmation: string; password: string }) => void;
 };
 
 const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
@@ -15,7 +15,6 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
 }) => {
     const [confirmation, setConfirmation] = useState('');
     const [password, setPassword] = useState('');
-    const [twoFactorCode, setTwoFactorCode] = useState('');
     const [error, setError] = useState('');
 
     if (!isOpen) {
@@ -23,8 +22,8 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     }
 
     const handleSubmit = () => {
-        if (confirmation !== 'DELETE') {
-            setError('Type DELETE to confirm.');
+        if (confirmation !== 'DEACTIVATE') {
+            setError('Type DEACTIVATE to confirm.');
             return;
         }
         if (!password) {
@@ -32,27 +31,28 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             return;
         }
         setError('');
-        onConfirm({confirmation, password, twoFactorCode: twoFactorCode || undefined});
+        onConfirm({confirmation, password});
     };
 
     return (
         <div className="security-modal-overlay">
             <div className="security-modal">
                 <div className="security-modal-header">
-                    <h3>Delete account</h3>
+                    <h3>Deactivate account</h3>
                     <button type="button" className="security-modal-close" onClick={onClose}>
                         ✕
                     </button>
                 </div>
                 <div className="security-modal-body">
-                    <p>This will permanently delete your account and data. This action cannot be undone.</p>
+                    <p>This action deactivates your account in Keycloak and signs you out from all sessions.</p>
+                    <p>This action is not a permanent data deletion flow.</p>
                     <label className="security-field">
-                        <span>Type DELETE to confirm</span>
+                        <span>Type DEACTIVATE to confirm</span>
                         <input
                             className="input"
                             value={confirmation}
                             onChange={(event) => setConfirmation(event.target.value)}
-                            placeholder="DELETE"
+                            placeholder="DEACTIVATE"
                         />
                     </label>
                     <label className="security-field">
@@ -65,15 +65,6 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                             placeholder="••••••••"
                         />
                     </label>
-                    <label className="security-field">
-                        <span>2FA code (if enabled)</span>
-                        <input
-                            className="input"
-                            value={twoFactorCode}
-                            onChange={(event) => setTwoFactorCode(event.target.value)}
-                            placeholder="123456"
-                        />
-                    </label>
                     {error && <p className="security-error">{error}</p>}
                 </div>
                 <div className="security-modal-footer">
@@ -81,7 +72,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         Cancel
                     </button>
                     <button type="button" className="btn btn-outline security-danger-btn" onClick={handleSubmit} disabled={isSubmitting}>
-                        Delete permanently
+                        Deactivate account
                     </button>
                 </div>
             </div>

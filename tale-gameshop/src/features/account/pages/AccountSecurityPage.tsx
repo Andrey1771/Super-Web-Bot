@@ -1,5 +1,6 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
+import {AxiosError} from 'axios';
 import AccountShell from '../components/AccountShell';
 import SecurityBanner from '../security/components/SecurityBanner';
 import TwoFactorCard from '../security/components/TwoFactorCard';
@@ -15,7 +16,7 @@ import Manage2FAModal from '../security/modals/Manage2FAModal';
 import {
     changeEmail,
     changePassword,
-    deleteAccount,
+    deactivateAccount,
     downloadSecurityReport,
     getAccountSecurityStatus,
     resendVerificationEmail,
@@ -31,17 +32,36 @@ import container from '../../../inversify.config';
 import IDENTIFIERS from '../../../constants/identifiers';
 import './account-security-page.css';
 
-const getRelativePasswordLabel = (value?: string | null) => {
+const getPasswordInfoLabel = (value?: string | null) => {
     if (!value) {
-        return 'over 6 months ago';
+        return 'Last password change date unavailable. Password changes are managed via Keycloak policies.';
     }
+
     const lastUpdated = new Date(value);
     if (Number.isNaN(lastUpdated.getTime())) {
-        return 'recently';
+        return 'Last password change date unavailable.';
     }
-    const diffMs = Date.now() - lastUpdated.getTime();
-    const diffMonths = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30)));
-    return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+
+    return `Last password change: ${lastUpdated.toLocaleDateString()}.`;
+};
+
+const getErrorMessage = (error: unknown, fallbackMessage: string) => {
+    if (error instanceof AxiosError) {
+        const message = error.response?.data?.message || error.response?.data?.detail;
+        if (typeof message === 'string' && message.trim().length > 0) {
+            return message;
+        }
+
+        if (error.response?.status === 401) {
+            return 'Your session has expired. Please sign in again.';
+        }
+
+        if (error.response?.status === 503) {
+            return 'Security integration is unavailable. Please contact support.';
+        }
+    }
+
+    return fallbackMessage;
 };
 
 const AccountSecurityPage: React.FC = () => {
@@ -52,10 +72,11 @@ const AccountSecurityPage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
-    const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
+    const [isDeactivateAccountOpen, setIsDeactivateAccountOpen] = useState(false);
     const [isEnable2faOpen, setIsEnable2faOpen] = useState(false);
     const [isManage2faOpen, setIsManage2faOpen] = useState(false);
     const [twoFactorAction, setTwoFactorAction] = useState<SecurityActionResponse | null>(null);
+    const readOnlyHint = 'Unavailable in current environment.';
 
     const showToast = useCallback((message: string) => {
         setToast(message);
@@ -68,7 +89,7 @@ const AccountSecurityPage: React.FC = () => {
             const data = await getAccountSecurityStatus();
             setStatus(data);
         } catch (error) {
-            showToast('Unable to load security settings.');
+            showToast(getErrorMessage(error, 'Unable to load security settings.'));
         } finally {
             setIsLoading(false);
         }
@@ -79,32 +100,44 @@ const AccountSecurityPage: React.FC = () => {
     }, [fetchStatus]);
 
     const handleResendEmail = async () => {
+        if (!status?.capabilities?.canResendVerificationEmail) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             await resendVerificationEmail();
             showToast('Verification email sent.');
         } catch (error) {
-            showToast('Unable to resend verification email.');
+            showToast(getErrorMessage(error, 'Unable to resend verification email.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleChangeEmail = async (payload: { newEmail: string; password: string }) => {
+        if (!status?.capabilities?.canChangeEmail) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
-            await changeEmail(payload);
-            showToast('Email updated. Please verify your new address.');
+            const response = await changeEmail(payload);
+            showToast(response.message || 'Email updated. Please verify your new address.');
             setIsChangeEmailOpen(false);
             await fetchStatus();
         } catch (error) {
-            showToast('Unable to change email.');
+            showToast(getErrorMessage(error, 'Unable to change email.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handlePasswordChange = async (payload: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+        if (!status?.capabilities?.canChangePasswordInline) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await changePassword({
@@ -118,32 +151,40 @@ const AccountSecurityPage: React.FC = () => {
                 await fetchStatus();
             }
         } catch (error) {
-            showToast('Unable to update password.');
+            showToast(getErrorMessage(error, 'Unable to update password.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handlePasswordReset = async () => {
+        if (!status?.capabilities?.canSendPasswordResetEmail) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
-            await sendResetPasswordEmail();
-            showToast('Password reset email sent.');
+            const response = await sendResetPasswordEmail();
+            showToast(response.message || 'Password reset email sent.');
         } catch (error) {
-            showToast('Unable to send reset email.');
+            showToast(getErrorMessage(error, 'Unable to send reset email.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleSetup2fa = async () => {
+        if (!status?.capabilities?.canManageTwoFactor) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await setupTwoFactor();
             setTwoFactorAction(response);
             setIsEnable2faOpen(true);
         } catch (error) {
-            showToast('Unable to start 2FA setup.');
+            showToast(getErrorMessage(error, 'Unable to start 2FA setup.'));
         } finally {
             setIsSubmitting(false);
         }
@@ -153,37 +194,49 @@ const AccountSecurityPage: React.FC = () => {
         if (status?.accountConsoleUrl) {
             setIsManage2faOpen(true);
         } else {
-            showToast('2FA settings are unavailable right now.');
+            showToast(status?.unavailableReasons?.configuration || '2FA settings are unavailable right now.');
         }
     };
 
     const handleLogoutSession = async (sessionId: string) => {
+        if (!status?.capabilities?.canManageSessions) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             await revokeSession(sessionId);
             showToast('Session revoked.');
             await fetchStatus();
         } catch (error) {
-            showToast('Unable to revoke session.');
+            showToast(getErrorMessage(error, 'Unable to revoke session.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleLogoutAll = async () => {
+        if (!status?.capabilities?.canManageSessions) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             await revokeAllSessions();
             showToast('All sessions revoked.');
             await fetchStatus();
         } catch (error) {
-            showToast('Unable to revoke sessions.');
+            showToast(getErrorMessage(error, 'Unable to revoke sessions.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleDownloadReport = async () => {
+        if (!status?.capabilities?.canDownloadSecurityReport) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
             const blob = await downloadSecurityReport();
@@ -195,34 +248,40 @@ const AccountSecurityPage: React.FC = () => {
             window.URL.revokeObjectURL(url);
             showToast('Security report downloaded.');
         } catch (error) {
-            showToast('Unable to download security report.');
+            showToast(getErrorMessage(error, 'Unable to download security report.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleDeleteAccount = async (payload: { confirmation: string; password: string; twoFactorCode?: string }) => {
+    const handleDeactivateAccount = async (payload: { confirmation: string; password: string }) => {
+        if (!status?.capabilities?.canDeactivateAccount) {
+            showToast(readOnlyHint);
+            return;
+        }
         setIsSubmitting(true);
         try {
-            await deleteAccount(payload);
-            showToast('Account deleted.');
-            setIsDeleteAccountOpen(false);
+            const response = await deactivateAccount(payload);
+            showToast(response.message || 'Account deactivated.');
+            setIsDeactivateAccountOpen(false);
             await keycloakAuthService.logoutWithRedirect(keycloak, window.location.origin);
         } catch (error) {
-            showToast('Unable to delete account.');
+            showToast(getErrorMessage(error, 'Unable to deactivate account.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const bannerVisible = !status?.twoFactorEnabled || !status?.emailVerified;
-    const passwordUpdatedLabel = useMemo(() => getRelativePasswordLabel(status?.passwordUpdatedAt ?? null), [status?.passwordUpdatedAt]);
+    const bannerVisible = Boolean(status?.keycloakAdminConfigured) && (!status?.twoFactorEnabled || !status?.emailVerified);
+    const passwordUpdatedLabel = useMemo(() => getPasswordInfoLabel(status?.passwordUpdatedAt ?? null), [status?.passwordUpdatedAt]);
+    const unavailableConfigurationReason = status?.unavailableReasons?.configuration;
+    const isReadOnly = status?.keycloakAdminConfigured === false;
 
     return (
         <AccountShell
             title="Security"
             sectionLabel="Security"
-            subtitle="Manage password, email verification and 2FA."
+            subtitle="Manage account security settings powered by Keycloak."
             actions={(
                 <>
                     <Link to="/account/settings" className="btn btn-outline account-action-btn">
@@ -235,18 +294,30 @@ const AccountSecurityPage: React.FC = () => {
             )}
             headerTestId="security-header"
         >
+            {isReadOnly && (
+                <div className="security-unavailable-banner">
+                    <h3>Read-only security status</h3>
+                    <p>Keycloak Admin security integration is not configured. Some actions are unavailable in this environment.</p>
+                    <p className="security-unavailable-hint">{unavailableConfigurationReason}</p>
+                </div>
+            )}
             <SecurityBanner show={bannerVisible} onSetup2fa={handleSetup2fa} />
 
             <div className="security-grid">
                 <TwoFactorCard
                     isEnabled={Boolean(status?.twoFactorEnabled)}
-                    backupCodesGenerated={Boolean(status?.backupCodesGenerated)}
+                    backupCodesGenerated={status?.backupCodesGenerated}
+                    canManage={Boolean(status?.capabilities?.canManageTwoFactor)}
+                    readOnlyHint={!status?.capabilities?.canManageTwoFactor ? readOnlyHint : undefined}
                     isLoading={isLoading}
                     onPrimaryAction={status?.twoFactorEnabled ? handleOpenManage2fa : handleSetup2fa}
                 />
                 <EmailVerificationCard
                     emailVerified={Boolean(status?.emailVerified)}
                     isLoading={isLoading || isSubmitting}
+                    canResendVerification={Boolean(status?.capabilities?.canResendVerificationEmail)}
+                    canChangeEmail={Boolean(status?.capabilities?.canChangeEmail)}
+                    readOnlyHint={isReadOnly ? readOnlyHint : undefined}
                     onResend={handleResendEmail}
                     onChangeEmail={() => setIsChangeEmailOpen(true)}
                 />
@@ -255,6 +326,9 @@ const AccountSecurityPage: React.FC = () => {
             <PasswordCard
                 isSubmitting={isSubmitting}
                 lastUpdatedLabel={passwordUpdatedLabel}
+                canChangeInline={Boolean(status?.capabilities?.canChangePasswordInline)}
+                canSendResetEmail={Boolean(status?.capabilities?.canSendPasswordResetEmail)}
+                readOnlyHint={!status?.capabilities?.canChangePasswordInline ? readOnlyHint : undefined}
                 onSubmit={handlePasswordChange}
                 onReset={handlePasswordReset}
             />
@@ -263,11 +337,16 @@ const AccountSecurityPage: React.FC = () => {
                 <ActiveSessionsCard
                     sessions={status?.sessions ?? []}
                     isLoading={isLoading}
+                    canManageSessions={Boolean(status?.capabilities?.canManageSessions)}
+                    readOnlyHint={!status?.capabilities?.canManageSessions ? readOnlyHint : undefined}
                     onLogoutSession={handleLogoutSession}
                     onLogoutAll={handleLogoutAll}
                 />
                 <DangerZoneCard
-                    onDelete={() => setIsDeleteAccountOpen(true)}
+                    canDeactivate={Boolean(status?.capabilities?.canDeactivateAccount)}
+                    canDownloadReport={Boolean(status?.capabilities?.canDownloadSecurityReport)}
+                    readOnlyHint={isReadOnly ? readOnlyHint : undefined}
+                    onDeactivate={() => setIsDeactivateAccountOpen(true)}
                     onDownloadReport={handleDownloadReport}
                 />
             </div>
@@ -281,10 +360,10 @@ const AccountSecurityPage: React.FC = () => {
                 onSubmit={handleChangeEmail}
             />
             <DeleteAccountModal
-                isOpen={isDeleteAccountOpen}
+                isOpen={isDeactivateAccountOpen}
                 isSubmitting={isSubmitting}
-                onClose={() => setIsDeleteAccountOpen(false)}
-                onConfirm={handleDeleteAccount}
+                onClose={() => setIsDeactivateAccountOpen(false)}
+                onConfirm={handleDeactivateAccount}
             />
             <Enable2FAModal
                 isOpen={isEnable2faOpen}
