@@ -4,6 +4,7 @@
 
 @import './styles/tokens.css';
 @import './styles/admin.css';
+@import './styles/capture-mode.css';
 
 * {
   box-sizing: border-box;

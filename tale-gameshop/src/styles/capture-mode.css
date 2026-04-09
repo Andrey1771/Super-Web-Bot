@@ -1,0 +1,69 @@
+:root[data-capture-mode="true"],
+html[data-capture-mode="true"] {
+  scroll-behavior: auto !important;
+}
+
+html[data-capture-mode="true"],
+html[data-capture-mode="true"] body {
+  overscroll-behavior: auto !important;
+}
+
+html[data-capture-mode="true"] *,
+html[data-capture-mode="true"] *::before,
+html[data-capture-mode="true"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* Keep header in normal document flow so stitched full-page capture does not duplicate it. */
+html[data-capture-mode="true"] .header-nav {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 8px 18px rgba(87, 68, 144, 0.1) !important;
+  background: #ffffff !important;
+}
+
+/* Remove runtime spacer that compensates fixed header height in normal mode. */
+html[data-capture-mode="true"] .main-page-down-header-padding {
+  display: none !important;
+  margin-top: 0 !important;
+}
+
+/* Known sticky/fixed UI on public pages that can duplicate in stitched captures. */
+html[data-capture-mode="true"] .blog-toolbar-wrap,
+html[data-capture-mode="true"] .blog-post-aside,
+html[data-capture-mode="true"] .support-chat,
+html[data-capture-mode="true"] .cookie-banner,
+html[data-capture-mode="true"] .catalog-sidebar,
+html[data-capture-mode="true"] .checkout-page-aside,
+html[data-capture-mode="true"] .game-details-tabs,
+html[data-capture-mode="true"] .account-sidebar {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+/* Optional generic hook for future floating UI without changing this file. */
+html[data-capture-mode="true"] [data-capture-safe="disable-floating"] {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+/* Blur effects can trigger compositing artifacts during capture. */
+html[data-capture-mode="true"] .blog-toolbar,
+html[data-capture-mode="true"] .header-nav,
+html[data-capture-mode="true"] .cookie-banner,
+html[data-capture-mode="true"] .support-chat__window {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
