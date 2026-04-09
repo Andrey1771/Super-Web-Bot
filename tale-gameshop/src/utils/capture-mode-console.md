@@ -17,11 +17,12 @@ const result = await window.__TALE_SCREENSHOT__.capturePage();
 ## What helper does automatically
 
 1. Enables capture mode (`data-capture-mode="true"`).
-2. Waits at least 2 animation frames.
+2. Waits animation frames for layout stabilization.
 3. Scrolls to top.
-4. Runs stitched full-page capture pass through the page.
-5. Downloads screenshot file automatically.
-6. Always disables capture mode in `finally` and restores original scroll position.
+4. Captures **first frame with header/overlays visible**.
+5. Hides detected top/floating overlays and captures remaining stitched frames.
+6. Restores hidden overlays.
+7. Always disables capture mode in `finally` and restores original scroll position.
 
 ## Return value
 
@@ -31,6 +32,7 @@ const result = await window.__TALE_SCREENSHOT__.capturePage();
 - `width`, `height` — final canvas size
 - `segments` — number of stitched viewport segments
 - `modeVerification` — capture-mode diagnostic snapshot
+- `overlayDiagnostics` — detected overlays and hidden-after-first-frame info
 - `fileName` — downloaded file name
 
 ## Optional call options
@@ -40,7 +42,14 @@ await window.__TALE_CAPTURE_PAGE__({
   fileName: 'blog-full-page.png',
   format: 'image/png',
   scale: 1,
-  settleFrames: 2,
+  settleFrames: 3,
   autoDownload: true
 });
+```
+
+## Diagnostics quick check
+
+```js
+const shot = await window.__TALE_CAPTURE_PAGE__();
+console.table(shot.overlayDiagnostics.entries);
 ```
