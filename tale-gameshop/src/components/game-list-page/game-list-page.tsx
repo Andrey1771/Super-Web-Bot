@@ -762,6 +762,15 @@ const TaleGameshopGameList: React.FC = () => {
         window.setTimeout(scrollToCatalog, 80);
     }, [scrollToCatalog, updateParams]);
 
+    const handleBiggestDiscountsClick = useCallback(() => {
+        updateParams((params) => {
+            params.set('discounted', '1');
+            params.set('sortBy', 'price-asc');
+            params.set('page', '1');
+        });
+        window.setTimeout(scrollToCatalog, 80);
+    }, [scrollToCatalog, updateParams]);
+
     const handleQuickCategoryClick = useCallback((category: string) => {
         updateParams((params) => {
             params.set('filterCategory', category);
@@ -1085,6 +1094,7 @@ const TaleGameshopGameList: React.FC = () => {
                         onViewDealsClick={handleViewDealsClick}
                         onUnderHundredClick={handleUnderHundredClick}
                         onPriceAscClick={handlePriceAscClick}
+                        onBiggestDiscountsClick={handleBiggestDiscountsClick}
                         onQuickCategoryClick={handleQuickCategoryClick}
                         quickCategoryOptions={categoriesForDisplay.slice(0, 2)}
                     />
