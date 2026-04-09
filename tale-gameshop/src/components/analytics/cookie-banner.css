@@ -38,6 +38,15 @@
   gap: 8px;
 }
 
+.cookie-banner__section-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cookie-banner__section-note {
+  margin: 4px 0 0;
+}
+
 @media (min-width: 768px) {
   .cookie-banner__content {
     flex-direction: row;
