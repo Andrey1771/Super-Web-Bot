@@ -195,14 +195,14 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                 <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.22)_0%,rgba(107,63,242,0)_72%)]" />
                 <div className="pointer-events-none absolute -left-16 -bottom-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.15)_0%,rgba(107,63,242,0)_72%)]" />
 
-                <div className="relative z-10 grid gap-4 lg:grid-cols-[1.55fr_1fr] lg:items-center">
+                <div className="relative z-10 grid gap-4 lg:grid-cols-[3fr_2fr] lg:items-center">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Smart shortcuts</p>
-                        <h2 className="mt-1 text-2xl font-semibold text-[#2b2350]">Still choosing?</h2>
-                        <p className="mt-1 text-sm text-[#5f528e]">Use quick shortcuts to narrow this catalog by discounts, price, and category.</p>
+                        <h2 className="mt-1 text-[28px] font-semibold leading-[1.15] text-[#2b2350]">Still choosing?</h2>
+                        <p className="mt-2 text-sm text-[#5f528e]">Use quick shortcuts to narrow this catalog by discounts, price, and category.</p>
                         <p className="mt-1 text-xs text-[#7c70ab]">Every action updates the listing and brings you back to matching games instantly.</p>
 
-                        <div className="mt-3 grid max-w-[540px] gap-2 sm:grid-cols-2">
+                        <div className="mt-3 grid max-w-[460px] gap-2 sm:grid-cols-2">
                             {quickPicks.slice(0, 5).map((pick) => (
                                 <button
                                     key={pick.label}
@@ -216,18 +216,18 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex justify-center lg:justify-center">
-                        <div className="inline-flex flex-wrap items-center gap-3 rounded-[16px] border border-[#d8c8ff] bg-white/80 p-2.5 shadow-[0_10px_22px_rgba(107,63,242,0.18)]">
+                    <div className="flex items-center justify-center">
+                        <div className="inline-flex w-full max-w-[360px] flex-col gap-3">
                             <button
                                 type="button"
-                                className="rounded-[12px] bg-[#6b3ff2] px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_26px_rgba(107,63,242,0.32)] transition hover:brightness-110"
+                                className="w-full rounded-[13px] bg-[#6b3ff2] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(107,63,242,0.34)] transition hover:brightness-110"
                                 onClick={onMostPopularClick}
                             >
                                 Most Popular
                             </button>
                             <button
                                 type="button"
-                                className="rounded-[12px] border border-[#d6c8ff] bg-white px-7 py-3 text-sm font-semibold text-[#46377f] shadow-[0_8px_16px_rgba(107,63,242,0.12)] transition hover:bg-[#faf8ff]"
+                                className="w-full rounded-[13px] border border-[#d6c8ff] bg-white/95 px-7 py-3.5 text-sm font-semibold text-[#46377f] shadow-[0_10px_20px_rgba(107,63,242,0.14)] transition hover:bg-[#faf8ff]"
                                 onClick={onViewDealsClick}
                             >
                                 View Deals
