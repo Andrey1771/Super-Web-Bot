@@ -162,12 +162,11 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                 className="rounded-[20px] border border-[#e9e2ff] bg-white/95 p-5 shadow-[0_18px_32px_rgba(108,85,164,0.12)]"
                 aria-label="Catalog social proof"
             >
-                <div className="grid gap-4 lg:grid-cols-[2fr_1fr] lg:items-start">
-                    <div className="flex h-full flex-col rounded-[16px] border border-[#f0ebff] bg-[#fefcff] p-4">
+                <div className="grid gap-4 lg:grid-cols-[1.8fr_1fr] lg:items-end">
+                    <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b72ab]">Player feedback</p>
                         <h2 className="mt-2 text-xl font-semibold text-[#2b2350]">Trusted by active buyers</h2>
                         <p className="mt-1 text-sm text-[#6f64a8]">Rolling catalog reviews from shoppers who completed checkout recently.</p>
-
                         <div className="mt-3 flex flex-wrap items-center gap-3">
                             <span className="text-3xl font-semibold leading-none text-[#2b2350]">4.8</span>
                             <div className="flex items-center gap-1 text-[#6b3ff2]" aria-hidden="true">
@@ -179,62 +178,11 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                             </div>
                             <span className="text-sm text-[#6f64a8]">8,536 reviews</span>
                         </div>
-                        <div className="mt-3 inline-flex w-fit items-center gap-2 rounded-full border border-[#e5dcff] bg-white px-3 py-1 text-xs font-medium text-[#6f64a8]">
-                            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#6b3ff2]" />
-                            Live review rail
-                        </div>
-
-                        <div
-                            className="relative mt-4"
-                            onMouseEnter={() => setIsPaused(true)}
-                            onMouseLeave={() => setIsPaused(false)}
-                        >
-                            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-white via-white/80 to-transparent" />
-                            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-white via-white/80 to-transparent" />
-                            <div
-                                ref={railRef}
-                                className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                                onTouchStart={handleTouchStart}
-                                onTouchEnd={handleTouchEnd}
-                            >
-                                {testimonialItems.map((review, index) => (
-                                    <article
-                                        key={`${review.name}-${index}`}
-                                        className="min-w-[82%] snap-start rounded-[14px] border border-[#ece4ff] bg-[#fcfbff] p-3 shadow-[0_8px_18px_rgba(108,85,164,0.08)] sm:min-w-[46%] lg:min-w-[31%]"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6b3ff2] text-xs font-semibold text-white">
-                                                {review.initial}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-[#2b2350]">{review.name}</p>
-                                                <p className="text-xs text-[#7b72ab]">{review.tag}</p>
-                                            </div>
-                                        </div>
-                                        <p className="mt-2 text-sm text-[#6f64a8]">{review.text}</p>
-                                    </article>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="mt-3 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-1.5">
-                                {testimonialItems.map((_, index) => (
-                                    <span
-                                        key={`rail-indicator-${index}`}
-                                        className={`h-1.5 rounded-full transition-all ${
-                                            index === activeIndex ? 'w-5 bg-[#6b3ff2]' : 'w-1.5 bg-[#daccff]'
-                                        }`}
-                                    />
-                                ))}
-                            </div>
-                            <span className="text-[11px] font-medium text-[#8a7eb9]">Swipe or drag</span>
-                        </div>
                     </div>
 
-                    <aside className="rounded-[14px] border border-[#efeaff] bg-[#fbf9ff] p-3.5 lg:mt-2">
-                        <p className="text-sm font-semibold text-[#2b2350]">Rating breakdown</p>
-                        <p className="mt-1 text-xs text-[#7b72ab]">Distribution across verified reviews</p>
-                        <div className="mt-3.5 space-y-2">
+                    <aside className="rounded-[12px] border border-[#ece4ff] bg-[#fbf9ff] px-3 py-2.5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7b72ab]">Rating breakdown</p>
+                        <div className="mt-2.5 space-y-1.5">
                             {[
                                 { label: '5', value: 78 },
                                 { label: '4', value: 15 },
@@ -242,18 +190,59 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                                 { label: '2', value: 1 },
                                 { label: '1', value: 1 }
                             ].map((item) => (
-                                <div key={item.label} className="flex items-center gap-3 text-sm text-[#6f64a8]">
-                                    <span className="w-4 text-right font-semibold text-[#2b2350]">{item.label}</span>
-                                    <div className="flex flex-1 items-center gap-2">
-                                        <div className="h-2 flex-1 rounded-full bg-[#e6e1ff]">
-                                            <div className="h-2 rounded-full bg-[#6b3ff2]" style={{ width: `${item.value}%` }} />
+                                <div key={item.label} className="flex items-center gap-2 text-xs text-[#6f64a8]">
+                                    <span className="w-3 text-right font-semibold text-[#2b2350]">{item.label}</span>
+                                    <div className="flex flex-1 items-center gap-1.5">
+                                        <div className="h-1.5 flex-1 rounded-full bg-[#e6e1ff]">
+                                            <div className="h-1.5 rounded-full bg-[#6b3ff2]" style={{ width: `${item.value}%` }} />
                                         </div>
-                                        <span className="w-8 text-right text-xs">{item.value}%</span>
+                                        <span className="w-7 text-right">{item.value}%</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </aside>
+                </div>
+
+                <div
+                    className="relative mt-4"
+                    onMouseEnter={() => setIsPaused(true)}
+                    onMouseLeave={() => setIsPaused(false)}
+                >
+                    <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-white via-white/80 to-transparent" />
+                    <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-white via-white/80 to-transparent" />
+                    <div
+                        ref={railRef}
+                        className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        {testimonialItems.map((review, index) => (
+                            <article
+                                key={`${review.name}-${index}`}
+                                className="min-w-[82%] snap-start rounded-[14px] border border-[#ece4ff] bg-[#fcfbff] p-3 shadow-[0_8px_18px_rgba(108,85,164,0.08)] sm:min-w-[46%] lg:min-w-[31%]"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6b3ff2] text-xs font-semibold text-white">
+                                        {review.initial}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-[#2b2350]">{review.name}</p>
+                                        <p className="text-xs text-[#7b72ab]">{review.tag}</p>
+                                    </div>
+                                </div>
+                                <p className="mt-2 text-sm text-[#6f64a8]">{review.text}</p>
+                            </article>
+                        ))}
+                    </div>
+                </div>
+                <div className="mt-2.5 flex items-center gap-1.5">
+                    {testimonialItems.map((_, index) => (
+                        <span
+                            key={`rail-indicator-${index}`}
+                            className={`h-1 rounded-full transition-all ${index === activeIndex ? 'w-4 bg-[#6b3ff2]' : 'w-1.5 bg-[#daccff]'}`}
+                        />
+                    ))}
                 </div>
             </section>
 
@@ -264,51 +253,45 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({
                 <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.22)_0%,rgba(107,63,242,0)_72%)]" />
                 <div className="pointer-events-none absolute -left-16 -bottom-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.15)_0%,rgba(107,63,242,0)_72%)]" />
 
-                <div className="relative z-10 grid gap-4">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="max-w-2xl">
-                            <h2 className="text-2xl font-semibold text-[#2b2350]">Still choosing?</h2>
-                            <p className="mt-1 text-sm text-[#5f528e]">
-                                Use smart shortcuts to narrow this catalog by deals, budget, and sorting in one click.
-                            </p>
-                            <p className="mt-1 text-xs text-[#7c70ab]">
-                                Each action updates live filters and brings you back to the game grid instantly.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <button
-                                type="button"
-                                className="rounded-[12px] bg-[#6b3ff2] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(107,63,242,0.28)] transition hover:brightness-110"
-                                onClick={onMostPopularClick}
-                            >
-                                Most Popular
-                            </button>
-                            <button
-                                type="button"
-                                className="rounded-[12px] border border-[#d6c8ff] bg-white px-4 py-2 text-sm font-semibold text-[#46377f] transition hover:bg-[#faf8ff]"
-                                onClick={onViewDealsClick}
-                            >
-                                View Deals
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="rounded-[14px] border border-[#e1d5ff] bg-white/88 p-3 shadow-[0_10px_20px_rgba(107,63,242,0.12)]">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Quick picks</p>
-                        <div className="mt-2 grid gap-x-2 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-                            {quickPicks.slice(0, 5).map((pick, index) => (
+                <div className="relative z-10 grid gap-4 lg:grid-cols-[1.7fr_auto] lg:items-start">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Smart shortcuts</p>
+                        <h2 className="mt-1 text-2xl font-semibold text-[#2b2350]">Still choosing?</h2>
+                        <p className="mt-1 text-sm text-[#5f528e]">
+                            Use quick shortcuts to narrow this catalog by discounts, price, and category.
+                        </p>
+                        <p className="mt-1 text-xs text-[#7c70ab]">
+                            Every action updates the listing and brings you back to matching games instantly.
+                        </p>
+                        <div className="mt-3 flex max-w-2xl flex-wrap gap-2">
+                            {quickPicks.slice(0, 5).map((pick) => (
                                 <button
                                     key={pick.label}
                                     type="button"
-                                    className={`justify-self-start rounded-full border border-[#d8ccff] bg-white px-3 py-1.5 text-xs font-semibold text-[#4c3c8d] shadow-[0_6px_14px_rgba(107,63,242,0.1)] transition hover:bg-[#fcfaff] ${
-                                        index % 2 === 0 ? 'sm:translate-x-0' : 'sm:translate-x-2'
-                                    }`}
+                                    className="rounded-full border border-[#d8ccff] bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#4c3c8d] shadow-[0_6px_14px_rgba(107,63,242,0.1)] transition hover:bg-[#fcfaff]"
                                     onClick={pick.onClick}
                                 >
                                     {pick.label}
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                        <button
+                            type="button"
+                            className="rounded-[12px] bg-[#6b3ff2] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(107,63,242,0.28)] transition hover:brightness-110"
+                            onClick={onMostPopularClick}
+                        >
+                            Most Popular
+                        </button>
+                        <button
+                            type="button"
+                            className="rounded-[12px] border border-[#d6c8ff] bg-white px-4 py-2 text-sm font-semibold text-[#46377f] transition hover:bg-[#faf8ff]"
+                            onClick={onViewDealsClick}
+                        >
+                            View Deals
+                        </button>
                     </div>
                 </div>
             </section>
