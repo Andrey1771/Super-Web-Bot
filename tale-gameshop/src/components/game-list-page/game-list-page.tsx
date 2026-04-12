@@ -728,56 +728,32 @@ const TaleGameshopGameList: React.FC = () => {
         catalogSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
-    const handleMostPopularClick = useCallback(() => {
+    const handleApplyShortcut = useCallback((selection: { budget?: number; category?: string; mode?: string }) => {
         updateParams((params) => {
-            params.set('sortBy', 'popular');
-            params.delete('discounted');
-            params.set('page', '1');
-        });
-        window.setTimeout(scrollToCatalog, 80);
-    }, [scrollToCatalog, updateParams]);
+            if (selection.budget) {
+                params.set('filterMaxPrice', String(selection.budget));
+                params.set('filterMinPrice', String(availablePrices.min));
+            }
 
-    const handleViewDealsClick = useCallback(() => {
-        updateParams((params) => {
-            params.set('discounted', '1');
-            params.set('page', '1');
-        });
-        window.setTimeout(scrollToCatalog, 80);
-    }, [scrollToCatalog, updateParams]);
+            if (selection.category) {
+                params.set('filterCategory', selection.category);
+            }
 
-    const handleUnderHundredClick = useCallback(() => {
-        updateParams((params) => {
-            params.set('filterMaxPrice', '100');
-            params.set('filterMinPrice', String(availablePrices.min));
+            if (selection.mode === 'discounts') {
+                params.set('discounted', '1');
+                params.set('sortBy', 'price-asc');
+            } else if (selection.mode === 'popular') {
+                params.set('sortBy', 'popular');
+                params.delete('discounted');
+            } else if (selection.mode === 'price-asc') {
+                params.set('sortBy', 'price-asc');
+                params.delete('discounted');
+            }
+
             params.set('page', '1');
         });
         window.setTimeout(scrollToCatalog, 80);
     }, [availablePrices.min, scrollToCatalog, updateParams]);
-
-    const handlePriceAscClick = useCallback(() => {
-        updateParams((params) => {
-            params.set('sortBy', 'price-asc');
-            params.set('page', '1');
-        });
-        window.setTimeout(scrollToCatalog, 80);
-    }, [scrollToCatalog, updateParams]);
-
-    const handleBiggestDiscountsClick = useCallback(() => {
-        updateParams((params) => {
-            params.set('discounted', '1');
-            params.set('sortBy', 'price-asc');
-            params.set('page', '1');
-        });
-        window.setTimeout(scrollToCatalog, 80);
-    }, [scrollToCatalog, updateParams]);
-
-    const handleQuickCategoryClick = useCallback((category: string) => {
-        updateParams((params) => {
-            params.set('filterCategory', category);
-            params.set('page', '1');
-        });
-        window.setTimeout(scrollToCatalog, 80);
-    }, [scrollToCatalog, updateParams]);
 
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
@@ -1090,12 +1066,8 @@ const TaleGameshopGameList: React.FC = () => {
 
                 <section className="mt-12">
                     <CatalogPostSections
-                        onMostPopularClick={handleMostPopularClick}
-                        onViewDealsClick={handleViewDealsClick}
-                        onUnderHundredClick={handleUnderHundredClick}
-                        onPriceAscClick={handlePriceAscClick}
-                        onBiggestDiscountsClick={handleBiggestDiscountsClick}
-                        onQuickCategoryClick={handleQuickCategoryClick}
+                        games={games}
+                        onApplyShortcut={handleApplyShortcut}
                         quickCategoryOptions={categoriesForDisplay.slice(0, 2)}
                     />
                 </section>
