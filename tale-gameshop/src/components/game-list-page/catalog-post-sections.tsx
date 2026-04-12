@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Game } from '../../models/game';
 
 type ShortcutMode = 'discounts' | 'popular' | 'price-asc';
 
 type CatalogPostSectionsProps = {
-    games: Game[];
     onApplyShortcut: (selection: { budget?: number; category?: string; mode?: ShortcutMode }) => void;
     quickCategoryOptions: string[];
 };
@@ -20,27 +18,21 @@ const testimonialItems = [
     { name: 'Sam R.', initial: 'S', text: 'Exactly what I need from a store catalog: fast and clear.', tag: 'PC gamer' }
 ];
 
-const modeLabels: Record<ShortcutMode, string> = {
-    discounts: 'Biggest discounts',
-    popular: 'Most popular',
-    'price-asc': 'Price: Low to High'
-};
-
-const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ games, onApplyShortcut, quickCategoryOptions }) => {
+const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ onApplyShortcut, quickCategoryOptions }) => {
     const railRef = useRef<HTMLDivElement | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-    const [selectedBudget, setSelectedBudget] = useState<number>(100);
-    const [selectedMode, setSelectedMode] = useState<ShortcutMode>('discounts');
-    const [selectedCategory, setSelectedCategory] = useState<string>(quickCategoryOptions[0] ?? '');
-
-    useEffect(() => {
-        if (!selectedCategory && quickCategoryOptions.length > 0) {
-            setSelectedCategory(quickCategoryOptions[0]);
-        }
-    }, [quickCategoryOptions, selectedCategory]);
+    const quickPicks = useMemo(
+        () => [
+            { label: 'Under $100', action: { budget: 100 } },
+            { label: 'Biggest discounts', action: { mode: 'discounts' as ShortcutMode } },
+            { label: 'Price: Low to High', action: { mode: 'price-asc' as ShortcutMode } },
+            ...quickCategoryOptions.slice(0, 2).map((category) => ({ label: category, action: { category } }))
+        ],
+        [quickCategoryOptions]
+    );
 
     useEffect(() => {
         if (isPaused || testimonialItems.length <= 1) {
@@ -67,37 +59,6 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ games, onAppl
         }
         rail.scrollTo({ left: card.offsetLeft - 18, behavior: 'smooth' });
     }, [activeIndex]);
-
-    const previewGames = useMemo(() => {
-        const byBudget = games.filter((game) => Number(game.finalPrice ?? game.price) <= selectedBudget);
-        let candidates = byBudget;
-
-        if (selectedMode === 'discounts') {
-            candidates = candidates
-                .filter((game) => {
-                    const regular = Number(game.price);
-                    const final = Number(game.finalPrice ?? game.price);
-                    return Boolean(game.discountActive) && Number.isFinite(regular) && Number.isFinite(final) && final < regular;
-                })
-                .sort((a, b) => Number(a.finalPrice ?? a.price) - Number(b.finalPrice ?? b.price));
-        } else if (selectedMode === 'popular') {
-            candidates = [...candidates];
-        } else {
-            candidates = [...candidates].sort((a, b) => Number(a.finalPrice ?? a.price) - Number(b.finalPrice ?? b.price));
-        }
-
-        return candidates;
-    }, [games, selectedBudget, selectedCategory, selectedMode]);
-
-    const previewGame = previewGames[0] ?? games[0] ?? null;
-
-    const handleApply = () => {
-        onApplyShortcut({
-            budget: selectedBudget,
-            category: selectedCategory || undefined,
-            mode: selectedMode
-        });
-    };
 
     const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         setTouchStartX(event.touches[0]?.clientX ?? null);
@@ -187,96 +148,45 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ games, onAppl
                 </div>
             </section>
 
-            <section className="relative overflow-hidden rounded-[20px] border border-[#dfd1ff] bg-[linear-gradient(135deg,#fdfbff_0%,#f4ecff_50%,#efe5ff_100%)] p-5 shadow-[0_22px_38px_rgba(107,63,242,0.18)]" aria-label="Catalog shortcut assistant">
+            <section className="relative overflow-hidden rounded-[20px] border border-[#dfd1ff] bg-[linear-gradient(135deg,#fdfbff_0%,#f4ecff_50%,#efe5ff_100%)] p-5 shadow-[0_22px_38px_rgba(107,63,242,0.18)]" aria-label="Catalog shortcut CTA">
                 <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.22)_0%,rgba(107,63,242,0)_72%)]" />
 
-                <div className="relative z-10 grid gap-4 lg:grid-cols-[3fr_2fr] lg:items-start">
+                <div className="relative z-10 grid gap-5 lg:grid-cols-[3fr_2fr] lg:items-center">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Shortcut assistant</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Smart shortcuts</p>
                         <h2 className="mt-1 text-[28px] font-semibold leading-[1.15] text-[#2b2350]">Still choosing?</h2>
-                        <p className="mt-2 text-sm text-[#5f528e]">Use quick shortcuts to narrow the catalog by budget, genre, and deal type.</p>
-                        <p className="mt-1 text-xs text-[#7c70ab]">Pick a few preferences and jump straight to matching games.</p>
+                        <p className="mt-2 text-sm text-[#5f528e]">Use quick shortcuts to narrow this catalog by budget, genre, and deal type.</p>
+                        <p className="mt-1 text-xs text-[#7c70ab]">We’ll apply the shortcut and bring you back to matching games instantly.</p>
 
-                        <div className="mt-4 space-y-3 max-w-[500px]">
-                            <div>
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a7eb9]">Budget</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {[100, 300].map((value) => (
-                                        <button
-                                            key={`budget-${value}`}
-                                            type="button"
-                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${selectedBudget === value ? 'border-[#6b3ff2] bg-[#ede4ff] text-[#4c32a9]' : 'border-[#d8ccff] bg-white/95 text-[#4c3c8d]'}`}
-                                            onClick={() => setSelectedBudget(value)}
-                                        >
-                                            Under ${value}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a7eb9]">Mood / Genre</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {quickCategoryOptions.slice(0, 3).map((category) => (
-                                        <button
-                                            key={`genre-${category}`}
-                                            type="button"
-                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${selectedCategory === category ? 'border-[#6b3ff2] bg-[#ede4ff] text-[#4c32a9]' : 'border-[#d8ccff] bg-white/95 text-[#4c3c8d]'}`}
-                                            onClick={() => setSelectedCategory(category)}
-                                        >
-                                            {category}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a7eb9]">Browse mode</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {(Object.keys(modeLabels) as ShortcutMode[]).map((mode) => (
-                                        <button
-                                            key={`mode-${mode}`}
-                                            type="button"
-                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${selectedMode === mode ? 'border-[#6b3ff2] bg-[#ede4ff] text-[#4c32a9]' : 'border-[#d8ccff] bg-white/95 text-[#4c3c8d]'}`}
-                                            onClick={() => setSelectedMode(mode)}
-                                        >
-                                            {modeLabels[mode]}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                        <div className="mt-4 grid max-w-[460px] gap-2 sm:grid-cols-2">
+                            {quickPicks.map((pick) => (
+                                <button
+                                    key={pick.label}
+                                    type="button"
+                                    className="justify-self-start rounded-full border border-[#d8ccff] bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#4c3c8d] shadow-[0_6px_14px_rgba(107,63,242,0.1)] transition hover:bg-[#fcfaff]"
+                                    onClick={() => onApplyShortcut(pick.action)}
+                                >
+                                    {pick.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="flex justify-center lg:justify-center">
-                        <div className="w-full max-w-[360px] rounded-[16px] border border-[#d9ccff] bg-white/92 p-3 shadow-[0_14px_28px_rgba(107,63,242,0.2)]">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#7b72ab]">Recommended shortcut</p>
-                            {previewGame ? (
-                                <>
-                                    <div className="mt-2 rounded-[12px] border border-[#ece4ff] bg-[#faf7ff] p-3">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <p className="text-sm font-semibold text-[#2b2350]">{previewGame.title}</p>
-                                                <p className="mt-1 text-xs text-[#6f64a8]">{previewGames.length} matching games</p>
-                                            </div>
-                                            <span className="rounded-full bg-[#ede4ff] px-2 py-0.5 text-[10px] font-semibold text-[#5530bf]">
-                                                {selectedMode === 'discounts' ? 'Deal' : selectedMode === 'popular' ? 'Popular' : 'Under budget'}
-                                            </span>
-                                        </div>
-                                        <p className="mt-2 text-sm font-semibold text-[#3f2d7a]">${Number(previewGame.finalPrice ?? previewGame.price).toFixed(2)}</p>
-                                    </div>
-                                    <p className="mt-2 text-xs text-[#7c70ab]">Filters will be applied to the catalog.</p>
-                                </>
-                            ) : (
-                                <p className="mt-2 text-xs text-[#7c70ab]">No exact match yet. Shortcut will still be applied to the catalog.</p>
-                            )}
-
+                    <div className="flex items-center justify-center">
+                        <div className="inline-flex w-full max-w-[360px] flex-col gap-3">
                             <button
                                 type="button"
-                                className="mt-3 w-full rounded-[13px] bg-[#6b3ff2] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(107,63,242,0.34)] transition hover:brightness-110"
-                                onClick={handleApply}
+                                className="w-full rounded-[14px] bg-[#6b3ff2] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(107,63,242,0.34)] transition hover:brightness-110"
+                                onClick={() => onApplyShortcut({ mode: 'popular' })}
                             >
-                                Browse matching games
+                                Most Popular
+                            </button>
+                            <button
+                                type="button"
+                                className="w-full rounded-[14px] border border-[#d6c8ff] bg-white/95 px-7 py-3.5 text-sm font-semibold text-[#46377f] shadow-[0_10px_20px_rgba(107,63,242,0.14)] transition hover:bg-[#faf8ff]"
+                                onClick={() => onApplyShortcut({ mode: 'discounts' })}
+                            >
+                                View Deals
                             </button>
                         </div>
                     </div>

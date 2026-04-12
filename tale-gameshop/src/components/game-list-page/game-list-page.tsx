@@ -1066,7 +1066,6 @@ const TaleGameshopGameList: React.FC = () => {
 
                 <section className="mt-12">
                     <CatalogPostSections
-                        games={games}
                         onApplyShortcut={handleApplyShortcut}
                         quickCategoryOptions={categoriesForDisplay.slice(0, 2)}
                     />
