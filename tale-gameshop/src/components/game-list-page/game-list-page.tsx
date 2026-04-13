@@ -728,15 +728,29 @@ const TaleGameshopGameList: React.FC = () => {
         catalogSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
-    const handleApplyShortcut = useCallback((selection: { budget?: number; category?: string; mode?: string }) => {
+    const handleApplyShortcut = useCallback((selection: {
+        minPrice?: number;
+        maxPrice?: number;
+        category?: string;
+        mode?: 'discounts' | 'popular' | 'price-asc' | 'price-desc';
+    }) => {
         updateParams((params) => {
-            if (selection.budget) {
-                params.set('filterMaxPrice', String(selection.budget));
-                params.set('filterMinPrice', String(availablePrices.min));
+            if (selection.maxPrice !== undefined) {
+                params.set('filterMaxPrice', String(selection.maxPrice));
+            } else if (selection.minPrice === undefined) {
+                params.delete('filterMaxPrice');
+            }
+
+            if (selection.minPrice !== undefined) {
+                params.set('filterMinPrice', String(selection.minPrice));
+            } else if (selection.maxPrice === undefined) {
+                params.delete('filterMinPrice');
             }
 
             if (selection.category) {
                 params.set('filterCategory', selection.category);
+            } else {
+                params.delete('filterCategory');
             }
 
             if (selection.mode === 'discounts') {
@@ -748,12 +762,15 @@ const TaleGameshopGameList: React.FC = () => {
             } else if (selection.mode === 'price-asc') {
                 params.set('sortBy', 'price-asc');
                 params.delete('discounted');
+            } else if (selection.mode === 'price-desc') {
+                params.set('sortBy', 'price-desc');
+                params.delete('discounted');
             }
 
             params.set('page', '1');
         });
         window.setTimeout(scrollToCatalog, 80);
-    }, [availablePrices.min, scrollToCatalog, updateParams]);
+    }, [scrollToCatalog, updateParams]);
 
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
@@ -1066,8 +1083,9 @@ const TaleGameshopGameList: React.FC = () => {
 
                 <section className="mt-12">
                     <CatalogPostSections
+                        games={games}
+                        availableCategories={categoriesForDisplay}
                         onApplyShortcut={handleApplyShortcut}
-                        quickCategoryOptions={categoriesForDisplay.slice(0, 2)}
                     />
                 </section>
             </main>

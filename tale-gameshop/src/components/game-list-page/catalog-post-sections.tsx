@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Game } from '../../models/game';
 
-type ShortcutMode = 'discounts' | 'popular' | 'price-asc';
+type ShortcutMode = 'discounts' | 'popular' | 'price-asc' | 'price-desc';
+type BudgetOption = 'any' | 'under20' | 'under50' | 'premium';
+type MoodOption = 'story' | 'action' | 'coop' | 'horror';
 
 type CatalogPostSectionsProps = {
-    onApplyShortcut: (selection: { budget?: number; category?: string; mode?: ShortcutMode }) => void;
-    quickCategoryOptions: string[];
+    games: Game[];
+    availableCategories: string[];
+    onApplyShortcut: (selection: { minPrice?: number; maxPrice?: number; category?: string; mode?: ShortcutMode }) => void;
 };
 
 const trustItems = ['Secure checkout', 'Instant key delivery', 'Refund policy', '24/7 support'];
@@ -18,34 +22,66 @@ const testimonialItems = [
     { name: 'Sam R.', initial: 'S', text: 'Exactly what I need from a store catalog: fast and clear.', tag: 'PC gamer' }
 ];
 
-const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ onApplyShortcut, quickCategoryOptions }) => {
+const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ games, availableCategories, onApplyShortcut }) => {
     const railRef = useRef<HTMLDivElement | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-    const quickPicks = useMemo(
-        () => [
-            { label: 'Under $100', action: { budget: 100 } },
-            { label: 'Biggest discounts', action: { mode: 'discounts' as ShortcutMode } },
-            { label: 'Price: Low to High', action: { mode: 'price-asc' as ShortcutMode } },
-            ...quickCategoryOptions.slice(0, 2).map((category) => ({ label: category, action: { category } }))
-        ],
-        [quickCategoryOptions]
+    const [budget, setBudget] = useState<BudgetOption>('any');
+    const [mood, setMood] = useState<MoodOption>('action');
+    const [mode, setMode] = useState<ShortcutMode>('discounts');
+
+    const moodCategoryMap = useMemo(() => {
+        const findMatch = (...keywords: string[]) =>
+            availableCategories.find((category) => keywords.some((keyword) => category.toLowerCase().includes(keyword)));
+
+        return {
+            story: findMatch('role', 'rpg', 'adventure', 'story') ?? availableCategories[0],
+            action: findMatch('action') ?? availableCategories[0],
+            coop: findMatch('strategy', 'sports', 'co-op', 'coop') ?? availableCategories[1] ?? availableCategories[0],
+            horror: findMatch('horror') ?? availableCategories[2] ?? availableCategories[0]
+        } as Record<MoodOption, string | undefined>;
+    }, [availableCategories]);
+
+    const budgetRules = useMemo(
+        () => ({
+            any: { label: 'Any', minPrice: undefined, maxPrice: undefined },
+            under20: { label: 'Under $20', minPrice: undefined, maxPrice: 20 },
+            under50: { label: 'Under $50', minPrice: undefined, maxPrice: 50 },
+            premium: { label: 'Premium picks', minPrice: 50, maxPrice: undefined }
+        }),
+        []
+    );
+
+    const moodRules = useMemo(
+        () => ({
+            story: { label: 'Story-rich', category: moodCategoryMap.story },
+            action: { label: 'Action', category: moodCategoryMap.action },
+            coop: { label: 'Co-op', category: moodCategoryMap.coop },
+            horror: { label: 'Horror', category: moodCategoryMap.horror }
+        }),
+        [moodCategoryMap]
+    );
+
+    const modeRules = useMemo(
+        () => ({
+            discounts: { label: 'Biggest discount', mode: 'discounts' as ShortcutMode },
+            popular: { label: 'Most popular', mode: 'popular' as ShortcutMode },
+            'price-asc': { label: 'Price low to high', mode: 'price-asc' as ShortcutMode },
+            'price-desc': { label: 'Premium picks', mode: 'price-desc' as ShortcutMode }
+        }),
+        []
     );
 
     useEffect(() => {
         if (isPaused || testimonialItems.length <= 1) {
             return;
         }
-
         const intervalId = window.setInterval(() => {
             setActiveIndex((prev) => (prev + 1) % testimonialItems.length);
         }, 3400);
-
-        return () => {
-            window.clearInterval(intervalId);
-        };
+        return () => window.clearInterval(intervalId);
     }, [isPaused]);
 
     useEffect(() => {
@@ -59,6 +95,52 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ onApplyShortc
         }
         rail.scrollTo({ left: card.offsetLeft - 18, behavior: 'smooth' });
     }, [activeIndex]);
+
+    const matchingCount = useMemo(() => {
+        const currentBudget = budgetRules[budget];
+        const currentMood = moodRules[mood];
+
+        return games.filter((game) => {
+            const price = Number(game.finalPrice ?? game.price);
+            if (currentBudget.maxPrice !== undefined && price > currentBudget.maxPrice) {
+                return false;
+            }
+            if (currentBudget.minPrice !== undefined && price < currentBudget.minPrice) {
+                return false;
+            }
+            if (mode === 'discounts') {
+                const regular = Number(game.price);
+                if (!(Boolean(game.discountActive) && price < regular)) {
+                    return false;
+                }
+            }
+            if (!currentMood.category) {
+                return true;
+            }
+
+            return true;
+        }).length;
+    }, [budget, budgetRules, games, mode, mood, moodRules]);
+
+    const applyCurrentShortcut = () => {
+        const currentBudget = budgetRules[budget];
+        const currentMood = moodRules[mood];
+        const currentMode = modeRules[mode];
+
+        onApplyShortcut({
+            minPrice: currentBudget.minPrice,
+            maxPrice: currentBudget.maxPrice,
+            category: currentMood.category,
+            mode: currentMode.mode
+        });
+    };
+
+    const resetShortcut = () => {
+        setBudget('any');
+        setMood('action');
+        setMode('discounts');
+        onApplyShortcut({});
+    };
 
     const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         setTouchStartX(event.touches[0]?.clientX ?? null);
@@ -148,49 +230,97 @@ const CatalogPostSections: React.FC<CatalogPostSectionsProps> = ({ onApplyShortc
                 </div>
             </section>
 
-            <section className="relative overflow-hidden rounded-[20px] border border-[#dfd1ff] bg-[linear-gradient(135deg,#fdfbff_0%,#f4ecff_50%,#efe5ff_100%)] p-5 shadow-[0_22px_38px_rgba(107,63,242,0.18)]" aria-label="Catalog shortcut CTA">
-                <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(107,63,242,0.22)_0%,rgba(107,63,242,0)_72%)]" />
-
-                <div className="relative z-10 grid gap-5 lg:grid-cols-[3fr_2fr] lg:items-center">
+            <section className="rounded-[20px] border border-[#dfd1ff] bg-[linear-gradient(145deg,#ffffff_0%,#f7f1ff_55%,#f2e8ff_100%)] p-5 shadow-[0_20px_34px_rgba(107,63,242,0.16)]" aria-label="Smart picker">
+                <div className="grid gap-5 lg:grid-cols-[3fr_2fr] lg:items-start">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Smart shortcuts</p>
-                        <h2 className="mt-1 text-[28px] font-semibold leading-[1.15] text-[#2b2350]">Still choosing?</h2>
-                        <p className="mt-2 text-sm text-[#5f528e]">Use quick shortcuts to narrow this catalog by budget, genre, and deal type.</p>
-                        <p className="mt-1 text-xs text-[#7c70ab]">We’ll apply the shortcut and bring you back to matching games instantly.</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">SMART PICKER</p>
+                        <h2 className="mt-1 text-[28px] font-semibold leading-[1.15] text-[#2b2350]">Find your next game faster</h2>
+                        <p className="mt-2 text-sm text-[#5f528e]">Choose a budget, a play mood, and a deal angle. We’ll instantly narrow the catalog.</p>
 
-                        <div className="mt-4 grid max-w-[460px] gap-2 sm:grid-cols-2">
-                            {quickPicks.map((pick) => (
-                                <button
-                                    key={pick.label}
-                                    type="button"
-                                    className="justify-self-start rounded-full border border-[#d8ccff] bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#4c3c8d] shadow-[0_6px_14px_rgba(107,63,242,0.1)] transition hover:bg-[#fcfaff]"
-                                    onClick={() => onApplyShortcut(pick.action)}
-                                >
-                                    {pick.label}
-                                </button>
-                            ))}
+                        <div className="mt-4 grid gap-3 md:grid-cols-3">
+                            <div>
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a7eb9]">Budget</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {(Object.keys(budgetRules) as BudgetOption[]).map((option) => (
+                                        <button
+                                            key={option}
+                                            type="button"
+                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${budget === option ? 'border-[#6b3ff2] bg-[#ede4ff] text-[#4c32a9]' : 'border-[#d8ccff] bg-white/95 text-[#4c3c8d]'}`}
+                                            onClick={() => setBudget(option)}
+                                        >
+                                            {budgetRules[option].label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a7eb9]">Mood</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {(Object.keys(moodRules) as MoodOption[]).map((option) => (
+                                        <button
+                                            key={option}
+                                            type="button"
+                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${mood === option ? 'border-[#6b3ff2] bg-[#ede4ff] text-[#4c32a9]' : 'border-[#d8ccff] bg-white/95 text-[#4c3c8d]'}`}
+                                            onClick={() => setMood(option)}
+                                        >
+                                            {moodRules[option].label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a7eb9]">Sort by / Deal angle</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {(Object.keys(modeRules) as ShortcutMode[]).map((option) => (
+                                        <button
+                                            key={option}
+                                            type="button"
+                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${mode === option ? 'border-[#6b3ff2] bg-[#ede4ff] text-[#4c32a9]' : 'border-[#d8ccff] bg-white/95 text-[#4c3c8d]'}`}
+                                            onClick={() => setMode(option)}
+                                        >
+                                            {modeRules[option].label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-center">
-                        <div className="inline-flex w-full max-w-[360px] flex-col gap-3">
-                            <button
-                                type="button"
-                                className="w-full rounded-[14px] bg-[#6b3ff2] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(107,63,242,0.34)] transition hover:brightness-110"
-                                onClick={() => onApplyShortcut({ mode: 'popular' })}
-                            >
-                                Most Popular
-                            </button>
-                            <button
-                                type="button"
-                                className="w-full rounded-[14px] border border-[#d6c8ff] bg-white/95 px-7 py-3.5 text-sm font-semibold text-[#46377f] shadow-[0_10px_20px_rgba(107,63,242,0.14)] transition hover:bg-[#faf8ff]"
-                                onClick={() => onApplyShortcut({ mode: 'discounts' })}
-                            >
-                                View Deals
-                            </button>
-                        </div>
+                    <div className="rounded-[14px] border border-[#d8ccff] bg-white/88 p-4 shadow-[0_12px_24px_rgba(107,63,242,0.18)]">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7b72ab]">Your shortcut</p>
+                        <ul className="mt-2 space-y-1 text-sm text-[#3f326f]">
+                            <li>• {budgetRules[budget].label}</li>
+                            <li>• {moodRules[mood].label}</li>
+                            <li>• {modeRules[mode].label}</li>
+                        </ul>
+                        <p className="mt-3 text-sm font-semibold text-[#2b2350]">
+                            {matchingCount > 0 ? `${matchingCount} matching games` : 'Show matching games'}
+                        </p>
+                        <button
+                            type="button"
+                            className="mt-3 w-full rounded-[13px] bg-[#6b3ff2] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(107,63,242,0.34)] transition hover:brightness-110"
+                            onClick={applyCurrentShortcut}
+                        >
+                            {matchingCount > 0 ? `Show ${matchingCount} games` : 'Show matching games'}
+                        </button>
+                        <button
+                            type="button"
+                            className="mt-2 text-xs font-semibold text-[#6a5ba6] underline-offset-2 hover:underline"
+                            onClick={resetShortcut}
+                        >
+                            Reset
+                        </button>
                     </div>
                 </div>
+                <button
+                    type="button"
+                    className="mt-3 text-xs font-medium text-[#6a5ba6] underline-offset-2 hover:underline"
+                    onClick={() => onApplyShortcut({})}
+                >
+                    Need more control? Open full filters
+                </button>
             </section>
         </div>
     );
