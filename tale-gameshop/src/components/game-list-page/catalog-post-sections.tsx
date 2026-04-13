@@ -3,43 +3,36 @@ import React, { useEffect, useRef, useState } from 'react';
 const trustItems = [
     {
         title: 'Secure checkout',
-        subtitle: 'Protected payments and verified flow',
         icon: (
-            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M10 2.2 4.5 4.3v5.2c0 3 2 5.8 5.5 8 3.5-2.2 5.5-5 5.5-8V4.3L10 2.2Z" stroke="currentColor" strokeWidth="1.4" />
-                <path d="m7.8 10 1.4 1.4 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                <path d="M10 2.5 4.9 4.5v4.8c0 2.8 1.8 5.2 5.1 7.2 3.3-2 5.1-4.4 5.1-7.2V4.5L10 2.5Z" stroke="currentColor" strokeWidth="1.35" />
             </svg>
         )
     },
     {
         title: 'Instant key delivery',
-        subtitle: 'Your game key arrives right after purchase',
         icon: (
-            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M9 3.5h7.5V11H9z" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M3.5 9H9v7.5H3.5z" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M11.3 8.2 13 6.5M12.9 9.8l2.8-2.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                <path d="M3.8 10h8.2m0 0-2.8-2.8M12 10l-2.8 2.8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12.5 5h3.7v10h-3.7" stroke="currentColor" strokeWidth="1.35" />
             </svg>
         )
     },
     {
-        title: 'Refund support',
-        subtitle: 'Clear help if an order goes wrong',
+        title: 'Refund policy',
         icon: (
-            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M16 10a6 6 0 1 1-2-4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                <path d="M14.2 2.8v3.7h-3.7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                <path d="M15.3 10A5.3 5.3 0 1 1 13 5.6" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+                <path d="M13.2 3.8v3.1h-3.1" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
         )
     },
     {
-        title: '24/7 assistance',
-        subtitle: 'We’re here whenever you need help',
+        title: '24/7 support',
         icon: (
-            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M4 11.2V10a6 6 0 0 1 12 0v1.2" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M4.8 11h-.3a1.6 1.6 0 0 0-1.6 1.6v1.8A1.6 1.6 0 0 0 4.5 16H6v-5Zm9.2 0h1.5a1.6 1.6 0 0 1 1.6 1.6v1.8a1.6 1.6 0 0 1-1.6 1.6H14v-5Z" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M10 14.8h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                <path d="M4.3 11V9.9a5.7 5.7 0 0 1 11.4 0V11" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M4.8 11h-.6a1.3 1.3 0 0 0-1.3 1.3V14a1.3 1.3 0 0 0 1.3 1.3h1.2V11Zm10.4 0h.6a1.3 1.3 0 0 1 1.3 1.3V14a1.3 1.3 0 0 1-1.3 1.3h-1.2V11Z" stroke="currentColor" strokeWidth="1.35" />
             </svg>
         )
     }
@@ -100,22 +93,19 @@ const CatalogPostSections: React.FC = () => {
 
     return (
         <div className="space-y-7">
-            <section className="rounded-[18px] border border-[#e9e1ff] bg-[linear-gradient(180deg,#fff_0%,#faf7ff_100%)] px-3 py-3 shadow-[0_10px_22px_rgba(108,85,164,0.1)] sm:px-4">
-                <div className="grid grid-cols-1 overflow-hidden rounded-[12px] border border-[#ede6ff] bg-white/90 sm:grid-cols-2 lg:grid-cols-4">
-                    {trustItems.map((item, index) => (
-                        <article
-                            key={item.title}
-                            className={`flex min-h-[84px] items-center gap-3 px-3 py-3 sm:px-4 ${index % 2 === 0 ? 'sm:border-r sm:border-[#f0ebff] lg:border-r-[#efe8ff]' : ''} ${index < 2 ? 'border-b border-[#f3eeff] lg:border-b-0' : ''} ${index < trustItems.length - 1 ? 'lg:border-r lg:border-[#f0ebff]' : ''}`}
-                        >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#dacdff] bg-[#f4eeff] text-[#5a3bc6]">
-                                {item.icon}
-                            </span>
-                            <div>
-                                <p className="text-sm font-semibold leading-tight text-[#2b2350]">{item.title}</p>
-                                <p className="mt-1 text-xs leading-snug text-[#7669a7]">{item.subtitle}</p>
-                            </div>
-                        </article>
-                    ))}
+            <section className="rounded-[14px] border border-[#e9e1ff] bg-[linear-gradient(180deg,#fff_0%,#faf7ff_100%)] px-2.5 py-2 shadow-[0_8px_18px_rgba(108,85,164,0.08)] sm:px-3">
+                <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex min-w-max items-center">
+                        {trustItems.map((item, index) => (
+                            <React.Fragment key={item.title}>
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 text-[#32285d] sm:px-4">
+                                    <span className="text-[#6b3ff2]">{item.icon}</span>
+                                    <span className="whitespace-nowrap text-[13px] font-semibold tracking-[0.01em]">{item.title}</span>
+                                </div>
+                                {index < trustItems.length - 1 && <span className="h-3 w-px bg-[#ddd1ff]" aria-hidden="true" />}
+                            </React.Fragment>
+                        ))}
+                    </div>
                 </div>
             </section>
 
