@@ -434,9 +434,15 @@ const BlogPostsPage: React.FC = () => {
             </button>
           </div>
           <div className="flex flex-col gap-1 text-xs text-slate-500">
-            {!canExcludeGuestViews && <p>No counted guest views available to exclude.</p>}
-            {!canRestoreGuestViews && <p>No manually excluded guest views available to restore.</p>}
-            {!canDeleteGuestViews && <p>No guest unique views available to delete.</p>}
+            {viewSettingsBusy ? (
+              <p>Updating guest view settings...</p>
+            ) : (
+              <>
+                {!canExcludeGuestViews && <p>No counted guest views available to exclude.</p>}
+                {!canRestoreGuestViews && <p>No manually excluded guest views available to restore.</p>}
+                {!canDeleteGuestViews && <p>No guest unique views available to delete.</p>}
+              </>
+            )}
           </div>
         </div>
       </Card>
