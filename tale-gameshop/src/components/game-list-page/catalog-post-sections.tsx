@@ -94,16 +94,15 @@ const CatalogPostSections: React.FC = () => {
     return (
         <div className="space-y-7">
             <section className="rounded-[14px] border border-[#e9e1ff] bg-[linear-gradient(180deg,#fff_0%,#faf7ff_100%)] px-2.5 py-2 shadow-[0_8px_18px_rgba(108,85,164,0.08)] sm:px-3">
-                <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex min-w-max items-center">
+                <div className="mx-auto w-full max-w-[920px]">
+                    <div className="grid grid-cols-4 items-center gap-x-1">
                         {trustItems.map((item, index) => (
-                            <React.Fragment key={item.title}>
-                                <div className="flex items-center gap-1.5 px-3 py-1.5 text-[#32285d] sm:px-4">
+                            <div key={item.title} className={`relative flex justify-center py-1.5 text-[#32285d] ${index < trustItems.length - 1 ? 'after:absolute after:right-0 after:top-1/2 after:h-1 after:w-1 after:-translate-y-1/2 after:rounded-full after:bg-[#ddd3fb]' : ''}`}>
+                                <div className="inline-flex items-center gap-1.5">
                                     <span className="text-[#6b3ff2]">{item.icon}</span>
                                     <span className="whitespace-nowrap text-[13px] font-semibold tracking-[0.01em]">{item.title}</span>
                                 </div>
-                                {index < trustItems.length - 1 && <span className="h-3 w-px bg-[#ddd1ff]" aria-hidden="true" />}
-                            </React.Fragment>
+                            </div>
                         ))}
                     </div>
                 </div>
