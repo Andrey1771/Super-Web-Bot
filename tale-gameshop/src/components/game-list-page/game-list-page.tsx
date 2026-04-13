@@ -36,7 +36,6 @@ const TaleGameshopGameList: React.FC = () => {
     const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
     const { dispatch } = useCart();
-    const catalogSectionRef = useRef<HTMLElement | null>(null);
 
     const services = useMemo(
         () => ({
@@ -724,54 +723,6 @@ const TaleGameshopGameList: React.FC = () => {
         });
     }, [patchSearchParams]);
 
-    const scrollToCatalog = useCallback(() => {
-        catalogSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, []);
-
-    const handleApplyShortcut = useCallback((selection: {
-        minPrice?: number;
-        maxPrice?: number;
-        category?: string;
-        mode?: 'discounts' | 'popular' | 'price-asc' | 'price-desc';
-    }) => {
-        updateParams((params) => {
-            if (selection.maxPrice !== undefined) {
-                params.set('filterMaxPrice', String(selection.maxPrice));
-            } else if (selection.minPrice === undefined) {
-                params.delete('filterMaxPrice');
-            }
-
-            if (selection.minPrice !== undefined) {
-                params.set('filterMinPrice', String(selection.minPrice));
-            } else if (selection.maxPrice === undefined) {
-                params.delete('filterMinPrice');
-            }
-
-            if (selection.category) {
-                params.set('filterCategory', selection.category);
-            } else {
-                params.delete('filterCategory');
-            }
-
-            if (selection.mode === 'discounts') {
-                params.set('discounted', '1');
-                params.set('sortBy', 'price-asc');
-            } else if (selection.mode === 'popular') {
-                params.set('sortBy', 'popular');
-                params.delete('discounted');
-            } else if (selection.mode === 'price-asc') {
-                params.set('sortBy', 'price-asc');
-                params.delete('discounted');
-            } else if (selection.mode === 'price-desc') {
-                params.set('sortBy', 'price-desc');
-                params.delete('discounted');
-            }
-
-            params.set('page', '1');
-        });
-        window.setTimeout(scrollToCatalog, 80);
-    }, [scrollToCatalog, updateParams]);
-
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
             <div className="pointer-events-none fixed left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(204,190,255,0.55)_0%,rgba(246,242,251,0.1)_70%)] blur-3xl" />
@@ -800,7 +751,7 @@ const TaleGameshopGameList: React.FC = () => {
                     </label>
                 </div>
 
-                <section ref={catalogSectionRef} className="catalog-layout mt-8">
+                <section className="catalog-layout mt-8">
                     <aside className="catalog-sidebar">
                         <h2 className="text-2xl font-semibold text-[#2b2350]">Filters</h2>
 
@@ -1082,11 +1033,7 @@ const TaleGameshopGameList: React.FC = () => {
                 </section>
 
                 <section className="mt-12">
-                    <CatalogPostSections
-                        games={games}
-                        availableCategories={categoriesForDisplay}
-                        onApplyShortcut={handleApplyShortcut}
-                    />
+                    <CatalogPostSections />
                 </section>
             </main>
         </div>
