@@ -8,7 +8,7 @@ using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
-using SuperBot.WebApi.Types;
+using SuperBot.BotApi.Types;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -17,7 +17,8 @@ using Telegram.Bot.Types;
 namespace SuperBot.BotApi.Services;
 
 public class UpdateHandler(ITelegramBotClient _bot, ILogger<UpdateHandler> _logger, IMediator _mediator,
-    ITranslationsService _translationsService, IBotStateReaderService _botStateReaderService) : IUpdateHandler
+    ITranslationsService _translationsService, IBotStateReaderService _botStateReaderService,
+    TelegramCommandRouter _telegramCommandRouter) : IUpdateHandler
 {
     public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
     {
@@ -47,6 +48,11 @@ public class UpdateHandler(ITelegramBotClient _bot, ILogger<UpdateHandler> _logg
     private async Task HandleMessage(Message msg)
     {
         if (msg.Text is null) return;
+
+        if (await _telegramCommandRouter.TryHandleMessageAsync(msg, CancellationToken.None))
+        {
+            return;
+        }
 
         var telegramData = new TelegramDataForProcessing
         {
@@ -188,6 +194,11 @@ public class UpdateHandler(ITelegramBotClient _bot, ILogger<UpdateHandler> _logg
 
     private async Task HandleCallbackQuery(CallbackQuery callbackQuery)
     {
+        if (await _telegramCommandRouter.TryHandleCallbackAsync(callbackQuery, CancellationToken.None))
+        {
+            return;
+        }
+
         if (callbackQuery.Data is null) return;
 
         var telegramData = new TelegramDataForProcessing

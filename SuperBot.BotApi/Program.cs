@@ -19,7 +19,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
-// Добавляем поддержку локализации
+// Configure localization
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -40,6 +40,8 @@ var botConfigSection = builder.Configuration.GetSection("BotConfiguration");
 builder.Services.Configure<BotConfiguration>(botConfigSection);
 builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<ITelegramBotClient>(
     httpClient => new TelegramBotClient(botConfigSection.Get<BotConfiguration>()!.BotToken, httpClient));
+builder.Services.AddSingleton<TelegramCommandRouter>();
+builder.Services.AddHostedService<TelegramBotCommandRegistrationService>();
 builder.Services.AddSingleton<UpdateHandler>();
 
 builder.Services.ConfigureTelegramBotMvc();
