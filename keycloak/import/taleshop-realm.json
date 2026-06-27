@@ -1,0 +1,76 @@
+{
+  "realm": "TaleShop",
+  "enabled": true,
+  "loginTheme": "tale-shop",
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "TaleShop administrator" },
+      { "name": "support", "description": "TaleShop support agent" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "tale-shop-app",
+      "name": "TaleShop Web App",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "rootUrl": "http://localhost",
+      "baseUrl": "http://localhost",
+      "redirectUris": [
+        "http://localhost/*"
+      ],
+      "webOrigins": [
+        "http://localhost",
+        "+"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "account-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "account",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@taleshop.local",
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "support"
+      ]
+    }
+  ]
+}

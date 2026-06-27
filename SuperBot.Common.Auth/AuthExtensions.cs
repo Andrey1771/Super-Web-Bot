@@ -15,6 +15,9 @@ namespace SuperBot.Common.Auth
             var uri = keycloakSection["Uri"];
             var realm = keycloakSection["Realm"];
             var clientId = keycloakSection["Audience"];
+            // Внутренний адрес метаданных (например, http://keycloak:8080/.../.well-known/openid-configuration),
+            // когда браузер ходит в Keycloak по одному адресу (issuer), а бэкенд из контейнера — по другому.
+            var metadataAddress = keycloakSection["MetadataAddress"];
 
             services.AddAuthentication(options =>
             {
@@ -24,6 +27,11 @@ namespace SuperBot.Common.Auth
             .AddJwtBearer(options =>
             {
                 options.Authority = $"{uri}/realms/{realm}";
+                if (!string.IsNullOrWhiteSpace(metadataAddress))
+                {
+                    // Метаданные/JWKS тянем по внутреннему адресу, а issuer валидируем по внешнему (см. ValidIssuer).
+                    options.MetadataAddress = metadataAddress;
+                }
                 options.Audience = clientId;
                 options.RequireHttpsMetadata = false; // Включите, если используете HTTPS
                 options.TokenValidationParameters = new TokenValidationParameters

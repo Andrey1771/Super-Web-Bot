@@ -1,0 +1,24 @@
+
+.login-pf body {
+	background: rgb(243 244 246) no-repeat center center fixed;
+    background-size: cover;
+    height: 100%;
+}
+
+#kc-header #kc-header-wrapper {
+    color: #000000 !important;
+    font-weight: 700;
+}
+
+.pf-v5-c-button.pf-m-primary {
+    transition: 0.3s ease-in-out;
+    background-color: #000000;
+    border-width: 1px;
+    cursor: pointer;
+}
+
+.pf-v5-c-button.pf-m-primary:hover {
+    background-color: #8a2be2;
+    color: white;
+    border-color: #8a2be2;
+}

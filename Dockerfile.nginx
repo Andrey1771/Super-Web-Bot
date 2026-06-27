@@ -5,7 +5,8 @@ WORKDIR /app
 COPY ./tale-gameshop/package*.json ./
 RUN npm install
 COPY ./tale-gameshop .
-RUN npm run build
+# Собираем фронт с docker-конфигом (app-config.docker.js): API через origin/api, Keycloak на :8088
+RUN npm run build -- --env appConfigEnv=docker
 
 # Второй этап: настройка Nginx
 FROM nginx:latest

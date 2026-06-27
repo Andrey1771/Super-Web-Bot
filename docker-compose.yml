@@ -18,13 +18,20 @@ services:
     restart: always
     environment:
       - ASPNETCORE_URLS=http://+:7002
-      - MONGO_CONNECTION_STRING=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/mydatabase?replicaSet=rs0
+      # Имя переменной должно совпадать с конфигом, который реально читает код: ConnectionStrings:MongoDb
+      - ConnectionStrings__MongoDb=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+      # Keycloak: issuer (внешний, как видит браузер) и адрес метаданных (внутренний, как видит бэкенд)
+      - Keycloak__Uri=http://localhost:8088
+      - Keycloak__Realm=TaleShop
+      - Keycloak__Audience=account
+      - Keycloak__MetadataAddress=http://keycloak:8080/realms/TaleShop/.well-known/openid-configuration
     ports:
       - "7002:7002"
     depends_on:
       - mongo1
       - mongo2
       - mongo3
+      - keycloak
     networks:
       - app_network
 
@@ -71,6 +78,29 @@ services:
       mongosh --host mongo1:27017 --eval 'rs.initiate({_id: \"rs0\", members: [{ _id: 0, host: \"mongo1:27017\" }, { _id: 1, host: \"mongo2:27017\" }, { _id: 2, host: \"mongo3:27017\" }]})';
       exit 0;
       "
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.6
+    restart: always
+    command: start-dev --import-realm
+    environment:
+      # Учётка админ-консоли Keycloak (master realm) — http://localhost:8088/admin
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      # Публичный адрес (issuer токенов) — как его видит браузер
+      - KC_HOSTNAME=http://localhost:8088
+      # JWKS/backchannel отдаются по адресу запроса → бэкенд из контейнера получит keycloak:8080
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+    ports:
+      - "8088:8080"
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+      # Кастомная тема логина монтируется рядом со встроенными (не перекрывая их — нужен parent keycloak.v2)
+      - ./keycloak/themes/tale-shop:/opt/keycloak/themes/tale-shop:ro
+    networks:
+      - app_network
 
   #postgres:
   #  image: postgres:latest
