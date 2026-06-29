@@ -7,7 +7,12 @@ type AuthorizedRouteProps = {
 };
 
 const AuthorizedRoute: React.FC<AuthorizedRouteProps> = ({ children }) => {
-    const {keycloak} = useKeycloak();
+    const {keycloak, initialized} = useKeycloak();
+
+    // Пока Keycloak не закончил check-sso, authenticated ещё false — не показываем Access Denied (иначе он мелькает при перезагрузке).
+    if (!initialized) {
+        return null;
+    }
 
     const isLoggedIn = keycloak.authenticated;
 

@@ -12,6 +12,7 @@ import {ReactKeycloakProvider} from "@react-keycloak/web";
 import {IKeycloakService} from "./iterfaces/i-keycloak-service";
 import IDENTIFIERS from "./constants/identifiers";
 import {CartProvider} from './context/cart-context';
+import AppLoader from './components/app-loader/AppLoader';
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
@@ -21,7 +22,8 @@ const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakSer
 
 root.render(
     <ReactKeycloakProvider authClient={keycloakService.keycloak} initOptions={keycloakService.initOptions}
-                           onEvent={keycloakService.eventHandlers.bind(keycloakService)}>
+                           onEvent={keycloakService.eventHandlers.bind(keycloakService)}
+                           LoadingComponent={<AppLoader/>}>
         <ReduxProvider store={store}>
             <InversifyProvider container={container}>
                 <React.StrictMode>

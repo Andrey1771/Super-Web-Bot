@@ -48,12 +48,14 @@ import GameDiscountsPage from "../../pages/admin/GameDiscountsPage";
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith("/admin");
+    // На главной распорку не рисуем — тёмный hero уходит под стеклянную шапку (свой отступ задаёт сам hero).
+    const isHomeRoute = location.pathname === "/";
 
     return (
         <AnalyticsProvider isAdminRoute={isAdminRoute}>
             <div>
                 {!isAdminRoute && <TaleGameshopHeader></TaleGameshopHeader>}
-                {!isAdminRoute && <div className="main-page-down-header-padding"></div>}
+                {!isAdminRoute && !isHomeRoute && <div className="main-page-down-header-padding"></div>}
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>

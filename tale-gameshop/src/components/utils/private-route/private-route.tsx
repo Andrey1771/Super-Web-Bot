@@ -7,7 +7,12 @@ type PrivateRouteProps = {
 };
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({children}) => {
-    const {keycloak} = useKeycloak();
+    const {keycloak, initialized} = useKeycloak();
+
+    // Пока Keycloak не закончил check-sso, токен ещё не восстановлен — не показываем Access Denied (иначе он мелькает при перезагрузке).
+    if (!initialized) {
+        return null;
+    }
 
     const isLoggedIn = keycloak.authenticated;
     // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается

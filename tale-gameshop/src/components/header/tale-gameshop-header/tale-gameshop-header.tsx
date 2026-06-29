@@ -6,7 +6,7 @@ import {useKeycloak} from "@react-keycloak/web";
 import {faBars, faChevronDown, faCircleUser, faTimes} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
-import logo from '../../../assets/images/tale-shop-logo.jpeg';
+import logo from '../../../assets/images/tale-shop-logo.svg';
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
 import AdminPanelSection from "../admin-panel-section/admin-panel-section";
 import container from "../../../inversify.config";

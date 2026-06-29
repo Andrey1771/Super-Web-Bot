@@ -4,16 +4,15 @@
     left: 0;
     right: 0;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.92);
-    border-bottom: 1px solid #e9e3ff;
-    box-shadow: 0 12px 30px rgba(87, 68, 144, 0.12);
-    backdrop-filter: blur(14px);
+    background: #ffffff;
+    border-bottom: 1px solid transparent;
+    box-shadow: 0 8px 24px rgba(87, 68, 144, 0.08);
     transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .header-nav.scrolled {
-    background-color: rgba(255, 255, 255, 0.98);
-    border-color: #e9e3ff;
+    background-color: #ffffff;
+    border-color: transparent;
     box-shadow: 0 10px 24px rgba(87, 68, 144, 0.14);
 }
 
@@ -33,11 +32,9 @@
 }
 
 .brand img {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-md);
-    object-fit: cover;
-    box-shadow: 0 8px 18px rgba(77, 66, 122, 0.2);
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
 }
 
 .menu-toggle {

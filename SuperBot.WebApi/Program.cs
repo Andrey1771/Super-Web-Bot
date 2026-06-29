@@ -237,6 +237,10 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>((httpClient) =>
     return new KeycloakClient(httpClient, uri);
 });
 
+// Клиент админ-API Keycloak (нужен AccountSecurityController: статус, сессии, 2FA, смена email/пароля).
+// Конфиг — в секции Keycloak:Admin (см. docker-compose env). Без этой регистрации контроллер падал в 500.
+builder.Services.AddHttpClient<KeycloakAdminClient>();
+
 builder.Services.AddScoped<IBackgroundTaskService, BackgroundTaskService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);

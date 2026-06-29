@@ -2,6 +2,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SuperBot.WebApi.Services
 {
@@ -200,7 +201,11 @@ namespace SuperBot.WebApi.Services
 
         private sealed class TokenResponse
         {
+            // Keycloak отдаёт snake_case; без атрибутов System.Text.Json не смаппит и токен будет пустым → 401.
+            [JsonPropertyName("access_token")]
             public string AccessToken { get; set; } = string.Empty;
+
+            [JsonPropertyName("expires_in")]
             public int ExpiresIn { get; set; }
         }
     }

@@ -50,6 +50,18 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "tale-shop-admin",
+      "name": "TaleShop Admin (service account)",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "tale-shop-admin-secret"
     }
   ],
   "users": [
@@ -71,6 +83,18 @@
         "admin",
         "support"
       ]
+    },
+    {
+      "username": "service-account-tale-shop-admin",
+      "enabled": true,
+      "serviceAccountClientId": "tale-shop-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users"
+        ]
+      }
     }
   ]
 }

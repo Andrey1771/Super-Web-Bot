@@ -1,0 +1,135 @@
+.app-loader {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f4fc 55%, #edeef4 100%);
+    z-index: 9999;
+    animation: app-loader-fade-in 220ms ease-out;
+}
+
+.app-loader__stage {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Пульсирующее свечение-ореол за логотипом — даёт «дыхание» и глубину */
+.app-loader__glow {
+    position: absolute;
+    width: 210px;
+    height: 210px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(124, 58, 237, 0.42) 0%,
+        rgba(124, 58, 237, 0.14) 45%,
+        rgba(124, 58, 237, 0) 70%
+    );
+    filter: blur(6px);
+    z-index: 0;
+    animation: app-loader-glow 2.4s ease-in-out infinite;
+}
+
+/* Вращающееся кольцо с conic-градиентом */
+.app-loader__ring {
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 90deg,
+        rgba(124, 58, 237, 0) 0deg,
+        rgba(124, 58, 237, 0.10) 110deg,
+        #7c3aed 300deg,
+        #a855f7 360deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+    z-index: 1;
+    animation: app-loader-spin 0.9s linear infinite;
+}
+
+.app-loader__logo {
+    position: relative;
+    width: 86px;
+    height: 86px;
+    border-radius: 26px;
+    object-fit: contain;
+    padding: 14px;
+    box-sizing: border-box;
+    background: #ffffff;
+    z-index: 2;
+    /* Многослойная мягкая тень в фирменном фиолетовом, «дышит» вместе с лого */
+    box-shadow:
+        0 6px 16px rgba(124, 58, 237, 0.20),
+        0 18px 44px rgba(124, 58, 237, 0.28);
+    animation: app-loader-breath 2.4s ease-in-out infinite;
+}
+
+.app-loader__text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.app-loader__brand {
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #111827;
+    font-size: 20px;
+}
+
+.app-loader__tagline {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+@keyframes app-loader-glow {
+    0%, 100% {
+        opacity: 0.45;
+        transform: scale(0.9);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.1);
+    }
+}
+
+@keyframes app-loader-breath {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow:
+            0 6px 16px rgba(124, 58, 237, 0.18),
+            0 16px 40px rgba(124, 58, 237, 0.24);
+    }
+    50% {
+        transform: scale(1.06);
+        box-shadow:
+            0 10px 26px rgba(124, 58, 237, 0.28),
+            0 24px 62px rgba(124, 58, 237, 0.40);
+    }
+}
+
+@keyframes app-loader-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes app-loader-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

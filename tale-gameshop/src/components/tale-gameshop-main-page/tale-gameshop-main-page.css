@@ -58,7 +58,7 @@
 /* Hero */
 .main-page .hero {
   position: relative;
-  padding: 72px 0 96px;
+  padding: 112px 0 96px;
   background: radial-gradient(circle at 78% 10%, color-mix(in srgb, var(--color-primary) 25%, transparent), transparent 55%), linear-gradient(135deg, #0c0f1a 0%, #11182b 60%, #0c0f1a 100%);
   color: #f3f4fb;
   overflow: hidden;
@@ -1605,7 +1605,7 @@
 
 @media (max-width: 992px) {
   .main-page .hero {
-    padding: 56px 0 72px;
+    padding: 100px 0 72px;
   }
 
   .main-page .hero-showcase {

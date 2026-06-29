@@ -25,6 +25,12 @@ services:
       - Keycloak__Realm=TaleShop
       - Keycloak__Audience=account
       - Keycloak__MetadataAddress=http://keycloak:8080/realms/TaleShop/.well-known/openid-configuration
+      # Admin-API Keycloak для страницы Security (сервисный аккаунт tale-shop-admin, ходит изнутри сети)
+      - Keycloak__Admin__BaseUrl=http://keycloak:8080
+      - Keycloak__Admin__Realm=TaleShop
+      - Keycloak__Admin__ClientId=tale-shop-admin
+      - Keycloak__Admin__ClientSecret=tale-shop-admin-secret
+      - Keycloak__Admin__PublicClientId=tale-shop-app
     ports:
       - "7002:7002"
     depends_on:
@@ -80,7 +86,7 @@ services:
       "
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0.6
+    image: quay.io/keycloak/keycloak:26.2.5
     restart: always
     command: start-dev --import-realm
     environment:
