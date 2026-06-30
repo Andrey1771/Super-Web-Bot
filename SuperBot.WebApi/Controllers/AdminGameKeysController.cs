@@ -54,7 +54,7 @@ namespace SuperBot.WebApi.Controllers
             var key = await _fulfillment.DispenseAsync(request.GameId, request.UserId, request.KeyType);
             if (key == null)
             {
-                return Ok(new { granted = false, message = "Нет доступного ключа (пул пуст и режим не Demo)." });
+                return Ok(new { granted = false, message = "Нет доступного ключа (пул пуст)." });
             }
 
             return Ok(new { granted = true, key = key.Key, keyType = key.KeyType });

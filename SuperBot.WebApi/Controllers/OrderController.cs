@@ -132,7 +132,7 @@ namespace SuperBot.WebApi.Controllers
 
             await _orderRepository.CreateOrderAsync(order);
 
-            // Выдача ключей по позициям заказа: B — из пула инвентаря, A — автогенерация в Demo.
+            // Выдача ключей по позициям заказа: из пула инвентаря.
             // (В реальном prod-флоу логичнее звать это на подтверждении оплаты, см. IKeyFulfillmentService.)
             await _keyFulfillmentService.FulfillOrderAsync(order);
 
