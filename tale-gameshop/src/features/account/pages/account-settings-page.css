@@ -282,6 +282,25 @@
     font-size: 13px;
 }
 
+.settings-helper-link {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--color-primary);
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.settings-helper-link:hover {
+    text-decoration: underline;
+}
+
+.settings-pointer-actions {
+    display: flex;
+    gap: var(--space-12);
+    flex-wrap: wrap;
+    margin-top: var(--space-12);
+}
+
 .settings-checkbox--danger input {
     accent-color: #b42318;
 }

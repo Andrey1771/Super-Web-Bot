@@ -594,6 +594,10 @@
   border-left: 4px solid #ef4444;
 }
 
+.admin-toast.info {
+  border-left: 4px solid #3b82f6;
+}
+
 .admin-toast__body {
   display: flex;
   align-items: center;

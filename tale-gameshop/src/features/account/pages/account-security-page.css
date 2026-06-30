@@ -94,6 +94,16 @@
 .security-link {
     color: var(--color-primary);
     font-weight: 600;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.security-link:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 
 .security-divider {
@@ -117,6 +127,16 @@
     color: #9a5a3b;
     font-weight: 600;
     font-size: 13px;
+}
+
+.security-status-pill.is-on {
+    background: rgba(34, 197, 94, 0.15);
+    color: #15803d;
+}
+
+.security-status-pill.is-off {
+    background: rgba(148, 163, 184, 0.22);
+    color: #475569;
 }
 
 .security-email-actions {
@@ -368,7 +388,8 @@
 .security-recommendations-list {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(180px, 1fr);
+    grid-auto-columns: minmax(200px, 240px);
+    justify-content: start;
     gap: var(--space-16);
     overflow-x: auto;
     padding-bottom: 6px;

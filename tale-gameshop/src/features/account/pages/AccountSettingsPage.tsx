@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faArrowLeft, faArrowRight, faChevronRight, faPen} from '@fortawesome/free-solid-svg-icons';
+import {faArrowLeft, faArrowRight, faPen} from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import AvatarCropModal from '../components/AvatarCropModal';
 import { useRecommendations } from '../../../hooks/use-recommendations';
@@ -12,6 +12,24 @@ import { useToast } from '../../../components/ui/ToastProvider';
 import { fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
 import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-settings-page.css';
+
+type NotificationPrefs = {
+    promotions: boolean;
+    productNews: boolean;
+    securityAlerts: boolean;
+};
+
+const NOTIFICATIONS_STORAGE_KEY = 'settings_notifications';
+const defaultNotifications: NotificationPrefs = { promotions: true, productNews: true, securityAlerts: true };
+
+const readNotifications = (): NotificationPrefs => {
+    try {
+        const raw = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+        return raw ? { ...defaultNotifications, ...(JSON.parse(raw) as Partial<NotificationPrefs>) } : defaultNotifications;
+    } catch {
+        return defaultNotifications;
+    }
+};
 
 const AccountSettingsPage: React.FC = () => {
     const { profile, updateAvatar } = useAccountProfile();
@@ -27,6 +45,8 @@ const AccountSettingsPage: React.FC = () => {
     const [pendingAvatarRemoval, setPendingAvatarRemoval] = useState(false);
     const [displayNameInput, setDisplayNameInput] = useState(profile?.displayName ?? 'User');
     const [emailInput, setEmailInput] = useState(profile?.email ?? '');
+    const [notifications, setNotifications] = useState<NotificationPrefs>(readNotifications);
+    const [isSavingPreferences, setIsSavingPreferences] = useState(false);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -141,6 +161,16 @@ const AccountSettingsPage: React.FC = () => {
         }
     };
 
+    const handleSavePreferences = () => {
+        setIsSavingPreferences(true);
+        try {
+            localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+            addToast('Notification preferences saved.', 'success');
+        } finally {
+            setIsSavingPreferences(false);
+        }
+    };
+
     const handleRemove = () => {
         setPendingAvatarRemoval(true);
         clearAvatarDraft();
@@ -215,23 +245,10 @@ const AccountSettingsPage: React.FC = () => {
                     </label>
                     <label className="settings-field">
                         <span>Email address</span>
-                        <div className="settings-input-with-icon">
-                            <input type="email" value={emailInput} onChange={(event) => setEmailInput(event.target.value)} />
-                            <FontAwesomeIcon icon={faChevronRight} />
-                        </div>
-                    </label>
-                    <label className="settings-field">
-                        <span>Country/Region</span>
-                        <div className="settings-select-with-flag">
-                            <span className="settings-flag" aria-hidden="true">
-                                🇺🇦
-                            </span>
-                            <select defaultValue="Ukraine">
-                                <option>Ukraine</option>
-                                <option>Poland</option>
-                                <option>Germany</option>
-                            </select>
-                        </div>
+                        <input type="email" value={emailInput} readOnly />
+                        <Link to="/account/security" className="settings-helper-link">
+                            Change email in Security
+                        </Link>
                     </label>
                 </div>
                 <div className="settings-card-footer">
@@ -244,73 +261,58 @@ const AccountSettingsPage: React.FC = () => {
 
             <div className="card settings-card" data-testid="settings-preferences">
                 <div className="settings-card-header">
-                    <h3>Preferences</h3>
+                    <h3>Notifications</h3>
                 </div>
-                <div className="settings-preferences-grid">
-                    <label className="settings-field">
-                        <span>Language</span>
-                        <select defaultValue="English (EN)">
-                            <option>English (EN)</option>
-                            <option>Українська (UA)</option>
-                            <option>Deutsch (DE)</option>
-                        </select>
-                    </label>
-                    <label className="settings-field">
-                        <span>Currency</span>
-                        <select defaultValue="USD ($)">
-                            <option>USD ($)</option>
-                            <option>EUR (€)</option>
-                            <option>UAH (₴)</option>
-                        </select>
-                    </label>
-                </div>
+                <p className="settings-muted-link">Choose what we email you about. Saved on this device.</p>
                 <div className="settings-checkboxes">
                     <label className="settings-checkbox">
-                        <input type="checkbox" defaultChecked />
+                        <input
+                            type="checkbox"
+                            checked={notifications.promotions}
+                            onChange={(event) => setNotifications((prev) => ({ ...prev, promotions: event.target.checked }))}
+                        />
                         Receive promotions and special offers
                     </label>
                     <label className="settings-checkbox">
-                        <input type="checkbox" defaultChecked />
+                        <input
+                            type="checkbox"
+                            checked={notifications.productNews}
+                            onChange={(event) => setNotifications((prev) => ({ ...prev, productNews: event.target.checked }))}
+                        />
                         Receive store and product news
                     </label>
                     <label className="settings-checkbox">
-                        <input type="checkbox" defaultChecked />
+                        <input
+                            type="checkbox"
+                            checked={notifications.securityAlerts}
+                            onChange={(event) => setNotifications((prev) => ({ ...prev, securityAlerts: event.target.checked }))}
+                        />
                         Receive security alerts (important)
                     </label>
                 </div>
                 <div className="settings-card-footer settings-card-footer--end">
-                    <button type="button" className="btn btn-primary settings-save-btn">
-                        Save preferences
+                    <button
+                        type="button"
+                        className="btn btn-primary settings-save-btn"
+                        onClick={handleSavePreferences}
+                        disabled={isSavingPreferences}
+                    >
+                        {isSavingPreferences ? 'Saving...' : 'Save preferences'}
                     </button>
                 </div>
             </div>
 
-            <div className="settings-lower-grid">
-                <div className="card settings-card" data-testid="settings-privacy">
-                    <div className="settings-card-header">
-                        <h3>Privacy</h3>
-                    </div>
-                    <div className="settings-privacy-row">
-                        <span>Hide owned games in profile</span>
-                        <label className="settings-switch">
-                            <input type="checkbox" defaultChecked />
-                            <span className="settings-switch-slider" aria-hidden="true" />
-                        </label>
-                    </div>
-                    <span className="settings-muted-link">Data will be grey</span>
+            <div className="card settings-card" data-testid="settings-security-pointer">
+                <div className="settings-card-header">
+                    <h3>Account &amp; security</h3>
                 </div>
-
-                <div className="card settings-card" data-testid="settings-danger">
-                    <div className="settings-card-header">
-                        <h3>Danger zone</h3>
-                    </div>
-                    <label className="settings-checkbox settings-checkbox--danger">
-                        <input type="checkbox" />
-                        Logout all sessions
-                    </label>
-                    <button type="button" className="btn btn-outline settings-danger-btn">
-                        Delete your account
-                    </button>
+                <p className="settings-muted-link">
+                    Password, two-factor authentication, active sessions and account deletion are managed in
+                    Security. Payment methods and profile privacy live in Billing.
+                </p>
+                <div className="settings-pointer-actions">
+                    <Link to="/account/security" className="btn btn-outline">Open Security</Link>
+                    <Link to="/account/billing" className="btn btn-outline">Billing &amp; privacy</Link>
                 </div>
             </div>
 

@@ -9,6 +9,15 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "no-reply@taleshop.local",
+    "fromDisplayName": "Tale Shop",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
   "roles": {
     "realm": [
       { "name": "admin", "description": "TaleShop administrator" },

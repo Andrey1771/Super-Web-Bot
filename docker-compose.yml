@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   frontend:
     build:
@@ -31,6 +29,10 @@ services:
       - Keycloak__Admin__ClientId=tale-shop-admin
       - Keycloak__Admin__ClientSecret=tale-shop-admin-secret
       - Keycloak__Admin__PublicClientId=tale-shop-app
+      # Внешний URL, куда Keycloak вернёт пользователя после действия из письма (2FA/verify/reset)
+      - Keycloak__Admin__SecurityRedirectUri=http://localhost/account/security
+      # Внешний (браузерный) адрес account-консоли Keycloak для управления 2FA
+      - Keycloak__Admin__AccountConsoleUrl=http://localhost:8088/realms/TaleShop/account
     ports:
       - "7002:7002"
     depends_on:
@@ -157,6 +159,17 @@ services:
       #KC_MAIL_SMTP_AUTH: true
       #KC_MAIL_SMTP_SSL: true
 
+
+  # Dev-ловушка писем: Keycloak отправляет письма (2FA-setup, верификация, сброс пароля) сюда.
+  # Веб-интерфейс с письмами — http://localhost:8025. Реальная почта в проде настраивается отдельно.
+  mailhog:
+    image: mailhog/mailhog:latest
+    restart: always
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - app_network
 
   nginx:
     build:

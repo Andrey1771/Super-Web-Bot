@@ -5,21 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ebdefccf-080a-49dd-b409-f048c9f75ca1" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../SuperBot.Core/Entities/Game.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.Core/Entities/Game.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../SuperBot.Core/Interfaces/IRepositories/IGameKeyRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.Core/Interfaces/IRepositories/IGameKeyRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../SuperBot.Infrastructure/Repositories/GameKeyMongoDbRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.Infrastructure/Repositories/GameKeyMongoDbRepository.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/OrderController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/OrderController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/UsersMeController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/UsersMeController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Program.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/appsettings.json" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/appsettings.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/admin-panel/card-adder-page/card-adder-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/admin-panel/card-adder-page/card-adder-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/layout/Topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/Topbar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/components/ui/ToastProvider.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/ui/ToastProvider.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountKeysPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountKeysPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/admin/GameDetailsEditorPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/admin/GameDetailsEditorPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountSecurityPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountSecurityPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountSettingsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountSettingsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/features/account/pages/account-security-page.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/account-security-page.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/features/account/pages/account-settings-page.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/account-settings-page.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/styles/admin.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/styles/admin.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -164,7 +155,7 @@
       <workItem from="1773601706242" duration="700000" />
       <workItem from="1773604941249" duration="9662000" />
       <workItem from="1774683273569" duration="21000" />
-      <workItem from="1782819660326" duration="437000" />
+      <workItem from="1782819660326" duration="1684000" />
     </task>
     <servers />
   </component>

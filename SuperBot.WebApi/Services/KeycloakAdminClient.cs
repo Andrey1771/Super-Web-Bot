@@ -102,6 +102,13 @@ namespace SuperBot.WebApi.Services
             return await response.Content.ReadFromJsonAsync<List<KeycloakCredential>>(JsonOptions) ?? new List<KeycloakCredential>();
         }
 
+        public async Task DeleteCredentialAsync(string userId, string credentialId)
+        {
+            using var request = await CreateAdminRequestAsync(HttpMethod.Delete, $"{AdminUsersPath}/{userId}/credentials/{credentialId}");
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+        }
+
         public async Task LogoutAllSessionsAsync(string userId)
         {
             using var request = await CreateAdminRequestAsync(HttpMethod.Post, $"{AdminUsersPath}/{userId}/logout");
@@ -231,6 +238,7 @@ namespace SuperBot.WebApi.Services
 
     public sealed class KeycloakCredential
     {
+        public string Id { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
     }
 }

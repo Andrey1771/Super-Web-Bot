@@ -28,6 +28,10 @@ export const setupTwoFactor = async (): Promise<SecurityActionResponse> => {
     return response.data;
 };
 
+export const disableTwoFactor = async (): Promise<void> => {
+    await apiClient().post('/api/account/security/2fa/disable');
+};
+
 export const sendResetPasswordEmail = async (): Promise<void> => {
     await apiClient().post('/api/account/security/password/reset-email');
 };

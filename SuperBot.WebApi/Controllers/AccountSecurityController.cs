@@ -108,6 +108,23 @@ namespace SuperBot.WebApi.Controllers
             });
         }
 
+        [HttpPost("2fa/disable")]
+        public async Task<IActionResult> DisableTwoFactor()
+        {
+            var userId = GetUserId();
+            var credentials = await _keycloakAdminClient.GetUserCredentialsAsync(userId);
+            var otpCredentials = credentials
+                .Where(cred => cred.Type.Equals("otp", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(cred.Id))
+                .ToList();
+
+            foreach (var credential in otpCredentials)
+            {
+                await _keycloakAdminClient.DeleteCredentialAsync(userId, credential.Id);
+            }
+
+            return Ok(new { disabled = true, removed = otpCredentials.Count });
+        }
+
         [HttpPost("password/change")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
@@ -234,9 +251,17 @@ namespace SuperBot.WebApi.Controllers
 
         private static string BuildDeviceLabel(KeycloakSession session)
         {
-            var browser = string.IsNullOrWhiteSpace(session.Browser) ? "Unknown browser" : session.Browser;
-            var os = string.IsNullOrWhiteSpace(session.Os) ? "Unknown OS" : session.Os;
-            return $"{browser} on {os}";
+            // Keycloak admin sessions API не отдаёт browser/OS, поэтому даём аккуратный
+            // нейтральный лейбл вместо "Unknown browser on Unknown OS".
+            if (!string.IsNullOrWhiteSpace(session.Browser) && !string.IsNullOrWhiteSpace(session.Os))
+            {
+                return $"{session.Browser} on {session.Os}";
+            }
+            if (!string.IsNullOrWhiteSpace(session.Browser))
+            {
+                return session.Browser!;
+            }
+            return "Active web session";
         }
     }
 

@@ -16,13 +16,13 @@ import {
     changeEmail,
     changePassword,
     deleteAccount,
+    disableTwoFactor,
     downloadSecurityReport,
     getAccountSecurityStatus,
     resendVerificationEmail,
     revokeAllSessions,
     revokeSession,
-    sendResetPasswordEmail,
-    setupTwoFactor
+    sendResetPasswordEmail
 } from '../security/api/securityApi';
 import type {AccountSecurityStatus, SecurityActionResponse} from '../security/types';
 import {useKeycloak} from '@react-keycloak/web';
@@ -136,25 +136,37 @@ const AccountSecurityPage: React.FC = () => {
         }
     };
 
-    const handleSetup2fa = async () => {
+    const handleSetup2fa = () => {
+        // Application-Initiated Action: ведём пользователя через его же login-флоу Keycloak
+        // (kc_action=CONFIGURE_TOTP). Keycloak покажет страницу настройки TOTP (QR) в теме логина
+        // и вернёт обратно в приложение — без письма и без account-консоли (которая отдаёт 401).
+        // keycloak-js типизирует action узко как 'register', хотя адаптер шлёт любой kc_action.
+        keycloak.login({
+            action: 'CONFIGURE_TOTP',
+            redirectUri: `${window.location.origin}/account/security`
+        } as any);
+    };
+
+    const handleDisable2fa = async () => {
         setIsSubmitting(true);
         try {
-            const response = await setupTwoFactor();
-            setTwoFactorAction(response);
-            setIsEnable2faOpen(true);
+            await disableTwoFactor();
+            showToast('Two-factor authentication disabled.');
+            await fetchStatus();
         } catch (error) {
-            showToast('Unable to start 2FA setup.');
+            showToast('Unable to disable 2FA.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleOpenManage2fa = () => {
-        if (status?.accountConsoleUrl) {
-            setIsManage2faOpen(true);
-        } else {
-            showToast('2FA settings are unavailable right now.');
-        }
+        // Перенастройка TOTP — тоже через AIA login-флоу Keycloak (без account-консоли).
+        // keycloak-js типизирует action узко как 'register', хотя адаптер шлёт любой kc_action.
+        keycloak.login({
+            action: 'CONFIGURE_TOTP',
+            redirectUri: `${window.location.origin}/account/security`
+        } as any);
     };
 
     const handleLogoutSession = async (sessionId: string) => {
@@ -243,6 +255,7 @@ const AccountSecurityPage: React.FC = () => {
                     backupCodesGenerated={Boolean(status?.backupCodesGenerated)}
                     isLoading={isLoading}
                     onPrimaryAction={status?.twoFactorEnabled ? handleOpenManage2fa : handleSetup2fa}
+                    onDisable={handleDisable2fa}
                 />
                 <EmailVerificationCard
                     emailVerified={Boolean(status?.emailVerified)}

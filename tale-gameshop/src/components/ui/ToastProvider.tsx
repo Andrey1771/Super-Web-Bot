@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
-type ToastVariant = "success" | "error";
+type ToastVariant = "success" | "error" | "info";
 
 type ToastAction = {
   label: string;
