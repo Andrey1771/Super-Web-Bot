@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
@@ -12,30 +12,28 @@ import AccountShell from '../components/AccountShell';
 import IDENTIFIERS from '../../../constants/identifiers';
 import container from '../../../inversify.config';
 import { Game } from '../../../models/game';
-import type { IWishlistService } from '../../../iterfaces/i-wishlist-service';
-import type { IKeycloakService } from '../../../iterfaces/i-keycloak-service';
 import type { IGameService } from '../../../iterfaces/i-game-service';
+import { useWishlist } from '../../../context/wishlist-context';
 import { useCart } from '../../../context/cart-context';
 import { Product } from '../../../reducers/cart-reducer';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useViewedGames } from '../../../hooks/use-viewed-games';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import SafeGameImage from '../../../components/common/SafeGameImage';
+import { slugify } from '../../../utils/slugify';
 import './account-saved-items-page.css';
 
-const WISHLIST_GUEST_KEY = 'wishlist_guest';
-const WISHLIST_LEGACY_KEY = 'wishlist';
+const PAGE_SIZE = 6;
 
 const AccountSavedItemsPage: React.FC = () => {
-    const viewMode: 'comfortable' | 'compact' = 'comfortable';
+    const [viewMode, setViewMode] = useState<'comfortable' | 'compact'>('comfortable');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortOrder, setSortOrder] = useState<'all' | 'price' | 'newest'>('all');
+    const [page, setPage] = useState(1);
     const [games, setGames] = useState<Game[]>([]);
-    const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
-    const [wishlistUserId, setWishlistUserId] = useState<string>('');
-    const wishlistService = container.get<IWishlistService>(IDENTIFIERS.IWishlistService);
-    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
+    const { ids: wishlistIds, remove } = useWishlist();
     const gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const { dispatch } = useCart();
-    const didMergeRef = useRef(false);
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -50,104 +48,11 @@ const AccountSavedItemsPage: React.FC = () => {
     } = useViewedGames(6);
 
     useEffect(() => {
-        const syncUser = () => {
-            const parsedToken = keycloakService.keycloak?.tokenParsed as
-                | { email?: string; preferred_username?: string; sub?: string }
-                | undefined;
-            setWishlistUserId(parsedToken?.email ?? parsedToken?.preferred_username ?? parsedToken?.sub ?? '');
-        };
-
-        syncUser();
-        keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
-        keycloakService.stateChangedEmitter.on('onAuthSuccess', syncUser);
-
-        return () => {
-            keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
-        };
-    }, [keycloakService]);
-
-    useEffect(() => {
         (async () => {
             const allGames = await gameService.getAllGames();
             setGames(allGames);
         })();
     }, [gameService]);
-
-    const readGuestWishlist = useCallback(() => {
-        const storedGuest = localStorage.getItem(WISHLIST_GUEST_KEY);
-        if (storedGuest) {
-            try {
-                return (JSON.parse(storedGuest) as string[]).filter(Boolean);
-            } catch (error) {
-                console.error('Failed to parse guest wishlist from storage:', error);
-                return [];
-            }
-        }
-
-        const legacy = localStorage.getItem(WISHLIST_LEGACY_KEY);
-        if (!legacy) {
-            return [];
-        }
-
-        try {
-            const parsed = (JSON.parse(legacy) as string[]).filter(Boolean);
-            localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(parsed));
-            localStorage.removeItem(WISHLIST_LEGACY_KEY);
-            return parsed;
-        } catch (error) {
-            console.error('Failed to parse legacy wishlist from storage:', error);
-            localStorage.removeItem(WISHLIST_LEGACY_KEY);
-            return [];
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!wishlistUserId) {
-            didMergeRef.current = false;
-            const guestIds = readGuestWishlist();
-            setWishlistIds(new Set(guestIds));
-            return;
-        }
-
-        if (didMergeRef.current) {
-            return;
-        }
-
-        didMergeRef.current = true;
-        let isMounted = true;
-
-        const loadWishlist = async () => {
-            const guestIds = readGuestWishlist();
-            try {
-                if (guestIds.length > 0) {
-                    const mergedIds = await wishlistService.merge(guestIds);
-                    if (!isMounted) {
-                        return;
-                    }
-                    setWishlistIds(new Set(mergedIds));
-                    localStorage.removeItem(WISHLIST_GUEST_KEY);
-                    return;
-                }
-
-                const serverIds = await wishlistService.getWishlist();
-                if (!isMounted) {
-                    return;
-                }
-                setWishlistIds(new Set(serverIds));
-            } catch (error) {
-                console.error('Failed to load wishlist:', error);
-                if (isMounted) {
-                    setWishlistIds(new Set(guestIds));
-                }
-            }
-        };
-
-        loadWishlist();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [readGuestWishlist, wishlistService, wishlistUserId]);
 
     const wishlistGames = useMemo(
         () => games.filter((game) => game.id && wishlistIds.has(game.id)),
@@ -155,10 +60,42 @@ const AccountSavedItemsPage: React.FC = () => {
     );
 
     const totalWishlistItems = wishlistGames.length;
-    const visibleItems = Math.min(totalWishlistItems, 9);
-    const visibleLabel = totalWishlistItems === 0 ? 'Showing 0 of 0' : `Showing 1-${visibleItems} of ${totalWishlistItems}`;
 
-    const wishlistCards = useMemo(() => wishlistGames.slice(0, 9), [wishlistGames]);
+    const filteredGames = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        const filtered = query
+            ? wishlistGames.filter((game) => (game.title || game.name || '').toLowerCase().includes(query))
+            : wishlistGames;
+
+        const sorted = [...filtered];
+        if (sortOrder === 'price') {
+            sorted.sort((a, b) => Number(a.price) - Number(b.price));
+        } else if (sortOrder === 'newest') {
+            sorted.sort((a, b) => new Date(b.releaseDate).valueOf() - new Date(a.releaseDate).valueOf());
+        }
+        return sorted;
+    }, [wishlistGames, searchQuery, sortOrder]);
+
+    const totalFiltered = filteredGames.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+
+    // Если фильтр или удаление сократили список — не зависаем на несуществующей странице.
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages]);
+
+    const safePage = Math.min(page, totalPages);
+    const wishlistCards = useMemo(
+        () => filteredGames.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+        [filteredGames, safePage]
+    );
+
+    const showingFrom = totalFiltered === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+    const showingTo = Math.min(safePage * PAGE_SIZE, totalFiltered);
+    const visibleLabel =
+        totalFiltered === 0 ? 'Showing 0 of 0' : `Showing ${showingFrom}-${showingTo} of ${totalFiltered}`;
 
     const formatPrice = (price: number) => (Number.isFinite(price) ? `$${price.toFixed(2)}` : '$0');
 
@@ -171,31 +108,14 @@ const AccountSavedItemsPage: React.FC = () => {
         });
     };
 
+    const gameHref = (game: Game) =>
+        `/games/${game.slug ? slugify(game.slug) : slugify(game.title || game.name)}`;
+
     const handleRemove = async (gameId?: string) => {
         if (!gameId) {
             return;
         }
-
-        try {
-            if (!wishlistUserId) {
-                setWishlistIds((prev) => {
-                    const next = new Set(prev);
-                    next.delete(gameId);
-                    localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(Array.from(next)));
-                    return next;
-                });
-                return;
-            }
-
-            await wishlistService.removeItem(gameId);
-            setWishlistIds((prev) => {
-                const next = new Set(prev);
-                next.delete(gameId);
-                return next;
-            });
-        } catch (error) {
-            console.error('Failed to remove wishlist item:', error);
-        }
+        await remove(gameId);
     };
 
     const handleAddToCart = (game: Game) => {
@@ -234,24 +154,47 @@ const AccountSavedItemsPage: React.FC = () => {
                 <div className="saved-toolbar-top">
                     <div className="saved-search">
                         <FontAwesomeIcon icon={faMagnifyingGlass} className="saved-search-icon" />
-                        <input type="text" placeholder="Search in wishlist..." />
+                        <input
+                            type="text"
+                            placeholder="Search in wishlist..."
+                            value={searchQuery}
+                            onChange={(event) => {
+                                setSearchQuery(event.target.value);
+                                setPage(1);
+                            }}
+                        />
                     </div>
                     <div className="saved-sort">
                         <span>Sort:</span>
-                        <select className="saved-select" defaultValue="All">
-                            <option>All</option>
-                            <option>Price</option>
-                            <option>Newest</option>
+                        <select
+                            className="saved-select"
+                            value={sortOrder}
+                            onChange={(event) => {
+                                setSortOrder(event.target.value as 'all' | 'price' | 'newest');
+                                setPage(1);
+                            }}
+                        >
+                            <option value="all">All</option>
+                            <option value="price">Price</option>
+                            <option value="newest">Newest</option>
                         </select>
                     </div>
                 </div>
                 <div className="saved-toolbar-row">
                     <div className="saved-view-toggle">
                         <span>View:</span>
-                        <button type="button" className="btn btn-outline saved-view-btn is-active">
+                        <button
+                            type="button"
+                            className={`btn btn-outline saved-view-btn ${viewMode === 'comfortable' ? 'is-active' : ''}`}
+                            onClick={() => setViewMode('comfortable')}
+                        >
                             Comfortable
                         </button>
-                        <button type="button" className="btn btn-outline saved-view-btn">
+                        <button
+                            type="button"
+                            className={`btn btn-outline saved-view-btn ${viewMode === 'compact' ? 'is-active' : ''}`}
+                            onClick={() => setViewMode('compact')}
+                        >
                             Compact
                         </button>
                     </div>
@@ -264,17 +207,19 @@ const AccountSavedItemsPage: React.FC = () => {
                     {viewMode === 'comfortable'
                         ? wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card">
-                                <div className="saved-item-cover" aria-hidden="true">
+                                <Link to={gameHref(item)} className="saved-item-cover" aria-label={`Open ${item.title}`}>
                                     <SafeGameImage
                                         src={item.imagePath}
                                         gameTitle={item.title}
                                         className="saved-item-image"
                                     />
-                                </div>
+                                </Link>
                                 <div className="saved-item-body">
                                     <div className="saved-item-title-row">
                                         <div>
-                                            <h3>{item.title}</h3>
+                                            <Link to={gameHref(item)} className="saved-item-title-link">
+                                                <h3>{item.title}</h3>
+                                            </Link>
                                             <p className="saved-item-date">{formatDate(item.releaseDate)}</p>
                                         </div>
                                         <div className="saved-item-price">
@@ -296,28 +241,25 @@ const AccountSavedItemsPage: React.FC = () => {
                                         >
                                             Remove
                                         </button>
-                                        {index === 2 && (
-                                            <button type="button" className="btn btn-outline saved-item-icon-btn" aria-label="Open item">
-                                                <FontAwesomeIcon icon={faChevronRight} />
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             </div>
                         ))
                         : wishlistCards.map((item, index) => (
                             <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card compact">
-                                <div className="saved-item-compact-cover" aria-hidden="true">
+                                <Link to={gameHref(item)} className="saved-item-compact-cover" aria-label={`Open ${item.title}`}>
                                     <SafeGameImage
                                         src={item.imagePath}
                                         gameTitle={item.title}
                                         className="saved-item-image"
                                     />
-                                </div>
+                                </Link>
                                 <div className="saved-item-compact-body">
                                     <div className="saved-item-compact-header">
                                         <div>
-                                            <strong>{item.title}</strong>
+                                            <Link to={gameHref(item)} className="saved-item-title-link">
+                                                <strong>{item.title}</strong>
+                                            </Link>
                                             <span className="saved-item-date">{formatDate(item.releaseDate)}</span>
                                         </div>
                                         <div className="saved-item-price">
@@ -345,36 +287,51 @@ const AccountSavedItemsPage: React.FC = () => {
                         ))}
                     {wishlistCards.length === 0 && (
                         <div className="saved-empty-state">
-                            <p>Your wishlist is empty for now.</p>
+                            <p>
+                                {totalWishlistItems === 0
+                                    ? 'Your wishlist is empty for now.'
+                                    : 'No saved items match your search.'}
+                            </p>
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className="saved-pagination" data-testid="saved-pagination">
-                <div className="saved-pagination-controls">
-                    <button type="button" className="btn btn-outline saved-page-btn" aria-label="Previous page">
-                        <FontAwesomeIcon icon={faChevronLeft} />
-                    </button>
-                    <button type="button" className="btn btn-outline saved-page-btn is-active">
-                        1
-                    </button>
-                    <button type="button" className="btn btn-outline saved-page-btn">
-                        2
-                    </button>
-                    <button type="button" className="btn btn-outline saved-page-btn">
-                        3
-                    </button>
-                    <span className="saved-page-ellipsis">…</span>
-                    <button type="button" className="btn btn-outline saved-page-btn">
-                        6
-                    </button>
-                    <button type="button" className="btn btn-outline saved-page-btn" aria-label="Next page">
-                        <FontAwesomeIcon icon={faChevronRight} />
-                    </button>
+            {totalPages > 1 && (
+                <div className="saved-pagination" data-testid="saved-pagination">
+                    <div className="saved-pagination-controls">
+                        <button
+                            type="button"
+                            className="btn btn-outline saved-page-btn"
+                            aria-label="Previous page"
+                            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                            disabled={safePage <= 1}
+                        >
+                            <FontAwesomeIcon icon={faChevronLeft} />
+                        </button>
+                        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                            <button
+                                key={pageNumber}
+                                type="button"
+                                className={`btn btn-outline saved-page-btn ${pageNumber === safePage ? 'is-active' : ''}`}
+                                onClick={() => setPage(pageNumber)}
+                            >
+                                {pageNumber}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            className="btn btn-outline saved-page-btn"
+                            aria-label="Next page"
+                            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                            disabled={safePage >= totalPages}
+                        >
+                            <FontAwesomeIcon icon={faChevronRight} />
+                        </button>
+                    </div>
+                    <span className="saved-pagination-note">{visibleLabel}</span>
                 </div>
-                <span className="saved-pagination-note">{visibleLabel}</span>
-            </div>
+            )}
 
             <section className="saved-recommendations" data-testid="saved-recommendations">
                 <div className="saved-section-header">

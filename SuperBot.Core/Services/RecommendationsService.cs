@@ -45,6 +45,11 @@ namespace SuperBot.Core.Services
                 excludeIds.Add(purchasedId);
             }
 
+            // Игры, которые нельзя рекомендовать никогда (уже куплены или в вишлисте).
+            // Просмотренные исключаем только из основного контент-подбора, но в запасном
+            // «трендовом» варианте они могут снова всплыть.
+            var protectedIds = new HashSet<string>(excludeIds);
+
             var allGames = await _gameRepository.GetAllAsync();
             if (!wishlistIds.Any() && viewed.Count == 0)
             {
@@ -122,6 +127,14 @@ namespace SuperBot.Core.Services
                     Reason = item.Reason
                 })
                 .ToList();
+
+            // Контент-подбор ничего не дал (маленький/однотипный каталог, где всё уже
+            // в вишлисте или просмотрено) — не оставляем блок пустым, показываем «тренды»,
+            // исключая только купленное и то, что уже в вишлисте.
+            if (recommendations.Count == 0)
+            {
+                recommendations = BuildFallbackRecommendations(allGames, protectedIds, normalizedLimit).ToList();
+            }
 
             LogResult(userId, wishlistIds.Count, viewed.Count, recommendations.Count, stopwatch);
 

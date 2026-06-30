@@ -8,9 +8,9 @@ import type { IGameService } from '../../iterfaces/i-game-service';
 import type { ISettingsService } from '../../iterfaces/i-settings-service';
 import { Settings } from '../../models/settings';
 import { useCart } from '../../context/cart-context';
+import { useWishlist } from '../../context/wishlist-context';
 import { Product } from '../../reducers/cart-reducer';
 import type { IUrlService } from '../../iterfaces/i-url-service';
-import type { IWishlistService } from '../../iterfaces/i-wishlist-service';
 import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 import type { IRecommendationsService } from '../../iterfaces/i-recommendations-service';
 import { analyticsClient } from '../../utils/analytics-client';
@@ -24,24 +24,20 @@ const categoryOrder = [
     'Strategy',
     'Sports'
 ];
-const WISHLIST_GUEST_KEY = 'wishlist_guest';
-const WISHLIST_LEGACY_KEY = 'wishlist';
 
 const TaleGameshopGameList: React.FC = () => {
     const [games, setGames] = useState<Game[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
     const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
-    const [wishlistUserId, setWishlistUserId] = useState<string>('');
     const [searchParams, setSearchParams] = useSearchParams();
     const { dispatch } = useCart();
+    const { isWishlisted, toggle: toggleWishlist } = useWishlist();
 
     const services = useMemo(
         () => ({
             gameService: container.get<IGameService>(IDENTIFIERS.IGameService),
             settingsService: container.get<ISettingsService>(IDENTIFIERS.ISettingsService),
             urlService: container.get<IUrlService>(IDENTIFIERS.IUrlService),
-            wishlistService: container.get<IWishlistService>(IDENTIFIERS.IWishlistService),
             keycloakService: container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService),
             recommendationsService: container.get<IRecommendationsService>(IDENTIFIERS.IRecommendationsService)
         }),
@@ -51,7 +47,6 @@ const TaleGameshopGameList: React.FC = () => {
     const filterCategory = searchParams.get('filterCategory') ?? '';
     const filterName = searchParams.get('filterName') ?? '';
     const [searchNameDraft, setSearchNameDraft] = useState(filterName);
-    const didMergeRef = useRef(false);
     const searchTimeoutRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -75,108 +70,11 @@ const TaleGameshopGameList: React.FC = () => {
     }, [services.settingsService]);
 
     useEffect(() => {
-        const syncUser = () => {
-            const parsedToken = services.keycloakService.keycloak?.tokenParsed as
-                | { email?: string; preferred_username?: string; sub?: string }
-                | undefined;
-            setWishlistUserId(parsedToken?.email ?? parsedToken?.preferred_username ?? parsedToken?.sub ?? '');
-        };
-
-        syncUser();
-        services.keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
-        services.keycloakService.stateChangedEmitter.on('onAuthSuccess', syncUser);
-
-        return () => {
-            services.keycloakService.stateChangedEmitter.off('onAuthSuccess', syncUser);
-        };
-    }, [services.keycloakService]);
-
-    useEffect(() => {
         (async () => {
             const fetchedGames = await services.gameService.getAllGames();
             setGames(fetchedGames);
         })();
     }, [services.gameService]);
-
-    const readGuestWishlist = useCallback(() => {
-        const storedGuest = localStorage.getItem(WISHLIST_GUEST_KEY);
-        if (storedGuest) {
-            try {
-                return (JSON.parse(storedGuest) as string[]).filter(Boolean);
-            } catch (error) {
-                console.error('Failed to parse guest wishlist from storage:', error);
-                return [];
-            }
-        }
-
-        const legacy = localStorage.getItem(WISHLIST_LEGACY_KEY);
-        if (!legacy) {
-            return [];
-        }
-
-        try {
-            const parsed = (JSON.parse(legacy) as string[]).filter(Boolean);
-            localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(parsed));
-            localStorage.removeItem(WISHLIST_LEGACY_KEY);
-            return parsed;
-        } catch (error) {
-            console.error('Failed to parse legacy wishlist from storage:', error);
-            localStorage.removeItem(WISHLIST_LEGACY_KEY);
-            return [];
-        }
-    }, []);
-
-    const writeGuestWishlist = useCallback((ids: Set<string>) => {
-        localStorage.setItem(WISHLIST_GUEST_KEY, JSON.stringify(Array.from(ids)));
-    }, []);
-
-    useEffect(() => {
-        if (!wishlistUserId) {
-            didMergeRef.current = false;
-            const guestIds = readGuestWishlist();
-            setWishlistIds(new Set(guestIds));
-            return;
-        }
-
-        if (didMergeRef.current) {
-            return;
-        }
-
-        didMergeRef.current = true;
-        let isMounted = true;
-
-        const loadWishlist = async () => {
-            const guestIds = readGuestWishlist();
-            try {
-                if (guestIds.length > 0) {
-                    const mergedIds = await services.wishlistService.merge(guestIds);
-                    if (!isMounted) {
-                        return;
-                    }
-                    setWishlistIds(new Set(mergedIds));
-                    localStorage.removeItem(WISHLIST_GUEST_KEY);
-                    return;
-                }
-
-                const serverIds = await services.wishlistService.getWishlist();
-                if (!isMounted) {
-                    return;
-                }
-                setWishlistIds(new Set(serverIds));
-            } catch (error) {
-                console.error('Failed to load wishlist:', error);
-                if (isMounted) {
-                    setWishlistIds(new Set(guestIds));
-                }
-            }
-        };
-
-        loadWishlist();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [wishlistUserId, readGuestWishlist, services.wishlistService]);
 
     const patchSearchParams = useCallback(
         (patchFn: (params: URLSearchParams) => void) => {
@@ -401,55 +299,6 @@ const TaleGameshopGameList: React.FC = () => {
         [services.recommendationsService]
     );
 
-    const resolveWishlistKey = (game: Game) => game.id;
-
-    const handleToggleWishlist = async (game: Game) => {
-        const wishlistKey = resolveWishlistKey(game);
-        if (!wishlistKey) {
-            return;
-        }
-
-        let nextIds: Set<string> | null = null;
-        let wasWishlisted = false;
-
-        setWishlistIds((prev) => {
-            const next = new Set(prev);
-            wasWishlisted = next.has(wishlistKey);
-            wasWishlisted ? next.delete(wishlistKey) : next.add(wishlistKey);
-            nextIds = next;
-            return next;
-        });
-
-        if (!nextIds) {
-            return;
-        }
-
-        if (!wishlistUserId || !game.id) {
-            writeGuestWishlist(nextIds);
-            return;
-        }
-
-        try {
-            if (wasWishlisted) {
-                await services.wishlistService.removeItem(wishlistKey);
-            } else {
-                await services.wishlistService.addItem(wishlistKey);
-            }
-        } catch (error) {
-            console.error('Failed to update wishlist:', error);
-            setWishlistIds((prev) => {
-                const rollback = new Set(prev);
-                if (wasWishlisted) {
-                    rollback.add(wishlistKey);
-                } else {
-                    rollback.delete(wishlistKey);
-                }
-                return rollback;
-            });
-        }
-    };
-
-
     const renderImage = (game: Game) => (
         <SafeGameImage
             gameTitle={game.title}
@@ -522,8 +371,7 @@ const TaleGameshopGameList: React.FC = () => {
         const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
         const finalPrice = Number.isFinite(game.finalPrice ?? game.price) ? Number(game.finalPrice ?? game.price) : regularPrice;
         const hasActiveDiscount = Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0 && finalPrice < regularPrice);
-        const wishlistKey = resolveWishlistKey(game);
-        const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
+        const wishlisted = isWishlisted(game.id);
         const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
 
         return (
@@ -552,15 +400,15 @@ const TaleGameshopGameList: React.FC = () => {
                     <button
                         type="button"
                         className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
-                            isWishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
+                            wishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
                         }`}
-                        aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                        aria-pressed={isWishlisted}
-                        onClick={() => handleToggleWishlist(game)}
-                        disabled={!wishlistKey}
-                        aria-disabled={!wishlistKey}
+                        aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                        aria-pressed={wishlisted}
+                        onClick={() => toggleWishlist(game.id)}
+                        disabled={!game.id}
+                        aria-disabled={!game.id}
                     >
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill={isWishlisted ? 'currentColor' : 'none'}>
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill={wishlisted ? 'currentColor' : 'none'}>
                             <path
                                 d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
                                 stroke="currentColor"
@@ -907,8 +755,7 @@ const TaleGameshopGameList: React.FC = () => {
                             {paginatedGames.map(({ category, game }, index) => {
                                 const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
                                 const finalPrice = Number(game.finalPrice ?? game.price);
-                                const wishlistKey = resolveWishlistKey(game);
-                                const isWishlisted = wishlistKey ? wishlistIds.has(wishlistKey) : false;
+                                const wishlisted = isWishlisted(game.id);
 
                                 return (
                                     <article
@@ -926,14 +773,14 @@ const TaleGameshopGameList: React.FC = () => {
                                             <button
                                                 type="button"
                                                 className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
-                                                    isWishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
+                                                    wishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
                                                 }`}
-                                                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                                                aria-pressed={isWishlisted}
-                                                onClick={() => handleToggleWishlist(game)}
-                                                disabled={!wishlistKey}
+                                                aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                                                aria-pressed={wishlisted}
+                                                onClick={() => toggleWishlist(game.id)}
+                                                disabled={!game.id}
                                             >
-                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill={isWishlisted ? 'currentColor' : 'none'}>
+                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill={wishlisted ? 'currentColor' : 'none'}>
                                                     <path
                                                         d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
                                                         stroke="currentColor"

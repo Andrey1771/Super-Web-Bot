@@ -4,7 +4,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ebdefccf-080a-49dd-b409-f048c9f75ca1" name="Changes" comment="" />
+    <list default="true" id="ebdefccf-080a-49dd-b409-f048c9f75ca1" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../SuperBot.Core/Entities/Game.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.Core/Entities/Game.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.Core/Interfaces/IRepositories/IGameKeyRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.Core/Interfaces/IRepositories/IGameKeyRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.Infrastructure/Repositories/GameKeyMongoDbRepository.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.Infrastructure/Repositories/GameKeyMongoDbRepository.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/OrderController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/OrderController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/UsersMeController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/UsersMeController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/appsettings.json" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/appsettings.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/admin-panel/card-adder-page/card-adder-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/admin-panel/card-adder-page/card-adder-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/layout/Topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/Topbar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/ui/ToastProvider.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/ui/ToastProvider.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountKeysPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountKeysPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/admin/GameDetailsEditorPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/admin/GameDetailsEditorPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/styles/admin.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/styles/admin.css" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -22,6 +39,9 @@
       </list>
     </option>
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
 }</component>
@@ -33,17 +53,24 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "DefaultHtmlFileTemplate": "HTML File",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "javascript.nodejs.core.library.configured.version": "20.15.0",
-    "javascript.nodejs.core.library.typings.version": "20.15.0",
-    "last_opened_file_path": "C:/projects/2/16/1/2/Super-Web-Bot/tale-gameshop",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "feature__editors-picks",
+    "ignore.virus.scanning.warn.message": "true",
+    "javascript.nodejs.core.library.configured.version": "24.18.0",
+    "javascript.nodejs.core.library.typings.version": "",
+    "javascript.preferred.runtime.type.id": "node",
+    "last_opened_file_path": "C:/Projects/Super-Web-Bot/tale-gameshop",
     "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "C:\\projects\\2\\15\\2\\3\\4\\5\\6\\7\\8\\9\\Super-Web-Bot\\tale-gameshop\\node_modules\\typescript\\lib",
+    "ts.external.directory.path": "C:\\Projects\\Super-Web-Bot\\tale-gameshop\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -59,7 +86,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-1d06a55b98c1-2e7d6887c066-JavaScript-WS-241.15989.47" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.24374.125" />
       </set>
     </attachedChunks>
   </component>
@@ -137,6 +164,7 @@
       <workItem from="1773601706242" duration="700000" />
       <workItem from="1773604941249" duration="9662000" />
       <workItem from="1774683273569" duration="21000" />
+      <workItem from="1782819660326" duration="437000" />
     </task>
     <servers />
   </component>

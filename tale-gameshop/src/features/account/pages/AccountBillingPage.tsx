@@ -14,6 +14,7 @@ import RecommendationsSection from '../../../components/recommendations/recommen
 import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-billing-page.css';
 import AddCardModal from '../../../components/billing/AddCardModal';
+import CardBrandIcon from '../../../components/billing/CardBrandIcon';
 import container from '../../../inversify.config';
 import IDENTIFIERS from '../../../constants/identifiers';
 import type { IUrlService } from '../../../iterfaces/i-url-service';
@@ -365,8 +366,11 @@ const AccountBillingPage: React.FC = () => {
                     )}
                     {!paymentMethodsLoading && !paymentMethodsError && paymentMethods.map((method) => (
                         <div key={method.id} className="billing-method-card">
-                            <div>
-                                <span className="billing-method-brand">{method.brand}</span>
+                            <div className="billing-method-info">
+                                <div className="billing-method-brandline">
+                                    <CardBrandIcon brand={method.brand} />
+                                    <span className="billing-method-brand">{method.brand}</span>
+                                </div>
                                 <p>•••• {method.last4}</p>
                             </div>
                             <div className="billing-method-meta">

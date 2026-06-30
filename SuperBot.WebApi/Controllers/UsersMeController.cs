@@ -132,7 +132,10 @@ namespace SuperBot.WebApi.Controllers
                 return Ok(Array.Empty<GameKeyResponse>());
             }
 
-            var gameIds = keys.Select(item => item.GameId).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+            // Только валидные ObjectId: ключ с битым/устаревшим gameId (удалённая игра) не должен ронять всю страницу.
+            var gameIds = keys.Select(item => item.GameId)
+                .Where(id => !string.IsNullOrWhiteSpace(id) && System.Text.RegularExpressions.Regex.IsMatch(id, "^[0-9a-fA-F]{24}$"))
+                .Distinct().ToList();
             var games = await _gameRepository.GetByIdsAsync(gameIds);
             var gameMap = games.Where(game => !string.IsNullOrWhiteSpace(game.Id))
                 .ToDictionary(game => game.Id, game => game);

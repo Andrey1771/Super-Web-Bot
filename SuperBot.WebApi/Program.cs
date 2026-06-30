@@ -145,6 +145,8 @@ builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
 builder.Services.AddScoped<IViewedGameRepository, ViewedGameMongoDbRepository>();
 builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
+// Выдача ключей (A+B): из пула, иначе автоген в Demo. См. KeyFulfillmentService.
+builder.Services.AddScoped<IKeyFulfillmentService, KeyFulfillmentService>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();
 builder.Services.AddScoped<IGameReviewHelpfulRepository, GameReviewHelpfulMongoDbRepository>();
 builder.Services.AddScoped<IGameQuestionRepository, GameQuestionMongoDbRepository>();

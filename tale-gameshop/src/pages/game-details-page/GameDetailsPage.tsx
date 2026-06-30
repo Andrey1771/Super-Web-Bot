@@ -22,6 +22,9 @@ import type { IGameDetailsService } from '../../iterfaces/i-game-details-service
 import type { GameReviewFilters } from '../../types/game-details-service';
 import { getAnonId } from '../../hooks/use-blog-tracking';
 import SafeGameImage from '../../components/common/SafeGameImage';
+import { useWishlist } from '../../context/wishlist-context';
+import { useCart } from '../../context/cart-context';
+import { Product } from '../../reducers/cart-reducer';
 
 const formatPrice = (price: number, currency: string) => {
   const formatter = new Intl.NumberFormat('en-US', {
@@ -210,11 +213,42 @@ const GameMediaGallery = ({
 
 const GamePurchaseCard = ({
   pricing,
-  ratingSummary
+  ratingSummary,
+  gameId,
+  gameTitle,
+  coverUrl
 }: {
   pricing: { price: number; oldPrice?: number; currency: string; discountPercent?: number };
   ratingSummary: { average: number; totalReviews: number; label: string };
+  gameId?: string;
+  gameTitle?: string;
+  coverUrl?: string;
 }) => {
+  const { isWishlisted, toggle } = useWishlist();
+  const { state: cartState, dispatch } = useCart();
+  const wishlisted = isWishlisted(gameId);
+  const inCart = Boolean(gameId) && cartState.items.some((item) => item.gameId === gameId);
+
+  const handleCartClick = () => {
+    if (!gameId) {
+      return;
+    }
+    if (inCart) {
+      dispatch({ type: 'REMOVE_FROM_CART', payload: gameId });
+    } else {
+      dispatch({
+        type: 'ADD_TO_CART',
+        payload: {
+          gameId,
+          name: gameTitle ?? '',
+          price: pricing.price,
+          quantity: 1,
+          image: coverUrl ?? ''
+        } as Product
+      });
+    }
+  };
+
   return (
     <div className="purchase-card card">
       <div className="purchase-price">
@@ -230,11 +264,32 @@ const GamePurchaseCard = ({
         <span className="rating-pill">{ratingSummary.label}</span>
       </div>
       <div className="purchase-actions">
-        <button className="btn btn-primary" type="button">
-          Add to cart
+        <button
+          className={`btn ${inCart ? 'btn-outline' : 'btn-primary'}`}
+          type="button"
+          onClick={handleCartClick}
+          disabled={!gameId}
+        >
+          {inCart ? 'Remove from cart' : 'Add to cart'}
         </button>
-        <button className="btn btn-outline" type="button">
-          Wishlist
+        <button
+          className={`btn btn-outline purchase-wishlist ${wishlisted ? 'is-active' : ''}`}
+          type="button"
+          onClick={() => toggle(gameId)}
+          disabled={!gameId}
+          aria-pressed={wishlisted}
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          title={wishlisted ? 'In your wishlist' : 'Add to wishlist'}
+        >
+          <svg viewBox="0 0 24 24" className="purchase-wishlist-icon" fill={wishlisted ? 'currentColor' : 'none'} aria-hidden="true">
+            <path
+              d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {wishlisted ? 'In wishlist' : 'Wishlist'}
         </button>
       </div>
       <p className="purchase-note">Instant delivery • Official key • Refund policy</p>
@@ -1128,7 +1183,13 @@ const GameDetailsPage: React.FC = () => {
                 </div>
               </div>
               <div className="hero-purchase">
-                <GamePurchaseCard pricing={displayPricing} ratingSummary={ratingSummary} />
+                <GamePurchaseCard
+                  pricing={displayPricing}
+                  ratingSummary={ratingSummary}
+                  gameId={data.game.gameId}
+                  gameTitle={data.game.title}
+                  coverUrl={data.game.cover?.url}
+                />
               </div>
             </div>
             <GameQuickInfoTiles tiles={quickInfoTiles} />

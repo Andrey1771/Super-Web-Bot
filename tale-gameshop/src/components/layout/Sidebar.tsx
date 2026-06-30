@@ -58,6 +58,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             roles: ["admin"],
           },
           {
+            label: "Game keys",
+            to: "/admin/games/keys",
+            icon: "🔑",
+            roles: ["admin"],
+          },
+          {
             label: "Genres/Tags",
             icon: "🏷️",
             disabled: true,

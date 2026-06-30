@@ -391,8 +391,36 @@
 
 .purchase-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--space-12);
+}
+
+.purchase-actions .btn {
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  padding: 10px 16px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.purchase-wishlist {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.purchase-wishlist-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.purchase-wishlist.is-active {
+  border-color: #6b3ff2;
+  color: #6b3ff2;
 }
 
 .purchase-note {

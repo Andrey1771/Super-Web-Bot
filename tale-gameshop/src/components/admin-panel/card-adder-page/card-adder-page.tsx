@@ -416,13 +416,23 @@ const CardAdderPage: React.FC = () => {
         applyFormFromGame(refreshedSelection);
       }
 
+      const wasCreate = drawerMode === "create";
       setDrawerOpen(false);
       setDrawerMode(null);
       resetForm();
       setDetailsDrawerOpen(false);
-      addToast(drawerMode === "create" ? "Game created" : "Changes saved", "success");
-      if (drawerMode === "create" && createdId) {
-        navigate(`/admin/games/details?gameId=${createdId}`);
+      // Сбрасываем «грязное» состояние формы ДО любой навигации, иначе guard из useDirtyState
+      // перехватит programmatic navigate и покажет «You have unsaved changes».
+      if (wasCreate && createdId) {
+        // Вместо мгновенного перехода — notify-плашка с кнопкой перехода и прогресс-баром.
+        addToast("Игра создана", "success", {
+          action: {
+            label: "Перейти к редактированию",
+            onClick: () => navigate(`/admin/games/details?gameId=${createdId}`),
+          },
+        });
+      } else {
+        addToast(wasCreate ? "Game created" : "Changes saved", "success");
       }
     } catch (error) {
       console.error("Error saving object:", error);

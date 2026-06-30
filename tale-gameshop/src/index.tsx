@@ -12,6 +12,7 @@ import {ReactKeycloakProvider} from "@react-keycloak/web";
 import {IKeycloakService} from "./iterfaces/i-keycloak-service";
 import IDENTIFIERS from "./constants/identifiers";
 import {CartProvider} from './context/cart-context';
+import {WishlistProvider} from './context/wishlist-context';
 import AppLoader from './components/app-loader/AppLoader';
 
 const root = ReactDOM.createRoot(
@@ -28,9 +29,11 @@ root.render(
             <InversifyProvider container={container}>
                 <React.StrictMode>
                     <CartProvider>
-                        <BrowserRouter>
-                            <App/>
-                        </BrowserRouter>
+                        <WishlistProvider>
+                            <BrowserRouter>
+                                <App/>
+                            </BrowserRouter>
+                        </WishlistProvider>
                     </CartProvider>
                 </React.StrictMode>
             </InversifyProvider>

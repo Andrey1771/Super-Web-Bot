@@ -8,6 +8,7 @@ import type { Game } from "../../models/game";
 import type { AdminGameDiscount, GameDetails, MediaItem } from "../../types/game-details";
 import MediaPickerModal from "../../components/admin-panel/media-library/MediaPickerModal";
 import { useToast } from "../../components/ui/ToastProvider";
+import KeyInventorySection from "../../components/admin/KeyInventorySection";
 
 const emptyDetails = (gameId: string, slug: string, title: string): GameDetails => ({
   gameId,
@@ -303,6 +304,8 @@ const GameDetailsEditorPage: React.FC = () => {
         </div>
       </div>
 
+      {selectedGameId && <KeyInventorySection gameId={selectedGameId} />}
+
       <div className="admin-card">
         <h3>General</h3>
         <div className="admin-grid admin-grid--2">
@@ -561,7 +564,7 @@ const GameDetailsEditorPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="admin-drawer__footer">
+      <div className="admin-save-bar">
         <button className="btn btn-primary" onClick={handleSave}>Save all</button>
       </div>
 

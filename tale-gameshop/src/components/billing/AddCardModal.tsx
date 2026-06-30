@@ -4,6 +4,7 @@ import type { StripeCardNumberElementOptions } from '@stripe/stripe-js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock } from '@fortawesome/free-solid-svg-icons';
 import { createStripePromise } from '../../utils/stripe-loader';
+import CardBrandIcon from './CardBrandIcon';
 
 const stripePublishableKey = typeof window !== 'undefined'
     ? window.__APP_CONFIG__?.stripePublishableKey ?? ''
@@ -156,10 +157,9 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
                     </label>
                 </div>
                 <div className="billing-card-brands">
-                    <span className="billing-card-brand">Visa</span>
-                    <span className="billing-card-brand">Mastercard</span>
-                    <span className="billing-card-brand">Maestro</span>
-                    <span className="billing-card-brand">Mir</span>
+                    {['visa', 'mastercard', 'maestro', 'mir', 'amex'].map((brand) => (
+                        <CardBrandIcon key={brand} brand={brand} />
+                    ))}
                 </div>
                 <div className="billing-secure-row">
                     <FontAwesomeIcon icon={faLock} />

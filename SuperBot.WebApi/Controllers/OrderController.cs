@@ -19,7 +19,8 @@ namespace SuperBot.WebApi.Controllers
         IGameRepository _gameRepository,
         IMapper _mapper,
         IMediator _mediator,
-        IPromoCodeService _promoCodeService) : Controller
+        IPromoCodeService _promoCodeService,
+        IKeyFulfillmentService _keyFulfillmentService) : Controller
     {
         [HttpPost("confirm/{orderId}")]
         public async Task<IActionResult> SetPaidSteamOrder(string orderId)
@@ -130,6 +131,10 @@ namespace SuperBot.WebApi.Controllers
             }
 
             await _orderRepository.CreateOrderAsync(order);
+
+            // Выдача ключей по позициям заказа: B — из пула инвентаря, A — автогенерация в Demo.
+            // (В реальном prod-флоу логичнее звать это на подтверждении оплаты, см. IKeyFulfillmentService.)
+            await _keyFulfillmentService.FulfillOrderAsync(order);
 
             if (!string.IsNullOrWhiteSpace(order.PromoCode) && order.TotalAmount.HasValue)
             {

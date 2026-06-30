@@ -101,6 +101,11 @@
     gap: var(--space-20);
 }
 
+/* Компактный вид — плотный список в одну колонку (строки во всю ширину). */
+.saved-items-grid.view-compact {
+    grid-template-columns: 1fr;
+}
+
 .saved-empty-state {
     grid-column: 1 / -1;
     border-radius: var(--radius-lg);
@@ -157,6 +162,21 @@
     gap: var(--space-12);
 }
 
+.saved-item-cover,
+.saved-item-compact-cover {
+    display: block;
+}
+
+.saved-item-title-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.saved-item-title-link:hover h3,
+.saved-item-title-link:hover strong {
+    color: #6b3ff2;
+}
+
 .saved-item-title-row {
     display: flex;
     align-items: flex-start;
@@ -170,9 +190,16 @@
 }
 
 .saved-item-date {
+    display: block;
     margin: 0;
     font-size: 13px;
     color: var(--color-muted);
+}
+
+/* В компактной строке заголовок и дата не должны слипаться в одну строку. */
+.saved-item-compact-header .saved-item-title-link {
+    display: block;
+    margin-bottom: 2px;
 }
 
 .saved-item-price {
