@@ -70,15 +70,12 @@ export const uploadTicketAttachment = async (
     return response.data;
 };
 
+// Клиент помечает СВОЙ тикет решённым — пользовательский эндпоинт (админский давал 403 обычным клиентам).
 export const resolveTicket = async (ticketId: string): Promise<void> => {
-    await apiClient().post(`/api/support/admin/tickets/${ticketId}/resolve`);
+    await apiClient().post(`/api/support/tickets/${ticketId}/resolve`);
 };
 
-export const closeTicket = async (ticketId: string): Promise<void> => {
-    await apiClient().post(`/api/support/admin/tickets/${ticketId}/close`);
-};
-
-export const downloadTranscript = async (ticketId: string): Promise<Blob> => {
-    const response = await apiClient().get(`/api/support/tickets/${ticketId}/transcript`, { responseType: 'blob' });
-    return response.data;
+// Переоткрытие решённого тикета владельцем (Closed переоткрыть нельзя — финальный статус поддержки).
+export const reopenTicket = async (ticketId: string): Promise<void> => {
+    await apiClient().post(`/api/support/tickets/${ticketId}/reopen`);
 };

@@ -6,18 +6,19 @@ using SuperBot.WebApi.Support.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
+// Клиентский канал поддержки. ВАЖНО: авторство определяется КАНАЛОМ, а не ролью звонящего —
+// всё, что отправлено через эти эндпоинты, авторится как User (даже если у пользователя есть роль
+// admin/support: в своём тикете он выступает клиентом). Ответы поддержки идут через /api/support/admin.
 [ApiController]
 [Route("api/support")]
 [Authorize]
 public class SupportTicketsController : ControllerBase
 {
     private readonly ISupportTicketService _supportService;
-    private readonly SupportRoleEvaluator _roleEvaluator;
 
-    public SupportTicketsController(ISupportTicketService supportService, SupportRoleEvaluator roleEvaluator)
+    public SupportTicketsController(ISupportTicketService supportService)
     {
         _supportService = supportService;
-        _roleEvaluator = roleEvaluator;
     }
 
     [HttpGet("tickets")]
@@ -59,8 +60,7 @@ public class SupportTicketsController : ControllerBase
         try
         {
             var userContext = SupportUserContext.FromClaims(User);
-            var isSupportAgent = _roleEvaluator.IsSupportAgent(User);
-            var result = await _supportService.GetTicketDetailsAsync(userContext, isSupportAgent, ticketId, messagePage, messagePageSize);
+            var result = await _supportService.GetTicketDetailsAsync(userContext, false, ticketId, messagePage, messagePageSize);
             return Ok(result);
         }
         catch (SupportRequestException ex)
@@ -75,8 +75,7 @@ public class SupportTicketsController : ControllerBase
         try
         {
             var userContext = SupportUserContext.FromClaims(User);
-            var isSupportAgent = _roleEvaluator.IsSupportAgent(User);
-            var message = await _supportService.AddMessageAsync(userContext, isSupportAgent, ticketId, request.Body);
+            var message = await _supportService.AddMessageAsync(userContext, false, ticketId, request.Body);
             return Ok(message);
         }
         catch (SupportRequestException ex)
@@ -100,6 +99,22 @@ public class SupportTicketsController : ControllerBase
         }
     }
 
+    [HttpPost("tickets/{ticketId}/resolve")]
+    // Клиент сам помечает свой тикет решённым («мне помогло») — только владелец.
+    public async Task<ActionResult<SupportTicketSummaryDto>> ResolveOwnTicket([FromRoute] string ticketId)
+    {
+        try
+        {
+            var userContext = SupportUserContext.FromClaims(User);
+            var ticket = await _supportService.ResolveTicketAsOwnerAsync(userContext, ticketId);
+            return Ok(ticket);
+        }
+        catch (SupportRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
     [HttpPost("tickets/{ticketId}/attachments")]
     [RequestSizeLimit(50_000_000)]
     public async Task<ActionResult<IReadOnlyList<SupportAttachmentDto>>> UploadAttachments(
@@ -115,8 +130,7 @@ public class SupportTicketsController : ControllerBase
             }
 
             var userContext = SupportUserContext.FromClaims(User);
-            var isSupportAgent = _roleEvaluator.IsSupportAgent(User);
-            var attachments = await _supportService.UploadAttachmentsAsync(userContext, isSupportAgent, ticketId, messageId, files);
+            var attachments = await _supportService.UploadAttachmentsAsync(userContext, false, ticketId, messageId, files);
             return Ok(attachments);
         }
         catch (SupportRequestException ex)
@@ -131,8 +145,7 @@ public class SupportTicketsController : ControllerBase
         try
         {
             var userContext = SupportUserContext.FromClaims(User);
-            var isSupportAgent = _roleEvaluator.IsSupportAgent(User);
-            var (attachment, stream) = await _supportService.DownloadAttachmentAsync(userContext, isSupportAgent, attachmentId);
+            var (attachment, stream) = await _supportService.DownloadAttachmentAsync(userContext, false, attachmentId);
             return File(stream, attachment.ContentType, attachment.FileName);
         }
         catch (SupportRequestException ex)

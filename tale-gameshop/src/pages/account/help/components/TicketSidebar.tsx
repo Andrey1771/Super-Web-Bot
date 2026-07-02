@@ -8,9 +8,13 @@ interface TicketSidebarProps {
     ticket: TicketDetails;
     isWorking: boolean;
     onResolve: () => void;
+    onReopen: () => void;
 }
 
-const TicketSidebar: React.FC<TicketSidebarProps> = ({ ticket, isWorking, onResolve }) => {
+const TicketSidebar: React.FC<TicketSidebarProps> = ({ ticket, isWorking, onResolve, onReopen }) => {
+    const isResolved = ticket.status === 'Resolved';
+    const isClosed = ticket.status === 'Closed';
+
     return (
         <aside className="ticket-sidebar">
             <div className="ticket-sidebar__card card">
@@ -36,9 +40,18 @@ const TicketSidebar: React.FC<TicketSidebarProps> = ({ ticket, isWorking, onReso
                 </div>
             </div>
 
-            <button type="button" className="btn btn-primary ticket-sidebar__primary" onClick={onResolve} disabled={isWorking}>
-                Reopen request
-            </button>
+            {/* Контекстное действие: открытый тикет можно пометить решённым, решённый — переоткрыть.
+                Closed — финальный статус поддержки, из него переоткрытия нет (только новый запрос). */}
+            {!isClosed && (
+                <button
+                    type="button"
+                    className="btn btn-primary ticket-sidebar__primary"
+                    onClick={isResolved ? onReopen : onResolve}
+                    disabled={isWorking}
+                >
+                    {isResolved ? 'Reopen request' : 'Problem solved'}
+                </button>
+            )}
 
             <div className="ticket-sidebar__links">
                 <h4>Helpful links</h4>

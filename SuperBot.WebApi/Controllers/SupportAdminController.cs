@@ -79,6 +79,45 @@ public class SupportAdminController : ControllerBase
         }
     }
 
+    [HttpPost("tickets/{ticketId}/attachments")]
+    [RequestSizeLimit(50_000_000)]
+    public async Task<ActionResult<IReadOnlyList<SupportAttachmentDto>>> UploadAttachments(
+        [FromRoute] string ticketId,
+        [FromQuery] string messageId,
+        [FromForm] IFormFileCollection files)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(messageId))
+            {
+                return Problem("messageId is required.", statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var userContext = SupportUserContext.FromClaims(User);
+            var attachments = await _supportService.UploadAttachmentsAsync(userContext, true, ticketId, messageId, files);
+            return Ok(attachments);
+        }
+        catch (SupportRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
+    [HttpGet("attachments/{attachmentId}/download")]
+    public async Task<IActionResult> DownloadAttachment([FromRoute] string attachmentId)
+    {
+        try
+        {
+            var userContext = SupportUserContext.FromClaims(User);
+            var (attachment, stream) = await _supportService.DownloadAttachmentAsync(userContext, true, attachmentId);
+            return File(stream, attachment.ContentType, attachment.FileName);
+        }
+        catch (SupportRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
     [HttpPost("tickets/{ticketId}/close")]
     public async Task<ActionResult<SupportTicketSummaryDto>> CloseTicket([FromRoute] string ticketId)
     {

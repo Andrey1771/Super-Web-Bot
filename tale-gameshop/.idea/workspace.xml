@@ -5,13 +5,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ebdefccf-080a-49dd-b409-f048c9f75ca1" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/ui/ToastProvider.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/ui/ToastProvider.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountSecurityPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountSecurityPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountSettingsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountSettingsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/features/account/pages/account-security-page.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/account-security-page.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/features/account/pages/account-settings-page.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/account-settings-page.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/styles/admin.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/styles/admin.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportAdminController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportAdminController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportTicketsController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportTicketsController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Dto/SupportDtos.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Dto/SupportDtos.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/ISupportTicketService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/ISupportTicketService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/SupportTicketService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/SupportTicketService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/supportApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/supportApi.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountHelpPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountHelpPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/account/help/components/TicketDetailsModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/account/help/components/TicketDetailsModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/account/help/components/TicketSidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/account/help/components/TicketSidebar.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,7 +59,7 @@
     "git-widget-placeholder": "feature__editors-picks",
     "ignore.virus.scanning.warn.message": "true",
     "javascript.nodejs.core.library.configured.version": "24.18.0",
-    "javascript.nodejs.core.library.typings.version": "",
+    "javascript.nodejs.core.library.typings.version": "24.13.2",
     "javascript.preferred.runtime.type.id": "node",
     "last_opened_file_path": "C:/Projects/Super-Web-Bot/tale-gameshop",
     "list.type.of.created.stylesheet": "CSS",
@@ -155,7 +162,8 @@
       <workItem from="1773601706242" duration="700000" />
       <workItem from="1773604941249" duration="9662000" />
       <workItem from="1774683273569" duration="21000" />
-      <workItem from="1782819660326" duration="1684000" />
+      <workItem from="1782819660326" duration="2443000" />
+      <workItem from="1783019513217" duration="28000" />
     </task>
     <servers />
   </component>

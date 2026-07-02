@@ -210,10 +210,19 @@ public class SupportTicketService : ISupportTicketService
         var ticket = await FindTicketAsync(ticketId);
         EnsureAccess(ticket, user, false);
 
-        if (ticket.Status != SupportTicketStatus.Resolved && ticket.Status != SupportTicketStatus.Closed)
+        // Closed — финальное решение поддержки: переоткрыть нельзя, только новый запрос.
+        if (ticket.Status == SupportTicketStatus.Closed)
+        {
+            throw new SupportRequestException("Ticket is closed by support. Please create a new request.", StatusCodes.Status409Conflict);
+        }
+
+        if (ticket.Status != SupportTicketStatus.Resolved)
         {
             return MapSummary(ticket);
         }
+
+        // Анти-абьюз: не даём гонять статусы туда-сюда (спам-переоткрытия).
+        EnsureReopenRateLimit(user.UserId);
 
         var now = DateTime.UtcNow;
         var update = Builders<SupportTicket>.Update
@@ -249,6 +258,14 @@ public class SupportTicketService : ISupportTicketService
     public async Task<SupportTicketSummaryDto> ResolveTicketAsync(SupportUserContext user, string ticketId)
     {
         return await SetStatusAsync(user, ticketId, SupportTicketStatus.Resolved, "Ticket marked as resolved.");
+    }
+
+    public async Task<SupportTicketSummaryDto> ResolveTicketAsOwnerAsync(SupportUserContext user, string ticketId)
+    {
+        // Клиент закрывает свой тикет как решённый — доступ строго по владению.
+        var ticket = await FindTicketAsync(ticketId);
+        EnsureAccess(ticket, user, false);
+        return await SetStatusAsync(user, ticketId, SupportTicketStatus.Resolved, "Ticket marked as resolved by user.");
     }
 
     public async Task<SupportTicketSummaryDto> CloseTicketAsync(SupportUserContext user, string ticketId)
@@ -444,6 +461,25 @@ public class SupportTicketService : ISupportTicketService
         }
     }
 
+    private void EnsureReopenRateLimit(string userId)
+    {
+        const int maxReopens = 3;
+        const int windowMinutes = 10;
+        var key = $"support_reopen_rate_{userId}";
+        if (_cache.TryGetValue<int>(key, out var count))
+        {
+            if (count >= maxReopens)
+            {
+                throw new SupportRequestException("Too many reopen attempts. Please wait a few minutes.", StatusCodes.Status429TooManyRequests);
+            }
+
+            _cache.Set(key, count + 1, TimeSpan.FromMinutes(windowMinutes));
+            return;
+        }
+
+        _cache.Set(key, 1, TimeSpan.FromMinutes(windowMinutes));
+    }
+
     private void EnsureRateLimit(string userId)
     {
         var key = $"support_ticket_rate_{userId}";
@@ -472,7 +508,8 @@ public class SupportTicketService : ISupportTicketService
             Status = ticket.Status,
             UpdatedAt = ticket.UpdatedAt,
             LastMessageAt = ticket.LastMessageAt,
-            LastMessageBy = ticket.LastMessageBy
+            LastMessageBy = ticket.LastMessageBy,
+            UserEmail = ticket.UserEmail
         };
     }
 

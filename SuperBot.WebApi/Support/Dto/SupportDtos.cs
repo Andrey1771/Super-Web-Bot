@@ -13,6 +13,8 @@ public class SupportTicketSummaryDto
     public DateTime UpdatedAt { get; set; }
     public DateTime LastMessageAt { get; set; }
     public SupportAuthorType? LastMessageBy { get; set; }
+    // Кому принадлежит тикет — нужно агентам в админ-списке (для владельца это его собственный email).
+    public string UserEmail { get; set; } = string.Empty;
 }
 
 public class SupportTicketDetailDto

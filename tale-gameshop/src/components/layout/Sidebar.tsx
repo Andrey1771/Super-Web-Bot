@@ -126,6 +126,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         title: "Support",
         items: [
           {
+            label: "Tickets",
+            to: "/admin/support/tickets",
+            icon: "🎫",
+            roles: ["admin", "support"],
+          },
+          {
             label: "Live chat",
             to: "/admin/support/live-chat",
             icon: "💬",

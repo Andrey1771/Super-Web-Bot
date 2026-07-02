@@ -13,6 +13,7 @@ public interface ISupportTicketService
     Task<SupportMessageDto> AddMessageAsync(SupportUserContext user, bool isSupportAgent, string ticketId, string body);
     Task<SupportTicketSummaryDto> ReopenTicketAsync(SupportUserContext user, string ticketId);
     Task<SupportTicketSummaryDto> ResolveTicketAsync(SupportUserContext user, string ticketId);
+    Task<SupportTicketSummaryDto> ResolveTicketAsOwnerAsync(SupportUserContext user, string ticketId);
     Task<SupportTicketSummaryDto> CloseTicketAsync(SupportUserContext user, string ticketId);
     Task<IReadOnlyList<SupportAttachmentDto>> UploadAttachmentsAsync(SupportUserContext user, bool isSupportAgent, string ticketId, string messageId, IFormFileCollection files);
     Task<(SupportAttachment attachment, Stream contentStream)> DownloadAttachmentAsync(SupportUserContext user, bool isSupportAgent, string attachmentId);

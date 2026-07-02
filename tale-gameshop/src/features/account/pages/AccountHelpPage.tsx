@@ -96,6 +96,19 @@ const AccountHelpPage: React.FC = () => {
         fetchTickets();
     }, [fetchTickets]);
 
+    // Тихое обновление списка (статусы/ответы поддержки подтягиваются сами, без websocket).
+    useEffect(() => {
+        const interval = window.setInterval(async () => {
+            try {
+                const data = await listSupportTickets();
+                setTickets(data);
+            } catch {
+                // тихий poll — ошибку не показываем, попробуем в следующий тик
+            }
+        }, 15000);
+        return () => window.clearInterval(interval);
+    }, []);
+
     useEffect(() => {
         if (!toastMessage) {
             return;
@@ -136,7 +149,8 @@ const AccountHelpPage: React.FC = () => {
                             !loadError &&
                             tickets.map((ticket) => (
                                 <div className="help-requests-row" key={ticket.id}>
-                                    <strong>{ticket.id.startsWith('#') ? ticket.id : `#${ticket.id}`}</strong>
+                                    {/* Показываем человеку короткий публичный номер (TKT-00001), а не сырой Mongo-id. */}
+                                    <strong>{`#${ticket.publicId ?? ticket.id}`}</strong>
                                     <span>{ticket.subject || ticket.category}</span>
                                     <span className={`help-status-pill ${statusClassFor(ticket.status)}`}>
                                         {statusLabelFor(ticket.status)}

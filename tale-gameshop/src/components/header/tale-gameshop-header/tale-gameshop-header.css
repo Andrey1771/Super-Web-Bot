@@ -29,6 +29,22 @@
     display: flex;
     align-items: center;
     gap: var(--space-12);
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Тот же вид, что был у текста с классом menu-item (вес 600, размер по умолчанию). */
+.brand-name {
+    color: #4a3c7a;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    transition: color 0.2s ease;
+}
+
+.brand:hover .brand-name,
+.brand:focus-visible .brand-name {
+    color: #6b3ff2;
 }
 
 .brand img {
@@ -427,9 +443,9 @@
 
 @media (max-width: 1180px) {
     .header-bar {
-        grid-template-columns: auto auto;
-        grid-template-areas: "brand toggle" "drawer drawer";
+        display: flex;
         align-items: center;
+        justify-content: space-between;
     }
 
     .brand {

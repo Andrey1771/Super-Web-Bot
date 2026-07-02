@@ -101,10 +101,10 @@ export default function TaleGameshopHeader() {
     return (
         <nav className="header-nav">
             <div className="container header-bar">
-                <div className="brand">
+                <Link className="brand" to="/" aria-label="Tale Shop — home">
                     <img src={logo} alt="Tale Shop logo"/>
-                    <span className="menu-item">Tale Shop</span>
-                </div>
+                    <span className="brand-name">Tale Shop</span>
+                </Link>
 
                 <ul className="nav-links">
                     {navLinks.map((link) => (

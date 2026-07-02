@@ -47,6 +47,15 @@
     background: rgba(124, 58, 237, 0.04);
 }
 
+/* Длинные значения обрезаются с многоточием, а не наезжают на соседние колонки. */
+.help-requests-row strong,
+.help-requests-row > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .help-requests-head {
     font-size: 12px;
     font-weight: 600;

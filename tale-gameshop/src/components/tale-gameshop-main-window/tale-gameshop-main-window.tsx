@@ -42,6 +42,7 @@ import AnalyticsSettingsPage from "../../pages/admin/analytics/AnalyticsSettings
 import AnalyticsProvider from "../analytics/AnalyticsProvider";
 import CookieBanner from "../analytics/CookieBanner";
 import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
+import SupportTicketsPage from "../../pages/admin/SupportTicketsPage";
 import PromoCodesPage from "../../pages/admin/PromoCodesPage";
 import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
 import GameDiscountsPage from "../../pages/admin/GameDiscountsPage";
@@ -89,6 +90,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="analytics" element={<AnalyticsOverviewPage />} />
                         <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
                         <Route path="support/live-chat" element={<SupportLiveChatPage />} />
+                        <Route path="support/tickets" element={<SupportTicketsPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="settings" element={<SettingsPage />} />
                         <Route path="data-tools" element={<DataToolsPage />} />

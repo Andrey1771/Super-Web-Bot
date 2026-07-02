@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
-import {getTicketDetails, postTicketMessage, resolveTicket, uploadTicketAttachment} from '../../../../api/supportApi';
+import {getTicketDetails, postTicketMessage, reopenTicket, resolveTicket, uploadTicketAttachment} from '../../../../api/supportApi';
 import type {SupportMessage, TicketDetails, TicketSummary} from '../../../../types/support';
 import TicketConversation from './TicketConversation';
 import TicketSidebar from './TicketSidebar';
@@ -41,12 +41,19 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
     const [ticket, setTicket] = useState<TicketDetails | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    // Ошибки действий (отправка/переоткрытие) показываем баннером у композера,
+    // не затирая переписку (error скрывает весь диалог — он только для ошибок загрузки).
+    const [actionError, setActionError] = useState('');
     const [reply, setReply] = useState('');
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [isSending, setIsSending] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
     const isClosed = ticket?.status === 'Closed';
+    // Бэкенд запрещает клиенту писать и в Resolved, и в Closed (409 «Reopen to reply») —
+    // композер должен блокироваться в обоих статусах, а не только в Closed.
+    const isResolved = ticket?.status === 'Resolved';
+    const isLocked = isClosed || isResolved;
 
     const headerTitle = useMemo(() => {
         if (ticket) {
@@ -68,6 +75,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
     const loadTicket = async (currentTicketId: string, isActive: () => boolean) => {
         setIsLoading(true);
         setError('');
+        setActionError('');
 
         try {
             const data = await getTicketDetails(currentTicketId);
@@ -95,6 +103,37 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
 
         return () => {
             active = false;
+        };
+    }, [isOpen, ticketId]);
+
+    // Пока модалка открыта — тихо подтягиваем ответы поддержки и смену статуса
+    // (без websocket: тикеты асинхронны, 5с-polling как в live-chat достаточно).
+    const isBusyRef = useRef(false);
+    isBusyRef.current = isSending || isUploading;
+
+    useEffect(() => {
+        if (!isOpen || !ticketId) {
+            return;
+        }
+
+        let active = true;
+        const interval = window.setInterval(async () => {
+            if (isBusyRef.current) {
+                return; // не затираем оптимистичные обновления во время отправки
+            }
+            try {
+                const data = await getTicketDetails(ticketId);
+                if (active && !isBusyRef.current) {
+                    setTicket({ ...data, messages: data.messages ?? [] });
+                }
+            } catch {
+                // тихий poll: ошибку не показываем, следующая попытка через интервал
+            }
+        }, 5000);
+
+        return () => {
+            active = false;
+            window.clearInterval(interval);
         };
     }, [isOpen, ticketId]);
 
@@ -192,11 +231,12 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
     };
 
     const handleSend = async () => {
-        if (!ticket || !ticketId || !reply.trim()) {
+        if (!ticket || !ticketId || !reply.trim() || isLocked) {
             return;
         }
 
         setIsSending(true);
+        setActionError('');
         try {
             const message = await postTicketMessage(ticketId, reply.trim());
             appendMessage(message);
@@ -228,6 +268,10 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
             }
 
             setReply('');
+        } catch (sendError: any) {
+            // Показываем причину от сервера (например, 409 «Reopen to reply»), а не молча глотаем.
+            const detail = sendError?.response?.data?.detail ?? 'Failed to send the reply. Please try again.';
+            setActionError(detail);
         } finally {
             setIsSending(false);
         }
@@ -238,9 +282,31 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
             return;
         }
         setIsSending(true);
+        setActionError('');
         try {
             await resolveTicket(ticketId);
             setTicket((prev) => (prev ? { ...prev, status: 'Resolved' } : prev));
+        } catch (resolveError: any) {
+            const detail = resolveError?.response?.data?.detail ?? 'Failed to resolve the request. Please try again.';
+            setActionError(detail);
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    const handleReopen = async () => {
+        if (!ticketId) {
+            return;
+        }
+        setIsSending(true);
+        setActionError('');
+        try {
+            await reopenTicket(ticketId);
+            await loadTicket(ticketId, () => true);
+        } catch (reopenError: any) {
+            // Например, 429 «Too many reopen attempts» или 409 «closed by support» — человек должен видеть причину.
+            const detail = reopenError?.response?.data?.detail ?? 'Failed to reopen the request. Please try again.';
+            setActionError(detail);
         } finally {
             setIsSending(false);
         }
@@ -304,19 +370,29 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                         )}
 
                         <div className="ticket-modal__composer">
+                            {actionError && (
+                                <div className="ticket-modal__action-error" role="alert">
+                                    {actionError}
+                                </div>
+                            )}
                             {isClosed && <div className="ticket-modal__closed">This request is closed.</div>}
+                            {isResolved && (
+                                <div className="ticket-modal__closed">
+                                    This request is resolved. Reopen it to reply.
+                                </div>
+                            )}
                             <textarea
-                                placeholder="Write a reply…"
+                                placeholder={isLocked ? 'Reopen the request to reply…' : 'Write a reply…'}
                                 value={reply}
                                 onChange={(event) => setReply(event.target.value)}
-                                disabled={isClosed}
+                                disabled={isLocked}
                             />
                             <div className="ticket-modal__composer-actions">
                                 <button
                                     type="button"
                                     className="btn btn-outline ticket-modal__attach-btn"
                                     onClick={() => fileInputRef.current?.click()}
-                                    disabled={isClosed}
+                                    disabled={isLocked}
                                 >
                                     Attach file
                                 </button>
@@ -331,7 +407,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                                     type="button"
                                     className="btn btn-primary"
                                     onClick={handleSend}
-                                    disabled={isClosed || !reply.trim() || isSending || isUploading}
+                                    disabled={isLocked || !reply.trim() || isSending || isUploading}
                                 >
                                     {isSending ? 'Sending...' : 'Send reply'}
                                 </button>
@@ -353,30 +429,40 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                                 ticket={ticket}
                                 isWorking={isSending}
                                 onResolve={handleResolve}
+                                onReopen={handleReopen}
                             />
                         )}
                         <div className="ticket-modal__footer-actions">
                             <button type="button" className="btn btn-outline" onClick={onClose}>
                                 Close
                             </button>
-                            <button
-                                type="button"
-                                className="btn btn-primary ticket-modal__problem-solved"
-                                onClick={handleResolve}
-                                disabled={isSending}
-                            >
-                                Problem solved
-                            </button>
+                            {ticket && ticket.status !== 'Resolved' && !isClosed && (
+                                <button
+                                    type="button"
+                                    className="btn btn-primary ticket-modal__problem-solved"
+                                    onClick={handleResolve}
+                                    disabled={isSending}
+                                >
+                                    Problem solved
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
-                <div className="ticket-modal__footer-note">
-                    This request is resolved. Need more help?{' '}
-                    <button type="button" className="ticket-modal__link" onClick={handleResolve}>
-                        Reopen
-                    </button>{' '}
-                    your request.
-                </div>
+                {ticket?.status === 'Resolved' && (
+                    <div className="ticket-modal__footer-note">
+                        This request is resolved. Need more help?{' '}
+                        <button type="button" className="ticket-modal__link" onClick={handleReopen}>
+                            Reopen
+                        </button>{' '}
+                        your request.
+                    </div>
+                )}
+                {isClosed && (
+                    <div className="ticket-modal__footer-note">
+                        This request is closed by support. Please create a new request if you need more help.
+                    </div>
+                )}
             </div>
         </div>,
         document.body
