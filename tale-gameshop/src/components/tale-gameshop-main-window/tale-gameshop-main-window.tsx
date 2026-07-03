@@ -12,6 +12,8 @@ import ChatWidget from "../support-chat/ChatWidget";
 import AdminPanelPage from "../admin-panel/admin-panel-page/admin-panel-page";
 import CallbackPage from "../callback-page/callback-page";
 import PrivateRoute from "../utils/private-route/private-route";
+import AuthorizedRoute from "../utils/authorized-route/authorized-route";
+import NotFoundPage from "../utils/not-found-page/not-found-page";
 import BotChangerPage from "../admin-panel/bot-changer-page/bot-changer-page";
 import SiteChangerPage from "../admin-panel/site-changer-page/site-changer-page";
 import CardAdderPage from "../admin-panel/card-adder-page/card-adder-page";
@@ -113,11 +115,12 @@ export default function TaleGameshopMainWindow() {
                     <Route
                         path="/account/*"
                         element={
-                            <PrivateRoute>
+                            <AuthorizedRoute>
                                 <AccountRoutes />
-                            </PrivateRoute>
+                            </AuthorizedRoute>
                         }
                     />
+                    <Route path="*" element={<NotFoundPage />} />
                 </Routes>
                 {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
                 {!isAdminRoute && <ChatWidget />}

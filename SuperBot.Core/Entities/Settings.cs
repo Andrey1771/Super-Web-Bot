@@ -10,5 +10,7 @@
     {
         public Guid Id { get; set; }
         public GameCategory[] GameCategories { get; set; }
+        // Контактная почта поддержки: редактируется в админке, используется по всему сайту (mailto и т.п.).
+        public string? SupportEmail { get; set; }
     }
 }

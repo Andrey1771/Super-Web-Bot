@@ -53,6 +53,11 @@
     font-size: 14px;
 }
 
+/* Бейдж — по ширине текста: во flex-колонке дети иначе растягиваются на всю ширину. */
+.account-profile-details .badge {
+    align-self: flex-start;
+}
+
 .account-email {
     color: var(--color-muted);
     font-size: 13px;

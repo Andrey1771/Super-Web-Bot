@@ -1,5 +1,13 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useKeycloak } from '@react-keycloak/web';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import container from '../../inversify.config';
+import IDENTIFIERS from '../../constants/identifiers';
+import type { IKeycloakAuthService } from '../../iterfaces/i-keycloak-auth-service';
+import { createSupportTicket } from '../../features/account/support/supportApi';
+import { supportCategories } from '../../content/support/categories';
+import { useSiteSettings } from '../../hooks/use-site-settings';
 import {
     faArrowRight,
     faBolt,
@@ -156,6 +164,19 @@ const SupportPage: React.FC = () => {
     const [activeCategory, setActiveCategory] = useState<string>('All');
     const [openFaqId, setOpenFaqId] = useState<string | null>(faqItems[0]?.id ?? null);
 
+    const {supportEmail} = useSiteSettings();
+    const {keycloak, initialized} = useKeycloak();
+    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
+    const isLoggedIn = Boolean(initialized && keycloak.authenticated);
+    // @ts-ignore Тип tokenParsed у keycloak-js уже, чем реальные claim'ы
+    const userEmail: string = keycloak.tokenParsed?.email ?? '';
+
+    const [topic, setTopic] = useState(supportCategories[0]);
+    const [message, setMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
+
     const faqRef = useRef<HTMLDivElement | null>(null);
     const contactRef = useRef<HTMLDivElement | null>(null);
 
@@ -216,8 +237,33 @@ const SupportPage: React.FC = () => {
         setOpenFaqId((prev) => (prev === id ? null : id));
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    // Форма создаёт настоящий тикет (тот же механизм, что и в Account → Help).
+    // Гостя сначала уводим на вход с возвратом сюда — тикеты привязаны к аккаунту.
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (!isLoggedIn) {
+            await keycloakAuthService.loginWithRedirect(keycloak, window.location.href);
+            return;
+        }
+        const trimmed = message.trim();
+        if (!trimmed) {
+            return;
+        }
+        setIsSubmitting(true);
+        setSubmitError(null);
+        try {
+            const response = await createSupportTicket({
+                category: topic,
+                subject: trimmed.length > 80 ? `${trimmed.slice(0, 77)}…` : trimmed,
+                description: trimmed
+            });
+            setCreatedTicketId(String(response.ticket.publicId ?? response.ticket.id));
+            setMessage('');
+        } catch (error: any) {
+            setSubmitError(error?.response?.data?.detail ?? 'Failed to send the request. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -362,29 +408,93 @@ const SupportPage: React.FC = () => {
                     </div>
                     <div className="support-contact-grid">
                         <div className="support-contact-channels">
-                            {contactChannels.map((channel) => (
-                                <div key={channel.title} className="card support-contact-card">
-                                    <div className="support-contact-icon">
-                                        <FontAwesomeIcon icon={channel.icon} />
+                            {contactChannels.map((channel) => {
+                                const content = (
+                                    <>
+                                        <div className="support-contact-icon">
+                                            <FontAwesomeIcon icon={channel.icon} />
+                                        </div>
+                                        <div>
+                                            <h3>{channel.title}</h3>
+                                            <p>{channel.description}</p>
+                                        </div>
+                                    </>
+                                );
+                                // «Email support» открывает почтовый клиент; «Support ticket» ведёт к своим
+                                // запросам; «Live chat» открывает виджет чата.
+                                if (channel.title === 'Email support') {
+                                    return (
+                                        <a
+                                            key={channel.title}
+                                            // Адрес задаётся админом в System → Settings.
+                                            href={`mailto:${supportEmail}?subject=Support%20request`}
+                                            className="card support-contact-card"
+                                        >
+                                            {content}
+                                        </a>
+                                    );
+                                }
+                                if (channel.title === 'Support ticket') {
+                                    return (
+                                        <Link key={channel.title} to="/account/help" className="card support-contact-card">
+                                            {content}
+                                        </Link>
+                                    );
+                                }
+                                if (channel.title === 'Live chat') {
+                                    return (
+                                        <button
+                                            key={channel.title}
+                                            type="button"
+                                            className="card support-contact-card"
+                                            onClick={() => window.dispatchEvent(new Event('taleshop:open-support-chat'))}
+                                        >
+                                            {content}
+                                        </button>
+                                    );
+                                }
+                                return (
+                                    <div key={channel.title} className="card support-contact-card">
+                                        {content}
                                     </div>
-                                    <div>
-                                        <h3>{channel.title}</h3>
-                                        <p>{channel.description}</p>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
+                        {createdTicketId ? (
+                            <div className="card support-contact-form support-contact-success">
+                                <h3>Request #{createdTicketId} created</h3>
+                                <p>
+                                    Our team will reply soon. You can track the conversation and add details in your
+                                    account.
+                                </p>
+                                <div className="support-success-actions">
+                                    <Link to="/account/help" className="btn btn-primary">
+                                        Track my request
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        onClick={() => setCreatedTicketId(null)}
+                                    >
+                                        Send another
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
                         <form className="card support-contact-form" onSubmit={handleSubmit}>
                             <div className="support-field">
                                 <label htmlFor="support-topic">Topic</label>
                                 <div className="support-field-input">
                                     <FontAwesomeIcon icon={faFileCircleCheck} />
-                                    <select id="support-topic" name="topic" defaultValue="Order status">
-                                        <option>Order status</option>
-                                        <option>Payment issue</option>
-                                        <option>Key delivery</option>
-                                        <option>Refund request</option>
-                                        <option>Account security</option>
+                                    <select
+                                        id="support-topic"
+                                        name="topic"
+                                        value={topic}
+                                        onChange={(event) => setTopic(event.target.value)}
+                                    >
+                                        {supportCategories.map((category) => (
+                                            <option key={category}>{category}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -392,21 +502,50 @@ const SupportPage: React.FC = () => {
                                 <label htmlFor="support-email">Email</label>
                                 <div className="support-field-input">
                                     <FontAwesomeIcon icon={faEnvelope} />
-                                    <input id="support-email" name="email" type="email" placeholder="you@email.com" required />
+                                    <input
+                                        id="support-email"
+                                        name="email"
+                                        type="email"
+                                        placeholder="you@email.com"
+                                        value={isLoggedIn ? userEmail : ''}
+                                        readOnly
+                                        disabled={!isLoggedIn}
+                                    />
                                 </div>
+                                {!isLoggedIn && (
+                                    <small>Sign in to send a request — we’ll bring you right back here.</small>
+                                )}
                             </div>
                             <div className="support-field">
                                 <label htmlFor="support-message">Message</label>
                                 <div className="support-field-input">
                                     <FontAwesomeIcon icon={faMessage} />
-                                    <textarea id="support-message" name="message" rows={4} placeholder="Tell us what happened" required />
+                                    <textarea
+                                        id="support-message"
+                                        name="message"
+                                        rows={4}
+                                        placeholder="Tell us what happened"
+                                        value={message}
+                                        onChange={(event) => setMessage(event.target.value)}
+                                        required
+                                    />
                                 </div>
                             </div>
-                            <button type="submit" className="btn btn-primary support-submit">
-                                Send request
+                            {submitError && <p className="support-submit-error">{submitError}</p>}
+                            <button
+                                type="submit"
+                                className="btn btn-primary support-submit"
+                                disabled={isSubmitting || (isLoggedIn && !message.trim())}
+                            >
+                                {isSubmitting
+                                    ? 'Sending...'
+                                    : isLoggedIn
+                                        ? 'Send request'
+                                        : 'Sign in & send request'}
                             </button>
                             <small>We usually reply within 24 hours.</small>
                         </form>
+                        )}
                     </div>
                 </div>
             </section>

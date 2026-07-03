@@ -139,16 +139,6 @@ const AccountSavedItemsPage: React.FC = () => {
             title={`Saved items (${totalWishlistItems})`}
             sectionLabel="Saved items"
             subtitle="Items saved to your wishlist for future purchase."
-            actions={(
-                <>
-                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
-                        Edit profile
-                    </Link>
-                    <Link to="/support" className="btn btn-primary account-action-btn">
-                        Support
-                    </Link>
-                </>
-            )}
         >
             <div className="card saved-toolbar" data-testid="saved-toolbar">
                 <div className="saved-toolbar-top">

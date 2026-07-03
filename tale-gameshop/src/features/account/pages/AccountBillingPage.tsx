@@ -305,16 +305,6 @@ const AccountBillingPage: React.FC = () => {
             title="My account"
             sectionLabel="Billing"
             subtitle={<h2 className="billing-title">Billing</h2>}
-            actions={(
-                <>
-                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
-                        Edit profile
-                    </Link>
-                    <Link to="/support" className="btn btn-primary account-action-btn">
-                        Support
-                    </Link>
-                </>
-            )}
         >
             <div className="card billing-card">
                 <div className="billing-card-header">

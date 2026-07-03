@@ -25,6 +25,7 @@ import SafeGameImage from '../../components/common/SafeGameImage';
 import { useWishlist } from '../../context/wishlist-context';
 import { useCart } from '../../context/cart-context';
 import { Product } from '../../reducers/cart-reducer';
+import NotFoundPage from '../../components/utils/not-found-page/not-found-page';
 
 const formatPrice = (price: number, currency: string) => {
   const formatter = new Intl.NumberFormat('en-US', {
@@ -866,6 +867,9 @@ const GameDetailsPage: React.FC = () => {
   const [data, setData] = useState<GameDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Несуществующая игра (404 от API) — это не «ошибка», а страница, которой нет: показываем магазинную 404.
+  const [notFound, setNotFound] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsTotal, setReviewsTotal] = useState(0);
   const [reviewFilters, setReviewFilters] = useState<GameReviewFilters>({ sort: 'createdAt:desc', page: 1, pageSize: 6 });
@@ -885,12 +889,14 @@ const GameDetailsPage: React.FC = () => {
     let isMounted = true;
     const loadData = async () => {
       if (!slug) {
-        setError('Game not found.');
+        setNotFound(true);
         setIsLoading(false);
         return;
       }
       try {
         setIsLoading(true);
+        setError(null);
+        setNotFound(false);
         const response = await gameDetailsService.getGameDetails(slug ?? '');
         if (isMounted) {
           setData(response);
@@ -900,10 +906,14 @@ const GameDetailsPage: React.FC = () => {
             setSelectedEditionId(defaultEdition.code);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load game details', err);
         if (isMounted) {
-          setError('Failed to load game details. Please try again later.');
+          if (err?.response?.status === 404) {
+            setNotFound(true);
+          } else {
+            setError('Failed to load game details. Please try again later.');
+          }
         }
       } finally {
         if (isMounted) {
@@ -915,7 +925,7 @@ const GameDetailsPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [gameDetailsService, slug]);
+  }, [gameDetailsService, slug, reloadKey]);
 
   useEffect(() => {
     if (!data?.game?.gameId) {
@@ -993,11 +1003,40 @@ const GameDetailsPage: React.FC = () => {
     );
   }
 
+  // Игры с таким slug не существует — полноценная 404 магазина, а не голая строка ошибки.
+  if (notFound) {
+    return <NotFoundPage />;
+  }
+
   if (error || !data || !displayPricing) {
     return (
       <main className="game-details-page">
         <div className="container">
-          <p>{error ?? 'Game not found.'}</p>
+          <div
+            style={{
+              margin: '48px auto',
+              maxWidth: 480,
+              textAlign: 'center',
+              background: '#ffffff',
+              border: '1px solid #ece8ff',
+              borderRadius: 20,
+              padding: '40px 32px',
+              boxShadow: '0 12px 30px rgba(84, 58, 193, 0.08)'
+            }}
+          >
+            <div style={{ fontSize: 40 }}>😕</div>
+            <h2 style={{ margin: '12px 0 8px' }}>Something went wrong</h2>
+            <p style={{ color: '#6c6393', marginBottom: 20 }}>
+              {error ?? 'Failed to load game details. Please try again later.'}
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setReloadKey((prev) => prev + 1)}
+            >
+              Try again
+            </button>
+          </div>
         </div>
       </main>
     );

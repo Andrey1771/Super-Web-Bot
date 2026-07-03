@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
@@ -20,7 +21,9 @@ namespace SuperBot.WebApi.Controllers
         }
 
         // PUT: api/GameSettings
+        // Настройки сайта меняет только админ (GET остаётся публичным — его читает витрина).
         [HttpPut("")]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult> UpdateSetting([FromBody] SettingsDb updatedSetting)
         {
             if (updatedSetting == null)

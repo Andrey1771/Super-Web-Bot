@@ -35,6 +35,16 @@ const ChatWidget: React.FC = () => {
 
   const isAuthenticated = Boolean(keycloakService.keycloak?.authenticated);
 
+  // Внешние страницы (например, карточка «Live chat» на /support) могут открыть виджет этим событием.
+  useEffect(() => {
+    const openChat = () => {
+      setIsOpen(true);
+      setUnreadCount(0);
+    };
+    window.addEventListener('taleshop:open-support-chat', openChat);
+    return () => window.removeEventListener('taleshop:open-support-chat', openChat);
+  }, []);
+
   const persistMessages = (nextMessages: ChatMessage[]) => {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(nextMessages.slice(-50)));
   };

@@ -185,16 +185,6 @@ const AccountSettingsPage: React.FC = () => {
             title="My account"
             sectionLabel="Settings"
             subtitle={<h2 className="settings-title">Settings</h2>}
-            actions={(
-                <>
-                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
-                        Edit profile
-                    </Link>
-                    <Link to="/support" className="btn btn-primary account-action-btn">
-                        Support
-                    </Link>
-                </>
-            )}
         >
             <div className="card settings-card" data-testid="settings-profile">
                 <div className="settings-card-header">

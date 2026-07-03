@@ -4,6 +4,7 @@ import {Link} from 'react-router-dom';
 import {createSupportTicket, uploadSupportAttachment} from '../support/supportApi';
 import type {CreateSupportTicketPayload, SupportTicket} from '../support/types';
 import {supportDocs} from '../../../content/support/docs';
+import {supportCategories} from '../../../content/support/categories';
 import '../pages/account-help-new-request-modal.css';
 
 interface NewSupportRequestModalProps {
@@ -13,14 +14,8 @@ interface NewSupportRequestModalProps {
     openerRef?: React.RefObject<HTMLElement>;
 }
 
-const issueOptions = [
-    'Payment & checkout',
-    'Key delivery / activation',
-    'Refund request',
-    'Account & security',
-    'Technical issue / bug',
-    'Other'
-];
+// Единый словарь категорий (общий с формой на /support).
+const issueOptions = supportCategories;
 
 const quickActionIds = ['activation-guide', 'refund-policy', 'payment-methods'];
 const quickActions = supportDocs

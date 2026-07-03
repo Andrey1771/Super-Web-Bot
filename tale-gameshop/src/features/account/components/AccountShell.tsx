@@ -97,15 +97,12 @@ const AccountShell: React.FC<AccountShellProps> = ({
                             {subtitleContent}
                         </div>
                         <div className="account-header-actions">
+                            {/* Единое действие шапки: помощь по аккаунту (тикеты/FAQ). Редактирование профиля
+                                живёт в сайдбаре (Settings) и в карточке на Overview — без дублей. */}
                             {actions ?? (
-                                <>
-                                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
-                                        Edit profile
-                                    </Link>
-                                    <Link to="/support" className="btn btn-outline account-action-btn">
-                                        Support
-                                    </Link>
-                                </>
+                                <Link to="/account/help" className="btn btn-primary account-action-btn">
+                                    Get help
+                                </Link>
                             )}
                         </div>
                     </div>

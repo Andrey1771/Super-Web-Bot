@@ -285,16 +285,6 @@ const AccountOrdersPage: React.FC = () => {
       title="My account"
       sectionLabel="Orders"
       subtitle={<h2 className="orders-title">{ordersTitle}</h2>}
-      actions={(
-        <>
-          <Link to="/account/settings" className="btn btn-outline account-action-btn">
-            Edit profile
-          </Link>
-          <Link to="/support" className="btn btn-primary account-action-btn">
-            Support
-          </Link>
-        </>
-      )}
     >
       <div className="card orders-toolbar">
         <div className="orders-toolbar-top">

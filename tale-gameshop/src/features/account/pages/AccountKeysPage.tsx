@@ -134,16 +134,6 @@ const AccountKeysPage: React.FC = () => {
                     </div>
                 </div>
             )}
-            actions={(
-                <>
-                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
-                        Edit profile
-                    </Link>
-                    <Link to="/support" className="btn btn-primary account-action-btn">
-                        Support
-                    </Link>
-                </>
-            )}
         >
             <div className="card keys-toolbar">
                 <div className="keys-toolbar-row">

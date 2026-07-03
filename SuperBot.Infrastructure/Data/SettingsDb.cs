@@ -16,5 +16,8 @@ namespace SuperBot.Infrastructure.Data
         public string Id { get; set; }
 
         public GameCategoryDb[] GameCategories {  get; set; }
+
+        [BsonIgnoreIfNull]
+        public string? SupportEmail { get; set; }
     }
 }

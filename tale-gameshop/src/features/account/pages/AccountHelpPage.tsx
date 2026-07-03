@@ -118,7 +118,7 @@ const AccountHelpPage: React.FC = () => {
     }, [toastMessage]);
 
     return (
-        <AccountShell title="Help" sectionLabel="Help">
+        <AccountShell title="Help" sectionLabel="Help" actions={<></>}>
             <div className="help-page">
                 <section className="card help-support">
                     <div className="help-section-header">

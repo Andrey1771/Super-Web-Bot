@@ -235,16 +235,6 @@ const AccountSecurityPage: React.FC = () => {
             title="Security"
             sectionLabel="Security"
             subtitle="Manage password, email verification and 2FA."
-            actions={(
-                <>
-                    <Link to="/account/settings" className="btn btn-outline account-action-btn">
-                        Edit profile
-                    </Link>
-                    <Link to="/support" className="btn btn-primary account-action-btn">
-                        Support
-                    </Link>
-                </>
-            )}
             headerTestId="security-header"
         >
             <SecurityBanner show={bannerVisible} onSetup2fa={handleSetup2fa} />
