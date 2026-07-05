@@ -20,6 +20,7 @@ const renderAvatarCanvas = async (
   zoom: number,
   rotation: number,
   viewportSize: number,
+  cropSizePx: number,
   outputSize: number
 ): Promise<HTMLCanvasElement> => {
   const image = await createImage(imageSrc);
@@ -32,8 +33,10 @@ const renderAvatarCanvas = async (
     throw new Error('Canvas is not available.');
   }
 
+  // baseScale — от базового вьюпорта (как картинка отрисована на сцене),
+  // exportRatio — от диаметра КРУГА маски: экспортируем ровно то, что видит пользователь в круге.
   const baseScale = Math.max(viewportSize / image.width, viewportSize / image.height);
-  const exportRatio = outputSize / viewportSize;
+  const exportRatio = outputSize / cropSizePx;
   const finalScale = baseScale * zoom * exportRatio;
 
   context.translate(outputSize / 2 + position.x * exportRatio, outputSize / 2 + position.y * exportRatio);
@@ -55,9 +58,10 @@ export const getCroppedAvatarFile = async (
   zoom: number,
   rotation: number,
   viewportSize = 360,
+  cropSizePx = viewportSize,
   outputSize = 512
 ): Promise<File> => {
-  const canvas = await renderAvatarCanvas(imageSrc, position, zoom, rotation, viewportSize, outputSize);
+  const canvas = await renderAvatarCanvas(imageSrc, position, zoom, rotation, viewportSize, cropSizePx, outputSize);
 
   const webpBlob = await canvasToBlob(canvas, 'image/webp', 0.92);
   const blob = webpBlob ?? (await canvasToBlob(canvas, 'image/png'));
@@ -71,21 +75,4 @@ export const getCroppedAvatarFile = async (
     type: blob.type,
     lastModified: Date.now()
   });
-};
-
-export const buildAvatarPreviewUrl = async (
-  imageSrc: string,
-  position: AvatarPosition,
-  zoom: number,
-  rotation: number,
-  viewportSize = 360,
-  outputSize = 128
-): Promise<string> => {
-  const canvas = await renderAvatarCanvas(imageSrc, position, zoom, rotation, viewportSize, outputSize);
-  const webpBlob = await canvasToBlob(canvas, 'image/webp', 0.92);
-  const blob = webpBlob ?? (await canvasToBlob(canvas, 'image/png'));
-  if (!blob) {
-    throw new Error('Unable to create preview image.');
-  }
-  return URL.createObjectURL(blob);
 };

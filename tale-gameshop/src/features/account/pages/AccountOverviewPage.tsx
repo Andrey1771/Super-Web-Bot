@@ -117,8 +117,8 @@ const AccountOverviewPage: React.FC = () => {
                     <div>
                         <h2>{displayName}</h2>
                         <p className="account-profile-email">{email}</p>
-                        <span className="badge">{accountProfile.badge}</span>
-                        <p className="account-member-since">Member since {accountProfile.memberSince}</p>
+                        {/* Честный бейдж: только при реальных покупках (раньше показывался всем из мока). */}
+                        {!isOrdersLoading && ordersTotal > 0 && <span className="badge">Verified buyer</span>}
                     </div>
                 </div>
                 <Link to="/account/settings" className="btn btn-primary account-action-btn">
@@ -283,10 +283,8 @@ const AccountOverviewPage: React.FC = () => {
                     {!isKeysLoading && !keysError && keys.length === 0 && (
                         <div className="account-key-item">
                             <div>
-                                <strong>No keys yet</strong>
-                                <div className="account-key-meta">
-                                    <span>Complete a purchase to receive keys.</span>
-                                </div>
+                                <strong>No keys yet.</strong>{' '}
+                                <span className="account-key-meta">Complete a purchase to receive keys.</span>
                             </div>
                         </div>
                     )}

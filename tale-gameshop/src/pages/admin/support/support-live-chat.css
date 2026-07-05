@@ -15,7 +15,7 @@
 .support-live-chat__filters input,
 .support-live-chat__filters select {
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid #e1e4f2;
 }
 
@@ -29,7 +29,7 @@
 
 .support-live-chat__item {
   border: 1px solid #eef0ff;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 12px;
   text-align: left;
   display: flex;
@@ -85,7 +85,7 @@
 
 .support-live-chat__messages {
   background: #f7f8ff;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -96,7 +96,7 @@
 
 .support-live-chat__bubble {
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: #fff;
   border: 1px solid #e6e8f8;
 }
@@ -131,7 +131,7 @@
 .support-live-chat__reply input,
 .support-live-chat__tags input {
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid #e1e4f2;
 }
 

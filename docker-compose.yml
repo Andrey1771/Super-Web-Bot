@@ -35,6 +35,9 @@ services:
       - Keycloak__Admin__AccountConsoleUrl=http://localhost:8088/realms/TaleShop/account
     ports:
       - "7002:7002"
+    volumes:
+      # Загруженные файлы (аватары и т.п.) должны переживать пересборку контейнера.
+      - uploads_data:/app/wwwroot/uploads
     depends_on:
       - mongo1
       - mongo2
@@ -197,3 +200,4 @@ volumes:
   mongodb_data1:
   mongodb_data2:
   mongodb_data3:
+  uploads_data:

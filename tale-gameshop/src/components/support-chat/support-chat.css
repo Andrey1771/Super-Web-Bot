@@ -6,19 +6,33 @@
   font-family: "Inter", "Segoe UI", sans-serif;
 }
 
+/* Компактная круглая иконка: не перекрывает CTA страниц. */
 .support-chat__launcher {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
   background: #6d3bff;
   color: #fff;
   border-radius: 999px;
-  padding: 12px 18px;
-  font-weight: 600;
+  padding: 0;
   box-shadow: 0 12px 24px rgba(28, 18, 66, 0.2);
   border: none;
+  cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.support-chat__launcher svg {
+  width: 24px;
+  height: 24px;
+}
+
+.support-chat__launcher .support-chat__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
 }
 
 .support-chat__launcher:hover {
@@ -38,7 +52,7 @@
   width: 360px;
   max-height: 560px;
   background: #fff;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 24px 48px rgba(30, 22, 70, 0.2);
   border: 1px solid rgba(109, 59, 255, 0.15);
   display: flex;
@@ -109,7 +123,7 @@
 .support-chat__lead input {
   width: 100%;
   border: 1px solid rgba(109, 59, 255, 0.2);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 8px 10px;
   font-size: 14px;
 }
@@ -170,7 +184,7 @@
 
 .support-chat__bubble {
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   max-width: 240px;
   font-size: 14px;
   line-height: 1.4;
@@ -220,7 +234,7 @@
 
 .support-chat__input {
   border: 1px solid rgba(109, 59, 255, 0.2);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 8px 10px;
   font-size: 14px;
   resize: none;
@@ -237,7 +251,7 @@
   padding: 10px;
   background: #fff3f6;
   border: 1px solid #ffd3df;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 12px;
   color: #b73b5c;
   display: flex;

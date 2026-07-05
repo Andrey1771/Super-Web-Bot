@@ -1,7 +1,13 @@
 import React from 'react';
 import {Link, NavLink} from 'react-router-dom';
+import {useKeycloak} from '@react-keycloak/web';
 import {accountProfile} from '../mockAccountData';
 import { useAccountProfile } from '../context/AccountProfileContext';
+import { useAccountCounters } from '../../../hooks/use-account-counters';
+import { useWishlist } from '../../../context/wishlist-context';
+import container from '../../../inversify.config';
+import IDENTIFIERS from '../../../constants/identifiers';
+import type { IKeycloakAuthService } from '../../../iterfaces/i-keycloak-auth-service';
 import './account-shell.css';
 
 interface AccountShellProps {
@@ -13,15 +19,43 @@ interface AccountShellProps {
     children: React.ReactNode;
 }
 
-const navItems = [
-    {label: 'Account overview', to: '/account'},
-    {label: 'Orders', to: '/account/orders'},
-    {label: 'Keys & activation', to: '/account/keys'},
-    {label: 'Saved items', to: '/account/saved'},
-    {label: 'Settings', to: '/account/settings'},
-    {label: 'Billing', to: '/account/billing'},
-    {label: 'Security', to: '/account/security'},
-    {label: 'Help', to: '/account/help'}
+type NavItem = {
+    label: string;
+    to: string;
+    // Ключ счётчика: заполняется живыми данными (заказы/ключи/вишлист/ответы поддержки).
+    counter?: 'orders' | 'keys' | 'saved' | 'help';
+};
+
+type NavGroup = {
+    title: string;
+    items: NavItem[];
+};
+
+// Ментальная модель покупателя: «мои покупки» → «мой аккаунт» → «помощь».
+const navGroups: NavGroup[] = [
+    {
+        title: 'Purchases',
+        items: [
+            {label: 'Overview', to: '/account'},
+            {label: 'Orders', to: '/account/orders', counter: 'orders'},
+            {label: 'Keys & activation', to: '/account/keys', counter: 'keys'},
+            {label: 'Saved items', to: '/account/saved', counter: 'saved'}
+        ]
+    },
+    {
+        title: 'Account',
+        items: [
+            {label: 'Settings', to: '/account/settings'},
+            {label: 'Billing', to: '/account/billing'},
+            {label: 'Security', to: '/account/security'}
+        ]
+    },
+    {
+        title: 'Support',
+        items: [
+            {label: 'Help', to: '/account/help', counter: 'help'}
+        ]
+    }
 ];
 
 const AccountShell: React.FC<AccountShellProps> = ({
@@ -33,6 +67,11 @@ const AccountShell: React.FC<AccountShellProps> = ({
     children
 }) => {
     const { profile } = useAccountProfile();
+    const counters = useAccountCounters();
+    const { count: wishlistCount } = useWishlist();
+    const { keycloak } = useKeycloak();
+    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
+
     const subtitleContent = subtitle
         ? typeof subtitle === 'string'
             ? <p className="account-subtitle">{subtitle}</p>
@@ -50,6 +89,28 @@ const AccountShell: React.FC<AccountShellProps> = ({
         .join('')
         .toUpperCase() || accountProfile.initials;
 
+    // Честный бейдж: «Verified buyer» только при наличии завершённых покупок.
+    const isVerifiedBuyer = (counters?.orders ?? 0) > 0;
+
+    const counterValue = (key?: NavItem['counter']): number => {
+        switch (key) {
+            case 'orders':
+                return counters?.orders ?? 0;
+            case 'keys':
+                return counters?.keys ?? 0;
+            case 'saved':
+                return wishlistCount;
+            case 'help':
+                return counters?.ticketsAwaitingReply ?? 0;
+            default:
+                return 0;
+        }
+    };
+
+    const handleSignOut = async () => {
+        await keycloakAuthService.logoutWithRedirect(keycloak, window.location.origin);
+    };
+
     return (
         <div className="account-page">
             <div className="container account-layout">
@@ -65,23 +126,42 @@ const AccountShell: React.FC<AccountShellProps> = ({
                         <div className="account-profile-details">
                             <strong>{displayName}</strong>
                             <span className="account-email">{email}</span>
-                            <span className="badge">{accountProfile.badge}</span>
+                            {isVerifiedBuyer && <span className="badge">Verified buyer</span>}
                         </div>
                     </div>
                     <nav className="account-nav">
-                        {navItems.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                end={item.to === '/account'}
-                                className={({isActive}) =>
-                                    `account-nav-link${isActive ? ' active' : ''}`
-                                }
-                            >
-                                {item.label}
-                            </NavLink>
+                        {navGroups.map((group) => (
+                            <div key={group.title} className="account-nav-group">
+                                <div className="account-nav-group-title">{group.title}</div>
+                                {group.items.map((item) => {
+                                    const count = counterValue(item.counter);
+                                    return (
+                                        <NavLink
+                                            key={item.to}
+                                            to={item.to}
+                                            end={item.to === '/account'}
+                                            className={({isActive}) =>
+                                                `account-nav-link${isActive ? ' active' : ''}`
+                                            }
+                                        >
+                                            <span>{item.label}</span>
+                                            {count > 0 && (
+                                                <span
+                                                    className={`account-nav-count${item.counter === 'help' ? ' is-attention' : ''}`}
+                                                    title={item.counter === 'help' ? 'Support replied — reply needed' : undefined}
+                                                >
+                                                    {count}
+                                                </span>
+                                            )}
+                                        </NavLink>
+                                    );
+                                })}
+                            </div>
                         ))}
                     </nav>
+                    <button type="button" className="account-signout" onClick={handleSignOut}>
+                        Sign out
+                    </button>
                 </aside>
                 <div className="account-content">
                     <div className="account-breadcrumbs">
@@ -97,11 +177,11 @@ const AccountShell: React.FC<AccountShellProps> = ({
                             {subtitleContent}
                         </div>
                         <div className="account-header-actions">
-                            {/* Единое действие шапки: помощь по аккаунту (тикеты/FAQ). Редактирование профиля
-                                живёт в сайдбаре (Settings) и в карточке на Overview — без дублей. */}
+                            {/* Единое действие шапки: помощь (тикеты/FAQ). Редактирование профиля —
+                                в сайдбаре (Settings) и в карточке на Overview, без дублей. */}
                             {actions ?? (
                                 <Link to="/account/help" className="btn btn-primary account-action-btn">
-                                    Get help
+                                    Help
                                 </Link>
                             )}
                         </div>

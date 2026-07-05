@@ -445,7 +445,7 @@
   height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: #f3f0ff;
 }
 
@@ -1021,7 +1021,7 @@
   background: #f3f0ff;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: #f6b73c;
   font-size: 18px;
 }

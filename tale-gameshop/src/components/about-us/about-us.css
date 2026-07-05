@@ -5,7 +5,7 @@
 .about-rating-card {
     background: #ffffff;
     border: 1px solid #e5e7eb;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 24px;
     box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
     display: grid;
@@ -17,7 +17,7 @@
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: #f4f1ff;
     border: 1px solid #e5ddff;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -28,7 +28,7 @@
     gap: 14px;
     align-items: center;
     padding: 14px 16px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: #f7f4ff;
     border: 1px solid #ebe5ff;
 }
@@ -36,7 +36,7 @@
 .about-banner-icon {
     width: 40px;
     height: 40px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -49,7 +49,7 @@
     gap: 12px;
     align-items: flex-start;
     padding: 14px 16px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid #eceef5;
     box-shadow: 0 14px 32px rgba(15, 23, 42, 0.04);
@@ -85,7 +85,7 @@
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
     padding: 12px 14px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: #fafbff;
     border: 1px dashed #e2e8f0;
 }
@@ -93,7 +93,7 @@
 .about-story-card {
     background: #ffffff;
     border: 1px solid #e5e7eb;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 24px;
     box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06);
 }
@@ -175,7 +175,7 @@
     grid-template-columns: auto 1fr;
     gap: 14px;
     padding: 18px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: #ffffff;
     border: 1px solid #e5e7eb;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
@@ -215,7 +215,7 @@
 .about-card-icon {
     width: 48px;
     height: 48px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -270,7 +270,7 @@
 .about-timeline-body {
     background: #ffffff;
     padding: 10px 12px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     border: 1px solid #eceef5;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 }
@@ -282,7 +282,7 @@
     gap: 12px;
     background: #f7f7fb;
     border: 1px solid #e5e7eb;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px 16px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
@@ -292,7 +292,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.7);
     border: 1px solid #eceef5;
 }
@@ -314,7 +314,7 @@
     gap: 14px;
     align-items: flex-start;
     padding: 18px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: #ffffff;
     border: 1px solid #e5e7eb;
     box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
@@ -323,7 +323,7 @@
 .about-achievement-icon {
     width: 46px;
     height: 46px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -339,7 +339,7 @@
     justify-content: space-between;
     gap: 16px;
     padding: 20px 22px;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     background: #ffffff;
     border: 1px solid #e5e7eb;
     box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
@@ -380,7 +380,7 @@
     grid-template-columns: auto 1fr;
     gap: 14px;
     padding: 20px;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     background: #ffffff;
     border: 1px solid #e5e7eb;
     box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06);
@@ -389,7 +389,7 @@
 .about-support-icon {
     width: 52px;
     height: 52px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -425,7 +425,7 @@
 .about-final-cta {
     background: radial-gradient(circle at 80% 30%, rgba(124, 58, 237, 0.25), rgba(33, 33, 45, 0)),
     linear-gradient(135deg, #161629 0%, #1f1f34 60%, #1a1a2f 100%);
-    border-radius: 22px;
+    border-radius: var(--radius-lg);
     padding: 26px 28px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
@@ -503,7 +503,7 @@
     grid-template-columns: auto 1fr;
     gap: 12px;
     padding: 16px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: #ffffff;
     border: 1px solid #e5e7eb;
     box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
@@ -512,7 +512,7 @@
 .about-trust-icon {
     width: 46px;
     height: 46px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;

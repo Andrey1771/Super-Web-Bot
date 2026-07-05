@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faArrowLeft, faArrowRight, faPen} from '@fortawesome/free-solid-svg-icons';
+import {faPen} from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import AvatarCropModal from '../components/AvatarCropModal';
-import { useRecommendations } from '../../../hooks/use-recommendations';
-import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import SafeGameImage from '../../../components/common/SafeGameImage';
 import ModalConfirm from '../../../components/ui/ModalConfirm';
 import { useToast } from '../../../components/ui/ToastProvider';
 import { fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
@@ -47,12 +44,6 @@ const AccountSettingsPage: React.FC = () => {
     const [emailInput, setEmailInput] = useState(profile?.email ?? '');
     const [notifications, setNotifications] = useState<NotificationPrefs>(readNotifications);
     const [isSavingPreferences, setIsSavingPreferences] = useState(false);
-    const {
-        items: recommendations,
-        isLoading: isRecommendationsLoading,
-        error: recommendationsError,
-        reload: reloadRecommendations
-    } = useRecommendations(6);
 
     const displayName = profile?.displayName ?? 'User';
 
@@ -182,9 +173,9 @@ const AccountSettingsPage: React.FC = () => {
 
     return (
         <AccountShell
-            title="My account"
+            title="Settings"
             sectionLabel="Settings"
-            subtitle={<h2 className="settings-title">Settings</h2>}
+            subtitle="Manage your profile and preferences."
         >
             <div className="card settings-card" data-testid="settings-profile">
                 <div className="settings-card-header">
@@ -325,51 +316,6 @@ const AccountSettingsPage: React.FC = () => {
                 onCancel={() => setIsRemoveModalOpen(false)}
             />
 
-            <section className="settings-recommendations" data-testid="settings-recommendations">
-                <div className="settings-recommendations-header">
-                    <h3>Recommendations based on your wishlist</h3>
-                    <div className="settings-recommendations-arrows">
-                        <button type="button" className="btn btn-outline settings-arrow-btn" aria-label="Scroll left">
-                            <FontAwesomeIcon icon={faArrowLeft} />
-                        </button>
-                        <button type="button" className="btn btn-outline settings-arrow-btn" aria-label="Scroll right">
-                            <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                    </div>
-                </div>
-                <RecommendationsSection
-                    items={recommendations}
-                    isLoading={isRecommendationsLoading}
-                    error={recommendationsError}
-                    onRetry={reloadRecommendations}
-                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
-                    listClassName="settings-recommendations-list"
-                    stateClassName="settings-recommendations-state"
-                    renderSkeleton={(index) => (
-                        <div key={`rec-skeleton-${index}`} className="card settings-recommendation-card is-skeleton" />
-                    )}
-                    renderItem={(item) => (
-                        <div key={item.game.id ?? item.game.title} className="card settings-recommendation-card">
-                            <div className="settings-recommendation-media">
-                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
-                            </div>
-                            <div className="settings-recommendation-body">
-                                <strong>{item.game.title}</strong>
-                                <span className="settings-recommendation-price">
-                                    ${Number(item.game.price).toFixed(2)}
-                                </span>
-                            </div>
-                            <button
-                                type="button"
-                                className="btn btn-primary settings-recommendation-btn"
-                                disabled={!item.game.id}
-                            >
-                                Add to cart
-                            </button>
-                        </div>
-                    )}
-                />
-            </section>
         </AccountShell>
     );
 };

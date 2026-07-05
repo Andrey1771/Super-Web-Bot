@@ -4,9 +4,7 @@ import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
     faMagnifyingGlass,
     faChevronLeft,
-    faChevronRight,
-    faArrowLeft,
-    faArrowRight
+    faChevronRight
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import IDENTIFIERS from '../../../constants/identifiers';
@@ -326,14 +324,6 @@ const AccountSavedItemsPage: React.FC = () => {
             <section className="saved-recommendations" data-testid="saved-recommendations">
                 <div className="saved-section-header">
                     <h3>Recommendations based on your wishlist</h3>
-                    <div className="saved-section-arrows">
-                        <button type="button" className="btn btn-outline saved-arrow-btn" aria-label="Scroll left">
-                            <FontAwesomeIcon icon={faArrowLeft} />
-                        </button>
-                        <button type="button" className="btn btn-outline saved-arrow-btn" aria-label="Scroll right">
-                            <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                    </div>
                 </div>
                 <RecommendationsSection
                     items={recommendations}
@@ -368,14 +358,6 @@ const AccountSavedItemsPage: React.FC = () => {
             <section className="saved-recently-viewed" data-testid="saved-recently-viewed">
                 <div className="saved-section-header">
                     <h3>Recently viewed</h3>
-                    <div className="saved-section-arrows">
-                        <button type="button" className="btn btn-outline saved-arrow-btn" aria-label="Scroll left">
-                            <FontAwesomeIcon icon={faArrowLeft} />
-                        </button>
-                        <button type="button" className="btn btn-outline saved-arrow-btn" aria-label="Scroll right">
-                            <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                    </div>
                 </div>
                 <RecommendationsSection
                     items={viewedItems}

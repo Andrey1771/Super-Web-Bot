@@ -1,23 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
-    faArrowLeft,
-    faArrowRight,
     faChevronLeft,
     faChevronRight,
     faCircleExclamation
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
-import { useRecommendations } from '../../../hooks/use-recommendations';
-import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-billing-page.css';
 import AddCardModal from '../../../components/billing/AddCardModal';
 import CardBrandIcon from '../../../components/billing/CardBrandIcon';
-import container from '../../../inversify.config';
-import IDENTIFIERS from '../../../constants/identifiers';
-import type { IUrlService } from '../../../iterfaces/i-url-service';
 import {
     createSetupIntent,
     downloadDataExport,
@@ -32,14 +23,6 @@ import {
 import type { BillingDetailsDto, BillingProfileDto, InvoiceDto, PaymentMethodDto } from '../../../api/billing-api';
 
 const AccountBillingPage: React.FC = () => {
-    const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
-    const {
-        items: recommendations,
-        isLoading: isRecommendationsLoading,
-        error: recommendationsError,
-        reload: reloadRecommendations
-    } = useRecommendations(6);
-
     const [profile, setProfile] = useState<BillingProfileDto | null>(null);
     const [profileDraft, setProfileDraft] = useState<BillingProfileDto | null>(null);
     const [profileLoading, setProfileLoading] = useState(true);
@@ -62,16 +45,7 @@ const AccountBillingPage: React.FC = () => {
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [isDownloadingData, setIsDownloadingData] = useState(false);
     const [isDownloadingInvoice, setIsDownloadingInvoice] = useState<string | null>(null);
-    const [isManagingScrollHint, setIsManagingScrollHint] = useState(false);
-    const methodsRef = useRef<HTMLDivElement | null>(null);
     const profileDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const hasProfileChanges = useMemo(() => {
-        if (!profile || !profileDraft) {
-            return false;
-        }
-        return JSON.stringify(profile) !== JSON.stringify(profileDraft);
-    }, [profile, profileDraft]);
 
     const invoiceTotalPages = Math.max(1, Math.ceil(invoiceTotalCount / invoicePageSize));
 
@@ -261,14 +235,6 @@ const AccountBillingPage: React.FC = () => {
         }
     };
 
-    const handleManageScroll = () => {
-        if (methodsRef.current) {
-            methodsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setIsManagingScrollHint(true);
-            setTimeout(() => setIsManagingScrollHint(false), 2000);
-        }
-    };
-
     const handleAddCardSuccess = async () => {
         setIsAddCardOpen(false);
         await loadPaymentMethods();
@@ -302,42 +268,16 @@ const AccountBillingPage: React.FC = () => {
 
     return (
         <AccountShell
-            title="My account"
+            title="Billing"
             sectionLabel="Billing"
-            subtitle={<h2 className="billing-title">Billing</h2>}
+            subtitle="Payment methods, invoices and billing details."
         >
             <div className="card billing-card">
                 <div className="billing-card-header">
                     <h3>Saved payment methods</h3>
                 </div>
-                <div className="billing-form-grid">
-                    <label className="billing-field">
-                        <span>Display name</span>
-                        <input
-                            className="billing-input"
-                            type="text"
-                            value={profileDraft?.displayName ?? ''}
-                            onChange={(event) => handleProfileChange({ displayName: event.target.value })}
-                            disabled={profileLoading}
-                        />
-                    </label>
-                    <label className="billing-field">
-                        <span>Email address</span>
-                        <div className="billing-input-with-icon">
-                            <input
-                                className="billing-input"
-                                type="email"
-                                value={profileDraft?.email ?? ''}
-                                readOnly
-                            />
-                            <FontAwesomeIcon icon={faChevronRight} />
-                        </div>
-                        <Link to="/account/settings" className="billing-helper-link">
-                            Update email in account settings
-                        </Link>
-                    </label>
-                </div>
-                <div ref={methodsRef} className={`billing-methods ${isManagingScrollHint ? 'is-highlighted' : ''}`}>
+                {/* Имя/email живут в Settings — здесь только платёжные методы, без дублей профиля. */}
+                <div className="billing-methods">
                     {paymentMethodsLoading && (
                         Array.from({ length: 3 }).map((_, index) => (
                             <div key={`method-skeleton-${index}`} className="billing-method-card is-skeleton" />
@@ -391,19 +331,6 @@ const AccountBillingPage: React.FC = () => {
                     ))}
                     <button type="button" className="btn btn-outline billing-add-btn" onClick={() => setIsAddCardOpen(true)}>
                         Add method
-                    </button>
-                </div>
-                <div className="billing-card-footer">
-                    <button type="button" className="billing-link-btn" onClick={handleManageScroll}>
-                        Manage payment methods
-                    </button>
-                    <button
-                        type="button"
-                        className="btn btn-primary billing-save-btn"
-                        onClick={handleSaveProfile}
-                        disabled={!hasProfileChanges || isSavingProfile}
-                    >
-                        {isSavingProfile ? 'Saving...' : 'Save changes'}
                     </button>
                 </div>
                 {profileError && (
@@ -562,53 +489,6 @@ const AccountBillingPage: React.FC = () => {
                 </div>
             </div>
 
-            <section className="billing-recommendations">
-                <div className="billing-recommendations-header">
-                    <h3>Recommendations based on your wishlist</h3>
-                    <div className="billing-recommendations-arrows">
-                        <button type="button" className="btn btn-outline billing-arrow-btn" aria-label="Scroll left">
-                            <FontAwesomeIcon icon={faArrowLeft} />
-                        </button>
-                        <button type="button" className="btn btn-outline billing-arrow-btn" aria-label="Scroll right">
-                            <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                    </div>
-                </div>
-                <RecommendationsSection
-                    items={recommendations}
-                    isLoading={isRecommendationsLoading}
-                    error={recommendationsError}
-                    onRetry={reloadRecommendations}
-                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
-                    listClassName="billing-recommendations-list"
-                    stateClassName="billing-recommendations-state"
-                    renderSkeleton={(index) => (
-                        <div key={`rec-skeleton-${index}`} className="card billing-recommendation-card is-skeleton" />
-                    )}
-                    renderItem={(item) => {
-                        const safeTitle = item.game?.title ?? 'Untitled game';
-                        const priceValue = Number(item.game?.price);
-                        const priceLabel = Number.isFinite(priceValue) ? `$${priceValue.toFixed(2)}` : '—';
-                        return (
-                        <div key={item.game?.id ?? item.game?.title ?? safeTitle} className="card billing-recommendation-card">
-                            <div className="billing-recommendation-media">
-                                <SafeGameImage src={item.game?.imagePath} gameTitle={safeTitle} baseUrl={urlService.apiBaseUrl} />
-                            </div>
-                            <div className="billing-recommendation-body">
-                                <strong>{safeTitle}</strong>
-                                <span className="billing-recommendation-price">{priceLabel}</span>
-                            </div>
-                            <button
-                                type="button"
-                                className="btn btn-primary billing-recommendation-btn"
-                                disabled={!item.game.id}
-                            >
-                                Add to cart
-                            </button>
-                        </div>
-                    )}}
-                />
-            </section>
             <AddCardModal
                 isOpen={isAddCardOpen}
                 displayName={profileDraft?.displayName}

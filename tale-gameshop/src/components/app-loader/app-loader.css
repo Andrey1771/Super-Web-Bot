@@ -59,7 +59,7 @@
     position: relative;
     width: 86px;
     height: 86px;
-    border-radius: 26px;
+    border-radius: var(--radius-lg);
     object-fit: contain;
     padding: 14px;
     box-sizing: border-box;

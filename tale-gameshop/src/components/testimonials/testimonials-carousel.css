@@ -13,7 +13,7 @@
 .testimonials-rating-card {
     background: #ffffff;
     border: 1px solid rgba(17, 24, 39, 0.06);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 22px;
     box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
     display: grid;
@@ -74,7 +74,7 @@
 .testimonial-card {
     background: #ffffff;
     border: 1px solid rgba(17, 24, 39, 0.06);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 22px;
     box-shadow: 0 12px 30px rgba(17, 24, 39, 0.1);
     display: flex;

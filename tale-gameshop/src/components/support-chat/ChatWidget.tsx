@@ -79,8 +79,9 @@ const ChatWidget: React.FC = () => {
       try {
         const data = await getChatSession(sessionId);
         setSession(data.session);
-        setMessages(data.messages);
-        persistMessages(data.messages);
+        const safeMessages = Array.isArray(data.messages) ? data.messages : [];
+        setMessages(safeMessages);
+        persistMessages(safeMessages);
       } catch (err) {
         console.error(err);
       }
@@ -94,9 +95,20 @@ const ChatWidget: React.FC = () => {
       .catch(() => setStreamingEnabled(false));
     initializeLeadCapture();
 
+    // История из localStorage может быть повреждена (однажды туда попал HTML
+    // из окна рестарта бэкенда и ронял весь сайт) — валидируем и самоочищаемся.
     const storedMessages = localStorage.getItem(HISTORY_KEY);
     if (storedMessages) {
-      setMessages(JSON.parse(storedMessages));
+      try {
+        const parsed = JSON.parse(storedMessages);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+        } else {
+          localStorage.removeItem(HISTORY_KEY);
+        }
+      } catch {
+        localStorage.removeItem(HISTORY_KEY);
+      }
     }
 
     if (sessionId) {

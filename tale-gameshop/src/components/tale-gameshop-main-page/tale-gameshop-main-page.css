@@ -160,7 +160,7 @@
 
 .main-page .hero-card {
   position: relative;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: #0f1423;
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -199,7 +199,7 @@
   will-change: transform, opacity;
   aspect-ratio: 11 / 10;
   min-height: 360px;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
@@ -277,7 +277,7 @@
   aspect-ratio: 11 / 10;
   min-height: 360px;
   max-height: 500px;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
@@ -532,7 +532,7 @@
   --my: 0.4;
   position: relative;
   padding: 28px;
-  border-radius: 28px;
+  border-radius: var(--radius-lg);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 24px;
@@ -573,7 +573,7 @@
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, rgb(238, 239, 248) 0%, rgb(231, 233, 244) 100%);
   box-shadow: 0 24px 54px rgba(65, 48, 120, 0.14);
   isolation: isolate;
@@ -681,7 +681,7 @@
   margin-left: 24px;
   max-width: min(760px, calc(100% - 48px));
   padding: 22px 24px 20px;
-  border-radius: 26px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(140, 148, 187, 0.12);
   box-shadow: 0 20px 46px rgba(43, 36, 78, 0.08);
@@ -720,7 +720,7 @@
   justify-content: center;
   min-height: 48px;
   padding: 8px 14px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 242, 255, 0.92) 100%);
   color: var(--color-primary);
   font-weight: 800;
@@ -796,7 +796,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 16px 18px;
-  border-radius: 22px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(140, 148, 187, 0.12);
   box-shadow: 0 12px 34px rgba(43, 36, 78, 0.05);
@@ -850,7 +850,7 @@
   text-decoration: none;
   cursor: pointer;
   position: relative;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -898,7 +898,7 @@
   height: 70px;
   flex: 0 0 54px;
   margin-left: 2px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: linear-gradient(140deg, #f1f2f7 0%, #e7e9f2 100%);
   box-shadow: 0 8px 20px rgba(43, 36, 78, 0.06);
@@ -1027,7 +1027,7 @@
 .main-page .genre-icon {
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--color-primary) 12%, #f4f5fb);
@@ -1221,7 +1221,7 @@
 .main-page .why-icon {
   width: 46px;
   height: 46px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--color-primary) 14%, #f2ecff);
@@ -1315,7 +1315,7 @@
 .main-page .cta-card {
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: var(--space-32);
   background: radial-gradient(circle at 90% 30%, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 45%), linear-gradient(135deg, #0e1220 0%, #131a2f 70%, #0e1220 100%);
   color: #f4f6ff;
@@ -1528,7 +1528,7 @@
 .main-page .store-prefooter-card {
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: clamp(24px, 3vw, 36px);
   background: radial-gradient(circle at 85% 20%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 45%), linear-gradient(135deg, #0f1322 0%, #121a2f 65%, #0f1322 100%);
   color: #f4f6ff;
@@ -1820,7 +1820,7 @@
 
   .main-page .billboard-frame {
     max-height: 250px;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
   }
 
   .main-page .billboard-frame-badge {
@@ -1836,7 +1836,7 @@
     margin-left: 0;
     max-width: 100%;
     padding: 18px;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
   }
 
   .main-page .billboard-heading-row {

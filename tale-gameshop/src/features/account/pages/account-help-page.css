@@ -198,7 +198,7 @@
 .help-doc-icon {
     width: 32px;
     height: 32px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: rgba(124, 58, 237, 0.12);
     color: var(--color-primary);
     display: inline-flex;

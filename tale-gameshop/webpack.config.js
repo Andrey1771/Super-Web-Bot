@@ -136,6 +136,7 @@ export default (env, { mode }) => {
         new CopyWebpackPlugin({
             patterns: [
                 { from: 'public/silent-check-sso.html', to: '' },
+                { from: 'public/manifest.json', to: '' },
                 { from: appConfigFile, to: 'app-config.js' },
             ],
         }),

@@ -280,12 +280,16 @@ const AccountOrdersPage: React.FC = () => {
     setPage(1);
   };
 
+  // Тулбар (поиск/сортировка/фильтры) не показываем на пустом списке — фильтровать нечего.
+  const showToolbar = totalCount > 0 || searchInput.trim() !== '' || status !== 'all';
+
   return (
     <AccountShell
-      title="My account"
+      title={ordersTitle}
       sectionLabel="Orders"
-      subtitle={<h2 className="orders-title">{ordersTitle}</h2>}
+      subtitle={ordersSubtitle}
     >
+      {showToolbar && (
       <div className="card orders-toolbar">
         <div className="orders-toolbar-top">
           <div className="orders-search">
@@ -331,6 +335,7 @@ const AccountOrdersPage: React.FC = () => {
           <span>{ordersSubtitle}</span>
         </div>
       </div>
+      )}
 
       <div className="orders-list">
         {isOrdersLoading && Array.from({ length: 3 }, (_, index) => (

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { buildAvatarPreviewUrl, getCroppedAvatarFile } from '../../../utils/cropImage';
+import { getCroppedAvatarFile } from '../../../utils/cropImage';
 
 type AvatarCropModalProps = {
   imageSrc: string | null;
@@ -54,7 +54,6 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
   const [zoom, setZoom] = useState(1);
   const [minZoom, setMinZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropSize, setCropSize] = useState<Size | null>(null);
   const [mediaSize, setMediaSize] = useState<Size | null>(null);
 
@@ -167,12 +166,8 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
       pointersRef.current.clear();
       pinchDistanceRef.current = null;
       dragRef.current = null;
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      setPreviewUrl(null);
     }
-  }, [isOpen, previewUrl]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!cropSize || !mediaSize) {
@@ -199,36 +194,6 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
 
     setPosition((currentPosition) => getClampedPosition(currentPosition, zoom, rotation));
   }, [cropSize, mediaSize, getClampedPosition, rotation, zoom]);
-
-  useEffect(() => {
-    if (!isOpen || !imageSrc) {
-      return;
-    }
-
-    let isMounted = true;
-    const timerId = window.setTimeout(async () => {
-      try {
-        const url = await buildAvatarPreviewUrl(imageSrc, position, zoom, rotation, VIEWPORT_SIZE, 128);
-        if (!isMounted) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        setPreviewUrl((current) => {
-          if (current) {
-            URL.revokeObjectURL(current);
-          }
-          return url;
-        });
-      } catch (error) {
-        console.error(error);
-      }
-    }, 120);
-
-    return () => {
-      isMounted = false;
-      window.clearTimeout(timerId);
-    };
-  }, [imageSrc, isOpen, position, rotation, zoom]);
 
   useEffect(() => {
     if (!isOpen || !imageSrc) {
@@ -272,9 +237,10 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
       return;
     }
 
-    const file = await getCroppedAvatarFile(imageSrc, position, zoom, rotation, VIEWPORT_SIZE, 512);
+    const cropDiameter = cropSize?.width ?? VIEWPORT_SIZE * MASK_RATIO;
+    const file = await getCroppedAvatarFile(imageSrc, position, zoom, rotation, VIEWPORT_SIZE, cropDiameter, 512);
     await onSave(file);
-  }, [imageSrc, isSaving, onSave, position, rotation, zoom]);
+  }, [cropSize, imageSrc, isSaving, onSave, position, rotation, zoom]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -392,6 +358,12 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
               draggable={false}
               onLoad={handleImageLoad}
               style={{
+                // ВАЖНО: рендерим картинку ровно в том базовом размере, от которого
+                // считается вся математика (cover до VIEWPORT_SIZE). Без этого браузер
+                // показывает натуральный размер, и zoom/fit/клампы «уезжают».
+                width: mediaSize?.width,
+                height: mediaSize?.height,
+                visibility: mediaSize ? 'visible' : 'hidden',
                 transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${zoom}) rotate(${rotation}deg)`
               }}
             />
@@ -399,11 +371,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
           </div>
 
           <aside className="ts-avatar-crop-controls">
-            <div>
-              <span className="ts-avatar-crop-controls__label">Preview</span>
-              <div className="ts-avatar-crop-preview">{previewUrl ? <img src={previewUrl} alt="Avatar preview" /> : <span />}</div>
-            </div>
-
+            {/* Превью убрано: круглая маска на сцене и есть живое превью результата. */}
             <label className="ts-avatar-crop-controls__group">
               <span>Zoom</span>
               <div className="ts-avatar-crop-controls__zoom-row">

@@ -456,9 +456,10 @@ public class AccountController : ControllerBase
             return null;
         }
 
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        // Относительный URL: за nginx Request.Host — это внутренний backend:7002,
+        // недостижимый из браузера. Браузер сам разрешит путь против своего origin.
         var version = updatedAt?.Ticks.ToString() ?? DateTime.UtcNow.Ticks.ToString();
-        return $"{baseUrl}/uploads/{avatarPath}?v={version}";
+        return $"/uploads/{avatarPath}?v={version}";
     }
 
 

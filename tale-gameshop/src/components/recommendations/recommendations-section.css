@@ -4,7 +4,7 @@
     align-items: flex-start;
     gap: 12px;
     padding: 16px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px dashed #e6e1ff;
     background: rgba(255, 255, 255, 0.7);
     color: #6f64a8;
@@ -21,7 +21,7 @@
 
 .recommendations-skeleton {
     height: 140px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
     background-size: 200% 100%;
     animation: recommendations-shimmer 1.5s infinite;

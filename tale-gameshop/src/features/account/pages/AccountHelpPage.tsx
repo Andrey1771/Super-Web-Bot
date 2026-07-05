@@ -53,7 +53,17 @@ const AccountHelpPage: React.FC = () => {
         return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
     };
 
+    // Человеческие подписи вместо сырых enum-имён (WaitingForUser и т.п.).
+    const humanStatusLabels: Record<string, string> = {
+        Open: 'Open',
+        WaitingForUser: 'Reply needed',
+        WaitingForSupport: 'In review',
+        Resolved: 'Resolved',
+        Closed: 'Closed'
+    };
+
     const statusLabelFor = (status: SupportTicketStatus) => {
+        let raw: string;
         if (typeof status === 'number') {
             const statusMap: Record<number, string> = {
                 0: 'Open',
@@ -62,14 +72,16 @@ const AccountHelpPage: React.FC = () => {
                 3: 'Resolved',
                 4: 'Closed'
             };
-            return statusMap[status] ?? 'Open';
+            raw = statusMap[status] ?? 'Open';
+        } else {
+            raw = status;
         }
-        return status;
+        return humanStatusLabels[raw] ?? raw;
     };
 
     const statusClassFor = (status: SupportTicketStatus) => {
         const normalized = statusLabelFor(status).toLowerCase();
-        if (normalized.includes('wait') || normalized.includes('pending')) {
+        if (normalized.includes('reply') || normalized.includes('review') || normalized.includes('wait') || normalized.includes('pending')) {
             return 'waiting';
         }
         if (normalized.includes('resolve') || normalized.includes('closed')) {

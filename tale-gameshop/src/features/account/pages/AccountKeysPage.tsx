@@ -2,35 +2,17 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
-    faArrowLeft,
-    faArrowRight,
     faChevronLeft,
     faChevronRight,
     faMagnifyingGlass
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
-import { useRecommendations } from '../../../hooks/use-recommendations';
-import { useViewedGames } from '../../../hooks/use-viewed-games';
 import { useGameKeys } from '../../../hooks/use-game-keys';
-import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import SafeGameImage from '../../../components/common/SafeGameImage';
 import './account-keys-page.css';
 
 const PAGE_SIZE = 4;
 
 const AccountKeysPage: React.FC = () => {
-    const {
-        items: recommendations,
-        isLoading: isRecommendationsLoading,
-        error: recommendationsError,
-        reload: reloadRecommendations
-    } = useRecommendations(6);
-    const {
-        items: viewedItems,
-        isLoading: isViewedLoading,
-        error: viewedError,
-        reload: reloadViewed
-    } = useViewedGames(6);
     const {
         items: keyRows,
         isLoading: isKeysLoading,
@@ -42,8 +24,6 @@ const AccountKeysPage: React.FC = () => {
     const [sortOrder, setSortOrder] = useState('Newest');
     const [typeFilter, setTypeFilter] = useState('All types');
     const [page, setPage] = useState(1);
-    const recommendationsRowRef = useRef<HTMLDivElement>(null);
-    const recentRowRef = useRef<HTMLDivElement>(null);
 
     // Доступные типы ключей формируем из реальных данных + базовые опции.
     const keyTypeOptions = useMemo(() => {
@@ -99,10 +79,6 @@ const AccountKeysPage: React.FC = () => {
         setPage(1);
     };
 
-    const scrollRow = (ref: React.RefObject<HTMLDivElement>, direction: number) => {
-        ref.current?.scrollBy({ left: direction * 320, behavior: 'smooth' });
-    };
-
     const handleCopyKey = async (keyValue: string) => {
         if (!keyValue) {
             return;
@@ -117,21 +93,18 @@ const AccountKeysPage: React.FC = () => {
 
     return (
         <AccountShell
-            title="My account"
+            title="Keys & activation"
             sectionLabel="Keys & activation"
             subtitle={(
-                <div className="keys-header">
-                    <h2 className="keys-title">Keys & activation</h2>
-                    <div className="keys-description">
-                        <p>Here you can view your purchased keys and activation details.</p>
-                        <p>
-                            Read our{' '}
-                            <Link to="/support" className="keys-link">
-                                activation guide
-                            </Link>{' '}
-                            for help.
-                        </p>
-                    </div>
+                <div className="keys-description">
+                    <p>Here you can view your purchased keys and activation details.</p>
+                    <p>
+                        Read our{' '}
+                        <Link to="/support" className="keys-link">
+                            activation guide
+                        </Link>{' '}
+                        for help.
+                    </p>
                 </div>
             )}
         >
@@ -299,91 +272,6 @@ const AccountKeysPage: React.FC = () => {
                 <span className="keys-pagination-note">{paginationLabel}</span>
             </div>
 
-            <section className="keys-recommendations">
-                <div className="keys-section-header">
-                    <h3>Recommendations based on your wishlist</h3>
-                    <div className="keys-section-arrows">
-                        <button type="button" className="btn btn-outline keys-arrow-btn" aria-label="Scroll left" onClick={() => scrollRow(recommendationsRowRef, -1)}>
-                            <FontAwesomeIcon icon={faArrowLeft} />
-                        </button>
-                        <button type="button" className="btn btn-outline keys-arrow-btn" aria-label="Scroll right" onClick={() => scrollRow(recommendationsRowRef, 1)}>
-                            <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                    </div>
-                </div>
-                <div ref={recommendationsRowRef} className="keys-scroll-row" style={{ overflowX: 'auto' }}>
-                    <RecommendationsSection
-                        items={recommendations}
-                        isLoading={isRecommendationsLoading}
-                        error={recommendationsError}
-                        onRetry={reloadRecommendations}
-                        emptyMessage="Add games to your wishlist or view a few games to get recommendations."
-                        listClassName="keys-card-grid"
-                        stateClassName="keys-recommendations-state"
-                        renderSkeleton={(index) => (
-                            <div key={`rec-skeleton-${index}`} className="card keys-card is-skeleton" />
-                        )}
-                        renderItem={(item) => (
-                            <div key={item.game.id ?? item.game.title} className="card keys-card">
-                                <div className="keys-card-media">
-                                    <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
-                                </div>
-                                <div className="keys-card-body">
-                                    <strong>{item.game.title}</strong>
-                                    <span className="keys-card-price">${Number(item.game.price).toFixed(2)}</span>
-                                </div>
-                                <button type="button" className="btn btn-primary keys-card-btn" disabled={!item.game.id}>
-                                    Add to cart
-                                </button>
-                            </div>
-                        )}
-                    />
-                </div>
-            </section>
-
-            <section className="keys-recent">
-                <div className="keys-section-header">
-                    <h3>Recently viewed</h3>
-                    <div className="keys-section-arrows">
-                        <button type="button" className="btn btn-outline keys-arrow-btn" aria-label="Scroll left" onClick={() => scrollRow(recentRowRef, -1)}>
-                            <FontAwesomeIcon icon={faArrowLeft} />
-                        </button>
-                        <button type="button" className="btn btn-outline keys-arrow-btn" aria-label="Scroll right" onClick={() => scrollRow(recentRowRef, 1)}>
-                            <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                    </div>
-                </div>
-                <div ref={recentRowRef} className="keys-scroll-row" style={{ overflowX: 'auto' }}>
-                    <RecommendationsSection
-                        items={viewedItems}
-                        isLoading={isViewedLoading}
-                        error={viewedError}
-                        onRetry={reloadViewed}
-                        emptyMessage="Browse a few games to see them here."
-                        listClassName="keys-card-grid keys-card-grid--recent"
-                        stateClassName="keys-recommendations-state"
-                        renderSkeleton={(index) => (
-                            <div key={`viewed-skeleton-${index}`} className="card keys-card is-skeleton" />
-                        )}
-                        renderItem={(item) => (
-                            <div key={item.game.id ?? item.game.title} className="card keys-card">
-                                <div className="keys-card-media keys-card-media--wide">
-                                    <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
-                                </div>
-                                <div className="keys-card-body">
-                                    <strong>{item.game.title}</strong>
-                                    <span className="keys-card-date">
-                                        {new Date(item.lastViewedAt).toLocaleDateString()}
-                                    </span>
-                                </div>
-                                <button type="button" className="btn btn-primary keys-card-btn" disabled={!item.game.id}>
-                                    Add to cart
-                                </button>
-                            </div>
-                        )}
-                    />
-                </div>
-            </section>
         </AccountShell>
     );
 };

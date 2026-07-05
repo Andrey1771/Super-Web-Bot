@@ -1,11 +1,25 @@
 .security-alert {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: var(--space-20);
     align-items: center;
     padding: var(--space-20) var(--space-24);
     background: #ffffff;
     box-shadow: 0 12px 30px rgba(111, 78, 214, 0.08);
+}
+
+.security-alert-dismiss {
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px;
+    align-self: start;
+}
+
+.security-alert-dismiss:hover {
+    color: #4b5563;
 }
 
 .security-alert-icon {

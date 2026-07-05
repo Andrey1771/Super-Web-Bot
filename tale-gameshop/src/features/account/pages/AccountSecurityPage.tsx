@@ -7,7 +7,6 @@ import EmailVerificationCard from '../security/components/EmailVerificationCard'
 import PasswordCard from '../security/components/PasswordCard';
 import ActiveSessionsCard from '../security/components/ActiveSessionsCard';
 import DangerZoneCard from '../security/components/DangerZoneCard';
-import RecommendationsRow from '../security/components/RecommendationsRow';
 import ChangeEmailModal from '../security/modals/ChangeEmailModal';
 import DeleteAccountModal from '../security/modals/DeleteAccountModal';
 import Enable2FAModal from '../security/modals/Enable2FAModal';
@@ -227,7 +226,16 @@ const AccountSecurityPage: React.FC = () => {
         }
     };
 
-    const bannerVisible = !status?.twoFactorEnabled || !status?.emailVerified;
+    // Баннер можно закрыть — выбор запоминается на этом устройстве.
+    const [bannerDismissed, setBannerDismissed] = useState(
+        () => localStorage.getItem('security_banner_dismissed') === '1'
+    );
+    const handleDismissBanner = () => {
+        localStorage.setItem('security_banner_dismissed', '1');
+        setBannerDismissed(true);
+    };
+
+    const bannerVisible = !bannerDismissed && (!status?.twoFactorEnabled || !status?.emailVerified);
     const passwordUpdatedLabel = useMemo(() => getRelativePasswordLabel(status?.passwordUpdatedAt ?? null), [status?.passwordUpdatedAt]);
 
     return (
@@ -237,7 +245,7 @@ const AccountSecurityPage: React.FC = () => {
             subtitle="Manage password, email verification and 2FA."
             headerTestId="security-header"
         >
-            <SecurityBanner show={bannerVisible} onSetup2fa={handleSetup2fa} />
+            <SecurityBanner show={bannerVisible} onSetup2fa={handleSetup2fa} onDismiss={handleDismissBanner} />
 
             <div className="security-grid">
                 <TwoFactorCard
@@ -274,8 +282,6 @@ const AccountSecurityPage: React.FC = () => {
                     onDownloadReport={handleDownloadReport}
                 />
             </div>
-
-            <RecommendationsRow />
 
             <ChangeEmailModal
                 isOpen={isChangeEmailOpen}

@@ -7,6 +7,17 @@ import type { ChatConfig, ChatMessage, ChatSessionDetail, ChatSessionListRespons
 const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 const apiBaseUrl = () => container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
+// Защита от «не-JSON» ответов (например, HTML в окно рестарта бэкенда):
+// неожиданная форма не должна попадать в состояние чата и ронять приложение.
+const ensureArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+
+const ensureObject = <T,>(value: unknown, context: string): T => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`Unexpected ${context} response shape.`);
+  }
+  return value as T;
+};
+
 export const fetchChatConfig = async (): Promise<ChatConfig> => {
   const response = await apiClient().get("/api/support/chat/config");
   return response.data as ChatConfig;
@@ -23,7 +34,8 @@ export const createChatSession = async (payload: {
 
 export const getChatSession = async (sessionId: string): Promise<ChatSessionDetail> => {
   const response = await apiClient().get(`/api/support/chat/sessions/${sessionId}`);
-  return response.data;
+  const detail = ensureObject<ChatSessionDetail>(response.data, 'chat session');
+  return { ...detail, messages: ensureArray<ChatMessage>(detail.messages) };
 };
 
 export const getChatMessages = async (
@@ -33,7 +45,7 @@ export const getChatMessages = async (
   const response = await apiClient().get(`/api/support/chat/sessions/${sessionId}/messages`, {
     params: after ? { after } : {},
   });
-  return response.data;
+  return ensureArray<ChatMessage>(response.data);
 };
 
 export const sendChatMessage = async (

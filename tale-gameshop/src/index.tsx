@@ -14,6 +14,7 @@ import IDENTIFIERS from "./constants/identifiers";
 import {CartProvider} from './context/cart-context';
 import {WishlistProvider} from './context/wishlist-context';
 import AppLoader from './components/app-loader/AppLoader';
+import AppErrorBoundary from './components/utils/error-boundary/AppErrorBoundary';
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
@@ -28,13 +29,15 @@ root.render(
         <ReduxProvider store={store}>
             <InversifyProvider container={container}>
                 <React.StrictMode>
-                    <CartProvider>
-                        <WishlistProvider>
-                            <BrowserRouter>
-                                <App/>
-                            </BrowserRouter>
-                        </WishlistProvider>
-                    </CartProvider>
+                    <AppErrorBoundary>
+                        <CartProvider>
+                            <WishlistProvider>
+                                <BrowserRouter>
+                                    <App/>
+                                </BrowserRouter>
+                            </WishlistProvider>
+                        </CartProvider>
+                    </AppErrorBoundary>
                 </React.StrictMode>
             </InversifyProvider>
         </ReduxProvider>

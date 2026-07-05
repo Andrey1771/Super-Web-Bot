@@ -8,8 +8,8 @@ interface StatusBadgeProps {
 
 const statusLabelMap: Record<TicketStatus, string> = {
     Open: 'Open',
-    WaitingForUser: 'Waiting for response',
-    WaitingForSupport: 'Waiting for support',
+    WaitingForUser: 'Reply needed',
+    WaitingForSupport: 'In review',
     Resolved: 'Resolved',
     Closed: 'Closed'
 };

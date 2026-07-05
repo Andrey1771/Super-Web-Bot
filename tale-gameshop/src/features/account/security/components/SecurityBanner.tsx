@@ -1,13 +1,14 @@
 import React from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faShieldHalved} from '@fortawesome/free-solid-svg-icons';
+import {faShieldHalved, faXmark} from '@fortawesome/free-solid-svg-icons';
 
 type SecurityBannerProps = {
     show: boolean;
     onSetup2fa: () => void;
+    onDismiss: () => void;
 };
 
-const SecurityBanner: React.FC<SecurityBannerProps> = ({show, onSetup2fa}) => {
+const SecurityBanner: React.FC<SecurityBannerProps> = ({show, onSetup2fa, onDismiss}) => {
     if (!show) {
         return null;
     }
@@ -23,6 +24,15 @@ const SecurityBanner: React.FC<SecurityBannerProps> = ({show, onSetup2fa}) => {
             </div>
             <button type="button" className="btn btn-primary security-alert-btn" onClick={onSetup2fa}>
                 Set up 2FA
+            </button>
+            <button
+                type="button"
+                className="security-alert-dismiss"
+                aria-label="Dismiss"
+                title="Dismiss"
+                onClick={onDismiss}
+            >
+                <FontAwesomeIcon icon={faXmark} />
             </button>
         </section>
     );
