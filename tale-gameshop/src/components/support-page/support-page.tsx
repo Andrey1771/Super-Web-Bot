@@ -149,6 +149,12 @@ const contactChannels = [
         title: 'Support ticket',
         description: 'Best for order issues',
         icon: faMessage
+    },
+    {
+        // Вход для запертых снаружи: заявка на сброс 2FA подаётся без логина.
+        title: 'Account recovery',
+        description: 'Can’t sign in? Lost 2FA access',
+        icon: faShieldAlt
     }
 ];
 
@@ -437,6 +443,13 @@ const SupportPage: React.FC = () => {
                                 if (channel.title === 'Support ticket') {
                                     return (
                                         <Link key={channel.title} to="/account/help" className="card support-contact-card">
+                                            {content}
+                                        </Link>
+                                    );
+                                }
+                                if (channel.title === 'Account recovery') {
+                                    return (
+                                        <Link key={channel.title} to="/account-recovery" className="card support-contact-card">
                                             {content}
                                         </Link>
                                     );

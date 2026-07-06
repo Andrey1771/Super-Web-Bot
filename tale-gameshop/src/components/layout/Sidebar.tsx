@@ -137,6 +137,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             icon: "💬",
             roles: ["admin", "support"],
           },
+          {
+            label: "Account recovery",
+            to: "/admin/support/recovery",
+            icon: "🛟",
+            roles: ["admin", "support"],
+          },
         ],
       },
       {

@@ -4,7 +4,7 @@ import {faEye, faEyeSlash} from '@fortawesome/free-solid-svg-icons';
 
 type PasswordCardProps = {
     isSubmitting: boolean;
-    lastUpdatedLabel: string;
+    lastUpdatedLabel: string | null;
     onSubmit: (payload: { currentPassword: string; newPassword: string; confirmPassword: string }) => void;
     onReset: () => void;
 };
@@ -96,15 +96,11 @@ const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLab
                     </button>
                 </div>
                 <div className="security-password-info">
-                        <div className="security-info-card">
-                            <div>
-                                <h4>Password</h4>
-                                <p>Your password was updated {lastUpdatedLabel}.</p>
-                                <p>Resetting your password signs you out of active sessions.</p>
-                            </div>
-                        <button type="button" className="btn btn-outline security-secondary-btn" onClick={onReset}>
-                            Reset
-                        </button>
+                    <div className="security-info-card">
+                        <div>
+                            {lastUpdatedLabel && <p>Your password was updated {lastUpdatedLabel}.</p>}
+                            <p>Resetting your password signs you out of active sessions.</p>
+                        </div>
                     </div>
                 </div>
             </div>

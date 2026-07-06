@@ -1,7 +1,8 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
-import SecurityBanner from '../security/components/SecurityBanner';
+import SecurityChecklist from '../security/components/SecurityChecklist';
+import type {SecurityChecklistStep} from '../security/components/SecurityChecklist';
 import TwoFactorCard from '../security/components/TwoFactorCard';
 import EmailVerificationCard from '../security/components/EmailVerificationCard';
 import PasswordCard from '../security/components/PasswordCard';
@@ -30,17 +31,27 @@ import container from '../../../inversify.config';
 import IDENTIFIERS from '../../../constants/identifiers';
 import './account-security-page.css';
 
-const getRelativePasswordLabel = (value?: string | null) => {
+// null — даты нет или она нечитаемая; строку про обновление пароля в этом случае не показываем.
+const getRelativePasswordLabel = (value?: string | null): string | null => {
     if (!value) {
-        return 'over 6 months ago';
+        return null;
     }
     const lastUpdated = new Date(value);
     if (Number.isNaN(lastUpdated.getTime())) {
-        return 'recently';
+        return null;
     }
-    const diffMs = Date.now() - lastUpdated.getTime();
-    const diffMonths = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30)));
-    return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+    const diffDays = Math.floor((Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 1) {
+        return 'today';
+    }
+    if (diffDays < 30) {
+        return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    }
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) {
+        return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+    }
+    return 'over a year ago';
 };
 
 const AccountSecurityPage: React.FC = () => {
@@ -77,13 +88,16 @@ const AccountSecurityPage: React.FC = () => {
         fetchStatus();
     }, [fetchStatus]);
 
-    const handleResendEmail = async () => {
+    // Возвращает true при успехе — карточка email по этому признаку запускает кулдаун повторной отправки.
+    const handleResendEmail = async (): Promise<boolean> => {
         setIsSubmitting(true);
         try {
             await resendVerificationEmail();
             showToast('Verification email sent.');
+            return true;
         } catch (error) {
             showToast('Unable to resend verification email.');
+            return false;
         } finally {
             setIsSubmitting(false);
         }
@@ -149,8 +163,11 @@ const AccountSecurityPage: React.FC = () => {
     const handleDisable2fa = async () => {
         setIsSubmitting(true);
         try {
+            const hadBackupCodes = Boolean(status?.backupCodesGenerated);
             await disableTwoFactor();
-            showToast('Two-factor authentication disabled.');
+            showToast(hadBackupCodes
+                ? 'Two-factor authentication disabled. Backup codes are no longer valid.'
+                : 'Two-factor authentication disabled.');
             await fetchStatus();
         } catch (error) {
             showToast('Unable to disable 2FA.');
@@ -164,6 +181,15 @@ const AccountSecurityPage: React.FC = () => {
         // keycloak-js типизирует action узко как 'register', хотя адаптер шлёт любой kc_action.
         keycloak.login({
             action: 'CONFIGURE_TOTP',
+            redirectUri: `${window.location.origin}/account/security`
+        } as any);
+    };
+
+    const handleGenerateBackupCodes = () => {
+        // Recovery-коды — тот же AIA-флоу, что и TOTP. Требует фичи recovery-codes у Keycloak
+        // (включена в docker-compose); после генерации Keycloak вернёт пользователя сюда.
+        keycloak.login({
+            action: 'CONFIGURE_RECOVERY_AUTHN_CODES',
             redirectUri: `${window.location.origin}/account/security`
         } as any);
     };
@@ -226,16 +252,43 @@ const AccountSecurityPage: React.FC = () => {
         }
     };
 
-    // Баннер можно закрыть — выбор запоминается на этом устройстве.
-    const [bannerDismissed, setBannerDismissed] = useState(
-        () => localStorage.getItem('security_banner_dismissed') === '1'
+    // Чеклист можно закрыть, но только до конца сессии браузера (sessionStorage):
+    // навсегда прятать напоминание о незащищённом аккаунте нельзя — вернуть его иначе неоткуда.
+    const [checklistDismissed, setChecklistDismissed] = useState(
+        () => sessionStorage.getItem('security_checklist_dismissed') === '1'
     );
-    const handleDismissBanner = () => {
-        localStorage.setItem('security_banner_dismissed', '1');
-        setBannerDismissed(true);
+    const handleDismissChecklist = () => {
+        sessionStorage.setItem('security_checklist_dismissed', '1');
+        setChecklistDismissed(true);
     };
 
-    const bannerVisible = !bannerDismissed && (!status?.twoFactorEnabled || !status?.emailVerified);
+    // Последовательное ведение к защищённому аккаунту: один primary-CTA на следующий незакрытый шаг.
+    const checklistSteps: SecurityChecklistStep[] = [
+        {
+            key: 'email',
+            label: 'Verify your email',
+            done: Boolean(status?.emailVerified),
+            actionLabel: 'Resend email',
+            onAction: () => { void handleResendEmail(); }
+        },
+        {
+            key: '2fa',
+            label: 'Enable two-factor authentication',
+            done: Boolean(status?.twoFactorEnabled),
+            actionLabel: 'Enable 2FA',
+            onAction: handleSetup2fa
+        },
+        {
+            key: 'backup-codes',
+            label: 'Generate backup codes',
+            // Исчерпанный набор (0 оставшихся) — то же, что отсутствие кодов: шаг снова не выполнен.
+            done: Boolean(status?.backupCodesGenerated) && (status?.backupCodesRemaining == null || status.backupCodesRemaining > 0),
+            actionLabel: 'Generate codes',
+            onAction: handleGenerateBackupCodes
+        }
+    ];
+    // Показываем только по загруженному статусу, чтобы чеклист не мигал до ответа сервера.
+    const checklistVisible = !checklistDismissed && status !== null && checklistSteps.some((step) => !step.done);
     const passwordUpdatedLabel = useMemo(() => getRelativePasswordLabel(status?.passwordUpdatedAt ?? null), [status?.passwordUpdatedAt]);
 
     return (
@@ -245,19 +298,29 @@ const AccountSecurityPage: React.FC = () => {
             subtitle="Manage password, email verification and 2FA."
             headerTestId="security-header"
         >
-            <SecurityBanner show={bannerVisible} onSetup2fa={handleSetup2fa} onDismiss={handleDismissBanner} />
+            <SecurityChecklist
+                show={checklistVisible}
+                steps={checklistSteps}
+                isBusy={isSubmitting}
+                onDismiss={handleDismissChecklist}
+            />
 
             <div className="security-grid">
                 <TwoFactorCard
                     isEnabled={Boolean(status?.twoFactorEnabled)}
                     backupCodesGenerated={Boolean(status?.backupCodesGenerated)}
-                    isLoading={isLoading}
+                    backupCodesTotal={status?.backupCodesTotal ?? null}
+                    backupCodesRemaining={status?.backupCodesRemaining ?? null}
+                    isPending={status === null}
+                    isBusy={isSubmitting}
                     onPrimaryAction={status?.twoFactorEnabled ? handleOpenManage2fa : handleSetup2fa}
                     onDisable={handleDisable2fa}
+                    onGenerateBackupCodes={handleGenerateBackupCodes}
                 />
                 <EmailVerificationCard
                     emailVerified={Boolean(status?.emailVerified)}
-                    isLoading={isLoading || isSubmitting}
+                    isPending={status === null}
+                    isBusy={isSubmitting}
                     onResend={handleResendEmail}
                     onChangeEmail={() => setIsChangeEmailOpen(true)}
                 />

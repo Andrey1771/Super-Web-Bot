@@ -33,6 +33,11 @@ services:
       - Keycloak__Admin__SecurityRedirectUri=http://localhost/account/security
       # Внешний (браузерный) адрес account-консоли Keycloak для управления 2FA
       - Keycloak__Admin__AccountConsoleUrl=http://localhost:8088/realms/TaleShop/account
+      # Восстановление доступа: письма шлём через mailhog, ссылки в письмах — на внешний адрес сайта
+      - Recovery__SmtpHost=mailhog
+      - Recovery__SmtpPort=1025
+      - Recovery__PublicBaseUrl=http://localhost
+      - Recovery__WaitingPeriodHours=72
     ports:
       - "7002:7002"
     volumes:
@@ -93,7 +98,10 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.2.5
     restart: always
-    command: start-dev --import-realm
+    # recovery-codes — preview-фича Keycloak: включает backup-коды (kc_action=CONFIGURE_RECOVERY_AUTHN_CODES).
+    # Required action регистрируется при создании realm, поэтому после включения фичи контейнер надо
+    # пересоздать: docker compose up -d --force-recreate keycloak (данные не персистятся, realm импортнётся заново).
+    command: start-dev --import-realm --features=recovery-codes
     environment:
       # Учётка админ-консоли Keycloak (master realm) — http://localhost:8088/admin
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin

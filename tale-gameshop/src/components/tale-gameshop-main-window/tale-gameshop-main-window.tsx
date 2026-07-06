@@ -47,6 +47,8 @@ import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
 import SupportTicketsPage from "../../pages/admin/SupportTicketsPage";
 import PromoCodesPage from "../../pages/admin/PromoCodesPage";
 import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
+import AccountRecoveryAdminPage from "../../pages/admin/AccountRecoveryAdminPage";
+import AccountRecoveryPage, { AccountRecoveryCancelPage } from "../account-recovery/AccountRecoveryPage";
 import GameDiscountsPage from "../../pages/admin/GameDiscountsPage";
 
 export default function TaleGameshopMainWindow() {
@@ -93,6 +95,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
                         <Route path="support/live-chat" element={<SupportLiveChatPage />} />
                         <Route path="support/tickets" element={<SupportTicketsPage />} />
+                        <Route path="support/recovery" element={<AccountRecoveryAdminPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="settings" element={<SettingsPage />} />
                         <Route path="data-tools" element={<DataToolsPage />} />
@@ -109,6 +112,8 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/successPurchasePage" element={<Navigate to="/checkout/success" replace />}/>
                     <Route path="/support" element={<SupportPage/>}/>
                     <Route path="/support/docs/:docId" element={<SupportDocPage/>}/>
+                    <Route path="/account-recovery" element={<AccountRecoveryPage/>}/>
+                    <Route path="/account-recovery/cancel" element={<AccountRecoveryCancelPage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
                     <Route path="/blog/:slug" element={<BlogPostPage/>}/>

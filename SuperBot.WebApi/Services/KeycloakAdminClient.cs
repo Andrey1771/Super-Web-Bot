@@ -86,6 +86,24 @@ namespace SuperBot.WebApi.Services
             return await response.Content.ReadFromJsonAsync<KeycloakUser>(JsonOptions);
         }
 
+        public async Task<KeycloakUser?> FindUserByEmailAsync(string email)
+        {
+            using var request = await CreateAdminRequestAsync(HttpMethod.Get, $"{AdminUsersPath}?email={Uri.EscapeDataString(email)}&exact=true");
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            var users = await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOptions) ?? new List<KeycloakUser>();
+            return users.FirstOrDefault();
+        }
+
+        // События входа пользователя (нужна роль view-events у сервисного аккаунта — см. realm-импорт).
+        public async Task<List<KeycloakLoginEvent>> GetUserLoginEventsAsync(string userId, int max = 25)
+        {
+            using var request = await CreateAdminRequestAsync(HttpMethod.Get, $"{BaseUrl}/admin/realms/{Realm}/events?user={Uri.EscapeDataString(userId)}&max={max}");
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<KeycloakLoginEvent>>(JsonOptions) ?? new List<KeycloakLoginEvent>();
+        }
+
         public async Task<List<KeycloakSession>> GetUserSessionsAsync(string userId)
         {
             using var request = await CreateAdminRequestAsync(HttpMethod.Get, $"{AdminUsersPath}/{userId}/sessions");
@@ -224,6 +242,16 @@ namespace SuperBot.WebApi.Services
         public bool EmailVerified { get; set; }
         public string Username { get; set; } = string.Empty;
         public bool Enabled { get; set; }
+        public long? CreatedTimestamp { get; set; }
+    }
+
+    public sealed class KeycloakLoginEvent
+    {
+        public long Time { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string? IpAddress { get; set; }
+        public string? ClientId { get; set; }
+        public Dictionary<string, string>? Details { get; set; }
     }
 
     public sealed class KeycloakSession
@@ -240,5 +268,8 @@ namespace SuperBot.WebApi.Services
     {
         public string Id { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
+        public long? CreatedDate { get; set; }
+        // JSON-строка с публичными метаданными credential (для recovery-кодов — totalCodes/remainingCodes)
+        public string? CredentialData { get; set; }
     }
 }

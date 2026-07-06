@@ -32,13 +32,45 @@ namespace SuperBot.WebApi.Controllers
             var credentials = await _keycloakAdminClient.GetUserCredentialsAsync(userId);
             var sessions = await _keycloakAdminClient.GetUserSessionsAsync(userId);
 
+            // Дата смены пароля — createdDate password-credential (Keycloak обновляет её при reset).
+            var passwordCredential = credentials.FirstOrDefault(cred => cred.Type.Equals("password", StringComparison.OrdinalIgnoreCase));
+
+            // Recovery-коды Keycloak: credentialData содержит totalCodes/remainingCodes —
+            // по остатку фронт предупреждает, что пора перегенерировать набор.
+            var recoveryCredential = credentials.FirstOrDefault(cred => cred.Type.Equals("recovery-authn-codes", StringComparison.OrdinalIgnoreCase));
+            int? backupCodesTotal = null;
+            int? backupCodesRemaining = null;
+            if (!string.IsNullOrWhiteSpace(recoveryCredential?.CredentialData))
+            {
+                try
+                {
+                    using var credentialData = System.Text.Json.JsonDocument.Parse(recoveryCredential.CredentialData);
+                    if (credentialData.RootElement.TryGetProperty("totalCodes", out var total) && total.TryGetInt32(out var totalValue))
+                    {
+                        backupCodesTotal = totalValue;
+                    }
+                    if (credentialData.RootElement.TryGetProperty("remainingCodes", out var remaining) && remaining.TryGetInt32(out var remainingValue))
+                    {
+                        backupCodesRemaining = remainingValue;
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // Метаданные не распарсились — счётчик просто не показываем.
+                }
+            }
+
             return Ok(new AccountSecurityStatusResponse
             {
                 Email = user.Email,
                 EmailVerified = user.EmailVerified,
                 TwoFactorEnabled = credentials.Any(cred => cred.Type.Equals("otp", StringComparison.OrdinalIgnoreCase)),
-                BackupCodesGenerated = false,
-                PasswordUpdatedAt = null,
+                BackupCodesGenerated = recoveryCredential != null,
+                BackupCodesTotal = backupCodesTotal,
+                BackupCodesRemaining = backupCodesRemaining,
+                PasswordUpdatedAt = passwordCredential?.CreatedDate is { } createdDate
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(createdDate).UtcDateTime
+                    : null,
                 AccountConsoleUrl = BuildAccountConsoleUrl(),
                 Sessions = sessions.Select(session => new AccountSessionResponse
                 {
@@ -113,16 +145,21 @@ namespace SuperBot.WebApi.Controllers
         {
             var userId = GetUserId();
             var credentials = await _keycloakAdminClient.GetUserCredentialsAsync(userId);
-            var otpCredentials = credentials
-                .Where(cred => cred.Type.Equals("otp", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(cred.Id))
+            // Вместе с otp удаляем и recovery-коды: без 2FA они не имеют смысла, а при повторном
+            // включении пользователь должен получить новый набор — старые коды могли утечь.
+            var secondFactorCredentials = credentials
+                .Where(cred =>
+                    (cred.Type.Equals("otp", StringComparison.OrdinalIgnoreCase) ||
+                     cred.Type.Equals("recovery-authn-codes", StringComparison.OrdinalIgnoreCase)) &&
+                    !string.IsNullOrWhiteSpace(cred.Id))
                 .ToList();
 
-            foreach (var credential in otpCredentials)
+            foreach (var credential in secondFactorCredentials)
             {
                 await _keycloakAdminClient.DeleteCredentialAsync(userId, credential.Id);
             }
 
-            return Ok(new { disabled = true, removed = otpCredentials.Count });
+            return Ok(new { disabled = true, removed = secondFactorCredentials.Count });
         }
 
         [HttpPost("password/change")]
@@ -271,6 +308,8 @@ namespace SuperBot.WebApi.Controllers
         public bool EmailVerified { get; set; }
         public bool TwoFactorEnabled { get; set; }
         public bool BackupCodesGenerated { get; set; }
+        public int? BackupCodesTotal { get; set; }
+        public int? BackupCodesRemaining { get; set; }
         public DateTime? PasswordUpdatedAt { get; set; }
         public string AccountConsoleUrl { get; set; } = string.Empty;
         public List<AccountSessionResponse> Sessions { get; set; } = new();

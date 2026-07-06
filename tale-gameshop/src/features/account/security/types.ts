@@ -11,6 +11,8 @@ export type AccountSecurityStatus = {
     emailVerified: boolean;
     twoFactorEnabled: boolean;
     backupCodesGenerated: boolean;
+    backupCodesTotal?: number | null;
+    backupCodesRemaining?: number | null;
     passwordUpdatedAt?: string | null;
     accountConsoleUrl?: string | null;
     sessions: AccountSession[];

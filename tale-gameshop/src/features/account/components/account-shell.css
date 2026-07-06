@@ -63,6 +63,75 @@
     font-size: 13px;
 }
 
+/* Баннер активной заявки на восстановление доступа — красный, потому что это
+   потенциальный угон аккаунта; отмена должна быть в один клик. */
+.account-recovery-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-16) var(--space-20);
+    margin-bottom: var(--space-20);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    background: rgba(220, 38, 38, 0.06);
+    flex-wrap: wrap;
+}
+
+.account-recovery-alert-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 14px;
+    color: #7f1d1d;
+    min-width: 0;
+}
+
+.account-recovery-alert-btn {
+    background: #dc2626;
+    color: #ffffff;
+    border: none;
+    height: 38px;
+    padding-inline: var(--space-16);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.account-recovery-alert-btn:hover {
+    background: #b91c1c;
+}
+
+/* Скелетон профиля — вместо моковых имени/почты до ответа сервера. */
+.account-avatar.is-skeleton {
+    background: linear-gradient(90deg, #ece8ff 0%, #f5f3ff 50%, #ece8ff 100%);
+    background-size: 200% 100%;
+    animation: account-skeleton-shimmer 1.5s infinite;
+}
+
+.account-skeleton-line {
+    display: block;
+    width: 120px;
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #ece8ff 0%, #f5f3ff 50%, #ece8ff 100%);
+    background-size: 200% 100%;
+    animation: account-skeleton-shimmer 1.5s infinite;
+}
+
+.account-skeleton-line.is-short {
+    width: 80px;
+    height: 10px;
+}
+
+@keyframes account-skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
 /* Навигация — единая карточка с явными блоками-группами. */
 .account-nav {
     display: grid;

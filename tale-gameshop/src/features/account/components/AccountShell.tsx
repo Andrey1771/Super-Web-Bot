@@ -1,8 +1,9 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {Link, NavLink} from 'react-router-dom';
 import {useKeycloak} from '@react-keycloak/web';
-import {accountProfile} from '../mockAccountData';
 import { useAccountProfile } from '../context/AccountProfileContext';
+import { cancelPendingRecovery, getPendingRecovery } from '../../../api/accountRecoveryApi';
+import type { PendingRecovery } from '../../../api/accountRecoveryApi';
 import { useAccountCounters } from '../../../hooks/use-account-counters';
 import { useWishlist } from '../../../context/wishlist-context';
 import container from '../../../inversify.config';
@@ -66,7 +67,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
     headerTestId,
     children
 }) => {
-    const { profile } = useAccountProfile();
+    const { profile, isLoading: isProfileLoading } = useAccountProfile();
     const counters = useAccountCounters();
     const { count: wishlistCount } = useWishlist();
     const { keycloak } = useKeycloak();
@@ -78,16 +79,23 @@ const AccountShell: React.FC<AccountShellProps> = ({
             : subtitle
         : null;
 
-    const displayName = profile?.displayName ?? accountProfile.name;
-    const email = profile?.email ?? accountProfile.email;
-    const initialsSource = displayName || email || accountProfile.name;
+    // Пока профиль грузится — скелетон; фолбэк после загрузки — данные из токена, не моки.
+    const showProfileSkeleton = isProfileLoading && !profile;
+    const tokenClaims = (keycloak?.tokenParsed ?? {}) as {
+        name?: string;
+        preferred_username?: string;
+        email?: string;
+    };
+    const displayName = profile?.displayName ?? tokenClaims.name ?? tokenClaims.preferred_username ?? 'My account';
+    const email = profile?.email ?? tokenClaims.email ?? '';
+    const initialsSource = displayName || email;
     const initials = initialsSource
         .split(' ')
         .filter(Boolean)
         .slice(0, 2)
         .map((part) => part[0])
         .join('')
-        .toUpperCase() || accountProfile.initials;
+        .toUpperCase() || '?';
 
     // Честный бейдж: «Verified buyer» только при наличии завершённых покупок.
     const isVerifiedBuyer = (counters?.orders ?? 0) > 0;
@@ -111,23 +119,57 @@ const AccountShell: React.FC<AccountShellProps> = ({
         await keycloakAuthService.logoutWithRedirect(keycloak, window.location.origin);
     };
 
+    // Живая сессия — главный канал «уведомить владельца»: если кто-то запросил
+    // восстановление доступа (сброс 2FA), показываем баннер с отменой в один клик.
+    const [pendingRecovery, setPendingRecovery] = useState<PendingRecovery | null>(null);
+    const [isCancellingRecovery, setIsCancellingRecovery] = useState(false);
+    useEffect(() => {
+        getPendingRecovery().then(setPendingRecovery).catch(() => {
+            // Не критично: баннер — дополнительная защита, страница работает и без него.
+        });
+    }, []);
+
+    const handleCancelRecovery = async () => {
+        setIsCancellingRecovery(true);
+        try {
+            await cancelPendingRecovery();
+            setPendingRecovery({exists: false});
+        } catch {
+            // Оставляем баннер — пользователь сможет повторить.
+        } finally {
+            setIsCancellingRecovery(false);
+        }
+    };
+
     return (
         <div className="account-page">
             <div className="container account-layout">
                 <aside className="account-sidebar">
                     <div className="card account-profile">
-                        <div className="account-avatar">
-                            {profile?.avatarUrl ? (
-                                <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
-                            ) : (
-                                initials
-                            )}
-                        </div>
-                        <div className="account-profile-details">
-                            <strong>{displayName}</strong>
-                            <span className="account-email">{email}</span>
-                            {isVerifiedBuyer && <span className="badge">Verified buyer</span>}
-                        </div>
+                        {showProfileSkeleton ? (
+                            <>
+                                <div className="account-avatar is-skeleton" aria-hidden="true" />
+                                <div className="account-profile-details" aria-busy="true">
+                                    <span className="account-skeleton-line" />
+                                    <span className="account-skeleton-line is-short" />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="account-avatar">
+                                    {profile?.avatarUrl ? (
+                                        <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
+                                    ) : (
+                                        initials
+                                    )}
+                                </div>
+                                <div className="account-profile-details">
+                                    <strong>{displayName}</strong>
+                                    <span className="account-email">{email}</span>
+                                    {isVerifiedBuyer && <span className="badge">Verified buyer</span>}
+                                </div>
+                            </>
+                        )}
                     </div>
                     <nav className="account-nav">
                         {navGroups.map((group) => (
@@ -164,6 +206,27 @@ const AccountShell: React.FC<AccountShellProps> = ({
                     </button>
                 </aside>
                 <div className="account-content">
+                    {pendingRecovery?.exists && (
+                        <div className="account-recovery-alert" role="alert">
+                            <div className="account-recovery-alert-text">
+                                <strong>Account recovery was requested ({pendingRecovery.publicId}).</strong>
+                                <span>
+                                    {pendingRecovery.status === 'Approved' && pendingRecovery.executeAfter
+                                        ? ` Two-factor authentication will be reset after ${new Date(pendingRecovery.executeAfter).toLocaleString()}.`
+                                        : ' The request is being reviewed by support.'}
+                                    {' '}If this wasn’t you, cancel it now.
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn account-recovery-alert-btn"
+                                onClick={handleCancelRecovery}
+                                disabled={isCancellingRecovery}
+                            >
+                                {isCancellingRecovery ? 'Cancelling…' : 'Cancel request'}
+                            </button>
+                        </div>
+                    )}
                     <div className="account-breadcrumbs">
                         <Link to="/">Home</Link>
                         <span>/</span>
