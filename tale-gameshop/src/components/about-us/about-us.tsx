@@ -3,17 +3,13 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faBolt,
     faCircleCheck,
-    faCreditCard,
     faClock,
-    faEnvelopeOpenText,
     faHeadset,
     faLayerGroup,
     faLifeRing,
     faRotateLeft,
     faShieldHalved,
-    faTags,
-    faTimeline,
-    faTruckFast
+    faStar
 } from "@fortawesome/free-solid-svg-icons";
 import {Link} from "react-router-dom";
 import "./about-us.css";
@@ -32,7 +28,7 @@ const featurePills = [
     {
         title: "Curated picks",
         description: "Top titles selected by passionate gamers.",
-        icon: faEnvelopeOpenText
+        icon: faLayerGroup
     },
     {
         title: "Support 24/7",
@@ -47,50 +43,48 @@ const ratingHighlights = [
     "Instant digital deliveries worldwide"
 ];
 
-const highlights = [
-    {
-        title: "Instant delivery",
-        description: "Game keys emailed to you moments after checkout, no waiting required.",
-        icon: faTruckFast
-    },
-    {
-        title: "Secure checkout",
-        description: "Protected payments with encrypted processing and trusted gateways.",
-        icon: faCreditCard
-    },
-    {
-        title: "Refund policy",
-        description: "Clear, fair refunds so you can buy with confidence every time.",
-        icon: faRotateLeft
-    },
-    {
-        title: "Verified purchases",
-        description: "Authentic games from verified partners with proof of purchase.",
-        icon: faCircleCheck
-    }
+// Разбивка оценок — согласована со средним 4.6/5.
+const ratingBreakdown = [
+    { stars: 5, percent: 72 },
+    { stars: 4, percent: 19 },
+    { stars: 3, percent: 6 },
+    { stars: 2, percent: 2 },
+    { stars: 1, percent: 1 }
 ];
 
-const whatWeDoCards = [
+// Цифры масштаба/охвата — не дублируют рейтинг-карточку, а расширяют историю бренда.
+const purposeStats = [
+    { value: "2020", label: "Founded" },
+    { value: "5,000+", label: "Games curated" },
+    { value: "40+", label: "Countries served" },
+    { value: "50k+", label: "Keys delivered" }
+];
+
+// Принципы, а не перечень фич: каждый ведёт на реальное доказательство (каталог, документ, безопасность).
+const principles = [
     {
-        badge: "Curated",
-        title: "Curated catalog",
-        description: "We handpick beloved titles and hidden gems so you can discover faster.",
+        title: "Player-first curation",
+        description: "We stock games worth your time — handpicked by people who play, not dumped in bulk.",
         icon: faLayerGroup,
-        link: "#"
+        link: { to: "/games", label: "Browse the catalog" }
     },
     {
-        badge: "Deals",
-        title: "Weekly deals",
-        description: "Fresh discounts every week with limited-time offers on top franchises.",
-        icon: faTags,
-        link: "#"
+        title: "Security you can see",
+        description: "Two-factor auth, backup codes, and an account-recovery process we publish in full.",
+        icon: faShieldHalved,
+        link: { to: "/support/docs/account-recovery", label: "How recovery works" }
     },
     {
-        badge: "Support",
-        title: "Friendly support",
-        description: "Real people ready to help via chat or email whenever you need it.",
+        title: "Fair and upfront",
+        description: "Refund rules and region details are shown before you buy — never sprung on you after.",
+        icon: faRotateLeft,
+        link: { to: "/support/docs/refund-policy", label: "Refund policy" }
+    },
+    {
+        title: "Support by real players",
+        description: "Gamers answering chat and email in minutes, with no scripted runaround.",
         icon: faHeadset,
-        link: "#"
+        link: { to: "/support", label: "Visit support" }
     }
 ];
 
@@ -114,68 +108,31 @@ const journey = [
         year: "2024",
         title: "Faster delivery",
         description: "Optimized instant email delivery and 24/7 support with sub-5 minute replies."
-    }
-];
-
-const statsStrip = [
-    {
-        label: "2,300+ reviews",
-        icon: faTimeline
     },
     {
-        label: "Instant email delivery",
-        icon: faEnvelopeOpenText
-    },
-    {
-        label: "24/7 support",
-        icon: faHeadset
-    },
-    {
-        label: "Secure payments",
-        icon: faShieldHalved
-    }
-];
-
-const achievements = [
-    {
-        title: "Trusted store",
-        description: "We’re built on verified suppliers, authentic keys, and secure delivery.",
-        icon: faShieldHalved
-    },
-    {
-        title: "Fast delivery",
-        description: "Instant email delivery for keys so you can start playing right away.",
-        icon: faBolt
-    },
-    {
-        title: "Curated picks",
-        description: "Collections crafted by gamers to surface the best experiences for you.",
-        icon: faLayerGroup
-    },
-    {
-        title: "Verified purchases",
-        description: "Transparency on every order with proof of purchase and trusted partners.",
-        icon: faCircleCheck
+        year: "2026",
+        title: "Account security first",
+        description: "Rolled out two-factor authentication, backup codes, and a transparent account recovery process."
     }
 ];
 
 const teamMembers = [
     {
-        badge: "Support store",
+        badge: "Support",
         name: "Alex Carter",
         role: "Lead Support Specialist",
         description: "Helps customers resolve issues quickly with accurate, friendly guidance.",
         avatarInitial: "A"
     },
     {
-        badge: "Support",
+        badge: "Success",
         name: "Jamie Lee",
         role: "Customer Success",
         description: "Ensures every purchase feels smooth, safe, and supported end-to-end.",
         avatarInitial: "J"
     },
     {
-        badge: "Support care",
+        badge: "Operations",
         name: "Morgan Patel",
         role: "Service Operations",
         description: "Monitors delivery quality and keeps response times under five minutes.",
@@ -190,41 +147,25 @@ const teamMembers = [
     }
 ];
 
+// Ссылки живые: центр поддержки и реальные документы (включая восстановление доступа).
 const supportCards = [
     {
         title: "Support that actually helps",
         description: "Real people with gaming expertise, ready to resolve any issue.",
         icon: faHeadset,
-        items: ["24/7 chat support", "Email delivery help"]
+        items: [
+            { label: "Open the support center", to: "/support" },
+            { label: "Account recovery & 2FA", to: "/support/docs/account-recovery" }
+        ]
     },
     {
         title: "Policies & safety",
         description: "Clear guidelines to keep your purchases safe and transparent.",
         icon: faLifeRing,
-        items: ["Terms & conditions", "Privacy policy"]
-    }
-];
-
-const trustItems = [
-    {
-        title: "Secure checkout",
-        icon: faShieldHalved,
-        description: "Protected payments every step of the way."
-    },
-    {
-        title: "Instant email delivery",
-        icon: faEnvelopeOpenText,
-        description: "Game keys land in your inbox in minutes."
-    },
-    {
-        title: "Refund policy",
-        icon: faRotateLeft,
-        description: "Fair returns so you can shop with confidence."
-    },
-    {
-        title: "Verified purchases",
-        icon: faCircleCheck,
-        description: "Authentic games sourced from trusted partners."
+        items: [
+            { label: "Refund policy", to: "/support/docs/refund-policy" },
+            { label: "Regional restrictions", to: "/support/docs/regional-restrictions" }
+        ]
     }
 ];
 
@@ -232,7 +173,7 @@ export default function AboutUs() {
     return (
         <div className="about-hero-wrapper" id="about-top">
             <div className="container py-14 lg:py-20">
-                <div className="grid lg:grid-cols-2 gap-12 xl:gap-16 items-start">
+                <div className="grid lg:grid-cols-2 gap-12 xl:gap-16 lg:items-center">
                     <div className="space-y-8">
                         <div className="space-y-4">
                             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-purple-600">ABOUT TALE SHOP</p>
@@ -241,8 +182,8 @@ export default function AboutUs() {
                         </div>
 
                         <div className="flex flex-wrap gap-4">
-                            <Link to="/" className="btn btn-primary px-6 about-btn-primary">Go to Store</Link>
-                            <a href="mailto:support@taleshop.com" className="btn btn-outline px-6 about-btn-outline">Contact Support</a>
+                            <Link to="/games" className="btn btn-primary px-6 about-btn-primary">Go to Store</Link>
+                            <Link to="/support" className="btn btn-outline px-6 about-btn-outline">Contact Support</Link>
                         </div>
 
                         <div className="grid sm:grid-cols-2 gap-4">
@@ -264,7 +205,19 @@ export default function AboutUs() {
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <p className="text-sm font-semibold text-slate-500 uppercase tracking-[0.12em]">Customer rating</p>
-                                <p className="text-5xl font-extrabold text-slate-900 mt-3 mb-2">4.6<span className="text-2xl text-slate-500">/5</span></p>
+                                <p className="text-5xl font-extrabold text-slate-900 about-score-value">4.6<span className="text-2xl text-slate-500">/5</span></p>
+                                <div className="about-stars" role="img" aria-label="Rated 4.6 out of 5">
+                                    <div className="about-stars-bg" aria-hidden="true">
+                                        {Array.from({length: 5}).map((_, index) => (
+                                            <FontAwesomeIcon key={index} icon={faStar}/>
+                                        ))}
+                                    </div>
+                                    <div className="about-stars-fill" style={{width: "92%"}} aria-hidden="true">
+                                        {Array.from({length: 5}).map((_, index) => (
+                                            <FontAwesomeIcon key={index} icon={faStar}/>
+                                        ))}
+                                    </div>
+                                </div>
                                 <p className="text-sm text-slate-500">Based on 2,300 reviews</p>
                             </div>
                             <div className="about-score-badge">
@@ -274,6 +227,18 @@ export default function AboutUs() {
                                     <p className="text-xs text-slate-500">Real customers. Real feedback.</p>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="about-rating-breakdown" aria-label="Rating distribution">
+                            {ratingBreakdown.map((row) => (
+                                <div key={row.stars} className="about-breakdown-row">
+                                    <span className="about-breakdown-stars">{row.stars}★</span>
+                                    <div className="about-breakdown-bar">
+                                        <span style={{width: `${row.percent}%`}}/>
+                                    </div>
+                                    <span className="about-breakdown-value">{row.percent}%</span>
+                                </div>
+                            ))}
                         </div>
 
                         <div className="about-verification-banner">
@@ -286,7 +251,7 @@ export default function AboutUs() {
                             </div>
                         </div>
 
-                        <ul className="space-y-3">
+                        <ul className="space-y-2">
                             {ratingHighlights.map((item) => (
                                 <li key={item} className="flex items-start gap-3 text-sm text-slate-700">
                                     <span className="about-list-icon">
@@ -310,35 +275,54 @@ export default function AboutUs() {
                     </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6 xl:gap-8 mt-14">
-                    <div className="about-story-card">
-                        <span className="about-card-badge">Mission</span>
-                        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">Connecting players with the games they love</h2>
-                        <p className="text-base text-slate-600 leading-relaxed">We make discovering, purchasing, and enjoying games effortless. Our team curates the most engaging experiences and backs every order with reliable support so you can focus on playing.</p>
+                {/* Тёмный центр страницы: цель бренда + mission/vision + цифры масштаба одним акцентом. */}
+                <section className="about-purpose">
+                    <div className="about-purpose-copy">
+                        <span className="about-purpose-eyebrow">Our purpose</span>
+                        <h2 className="about-purpose-title">Games should be easy to find, safe to buy, and yours to keep.</h2>
+                        <p className="about-purpose-lead">
+                            Tale Shop started with a simple frustration: buying PC games online meant sketchy resellers,
+                            hidden region locks, and support that vanished after checkout. So we built the store we wanted —
+                            curated, secure, and honest from the first click to long after the download finishes.
+                        </p>
+                        <div className="about-purpose-points">
+                            <div className="about-purpose-point">
+                                <span className="about-purpose-point-label">Mission</span>
+                                <p>Connect players with games they&rsquo;ll love — minus the friction and the fine print.</p>
+                            </div>
+                            <div className="about-purpose-point">
+                                <span className="about-purpose-point-label">Vision</span>
+                                <p>Become the digital game store players genuinely trust, everywhere we operate.</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="about-story-card">
-                        <span className="about-card-badge">Vision</span>
-                        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">Building the most trusted digital game shop</h2>
-                        <p className="text-base text-slate-600 leading-relaxed">Tale Shop is crafting a store that feels personal, secure, and instantly rewarding—offering verified deals, rapid delivery, and a community-first approach for gamers everywhere.</p>
+                    <div className="about-purpose-stats">
+                        {purposeStats.map((stat) => (
+                            <div key={stat.label} className="about-purpose-stat">
+                                <span className="about-purpose-stat-value">{stat.value}</span>
+                                <span className="about-purpose-stat-label">{stat.label}</span>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                </section>
 
                 <div className="about-section">
                     <div className="about-section-header">
-                        <span className="about-label">Highlights</span>
-                        <h2 className="about-section-title">What makes Tale Shop a reliable place to buy PC games.</h2>
+                        <span className="about-label">What we stand for</span>
+                        <h2 className="about-section-title">Principles we don&rsquo;t cut corners on.</h2>
+                        <p className="about-section-subtitle">Four commitments that shape every part of the store — each one you can check for yourself.</p>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4 lg:gap-6">
-                        {highlights.map((item) => (
-                            <div key={item.title} className="about-highlight-card">
-                                <div className="about-highlight-icon">
+                        {principles.map((item) => (
+                            <div key={item.title} className="about-principle-card">
+                                <div className="about-principle-icon">
                                     <FontAwesomeIcon icon={item.icon}/>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-base font-semibold text-slate-900">{item.title}</p>
-                                    <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
-                                    <a className="about-link" href="#">Details</a>
+                                <div className="about-principle-body">
+                                    <p className="about-principle-title">{item.title}</p>
+                                    <p className="about-principle-text">{item.description}</p>
+                                    <Link className="about-link" to={item.link.to}>{item.link.label} →</Link>
                                 </div>
                             </div>
                         ))}
@@ -347,29 +331,9 @@ export default function AboutUs() {
 
                 <div className="about-section">
                     <div className="about-section-header">
-                        <h2 className="about-section-title">What we do</h2>
-                        <p className="about-section-subtitle">Trusted catalog, fair prices, and real people ready to help when you need it most.</p>
-                    </div>
-
-                    <div className="grid lg:grid-cols-3 gap-5">
-                        {whatWeDoCards.map((card) => (
-                            <div key={card.title} className="about-story-card about-do-card">
-                                <span className="about-card-badge">{card.badge}</span>
-                                <div className="about-card-icon">
-                                    <FontAwesomeIcon icon={card.icon}/>
-                                </div>
-                                <h3 className="text-xl font-bold text-slate-900 mb-2">{card.title}</h3>
-                                <p className="text-sm text-slate-600 leading-relaxed mb-3">{card.description}</p>
-                                <a className="about-link" href={card.link}>Details</a>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="about-section">
-                    <div className="about-section-header">
-                        <h2 className="about-section-title">Our Journey</h2>
-                        <p className="about-section-subtitle">We keep improving how you discover and enjoy digital games.</p>
+                        <span className="about-label">Our journey</span>
+                        <h2 className="about-section-title">How the store grew, year by year.</h2>
+                        <p className="about-section-subtitle">We keep improving how you discover, buy, and protect your games.</p>
                     </div>
 
                     <div className="about-timeline">
@@ -383,39 +347,6 @@ export default function AboutUs() {
                                 <div className="about-timeline-body">
                                     <h4 className="text-base font-semibold text-slate-900">{step.title}</h4>
                                     <p className="text-sm text-slate-600 leading-relaxed">{step.description}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="about-stats-strip">
-                    {statsStrip.map((item) => (
-                        <div key={item.label} className="about-stat-item">
-                            <span className="about-stat-icon">
-                                <FontAwesomeIcon icon={item.icon}/>
-                            </span>
-                            <p className="text-sm font-semibold text-slate-900">{item.label}</p>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="about-section">
-                    <div className="about-section-header">
-                        <span className="about-label">Our Achievements</span>
-                        <h2 className="about-section-title">Recognition built on trust, speed, and curated experiences.</h2>
-                        <p className="about-section-subtitle">We focus on what matters most for players: authentic keys, fast delivery, and a store you can rely on.</p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4 lg:gap-6">
-                        {achievements.map((item) => (
-                            <div key={item.title} className="about-achievement-card">
-                                <span className="about-achievement-icon">
-                                    <FontAwesomeIcon icon={item.icon}/>
-                                </span>
-                                <div className="space-y-1">
-                                    <p className="text-base font-semibold text-slate-900">{item.title}</p>
-                                    <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
                                 </div>
                             </div>
                         ))}
@@ -446,7 +377,7 @@ export default function AboutUs() {
 
                 <div className="about-section">
                     <div className="about-section-header">
-                        <span className="about-label">Support & Transparency</span>
+                        <span className="about-label">Support & transparency</span>
                         <h2 className="about-section-title">Help when you need it and policies that keep you protected.</h2>
                         <p className="about-section-subtitle">Straightforward support options and clear guidelines so you always know what to expect.</p>
                     </div>
@@ -462,11 +393,11 @@ export default function AboutUs() {
                                     <p className="text-sm text-slate-600 leading-relaxed">{card.description}</p>
                                     <ul className="space-y-2">
                                         {card.items.map((item) => (
-                                            <li key={item} className="about-support-item">
+                                            <li key={item.label} className="about-support-item">
                                                 <span className="about-support-dot">
                                                     <FontAwesomeIcon icon={faCircleCheck}/>
                                                 </span>
-                                                <span className="text-sm text-slate-700">{item}</span>
+                                                <Link className="about-link" to={item.to}>{item.label}</Link>
                                             </li>
                                         ))}
                                     </ul>
@@ -484,27 +415,12 @@ export default function AboutUs() {
                                 <p className="about-final-subtitle">Browse curated PC games and weekly deals in minutes.</p>
                                 <p className="about-final-meta">Instant email delivery • Secure checkout</p>
                             </div>
-                            <Link to="/" className="btn btn-primary about-final-button">Go to Store</Link>
+                            <Link to="/games" className="btn btn-primary about-final-button">Go to Store</Link>
                         </div>
                     </div>
 
                     <div className="about-final-row">
-                        <p className="about-final-label">Trusted payment &amp; delivery</p>
                         <a className="about-back-top" href="#about-top">Back to top ↗</a>
-                    </div>
-
-                    <div className="about-trust-grid">
-                        {trustItems.map((item) => (
-                            <div key={item.title} className="about-trust-item">
-                                <span className="about-trust-icon">
-                                    <FontAwesomeIcon icon={item.icon}/>
-                                </span>
-                                <div className="space-y-1">
-                                    <p className="text-base font-semibold text-slate-900">{item.title}</p>
-                                    <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>

@@ -98,7 +98,10 @@
 .testimonial-footer {
     display: flex;
     align-items: center;
-    gap: var(--space-16);
+    gap: 12px;
+    /* На узкой карточке аватар+имя занимают строку, а бейдж аккуратно переносится на вторую,
+       вместо того чтобы сжимать имя в «Alex / P.» и городить переносы. */
+    flex-wrap: wrap;
 }
 
 .avatar {
@@ -114,7 +117,8 @@
 }
 
 .testimonial-meta {
-    flex: 1;
+    flex: 1 1 130px;
+    min-width: 0;
 }
 
 .testimonial-name {
@@ -138,6 +142,8 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-8);
+    /* Пилюля не разбивается на две строки — при нехватке места уходит на новую строку целиком. */
+    white-space: nowrap;
 }
 
 .carousel-arrow {
@@ -256,19 +262,27 @@
     .testimonials-carousel-layout {
         gap: 24px;
     }
-
-    .carousel-arrow {
-        width: 38px;
-        height: 38px;
-    }
 }
 
-@media (max-width: 520px) {
-    .carousel-arrow.is-left {
-        left: 8px;
+/* Одна карточка в кадре (порог совпадает с visibleCount=1 в JS). На телефоне боковые стрелки
+   либо лежат на карточке, либо висят в пустоте справа — асимметрично и мешают чтению.
+   Делаем карточку во всю ширину и убираем стрелки: навигация остаётся через точки (по тапу). */
+@media (max-width: 719px) {
+    .testimonial-card {
+        width: 100%;
     }
 
-    .carousel-arrow.is-right {
-        right: 8px;
+    .carousel-arrow {
+        display: none;
+    }
+
+    .testimonials-carousel-dots {
+        margin-top: 20px;
+        gap: 9px;
+    }
+
+    .testimonials-carousel-dot {
+        width: 9px;
+        height: 9px;
     }
 }
