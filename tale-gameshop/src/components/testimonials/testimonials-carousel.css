@@ -183,22 +183,54 @@
 
 .testimonials-carousel-dots {
     display: flex;
-    gap: 10px;
+    gap: 4px;
     justify-content: center;
-    margin-top: 16px;
+    margin-top: 12px;
 }
 
+/* Кнопка — это увеличенная область для попадания пальцем/курсором, сама точка рисуется
+   через ::before, поэтому её можно уменьшать/растягивать независимо от зоны нажатия. */
 .testimonials-carousel-dot {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.testimonials-carousel-dot::before {
+    content: "";
     width: 8px;
     height: 8px;
     border-radius: 999px;
-    border: none;
-    background: rgba(124, 58, 237, 0.18);
-    cursor: pointer;
+    background: rgba(124, 58, 237, 0.22);
+    transition: width 200ms ease, background 200ms ease;
 }
 
-.testimonials-carousel-dot.is-active {
-    background: rgba(124, 58, 237, 0.9);
+.testimonials-carousel-dot:hover::before {
+    background: rgba(124, 58, 237, 0.45);
+}
+
+/* Активная точка вытягивается в пилюлю и становится насыщенно-фиолетовой —
+   так сразу понятно, какой слайд выбран. */
+.testimonials-carousel-dot.is-active::before {
+    width: 24px;
+    background: rgba(124, 58, 237, 0.95);
+}
+
+.testimonials-carousel-dot:focus-visible {
+    outline: none;
+}
+
+.testimonials-carousel-dot:focus-visible::before {
+    outline: 2px solid rgba(124, 58, 237, 0.5);
+    outline-offset: 3px;
 }
 
 .testimonials-empty {
@@ -277,12 +309,23 @@
     }
 
     .testimonials-carousel-dots {
-        margin-top: 20px;
-        gap: 9px;
+        margin-top: 16px;
+        gap: 6px;
     }
 
+    /* На телефоне точки — единственная навигация (стрелки скрыты), поэтому зону тапа
+       расширяем до 44px, а сами точки делаем крупнее и с более контрастной активной. */
     .testimonials-carousel-dot {
-        width: 9px;
-        height: 9px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .testimonials-carousel-dot::before {
+        width: 10px;
+        height: 10px;
+    }
+
+    .testimonials-carousel-dot.is-active::before {
+        width: 30px;
     }
 }
