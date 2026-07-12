@@ -39,7 +39,7 @@ public class SupportChatController : ControllerBase
             var userContext = User.Identity?.IsAuthenticated == true
                 ? SupportUserContext.FromClaims(User)
                 : null;
-            var response = await _chatService.CreateSessionAsync(userContext, request);
+            var response = await _chatService.CreateSessionAsync(userContext, request, GetClientIp());
             return Ok(response);
         }
         catch (SupportChatRequestException ex)
@@ -95,7 +95,24 @@ public class SupportChatController : ControllerBase
             var userContext = User.Identity?.IsAuthenticated == true
                 ? SupportUserContext.FromClaims(User)
                 : null;
-            var result = await _chatService.AddUserMessageAsync(sessionId, userContext, request.Text);
+            var result = await _chatService.AddUserMessageAsync(sessionId, userContext, request.Text, GetClientIp());
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
+    [HttpPost("sessions/{sessionId}/contact")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ChatSessionDto>> UpdateContact(
+        [FromRoute] string sessionId,
+        [FromBody] UpdateChatContactRequest request)
+    {
+        try
+        {
+            var result = await _chatService.UpdateContactAsync(sessionId, request);
             return Ok(result);
         }
         catch (SupportChatRequestException ex)
@@ -123,6 +140,7 @@ public class SupportChatController : ControllerBase
                 sessionId,
                 userContext,
                 request.Text,
+                GetClientIp(),
                 async chunk =>
                 {
                     var payload = JsonSerializer.Serialize(new { text = chunk });
@@ -143,5 +161,22 @@ public class SupportChatController : ControllerBase
             await Response.Body.FlushAsync(cancellationToken);
             _streamLogger.LogWarning("Support chat stream failed. SessionId={SessionId} Error={Error}", sessionId, ex.Message);
         }
+    }
+
+    private string GetClientIp()
+    {
+        // Behind Cloudflare the true client IP is in CF-Connecting-IP; behind nginx it's the first
+        // entry of X-Forwarded-For. Fall back to the socket address.
+        var cfIp = Request.Headers["CF-Connecting-IP"].ToString();
+        if (!string.IsNullOrWhiteSpace(cfIp))
+        {
+            return cfIp.Trim();
+        }
+        var forwarded = Request.Headers["X-Forwarded-For"].ToString();
+        if (!string.IsNullOrWhiteSpace(forwarded))
+        {
+            return forwarded.Split(',')[0].Trim();
+        }
+        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 }

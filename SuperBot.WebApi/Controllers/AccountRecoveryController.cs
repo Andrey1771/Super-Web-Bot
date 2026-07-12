@@ -66,7 +66,12 @@ namespace SuperBot.WebApi.Controllers
 
         private string GetClientIp()
         {
-            // За nginx реальный адрес приходит в X-Forwarded-For (первый в списке).
+            // За Cloudflare реальный IP приходит в CF-Connecting-IP; за nginx — первый в X-Forwarded-For.
+            var cfIp = Request.Headers["CF-Connecting-IP"].ToString();
+            if (!string.IsNullOrWhiteSpace(cfIp))
+            {
+                return cfIp.Trim();
+            }
             var forwarded = Request.Headers["X-Forwarded-For"].ToString();
             if (!string.IsNullOrWhiteSpace(forwarded))
             {

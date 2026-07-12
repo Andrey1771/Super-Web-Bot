@@ -16,6 +16,7 @@ export type ChatMessage = {
     confidence?: number;
     escalationReason?: string;
     toolCall?: string;
+    handoff?: boolean;
   };
 };
 
@@ -31,6 +32,11 @@ export type ChatSession = {
   lastMessageAt?: string;
   tags: string[];
   priority: ChatPriority;
+  category?: string;
+  language?: string;
+  summary?: string;
+  escalationReason?: string;
+  orderId?: string;
 };
 
 export type ChatSessionDetail = {
@@ -40,6 +46,7 @@ export type ChatSessionDetail = {
 
 export type ChatConfig = {
   streamingEnabled: boolean;
+  turnstileSiteKey?: string;
 };
 
 export type ChatSessionListResponse = {

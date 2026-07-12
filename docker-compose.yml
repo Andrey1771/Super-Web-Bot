@@ -19,7 +19,7 @@ services:
       # Имя переменной должно совпадать с конфигом, который реально читает код: ConnectionStrings:MongoDb
       - ConnectionStrings__MongoDb=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
       # Keycloak: issuer (внешний, как видит браузер) и адрес метаданных (внутренний, как видит бэкенд)
-      - Keycloak__Uri=http://localhost:8088
+      - Keycloak__Uri=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}
       - Keycloak__Realm=TaleShop
       - Keycloak__Audience=account
       - Keycloak__MetadataAddress=http://keycloak:8080/realms/TaleShop/.well-known/openid-configuration
@@ -27,17 +27,35 @@ services:
       - Keycloak__Admin__BaseUrl=http://keycloak:8080
       - Keycloak__Admin__Realm=TaleShop
       - Keycloak__Admin__ClientId=tale-shop-admin
-      - Keycloak__Admin__ClientSecret=tale-shop-admin-secret
+      # Secret comes from .env (must match the client secret in keycloak/import/TaleShop-realm.json)
+      - Keycloak__Admin__ClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET}
       - Keycloak__Admin__PublicClientId=tale-shop-app
       # Внешний URL, куда Keycloak вернёт пользователя после действия из письма (2FA/verify/reset)
-      - Keycloak__Admin__SecurityRedirectUri=http://localhost/account/security
+      - Keycloak__Admin__SecurityRedirectUri=${PUBLIC_URL:-http://localhost}/account/security
       # Внешний (браузерный) адрес account-консоли Keycloak для управления 2FA
-      - Keycloak__Admin__AccountConsoleUrl=http://localhost:8088/realms/TaleShop/account
+      - Keycloak__Admin__AccountConsoleUrl=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}/realms/TaleShop/account
       # Восстановление доступа: письма шлём через mailhog, ссылки в письмах — на внешний адрес сайта
       - Recovery__SmtpHost=mailhog
       - Recovery__SmtpPort=1025
-      - Recovery__PublicBaseUrl=http://localhost
+      - Recovery__PublicBaseUrl=${PUBLIC_URL:-http://localhost}
       - Recovery__WaitingPeriodHours=72
+      - SupportChat__OllamaBaseUrl=http://host.docker.internal:11434
+      # Public site URLs — set PUBLIC_URL in .env to your real domain (defaults to localhost for dev).
+      - MainUrl=${PUBLIC_URL:-http://localhost}
+      - FrontendConfiguration__Uri=${PUBLIC_URL:-http://localhost}
+      - JwtSettings__Issuer=${PUBLIC_URL:-http://localhost}
+      - JwtSettings__Audience=${PUBLIC_URL:-http://localhost}
+      - BotConfiguration__BotWebhookUrl=${PUBLIC_URL:-http://localhost}/api/Telegram
+      # Application secrets — sourced from .env (gitignored), never from committed appsettings.
+      - BotConfiguration__BotToken=${BOT_TOKEN}
+      - JwtSettings__SecretKey=${JWT_SECRET}
+      - Stripe__SecretKey=${STRIPE_SECRET_KEY}
+      - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+      # Cloudflare Turnstile (bot check on chat session creation). Empty = disabled.
+      - SupportChat__TurnstileSiteKey=${TURNSTILE_SITE_KEY}
+      - SupportChat__TurnstileSecretKey=${TURNSTILE_SECRET_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "7002:7002"
     volumes:
@@ -104,8 +122,8 @@ services:
     command: start-dev --import-realm --features=recovery-codes
     environment:
       # Учётка админ-консоли Keycloak (master realm) — http://localhost:8088/admin
-      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
-      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN:-admin}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
       # Публичный адрес (issuer токенов) — как его видит браузер
       - KC_HOSTNAME=http://localhost:8088
       # JWKS/backchannel отдаются по адресу запроса → бэкенд из контейнера получит keycloak:8080

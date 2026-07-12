@@ -406,3 +406,13 @@ Thumbs.db
 
 # Local dev TLS certificates (mkcert)
 /tale-gameshop/certs/
+
+# Secrets — never commit real credentials. Use .env (docker) or `dotnet user-secrets` (local).
+# Only the *.example templates are tracked.
+.env
+.env.*
+!.env.example
+# Local per-machine config overrides holding secrets
+**/appsettings.*.Local.json
+**/appsettings.Local.json
+secrets.json

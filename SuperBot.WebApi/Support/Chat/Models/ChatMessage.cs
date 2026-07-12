@@ -33,6 +33,9 @@ public class ChatMessageMetadata
     public string? EscalationReason { get; set; }
 
     public string? ToolCall { get; set; }
+
+    // Marks the AI message that hands the conversation over to a human, so the UI can render a banner.
+    public bool Handoff { get; set; }
 }
 
 public enum ChatMessageRole

@@ -27,6 +27,7 @@ export const createChatSession = async (payload: {
   email?: string;
   orderId?: string;
   locale?: string;
+  turnstileToken?: string;
 }): Promise<{ sessionId: string; status: string }> => {
   const response = await apiClient().post("/api/support/chat/sessions", payload);
   return response.data;
@@ -36,6 +37,14 @@ export const getChatSession = async (sessionId: string): Promise<ChatSessionDeta
   const response = await apiClient().get(`/api/support/chat/sessions/${sessionId}`);
   const detail = ensureObject<ChatSessionDetail>(response.data, 'chat session');
   return { ...detail, messages: ensureArray<ChatMessage>(detail.messages) };
+};
+
+export const updateChatContact = async (
+  sessionId: string,
+  payload: { email?: string; orderId?: string }
+): Promise<ChatSessionDetail["session"]> => {
+  const response = await apiClient().post(`/api/support/chat/sessions/${sessionId}/contact`, payload);
+  return response.data;
 };
 
 export const getChatMessages = async (

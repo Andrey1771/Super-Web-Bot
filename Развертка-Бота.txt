@@ -1,4 +1,4 @@
-scp -r C:\projects\Super-Bot\SuperBot.BotApi\publish root@185.105.91.233:/superbot-bot
+scp -r C:\projects\Super-Bot\SuperBot.BotApi\publish root@YOUR_SERVER_IP:/superbot-bot
 
 
 

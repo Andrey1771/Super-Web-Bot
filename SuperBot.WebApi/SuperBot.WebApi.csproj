@@ -4,6 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Local dev secrets live outside the repo: `dotnet user-secrets set "JwtSettings:SecretKey" "..."` -->
+    <UserSecretsId>superbot-webapi-secrets</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

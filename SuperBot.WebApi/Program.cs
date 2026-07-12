@@ -168,6 +168,10 @@ builder.Services.Configure<SuperBot.WebApi.Recovery.RecoveryOptions>(builder.Con
 builder.Services.AddScoped<SuperBot.WebApi.Recovery.Services.RecoveryMailService>();
 builder.Services.AddScoped<SuperBot.WebApi.Recovery.Services.IRecoveryRequestService, SuperBot.WebApi.Recovery.Services.RecoveryRequestService>();
 builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.IOllamaChatClient, SuperBot.WebApi.Support.Chat.Services.OllamaChatClient>();
+builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeBase, SuperBot.WebApi.Support.Chat.Services.SupportKnowledgeBase>();
+builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ILlmConcurrencyLimiter, SuperBot.WebApi.Support.Chat.Services.LlmConcurrencyLimiter>();
+builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.ITurnstileVerifier, SuperBot.WebApi.Support.Chat.Services.TurnstileVerifier>();
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportNotificationService, SuperBot.WebApi.Support.Chat.Services.SupportNotificationService>();
 builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportChatService, SuperBot.WebApi.Support.Chat.Services.SupportChatService>();
 
 

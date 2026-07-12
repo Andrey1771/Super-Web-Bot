@@ -69,17 +69,70 @@
   justify-content: space-between;
 }
 
+.support-chat__header--draggable {
+  cursor: move;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.support-chat__header--draggable:active {
+  cursor: grabbing;
+}
+
+/* Header action buttons keep their own cursor and don't start a drag. */
+.support-chat__header--draggable button {
+  cursor: pointer;
+}
+
 .support-chat__title {
   font-weight: 700;
 }
 
 .support-chat__status {
   font-size: 12px;
-  opacity: 0.9;
+  opacity: 0.95;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.support-chat__status.offline {
-  color: #ffe7ef;
+.support-chat__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7CFFCB;
+  box-shadow: 0 0 0 0 rgba(124, 255, 203, 0.7);
+}
+
+.support-chat__status--online .support-chat__status-dot {
+  animation: support-chat-pulse 2s infinite;
+}
+
+.support-chat__status--queue .support-chat__status-dot {
+  background: #ffd66b;
+  animation: support-chat-pulse-amber 1.4s infinite;
+}
+
+.support-chat__status--assigned .support-chat__status-dot {
+  background: #7CFFCB;
+}
+
+.support-chat__status--closed .support-chat__status-dot {
+  background: #ffb4c6;
+  box-shadow: none;
+}
+
+@keyframes support-chat-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(124, 255, 203, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(124, 255, 203, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(124, 255, 203, 0); }
+}
+
+@keyframes support-chat-pulse-amber {
+  0% { box-shadow: 0 0 0 0 rgba(255, 214, 107, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 214, 107, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 214, 107, 0); }
 }
 
 .support-chat__header-actions button {
@@ -128,10 +181,42 @@
   font-size: 14px;
 }
 
+.support-chat__quick-replies-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b6b82;
+  margin: 6px 0 8px;
+}
+
 .support-chat__quick-replies {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.support-chat__turnstile {
+  margin-top: 14px;
+  min-height: 0;
+}
+
+/* Our own compact failure state, replacing Cloudflare's raw error widget. */
+.support-chat__turnstile-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff3f6;
+  border: 1px solid #ffd3df;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: #b73b5c;
+}
+
+.support-chat__turnstile-error .btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
 }
 
 .support-chat__chip {
@@ -209,6 +294,42 @@
   margin-left: auto;
 }
 
+.support-chat__bubble--handoff {
+  background: #fff6e6;
+  color: #7a521a;
+  border: 1px solid #ffe0a6;
+}
+
+/* Compact Markdown inside assistant/agent bubbles. */
+.support-chat__markdown p {
+  margin: 0 0 6px;
+}
+
+.support-chat__markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.support-chat__markdown ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.support-chat__markdown li {
+  margin: 2px 0;
+}
+
+.support-chat__markdown a {
+  color: #5a2cff;
+  text-decoration: underline;
+}
+
+.support-chat__markdown code {
+  background: rgba(90, 44, 255, 0.1);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
 .support-chat__timestamp {
   font-size: 10px;
   color: #9b9bb2;
@@ -218,6 +339,84 @@
 .support-chat__typing {
   font-size: 12px;
   color: #7c74a8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.support-chat__typing-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.support-chat__typing-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #b3a5e6;
+  animation: support-chat-typing 1.2s infinite ease-in-out;
+}
+
+.support-chat__typing-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.support-chat__typing-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes support-chat-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Handoff / queue banner + contact capture */
+.support-chat__handoff {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #f3efff, #fbfaff);
+  border: 1px solid rgba(109, 59, 255, 0.18);
+  border-radius: var(--radius-md);
+}
+
+.support-chat__handoff-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #4326a6;
+  margin-bottom: 4px;
+}
+
+.support-chat__handoff p {
+  font-size: 13px;
+  color: #55506b;
+  margin: 0;
+}
+
+.support-chat__contact {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.support-chat__contact-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #3a3552;
+}
+
+.support-chat__contact input {
+  width: 100%;
+  border: 1px solid rgba(109, 59, 255, 0.22);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.support-chat__contact-sent {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #1f7a5a;
+  font-weight: 600;
 }
 
 .support-chat__footer {

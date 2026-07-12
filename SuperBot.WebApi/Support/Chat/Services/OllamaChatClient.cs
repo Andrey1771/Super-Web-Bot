@@ -136,5 +136,13 @@ public class OllamaToolCallFunction
 {
     public string Name { get; set; } = string.Empty;
 
-    public string Arguments { get; set; } = string.Empty;
+    // Ollama returns tool-call arguments as a JSON object (not a string), so capture it raw
+    // and expose the serialized JSON via <see cref="ArgumentsJson"/>.
+    public JsonElement? Arguments { get; set; }
+
+    [JsonIgnore]
+    public string ArgumentsJson =>
+        Arguments is { ValueKind: not JsonValueKind.Undefined and not JsonValueKind.Null }
+            ? Arguments.Value.GetRawText()
+            : string.Empty;
 }

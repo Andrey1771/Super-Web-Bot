@@ -7,6 +7,9 @@ public class CreateChatSessionRequest
     public string? OrderId { get; set; }
 
     public string? Locale { get; set; }
+
+    // Cloudflare Turnstile token (present only when the widget is enabled).
+    public string? TurnstileToken { get; set; }
 }
 
 public class CreateChatSessionResponse
@@ -39,6 +42,16 @@ public class ChatSessionDto
     public List<string> Tags { get; set; } = new();
 
     public string Priority { get; set; } = "normal";
+
+    public string? Category { get; set; }
+
+    public string? Language { get; set; }
+
+    public string? Summary { get; set; }
+
+    public string? EscalationReason { get; set; }
+
+    public string? OrderId { get; set; }
 }
 
 public class ChatSessionDetailDto
@@ -106,6 +119,15 @@ public class ChatMessageMetadataDto
     public string? EscalationReason { get; set; }
 
     public string? ToolCall { get; set; }
+
+    public bool Handoff { get; set; }
+}
+
+public class UpdateChatContactRequest
+{
+    public string? Email { get; set; }
+
+    public string? OrderId { get; set; }
 }
 
 public class AddChatMessageRequest
@@ -123,6 +145,9 @@ public class AddChatMessageResponse
 public class ChatConfigDto
 {
     public bool StreamingEnabled { get; set; }
+
+    // Public Turnstile site key for the frontend to render the widget; null/empty = disabled.
+    public string? TurnstileSiteKey { get; set; }
 }
 
 public class ChatAgentMessageRequest

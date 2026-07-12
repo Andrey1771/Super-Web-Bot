@@ -78,7 +78,7 @@
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
       "clientAuthenticatorType": "client-secret",
-      "secret": "tale-shop-admin-secret"
+      "secret": "local-dev-admin-secret-change-me"
     }
   ],
   "users": [

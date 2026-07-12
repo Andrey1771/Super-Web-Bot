@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ChatLauncherButton from "./ChatLauncherButton";
 import ChatWindow from "./ChatWindow";
 import "./support-chat.css";
@@ -10,14 +10,15 @@ import {
   getChatSession,
   sendChatMessage,
   streamChatMessage,
+  updateChatContact,
 } from "../../api/supportChatApi";
+import { detectSupportLang, getSupportDict } from "./i18n";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IKeycloakService } from "../../iterfaces/i-keycloak-service";
 
 const SESSION_KEY = "tale_support_chat_session";
 const HISTORY_KEY = "tale_support_chat_history";
-const LEAD_KEY = "tale_support_chat_lead";
 
 const ChatWidget: React.FC = () => {
   const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
@@ -30,8 +31,13 @@ const ChatWidget: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [streamingEnabled, setStreamingEnabled] = useState(true);
-  const [leadForm, setLeadForm] = useState({ email: "", orderId: "", show: false });
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | undefined>();
+  const [turnstileToken, setTurnstileToken] = useState<string | undefined>();
+  const [contactForm, setContactForm] = useState({ email: "", orderId: "", sent: false });
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
+
+  const lang = useMemo(detectSupportLang, []);
+  const dict = useMemo(() => getSupportDict(lang), [lang]);
 
   const isAuthenticated = Boolean(keycloakService.keycloak?.authenticated);
 
@@ -58,21 +64,10 @@ const ChatWidget: React.FC = () => {
     [isOpen]
   );
 
-  const initializeLeadCapture = useCallback(() => {
-    if (isAuthenticated) {
-      const token = keycloakService.keycloak?.tokenParsed as { email?: string } | undefined;
-      setLeadForm((prev) => ({
-        ...prev,
-        email: token?.email ?? prev.email,
-        show: false,
-      }));
-      return;
-    }
-    const leadCaptured = localStorage.getItem(LEAD_KEY);
-    if (!leadCaptured) {
-      setLeadForm((prev) => ({ ...prev, show: true }));
-    }
-  }, [isAuthenticated, keycloakService.keycloak]);
+  // Signed-in users: quietly attach their account email to the session (no upfront form).
+  const authedEmail = isAuthenticated
+    ? (keycloakService.keycloak?.tokenParsed as { email?: string } | undefined)?.email
+    : undefined;
 
   const loadSession = useCallback(
     async (sessionId: string) => {
@@ -91,9 +86,11 @@ const ChatWidget: React.FC = () => {
 
   useEffect(() => {
     fetchChatConfig()
-      .then((config) => setStreamingEnabled(config.streamingEnabled))
+      .then((config) => {
+        setStreamingEnabled(config.streamingEnabled);
+        setTurnstileSiteKey(config.turnstileSiteKey || undefined);
+      })
       .catch(() => setStreamingEnabled(false));
-    initializeLeadCapture();
 
     // История из localStorage может быть повреждена (однажды туда попал HTML
     // из окна рестарта бэкенда и ронял весь сайт) — валидируем и самоочищаемся.
@@ -114,7 +111,7 @@ const ChatWidget: React.FC = () => {
     if (sessionId) {
       loadSession(sessionId);
     }
-  }, [initializeLeadCapture, loadSession, sessionId]);
+  }, [loadSession, sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -144,17 +141,23 @@ const ChatWidget: React.FC = () => {
       return sessionId;
     }
 
+    if (turnstileSiteKey && !turnstileToken) {
+      // Bot check enabled but not solved yet — surface a friendly message instead of a 403.
+      throw new Error("turnstile-pending");
+    }
+
     const payload = {
-      email: leadForm.email || undefined,
-      orderId: leadForm.orderId || undefined,
-      locale: navigator.language,
+      // Single language source: the site's active locale (<html lang>), same signal the widget uses.
+      email: authedEmail || undefined,
+      locale: document.documentElement.lang || "en",
+      turnstileToken: turnstileToken || undefined,
     };
     const response = await createChatSession(payload);
     localStorage.setItem(SESSION_KEY, response.sessionId);
     setSessionId(response.sessionId);
     await loadSession(response.sessionId);
     return response.sessionId;
-  }, [leadForm.email, leadForm.orderId, loadSession, sessionId]);
+  }, [authedEmail, loadSession, sessionId, turnstileSiteKey, turnstileToken]);
 
   const handleSend = useCallback(async (overrideText?: string | null) => {
     const rawText = typeof overrideText === "string" ? overrideText : inputValue;
@@ -244,26 +247,43 @@ const ChatWidget: React.FC = () => {
       setSession(response.session);
     } catch (err) {
       console.error(err);
-      setError("Something went wrong. Retry or talk to a human.");
+      if (err instanceof Error && err.message === "turnstile-pending") {
+        setInputValue(text); // restore the message; the bot check is still resolving
+        setError(dict.verifying);
+      } else {
+        setError(dict.errorGeneric);
+      }
     } finally {
       setIsTyping(false);
     }
-  }, [ensureSession, inputValue, loadSession, streamingEnabled]);
+  }, [dict.errorGeneric, dict.verifying, ensureSession, inputValue, loadSession, streamingEnabled]);
 
   const handleQuickReply = useCallback(
     (value: string) => {
-      const payload =
-        value === "Talk to a human" ? "I'd like to talk to a human support agent." : value;
+      const payload = value === dict.talkToHuman ? dict.talkToHumanMessage : value;
       setInputValue(payload);
       handleSend(payload);
     },
-    [handleSend]
+    [dict.talkToHuman, dict.talkToHumanMessage, handleSend]
   );
 
-  const handleLeadSubmit = useCallback(() => {
-    setLeadForm((prev) => ({ ...prev, show: false }));
-    localStorage.setItem(LEAD_KEY, "1");
-  }, []);
+  const handleContactSubmit = useCallback(async () => {
+    if (!sessionId) {
+      return;
+    }
+    const email = contactForm.email.trim() || undefined;
+    const orderId = contactForm.orderId.trim() || undefined;
+    if (!email && !orderId) {
+      return;
+    }
+    try {
+      const updated = await updateChatContact(sessionId, { email, orderId });
+      setSession(updated);
+      setContactForm((prev) => ({ ...prev, sent: true }));
+    } catch (err) {
+      console.error(err);
+    }
+  }, [contactForm.email, contactForm.orderId, sessionId]);
 
   const onToggle = () => {
     setIsOpen((prev) => !prev);
@@ -284,9 +304,12 @@ const ChatWidget: React.FC = () => {
         onInputChange={setInputValue}
         onSend={handleSend}
         onQuickReply={handleQuickReply}
-        leadForm={leadForm}
-        onLeadChange={(field, value) => setLeadForm((prev) => ({ ...prev, [field]: value }))}
-        onLeadSubmit={handleLeadSubmit}
+        lang={lang}
+        turnstileSiteKey={sessionId ? undefined : turnstileSiteKey}
+        onTurnstileToken={setTurnstileToken}
+        contactForm={contactForm}
+        onContactChange={(field, value) => setContactForm((prev) => ({ ...prev, [field]: value }))}
+        onContactSubmit={handleContactSubmit}
         error={error}
         onRetry={() => handleSend(lastUserMessage)}
       />

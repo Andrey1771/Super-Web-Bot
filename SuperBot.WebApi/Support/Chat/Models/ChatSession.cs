@@ -36,6 +36,15 @@ public class ChatSession
     public ChatPriority Priority { get; set; } = ChatPriority.Normal;
 
     public string? EscalationReason { get; set; }
+
+    // Detected intent category (from the handoff tool call or the support taxonomy).
+    public string? Category { get; set; }
+
+    // Best-effort detected language of the customer (e.g. "ru", "en"), so an agent knows what to expect.
+    public string? Language { get; set; }
+
+    // AI-generated conversation summary captured at escalation time for the specialist.
+    public string? Summary { get; set; }
 }
 
 public enum ChatSessionStatus

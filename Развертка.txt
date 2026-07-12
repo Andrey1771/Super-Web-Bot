@@ -16,7 +16,7 @@ sudo dnf install dotnet-sdk-9.0
 
 *!->*sudo dnf install -y dotnet-sdk-8.0
 
-3) Копирование файлов проекта scp -r C:\projects\Super-Bot\publish root@159.255.34.79:/superbot
+3) Копирование файлов проекта scp -r C:\projects\Super-Bot\publish root@YOUR_SERVER_IP:/superbot
 
 4) Настройка сервера nginx
 
@@ -130,7 +130,7 @@ sudo systemctl status nginx
 sudo nano /etc/nginx/conf.d/superbot.conf
 server {
     listen 80;
-    server_name 159.255.34.79;
+    server_name YOUR_SERVER_IP;
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -171,7 +171,7 @@ sudo vim /etc/mongod.conf
 replication:
   replSetName: rs0
 net:
-  bindIp: localhost,159.255.34.79,kimyashka.ru // МБ лишнее
+  bindIp: localhost,YOUR_SERVER_IP,your-domain.example // МБ лишнее
 Если секция net уже существует, просто измените или добавьте строку bindIp: localhost.
 
 
@@ -208,12 +208,12 @@ WantedBy=multi-user.target
 
 Фронтенд)
 
-1) Копирование файлов проекта scp -r C:\projects\Super-Bot\tale-gameshop\dist root@159.255.34.79:/superbot_frontend
+1) Копирование файлов проекта scp -r C:\projects\Super-Bot\tale-gameshop\dist root@YOUR_SERVER_IP:/superbot_frontend
 
 sudo vi /etc/nginx/conf.d/superbot.conf
 server {
     listen 80;
-    server_name 159.255.34.79;
+    server_name YOUR_SERVER_IP;
 
     # Корневой каталог для React приложения
     root /superbot_frontend;
@@ -283,7 +283,7 @@ curl -L https://jdbc.postgresql.org/download/postgresql-42.5.1.jar -o /opt/keycl
 1) sudo nano /opt/keycloak/conf/keycloak.conf
 
 # Production-режим
-hostname=159.255.34.79
+hostname=YOUR_SERVER_IP
 http-enabled=true
 https-port=8088
 http-relative-path=/keycloak
@@ -306,7 +306,7 @@ spi-truststore-password=changeit
 //
 
 # Production-режим
-hostname=159.255.34.79
+hostname=YOUR_SERVER_IP
 http-enabled=false
 https-port=8088
 http-relative-path=/keycloak
@@ -423,7 +423,7 @@ sudo systemctl restart postgresql
 
 server {
     listen 80;
-    server_name 159.255.34.79;
+    server_name YOUR_SERVER_IP;
 
     root /superbot_frontend;
 
@@ -577,7 +577,7 @@ sudo systemctl restart mongod
 
 +Проблема в replicaSet была
 
-mongod --replSet "rs0" --bind_ip localhost,159.255.34.79,kimyashka.ru
+mongod --replSet "rs0" --bind_ip localhost,YOUR_SERVER_IP,your-domain.example
 
 sudo journalctl -xeu mongod
 
@@ -649,7 +649,7 @@ sudo nano /etc/nginx/conf.d/superbot.conf
 
 server {
     listen 80;
-    server_name kimyashka.ru;#159.255.34.79;
+    server_name your-domain.example;#YOUR_SERVER_IP;
 
     location / {
         return 301 https://$host$request_uri;  # Редирект HTTP → HTTPS
@@ -658,12 +658,12 @@ server {
 
 server {
     listen 443 ssl;
-    server_name kimyashka.ru;#159.255.34.79;
+    server_name your-domain.example;#YOUR_SERVER_IP;
 
     root /superbot_frontend;
 
-    ssl_certificate /etc/letsencrypt/live/kimyashka.ru/fullchain.pem;#Нужно будет менять с тестового
-    ssl_certificate_key /etc/letsencrypt/live/kimyashka.ru/privkey.pem;#Нужно будет менять с тестового
+    ssl_certificate /etc/letsencrypt/live/your-domain.example/fullchain.pem;#Нужно будет менять с тестового
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.example/privkey.pem;#Нужно будет менять с тестового
 
     index index.html;
 
@@ -699,7 +699,7 @@ server {
 sudo dnf install certbot python3-certbot-nginx -y
 Запускаем автоматическую настройку HTTPS:
 
-sudo certbot --nginx -d kimyashka.ru //TODO СМОТРИ, что тут тестовый ДОМЕН
+sudo certbot --nginx -d your-domain.example //TODO СМОТРИ, что тут тестовый ДОМЕН
 ➡️ Если все прошло успешно, сертификаты сохранятся в /etc/letsencrypt/live/example.com/.
 
 Обновляем сертификаты автоматически:
@@ -722,8 +722,8 @@ sudo systemctl stop nginx
 bash
 Копировать
 Редактировать
-sudo certbot certonly --standalone -d kimyashka.ru
-Если все пройдет успешно, Certbot должен создать сертификаты в /etc/letsencrypt/live/kimyashka.ru/. Если ошибка повторяется, убедитесь, что порт 80 не занят другими процессами:
+sudo certbot certonly --standalone -d your-domain.example
+Если все пройдет успешно, Certbot должен создать сертификаты в /etc/letsencrypt/live/your-domain.example/. Если ошибка повторяется, убедитесь, что порт 80 не занят другими процессами:
 
 bash
 Копировать
@@ -746,7 +746,7 @@ sudo firewall-cmd --list-ports
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /opt/keycloak/conf/server.key.pem \
     -out /opt/keycloak/conf/server.crt.pem \
-    -subj "/CN=kimyashka.ru"
+    -subj "/CN=your-domain.example"
 
 
 
