@@ -126,8 +126,8 @@ export default function BlogPage() {
 
     useEffect(() => {
         const updateHeaderOffset = () => {
-            const header = document.querySelector(".header-nav") as HTMLElement | null;
-            const nextOffset = header?.offsetHeight ?? 72;
+            const header = document.querySelector(".site-header") as HTMLElement | null;
+            const nextOffset = header?.offsetHeight ?? 96;
             setHeaderOffset(nextOffset + 10);
         };
 
@@ -530,7 +530,7 @@ export default function BlogPage() {
                         </div>
                         <div className="cta-actions">
                             <Link className="btn btn-secondary" to="/games">Go to Store</Link>
-                            <Link className="btn btn-primary" to="/games">Browse deals</Link>
+                            <Link className="btn btn-primary" to="/deals">Browse deals</Link>
                         </div>
                     </div>
                 </div>

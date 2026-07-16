@@ -559,7 +559,7 @@ const TaleGameshopGameList: React.FC = () => {
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
             <div className="pointer-events-none fixed left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(204,190,255,0.55)_0%,rgba(246,242,251,0.1)_70%)] blur-3xl" />
-            <main className="container relative z-10 px-4 pb-24 pt-[140px]">
+            <main className="container relative z-10 px-4 pb-24 pt-12">
                 <div className="mx-auto max-w-3xl text-center">
                     <h1 className="text-4xl font-semibold text-[#2b2350] sm:text-5xl">Game Catalog</h1>
                     <p className="mt-4 text-base text-[#6c6393]">

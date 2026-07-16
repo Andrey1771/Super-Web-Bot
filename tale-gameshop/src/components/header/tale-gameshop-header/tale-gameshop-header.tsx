@@ -1,60 +1,187 @@
-import React, {useEffect, useRef, useState} from "react";
-import {Link} from "react-router-dom";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import "./tale-gameshop-header.css";
-import GameCategoryDropDown from "../../game-category-drop-down/game-category-drop-down";
-import {useKeycloak} from "@react-keycloak/web";
-import {faBars, faChevronDown, faCircleUser, faTimes} from "@fortawesome/free-solid-svg-icons";
-import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import { useKeycloak } from "@react-keycloak/web";
+import {
+    faBars,
+    faBolt,
+    faChevronDown,
+    faCircleUser,
+    faLock,
+    faTimes,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import logo from '../../../assets/images/tale-shop-logo.svg';
+import logo from "../../../assets/images/tale-shop-logo.svg";
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
 import AdminPanelSection from "../admin-panel-section/admin-panel-section";
 import container from "../../../inversify.config";
-import type {IKeycloakAuthService} from "../../../iterfaces/i-keycloak-auth-service";
+import type { IKeycloakAuthService } from "../../../iterfaces/i-keycloak-auth-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 import CartIcon from "../../cart/cart-icon/cart-icon";
+import HeaderSearch from "../header-search/header-search";
+import { useSitePreferences } from "../../../context/site-preferences";
 
-export default function TaleGameshopHeader() {
-    const {keycloak} = useKeycloak();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isAccountOpen, setIsAccountOpen] = useState(false);
-    const [isDrawerAccountOpen, setIsDrawerAccountOpen] = useState(false);
-    const accountMenuRef = useRef<HTMLDivElement | null>(null);
-    const accountButtonRef = useRef<HTMLButtonElement | null>(null);
-    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
+const ANNOUNCEMENT_KEY = "taleshop_announcement_dismissed_v1";
+
+// Top-level navigation. Store is rendered separately because it carries the mega-menu.
+const navLinks = [
+    { label: "Home", to: "/" },
+    { label: "Deals", to: "/deals" },
+    { label: "Blog", to: "/blog" },
+    { label: "About", to: "/about" },
+    { label: "Support", to: "/support" },
+];
+
+// Store mega-menu. Genre links reuse the catalog's case-insensitive `filterCategory` match,
+// so short labels like "RPG" resolve to "Role-Playing Games (RPGs)" on the Store page.
+const storeGenres = [
+    { label: "Action", to: "/games?filterCategory=Action" },
+    { label: "RPG", to: "/games?filterCategory=RPG" },
+    { label: "Strategy", to: "/games?filterCategory=Strategy" },
+    { label: "Puzzle", to: "/games?filterCategory=Puzzle" },
+    { label: "Indie", to: "/games?filterCategory=Indie" },
+    { label: "Sports", to: "/games?filterCategory=Sports" },
+];
+
+const storeDiscover = [
+    { label: "All games", to: "/games", desc: "Browse the full catalog" },
+    { label: "Deals", to: "/deals", desc: "Discounts live right now" },
+    { label: "Budget picks", to: "/games?filterMaxPrice=20", desc: "Great games under $20" },
+];
+
+// Small reusable popover used for the language and currency switchers.
+interface PrefMenuProps {
+    id: string;
+    triggerLabel: React.ReactNode;
+    ariaLabel: string;
+    align?: "left" | "right";
+    children: (close: () => void) => React.ReactNode;
+}
+
+const PrefMenu: React.FC<PrefMenuProps> = ({ id, triggerLabel, ariaLabel, align = "right", children }) => {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        const handleScroll = () => {
-            const header = document.querySelector(".header-nav");
-            if (window.scrollY > 0) {
-                header?.classList.add("scrolled");
-            } else {
-                header?.classList.remove("scrolled");
+        if (!open) {
+            return;
+        }
+        const onClick = (event: MouseEvent) => {
+            if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+                setOpen(false);
             }
         };
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", onClick);
+        document.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("mousedown", onClick);
+            document.removeEventListener("keydown", onKey);
+        };
+    }, [open]);
 
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
+    return (
+        <div className="pref-menu" ref={rootRef}>
+            <button
+                type="button"
+                className={`pref-trigger ${open ? "is-open" : ""}`}
+                aria-haspopup="true"
+                aria-expanded={open}
+                aria-controls={id}
+                aria-label={ariaLabel}
+                onClick={() => setOpen((prev) => !prev)}
+            >
+                {triggerLabel}
+                <FontAwesomeIcon className="pref-caret" icon={faChevronDown} />
+            </button>
+            <div id={id} className={`pref-dropdown pref-dropdown-${align} ${open ? "open" : ""}`} role="menu">
+                {children(() => setOpen(false))}
+            </div>
+        </div>
+    );
+};
+
+export default function TaleGameshopHeader() {
+    const { keycloak } = useKeycloak();
+    const location = useLocation();
+    const { lang, currency, setLang, setCurrency, languages, currencies } = useSitePreferences();
+
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isDrawerAccountOpen, setIsDrawerAccountOpen] = useState(false);
+    const [isDrawerStoreOpen, setIsDrawerStoreOpen] = useState(false);
+    const [isAccountOpen, setIsAccountOpen] = useState(false);
+    const [showAnnouncement, setShowAnnouncement] = useState(true);
+
+    const accountMenuRef = useRef<HTMLDivElement | null>(null);
+    const accountButtonRef = useRef<HTMLButtonElement | null>(null);
+    const headerRef = useRef<HTMLElement | null>(null);
+    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
+
+    // Remember the announcement-bar dismissal across visits.
+    useEffect(() => {
+        setShowAnnouncement(localStorage.getItem(ANNOUNCEMENT_KEY) !== "1");
     }, []);
+
+    // Publish the real rendered header height as a CSS variable so page spacers and the hero
+    // can offset content correctly regardless of whether the announcement bar is shown.
+    useLayoutEffect(() => {
+        const el = headerRef.current;
+        if (!el) {
+            return;
+        }
+        const apply = () => {
+            document.documentElement.style.setProperty("--app-header-height", `${el.offsetHeight}px`);
+        };
+        apply();
+        const observer = new ResizeObserver(apply);
+        observer.observe(el);
+        window.addEventListener("resize", apply);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("resize", apply);
+        };
+    }, [showAnnouncement]);
+
+    // Shadow-on-scroll for a subtle "lifted" header once the page moves.
+    useEffect(() => {
+        const onScroll = () => {
+            const el = headerRef.current;
+            if (!el) {
+                return;
+            }
+            el.classList.toggle("scrolled", window.scrollY > 4);
+        };
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+
+    // Close menus on navigation.
+    useEffect(() => {
+        setIsMenuOpen(false);
+        setIsAccountOpen(false);
+    }, [location.pathname, location.search]);
 
     useEffect(() => {
         if (!isAccountOpen) {
             return;
         }
-
         const handleClickOutside = (event: MouseEvent) => {
             if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
                 setIsAccountOpen(false);
             }
         };
-
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 setIsAccountOpen(false);
                 accountButtonRef.current?.focus();
             }
         };
-
         document.addEventListener("mousedown", handleClickOutside);
         document.addEventListener("keydown", handleKeyDown);
         return () => {
@@ -66,20 +193,21 @@ export default function TaleGameshopHeader() {
     useEffect(() => {
         if (!isMenuOpen) {
             setIsDrawerAccountOpen(false);
+            setIsDrawerStoreOpen(false);
         }
     }, [isMenuOpen]);
 
+    // Lock body scroll while the mobile drawer is open.
     useEffect(() => {
-        const handleResize = () => {
-            if (window.innerWidth > 1180) {
-                setIsMenuOpen(false);
-                setIsDrawerAccountOpen(false);
-            }
+        if (isMenuOpen) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
+        }
+        return () => {
+            document.body.style.overflow = "";
         };
-
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
+    }, [isMenuOpen]);
 
     const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(
         (role) => role === "admin"
@@ -90,162 +218,385 @@ export default function TaleGameshopHeader() {
         await keycloakAuthService.logoutWithRedirect(keycloak, window.location.href);
     };
 
-    const navLinks = [
-        {label: "Home", to: "/"},
-        {label: "Store", to: "/games"},
-        {label: "Blog", to: "/blog"},
-        {label: "About", to: "/about"},
-        {label: "Support", to: "/support"}
-    ];
+    const currentCurrency = currencies.find((c) => c.code === currency) ?? currencies[0];
+    const currentLang = languages.find((l) => l.code === lang) ?? languages[0];
 
     return (
-        <nav className="header-nav">
-            <div className="container header-bar">
-                <Link className="brand" to="/" aria-label="Tale Shop — home">
-                    <img src={logo} alt="Tale Shop logo"/>
-                    <span className="brand-name">Tale Shop</span>
-                </Link>
-
-                <ul className="nav-links">
-                    {navLinks.map((link) => (
-                        <li key={link.label}>
-                            <Link className="menu-item" to={link.to}>
-                                {link.label}
-                            </Link>
-                        </li>
-                    ))}
-                    <li className="relative dropdown">
-                        <Link to={`/games`} className="menu-item more-link">
-                            More
-                            <svg aria-hidden="true" viewBox="0 0 24 24">
-                                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                            </svg>
-                        </Link>
-                        <GameCategoryDropDown categories={[]}/>
-                    </li>
-                </ul>
-
-                <div className="header-actions">
-                    <CartIcon isText={false} />
-                    {!keycloak.authenticated ? (
-                        <LoginAndRegisterSection></LoginAndRegisterSection>
-                    ) : (
-                        <>
-                            {isAdmin && (
-                                <AdminPanelSection></AdminPanelSection>
-                            )}
-                            <div className="account-menu" ref={accountMenuRef}>
-                                <button
-                                    className="account-trigger"
-                                    type="button"
-                                    onClick={() => setIsAccountOpen((prev) => !prev)}
-                                    aria-expanded={isAccountOpen}
-                                    aria-haspopup="true"
-                                    ref={accountButtonRef}
-                                >
-                                    <FontAwesomeIcon icon={faCircleUser}/>
-                                    <span>My account</span>
-                                    <FontAwesomeIcon className="caret" icon={faChevronDown}/>
-                                </button>
-                                <div className={`account-dropdown ${isAccountOpen ? 'open' : ''}`}>
-                                    <div className="account-signed-in">
-                                        Signed in as <span>{email}</span>
-                                    </div>
-                                    <div className="account-links">
-                                        <Link to="/account" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                            Profile
-                                        </Link>
-                                        <Link to="/account/orders" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                            Orders
-                                        </Link>
-                                        <Link to="/account/keys" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                            Keys
-                                        </Link>
-                                        <Link to="/account/settings" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                            Settings
-                                        </Link>
-                                    </div>
-                                    <button className="account-link sign-out" type="button" onClick={handleLogout}>
-                                        Sign out
-                                    </button>
-                                </div>
-                            </div>
-                        </>
-                    )}
+        <header className="site-header" ref={headerRef}>
+            {showAnnouncement && (
+                <div className="announcement-bar">
+                    <div className="container announcement-inner">
+                        <p className="announcement-text">
+                            <FontAwesomeIcon icon={faBolt} />
+                            <span>Instant delivery</span>
+                            <span className="announcement-dot" aria-hidden="true">·</span>
+                            <FontAwesomeIcon icon={faLock} />
+                            <span>Secure checkout</span>
+                            <span className="announcement-dot" aria-hidden="true">·</span>
+                            <span>Support in EN / RU</span>
+                        </p>
+                        <button
+                            type="button"
+                            className="announcement-close"
+                            aria-label="Dismiss announcement"
+                            onClick={() => {
+                                setShowAnnouncement(false);
+                                localStorage.setItem(ANNOUNCEMENT_KEY, "1");
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faTimes} />
+                        </button>
+                    </div>
                 </div>
+            )}
 
-                <button
-                    className="menu-toggle"
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    aria-label="Toggle menu"
-                >
-                    <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars}/>
-                </button>
+            {/* Primary bar: brand · search · tools · account */}
+            <div className="header-primary">
+                <div className="container header-primary-inner">
+                    <Link className="brand" to="/" aria-label="Tale Shop — home">
+                        <img src={logo} alt="Tale Shop logo" />
+                        <span className="brand-name">Tale Shop</span>
+                    </Link>
 
-                <div className={`nav-drawer ${isMenuOpen ? 'open' : ''}`}>
-                    <ul className="drawer-links">
-                        {navLinks.map((link) => (
-                            <li key={link.label}>
-                                <Link className="menu-item" to={link.to} onClick={() => setIsMenuOpen(false)}>
-                                    {link.label}
-                                </Link>
-                        </li>
-                    ))}
-                    <li>
-                        <Link to={`/games`} className="menu-item" onClick={() => setIsMenuOpen(false)}>
-                            More Games
-                        </Link>
-                        <GameCategoryDropDown categories={[]}/>
-                    </li>
-                    {isAdmin && (
-                        <>
-                            <li className="drawer-divider" aria-hidden="true"></li>
-                            <li>
-                                <AdminPanelSection onClick={() => setIsMenuOpen(false)} className="menu-item drawer-admin"></AdminPanelSection>
-                            </li>
-                        </>
-                    )}
-                    </ul>
-                    <div className="drawer-actions">
-                        {!keycloak.authenticated ? (
-                            <LoginAndRegisterSection stacked></LoginAndRegisterSection>
-                        ) : (
-                            <div className="drawer-account">
-                                <button
-                                    className={`drawer-account-trigger ${isDrawerAccountOpen ? 'open' : ''}`}
-                                    type="button"
-                                    onClick={() => setIsDrawerAccountOpen((prev) => !prev)}
-                                    aria-expanded={isDrawerAccountOpen}
-                                >
-                                    <span className="drawer-account-title">
-                                        <FontAwesomeIcon icon={faCircleUser}/>
-                                        My account
+                    <HeaderSearch />
+
+                    <div className="header-tools">
+                        <div className="pref-cluster">
+                            <PrefMenu
+                                id="lang-menu"
+                                ariaLabel="Change language"
+                                triggerLabel={
+                                    <span className="pref-trigger-label">
+                                        <svg className="pref-globe" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                            <path
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="1.7"
+                                                d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 0c2.5 2.5 2.5 15.5 0 18m0-18c-2.5 2.5-2.5 15.5 0 18M3.5 9h17M3.5 15h17"
+                                            />
+                                        </svg>
+                                        {currentLang.short}
                                     </span>
-                                    <FontAwesomeIcon className="drawer-account-caret" icon={faChevronDown}/>
-                                </button>
-                                <div className="drawer-account-email">Signed in as {email}</div>
-                                <div className={`drawer-account-links ${isDrawerAccountOpen ? 'open' : ''}`}>
-                                    <Link to="/account" className="menu-item" onClick={() => setIsMenuOpen(false)}>
-                                        Profile
-                                    </Link>
-                                    <Link to="/account/orders" className="menu-item" onClick={() => setIsMenuOpen(false)}>
-                                        Orders
-                                    </Link>
-                                    <Link to="/account/keys" className="menu-item" onClick={() => setIsMenuOpen(false)}>
-                                        Keys
-                                    </Link>
-                                    <Link to="/account/settings" className="menu-item" onClick={() => setIsMenuOpen(false)}>
-                                        Settings
-                                    </Link>
-                                    <button className="drawer-sign-out" type="button" onClick={handleLogout}>
-                                        Sign out
+                                }
+                            >
+                                {(close) =>
+                                    languages.map((option) => (
+                                        <button
+                                            key={option.code}
+                                            type="button"
+                                            role="menuitemradio"
+                                            aria-checked={option.code === lang}
+                                            className={`pref-option ${option.code === lang ? "is-active" : ""}`}
+                                            onClick={() => {
+                                                setLang(option.code);
+                                                close();
+                                            }}
+                                        >
+                                            <span className="pref-option-badge">{option.short}</span>
+                                            {option.label}
+                                        </button>
+                                    ))
+                                }
+                            </PrefMenu>
+
+                            <PrefMenu
+                                id="currency-menu"
+                                ariaLabel="Change currency"
+                                triggerLabel={
+                                    <span className="pref-trigger-label">
+                                        <span className="pref-currency-symbol">{currentCurrency.symbol}</span>
+                                        {currentCurrency.code}
+                                    </span>
+                                }
+                            >
+                                {(close) =>
+                                    currencies.map((option) => (
+                                        <button
+                                            key={option.code}
+                                            type="button"
+                                            role="menuitemradio"
+                                            aria-checked={option.code === currency}
+                                            className={`pref-option ${option.code === currency ? "is-active" : ""}`}
+                                            onClick={() => {
+                                                setCurrency(option.code);
+                                                close();
+                                            }}
+                                        >
+                                            <span className="pref-option-badge">{option.symbol}</span>
+                                            {option.code} · {option.label}
+                                        </button>
+                                    ))
+                                }
+                            </PrefMenu>
+                        </div>
+
+                        <div className="header-cart">
+                            <CartIcon isText={false} />
+                        </div>
+
+                        {!keycloak.authenticated ? (
+                            <div className="header-auth">
+                                <LoginAndRegisterSection />
+                            </div>
+                        ) : (
+                            <div className="header-auth">
+                                {isAdmin && <AdminPanelSection />}
+                                <div className="account-menu" ref={accountMenuRef}>
+                                    <button
+                                        className="account-trigger"
+                                        type="button"
+                                        onClick={() => setIsAccountOpen((prev) => !prev)}
+                                        aria-expanded={isAccountOpen}
+                                        aria-haspopup="true"
+                                        ref={accountButtonRef}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleUser} />
+                                        <span className="account-trigger-label">Account</span>
+                                        <FontAwesomeIcon className="caret" icon={faChevronDown} />
                                     </button>
+                                    <div className={`account-dropdown ${isAccountOpen ? "open" : ""}`}>
+                                        <div className="account-signed-in">
+                                            Signed in as <span>{email}</span>
+                                        </div>
+                                        <div className="account-links">
+                                            <Link to="/account" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                                Profile
+                                            </Link>
+                                            <Link to="/account/orders" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                                Orders
+                                            </Link>
+                                            <Link to="/account/keys" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                                Keys
+                                            </Link>
+                                            <Link to="/account/settings" className="account-link" onClick={() => setIsAccountOpen(false)}>
+                                                Settings
+                                            </Link>
+                                        </div>
+                                        <button className="account-link sign-out" type="button" onClick={handleLogout}>
+                                            Sign out
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
+
+                        <button
+                            className="menu-toggle"
+                            onClick={() => setIsMenuOpen((prev) => !prev)}
+                            aria-label="Toggle menu"
+                            aria-expanded={isMenuOpen}
+                        >
+                            <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} />
+                        </button>
                     </div>
                 </div>
             </div>
-        </nav>
+
+            {/* Secondary bar: category navigation + Store mega-menu */}
+            <div className="header-nav-bar">
+                <div className="container header-nav-inner">
+                    <ul className="nav-links">
+                        <li>
+                            <NavLink
+                                to="/"
+                                end
+                                className={({ isActive }) => `nav-item ${isActive ? "is-active" : ""}`}
+                            >
+                                Home
+                            </NavLink>
+                        </li>
+                        <li className="nav-store">
+                            <NavLink
+                                to="/games"
+                                className={({ isActive }) => `nav-item nav-store-trigger ${isActive ? "is-active" : ""}`}
+                            >
+                                Store
+                                <FontAwesomeIcon className="nav-store-caret" icon={faChevronDown} />
+                            </NavLink>
+                            <div className="mega-menu" role="menu" aria-label="Store categories">
+                                <div className="mega-inner">
+                                    <div className="mega-col">
+                                        <div className="mega-heading">Browse by genre</div>
+                                        <div className="mega-genres">
+                                            {storeGenres.map((genre) => (
+                                                <Link key={genre.label} to={genre.to} className="mega-genre">
+                                                    {genre.label}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="mega-col">
+                                        <div className="mega-heading">Discover</div>
+                                        <div className="mega-discover">
+                                            {storeDiscover.map((item) => (
+                                                <Link key={item.label} to={item.to} className="mega-discover-item">
+                                                    <span className="mega-discover-label">{item.label}</span>
+                                                    <span className="mega-discover-desc">{item.desc}</span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <Link to="/deals" className="mega-promo">
+                                        <FontAwesomeIcon icon={faBolt} />
+                                        <span className="mega-promo-title">Weekly deals</span>
+                                        <span className="mega-promo-desc">Fresh discounts, updated every week.</span>
+                                        <span className="mega-promo-cta">Shop deals →</span>
+                                    </Link>
+                                </div>
+                            </div>
+                        </li>
+                        {navLinks
+                            .filter((link) => link.label !== "Home")
+                            .map((link) => (
+                                <li key={link.label}>
+                                    <NavLink
+                                        to={link.to}
+                                        className={({ isActive }) => `nav-item ${isActive ? "is-active" : ""}`}
+                                    >
+                                        {link.label}
+                                    </NavLink>
+                                </li>
+                            ))}
+                    </ul>
+
+                    <div className="nav-trust">
+                        <FontAwesomeIcon icon={faLock} />
+                        <span>Buyer-protected checkout</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile drawer */}
+            <div className={`nav-drawer ${isMenuOpen ? "open" : ""}`}>
+                <HeaderSearch variant="drawer" onNavigated={() => setIsMenuOpen(false)} />
+
+                <ul className="drawer-links">
+                    <li>
+                        <NavLink to="/" end className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                            Home
+                        </NavLink>
+                    </li>
+                    <li>
+                        <div className="drawer-store-row">
+                            <NavLink to="/games" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                                Store
+                            </NavLink>
+                            <button
+                                type="button"
+                                className={`drawer-store-toggle ${isDrawerStoreOpen ? "open" : ""}`}
+                                aria-expanded={isDrawerStoreOpen}
+                                aria-label="Show store categories"
+                                onClick={() => setIsDrawerStoreOpen((prev) => !prev)}
+                            >
+                                <FontAwesomeIcon icon={faChevronDown} />
+                            </button>
+                        </div>
+                        <div className={`drawer-sublinks ${isDrawerStoreOpen ? "open" : ""}`}>
+                            <Link to="/games" className="drawer-sublink" onClick={() => setIsMenuOpen(false)}>
+                                All games
+                            </Link>
+                            {storeGenres.map((genre) => (
+                                <Link
+                                    key={genre.label}
+                                    to={genre.to}
+                                    className="drawer-sublink"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    {genre.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </li>
+                    {navLinks
+                        .filter((link) => link.label !== "Home")
+                        .map((link) => (
+                            <li key={link.label}>
+                                <NavLink to={link.to} className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                                    {link.label}
+                                </NavLink>
+                            </li>
+                        ))}
+                    {isAdmin && (
+                        <li>
+                            <AdminPanelSection onClick={() => setIsMenuOpen(false)} className="drawer-link drawer-admin" />
+                        </li>
+                    )}
+                </ul>
+
+                <div className="drawer-prefs">
+                    <div className="drawer-pref-group" role="group" aria-label="Language">
+                        <span className="drawer-pref-caption">Language</span>
+                        <div className="drawer-pref-options">
+                            {languages.map((option) => (
+                                <button
+                                    key={option.code}
+                                    type="button"
+                                    className={`drawer-pref-chip ${option.code === lang ? "is-active" : ""}`}
+                                    onClick={() => setLang(option.code)}
+                                >
+                                    {option.short}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="drawer-pref-group" role="group" aria-label="Currency">
+                        <span className="drawer-pref-caption">Currency</span>
+                        <div className="drawer-pref-options">
+                            {currencies.map((option) => (
+                                <button
+                                    key={option.code}
+                                    type="button"
+                                    className={`drawer-pref-chip ${option.code === currency ? "is-active" : ""}`}
+                                    onClick={() => setCurrency(option.code)}
+                                >
+                                    {option.code}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="drawer-actions">
+                    {!keycloak.authenticated ? (
+                        <LoginAndRegisterSection stacked />
+                    ) : (
+                        <div className="drawer-account">
+                            <button
+                                className={`drawer-account-trigger ${isDrawerAccountOpen ? "open" : ""}`}
+                                type="button"
+                                onClick={() => setIsDrawerAccountOpen((prev) => !prev)}
+                                aria-expanded={isDrawerAccountOpen}
+                            >
+                                <span className="drawer-account-title">
+                                    <FontAwesomeIcon icon={faCircleUser} />
+                                    My account
+                                </span>
+                                <FontAwesomeIcon className="drawer-account-caret" icon={faChevronDown} />
+                            </button>
+                            <div className="drawer-account-email">Signed in as {email}</div>
+                            <div className={`drawer-account-links ${isDrawerAccountOpen ? "open" : ""}`}>
+                                <Link to="/account" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                                    Profile
+                                </Link>
+                                <Link to="/account/orders" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                                    Orders
+                                </Link>
+                                <Link to="/account/keys" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                                    Keys
+                                </Link>
+                                <Link to="/account/settings" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                                    Settings
+                                </Link>
+                                <button className="drawer-sign-out" type="button" onClick={handleLogout}>
+                                    Sign out
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {isMenuOpen && <div className="drawer-scrim" onClick={() => setIsMenuOpen(false)} aria-hidden="true" />}
+        </header>
     );
 }

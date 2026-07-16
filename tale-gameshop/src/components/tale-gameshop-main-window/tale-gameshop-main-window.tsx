@@ -28,6 +28,8 @@ import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
 import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
 import BlogPostPage from "../blog-page/blog-post-page";
+import DealsPage from "../deals-page/deals-page";
+import FaqPage from "../faq-page/faq-page";
 import GameDetailsPage from "../../pages/game-details-page/GameDetailsPage";
 import AccountRoutes from "../../features/account/routes/AccountRoutes";
 import AdminLayout from "../layout/AdminLayout";
@@ -66,6 +68,8 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
                     <Route path="/games/:slug" element={<GameDetailsPage/>}/>
+                    <Route path="/deals" element={<DealsPage/>}/>
+                    <Route path="/faq" element={<FaqPage/>}/>
                     <Route path="/about" element={<AboutUs/>}/>
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>

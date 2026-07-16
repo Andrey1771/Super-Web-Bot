@@ -278,6 +278,12 @@ small {
   outline: none;
 }
 
+/* .input рисует собственное кольцо фокуса (border + box-shadow выше) — глобальный
+   outline из input:focus-visible поверх него давал двойное выделение. */
+.input:focus-visible {
+  outline: none;
+}
+
 .link-primary {
   color: var(--color-primary);
   font-weight: 600;

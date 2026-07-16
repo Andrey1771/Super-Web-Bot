@@ -415,7 +415,10 @@ export default function AboutUs() {
                                 <p className="about-final-subtitle">Browse curated PC games and weekly deals in minutes.</p>
                                 <p className="about-final-meta">Instant email delivery • Secure checkout</p>
                             </div>
-                            <Link to="/games" className="btn btn-primary about-final-button">Go to Store</Link>
+                            <div className="flex flex-wrap gap-3">
+                                <Link to="/games" className="btn btn-primary about-final-button">Go to Store</Link>
+                                <Link to="/deals" className="btn btn-outline about-final-button">See this week&rsquo;s deals</Link>
+                            </div>
                         </div>
                     </div>
 

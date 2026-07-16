@@ -1,18 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import "./tale-gameshop-footer.css";
 import { Link } from "react-router-dom";
 import { useAnalyticsConsent } from "../analytics/AnalyticsProvider";
-
-const SITE_LANG_KEY = "site_lang";
-
-// Planned site languages. This is the single language source — it drives <html lang>, which the
-// support chat and (once the UI is localized) the whole interface follow.
-const languageOptions = [
-  { code: "en", label: "English" },
-  { code: "ru", label: "Русский" },
-  { code: "uk", label: "Українська" },
-  { code: "pl", label: "Polski" },
-];
+import { useSitePreferences, type LangCode } from "../../context/site-preferences";
 
 // TODO: replace with the store's real social profiles.
 const socialLinks = [
@@ -40,24 +30,8 @@ export default function TaleGameshopFooter() {
   const { analyticsAvailable, settingsLoaded, setSettingsOpen } = useAnalyticsConsent();
   const year = new Date().getFullYear();
 
-  const [lang, setLang] = useState(() => {
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(SITE_LANG_KEY) : null;
-    return stored || document.documentElement.lang || "en";
-  });
-
-  // Apply the chosen language to the document so the chat widget / future i18n follow it.
-  useEffect(() => {
-    document.documentElement.lang = lang;
-  }, [lang]);
-
-  const changeLanguage = (value: string) => {
-    setLang(value);
-    try {
-      window.localStorage.setItem(SITE_LANG_KEY, value);
-    } catch {
-      /* storage unavailable */
-    }
-  };
+  // Shared source of truth — the same store the header language switch writes to.
+  const { lang, setLang, languages: languageOptions } = useSitePreferences();
 
   return (
     <footer className="footer">
@@ -88,9 +62,8 @@ export default function TaleGameshopFooter() {
             <div className="footer-column">
               <div className="footer-title">Store</div>
               <Link to="/games">All games</Link>
-              <Link to="/games?filterCategory=Deals">Deals</Link>
-              <Link to="/games?filterCategory=Collections">Collections</Link>
-              <Link to="/games?filterCategory=Bestsellers">Bestsellers</Link>
+              <Link to="/deals">Deals</Link>
+              <Link to="/games?filterMaxPrice=20">Budget picks</Link>
             </div>
 
             <div className="footer-column">
@@ -98,6 +71,7 @@ export default function TaleGameshopFooter() {
               <Link to="/about">About</Link>
               <Link to="/blog">Blog</Link>
               <Link to="/support">Support</Link>
+              <Link to="/faq">Help / FAQ</Link>
             </div>
 
             <div className="footer-column">
@@ -138,7 +112,7 @@ export default function TaleGameshopFooter() {
               <select
                 className="footer-lang-select"
                 value={lang}
-                onChange={(e) => changeLanguage(e.target.value)}
+                onChange={(e) => setLang(e.target.value as LangCode)}
               >
                 {languageOptions.map((o) => (
                   <option key={o.code} value={o.code}>

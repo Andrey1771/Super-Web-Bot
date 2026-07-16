@@ -58,7 +58,8 @@
 /* Hero */
 .main-page .hero {
   position: relative;
-  padding: 112px 0 96px;
+  /* Clear the fixed multi-tier header (height published as --app-header-height), plus breathing room. */
+  padding: calc(var(--app-header-height, 150px) + 40px) 0 96px;
   background: radial-gradient(circle at 78% 10%, color-mix(in srgb, var(--color-primary) 25%, transparent), transparent 55%), linear-gradient(135deg, #0c0f1a 0%, #11182b 60%, #0c0f1a 100%);
   color: #f3f4fb;
   overflow: hidden;
