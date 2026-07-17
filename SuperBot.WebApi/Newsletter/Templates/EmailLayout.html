@@ -1,0 +1,13 @@
+<!--
+  Брендированная HTML-обёртка всех писем Tale Shop.
+  Файл зашивается в сборку как EmbeddedResource (см. SuperBot.WebApi.csproj)
+  и подставляется в {{CONTENT}} кодом EmailTemplates.RenderLayout.
+  Правила вёрстки писем: только инлайновые стили, никакого JavaScript —
+  почтовые клиенты вырезают style- и script-теги.
+-->
+<div style="background:#f6f7fb;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e9e3ff;font-family:'Segoe UI',Arial,sans-serif;">
+    <div style="background:linear-gradient(90deg,#6b3ff2,#a855f7);padding:18px 24px;color:#ffffff;font-size:18px;font-weight:800;">Tale Shop</div>
+    <div style="padding:24px;color:#2b2350;font-size:15px;line-height:1.6;">{{CONTENT}}</div>
+  </div>
+</div>

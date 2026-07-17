@@ -43,10 +43,20 @@ public class GameDiscountMongoDbRepository : IGameDiscountRepository
     public async Task UpsertAsync(GameDiscount discount)
     {
         var discountDb = _mapper.Map<GameDiscountDb>(discount);
-        await _discounts.ReplaceOneAsync(
+
+        // Именно Update, а не ReplaceOne: replace-upsert не запускает генератор _id,
+        // и вторая вставленная скидка падала бы на дубликате _id: null.
+        // При update-upsert сервер сам генерирует _id для нового документа.
+        var update = Builders<GameDiscountDb>.Update
+            .Set(existing => existing.GameId, discountDb.GameId)
+            .Set(existing => existing.DiscountPercent, discountDb.DiscountPercent)
+            .Set(existing => existing.StartDate, discountDb.StartDate)
+            .Set(existing => existing.EndDate, discountDb.EndDate);
+
+        await _discounts.UpdateOneAsync(
             existing => existing.GameId == discountDb.GameId,
-            discountDb,
-            new ReplaceOptions { IsUpsert = true });
+            update,
+            new UpdateOptions { IsUpsert = true });
     }
 
     public async Task DeleteByGameIdAsync(string gameId)

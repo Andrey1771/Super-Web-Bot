@@ -160,6 +160,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             roles: ["admin", "editor"],
           },
           {
+            label: "Newsletter",
+            to: "/admin/newsletter",
+            icon: "📧",
+            roles: ["admin"],
+          },
+          {
             label: "Commands",
             icon: "⌨️",
             disabled: true,

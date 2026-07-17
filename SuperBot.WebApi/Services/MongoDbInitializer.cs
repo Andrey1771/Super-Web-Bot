@@ -70,6 +70,23 @@ namespace SuperBot.WebApi.Services
 
             await wishlistCollection.Indexes.CreateOneAsync(wishlistIndex);
 
+            // Подписчики рассылки (см. NewsletterController) — один документ на email.
+            var newsletterCollection = _database.GetCollection<MongoDB.Bson.BsonDocument>("NewsletterSubscribers");
+            var newsletterEmailIndex = new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("Email"),
+                new CreateIndexOptions { Unique = true, Name = "ix_newsletter_email" }
+            );
+
+            await newsletterCollection.Indexes.CreateOneAsync(newsletterEmailIndex);
+
+            // Поиск по токенам подтверждения/отписки — точечные выборки в NewsletterController.
+            await newsletterCollection.Indexes.CreateOneAsync(new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("ConfirmToken"),
+                new CreateIndexOptions { Sparse = true, Name = "ix_newsletter_confirm_token" }));
+            await newsletterCollection.Indexes.CreateOneAsync(new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("UnsubscribeToken"),
+                new CreateIndexOptions { Sparse = true, Name = "ix_newsletter_unsub_token" }));
+
             var viewedCollection = _database.GetCollection<SuperBot.Infrastructure.Data.ViewedGameDb>("ViewedGames");
             var viewedUserGameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.ViewedGameDb>(
                 Builders<SuperBot.Infrastructure.Data.ViewedGameDb>.IndexKeys

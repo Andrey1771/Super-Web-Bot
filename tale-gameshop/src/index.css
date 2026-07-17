@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import './styles/tokens.css';
+@import './styles/effects.css';
 @import './styles/admin.css';
 
 * {

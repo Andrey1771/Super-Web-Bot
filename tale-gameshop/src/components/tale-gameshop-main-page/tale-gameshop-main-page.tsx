@@ -46,6 +46,11 @@ import type {
     BlogListItem
 } from "../../types/blog";
 import { slugify } from "../../utils/slugify";
+import { subscribeNewsletter } from "../../api/newsletterApi";
+import {
+    rememberNewsletterSubscription,
+    useKnownNewsletterSubscription,
+} from "../../hooks/use-newsletter-subscribed";
 
 // «Подбор по настроению» — фирменный блок Tale Shop: человек выбирает вайб вечера,
 // мы ведём его на готовый фильтр каталога. Категории совпадают с фильтрами стора.
@@ -141,6 +146,11 @@ export default function TaleGameshopMainPage() {
     const [activeHero, setActiveHero] = useState<Game | null>(null);
     const [previousHero, setPreviousHero] = useState<Game | null>(null);
     const [activeMoodId, setActiveMoodId] = useState(moods[0].id);
+    const [newsletterEmail, setNewsletterEmail] = useState("");
+    const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+    // "pending" — гостю ушло письмо-подтверждение; "confirmed" — владелец аккаунта, подписан сразу.
+    const [newsletterResult, setNewsletterResult] = useState<"pending" | "confirmed">("pending");
+    const knownSubscription = useKnownNewsletterSubscription();
     const activeHeroRef = useRef<Game | null>(null);
     const urlService = container.get < IUrlService > (IDENTIFIERS.IUrlService);
     useEffect(() => {
@@ -274,6 +284,24 @@ export default function TaleGameshopMainPage() {
         setOpenFaqIndex((prev) => (prev === index ? -1 : index));
     };
 
+    const handleNewsletterSubmit = async (event: React.FormEvent) => {
+        event.preventDefault();
+        const email = newsletterEmail.trim();
+        if (!email || newsletterStatus === "sending") {
+            return;
+        }
+        setNewsletterStatus("sending");
+        try {
+            const status = await subscribeNewsletter(email, "homepage");
+            rememberNewsletterSubscription(status);
+            setNewsletterResult(status === "confirmed" ? "confirmed" : "pending");
+            setNewsletterStatus("done");
+        } catch (error) {
+            console.error("Failed to subscribe", error);
+            setNewsletterStatus("error");
+        }
+    };
+
     const renderHeroSlide = (game: Game, interactive = true, layerClassName = "") => {
         const href = getGameHref(game);
         const price = formatHeroPrice(getHeroPrice(game));
@@ -344,6 +372,9 @@ const renderHeroSkeleton = () => (
     return (
         <div className="main-page">
             <section className="hero">
+                <i className="fx-texture" aria-hidden="true"></i>
+                <i className="fx-orb hero-orb-1" aria-hidden="true"></i>
+                <i className="fx-orb is-magenta hero-orb-2" aria-hidden="true"></i>
                 <div className="container hero-grid hero-container">
                     <div className="hero-copy">
                         <div className="eyebrow">Tale Shop · PC games</div>
@@ -401,7 +432,7 @@ const renderHeroSkeleton = () => (
             <FeaturedStorefrontSection games={games} isLoading={isLoading} />
 
             {/* Каталог по жанрам + блог. Пустой блог показывает дизайн-заглушку, а не сирую строку. */}
-            <section className="explore-blog-section">
+            <section className="explore-blog-section reveal fx-glow-tr">
                 <div className="container">
                     <div className="section-heading">
                         <div className="heading-eyebrow">Catalog</div>
@@ -479,7 +510,7 @@ const renderHeroSkeleton = () => (
             </section>
 
             {/* Фирменный интерактив: подбор игры по настроению вечера. */}
-            <section className="mood-section">
+            <section className="mood-section reveal">
                 <div className="container">
                     <div className="mood-card">
                         <div className="mood-copy">
@@ -517,7 +548,7 @@ const renderHeroSkeleton = () => (
                 </div>
             </section>
 
-            <section className="why-section">
+            <section className="why-section reveal">
                 <div className="container">
                     <div className="section-heading">
                         <div className="heading-eyebrow">Why Tale Shop</div>
@@ -526,7 +557,7 @@ const renderHeroSkeleton = () => (
                     </div>
                     <div className="why-grid">
                         {reasons.map((reason) => (
-                            <div className="why-card" key={reason.title}>
+                            <div className="why-card lift" key={reason.title}>
                                 <div className="why-icon">
                                     <FontAwesomeIcon icon={reason.icon} />
                                 </div>
@@ -540,7 +571,7 @@ const renderHeroSkeleton = () => (
                 </div>
             </section>
 
-            <section className="how-section">
+            <section className="how-section reveal fx-glow-bl">
                 <div className="container">
                     <div className="section-heading">
                         <div className="heading-eyebrow">Getting started</div>
@@ -549,7 +580,7 @@ const renderHeroSkeleton = () => (
                     </div>
                     <div className="steps-grid">
                         {steps.map((step, index) => (
-                            <div className="step-card" key={step.label}>
+                            <div className="step-card lift" key={step.label}>
                                 <div className="step-marker">{index + 1}</div>
                                 <div className="step-body">
                                     <div className="step-title">{step.label}</div>
@@ -563,7 +594,7 @@ const renderHeroSkeleton = () => (
 
             <TestimonialsCarousel testimonials={testimonials} />
 
-            <section className="newsletter-section">
+            <section className="newsletter-section reveal">
                 <div className="container">
                     <div className="newsletter-card">
                         <div className="newsletter-copy">
@@ -571,26 +602,61 @@ const renderHeroSkeleton = () => (
                             <h3>Get weekly deals &amp; rare picks</h3>
                             <p className="muted">No spam. Unsubscribe anytime.</p>
                         </div>
-                        <form className="newsletter-form" onSubmit={(e) => e.preventDefault()}>
-                            <div className="input-row">
-                                <div className="input-icon">
-                                    <FontAwesomeIcon icon={faEnvelope} />
+                        {newsletterStatus === "done" ? (
+                            <p className="newsletter-done">
+                                {newsletterResult === "confirmed"
+                                    ? "✓ You're in! Weekly deals and rare picks are on their way to your inbox."
+                                    : "✓ Almost there — check your inbox and confirm the subscription."}
+                            </p>
+                        ) : knownSubscription ? (
+                            // Уже подписан (с этого устройства или через аккаунт) — не предлагаем подписку заново.
+                            <p className="newsletter-done">
+                                {knownSubscription === "confirmed"
+                                    ? "✓ You're subscribed — deals and rare picks land in your inbox. Manage it in account settings or via the link in any email."
+                                    : "✓ Almost there — confirm the link we sent to your inbox to activate the subscription."}
+                            </p>
+                        ) : (
+                            <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
+                                <div className="input-row">
+                                    <div className="input-icon">
+                                        <FontAwesomeIcon icon={faEnvelope} />
+                                    </div>
+                                    <input
+                                        type="email"
+                                        placeholder="Enter your email"
+                                        required
+                                        value={newsletterEmail}
+                                        onChange={(e) => {
+                                            setNewsletterEmail(e.target.value);
+                                            if (newsletterStatus === "error") {
+                                                setNewsletterStatus("idle");
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        className="btn btn-primary"
+                                        type="submit"
+                                        disabled={newsletterStatus === "sending"}
+                                    >
+                                        {newsletterStatus === "sending" ? "Saving…" : "Subscribe"}
+                                    </button>
                                 </div>
-                                <input type="email" placeholder="Enter your email" required />
-                                <button className="btn btn-primary" type="submit">
-                                    Subscribe
-                                </button>
-                            </div>
-                            <label className="checkbox-row">
-                                <input type="checkbox" defaultChecked />
-                                <span>Notify me about price drops</span>
-                            </label>
-                        </form>
+                                {newsletterStatus === "error" && (
+                                    <p className="newsletter-error">
+                                        Couldn&rsquo;t save your email right now — please try again in a minute.
+                                    </p>
+                                )}
+                                <label className="checkbox-row">
+                                    <input type="checkbox" defaultChecked />
+                                    <span>Notify me about price drops</span>
+                                </label>
+                            </form>
+                        )}
                     </div>
                 </div>
             </section>
 
-            <section className="faq-section">
+            <section className="faq-section reveal">
                 <div className="container">
                     <div className="section-heading">
                         <div className="heading-eyebrow">FAQ</div>
@@ -616,7 +682,7 @@ const renderHeroSkeleton = () => (
                 </div>
             </section>
 
-            <section className="store-prefooter">
+            <section className="store-prefooter reveal">
                 <div className="container">
                     <div className="store-prefooter-card">
                         <div className="store-prefooter-copy">

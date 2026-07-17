@@ -21,6 +21,39 @@
     max-width: 760px;
 }
 
+/* Декор hero: гигантский контурный «%», дрейфующие глоу-пятна. */
+.deals-hero-glyph {
+    position: absolute;
+    right: 5%;
+    top: 50%;
+    margin-top: -190px;
+    font-size: 360px;
+    font-weight: 800;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 2px rgba(196, 181, 253, 0.16);
+    pointer-events: none;
+    user-select: none;
+    --fx-rot: 10deg;
+    transform: rotate(var(--fx-rot));
+}
+
+.deals-orb-1 {
+    top: -140px;
+    right: 16%;
+}
+
+.deals-orb-2 {
+    bottom: -160px;
+    left: -90px;
+}
+
+@media (max-width: 900px) {
+    .deals-hero-glyph {
+        display: none;
+    }
+}
+
 .deals-eyebrow {
     display: inline-flex;
     align-items: center;
@@ -153,6 +186,60 @@
     box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
 }
 
+/* Мягкий вариант бейджа для budget-picks (не «скидка», а ценовая категория). */
+.deal-badge-soft {
+    background: #6b3ff2;
+    box-shadow: 0 6px 16px rgba(107, 63, 242, 0.4);
+}
+
+/* Хвостовая CTA-карточка в гриде. */
+.deal-card-cta {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: var(--space-24);
+    min-height: 260px;
+    background: linear-gradient(160deg, #221a44 0%, #3a2870 100%);
+    border-color: transparent;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.deal-card-cta .fx-texture {
+    opacity: 0.06;
+}
+
+.deal-card-cta-title {
+    position: relative;
+    font-size: 19px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.deal-card-cta-desc {
+    position: relative;
+    font-size: 13.5px;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.45;
+}
+
+.deal-card-cta-arrow {
+    position: relative;
+    margin-top: var(--space-8);
+    font-size: 26px;
+    font-weight: 800;
+    color: #c4b5fd;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.deal-card-cta:hover .deal-card-cta-arrow {
+    transform: translateX(6px);
+    color: #ffffff;
+}
+
 .deal-body {
     display: flex;
     flex-direction: column;
@@ -235,24 +322,105 @@
     }
 }
 
-/* ---------- Empty ---------- */
-.deals-empty {
-    text-align: center;
-    max-width: 480px;
-    margin: 0 auto;
-    padding: var(--space-24) 0 var(--space-40);
+/* ---------- Empty state: иллюстрация + подписка на алерты ---------- */
+.deals-empty-panel {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: var(--space-40);
+    align-items: center;
+    padding: var(--space-32) var(--space-40);
+    margin-bottom: var(--space-40);
+    border-radius: var(--radius-lg);
+    border: 1px solid #ece8ff;
+    background:
+        radial-gradient(480px 260px at 90% -20%, rgba(124, 58, 237, 0.1), transparent 70%),
+        linear-gradient(150deg, #faf8ff 0%, #ffffff 100%);
 }
 
-.deals-empty h2 {
-    margin-bottom: var(--space-12);
+.deals-empty-art {
+    max-width: 280px;
 }
 
-.deals-empty .btn {
-    margin-top: var(--space-20);
+.deals-empty-copy h2 {
+    margin-bottom: var(--space-8);
+}
+
+.deals-empty-copy > p {
+    max-width: 56ch;
+}
+
+.deals-notify {
+    display: flex;
+    gap: var(--space-8);
+    max-width: 440px;
+    margin-top: var(--space-16);
+}
+
+.deals-notify input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 48px;
+    padding: 0 var(--space-16);
+    border-radius: var(--radius-md);
+    border: 1px solid #e1d9ff;
+    background: #ffffff;
+    color: var(--color-text);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.deals-notify input:focus,
+.deals-notify input:focus-visible {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.deals-notify-done {
+    margin: var(--space-16) 0 0;
+    color: #15803d;
+    font-weight: 600;
+}
+
+.deals-notify-error {
+    margin: var(--space-8) 0 0;
+    color: #b91c1c;
+    font-size: 14px;
+}
+
+.deals-empty-browse {
+    display: inline-block;
+    margin-top: var(--space-16);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+@media (max-width: 800px) {
+    .deals-empty-panel {
+        grid-template-columns: 1fr;
+        gap: var(--space-20);
+        padding: var(--space-24);
+        text-align: center;
+    }
+
+    .deals-empty-art {
+        margin: 0 auto;
+        max-width: 200px;
+    }
+
+    .deals-notify {
+        margin-inline: auto;
+        flex-direction: column;
+    }
+
+    .deals-empty-copy > p {
+        margin-inline: auto;
+    }
 }
 
 /* ---------- Footer CTA ---------- */
 .deals-footer-cta {
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: space-between;

@@ -1,0 +1,187 @@
+/* ============================================================
+   Tale Shop effect system — единый источник «жизни» интерфейса:
+   фоновые текстуры, свечения, scroll-reveal, hover, микродвижение.
+   Использование:
+     <i class="fx-texture" aria-hidden="true"></i>  — внутрь position:relative секции
+     class="reveal"                                 — всплытие при скролле (см. use-scroll-reveal)
+     class="lift"                                   — единый hover-подъём карточек
+   ============================================================ */
+
+/* ---------- 1. Текстура: игровые глифы + зерно ----------
+   Один слой-ребёнок с двумя фонами (шум + паттерн), чтобы не
+   конфликтовать с ::before/::after секций (например, акцентная
+   линия футера живёт в .footer::before). */
+.fx-texture {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.5'%3E%3Cpath d='M34 22h12v12h12v12H46v12H34V46H22V34h12z'/%3E%3Ccircle cx='150' cy='38' r='5'/%3E%3Ccircle cx='166' cy='54' r='5'/%3E%3Ccircle cx='150' cy='70' r='5'/%3E%3Ccircle cx='134' cy='54' r='5'/%3E%3Cpath d='M58 150l14 24H44z'/%3E%3Crect x='96' y='96' width='20' height='20' rx='5'/%3E%3C/g%3E%3Cpath fill='%23ffffff' d='M172 146l3.2 8.3 8.3 3.2-8.3 3.2-3.2 8.3-3.2-8.3-8.3-3.2 8.3-3.2z'/%3E%3C/svg%3E");
+    background-size: 140px 140px, 230px 230px;
+    opacity: 0.05;
+}
+
+/* Светлая поверхность: фиолетовые глифы без шума (шум на белом «грязнит»). */
+.fx-texture.is-light {
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%236b3ff2' stroke-width='1.5'%3E%3Cpath d='M34 22h12v12h12v12H46v12H34V46H22V34h12z'/%3E%3Ccircle cx='150' cy='38' r='5'/%3E%3Ccircle cx='166' cy='54' r='5'/%3E%3Ccircle cx='150' cy='70' r='5'/%3E%3Ccircle cx='134' cy='54' r='5'/%3E%3Cpath d='M58 150l14 24H44z'/%3E%3Crect x='96' y='96' width='20' height='20' rx='5'/%3E%3C/g%3E%3Cpath fill='%236b3ff2' d='M172 146l3.2 8.3 8.3 3.2-8.3 3.2-3.2 8.3-3.2-8.3-8.3-3.2 8.3-3.2z'/%3E%3C/svg%3E");
+    background-size: 230px 230px;
+    opacity: 0.05;
+}
+
+/* ---------- 2. Дрейфующие глоу-пятна для тёмных hero ---------- */
+.fx-orb {
+    position: absolute;
+    width: 340px;
+    height: 340px;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.4;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.55), transparent 70%);
+    animation: fx-drift 16s ease-in-out infinite alternate;
+}
+
+.fx-orb.is-magenta {
+    background: radial-gradient(circle, rgba(217, 70, 239, 0.38), transparent 70%);
+    animation-duration: 22s;
+    animation-delay: -7s;
+}
+
+@keyframes fx-drift {
+    from {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+        transform: translate3d(48px, -36px, 0) scale(1.16);
+    }
+}
+
+/* ---------- 3. Мягкие свечения на светлых секциях ---------- */
+.fx-glow-tr {
+    background-image: radial-gradient(640px 340px at 88% -12%, rgba(124, 58, 237, 0.13), transparent 70%);
+    background-repeat: no-repeat;
+}
+
+.fx-glow-bl {
+    background-image: radial-gradient(640px 340px at 6% 110%, rgba(124, 58, 237, 0.11), transparent 70%);
+    background-repeat: no-repeat;
+}
+
+/* ---------- 4. Scroll-reveal (управляется use-scroll-reveal) ---------- */
+.reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.reveal.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+.reveal[data-reveal-delay='1'] { transition-delay: 0.08s; }
+.reveal[data-reveal-delay='2'] { transition-delay: 0.16s; }
+.reveal[data-reveal-delay='3'] { transition-delay: 0.24s; }
+
+/* Progressive enhancement: браузеры со scroll-driven animations (Chrome/Edge, новые Safari)
+   делают reveal чистым CSS — плавность привязана к скроллу, а не к порогу observer'а.
+   use-scroll-reveal видит поддержку через CSS.supports и не запускает JS-наблюдателей.
+   Остальные (Firefox) продолжают работать через IntersectionObserver + .is-visible. */
+@supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+        .reveal,
+        .reveal.is-visible {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            /* порядок важен: шорткат animation сбрасывает animation-timeline, поэтому timeline после */
+            animation: fx-reveal-view linear both;
+            animation-timeline: view();
+            animation-range: entry 5% entry 45%;
+        }
+
+        @keyframes fx-reveal-view {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+    }
+}
+
+/* ---------- 5. Единый hover-подъём карточек ---------- */
+.lift {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 40px rgba(84, 58, 193, 0.16);
+}
+
+/* ---------- 6. Блик на primary-кнопках ---------- */
+.btn-primary {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -80%;
+    width: 55%;
+    background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.45s ease;
+    pointer-events: none;
+}
+
+.btn-primary:hover::after {
+    left: 130%;
+}
+
+/* ---------- 7. Плавание декоративных элементов ---------- */
+@keyframes fx-float {
+    0%, 100% {
+        transform: translateY(0) rotate(var(--fx-rot, 0deg));
+    }
+    50% {
+        transform: translateY(-12px) rotate(var(--fx-rot, 0deg));
+    }
+}
+
+.fx-float {
+    animation: fx-float 7s ease-in-out infinite;
+}
+
+/* ---------- Доступность: без движения по запросу системы ---------- */
+@media (prefers-reduced-motion: reduce) {
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .fx-orb,
+    .fx-float {
+        animation: none;
+    }
+
+    .btn-primary::after {
+        display: none;
+    }
+
+    .lift,
+    .lift:hover {
+        transition: none;
+        transform: none;
+    }
+}

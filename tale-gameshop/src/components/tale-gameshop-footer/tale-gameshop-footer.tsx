@@ -35,6 +35,7 @@ export default function TaleGameshopFooter() {
 
   return (
     <footer className="footer">
+      <i className="fx-texture" aria-hidden="true"></i>
       <div className="container">
         <div className="footer-top">
           <div className="footer-brand">

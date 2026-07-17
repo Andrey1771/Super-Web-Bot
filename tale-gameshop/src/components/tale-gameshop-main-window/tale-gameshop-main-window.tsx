@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useRef } from "react";
 import TaleGameshopHeader from "../header/tale-gameshop-header/tale-gameshop-header";
+import useScrollReveal from "../../hooks/use-scroll-reveal";
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
 import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-page";
 import './tale-gameshop-main-window.css'
@@ -30,6 +31,9 @@ import BlogPage from "../blog-page/blog-page";
 import BlogPostPage from "../blog-page/blog-post-page";
 import DealsPage from "../deals-page/deals-page";
 import FaqPage from "../faq-page/faq-page";
+import NewsletterConfirmPage from "../newsletter/NewsletterConfirmPage";
+import NewsletterUnsubscribePage from "../newsletter/NewsletterUnsubscribePage";
+import NewsletterPage from "../../pages/admin/NewsletterPage";
 import GameDetailsPage from "../../pages/game-details-page/GameDetailsPage";
 import AccountRoutes from "../../features/account/routes/AccountRoutes";
 import AdminLayout from "../layout/AdminLayout";
@@ -59,9 +63,13 @@ export default function TaleGameshopMainWindow() {
     // На главной распорку не рисуем — тёмный hero уходит под стеклянную шапку (свой отступ задаёт сам hero).
     const isHomeRoute = location.pathname === "/";
 
+    // Scroll-reveal для всех .reveal на странице (см. styles/effects.css).
+    const revealRootRef = useRef<HTMLDivElement | null>(null);
+    useScrollReveal(revealRootRef, [location.pathname]);
+
     return (
         <AnalyticsProvider isAdminRoute={isAdminRoute}>
-            <div>
+            <div ref={revealRootRef}>
                 {!isAdminRoute && <TaleGameshopHeader></TaleGameshopHeader>}
                 {!isAdminRoute && !isHomeRoute && <div className="main-page-down-header-padding"></div>}
                 <Routes>
@@ -70,6 +78,8 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/games/:slug" element={<GameDetailsPage/>}/>
                     <Route path="/deals" element={<DealsPage/>}/>
                     <Route path="/faq" element={<FaqPage/>}/>
+                    <Route path="/newsletter/confirm" element={<NewsletterConfirmPage/>}/>
+                    <Route path="/newsletter/unsubscribe" element={<NewsletterUnsubscribePage/>}/>
                     <Route path="/about" element={<AboutUs/>}/>
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>
@@ -89,6 +99,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="payments/issues" element={<PaymentIssuesPage />} />
                         <Route path="promo-codes" element={<PromoCodesPage />} />
                         <Route path="game-discounts" element={<GameDiscountsPage />} />
+                        <Route path="newsletter" element={<NewsletterPage />} />
                         <Route path="blog" element={<BlogPostsPage />} />
                         <Route path="blog/new" element={<BlogPostEditorPage />} />
                         <Route path="blog/:id/edit" element={<BlogPostEditorPage />} />

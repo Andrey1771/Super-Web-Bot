@@ -213,6 +213,17 @@
     accent-color: var(--color-primary);
 }
 
+/* Транзакционные письма: галка всегда включена и недоступна — визуально приглушаем. */
+.settings-checkbox--locked {
+    color: var(--color-text-muted, #6b7280);
+    cursor: default;
+}
+
+.settings-checkbox--locked input {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .settings-lower-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -9,6 +9,15 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Тонкая текстура игровых глифов (см. effects.css); контент — поверх неё. */
+.footer .fx-texture {
+  opacity: 0.04;
+}
+
+.footer .container {
+  position: relative;
+}
+
 /* Thin brand accent line along the very top of the footer. */
 .footer::before {
   content: "";

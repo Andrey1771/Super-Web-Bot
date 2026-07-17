@@ -174,6 +174,23 @@ builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.ITurnstileV
 builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportNotificationService, SuperBot.WebApi.Support.Chat.Services.SupportNotificationService>();
 builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportChatService, SuperBot.WebApi.Support.Chat.Services.SupportChatService>();
 
+// Почта и рассылка. MailOptions — общий SMTP-конфиг; при пустой секции "Mail"
+// значения наследуются из Recovery, поэтому существующие env работают как раньше.
+builder.Services.AddOptions<SuperBot.WebApi.Mail.MailOptions>()
+    .Bind(builder.Configuration.GetSection("Mail"))
+    .PostConfigure<Microsoft.Extensions.Options.IOptions<SuperBot.WebApi.Recovery.RecoveryOptions>>((mail, recovery) =>
+    {
+        if (string.IsNullOrWhiteSpace(mail.SmtpHost)) mail.SmtpHost = recovery.Value.SmtpHost;
+        if (mail.SmtpPort == 0) mail.SmtpPort = recovery.Value.SmtpPort;
+        if (string.IsNullOrWhiteSpace(mail.FromAddress)) mail.FromAddress = recovery.Value.FromAddress;
+        if (string.IsNullOrWhiteSpace(mail.FromName)) mail.FromName = recovery.Value.FromName;
+        if (string.IsNullOrWhiteSpace(mail.PublicBaseUrl)) mail.PublicBaseUrl = recovery.Value.PublicBaseUrl;
+    });
+builder.Services.AddScoped<SuperBot.WebApi.Mail.IMailSender, SuperBot.WebApi.Mail.SmtpMailSender>();
+builder.Services.AddScoped<SuperBot.WebApi.Newsletter.INewsletterService, SuperBot.WebApi.Newsletter.NewsletterService>();
+builder.Services.AddScoped<SuperBot.WebApi.Newsletter.INewsletterDispatcher, SuperBot.WebApi.Newsletter.NewsletterDispatcher>();
+builder.Services.AddHostedService<SuperBot.WebApi.Newsletter.NewsletterSendWorker>();
+
 
 
 builder.Services.AddAutoMapper(typeof(GameProfile));
@@ -219,25 +236,31 @@ using (var scope = builder.Services.BuildServiceProvider().CreateScope())
 }
 
 //  Hangfire   MongoDB
-builder.Services.AddHangfire(config =>
+// Hangfire:Enabled=false — для интеграционных тестов: серверу планировщика и его
+// Mongo-миграциям в тестовом хосте делать нечего.
+var hangfireEnabled = builder.Configuration.GetValue("Hangfire:Enabled", true);
+if (hangfireEnabled)
 {
-    var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
-    var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
-
-    var mongoUrlBuilder = new MongoUrlBuilder(connectionString);
-    config.UseMongoStorage(mongoUrlBuilder.ToMongoUrl().Url, mongoName, new MongoStorageOptions
+    builder.Services.AddHangfire(config =>
     {
-        MigrationOptions = new MongoMigrationOptions
-        {
-            MigrationStrategy = new DropMongoMigrationStrategy(),
-            //MigrationStrategy = new MigrateMongoMigrationStrategy(),
-            BackupStrategy = new CollectionMongoBackupStrategy()
-        }
-    });
-});
+        var connectionString = builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value;
+        var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
 
-//  Dashboard   Hangfire
-builder.Services.AddHangfireServer();
+        var mongoUrlBuilder = new MongoUrlBuilder(connectionString);
+        config.UseMongoStorage(mongoUrlBuilder.ToMongoUrl().Url, mongoName, new MongoStorageOptions
+        {
+            MigrationOptions = new MongoMigrationOptions
+            {
+                MigrationStrategy = new DropMongoMigrationStrategy(),
+                //MigrationStrategy = new MigrateMongoMigrationStrategy(),
+                BackupStrategy = new CollectionMongoBackupStrategy()
+            }
+        });
+    });
+
+    //  Dashboard   Hangfire
+    builder.Services.AddHangfireServer();
+}
 
 
 builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>((httpClient) =>
@@ -352,7 +375,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseHangfireDashboard();
+    if (hangfireEnabled)
+    {
+        app.UseHangfireDashboard();
+    }
 }
 
 //    DI-   
@@ -396,10 +422,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+if (hangfireEnabled)
 {
+    using var scope = app.Services.CreateScope();
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    //  
+    //
     recurringJobManager.AddOrUpdate(
         "clear-old-order-records",
         () => scope.ServiceProvider.GetRequiredService<IBackgroundTaskService>().ScheduleClearOutdatedDataJob(),
@@ -407,3 +434,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Точка входа для WebApplicationFactory<Program> в интеграционных тестах (SuperBot.WebApi.Tests).
+public partial class Program { }

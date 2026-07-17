@@ -129,6 +129,21 @@ public class SupportKnowledgeBase : ISupportKnowledgeBase
                 "successful payment. If an order is still processing, payment confirmation from the bank can take a few " +
                 "minutes. If a paid order shows no key after that, or the confirmation email is missing, ask the customer for " +
                 "their order ID and account email so a specialist can look it up."),
+
+        new(
+            Id: "newsletter",
+            Title: "Newsletter & deal alerts",
+            Category: "Account & preferences",
+            Keywords: new[] { "newsletter", "subscribe", "subscription", "unsubscribe", "emails", "spam", "deals", "alerts", "notify", "mailing", "list", "opt" },
+            Content:
+                "Tale Shop sends an occasional email newsletter with new deals and store news. Subscribing: enter an email " +
+                "on the Deals page or the home page, then confirm via the link we email (double opt-in). Signed-in customers " +
+                "can simply enable 'Deals newsletter' in Account -> Settings -> Notifications — no confirmation email needed.\n" +
+                "Unsubscribing: every newsletter email has an 'Unsubscribe' link in the footer — one click, no sign-in " +
+                "required. Signed-in customers can also turn it off in Account -> Settings. Unsubscribing stops marketing " +
+                "emails only; order receipts and account security emails still arrive.\n" +
+                "If someone says they keep receiving emails after unsubscribing, or never receive the confirmation email, " +
+                "collect their email address and hand off to a specialist."),
     };
 
     public IReadOnlyList<KnowledgeArticle> Search(string query, int limit)

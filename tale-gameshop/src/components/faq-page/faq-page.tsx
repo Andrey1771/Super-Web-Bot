@@ -91,6 +91,11 @@ const faqCategories: FaqCategory[] = [
                 answer:
                     "Our team and AI assistant help in English and Russian, and each product page lists the languages available for that game.",
             },
+            {
+                question: "How do I manage the newsletter or unsubscribe?",
+                answer:
+                    "Every newsletter email has a one-click Unsubscribe link in the footer — no sign-in needed. If you have an account, you can also switch the deals newsletter on or off in Account → Settings → Notifications. Unsubscribing only stops marketing emails; order receipts and security emails still arrive.",
+            },
         ],
     },
 ];
@@ -126,6 +131,8 @@ export default function FaqPage() {
     return (
         <div className="faq-page">
             <section className="faq-hero">
+                <i className="fx-texture" aria-hidden="true"></i>
+                <i className="fx-orb faq-orb" aria-hidden="true"></i>
                 <div className="container faq-hero-inner">
                     <span className="faq-eyebrow">Help center</span>
                     <h1>How can we help?</h1>
@@ -152,7 +159,7 @@ export default function FaqPage() {
                 <div className="faq-main">
                     {hasResults ? (
                         filtered.map((category) => (
-                            <div className="faq-category" key={category.id}>
+                            <div className="faq-category reveal" key={category.id}>
                                 <h2 className="faq-category-title">{category.title}</h2>
                                 <div className="faq-list">
                                     {category.items.map((item, index) => {
@@ -193,7 +200,7 @@ export default function FaqPage() {
                 </div>
 
                 <aside className="faq-aside">
-                    <div className="faq-help-card">
+                    <div className="faq-help-card lift reveal">
                         <h3>Still need help?</h3>
                         <p className="muted">
                             Our AI assistant answers instantly and can hand you to a specialist when needed.
@@ -205,7 +212,7 @@ export default function FaqPage() {
                             Visit Support
                         </Link>
                     </div>
-                    <div className="faq-links-card">
+                    <div className="faq-links-card lift reveal" data-reveal-delay="1">
                         <h4>Helpful pages</h4>
                         <ul>
                             <li>

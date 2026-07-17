@@ -7,17 +7,18 @@ import AvatarCropModal from '../components/AvatarCropModal';
 import ModalConfirm from '../../../components/ui/ModalConfirm';
 import { useToast } from '../../../components/ui/ToastProvider';
 import { fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
+import { getMyNewsletter, setMyNewsletter } from '../../../api/newsletterApi';
 import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-settings-page.css';
 
+// Единственная настраиваемая email-рубрика — рассылка скидок (реальная подписка на сервере).
+// Security-письма (восстановление аккаунта и т.п.) — транзакционные, их отключить нельзя.
 type NotificationPrefs = {
     promotions: boolean;
-    productNews: boolean;
-    securityAlerts: boolean;
 };
 
 const NOTIFICATIONS_STORAGE_KEY = 'settings_notifications';
-const defaultNotifications: NotificationPrefs = { promotions: true, productNews: true, securityAlerts: true };
+const defaultNotifications: NotificationPrefs = { promotions: true };
 
 const readNotifications = (): NotificationPrefs => {
     try {
@@ -44,6 +45,14 @@ const AccountSettingsPage: React.FC = () => {
     const [emailInput, setEmailInput] = useState(profile?.email ?? '');
     const [notifications, setNotifications] = useState<NotificationPrefs>(readNotifications);
     const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+
+    // «Promotions» — не локальная галочка, а реальная подписка на рассылку,
+    // привязанная к email аккаунта (см. NewsletterController /me).
+    useEffect(() => {
+        getMyNewsletter()
+            .then((my) => setNotifications((prev) => ({ ...prev, promotions: my.subscribed })))
+            .catch(() => { /* backend недоступен — оставляем локальное значение */ });
+    }, []);
 
     const displayName = profile?.displayName ?? 'User';
 
@@ -152,11 +161,16 @@ const AccountSettingsPage: React.FC = () => {
         }
     };
 
-    const handleSavePreferences = () => {
+    const handleSavePreferences = async () => {
         setIsSavingPreferences(true);
         try {
             localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+            // Подписка на рассылку — серверная: включает/выключает письма для email аккаунта.
+            await setMyNewsletter(notifications.promotions);
             addToast('Notification preferences saved.', 'success');
+        } catch (error) {
+            console.error(error);
+            addToast('Failed to update the newsletter subscription. Please try again.', 'error');
         } finally {
             setIsSavingPreferences(false);
         }
@@ -244,7 +258,10 @@ const AccountSettingsPage: React.FC = () => {
                 <div className="settings-card-header">
                     <h3>Notifications</h3>
                 </div>
-                <p className="settings-muted-link">Choose what we email you about. Saved on this device.</p>
+                <p className="settings-muted-link">
+                    The deals newsletter is linked to your account email — the toggle below manages the
+                    same subscription as the forms on the site and the unsubscribe link in every email.
+                </p>
                 <div className="settings-checkboxes">
                     <label className="settings-checkbox">
                         <input
@@ -252,23 +269,11 @@ const AccountSettingsPage: React.FC = () => {
                             checked={notifications.promotions}
                             onChange={(event) => setNotifications((prev) => ({ ...prev, promotions: event.target.checked }))}
                         />
-                        Receive promotions and special offers
+                        Deals newsletter — new discounts and special offers
                     </label>
-                    <label className="settings-checkbox">
-                        <input
-                            type="checkbox"
-                            checked={notifications.productNews}
-                            onChange={(event) => setNotifications((prev) => ({ ...prev, productNews: event.target.checked }))}
-                        />
-                        Receive store and product news
-                    </label>
-                    <label className="settings-checkbox">
-                        <input
-                            type="checkbox"
-                            checked={notifications.securityAlerts}
-                            onChange={(event) => setNotifications((prev) => ({ ...prev, securityAlerts: event.target.checked }))}
-                        />
-                        Receive security alerts (important)
+                    <label className="settings-checkbox settings-checkbox--locked" title="Transactional emails (account recovery, sign-in security) can't be disabled">
+                        <input type="checkbox" checked disabled />
+                        Security alerts (account recovery, sign-in) — always on
                     </label>
                 </div>
                 <div className="settings-card-footer settings-card-footer--end">

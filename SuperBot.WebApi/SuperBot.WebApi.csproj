@@ -32,4 +32,9 @@
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- HTML-шаблоны писем: правятся как обычный HTML, в рантайме читаются из сборки -->
+    <EmbeddedResource Include="Newsletter\Templates\*.html" />
+  </ItemGroup>
+
 </Project>

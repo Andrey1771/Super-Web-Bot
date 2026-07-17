@@ -7,10 +7,22 @@
 
 /* ---------- Hero ---------- */
 .faq-hero {
+    position: relative;
+    overflow: hidden;
     background: radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 55%),
         linear-gradient(135deg, #0c0f1a 0%, #1a1436 55%, #0c0f1a 100%);
     color: #f3f4fb;
     padding: var(--space-56) 0 var(--space-48);
+}
+
+.faq-hero-inner {
+    position: relative;
+    z-index: 1;
+}
+
+.faq-orb {
+    top: -140px;
+    right: 12%;
 }
 
 .faq-hero-inner {

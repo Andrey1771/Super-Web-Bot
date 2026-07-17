@@ -99,6 +99,9 @@ namespace SuperBot.Tests
                 return Task.FromResult(_games.Where(game => idSet.Contains(game.Id)).ToList());
             }
 
+            public Task<List<Game>> GetByCoverMediaIdAsync(string mediaId) =>
+                Task.FromResult(_games.Where(game => game.CoverMediaId == mediaId).ToList());
+
             public Task CreateAsync(Game game) => Task.CompletedTask;
 
             public Task UpdateAsync(string id, Game updatedGame) => Task.CompletedTask;
@@ -154,6 +157,15 @@ namespace SuperBot.Tests
             public Task<IEnumerable<Order>> GetAllOrdersAsync() => Task.FromResult<IEnumerable<Order>>(_orders);
 
             public Task<List<Order>> GetOrdersByUserAsync(string userName) => Task.FromResult(_orders.Where(order => order.UserName == userName).ToList());
+
+            public Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(IReadOnlyCollection<string> userNames, OrderQueryParameters query)
+            {
+                var items = _orders.Where(order => userNames.Contains(order.UserName)).ToList();
+                return Task.FromResult<(IReadOnlyList<Order>, long)>((items, items.Count));
+            }
+
+            public Task<(IReadOnlyList<Order> Items, long Total)> GetPagedAsync(OrderQueryParameters query) =>
+                Task.FromResult<(IReadOnlyList<Order>, long)>((_orders, _orders.Count));
 
             public Task UpdateOrderAsync(Order order) => Task.CompletedTask;
 
