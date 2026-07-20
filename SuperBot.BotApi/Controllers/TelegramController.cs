@@ -1,38 +1,38 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Localization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using SuperBot.BotApi.Services;
 using SuperBot.BotApi.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace SuperBot.WebApi.Controllers
+namespace SuperBot.BotApi.Controllers
 {
+    /// <summary>
+    /// Приём Telegram-вебхука. Регистрация вебхука — через /api/admin/bot (админка).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class TelegramController(IOptions<BotConfiguration> Config, IStringLocalizer<TelegramController> localizer) : ControllerBase
+    public class TelegramController(IOptions<BotConfiguration> Config) : ControllerBase
     {
-        [HttpGet("setWebhook")]
-        public async Task<string> SetWebHook([FromServices] ITelegramBotClient bot, CancellationToken ct)
-        {
-            var webhookUrl = Config.Value.BotWebhookUrl.AbsoluteUri;
-            await bot.SetWebhookAsync(webhookUrl, allowedUpdates: [], secretToken: Config.Value.SecretToken, cancellationToken: ct);
-            return $"Webhook set to {webhookUrl}";
-        }
-
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Update update, [FromServices] ITelegramBotClient bot, [FromServices] UpdateHandler handleUpdateService, CancellationToken ct)
+        public async Task<IActionResult> Post([FromBody] Update update, [FromServices] TelegramUpdateHandler handleUpdateService, CancellationToken ct)
         {
-            if (Request.Headers["X-Telegram-Bot-Api-Secret-Token"] != Config.Value.SecretToken)
+            // Секрет из настройки вебхука: чужие POST-ы отбрасываем.
+            var secretToken = Config.Value.SecretToken;
+            if (!string.IsNullOrEmpty(secretToken) &&
+                Request.Headers["X-Telegram-Bot-Api-Secret-Token"] != secretToken)
+            {
                 return Forbid();
+            }
 
             try
             {
-                await handleUpdateService.HandleUpdateAsync(bot, update, ct);
+                await handleUpdateService.HandleUpdateAsync(update, ct);
             }
             catch (Exception exception)
             {
-                await handleUpdateService.HandleErrorAsync(bot, exception, Telegram.Bot.Polling.HandleErrorSource.HandleUpdateError, ct);
+                await handleUpdateService.HandleErrorAsync(exception);
             }
             return Ok();
         }

@@ -14,7 +14,12 @@ namespace SuperBot.Infrastructure.Data
         public string OrderNumber { get; set; } = string.Empty;
         public string UserId { get; set; } = string.Empty;
         public string PaymentProvider { get; set; } = "stripe";
-        public string PaymentIntentId { get; set; } = string.Empty;
+        // Уникальный sparse-индекс ix_orders_payment_intent_unique исключает только ОТСУТСТВУЮЩЕЕ поле,
+        // но не null. Заказы без Stripe-интента (Stars/корзина) не ставят PaymentIntentId → чтобы они не
+        // коллизировали между собой по null, не сериализуем пустое значение вовсе (поле отсутствует в документе).
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string PaymentIntentId { get; set; }
 
         public string GameId { get; set; } = string.Empty;
         public string GameName { get; set; } = string.Empty;

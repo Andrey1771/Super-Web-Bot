@@ -125,6 +125,8 @@ namespace SuperBot.Tests
             public Task RemoveAsync(string userId, string gameId) => Task.CompletedTask;
 
             public Task<HashSet<string>> MergeAsync(string userId, IEnumerable<string> guestIds) => Task.FromResult(_ids);
+
+            public Task<List<string>> GetUserIdsByGameAsync(string gameId) => Task.FromResult(new List<string>());
         }
 
         private class TestViewedRepository : IViewedGameRepository
@@ -157,6 +159,8 @@ namespace SuperBot.Tests
             public Task<IEnumerable<Order>> GetAllOrdersAsync() => Task.FromResult<IEnumerable<Order>>(_orders);
 
             public Task<List<Order>> GetOrdersByUserAsync(string userName) => Task.FromResult(_orders.Where(order => order.UserName == userName).ToList());
+
+            public Task<List<Order>> GetUnfulfilledPaidOrdersAsync() => Task.FromResult(_orders.Where(order => order.IsPaid && !order.IsFulfilled).ToList());
 
             public Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(IReadOnlyCollection<string> userNames, OrderQueryParameters query)
             {

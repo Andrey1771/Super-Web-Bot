@@ -9,11 +9,9 @@ RUN dotnet nuget add source "https://pkgs.dev.azure.com/tgbots/Telegram.Bot/_pac
 #RUN dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 
 # Копируем файлы проекта
-COPY SuperBot.Telegram/SuperBot.Telegram.csproj SuperBot.Telegram/
 COPY SuperBot.Application/SuperBot.Application.csproj SuperBot.Application/
 COPY SuperBot.Core/SuperBot.Core.csproj SuperBot.Core/
 COPY SuperBot.Infrastructure/SuperBot.Infrastructure.csproj SuperBot.Infrastructure/
-COPY SuperBot.BotApi/SuperBot.BotApi.csproj SuperBot.BotApi/
 COPY SuperBot.Common.Auth/SuperBot.Common.Auth.csproj SuperBot.Common.Auth/
 COPY SuperBot.WebApi/SuperBot.WebApi.csproj SuperBot.WebApi/
 

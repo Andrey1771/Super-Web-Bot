@@ -32,7 +32,25 @@ public class AdminBlogAnalyticsController : ControllerBase
         var ids = posts.Select(item => item.Id).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (ids.Count == 0)
         {
-            return Ok(new { });
+            // Пустой блог — отдаём полный контракт с нулями, а не пустой объект:
+            // фронт различает "нет данных" и "данные с нулями" по форме ответа.
+            return Ok(new
+            {
+                publicUniqueViews = 0,
+                authenticatedUniqueViews = 0,
+                guestUniqueViewsTotal = 0,
+                guestUniqueViewsCounted = 0,
+                guestUniqueViewsExcluded = 0,
+                completedReads = 0,
+                totalReactions = 0,
+                topReaction = string.Empty,
+                reactionsByEmoji = new Dictionary<string, int>(),
+                topPostsByViews = new List<object>(),
+                topPostsByReactions = new List<object>(),
+                viewsTimeline = new List<object>(),
+                reactionsTimeline = new List<object>(),
+                latestEvents = new List<object>()
+            });
         }
 
         var countersByPost = await _uniqueViewRepository.GetCountersByPostIdsAsync(ids);

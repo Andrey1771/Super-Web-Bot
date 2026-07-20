@@ -8,6 +8,7 @@ import ModalConfirm from '../../../components/ui/ModalConfirm';
 import { useToast } from '../../../components/ui/ToastProvider';
 import { fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
 import { getMyNewsletter, setMyNewsletter } from '../../../api/newsletterApi';
+import { getTelegramStatus, createTelegramLinkToken, unlinkTelegram, type TelegramLinkStatus } from '../../../api/telegramLinkApi';
 import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-settings-page.css';
 
@@ -45,6 +46,9 @@ const AccountSettingsPage: React.FC = () => {
     const [emailInput, setEmailInput] = useState(profile?.email ?? '');
     const [notifications, setNotifications] = useState<NotificationPrefs>(readNotifications);
     const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+    const [telegram, setTelegram] = useState<TelegramLinkStatus | null>(null);
+    const [isTelegramBusy, setIsTelegramBusy] = useState(false);
+    const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
 
     // «Promotions» — не локальная галочка, а реальная подписка на рассылку,
     // привязанная к email аккаунта (см. NewsletterController /me).
@@ -53,6 +57,54 @@ const AccountSettingsPage: React.FC = () => {
             .then((my) => setNotifications((prev) => ({ ...prev, promotions: my.subscribed })))
             .catch(() => { /* backend недоступен — оставляем локальное значение */ });
     }, []);
+
+    useEffect(() => {
+        getTelegramStatus()
+            .then(setTelegram)
+            .catch(() => setTelegram({ linked: false }));
+    }, []);
+
+    const handleConnectTelegram = async () => {
+        setIsTelegramBusy(true);
+        try {
+            const token = await createTelegramLinkToken();
+            // Открываем бота с deep-link: /start <token> привяжет чат к аккаунту.
+            window.open(token.deepLink, '_blank', 'noopener,noreferrer');
+            addToast('Opening Telegram — tap Start in the bot to finish linking, then Refresh.', 'info');
+        } catch (error) {
+            console.error(error);
+            addToast('Could not start Telegram linking. Please try again.', 'error');
+        } finally {
+            setIsTelegramBusy(false);
+        }
+    };
+
+    const handleRefreshTelegram = async () => {
+        setIsTelegramBusy(true);
+        try {
+            setTelegram(await getTelegramStatus());
+        } catch (error) {
+            console.error(error);
+            addToast('Failed to refresh Telegram status.', 'error');
+        } finally {
+            setIsTelegramBusy(false);
+        }
+    };
+
+    const handleUnlinkTelegram = async () => {
+        setIsUnlinkModalOpen(false);
+        setIsTelegramBusy(true);
+        try {
+            await unlinkTelegram();
+            setTelegram({ linked: false });
+            addToast('Telegram disconnected.', 'success');
+        } catch (error) {
+            console.error(error);
+            addToast('Failed to disconnect Telegram.', 'error');
+        } finally {
+            setIsTelegramBusy(false);
+        }
+    };
 
     const displayName = profile?.displayName ?? 'User';
 
@@ -288,6 +340,56 @@ const AccountSettingsPage: React.FC = () => {
                 </div>
             </div>
 
+            <div className="card settings-card" data-testid="settings-telegram">
+                <div className="settings-card-header">
+                    <h3>Telegram</h3>
+                </div>
+                <p className="settings-muted-link">
+                    Connect Telegram to receive your purchased keys directly in a private chat with our bot.
+                    Your keys always remain available here in your account too.
+                </p>
+                {telegram?.linked ? (
+                    <div className="settings-telegram-status">
+                        <span className="settings-telegram-badge settings-telegram-badge--on">Connected</span>
+                        <span className="settings-muted-link">
+                            {telegram.username ? `@${telegram.username}` : 'Linked account'}
+                        </span>
+                        <div className="settings-pointer-actions">
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={() => setIsUnlinkModalOpen(true)}
+                                disabled={isTelegramBusy}
+                            >
+                                Disconnect
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="settings-telegram-status">
+                        <span className="settings-telegram-badge">Not connected</span>
+                        <div className="settings-pointer-actions">
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleConnectTelegram}
+                                disabled={isTelegramBusy}
+                            >
+                                {isTelegramBusy ? 'Working...' : 'Connect Telegram'}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={handleRefreshTelegram}
+                                disabled={isTelegramBusy}
+                            >
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <div className="card settings-card" data-testid="settings-security-pointer">
                 <div className="settings-card-header">
                     <h3>Account &amp; security</h3>
@@ -309,6 +411,16 @@ const AccountSettingsPage: React.FC = () => {
                 isSaving={isSavingProfile}
                 onClose={closeAvatarModal}
                 onSave={handleAvatarDraftSave}
+            />
+
+            <ModalConfirm
+                isOpen={isUnlinkModalOpen}
+                title="Disconnect Telegram?"
+                description="Key deliveries to your Telegram chat will stop. You can reconnect anytime."
+                confirmLabel="Disconnect"
+                cancelLabel="Cancel"
+                onConfirm={handleUnlinkTelegram}
+                onCancel={() => setIsUnlinkModalOpen(false)}
             />
 
             <ModalConfirm

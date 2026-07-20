@@ -1,10 +1,11 @@
 using System.Net.Mail;
 using System.Text;
 using Microsoft.Extensions.Options;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Events;
 using SuperBot.Core.Interfaces;
 using SuperBot.WebApi.Recovery;
 using SuperBot.WebApi.Support.Chat.Models;
-using Telegram.Bot;
 
 namespace SuperBot.WebApi.Support.Chat.Services;
 
@@ -21,21 +22,18 @@ public interface ISupportNotificationService
 
 public class SupportNotificationService : ISupportNotificationService
 {
-    private readonly ITelegramBotClient _telegram;
-    private readonly IAdminSettingsProvider _adminSettings;
+    private readonly IBotEventPublisher _botEvents;
     private readonly RecoveryOptions _mailOptions;
     private readonly SupportChatOptions _chatOptions;
     private readonly ILogger<SupportNotificationService> _logger;
 
     public SupportNotificationService(
-        ITelegramBotClient telegram,
-        IAdminSettingsProvider adminSettings,
+        IBotEventPublisher botEvents,
         IOptions<RecoveryOptions> mailOptions,
         IOptions<SupportChatOptions> chatOptions,
         ILogger<SupportNotificationService> logger)
     {
-        _telegram = telegram;
-        _adminSettings = adminSettings;
+        _botEvents = botEvents;
         _mailOptions = mailOptions.Value;
         _chatOptions = chatOptions.Value;
         _logger = logger;
@@ -73,17 +71,12 @@ public class SupportNotificationService : ISupportNotificationService
                 .AppendLine($"Open: {BuildSessionLink(session)}")
                 .ToString();
 
-            // Plain text (no parse mode): the summary transcript can contain characters that would
-            // break Telegram Markdown parsing and cause the whole notification to fail.
-            // Use SendTextMessageAsync to match the Telegram.Bot API the rest of the solution targets.
-            await _telegram.SendTextMessageAsync(
-                _adminSettings.AdminChatId,
-                text,
-                cancellationToken: cancellationToken);
+            // Сайт не шлёт в Telegram сам — публикует событие, доставит бот-сервис.
+            await _botEvents.PublishAsync(BotEventTypes.SupportEscalation, new SupportEscalationEvent(text));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to send Telegram escalation notification for session {SessionId}", session.Id);
+            _logger.LogWarning(ex, "Failed to publish Telegram escalation notification for session {SessionId}", session.Id);
         }
     }
 

@@ -38,8 +38,12 @@ namespace SuperBot.WebApi.Controllers
             }
 
             await _gameKeyRepository.AddPoolKeysAsync(gameId, request.KeyType, request.Keys);
+
+            // Довыдаём ключи по оплаченным заказам, которые ждали пополнения пула этой игры.
+            var backfilledOrders = await _fulfillment.BackfillGameAsync(gameId);
+
             var available = await _gameKeyRepository.CountAvailableByGameAsync(gameId);
-            return Ok(new { gameId, added = request.Keys.Count, available });
+            return Ok(new { gameId, added = request.Keys.Count, available, backfilledOrders });
         }
 
         // Выдать ключ пользователю (тест/поддержка) — через ту же логику dispense (B→A).

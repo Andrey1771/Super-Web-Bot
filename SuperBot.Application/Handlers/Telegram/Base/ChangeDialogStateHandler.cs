@@ -19,13 +19,7 @@ namespace SuperBot.Application.Handlers.Telegram.Base
                 state = new ChatState
                 {
                     LastInteractionTime = DateTime.UtcNow,
-                    DialogState = request.DialogState,
-                    UserState = new UserState
-                    {
-                        ChoseAmountOfInvestment = 0,
-                        ChoseCard = "",
-                        ChoseSteamLogin = ""
-                    }
+                    DialogState = request.DialogState
                 };
             }
 

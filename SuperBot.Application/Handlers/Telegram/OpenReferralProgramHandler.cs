@@ -69,10 +69,7 @@ namespace SuperBot.Application.Handlers.Telegram
 
             var buttons = new List<InlineKeyboardButton>
             {
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.ReferralProgram, _translationsService.KeyboardKeys.ReferralProgram),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.SteamTopUp, _translationsService.KeyboardKeys.SteamTopUp),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.WithdrawFunds, _translationsService.KeyboardKeys.WithdrawFunds),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.PurchaseHistory, _translationsService.KeyboardKeys.PurchaseHistory)
+                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.Account, _translationsService.KeyboardKeys.Account)
             };
 
             // Разбиваем на строки по 2 кнопки в каждой

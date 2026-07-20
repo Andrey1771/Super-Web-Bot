@@ -52,6 +52,10 @@ const toStatusMeta = (status: string) => {
   if (normalized === 'PENDING') {
     return { label: 'Pending', className: 'status-processing' };
   }
+  if (normalized === 'AWAITING_KEYS' || normalized === 'PENDING_KEYS' || normalized === 'PARTIAL') {
+    // Оплачено, но ключей на складе пока не хватило — довыдадим при пополнении пула.
+    return { label: 'Awaiting keys', className: 'status-processing' };
+  }
 
   return { label: 'Processing', className: 'status-processing' };
 };
@@ -101,10 +105,14 @@ const OrderItemRow: React.FC<{ item: OrderDetailItem }> = ({ item }) => {
             {item.region ? <span>{item.region}</span> : null}
           </div>
         )}
-        {item.keys.length > 0 && (
+        {item.keys.length > 0 ? (
           <div className="order-line-keys">
             <strong>Keys:</strong>
             {item.keys.map((key) => <span key={key}>{key}</span>)}
+          </div>
+        ) : (
+          <div className="order-line-keys order-line-keys--pending">
+            <span>Awaiting key delivery — you’ll be notified once it’s in stock.</span>
           </div>
         )}
       </div>

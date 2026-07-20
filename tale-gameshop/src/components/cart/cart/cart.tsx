@@ -1,11 +1,14 @@
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {useCart} from '../../../context/cart-context';
-import {Link} from "react-router-dom";
+import {Link, useSearchParams} from "react-router-dom";
 import container from "../../../inversify.config";
 import {IUrlService} from "../../../iterfaces/i-url-service";
+import {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import type { RecommendationItem } from '../../../models/recommendations';
+import { analyticsClient } from '../../../utils/analytics-client';
 import {
     faArrowRotateLeft,
     faBolt,
@@ -192,12 +195,41 @@ const RecommendedRow: React.FC = () => {
         error: recommendationsError,
         reload: reloadRecommendations
     } = useRecommendations(4);
+    const { dispatch } = useCart();
+
+    // Добавление в корзину — тот же контракт, что в GameCard: цена с учётом активной скидки.
+    const handleAddRecommended = (game: RecommendationItem['game']) => {
+        const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
+        const finalPrice = Number.isFinite(game.finalPrice ?? game.price) ? Number(game.finalPrice ?? game.price) : regularPrice;
+
+        dispatch({
+            type: 'ADD_TO_CART',
+            payload: {
+                gameId: game.id ?? '',
+                name: game.name,
+                price: finalPrice,
+                quantity: 1,
+                image: game.imagePath
+            } as Product,
+        });
+
+        analyticsClient.trackEcommerce('add_to_cart', {
+            value: finalPrice,
+            items: [{
+                item_id: game.id ?? '',
+                item_name: game.title,
+                price: finalPrice,
+                item_category: String(game.gameType),
+                quantity: 1
+            }]
+        });
+    };
 
     return (
         <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
             <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-gray-900">Recommended for you</h2>
-                <button className="text-sm font-semibold text-purple-700 hover:text-purple-900">View all →</button>
+                <Link to="/games" className="text-sm font-semibold text-purple-700 hover:text-purple-900">View all →</Link>
             </div>
             <RecommendationsSection
                 items={recommended}
@@ -231,7 +263,10 @@ const RecommendedRow: React.FC = () => {
                                 <span className="text-lg font-bold text-gray-900">
                                     {formatPrice(Number(item.game.price))}
                                 </span>
-                                <button className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition hover:border-purple-300 hover:bg-purple-100">
+                                <button
+                                    onClick={() => handleAddRecommended(item.game)}
+                                    className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition hover:border-purple-300 hover:bg-purple-100"
+                                >
                                     <FontAwesomeIcon icon={faCartPlus} />
                                     Add to cart
                                 </button>
@@ -360,6 +395,8 @@ const CartCTA: React.FC = () => (
 
 const Cart: React.FC = () => {
     const {state, dispatch} = useCart();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const seededRef = useRef<Set<string>>(new Set());
 
     const subtotal = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
     const discount = subtotal * 0.08;
@@ -368,6 +405,40 @@ const Cart: React.FC = () => {
     const itemCount = state.items.length;
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
+
+    // Deep-link из бота: /cart?add=<gameId> кладёт игру в корзину и убирает параметр из URL.
+    useEffect(() => {
+        const gameId = searchParams.get('add');
+        if (!gameId || seededRef.current.has(gameId)) {
+            return;
+        }
+        seededRef.current.add(gameId);
+
+        (async () => {
+            try {
+                const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+                const {data} = await apiClient.api.get(`/api/game/${gameId}`);
+                if (data?.id) {
+                    dispatch({
+                        type: 'ADD_TO_CART',
+                        payload: {
+                            gameId: data.id,
+                            name: data.name ?? data.title ?? 'Game',
+                            price: Number(data.finalPrice ?? data.price ?? 0),
+                            quantity: 1,
+                            image: data.imagePath ?? '',
+                        },
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to add game from deep-link', error);
+            } finally {
+                const next = new URLSearchParams(searchParams);
+                next.delete('add');
+                setSearchParams(next, {replace: true});
+            }
+        })();
+    }, [searchParams, dispatch, setSearchParams]);
 
     const handleIncreaseQuantity = (id: string) => {
         dispatch({type: 'INCREASE_QUANTITY', payload: id});

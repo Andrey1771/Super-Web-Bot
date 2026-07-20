@@ -31,6 +31,46 @@ const CheckoutPage: React.FC = () => {
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [paymentInitError, setPaymentInitError] = useState('');
     const hasTrackedCheckout = useRef(false);
+    const [cryptoEnabled, setCryptoEnabled] = useState(false);
+    const [cryptoBusy, setCryptoBusy] = useState(false);
+    const [cryptoError, setCryptoError] = useState('');
+
+    // Крипто-опция (BTCPay, testnet demo) показывается только если бэкенд сконфигурирован.
+    useEffect(() => {
+        apiClient.api.get('/api/payments/crypto/config')
+            .then(({data}) => setCryptoEnabled(Boolean(data?.enabled)))
+            .catch(() => setCryptoEnabled(false));
+    }, [apiClient.api]);
+
+    const handleCryptoPay = async () => {
+        setCryptoBusy(true);
+        setCryptoError('');
+        try {
+            const {data} = await apiClient.api.post('/api/payments/crypto/invoice', {
+                subtotal: totals.subtotal,
+                discountTotal: totals.discount,
+                total: totals.total,
+                items: state.items.map((item) => ({
+                    productType: 'Game',
+                    gameId: item.gameId,
+                    title: item.name,
+                    coverUrl: item.image,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                    discountPerUnit: 0,
+                    finalUnitPrice: item.price,
+                    lineTotal: item.price * item.quantity,
+                })),
+            });
+            // Hosted checkout BTCPay; после оплаты вернёт на /checkout/success?crypto_invoice=<id>.
+            window.location.href = data.checkoutLink;
+        } catch (error: any) {
+            setCryptoError(error?.response?.status === 401
+                ? 'Please sign in to pay with crypto.'
+                : 'Could not start crypto payment. Please try again.');
+            setCryptoBusy(false);
+        }
+    };
 
     useEffect(() => {
         if (!hasTrackedCheckout.current && totals.total > 0 && state.items.length > 0) {
@@ -156,6 +196,27 @@ const CheckoutPage: React.FC = () => {
                                     </div>
                                 )}
                             </StripePaymentCard>
+
+                            {cryptoEnabled && (
+                                <div className="checkout-crypto-card">
+                                    <div className="checkout-crypto-card__header">
+                                        <h3>Pay with Bitcoin</h3>
+                                        <span className="checkout-crypto-card__badge">Testnet demo</span>
+                                    </div>
+                                    <p className="checkout-crypto-card__hint">
+                                        Demo integration via self-hosted BTCPay Server. Uses test coins only — no real funds.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="checkout-crypto-card__button"
+                                        onClick={handleCryptoPay}
+                                        disabled={cryptoBusy || totals.total <= 0}
+                                    >
+                                        {cryptoBusy ? 'Opening BTCPay…' : '₿ Pay with Bitcoin (testnet)'}
+                                    </button>
+                                    {cryptoError && <p className="checkout-crypto-card__error">{cryptoError}</p>}
+                                </div>
+                            )}
                         </aside>
                     </div>
                 </div>

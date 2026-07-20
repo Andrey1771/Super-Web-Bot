@@ -56,10 +56,15 @@ import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
 import AccountRecoveryAdminPage from "../../pages/admin/AccountRecoveryAdminPage";
 import AccountRecoveryPage, { AccountRecoveryCancelPage } from "../account-recovery/AccountRecoveryPage";
 import GameDiscountsPage from "../../pages/admin/GameDiscountsPage";
+import AdminBotStatusPage from "../../pages/admin/AdminBotStatusPage";
+import MiniAppPage from "../../features/miniapp/MiniAppPage";
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith("/admin");
+    // Mini App (внутри Telegram) — своя витрина без сайтовой шапки/футера/чата.
+    const isMiniAppRoute = location.pathname.startsWith("/tg");
+    const isChromeless = isAdminRoute || isMiniAppRoute;
     // На главной распорку не рисуем — тёмный hero уходит под стеклянную шапку (свой отступ задаёт сам hero).
     const isHomeRoute = location.pathname === "/";
 
@@ -70,8 +75,8 @@ export default function TaleGameshopMainWindow() {
     return (
         <AnalyticsProvider isAdminRoute={isAdminRoute}>
             <div ref={revealRootRef}>
-                {!isAdminRoute && <TaleGameshopHeader></TaleGameshopHeader>}
-                {!isAdminRoute && !isHomeRoute && <div className="main-page-down-header-padding"></div>}
+                {!isChromeless && <TaleGameshopHeader></TaleGameshopHeader>}
+                {!isChromeless && !isHomeRoute && <div className="main-page-down-header-padding"></div>}
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
@@ -92,6 +97,7 @@ export default function TaleGameshopMainWindow() {
                         }
                     >
                         <Route index element={<AdminPanelPage />} />
+                        <Route path="bot" element={<AdminBotStatusPage />} />
                         <Route path="botChanger" element={<BotChangerPage />} />
                         <Route path="siteChanger" element={<SiteChangerPage />} />
                         <Route path="cardAdder" element={<CardAdderPage />} />
@@ -132,6 +138,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
                     <Route path="/blog" element={<BlogPage/>}/>
                     <Route path="/blog/:slug" element={<BlogPostPage/>}/>
+                    <Route path="/tg" element={<MiniAppPage/>}/>
                     <Route
                         path="/account/*"
                         element={
@@ -142,9 +149,9 @@ export default function TaleGameshopMainWindow() {
                     />
                     <Route path="*" element={<NotFoundPage />} />
                 </Routes>
-                {!isAdminRoute && <TaleGameshopFooter></TaleGameshopFooter>}
-                {!isAdminRoute && <ChatWidget />}
-                {!isAdminRoute && <CookieBanner />}
+                {!isChromeless && <TaleGameshopFooter></TaleGameshopFooter>}
+                {!isChromeless && <ChatWidget />}
+                {!isChromeless && <CookieBanner />}
             </div>
         </AnalyticsProvider>
     );

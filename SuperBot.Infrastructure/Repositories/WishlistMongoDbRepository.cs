@@ -57,6 +57,19 @@ namespace SuperBot.Infrastructure.Repositories
             await _wishlistCollection.DeleteOneAsync(filter);
         }
 
+        public async Task<List<string>> GetUserIdsByGameAsync(string gameId)
+        {
+            if (string.IsNullOrWhiteSpace(gameId))
+            {
+                return new List<string>();
+            }
+
+            return await _wishlistCollection
+                .Find(item => item.GameId == gameId)
+                .Project(item => item.UserId)
+                .ToListAsync();
+        }
+
         public async Task<HashSet<string>> MergeAsync(string userId, IEnumerable<string> guestIds)
         {
             var normalizedIds = guestIds?

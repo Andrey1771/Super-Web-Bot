@@ -9,6 +9,7 @@ using SuperBot.Core.Services;
 using SuperBot.Infrastructure.ExternalServices;
 using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
+using SuperBot.Infrastructure.Services;
 using SuperBot.WebApi.Services;
 using Microsoft.Extensions.FileProviders;
 using SuperBot.Core.Entities;
@@ -16,10 +17,6 @@ using SuperBot.Common.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Stripe;
 using Microsoft.AspNetCore.HttpOverrides;
-using SuperBot.Application.Commands.Telegram;
-using Telegram.Bot;
-using SuperBot.WebApi.Types;
-using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.WebApi.Support;
 using SuperBot.WebApi.Support.Infrastructure;
 using SuperBot.WebApi.Support.Services;
@@ -91,27 +88,16 @@ builder.Services.Configure<SupportOptions>(builder.Configuration.GetSection("Sup
 builder.Services.Configure<SupportRoleOptions>(builder.Configuration.GetSection("Support:Roles"));
 builder.Services.Configure<SuperBot.WebApi.Support.Chat.SupportChatOptions>(builder.Configuration.GetSection("SupportChat"));
 
-var domainAssembly = typeof(GetMainMenuCommand).Assembly;
-builder.Services
-    .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
+// MediatR/бот-хендлеры живут в бот-сервисе. Сайт команд не отправляет — регистрация не нужна.
 
-// Setup bot configuration
-var botConfigSection = builder.Configuration.GetSection("BotConfiguration");
-builder.Services.Configure<BotConfiguration>(botConfigSection);
-builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<ITelegramBotClient>(
-    httpClient => new TelegramBotClient(botConfigSection.Get<BotConfiguration>()!.BotToken, httpClient));
-
-builder.Services.AddTransient<IResourceService, JsonResourceService>();
+// Telegram/бот полностью вынесен в SuperBot.BotApi. Сайт общается с ботом только событиями (outbox).
+// Публичные URL сайта (MainUrl) — нужны, например, реферальным ссылкам.
 builder.Services.AddSingleton<IUrlService, UrlProvider>();
 
-builder.Services.AddTransient<ITranslationsService, TranslationsService>();
-builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
+// Крипто-оплата (BTCPay, testnet DEMO). Не настроено — фича выключена, фронт кнопку не показывает.
+builder.Services.Configure<BtcPayOptions>(builder.Configuration.GetSection("BtcPay"));
+builder.Services.AddHttpClient<BtcPayClient>();
 
-builder.Services.AddSingleton<BotStateService>();
-builder.Services.AddSingleton<IBotStateReaderService>(provider => provider.GetRequiredService<BotStateService>());
-builder.Services.AddSingleton<IBotStateWriterService>(provider => provider.GetRequiredService<BotStateService>());
-
-builder.Services.AddTransient<IPayService, YooKassaService>();
 
 builder.Services.AddSingleton<IMongoClient, MongoClient>(sp =>
 {
@@ -145,8 +131,11 @@ builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
 builder.Services.AddScoped<IViewedGameRepository, ViewedGameMongoDbRepository>();
 builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
-// Выдача ключей: из пула инвентаря. См. KeyFulfillmentService.
+builder.Services.AddScoped<ITelegramLinkRepository, TelegramLinkMongoDbRepository>();
+// Выдача ключей: из пула инвентаря. Публикует событие доставки в outbox — Telegram шлёт бот-сервис.
 builder.Services.AddScoped<IKeyFulfillmentService, KeyFulfillmentService>();
+// Event-outbox: сайт только ПУБЛИКУЕТ события; консюмер (BotOutboxWorker) живёт в бот-сервисе.
+builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();
 builder.Services.AddScoped<IGameReviewHelpfulRepository, GameReviewHelpfulMongoDbRepository>();
 builder.Services.AddScoped<IGameQuestionRepository, GameQuestionMongoDbRepository>();
@@ -265,7 +254,10 @@ if (hangfireEnabled)
 
 builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>((httpClient) =>
 {
-    var uri = builder.Configuration["Keycloak:Uri"];
+    // Admin REST API Keycloak зовём по внутреннему адресу (в docker это http://keycloak:8080).
+    // Keycloak:Uri — публичный issuer для браузера, изнутри контейнера он недоступен.
+    var uri = builder.Configuration["Keycloak:Admin:BaseUrl"]
+        ?? builder.Configuration["Keycloak:Uri"];
     httpClient.BaseAddress = new Uri(uri);
     return new KeycloakClient(httpClient, uri);
 });

@@ -23,6 +23,7 @@ const statusOptions: OrderStatus[] = [
   "PENDING",
   "PAID",
   "PROCESSING",
+  "AWAITING_KEYS",
   "DELIVERED",
   "CANCELLED",
   "REFUNDED",

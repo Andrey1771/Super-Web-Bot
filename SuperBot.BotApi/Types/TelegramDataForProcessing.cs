@@ -1,6 +1,4 @@
-﻿using SuperBot.Core.Entities;
-
-namespace SuperBot.WebApi.Types
+namespace SuperBot.BotApi.Types
 {
     public class TelegramDataForProcessing
     {
@@ -11,6 +9,5 @@ namespace SuperBot.WebApi.Types
         public string UserFirstName { get; set; }
 
         public long UserID { get; set; }
-
     }
 }

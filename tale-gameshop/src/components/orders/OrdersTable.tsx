@@ -123,7 +123,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
           caption="Status"
           minWidth={140}
           cellRender={(cellData: { value: Order["status"] }) => (
-            <span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700">{cellData.value}</span>
+            <span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700">
+              {(cellData.value ?? "").replace(/_/g, " ")}
+            </span>
           )}
         />
         <Column

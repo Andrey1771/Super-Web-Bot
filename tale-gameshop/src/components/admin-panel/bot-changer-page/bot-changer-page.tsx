@@ -58,14 +58,16 @@ const BotChangerPage: React.FC = () => {
     return keys[0] ?? "ru";
   }, [editableData.translations]);
 
-  const activeEntries = useMemo(() => {
-    if (activeTab === "translations") {
-      return Object.entries(editableData.translations[languageKey] ?? {});
-    }
-    if (activeTab === "keyboardKeys") {
-      return Object.entries(editableData.keyboardKeys ?? {});
-    }
-    return [];
+  const activeEntries = useMemo<Array<[string, string]>>(() => {
+    // Значения могут прийти null (поле есть в модели, но отсутствует в данных) —
+    // приводим к строке, чтобы .length/.toLowerCase/input ниже не роняли страницу.
+    const source =
+      activeTab === "translations"
+        ? editableData.translations[languageKey] ?? {}
+        : activeTab === "keyboardKeys"
+          ? editableData.keyboardKeys ?? {}
+          : {};
+    return Object.entries(source).map(([key, value]) => [key, value ?? ""]);
   }, [activeTab, editableData, languageKey]);
 
   const filteredEntries = useMemo(() => {
@@ -91,9 +93,19 @@ const BotChangerPage: React.FC = () => {
     (async () => {
       try {
         const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-        const response = (await apiClient.api.get<Data>("/api/Admin")).data;
-        setEditableData(response);
-        setOriginalData(response);
+        const response = (await apiClient.api.get<Data>("/api/admin/bot/texts")).data;
+        // Бэкенд может вернуть пустое тело, если ресурсы бота не загрузились — не роняем страницу.
+        if (!response || typeof response !== "object") {
+          throw new Error("Empty bot data response");
+        }
+        setEditableData({
+          keyboardKeys: response.keyboardKeys ?? {},
+          translations: response.translations ?? {},
+        });
+        setOriginalData({
+          keyboardKeys: response.keyboardKeys ?? {},
+          translations: response.translations ?? {},
+        });
       } catch (fetchError) {
         console.error("Error getting data:", fetchError);
         setError("Failed to load bot data.");
@@ -135,7 +147,7 @@ const BotChangerPage: React.FC = () => {
     setError(null);
     try {
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-      await apiClient.api.post("/api/Admin", editableData);
+      await apiClient.api.put("/api/admin/bot/texts", editableData);
       setOriginalData(editableData);
       addToast("Bot data saved", "success");
     } catch (saveError) {

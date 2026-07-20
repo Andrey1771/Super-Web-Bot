@@ -1,79 +1,103 @@
-using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.HttpOverrides;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Driver;
 using SuperBot.Application.Commands.Telegram;
 using SuperBot.BotApi.Services;
 using SuperBot.BotApi.Types;
+using SuperBot.Common.Auth;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
+using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
-using SuperBot.Infrastructure.ExternalServices;
-using System.Globalization;
+using SuperBot.Infrastructure.Models;
+using SuperBot.Infrastructure.Repositories;
+using SuperBot.Infrastructure.Services;
 using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-
-// ��������� ��������� �����������
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-
-builder.Services.Configure<RequestLocalizationOptions>(options =>
+try
 {
-    var supportedCultures = new[]
-    {
-            new CultureInfo("en-US"),
-            new CultureInfo("ru-RU")
-        };
+    BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+}
+catch (BsonSerializationException)
+{
+    // Уже зарегистрирован (тест-хост/warm reload).
+}
 
-    options.DefaultRequestCulture = new RequestCulture("en-US");
-    options.SupportedCultures = supportedCultures;
-    options.SupportedUICultures = supportedCultures;
+// За nginx: доверяем forwarded-заголовкам.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 });
 
-// Setup bot configuration
+builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
+
+// --- Mongo ---
+builder.Services.AddSingleton<IMongoClient, MongoClient>(_ =>
+    new MongoClient(builder.Configuration.GetSection("ConnectionStrings:MongoDb").Value));
+builder.Services.AddScoped<IMongoDatabase>(sp =>
+    sp.GetRequiredService<IMongoClient>().GetDatabase(builder.Configuration.GetSection("ConnectionStrings:Name").Value));
+
+builder.Services.AddAutoMapper(typeof(GameProfile)); // сканирует все профили в Infrastructure.Models
+
+// --- Репозитории, нужные боту ---
+builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
+builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
+builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
+builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
+builder.Services.AddScoped<ITelegramLinkRepository, TelegramLinkMongoDbRepository>();
+
+// --- Бот-логика и Telegram ---
 var botConfigSection = builder.Configuration.GetSection("BotConfiguration");
 builder.Services.Configure<BotConfiguration>(botConfigSection);
 builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<ITelegramBotClient>(
     httpClient => new TelegramBotClient(botConfigSection.Get<BotConfiguration>()!.BotToken, httpClient));
-builder.Services.AddSingleton<UpdateHandler>();
-
 builder.Services.ConfigureTelegramBotMvc();
 
-var domainAssembly = typeof(GetMainMenuCommand).Assembly;
-builder.Services
-    .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(domainAssembly));
-
-builder.Services.AddTransient<IResourceService, JsonResourceService>();
+builder.Services.AddSingleton<IResourceService, MongoResourceService>();
 builder.Services.AddSingleton<IUrlService, UrlProvider>();
-
 builder.Services.AddTransient<ITranslationsService, TranslationsService>();
-
-builder.Services.AddSingleton<BotStateService>();
-builder.Services.AddSingleton<IBotStateReaderService>(provider => provider.GetRequiredService<BotStateService>());
-builder.Services.AddSingleton<IBotStateWriterService>(provider => provider.GetRequiredService<BotStateService>());
-
 builder.Services.AddTransient<IAdminSettingsProvider, AdminSettingsProvider>();
 
-builder.Services.AddTransient<IPayService, YooKassaService>();
+// Состояние диалога — в Mongo (stateless-бот, переживает рестарт и масштабируется репликами).
+builder.Services.AddSingleton<MongoBotStateService>();
+builder.Services.AddSingleton<IBotStateReaderService>(sp => sp.GetRequiredService<MongoBotStateService>());
+builder.Services.AddSingleton<IBotStateWriterService>(sp => sp.GetRequiredService<MongoBotStateService>());
+
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetMainMenuCommand).Assembly));
+
+builder.Services.AddSingleton<TelegramUpdateHandler>();
+builder.Services.AddSingleton<TelegramInitDataValidator>();
+
+// --- Shared-сервисы выдачи/уведомлений (Infrastructure) ---
+builder.Services.AddScoped<IKeyFulfillmentService, KeyFulfillmentService>();
+builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
+builder.Services.AddScoped<IBotNotificationService, BotNotificationService>();
+builder.Services.AddScoped<IWishlistDiscountAlertService, WishlistDiscountAlertService>();
+builder.Services.AddScoped<ISupportEscalationNotifier, SupportEscalationNotifier>();
+
+// Единственный консюмер outbox — здесь, в бот-сервисе.
+builder.Services.AddHostedService<BotOutboxWorker>();
+
+// --- Auth (те же Keycloak-токены, что у сайта; нужен для admin/аккаунт эндпоинтов) ---
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddTransient<IClaimsTransformation, KeycloakClaimsTransformation>();
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
+app.UseForwardedHeaders();
+app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

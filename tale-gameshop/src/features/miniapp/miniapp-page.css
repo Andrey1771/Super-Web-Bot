@@ -1,0 +1,657 @@
+/* Telegram Mini App «Tale Shop» — фиксированная брендовая тёмная тема (не зависит от темы клиента,
+   чтобы витрина выглядела одинаково премиально у всех). */
+.miniapp {
+    --bg: #0b0b11;
+    --surface: #15151e;
+    --surface-2: #1e1e2a;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --text: #f3f3f8;
+    --muted: #9a9ab2;
+    --faint: #6d6d84;
+    --accent: #8b7bff;
+    --accent-2: #b57bff;
+    --star: #ffcf51;
+    --danger: #ff5b6a;
+
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    padding: 14px 14px 40px;
+    box-sizing: border-box;
+    max-width: 1120px;
+    margin: 0 auto;
+    font-feature-settings: "ss01";
+}
+
+.miniapp * { box-sizing: border-box; }
+
+/* ---------- Топбар ---------- */
+.miniapp__topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 2px 14px;
+}
+
+.miniapp__logo {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(92deg, #fff, #cbb8ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.miniapp__carticon {
+    position: relative;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 17px;
+    line-height: 1;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.15s ease;
+}
+.miniapp__carticon:active { transform: scale(0.94); }
+
+.miniapp__cartbadge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg);
+}
+
+/* ---------- Герой ---------- */
+.miniapp__hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    padding: 22px 20px;
+    margin-bottom: 14px;
+    background:
+        radial-gradient(120% 140% at 100% 0%, rgba(181, 123, 255, 0.35), transparent 55%),
+        radial-gradient(120% 160% at 0% 100%, rgba(139, 123, 255, 0.28), transparent 50%),
+        linear-gradient(135deg, #221b3f, #171326);
+    border: 1px solid var(--border-strong);
+}
+.miniapp__hero::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.14), transparent 60%);
+    pointer-events: none;
+}
+
+.miniapp__herobadge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #efeaff;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+}
+
+.miniapp__herotitle {
+    margin: 0 0 8px;
+    font-size: 25px;
+    line-height: 1.12;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    max-width: 15ch;
+}
+
+.miniapp__herosub {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #cfc9e6;
+    max-width: 44ch;
+}
+
+/* ---------- Доверие ---------- */
+.miniapp__trust {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.miniapp__trustitem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 9px 11px;
+    font-size: 12px;
+    color: var(--text);
+}
+.miniapp__trusticon { font-size: 14px; line-height: 1; }
+
+@media (min-width: 560px) {
+    .miniapp__trust { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ---------- Поиск ---------- */
+.miniapp__searchbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    padding: 0 12px;
+    margin-bottom: 18px;
+    transition: border-color 0.15s ease;
+}
+.miniapp__searchbar:focus-within { border-color: var(--accent); }
+.miniapp__searchicon { font-size: 14px; opacity: 0.7; }
+.miniapp__searchbar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    padding: 12px 0;
+    outline: none;
+}
+.miniapp__searchbar input::placeholder { color: var(--faint); }
+
+/* ---------- Заголовок секции ---------- */
+.miniapp__sectionhead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.miniapp__sectionhead h2 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+.miniapp__sectionhead span { font-size: 12px; color: var(--muted); }
+
+/* ---------- Сетка + карточка ---------- */
+.miniapp__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 12px;
+}
+
+.miniapp__card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: miniapp-fadeup 0.4s ease both;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.miniapp__card:hover { border-color: var(--border-strong); }
+
+.miniapp__coverbtn {
+    position: relative;
+    border: none;
+    padding: 0;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #0f0f17;
+    cursor: pointer;
+    overflow: hidden;
+}
+.miniapp__coverbtn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s ease;
+}
+.miniapp__coverbtn:active img { transform: scale(1.04); }
+
+.miniapp__badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 7px;
+    border-radius: 8px;
+}
+
+.miniapp__genre {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #efeaff;
+    background: rgba(12, 10, 22, 0.6);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.miniapp__body {
+    padding: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    flex: 1;
+}
+.miniapp__body h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.miniapp__price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.miniapp__pricestars {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--star);
+    letter-spacing: -0.01em;
+}
+.miniapp__priceusd {
+    font-size: 12px;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.miniapp__priceusd s { color: var(--faint); }
+
+.miniapp__buy {
+    margin-top: auto;
+    border: none;
+    border-radius: 11px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 10px 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.12s ease, filter 0.15s ease;
+}
+.miniapp__buy:active { transform: scale(0.97); }
+.miniapp__buy:hover { filter: brightness(1.08); }
+.miniapp__buy:disabled { opacity: 0.5; cursor: default; }
+.miniapp__buyplus { font-size: 16px; font-weight: 700; line-height: 1; }
+.miniapp__buy--wide { width: 100%; }
+
+/* ---------- Степпер ---------- */
+.miniapp__stepper {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 4px;
+}
+.miniapp__stepper button {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.12s ease;
+}
+.miniapp__stepper button:active { transform: scale(0.9); }
+.miniapp__stepper span { flex: 1; text-align: center; font-size: 14px; font-weight: 700; }
+.miniapp__stepper--card { padding: 3px; }
+
+/* ---------- Скелетоны / пусто ---------- */
+.miniapp__skeleton {
+    height: 210px;
+    border-radius: 16px;
+    background: linear-gradient(90deg, var(--surface), rgba(255, 255, 255, 0.06), var(--surface));
+    background-size: 200% 100%;
+    animation: miniapp-shimmer 1.2s infinite;
+}
+@keyframes miniapp-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.miniapp__empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 48px 16px;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+
+@keyframes miniapp-fadeup {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Карточка товара ---------- */
+.miniapp__product {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 620px;
+    margin: 0 auto;
+    animation: miniapp-fadeup 0.35s ease both;
+}
+.miniapp__producthero {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #0f0f17;
+    border: 1px solid var(--border);
+}
+.miniapp__producthero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.miniapp__product h2 {
+    margin: 4px 0 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+.miniapp__product > .miniapp__genre {
+    position: static;
+    align-self: flex-start;
+    background: rgba(139, 123, 255, 0.16);
+    border-color: rgba(139, 123, 255, 0.3);
+    color: #cbbcff;
+    backdrop-filter: none;
+}
+
+.miniapp__productprice {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.miniapp__productprice > span:first-child {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--star);
+    letter-spacing: -0.02em;
+}
+.miniapp__productusd { font-size: 15px; font-weight: 500; color: var(--muted); }
+.miniapp__strike { font-size: 14px; font-weight: 500; color: var(--faint); text-decoration: line-through; }
+
+.miniapp__productdesc {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #c9c9dc;
+}
+
+/* «Что получаете» */
+.miniapp__perks {
+    list-style: none;
+    margin: 0;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.miniapp__perks li {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 13.5px;
+    color: var(--text);
+}
+.miniapp__perks li span { font-size: 15px; line-height: 1; width: 20px; text-align: center; }
+
+.miniapp__productcart {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+.miniapp__productcart .miniapp__stepper { margin-top: 0; flex: 0 0 140px; }
+.miniapp__productcart .miniapp__buy { flex: 1; margin-top: 0; }
+
+.miniapp__backlink {
+    align-self: flex-start;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+/* Продолжить покупки */
+.miniapp__continue {
+    width: 100%;
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.15s ease;
+}
+.miniapp__continue:hover { border-color: var(--border-strong); }
+.miniapp__continue:active { transform: scale(0.99); }
+
+.miniapp__emptyicon { font-size: 34px; }
+
+/* Похожие игры / апселл */
+.miniapp__similar { margin-top: 24px; }
+.miniapp__similaradd {
+    padding: 0 9px 2px;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--star);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.miniapp__similaradd > span {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+}
+.miniapp__similar h3 { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
+.miniapp__similarrow {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+}
+.miniapp__similarrow::-webkit-scrollbar { display: none; }
+.miniapp__similarcard {
+    flex: 0 0 120px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 13px;
+    padding: 0 0 9px;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    text-align: left;
+    transition: border-color 0.15s ease;
+}
+.miniapp__similarcard:hover { border-color: var(--border-strong); }
+.miniapp__similarcover { aspect-ratio: 4 / 3; background: #0f0f17; }
+.miniapp__similarcover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.miniapp__similartitle {
+    padding: 0 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.miniapp__similarprice { padding: 0 9px; font-size: 12.5px; font-weight: 800; color: var(--star); }
+
+/* ---------- Корзина ---------- */
+.miniapp__cartview { animation: miniapp-fadeup 0.35s ease both; }
+.miniapp__cartview > .miniapp__header,
+.miniapp__cartview h1 {
+    margin: 4px 0 16px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.miniapp__cartlist { display: flex; flex-direction: column; gap: 10px; }
+.miniapp__cartline {
+    display: flex;
+    gap: 11px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 9px;
+}
+.miniapp__cartcover {
+    width: 66px;
+    height: 66px;
+    flex: 0 0 66px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0f0f17;
+}
+.miniapp__cartcover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.miniapp__cartinfo { flex: 1; min-width: 0; }
+.miniapp__cartinfo h4 {
+    margin: 0 0 5px;
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.miniapp__cartactions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.miniapp__cartactions .miniapp__stepper { margin-top: 0; width: 116px; }
+.miniapp__remove {
+    border: none;
+    background: transparent;
+    color: var(--faint);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px;
+}
+.miniapp__remove:hover { color: var(--danger); }
+
+.miniapp__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 18px 0 14px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 15px;
+    color: var(--muted);
+}
+.miniapp__totalvalue {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 9px;
+    color: var(--star);
+    font-size: 22px;
+    font-weight: 800;
+}
+.miniapp__totalvalue small { font-size: 13px; font-weight: 500; color: var(--muted); }
+
+.miniapp__checkout {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 15px;
+    cursor: pointer;
+    transition: transform 0.12s ease, filter 0.15s ease;
+}
+.miniapp__checkout:hover { filter: brightness(1.08); }
+.miniapp__checkout:active { transform: scale(0.99); }
+.miniapp__checkout:disabled { opacity: 0.6; cursor: default; }
+
+.miniapp__secure {
+    margin: 12px 0 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.miniapp__note {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    background: rgba(255, 196, 0, 0.1);
+    border: 1px solid rgba(255, 196, 0, 0.2);
+    color: #ffcf51;
+    font-size: 12.5px;
+}

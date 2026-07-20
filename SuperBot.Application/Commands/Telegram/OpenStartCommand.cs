@@ -12,5 +12,8 @@ namespace SuperBot.Application.Commands.Telegram
         public long ChatId { get; set; }
         public long UserId { get; set; }
         public string Username { get; set; }
+
+        /// <summary>Payload из deep-link (/start &lt;token&gt;) — токен привязки аккаунта сайта.</summary>
+        public string StartPayload { get; set; }
     }
 }

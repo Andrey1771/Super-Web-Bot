@@ -91,17 +91,20 @@ namespace SuperBot.WebApi.Controllers
             return Ok(response);
         }
 
+        // Гостям тоже показываем рекомендации (страницы корзины/каталога публичные):
+        // без личной истории сервис отдаёт «трендовый» фолбэк.
+        [AllowAnonymous]
         [HttpGet("recommendations")]
         public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 8)
         {
             var currentUserId = GetCurrentUserId();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
-                return Unauthorized();
+                currentUserId = string.Empty; // guest — сервис уйдёт в fallback-подборку
             }
 
             var normalizedLimit = Math.Clamp(limit, 1, 50);
-            var cacheKey = $"recommendations:{currentUserId}:{normalizedLimit}";
+            var cacheKey = $"recommendations:{(string.IsNullOrEmpty(currentUserId) ? "guest" : currentUserId)}:{normalizedLimit}";
             if (!_memoryCache.TryGetValue(cacheKey, out IReadOnlyList<RecommendationItem> recommendations))
             {
                 recommendations = await _recommendationsService.GetRecommendationsAsync(currentUserId, normalizedLimit);

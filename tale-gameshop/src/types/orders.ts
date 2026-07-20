@@ -2,6 +2,7 @@ export type OrderStatus =
   | "PENDING"
   | "PAID"
   | "PROCESSING"
+  | "AWAITING_KEYS"
   | "DELIVERED"
   | "CANCELLED"
   | "REFUNDED"

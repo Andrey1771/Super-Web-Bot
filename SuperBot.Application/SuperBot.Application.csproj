@@ -15,8 +15,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Дефолтная обложка для карточек бота, когда у игры нет своей (принцип сайта: cover → fallback). -->
+    <EmbeddedResource Include="Assets\game-cover-fallback.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MediatR" Version="12.4.0" />
-    <PackageReference Include="Telegram.Bot" Version="21.11.0" />
+    <PackageReference Include="Telegram.Bot" Version="22.0.0" />
   </ItemGroup>
 
   <ItemGroup>

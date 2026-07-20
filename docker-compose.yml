@@ -48,6 +48,15 @@ services:
       - BotConfiguration__BotWebhookUrl=${PUBLIC_URL:-http://localhost}/api/Telegram
       # Application secrets — sourced from .env (gitignored), never from committed appsettings.
       - BotConfiguration__BotToken=${BOT_TOKEN}
+      - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET}
+      # Курс пересчёта цены в Telegram Stars (XTR) для оплаты в боте. Пусто = 50 (демо-ставка).
+      - BotPayments__StarsPerUsd=${STARS_PER_USD:-50}
+      # BTCPay Server (крипто-оплата, testnet DEMO). Все пустые = фича выключена.
+      # Свой инстанс: https://docs.btcpayserver.org/Docker/ (testnet), API-ключ с правами btcpay.store.cancreateinvoice.
+      - BtcPay__BaseUrl=${BTCPAY_URL}
+      - BtcPay__ApiKey=${BTCPAY_API_KEY}
+      - BtcPay__StoreId=${BTCPAY_STORE_ID}
+      - BtcPay__WebhookSecret=${BTCPAY_WEBHOOK_SECRET}
       - JwtSettings__SecretKey=${JWT_SECRET}
       - Stripe__SecretKey=${STRIPE_SECRET_KEY}
       - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
@@ -61,6 +70,39 @@ services:
     volumes:
       # Загруженные файлы (аватары и т.п.) должны переживать пересборку контейнера.
       - uploads_data:/app/wwwroot/uploads
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+      - keycloak
+    networks:
+      - app_network
+
+  # Бот-сервис: отдельный контейнер, единственный держит токен Telegram. Общается с сайтом
+  # только через Mongo (event-outbox). nginx направляет сюда /api/Telegram, /api/admin/bot,
+  # /api/miniapp, /api/account/telegram.
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    restart: always
+    environment:
+      - ASPNETCORE_URLS=http://+:7003
+      - ConnectionStrings__MongoDb=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+      # Keycloak (проверка admin/аккаунт токенов) — как у backend
+      - Keycloak__Uri=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}
+      - Keycloak__Realm=TaleShop
+      - Keycloak__Audience=account
+      - Keycloak__MetadataAddress=http://keycloak:8080/realms/TaleShop/.well-known/openid-configuration
+      - JwtSettings__Issuer=${PUBLIC_URL:-http://localhost}
+      - JwtSettings__Audience=${PUBLIC_URL:-http://localhost}
+      - JwtSettings__SecretKey=${JWT_SECRET}
+      - MainUrl=${PUBLIC_URL:-http://localhost}
+      # Telegram-бот
+      - BotConfiguration__BotWebhookUrl=${PUBLIC_URL:-http://localhost}/api/Telegram
+      - BotConfiguration__BotToken=${BOT_TOKEN}
+      - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET}
+      - BotPayments__StarsPerUsd=${STARS_PER_USD:-50}
     depends_on:
       - mongo1
       - mongo2
@@ -210,6 +252,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - bot
     #  - keycloak
     networks:
       - app_network

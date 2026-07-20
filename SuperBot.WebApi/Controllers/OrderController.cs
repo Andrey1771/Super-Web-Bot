@@ -2,9 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
@@ -12,30 +11,18 @@ using SuperBot.Core.Interfaces;
 
 namespace SuperBot.WebApi.Controllers
 {
+    // Легаси/админские операции над заказами. Реальный покупательский чекаут идёт через
+    // PaymentsController (Stripe) — сюда покупатели не ходят, поэтому весь контроллер только для админа.
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "admin")]
     public class OrderController(
         IOrderRepository _orderRepository,
         IGameRepository _gameRepository,
         IMapper _mapper,
-        IMediator _mediator,
         IPromoCodeService _promoCodeService,
         IKeyFulfillmentService _keyFulfillmentService) : Controller
     {
-        [HttpPost("confirm/{orderId}")]
-        public async Task<IActionResult> SetPaidSteamOrder(string orderId)
-        {
-            var confirmTopUpSteamCommand = new ConfirmTopUpSteamCommand()
-            {
-                PayId = orderId
-            };
-
-            await _mediator.Send(confirmTopUpSteamCommand);
-            
-            return Ok();
-        }
-
-
         // GET: api/order/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Order>> GetOrderById(string id)

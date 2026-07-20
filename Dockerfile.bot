@@ -1,0 +1,29 @@
+# Сборка бот-сервиса (SuperBot.BotApi) — отдельный контейнер, владеет Telegram-ботом.
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /app
+
+# Кастомный NuGet-репозиторий для Telegram.Bot
+RUN dotnet nuget add source "https://pkgs.dev.azure.com/tgbots/Telegram.Bot/_packaging/release/nuget/v3/index.json" --name TelegramBotCustom
+
+# Копируем файлы проектов (граф зависимостей бота)
+COPY SuperBot.Application/SuperBot.Application.csproj SuperBot.Application/
+COPY SuperBot.Core/SuperBot.Core.csproj SuperBot.Core/
+COPY SuperBot.Infrastructure/SuperBot.Infrastructure.csproj SuperBot.Infrastructure/
+COPY SuperBot.Common.Auth/SuperBot.Common.Auth.csproj SuperBot.Common.Auth/
+COPY SuperBot.BotApi/SuperBot.BotApi.csproj SuperBot.BotApi/
+
+# Восстанавливаем зависимости
+RUN dotnet restore SuperBot.BotApi/SuperBot.BotApi.csproj --source "https://pkgs.dev.azure.com/tgbots/Telegram.Bot/_packaging/release/nuget/v3/index.json" --source https://api.nuget.org/v3/index.json
+
+# Копируем весь исходный код
+COPY . .
+
+# Собираем бот-сервис
+RUN dotnet publish SuperBot.BotApi/SuperBot.BotApi.csproj -c Release -o /app/published
+
+# Рантайм
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/published ./
+
+ENTRYPOINT ["dotnet", "SuperBot.BotApi.dll"]

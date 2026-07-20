@@ -149,9 +149,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         title: "Bot / Content",
         items: [
           {
+            label: "Bot status",
+            to: "/admin/bot",
+            icon: "🤖",
+          },
+          {
             label: "Bot texts",
             to: "/admin/botChanger",
-            icon: "🤖",
+            icon: "✍️",
           },
           {
             label: "Blog posts",

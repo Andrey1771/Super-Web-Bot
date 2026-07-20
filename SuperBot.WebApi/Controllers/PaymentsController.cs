@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using Stripe;
 using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
 
@@ -18,16 +19,19 @@ namespace SuperBot.WebApi.Controllers
         private static readonly TimeSpan ProcessingCooldown = TimeSpan.FromSeconds(60);
 
         private readonly IOrderRepository _orderRepository;
+        private readonly IKeyFulfillmentService _keyFulfillmentService;
         private readonly ILogger<PaymentsController> _logger;
         private readonly IMongoCollection<PaymentFinalizationStateDb> _finalizationStates;
         private readonly IMongoCollection<PaymentFinalizationFailureDb> _finalizationFailures;
 
         public PaymentsController(
             IOrderRepository orderRepository,
+            IKeyFulfillmentService keyFulfillmentService,
             ILogger<PaymentsController> logger,
             IMongoDatabase database)
         {
             _orderRepository = orderRepository;
+            _keyFulfillmentService = keyFulfillmentService;
             _logger = logger;
             _finalizationStates = database.GetCollection<PaymentFinalizationStateDb>("PaymentFinalizationStates");
             _finalizationFailures = database.GetCollection<PaymentFinalizationFailureDb>("PaymentFinalizationFailures");
@@ -248,15 +252,17 @@ namespace SuperBot.WebApi.Controllers
                     GameName = firstItem?.Title ?? "Checkout purchase",
                     UserName = userId,
                     IsPaid = true,
-                    IsFulfilled = true,
+                    // Оплата подтверждена, но ключи ещё не выданы — это делает FulfillOrderAsync ниже,
+                    // он же проставит честный статус (DELIVERED только если ключей хватило).
+                    IsFulfilled = false,
                     OrderDate = nowCreated,
                     CreatedAt = nowCreated,
                     PaidAt = nowCreated,
                     UpdatedAt = nowCreated,
                     SnapshotVersion = 1,
-                    Status = "DELIVERED",
+                    Status = "AWAITING_KEYS",
                     PaymentStatus = "PAID",
-                    FulfillmentStatus = "DELIVERED",
+                    FulfillmentStatus = "PENDING_KEYS",
                     SubtotalAmount = subtotalAmount,
                     DiscountTotal = discountTotal,
                     TaxTotal = taxTotal,
@@ -280,6 +286,10 @@ namespace SuperBot.WebApi.Controllers
                 };
 
                 await _orderRepository.CreateOrderAsync(order);
+
+                // Выдаём ключи и проставляем реальный статус выдачи (заказ сохраняется внутри).
+                await _keyFulfillmentService.FulfillOrderAsync(order);
+
                 await MarkSucceededAsync(request.PaymentIntentId, userId, attempts, order.Id.ToString());
                 await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id.ToString());
 

@@ -546,7 +546,7 @@ const BlogPostsPage: React.FC = () => {
                   <div className="border rounded-xl p-3 bg-white">
                     <h4 className="text-sm font-semibold mb-2">Top posts</h4>
                     <div className="text-xs space-y-1">
-                      {overviewAnalytics.topPostsByViews.slice(0, 8).map((post) => (
+                      {(overviewAnalytics.topPostsByViews ?? []).slice(0, 8).map((post) => (
                         <button
                           key={`top-view-${post.postId}`}
                           className="flex justify-between w-full text-left hover:bg-slate-50 px-2 py-1 rounded"

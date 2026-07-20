@@ -1,10 +1,7 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SuperBot.Application.Commands.Telegram;
-using SuperBot.Application.Commands.TopUp;
 using SuperBot.Core.Entities;
-using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Events;
+using SuperBot.Core.Interfaces;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -13,18 +10,11 @@ namespace SuperBot.WebApi.Controllers
     public class ChatBotController : Controller
     {
         [HttpPost]
-        public async Task<IActionResult> SendQuestionMessage([FromBody] QuestionMessage newGame, IMediator _mediator)
+        public async Task<IActionResult> SendQuestionMessage([FromBody] QuestionMessage message, [FromServices] IBotEventPublisher botEvents)
         {
-            var confirmTopUpSteamCommand = new NotifyAdminCommand()
-            {
-                Question = newGame.Question,
-                Email = newGame.Email,
-                Name = newGame.Name,
-                Phone = newGame.Phone
-            };
-
-            await _mediator.Send(confirmTopUpSteamCommand);
-
+            // Вопрос из формы поддержки уходит админу в Telegram — через outbox, доставит бот-сервис.
+            var text = $"📩 Новый вопрос с сайта\nТелефон: {message.Phone}\nИмя: {message.Name}\nemail: {message.Email}\nВопрос: {message.Question}";
+            await botEvents.PublishAsync(BotEventTypes.SupportEscalation, new SupportEscalationEvent(text));
             return Ok();
         }
     }

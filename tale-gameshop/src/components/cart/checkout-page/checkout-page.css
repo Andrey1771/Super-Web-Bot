@@ -57,3 +57,72 @@
         margin-bottom: var(--space-24);
     }
 }
+
+/* Крипто-оплата (BTCPay, testnet demo) — вторая карточка под Stripe. */
+.checkout-crypto-card {
+    margin-top: var(--space-16, 16px);
+    border: 1px solid var(--color-border, #e6e6f0);
+    border-radius: var(--radius-lg, 16px);
+    background: #fff;
+    padding: var(--space-20, 20px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.checkout-crypto-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.checkout-crypto-card__header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.checkout-crypto-card__badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #b45309;
+    background: #fef3c7;
+    border-radius: 999px;
+    padding: 3px 8px;
+}
+
+.checkout-crypto-card__hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-muted, #6b7280);
+}
+
+.checkout-crypto-card__button {
+    border: none;
+    border-radius: 12px;
+    background: #f7931a;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+
+.checkout-crypto-card__button:hover:not(:disabled) {
+    filter: brightness(1.05);
+}
+
+.checkout-crypto-card__button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.checkout-crypto-card__error {
+    margin: 0;
+    font-size: 13px;
+    color: #b91c1c;
+}

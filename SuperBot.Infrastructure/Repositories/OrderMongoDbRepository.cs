@@ -84,6 +84,16 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<List<Order>>(ordersDb);
         }
 
+        public async Task<List<Order>> GetUnfulfilledPaidOrdersAsync()
+        {
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true),
+                Builders<OrderDb>.Filter.Ne(order => order.IsFulfilled, true));
+            var ordersDb = await _orders.Find(filter).ToListAsync();
+            await EnsureOrderGuidsAsync(ordersDb);
+            return _mapper.Map<List<Order>>(ordersDb);
+        }
+
         public async Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(
             IReadOnlyCollection<string> userNames,
             OrderQueryParameters query)

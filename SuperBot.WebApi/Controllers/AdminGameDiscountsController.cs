@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
+using SuperBot.Core.Events;
+using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 
 namespace SuperBot.WebApi.Controllers;
@@ -12,11 +14,16 @@ public class AdminGameDiscountsController : ControllerBase
 {
     private readonly IGameRepository _gameRepository;
     private readonly IGameDiscountRepository _discountRepository;
+    private readonly IBotEventPublisher _botEvents;
 
-    public AdminGameDiscountsController(IGameRepository gameRepository, IGameDiscountRepository discountRepository)
+    public AdminGameDiscountsController(
+        IGameRepository gameRepository,
+        IGameDiscountRepository discountRepository,
+        IBotEventPublisher botEvents)
     {
         _gameRepository = gameRepository;
         _discountRepository = discountRepository;
+        _botEvents = botEvents;
     }
 
     [HttpGet("discounts")]
@@ -121,6 +128,9 @@ public class AdminGameDiscountsController : ControllerBase
 
         await _discountRepository.UpsertAsync(discount);
 
+        // Событие в outbox — Telegram-алерты по wishlist разошлёт бот-сервис.
+        await _botEvents.PublishAsync(BotEventTypes.GameDiscountActivated, new GameDiscountActivatedEvent(id));
+
         return Ok(new
         {
             gameId = discount.GameId,
@@ -162,19 +172,28 @@ public class AdminGameDiscountsController : ControllerBase
             return BadRequest("End date must be later than start date.");
         }
 
-        var tasks = request.GameIds
+        var gameIds = request.GameIds
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
-            .Select(id => _discountRepository.UpsertAsync(new GameDiscount
-            {
-                GameId = id,
-                DiscountPercent = request.DiscountPercent,
-                StartDate = request.StartDate,
-                EndDate = request.EndDate
-            }));
+            .ToList();
 
-        await Task.WhenAll(tasks);
-        return Ok(new { updated = request.GameIds.Count });
+        var discounts = gameIds.ToDictionary(id => id, id => new GameDiscount
+        {
+            GameId = id,
+            DiscountPercent = request.DiscountPercent,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate
+        });
+
+        await Task.WhenAll(discounts.Values.Select(_discountRepository.UpsertAsync));
+
+        // События в outbox — алерты по wishlist разошлёт бот-сервис.
+        foreach (var id in discounts.Keys)
+        {
+            await _botEvents.PublishAsync(BotEventTypes.GameDiscountActivated, new GameDiscountActivatedEvent(id));
+        }
+
+        return Ok(new { updated = gameIds.Count });
     }
 
     [HttpPost("discounts/bulk-clear")]

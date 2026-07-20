@@ -1,15 +1,10 @@
-﻿using MediatR;
+using MediatR;
 using SuperBot.Application.Commands.BuyGame;
-using SuperBot.Application.Commands.InternationalTransfers;
-using SuperBot.Application.Commands.Investment;
 using SuperBot.Application.Commands.Telegram;
 using SuperBot.Application.Commands.Telegram.Base;
-using SuperBot.Application.Commands.TopUp;
-using SuperBot.Application.Commands.WithdrawalOfFunds;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SuperBot.Application.Handlers.Telegram.Base
 {
@@ -25,29 +20,6 @@ namespace SuperBot.Application.Handlers.Telegram.Base
             { typeof(OpenMyAccountCommand), DialogState.Account },
             { typeof(OpenReferralProgramCommand), DialogState.Referral },
             { typeof(OpenStartCommand), DialogState.MainMenu },
-
-            { typeof(OpenTopUpSteamCommand), DialogState.TopUpWithLogin },
-            { typeof(PrepareTopUpSteamCommand), DialogState.TopUpWithData },
-            { typeof(TopUpSteamCommand), DialogState.MainMenu },
-
-
-            { typeof(OpenTopUpAccountCommand), DialogState.TopUpAccountWithData },
-            { typeof(TopUpAccountCommand), DialogState.MainMenu },
-
-            { typeof(OpenWithdrawalOfFundsCommand), DialogState.WithdrawalOfFundsWithCard },
-            { typeof(PrepareWithdrawalOfFundsCommand), DialogState.WithdrawalOfFundsWithData },
-            { typeof(WithdrawalOfFundsCommand), DialogState.MainMenu },
-
-            //{ typeof(OpenInvestmentCommand), DialogState.AwaitingInvestmentAmount },
-            { typeof(OpenInvestmentCommand), DialogState.MainMenu },
-            { typeof(StartInvestmentCommand), DialogState.AwaitingInvestmentAmount },
-            { typeof(EnterInvestmentAmountCommand), DialogState.AwaitingInvestmentDuration },
-            { typeof(EnterInvestmentDurationCommand), DialogState.InvestmentDecision },
-            { typeof(InvestmentDecisionCommand), DialogState.MainMenu },
-
-
-            { typeof(OpenInternationalTransfersCommand), DialogState.InternationalTransfers },
-            { typeof(InternationalTransfersCommand), DialogState.MainMenu },
             { typeof(ErrorCommand), DialogState.MainMenu }
         };
 

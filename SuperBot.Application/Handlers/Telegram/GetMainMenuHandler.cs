@@ -1,8 +1,6 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Components.Forms;
+using MediatR;
 using SuperBot.Application.Commands.Telegram;
 using SuperBot.Application.Handlers.Telegram.Base;
-using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using System.Text;
 using Telegram.Bot;
@@ -12,10 +10,8 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SuperBot.Application.Handlers.Telegram
 {
-    public class GetMainMenuHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator) : DialogCommandHandler<GetMainMenuCommand>(_mediator, _translationsService), IRequestHandler<GetMainMenuCommand, Message>
+    public class GetMainMenuHandler(ITelegramBotClient _botClient, ITranslationsService _translationsService, IMediator _mediator, IUrlService _urlService) : DialogCommandHandler<GetMainMenuCommand>(_mediator, _translationsService), IRequestHandler<GetMainMenuCommand, Message>
     {
-        private Dictionary<string, string> commandDescriptions;
-
         public async Task<Message> Handle(GetMainMenuCommand request, CancellationToken cancellationToken)
         {
             await SendToChangeDialogStateAsync(request.ChatId);
@@ -33,11 +29,8 @@ namespace SuperBot.Application.Handlers.Telegram
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine($"<b><u>{_translationsService.Translation.BotMenu}</u></b>");
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.BuySteamGames, _translationsService.Translation.BuySteamGames));
-            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.InternationalTransfers, _translationsService.Translation.InternationalTransfers));
-            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Investments, _translationsService.Translation.Investments));
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Account, _translationsService.Translation.Account));
-            //stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SelectAction, _translationsService.Translation.SelectAction));
-            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.SteamTopUp, _translationsService.Translation.SteamTopUp));
+            stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.ReferralProgram, _translationsService.Translation.ReferralProgram));
             stringBuilder.AppendLine(GetFormat(_translationsService.KeyboardKeys.Store, _translationsService.Translation.Store));
             return stringBuilder.ToString();
         }
@@ -51,17 +44,26 @@ namespace SuperBot.Application.Handlers.Telegram
         {
             var inlineKeyboard = new List<List<InlineKeyboardButton>>();
 
+            var mainUrl = _urlService.MainUrl ?? string.Empty;
             var buttons = new List<InlineKeyboardButton>
             {
-
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.BuySteamGames, _translationsService.KeyboardKeys.BuySteamGames),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.InternationalTransfers, _translationsService.KeyboardKeys.InternationalTransfers),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.Investments, _translationsService.KeyboardKeys.Investments),
                 InlineKeyboardButton.WithCallbackData(_translationsService.Translation.Account, _translationsService.KeyboardKeys.Account),
-                //InlineKeyboardButton.WithCallbackData(_translationsService.Translation.SelectAction, _translationsService.KeyboardKeys.SelectAction),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.SteamTopUp, _translationsService.KeyboardKeys.SteamTopUp),
-                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.Store, _translationsService.KeyboardKeys.Store)
+                InlineKeyboardButton.WithCallbackData(_translationsService.Translation.ReferralProgram, _translationsService.KeyboardKeys.ReferralProgram),
             };
+
+            // Магазин — прямая ссылка на сайт. Telegram отвергает URL-кнопки с localhost/невалидным
+            // хостом ("Wrong HTTP URL") и роняет ВСЁ меню, поэтому добавляем её только для публичного адреса.
+            if (IsPublicWebUrl(mainUrl))
+            {
+                buttons.Add(InlineKeyboardButton.WithUrl(_translationsService.Translation.Store, mainUrl));
+
+                // Mini App открывается только по HTTPS (требование Telegram) — на локалке кнопку не добавляем.
+                if (mainUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    buttons.Add(InlineKeyboardButton.WithWebApp("🎮 Mini App", new WebAppInfo { Url = $"{mainUrl.TrimEnd('/')}/tg" }));
+                }
+            }
 
             // Разбиваем на строки по 2 кнопки в каждой
             for (int i = 0; i < buttons.Count; i += 2)
@@ -83,6 +85,23 @@ namespace SuperBot.Application.Handlers.Telegram
 
             // Создаем клавиатуру
             return new InlineKeyboardMarkup(inlineKeyboard);
+        }
+
+        // Кнопку-ссылку Telegram принимает только для публичного http(s)-хоста.
+        // localhost/127.0.0.1/*.local и пустой/кривой URL отсекаем, иначе SendMessage падает и меню не приходит.
+        private static bool IsPublicWebUrl(string url)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                return false;
+
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                return false;
+
+            var host = uri.Host;
+            return !host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                && !host.Equals("127.0.0.1")
+                && !host.Equals("::1")
+                && !host.EndsWith(".local", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -14,6 +14,7 @@ type FinalizeErrorPayload = {
 const SuccessPurchasePage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const paymentIntentId = useMemo(() => searchParams.get('payment_intent') ?? '', [searchParams]);
+    const cryptoInvoiceId = useMemo(() => searchParams.get('crypto_invoice') ?? '', [searchParams]);
     const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
     const { dispatch } = useCart();
     const hasConfirmed = useRef(false);
@@ -22,6 +23,49 @@ const SuccessPurchasePage: React.FC = () => {
     const [message, setMessage] = useState('Finalizing your order...');
     const [orderId, setOrderId] = useState<string | null>(null);
     const [traceId, setTraceId] = useState<string | null>(null);
+
+    // Крипто-ветка (BTCPay): заказ создаёт вебхук, мы поллим статус до подтверждения.
+    useEffect(() => {
+        if (!cryptoInvoiceId) {
+            return;
+        }
+
+        let cancelled = false;
+        let attempts = 0;
+        const maxAttempts = 40; // ~2 минуты по 3 секунды
+
+        setStatus('loading');
+        setMessage('Waiting for the crypto payment to settle (testnet demo)...');
+
+        const poll = async () => {
+            attempts += 1;
+            try {
+                const { data } = await apiClient.api.get(`/api/payments/crypto/status/${cryptoInvoiceId}`);
+                if (cancelled) return;
+                if (data?.settled) {
+                    setOrderId(data.orderId ?? null);
+                    setStatus('success');
+                    setMessage('Crypto payment settled. Your order has been added to account orders.');
+                    dispatch({ type: 'CLEAR_CART' });
+                    return;
+                }
+            } catch (error) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.error('Crypto status poll failed:', error);
+                }
+            }
+
+            if (!cancelled && attempts < maxAttempts) {
+                setTimeout(poll, 3000);
+            } else if (!cancelled) {
+                setStatus('error');
+                setMessage('Payment is still settling. Check your orders in a few minutes or contact support.');
+            }
+        };
+
+        poll();
+        return () => { cancelled = true; };
+    }, [apiClient.api, cryptoInvoiceId, dispatch]);
 
     const finalizeOrder = useCallback(async (manualRetry = false) => {
         if (!paymentIntentId) {
@@ -64,6 +108,10 @@ const SuccessPurchasePage: React.FC = () => {
     }, [apiClient.api, dispatch, paymentIntentId]);
 
     useEffect(() => {
+        if (cryptoInvoiceId) {
+            return; // крипто-флоу обрабатывается своим эффектом выше
+        }
+
         if (!paymentIntentId) {
             setStatus('error');
             setMessage('Payment completed, but payment intent was not found in URL.');
@@ -82,7 +130,7 @@ const SuccessPurchasePage: React.FC = () => {
         }
 
         finalizeOrder(false);
-    }, [finalizeOrder, paymentIntentId]);
+    }, [finalizeOrder, paymentIntentId, cryptoInvoiceId]);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
@@ -104,7 +152,7 @@ const SuccessPurchasePage: React.FC = () => {
                         <button
                             type="button"
                             className="px-6 py-3 bg-amber-100 text-amber-800 rounded-lg shadow hover:bg-amber-200"
-                            onClick={() => finalizeOrder(true)}
+                            onClick={() => (cryptoInvoiceId ? window.location.reload() : finalizeOrder(true))}
                         >
                             Try again
                         </button>

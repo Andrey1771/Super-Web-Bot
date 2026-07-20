@@ -6,6 +6,7 @@ import { AdminHeaderContext, HeaderAction } from "./AdminHeaderContext";
 
 const pageTitles: Record<string, string> = {
   "/admin": "Dashboard",
+  "/admin/bot": "Bot Status",
   "/admin/botChanger": "Bot Data",
   "/admin/siteChanger": "Media Manager",
   "/admin/cardAdder": "Catalog",

@@ -1,23 +1,16 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
-using SuperBot.WebApi.Services;
-
 
 namespace SuperBot.WebApi.Controllers
 {
+    // Тексты бота (GET/POST /api/Admin) переехали в бот-сервис (BotResourcesController).
+    // Здесь остались только Keycloak login-events, к Telegram отношения не имеющие.
     [ApiController]
     [Route("api/[controller]")]
-    public class AdminController(IResourceService _resourceService, IKeycloakClient _keycloakClient) : Controller
+    public class AdminController(IKeycloakClient _keycloakClient) : Controller
     {
-        [HttpGet]
-        [Authorize(Roles = "admin")]
-        public ActionResult<IEnumerable<Resources>> GetResources()
-        {
-            return Ok(_resourceService.Resources);
-        }
-
         [HttpGet]
         [Route("data")]
         [Authorize(Roles = "admin")]
@@ -30,23 +23,16 @@ namespace SuperBot.WebApi.Controllers
                 return Unauthorized("Access token is missing");
             }
 
-            var allLoginEvents = await _keycloakClient.GetAllLoginEventsAsync("TaleShop", accessToken); // TODO Вынести TaleShop
-            return Ok(allLoginEvents);
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "admin")]
-        public async Task<ActionResult<IEnumerable<Resources>>> UpdateResources([FromBody] Resources newResources)
-        {
-            if (newResources == null)
+            try
             {
-                return BadRequest("Invalid resource data provided.");
+                var allLoginEvents = await _keycloakClient.GetAllLoginEventsAsync("TaleShop", accessToken); // TODO Вынести TaleShop
+                return Ok(allLoginEvents);
             }
-
-            // Обновляем ресурсы через метод сервиса
-            await _resourceService.UpdateResourcesAsync(newResources);
-
-            return Ok(_resourceService.Resources);
+            catch (HttpRequestException ex)
+            {
+                // Keycloak недоступен или отказал в доступе — отдаём понятный статус вместо 500.
+                return StatusCode(StatusCodes.Status502BadGateway, $"Keycloak admin API request failed: {ex.Message}");
+            }
         }
     }
 }
