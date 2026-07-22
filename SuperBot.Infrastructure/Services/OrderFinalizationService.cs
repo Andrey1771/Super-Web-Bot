@@ -151,12 +151,6 @@ namespace SuperBot.Infrastructure.Services
                 return OrderFinalizationResult.Ok(FinalizationOutcome.AlreadyConfirmed, state.OrderId, "already_confirmed");
             }
 
-            if (state?.Status == FinalizationStatus.Processing && now - state.UpdatedAt < ProcessingCooldown)
-            {
-                return OrderFinalizationResult.Error(FinalizationOutcome.Processing, "FINALIZATION_ALREADY_PROCESSING",
-                    "Your payment is already being processed. Please wait a moment and refresh.");
-            }
-
             // Счётчик протухает: после окна неудачные попытки не должны держать заказ вечно.
             var attemptsSoFar = state is null || now - state.UpdatedAt > AttemptWindow ? 0 : state.Attempts;
 
@@ -168,17 +162,15 @@ namespace SuperBot.Infrastructure.Services
                     "We couldn't finalize your order yet. Please contact support with the reference below.");
             }
 
+            // Захват лока — ОДНОЙ атомарной операцией. Раньше состояние сначала читалось,
+            // а потом записывалось: между этими шагами клиентский confirm и вебхук
+            // проскакивали оба и оба шли создавать заказ.
             var attempts = attemptsSoFar + 1;
-            var processingUpdate = Builders<PaymentFinalizationStateDb>.Update
-                .Set(item => item.PaymentIntentId, request.PaymentIntentId)
-                .Set(item => item.Status, FinalizationStatus.Processing)
-                .Set(item => item.Attempts, attempts)
-                .Set(item => item.LastErrorCode, (string?)null)
-                .Set(item => item.LastErrorMessage, (string?)null)
-                .Set(item => item.UpdatedAt, now)
-                .SetOnInsert(item => item.CreatedAt, now);
-
-            await _finalizationStates.UpdateOneAsync(item => item.PaymentIntentId == request.PaymentIntentId, processingUpdate, new UpdateOptions { IsUpsert = true });
+            if (!await TryClaimAsync(request.PaymentIntentId, attempts, now))
+            {
+                return OrderFinalizationResult.Error(FinalizationOutcome.Processing, "FINALIZATION_ALREADY_PROCESSING",
+                    "Your payment is already being processed. Please wait a moment and refresh.");
+            }
 
             var resolvedUserId = request.ExpectedUserId ?? string.Empty;
             try
@@ -211,9 +203,9 @@ namespace SuperBot.Infrastructure.Services
                     return OrderFinalizationResult.Error(FinalizationOutcome.NotSucceeded, "PAYMENT_NOT_SUCCEEDED", $"Payment is not successful yet. Status: {paymentIntent.Status}.");
                 }
 
-                var existing = (await _orderRepository.GetOrdersByUserAsync(resolvedUserId))
-                    .FirstOrDefault(order => string.Equals(order.PaymentIntentId, request.PaymentIntentId, StringComparison.OrdinalIgnoreCase)
-                                             || string.Equals(order.Notes, BuildPaymentNote(request.PaymentIntentId), StringComparison.OrdinalIgnoreCase));
+                // Точечный поиск по индексу ix_orders_payment_intent_unique.
+                // Раньше тянулась ВСЯ история заказов пользователя и фильтровалась в памяти.
+                var existing = await _orderRepository.GetByPaymentIntentIdAsync(request.PaymentIntentId);
                 if (existing != null)
                 {
                     await MarkSucceededAsync(request.PaymentIntentId, resolvedUserId, attempts, existing.Id.ToString());
@@ -288,9 +280,7 @@ namespace SuperBot.Infrastructure.Services
                     // Гонка: другой финализатор (клиентский confirm ИЛИ Stripe-вебхук) уже создал заказ
                     // для этого PaymentIntent — уникальный индекс по PaymentIntentId бросил дубль.
                     // Это не ошибка: находим заказ-победитель и отдаём already_confirmed (без повторной выдачи ключей).
-                    var winner = (await _orderRepository.GetOrdersByUserAsync(resolvedUserId))
-                        .FirstOrDefault(existingOrder => string.Equals(existingOrder.PaymentIntentId, request.PaymentIntentId, StringComparison.OrdinalIgnoreCase)
-                                                         || string.Equals(existingOrder.Notes, BuildPaymentNote(request.PaymentIntentId), StringComparison.OrdinalIgnoreCase));
+                    var winner = await _orderRepository.GetByPaymentIntentIdAsync(request.PaymentIntentId);
                     if (winner != null)
                     {
                         await MarkSucceededAsync(request.PaymentIntentId, resolvedUserId, attempts, winner.Id.ToString());
@@ -336,6 +326,56 @@ namespace SuperBot.Infrastructure.Services
                 _logger.LogError(ex, "Failed to finalize order for payment intent {PaymentIntentId} (source {Source})", request.PaymentIntentId, request.Source);
                 await MarkFailedAsync(request.PaymentIntentId, resolvedUserId, attempts, "ORDER_CREATE_FAILED", "We couldn't finalize your order. Please try again or contact support.", ex, request.TraceId);
                 return OrderFinalizationResult.Error(FinalizationOutcome.Failed, "ORDER_CREATE_FAILED", "We couldn't finalize your order. Please try again or contact support.");
+            }
+        }
+
+        /// <summary>
+        /// Пытается стать ЕДИНСТВЕННЫМ финализатором этого платежа.
+        /// Условие захвата: статус не Processing ЛИБО прошлый захват протух (дольше ProcessingCooldown).
+        /// Проверка и запись выполняются одной операцией, поэтому «проскочить вдвоём» невозможно.
+        /// </summary>
+        private async Task<bool> TryClaimAsync(string paymentIntentId, int attempts, DateTime now)
+        {
+            var staleBefore = now - ProcessingCooldown;
+            var filter = Builders<PaymentFinalizationStateDb>.Filter.And(
+                Builders<PaymentFinalizationStateDb>.Filter.Eq(item => item.PaymentIntentId, paymentIntentId),
+                Builders<PaymentFinalizationStateDb>.Filter.Or(
+                    Builders<PaymentFinalizationStateDb>.Filter.Ne(item => item.Status, FinalizationStatus.Processing),
+                    Builders<PaymentFinalizationStateDb>.Filter.Lt(item => item.UpdatedAt, staleBefore)));
+
+            var update = Builders<PaymentFinalizationStateDb>.Update
+                .Set(item => item.Status, FinalizationStatus.Processing)
+                .Set(item => item.Attempts, attempts)
+                .Set(item => item.LastErrorCode, (string?)null)
+                .Set(item => item.LastErrorMessage, (string?)null)
+                .Set(item => item.UpdatedAt, now);
+
+            var claimed = await _finalizationStates.FindOneAndUpdateAsync(filter, update,
+                new FindOneAndUpdateOptions<PaymentFinalizationStateDb> { ReturnDocument = ReturnDocument.After });
+
+            if (claimed != null)
+            {
+                return true;
+            }
+
+            // Документа могло не быть вовсе (платёж создан вне обычного флоу) — заводим его.
+            // Уникальный индекс ix_payment_state_intent разрешит гонку: проигравший получит дубль.
+            try
+            {
+                await _finalizationStates.InsertOneAsync(new PaymentFinalizationStateDb
+                {
+                    PaymentIntentId = paymentIntentId,
+                    Status = FinalizationStatus.Processing,
+                    Attempts = attempts,
+                    UpdatedAt = now,
+                    CreatedAt = now
+                });
+                return true;
+            }
+            catch (Exception ex) when (IsDuplicateKey(ex))
+            {
+                // Документ есть и лок держит кто-то другой.
+                return false;
             }
         }
 
