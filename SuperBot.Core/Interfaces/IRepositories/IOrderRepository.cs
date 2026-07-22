@@ -6,6 +6,8 @@ namespace SuperBot.Core.Interfaces.IRepositories
     {
         Task CreateOrderAsync(Order order);
         Task<Order> GetOrderByIdAsync(string orderId);
+        /// <summary>Заказ по платёжному намерению — по индексу ix_orders_payment_intent_unique.</summary>
+        Task<Order?> GetByPaymentIntentIdAsync(string paymentIntentId);
         Task<IEnumerable<Order>> GetAllOrdersAsync();
         Task<List<Order>> GetOrdersByUserAsync(string userName);
         /// <summary>Оплаченные, но не полностью выданные заказы — для довыдачи при пополнении пула.</summary>

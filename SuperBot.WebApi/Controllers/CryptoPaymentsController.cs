@@ -78,7 +78,6 @@ namespace SuperBot.WebApi.Controllers
                     .Select(item => new CheckoutPricingItem { GameId = item.GameId, Quantity = item.Quantity })
                     .ToList(),
                 PromoCode = request?.PromoCode,
-                Currency = "USD",
                 UserName = userId
             });
 

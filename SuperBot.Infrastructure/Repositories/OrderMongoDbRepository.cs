@@ -70,6 +70,23 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<Order>(orderDb);
         }
 
+        public async Task<Order?> GetByPaymentIntentIdAsync(string paymentIntentId)
+        {
+            if (string.IsNullOrWhiteSpace(paymentIntentId))
+            {
+                return null;
+            }
+
+            var orderDb = await _orders.Find(order => order.PaymentIntentId == paymentIntentId).FirstOrDefaultAsync();
+            if (orderDb == null)
+            {
+                return null;
+            }
+
+            await EnsureOrderGuidAsync(orderDb);
+            return _mapper.Map<Order>(orderDb);
+        }
+
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {
             var ordersDb = await _orders.Find(_ => true).ToListAsync();

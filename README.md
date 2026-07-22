@@ -102,6 +102,23 @@ triggered by two independent, idempotent paths:
 The webhook is what makes the order survive a customer closing the tab right after paying.
 Both paths are safe to run concurrently — a duplicate order insert is detected and resolved.
 
+**Prices are always calculated on the server** (`CheckoutPricingService`). The client only sends
+`{ gameId, quantity }` plus an optional promo code — the request DTO deliberately carries no
+money fields, so a tampered price cannot reach Stripe.
+
+### Webhook events consumed
+
+| Event | Effect |
+| --- | --- |
+| `payment_intent.succeeded` | Creates the order and dispenses keys |
+| `charge.refunded` | Full refund → order `REFUNDED`; partial → `PARTIALLY_REFUNDED` |
+| `charge.dispute.created` | Marks payment `DISPUTED` and raises an admin "Payment issue" |
+
+Refunds and chargebacks are handled by `PaymentReconciliationService`. Keys are **not** revoked
+automatically — a delivered key may already be activated, so the order is flagged for a human
+instead. Note that refunds and chargebacks happen in Stripe regardless of these events; the
+events only keep our database in sync, so without them we would give away goods silently.
+
 ### Configuration
 
 | Setting | Env var | Where to get it |
@@ -115,25 +132,62 @@ cannot be verified), so finalization falls back to the client-side path only.
 
 ### Local development
 
-Stripe cannot reach `localhost`, so webhook events have to be forwarded by the
-[Stripe CLI](https://docs.stripe.com/stripe-cli) — a developer tool installed on your machine.
-It is not part of the application and is not used in production, so don't commit its binary.
+Stripe's servers cannot reach `localhost`, so **creating a webhook endpoint in the Dashboard is
+pointless while developing locally** — it would never fire. Events are instead forwarded by the
+[Stripe CLI](https://docs.stripe.com/stripe-cli), which opens an outbound tunnel from your machine.
+
+The CLI is a developer tool, not part of the application. It runs **on the host, not in Docker** —
+`docker compose` describes the production topology and intentionally has no service for it. Don't
+commit its binary either (`stripe-cli/`, `stripe.zip`, `stripe.exe` are git-ignored).
+
+Install it from the [official releases](https://docs.stripe.com/stripe-cli) (`choco install stripe-cli`
+or `scoop install stripe` on Windows, `apt`/`brew` on Linux/macOS), then:
 
 ```bash
 stripe login
 stripe listen --forward-to localhost:7002/api/payments/webhook
 ```
 
-Copy the `whsec_…` it prints into `STRIPE_WEBHOOK_SECRET` in `.env`, then recreate the backend
-(`docker compose up -d backend`) and pay with test card `4242 4242 4242 4242`.
+`stripe listen` forwards **all** event types by default, so nothing has to be enabled anywhere for
+local testing. Copy the `whsec_…` it prints into `STRIPE_WEBHOOK_SECRET` in `.env`, then recreate
+the backend so it picks the value up:
+
+```bash
+docker compose up -d backend
+```
+
+Keep the `stripe listen` window open while testing — events that occur while it is not running are
+not delivered (they can be replayed with `stripe events resend <id>`).
+
+#### What can be tested locally
+
+| Scenario | How |
+| --- | --- |
+| Successful purchase | Card `4242 4242 4242 4242` |
+| Payment requiring 3-D Secure | Card `4000 0025 0000 3155` |
+| Refund | Pay, then Dashboard → Payments → the payment → **Refund** |
+| Chargeback / dispute | Card `4000 0000 0000 0259` — succeeds, then is disputed immediately |
+
+In every case the `stripe listen` window should show the event followed by `200`, and the order in
+the account should change accordingly.
+
+#### What cannot be tested locally
+
+* A Dashboard webhook endpoint pointing at your machine — Stripe cannot route to `localhost`.
+* Anything requiring a public HTTPS domain (real redirects from bank pages, Apple Pay domain
+  verification).
 
 ### Production
 
-No CLI involved. In Stripe Dashboard → Developers → Webhooks → **Add endpoint**:
+No CLI involved — Stripe reaches the public domain directly. In Stripe Dashboard →
+**Developers → Webhooks → Add endpoint** (direct link: `https://dashboard.stripe.com/webhooks`):
 
 * URL: `https://<your-domain>/api/payments/webhook`
-* Event: `payment_intent.succeeded`
+* Events: `payment_intent.succeeded`, `charge.refunded`, `charge.dispute.created`
 
-Copy the endpoint's signing secret into `STRIPE_WEBHOOK_SECRET`.
+Then **Reveal signing secret** and put that `whsec_…` into `STRIPE_WEBHOOK_SECRET`.
 
-> The secret from `stripe listen` and the secret of a Dashboard endpoint are **different** values.
+> The secret printed by `stripe listen` and the secret of a Dashboard endpoint are **different**
+> values. Use the CLI one locally and the Dashboard one in production. An endpoint only receives
+> the events it is subscribed to — if `charge.refunded` is not selected, refunds will silently not
+> be reflected in the database.

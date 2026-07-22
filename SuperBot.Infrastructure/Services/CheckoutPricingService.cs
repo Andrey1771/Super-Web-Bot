@@ -14,9 +14,12 @@ namespace SuperBot.Infrastructure.Services
     {
         public List<CheckoutPricingItem> Items { get; set; } = new();
         public string? PromoCode { get; set; }
-        public string Currency { get; set; } = "USD";
         /// <summary>Для лимитов промокода «на пользователя».</summary>
         public string? UserName { get; set; }
+
+        // Валюты здесь намеренно НЕТ: цены в каталоге — просто числа без валюты,
+        // конвертации не существует. Позволить клиенту выбрать валюту означало бы
+        // списать «60» в рупиях вместо 60 долларов. Валюту задаёт только сервер.
     }
 
     public class CheckoutPricingItem
@@ -39,6 +42,9 @@ namespace SuperBot.Infrastructure.Services
         /// <summary>Сумма для Stripe в минорных единицах (центах) — без потери копеек.</summary>
         public long AmountMinorUnits { get; set; }
 
+        /// <summary>Валюта расчёта — её определяет сервер, а не запрос.</summary>
+        public string Currency { get; set; } = CheckoutPricingService.SettlementCurrency;
+
         public bool PromoApplied { get; set; }
         public string? NormalizedPromoCode { get; set; }
         public string? PromoMessage { get; set; }
@@ -48,6 +54,15 @@ namespace SuperBot.Infrastructure.Services
 
     public class CheckoutPricingService : ICheckoutPricingService
     {
+        /// <summary>
+        /// Валюта, в которой ведётся каталог и происходит списание. Задаётся сервером и только им.
+        /// Цены в каталоге — числа без валюты, конвертации нет, поэтому смена валюты означала бы
+        /// списание того же числа в другой (более дешёвой) валюте.
+        /// Прежде чем добавлять мультивалютность: нужны курсы, хранение валюты у товара и учёт
+        /// валют без копеек (JPY и т.п.), где допущение «умножить на 100» неверно.
+        /// </summary>
+        public const string SettlementCurrency = "USD";
+
         /// <summary>Максимум позиций в одном заказе — защита от раздувания запроса.</summary>
         private const int MaxLineItems = 50;
         /// <summary>Максимум одной позиции — защита от абсурдных количеств.</summary>
@@ -118,7 +133,7 @@ namespace SuperBot.Infrastructure.Services
                 .Where(discount => !string.IsNullOrWhiteSpace(discount.GameId))
                 .ToDictionary(discount => discount.GameId!, StringComparer.OrdinalIgnoreCase);
 
-            var currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency.Trim().ToUpperInvariant();
+            var currency = SettlementCurrency;
             var utcNow = DateTime.UtcNow;
             var lineItems = new List<CheckoutLineItemStateDb>();
 
@@ -200,6 +215,7 @@ namespace SuperBot.Infrastructure.Services
             {
                 Success = true,
                 Items = lineItems,
+                Currency = currency,
                 Subtotal = subtotal,
                 DiscountTotal = itemDiscountTotal + promoDiscount,
                 TaxTotal = taxTotal,

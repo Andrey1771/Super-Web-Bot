@@ -17,15 +17,18 @@ namespace SuperBot.WebApi.Controllers
     public class StripeWebhookController : ControllerBase
     {
         private readonly IOrderFinalizationService _finalization;
+        private readonly IPaymentReconciliationService _reconciliation;
         private readonly StripeSettings _stripeSettings;
         private readonly ILogger<StripeWebhookController> _logger;
 
         public StripeWebhookController(
             IOrderFinalizationService finalization,
+            IPaymentReconciliationService reconciliation,
             IOptions<StripeSettings> stripeSettings,
             ILogger<StripeWebhookController> logger)
         {
             _finalization = finalization;
+            _reconciliation = reconciliation;
             _stripeSettings = stripeSettings.Value;
             _logger = logger;
         }
@@ -53,6 +56,50 @@ namespace SuperBot.WebApi.Controllers
             {
                 _logger.LogWarning(ex, "Stripe webhook signature verification failed.");
                 return BadRequest("Invalid signature.");
+            }
+
+            // Возврат денег: заказ обязан перестать считаться оплаченным.
+            if (stripeEvent.Type == "charge.refunded")
+            {
+                if (stripeEvent.Data.Object is not Charge charge || string.IsNullOrWhiteSpace(charge.PaymentIntentId))
+                {
+                    _logger.LogWarning("charge.refunded without a usable Charge payload ({EventId}).", stripeEvent.Id);
+                    return Ok();
+                }
+
+                var applied = await _reconciliation.ApplyRefundAsync(new RefundNotice
+                {
+                    PaymentIntentId = charge.PaymentIntentId,
+                    AmountRefundedMinor = charge.AmountRefunded,
+                    ChargeAmountMinor = charge.Amount,
+                    Currency = charge.Currency ?? "usd",
+                    EventId = stripeEvent.Id
+                });
+
+                // Не применилось (заказ ещё не создан) → просим Stripe повторить.
+                return applied ? Ok() : StatusCode(StatusCodes.Status500InternalServerError, "Refund not applied yet.");
+            }
+
+            // Чарджбек: деньги оспорены, а ключ уже у покупателя — это всегда к человеку.
+            if (stripeEvent.Type == "charge.dispute.created")
+            {
+                if (stripeEvent.Data.Object is not Dispute dispute || string.IsNullOrWhiteSpace(dispute.PaymentIntentId))
+                {
+                    _logger.LogWarning("charge.dispute.created without a usable Dispute payload ({EventId}).", stripeEvent.Id);
+                    return Ok();
+                }
+
+                var applied = await _reconciliation.ApplyDisputeAsync(new DisputeNotice
+                {
+                    PaymentIntentId = dispute.PaymentIntentId,
+                    DisputeId = dispute.Id,
+                    Reason = dispute.Reason,
+                    AmountMinor = dispute.Amount,
+                    Currency = dispute.Currency ?? "usd",
+                    EventId = stripeEvent.Id
+                });
+
+                return applied ? Ok() : StatusCode(StatusCodes.Status500InternalServerError, "Dispute not applied yet.");
             }
 
             if (stripeEvent.Type == "payment_intent.succeeded")

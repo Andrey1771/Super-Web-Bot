@@ -140,6 +140,8 @@ builder.Services.AddScoped<IOrderFinalizationService, OrderFinalizationService>(
 // Ценообразование чекаута: единственное место, где считается сумма к списанию.
 // Клиент присылает только gameId+quantity — цены берутся из каталога.
 builder.Services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
+// Возвраты и чарджбеки: приводят заказ в соответствие с состоянием платежа после оплаты.
+builder.Services.AddScoped<IPaymentReconciliationService, PaymentReconciliationService>();
 // Event-outbox: сайт только ПУБЛИКУЕТ события; консюмер (BotOutboxWorker) живёт в бот-сервисе.
 builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();

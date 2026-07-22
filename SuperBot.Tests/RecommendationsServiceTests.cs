@@ -156,6 +156,9 @@ namespace SuperBot.Tests
 
             public Task<Order> GetOrderByIdAsync(string orderId) => Task.FromResult(_orders.FirstOrDefault());
 
+            public Task<Order> GetByPaymentIntentIdAsync(string paymentIntentId) =>
+                Task.FromResult(_orders.FirstOrDefault(order => order.PaymentIntentId == paymentIntentId));
+
             public Task<IEnumerable<Order>> GetAllOrdersAsync() => Task.FromResult<IEnumerable<Order>>(_orders);
 
             public Task<List<Order>> GetOrdersByUserAsync(string userName) => Task.FromResult(_orders.Where(order => order.UserName == userName).ToList());

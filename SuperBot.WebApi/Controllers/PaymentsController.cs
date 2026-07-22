@@ -38,7 +38,6 @@ namespace SuperBot.WebApi.Controllers
                     .Select(item => new CheckoutPricingItem { GameId = item.GameId, Quantity = item.Quantity })
                     .ToList(),
                 PromoCode = request.PromoCode,
-                Currency = request.Currency,
                 UserName = userId
             });
 
@@ -52,7 +51,8 @@ namespace SuperBot.WebApi.Controllers
                 });
             }
 
-            var currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency.Trim().ToUpperInvariant();
+            // Валюта — из расчёта сервера, не из запроса.
+            var currency = pricing.Currency;
             var firstItem = pricing.Items.First();
             var metadata = new Dictionary<string, string>
             {
@@ -195,7 +195,6 @@ namespace SuperBot.WebApi.Controllers
     /// </summary>
     public class CreatePaymentIntentRequest
     {
-        public string Currency { get; set; } = "USD";
         public string? PromoCode { get; set; }
         public List<CreatePaymentIntentItemRequest> Items { get; set; } = new();
     }
