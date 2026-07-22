@@ -1,11 +1,13 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Elements} from '@stripe/react-stripe-js';
+import {useKeycloak} from '@react-keycloak/web';
 import {useCart} from '../../../context/cart-context';
 import CheckoutForm from '../../payments/stripe-container/checkout-form';
 import './checkout-page.css';
 import container from '../../../inversify.config';
 import {IUrlService} from '../../../iterfaces/i-url-service';
 import {IApiClient} from '../../../iterfaces/i-api-client';
+import type {IKeycloakAuthService} from '../../../iterfaces/i-keycloak-auth-service';
 import IDENTIFIERS from '../../../constants/identifiers';
 import OrderSummaryCard from '../../../features/checkout/components/OrderSummaryCard';
 import StripePaymentCard from '../../../features/checkout/components/StripePaymentCard';
@@ -15,10 +17,38 @@ import { createStripePromise } from '../../../utils/stripe-loader';
 
 const stripePromise = createStripePromise('pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW');
 
+// Тема Stripe под бренд Tale Shop (фиолетовый, Inter). theme:'flat' убирает
+// родные рамки Stripe — рамку рисует только наш контейнер, без вложенности.
+const stripeAppearance = {
+    theme: 'flat' as const,
+    variables: {
+        colorPrimary: '#7c3aed',
+        colorText: '#0f172a',
+        colorTextSecondary: '#4b5563',
+        colorDanger: '#dc2626',
+        fontFamily: 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif',
+        borderRadius: '12px',
+        spacingUnit: '4px',
+    },
+    rules: {
+        '.Input': { border: '1px solid #e5e7eb', boxShadow: 'none', backgroundColor: '#ffffff' },
+        '.Input:focus': { border: '1px solid #7c3aed', boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.15)' },
+        '.Tab': { border: '1px solid #e5e7eb', boxShadow: 'none' },
+        '.Tab:hover': { color: '#7c3aed' },
+        '.Tab--selected': { borderColor: '#7c3aed', boxShadow: '0 0 0 1px #7c3aed' },
+        '.Block': { border: '1px solid #e5e7eb', boxShadow: 'none' },
+    },
+};
+
 const CheckoutPage: React.FC = () => {
     const {state} = useCart();
+    const {keycloak, initialized} = useKeycloak();
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
     const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+    const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
+    const isAuthenticated = Boolean(keycloak.authenticated);
+
+    const handleLogin = () => keycloakAuthService.loginWithRedirect(keycloak, window.location.href);
 
     const [promoCode, setPromoCode] = useState('');
     const [promoDiscount, setPromoDiscount] = useState(0);
@@ -26,8 +56,12 @@ const CheckoutPage: React.FC = () => {
     const [promoError, setPromoError] = useState('');
     const [applyingPromo, setApplyingPromo] = useState(false);
 
-    const totals = useMemo(() => calculateCheckoutTotals(state.items, promoDiscount), [state.items, promoDiscount]);
+    // Клиентский расчёт остаётся ТОЛЬКО как превью до ответа сервера.
+    // Авторитетные суммы приходят из create-payment-intent — сервер считает их по каталогу.
+    const previewTotals = useMemo(() => calculateCheckoutTotals(state.items, promoDiscount), [state.items, promoDiscount]);
     const baseSubtotal = useMemo(() => calculateCheckoutTotals(state.items).subtotal, [state.items]);
+    const [serverTotals, setServerTotals] = useState<{subtotal: number; discount: number; tax: number; total: number} | null>(null);
+    const totals = serverTotals ?? previewTotals;
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [paymentInitError, setPaymentInitError] = useState('');
     const hasTrackedCheckout = useRef(false);
@@ -85,37 +119,46 @@ const CheckoutPage: React.FC = () => {
 
     useEffect(() => {
         const fetchClientSecret = async () => {
-            if (totals.total <= 0) {
+            // Гость не может создать платёж (PaymentsController помечен [Authorize]).
+            // Не дёргаем API — экран «войти» покажем в рендере.
+            if (!isAuthenticated) {
                 setClientSecret(null);
+                setPaymentInitError('');
+                return;
+            }
+
+            if (state.items.length === 0) {
+                setClientSecret(null);
+                setServerTotals(null);
                 setPaymentInitError('');
                 return;
             }
 
             try {
                 setPaymentInitError('');
+                // Шлём ТОЛЬКО что и сколько покупаем. Никаких сумм — их считает сервер по каталогу.
                 const {data} = await apiClient.api.post('/api/payments/create-payment-intent', {
-                    amount: Math.round(totals.total),
                     currency: 'USD',
                     promoCode: promoCode || undefined,
-                    subtotal: totals.subtotal,
-                    discountTotal: totals.discount,
-                    taxTotal: 0,
-                    total: totals.total,
                     items: state.items.map((item) => ({
-                        productType: 'Game',
                         gameId: item.gameId,
-                        title: item.name,
-                        coverUrl: item.image,
                         quantity: item.quantity,
-                        unitPrice: item.price,
-                        discountPerUnit: 0,
-                        finalUnitPrice: item.price,
-                        lineTotal: item.price * item.quantity,
                     })),
                 });
                 setClientSecret(data.clientSecret ?? data.ClientSecret ?? null);
+
+                const serverTotalsPayload = data.totals ?? data.Totals;
+                if (serverTotalsPayload) {
+                    setServerTotals({
+                        subtotal: Number(serverTotalsPayload.subtotal ?? serverTotalsPayload.Subtotal ?? 0),
+                        discount: Number(serverTotalsPayload.discount ?? serverTotalsPayload.Discount ?? 0),
+                        tax: Number(serverTotalsPayload.tax ?? serverTotalsPayload.Tax ?? 0),
+                        total: Number(serverTotalsPayload.total ?? serverTotalsPayload.Total ?? 0),
+                    });
+                }
             } catch (error: any) {
                 setClientSecret(null);
+                setServerTotals(null);
                 setPaymentInitError(error?.response?.status === 401
                     ? 'Please sign in to continue with payment.'
                     : (error?.response?.data?.message ?? 'Unable to initialize payment. Please try again.'));
@@ -123,7 +166,9 @@ const CheckoutPage: React.FC = () => {
         };
 
         fetchClientSecret();
-    }, [apiClient.api, promoCode, state.items, totals.discount, totals.subtotal, totals.total]);
+        // Зависим только от корзины и промокода: суммы теперь приходят ОТ сервера,
+        // держать их в зависимостях — значит зациклить запрос.
+    }, [apiClient.api, isAuthenticated, promoCode, state.items]);
 
     const handleApplyPromo = async () => {
         setApplyingPromo(true);
@@ -157,9 +202,8 @@ const CheckoutPage: React.FC = () => {
 
     const options = {
         clientSecret: clientSecret ?? undefined,
-        appearance: {},
-        requestPayerName: true,
-        requestPayerEmail: true
+        appearance: stripeAppearance,
+        locale: 'en' as const,
     };
 
     return (
@@ -184,8 +228,17 @@ const CheckoutPage: React.FC = () => {
                         </div>
                         <aside className="checkout-page-aside">
                             <StripePaymentCard>
-                                {clientSecret && stripePromise ? (
-                                    <Elements stripe={stripePromise} options={options} mode="payment">
+                                {initialized && !isAuthenticated ? (
+                                    <div className="checkout-signin">
+                                        <div className="checkout-signin-icon" aria-hidden="true">🔒</div>
+                                        <h3>Sign in to complete your purchase</h3>
+                                        <p>Your keys are tied to your account so you can access them anytime. It only takes a moment.</p>
+                                        <button type="button" className="btn btn-primary" onClick={handleLogin}>
+                                            Sign in to pay
+                                        </button>
+                                    </div>
+                                ) : clientSecret && stripePromise ? (
+                                    <Elements stripe={stripePromise} options={options}>
                                         <CheckoutForm clientSecret={clientSecret} />
                                     </Elements>
                                 ) : (

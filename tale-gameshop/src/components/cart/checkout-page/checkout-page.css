@@ -1,5 +1,5 @@
 .checkout-page {
-    background: #ffffff;
+    background: var(--color-bg);
 }
 
 .checkout-page-header {

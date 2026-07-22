@@ -1,27 +1,25 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {useCart} from '../../../context/cart-context';
 import {Link, useSearchParams} from "react-router-dom";
 import container from "../../../inversify.config";
 import {IUrlService} from "../../../iterfaces/i-url-service";
 import {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
-import { useRecommendations } from '../../../hooks/use-recommendations';
+import {useRecommendations} from '../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import type { RecommendationItem } from '../../../models/recommendations';
-import { analyticsClient } from '../../../utils/analytics-client';
+import type {RecommendationItem} from '../../../models/recommendations';
+import {analyticsClient} from '../../../utils/analytics-client';
 import {
     faArrowRotateLeft,
     faBolt,
     faCartPlus,
     faCircleCheck,
-    faComments,
-    faCreditCard,
-    faShieldHalved,
-    faTruckFast
+    faShieldHalved
 } from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {Product} from "../../../reducers/cart-reducer";
 import SafeGameImage from "../../common/SafeGameImage";
+import './cart.css';
 
 type CartItemRowProps = {
     item: Product;
@@ -33,71 +31,42 @@ type CartItemRowProps = {
 
 type OrderSummaryProps = {
     subtotal: number;
-    discount: number;
     total: number;
 };
 
 const formatPrice = (value: number) => `$${value.toFixed(2)}`;
 
+const PAYMENT_BADGES = ['Visa', 'Mastercard', 'PayPal', 'Apple Pay', 'Google Pay'];
+
 const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, onRemove, imageBaseUrl}) => {
     const itemTotal = item.price * item.quantity;
-    const listPrice = itemTotal * 1.12;
 
     return (
-        <div className="flex flex-col gap-4 py-5 sm:flex-row sm:items-start sm:gap-6">
-            <div className="shrink-0">
-                <SafeGameImage
-                    src={item.image}
-                    gameTitle={item.name}
-                    baseUrl={imageBaseUrl}
-                    className="h-28 w-28 rounded-2xl object-cover shadow-md shadow-purple-100"
-                />
+        <div className="cart-item">
+            <div className="cart-item-media">
+                <SafeGameImage src={item.image} gameTitle={item.name} baseUrl={imageBaseUrl}/>
             </div>
-            <div className="flex-1 space-y-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                        <p className="text-sm text-gray-500">Platform - Steam · Region: Global · Edition: Standard</p>
+            <div className="cart-item-body">
+                <div className="cart-item-top">
+                    <div>
+                        <h3 className="cart-item-name">{item.name}</h3>
+                        <p className="cart-item-meta">Platform: Steam · Region: Global · Edition: Standard</p>
                     </div>
-                    <div className="space-y-1 text-right">
-                        <p className="text-sm text-gray-400 line-through">{formatPrice(listPrice)}</p>
-                        <p className="text-xl font-bold text-gray-900">{formatPrice(itemTotal)}</p>
-                    </div>
+                    <div className="cart-item-price">{formatPrice(itemTotal)}</div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faBolt} className="text-purple-500"/>
-                        Instant delivery
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faCircleCheck} className="text-purple-500"/>
-                        Verified key
-                    </span>
+                <div className="cart-chips">
+                    <span className="cart-chip"><FontAwesomeIcon icon={faBolt}/>Instant delivery</span>
+                    <span className="cart-chip"><FontAwesomeIcon icon={faCircleCheck}/>Verified key</span>
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4 text-sm font-medium text-purple-700">
-                        <button
-                            onClick={() => onRemove(item.gameId)}
-                            className="hover:text-purple-900 hover:underline"
-                        >
-                            Remove
-                        </button>
-                        <button className="hover:text-purple-900 hover:underline">Save for later</button>
+                <div className="cart-item-actions">
+                    <div className="cart-item-links">
+                        <button type="button" className="cart-item-link" onClick={() => onRemove(item.gameId)}>Remove</button>
+                        <button type="button" className="cart-item-link">Save for later</button>
                     </div>
-                    <div className="inline-flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-800 shadow-inner shadow-purple-50">
-                        <button
-                            onClick={() => onDecrease(item.gameId)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-700 transition hover:bg-purple-50 hover:text-purple-700"
-                        >
-                            −
-                        </button>
-                        <span className="min-w-[2ch] text-center text-base">{item.quantity}</span>
-                        <button
-                            onClick={() => onIncrease(item.gameId)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-700 transition hover:bg-purple-50 hover:text-purple-700"
-                        >
-                            +
-                        </button>
+                    <div className="qty-control">
+                        <button type="button" className="qty-btn" aria-label="Decrease quantity" onClick={() => onDecrease(item.gameId)}>−</button>
+                        <span className="qty-value">{item.quantity}</span>
+                        <button type="button" className="qty-btn" aria-label="Increase quantity" onClick={() => onIncrease(item.gameId)}>+</button>
                     </div>
                 </div>
             </div>
@@ -105,88 +74,47 @@ const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, 
     );
 };
 
-const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, discount, total}) => (
-    <div className="rounded-3xl border border-purple-100/70 bg-white/95 p-6 shadow-2xl shadow-purple-100/70 backdrop-blur">
-        <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Order summary</h2>
-            <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">Secure checkout</span>
+const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, total}) => (
+    <div className="card cart-summary">
+        <div className="cart-summary-head">
+            <h2>Order summary</h2>
+            <span className="badge">Secure checkout</span>
         </div>
-        <div className="space-y-3 text-sm text-gray-700">
-            <div className="flex items-center justify-between">
-                <span>Subtotal</span>
-                <span className="font-semibold text-gray-900">{formatPrice(subtotal)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-                <span>Discount</span>
-                <span className="font-semibold text-purple-700">-{formatPrice(discount)}</span>
-            </div>
-            <div className="flex items-center justify-between border-t border-dashed border-purple-100 pt-4 text-base font-bold text-gray-900">
-                <span>Total (USD)</span>
-                <span className="text-2xl">{formatPrice(total)}</span>
-            </div>
+        <div className="cart-summary-lines">
+            <div className="cart-summary-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div>
+            <div className="cart-summary-line cart-summary-line-muted"><span>Taxes &amp; promo</span><span>Calculated at checkout</span></div>
         </div>
-        <div className="mt-6 space-y-3">
-            <Link
-                to="/checkout"
-                className="inline-flex w-full items-center justify-center rounded-full bg-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:bg-purple-700"
-            >
-                Checkout
-            </Link>
-            <Link
-                to="/"
-                className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-purple-700 ring-1 ring-purple-200 transition hover:bg-purple-50"
-            >
-                Continue shopping
-            </Link>
+        <div className="cart-summary-total">
+            <span>Total</span>
+            <span className="cart-summary-amount">{formatPrice(total)}</span>
+        </div>
+        <div className="cart-summary-actions">
+            <Link to="/checkout" className="btn btn-primary">Checkout</Link>
+            <Link to="/" className="btn btn-outline">Continue shopping</Link>
+        </div>
+        <div className="cart-pay-badges">
+            {PAYMENT_BADGES.map((label) => <span key={label} className="cart-pay-badge">{label}</span>)}
         </div>
     </div>
 );
 
-const PromoCodeCard: React.FC = () => {
-    const [code, setCode] = useState('');
-    const [status, setStatus] = useState<'idle' | 'loading' | 'applied'>('idle');
-
-    const handleApply = () => {
-        if (!code.trim()) return;
-        setStatus('loading');
-        setTimeout(() => {
-            setStatus('applied');
-        }, 900);
-    };
-
-    const buttonLabel = status === 'loading' ? 'Applying…' : status === 'applied' ? 'Applied' : 'Apply';
-    const isDisabled = status === 'loading' || !code.trim();
-
-    return (
-        <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Have a promo code?</h2>
-                    <p className="text-sm text-gray-500">Enter your promo code or gift card. One code per order.</p>
-                </div>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <input
-                        type="text"
-                        value={code}
-                        onChange={(e) => {
-                            setCode(e.target.value);
-                            setStatus('idle');
-                        }}
-                        placeholder="Promo code"
-                        className="w-full rounded-2xl border border-purple-100 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 shadow-inner shadow-purple-50 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:w-56"
-                    />
-                    <button
-                        onClick={handleApply}
-                        disabled={isDisabled}
-                        className={`inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-200 transition sm:w-auto ${isDisabled ? 'bg-purple-300 cursor-not-allowed' : 'bg-purple-600 hover:-translate-y-0.5 hover:bg-purple-700'}`}
-                    >
-                        {buttonLabel}
-                    </button>
+const TrustStrip: React.FC = () => (
+    <div className="card cart-trust">
+        {[
+            {icon: faBolt, title: 'Instant delivery', text: 'Your key arrives by email within minutes.'},
+            {icon: faShieldHalved, title: 'Secure payments', text: 'Encrypted checkout powered by Stripe.'},
+            {icon: faArrowRotateLeft, title: 'Refund policy', text: 'Full refunds available within 14 days.'},
+        ].map((feature) => (
+            <div key={feature.title} className="cart-trust-item">
+                <span className="cart-trust-icon"><FontAwesomeIcon icon={feature.icon}/></span>
+                <div className="cart-trust-text">
+                    <h4>{feature.title}</h4>
+                    <p>{feature.text}</p>
                 </div>
             </div>
-        </div>
-    );
-};
+        ))}
+    </div>
+);
 
 const RecommendedRow: React.FC = () => {
     const {
@@ -195,7 +123,7 @@ const RecommendedRow: React.FC = () => {
         error: recommendationsError,
         reload: reloadRecommendations
     } = useRecommendations(4);
-    const { dispatch } = useCart();
+    const {dispatch} = useCart();
 
     // Добавление в корзину — тот же контракт, что в GameCard: цена с учётом активной скидки.
     const handleAddRecommended = (game: RecommendationItem['game']) => {
@@ -226,10 +154,10 @@ const RecommendedRow: React.FC = () => {
     };
 
     return (
-        <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-            <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-gray-900">Recommended for you</h2>
-                <Link to="/games" className="text-sm font-semibold text-purple-700 hover:text-purple-900">View all →</Link>
+        <div className="card">
+            <div className="cart-recs-head">
+                <h2>Recommended for you</h2>
+                <Link to="/games" className="link-primary">View all →</Link>
             </div>
             <RecommendationsSection
                 items={recommended}
@@ -237,161 +165,30 @@ const RecommendedRow: React.FC = () => {
                 error={recommendationsError}
                 onRetry={reloadRecommendations}
                 emptyMessage="Add games to your wishlist or view a few games to get recommendations."
-                listClassName="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-                renderSkeleton={(index) => (
-                    <div
-                        key={`rec-skeleton-${index}`}
-                        className="h-64 rounded-2xl border border-dashed border-purple-100 bg-purple-50"
-                    />
-                )}
+                listClassName="cart-recs-grid"
+                renderSkeleton={(index) => <div key={`rec-skeleton-${index}`} className="cart-recs-skeleton"/>}
                 renderItem={(item) => (
-                    <div
-                        key={item.game.id ?? item.game.title}
-                        className="group flex flex-col overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm shadow-purple-100 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-100/80"
-                    >
-                        <div className="relative h-40 overflow-hidden bg-purple-50">
-                            <SafeGameImage
-                                src={item.game.imagePath}
-                                gameTitle={item.game.title}
-                                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                            />
+                    <div key={item.game.id ?? item.game.title} className="rec-card">
+                        <div className="rec-card-media">
+                            <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title}/>
                         </div>
-                        <div className="space-y-2 p-4">
-                            <h3 className="text-base font-semibold text-gray-900">{item.game.title}</h3>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">Steam</p>
-                            <div className="flex items-center justify-between">
-                                <span className="text-lg font-bold text-gray-900">
-                                    {formatPrice(Number(item.game.price))}
-                                </span>
-                                <button
-                                    onClick={() => handleAddRecommended(item.game)}
-                                    className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition hover:border-purple-300 hover:bg-purple-100"
-                                >
-                                    <FontAwesomeIcon icon={faCartPlus} />
-                                    Add to cart
+                        <div className="rec-card-body">
+                            <h3 className="rec-card-title">{item.game.title}</h3>
+                            <p className="rec-card-tag">Steam</p>
+                            <div className="rec-card-foot">
+                                <span className="rec-card-price">{formatPrice(Number(item.game.price))}</span>
+                                <button type="button" className="btn btn-outline" onClick={() => handleAddRecommended(item.game)}>
+                                    <FontAwesomeIcon icon={faCartPlus}/>
+                                    Add
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
             />
-            <div className="mt-6 flex items-center justify-center gap-2">
-                {[0, 1, 2].map((dot) => (
-                    <span
-                        key={dot}
-                        className={`h-2.5 w-2.5 rounded-full ${dot === 0 ? 'bg-purple-600 shadow-[0_0_0_6px] shadow-purple-100' : 'bg-purple-200'}`}
-                    ></span>
-                ))}
-            </div>
         </div>
     );
 };
-
-const SupportPolicies: React.FC = () => (
-    <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-        <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-gray-900">Support & policies</h2>
-            <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">We have your back</span>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-3 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faBolt} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Instant delivery</h3>
-                        <p className="text-sm text-gray-600">Get your key via email within minutes.</p>
-                    </div>
-                </div>
-            </div>
-            <div className="flex flex-col gap-3 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faArrowRotateLeft} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Refund policy</h3>
-                        <p className="text-sm text-gray-600">Full refunds available within 14 days.</p>
-                    </div>
-                </div>
-            </div>
-            <div className="flex flex-col gap-3 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faCreditCard} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Secure payments</h3>
-                        <div className="mt-1 flex flex-wrap gap-2 text-xs font-semibold text-purple-700">
-                            {['Visa', 'Mastercard', 'PayPal', 'Apple Pay'].map((label) => (
-                                <span key={label} className="rounded-full bg-purple-50 px-3 py-1 ring-1 ring-purple-100">{label}</span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="flex flex-col gap-4 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faComments} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Need help?</h3>
-                        <p className="text-sm text-gray-600">Our team is here 24/7 to support you.</p>
-                    </div>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <Link
-                        to="/support"
-                        className="inline-flex items-center justify-center rounded-full bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-purple-200 transition hover:-translate-y-0.5 hover:bg-purple-700"
-                    >
-                        Contact support
-                    </Link>
-                    <Link
-                        to="/"
-                        className="inline-flex items-center justify-center rounded-full border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-semibold text-purple-700 transition hover:bg-purple-100"
-                    >
-                        Continue shopping
-                    </Link>
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-const CartCTA: React.FC = () => (
-    <div className="overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900 via-purple-800 to-gray-900 p-8 shadow-2xl shadow-purple-300/30">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-xl space-y-3 text-white">
-                <h2 className="text-3xl font-bold">Ready to checkout?</h2>
-                <p className="text-lg text-purple-100">Secure payments and instant delivery in minutes.</p>
-                <div className="flex flex-wrap gap-3 text-sm text-purple-100">
-                    {["Secure payments", "Instant email delivery", "Refund policy"].map((benefit) => (
-                        <span key={benefit} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
-                            <FontAwesomeIcon icon={faCircleCheck} className="text-purple-200" />
-                            {benefit}
-                        </span>
-                    ))}
-                </div>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                    to="/checkout"
-                    className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-purple-800 shadow-lg shadow-purple-400/30 transition hover:-translate-y-0.5"
-                >
-                    Checkout
-                </Link>
-                <Link
-                    to="/"
-                    className="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
-                >
-                    Continue shopping
-                </Link>
-            </div>
-        </div>
-    </div>
-);
 
 const Cart: React.FC = () => {
     const {state, dispatch} = useCart();
@@ -399,9 +196,7 @@ const Cart: React.FC = () => {
     const seededRef = useRef<Set<string>>(new Set());
 
     const subtotal = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
-    const discount = subtotal * 0.08;
-    const total = Math.max(0, subtotal - discount);
-
+    const total = subtotal;
     const itemCount = state.items.length;
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
@@ -440,79 +235,49 @@ const Cart: React.FC = () => {
         })();
     }, [searchParams, dispatch, setSearchParams]);
 
-    const handleIncreaseQuantity = (id: string) => {
-        dispatch({type: 'INCREASE_QUANTITY', payload: id});
-    };
-
-    const handleDecreaseQuantity = (id: string) => {
-        dispatch({type: 'DECREASE_QUANTITY', payload: id});
-    };
+    const handleIncreaseQuantity = (id: string) => dispatch({type: 'INCREASE_QUANTITY', payload: id});
+    const handleDecreaseQuantity = (id: string) => dispatch({type: 'DECREASE_QUANTITY', payload: id});
 
     return (
-        <div className="relative isolate">
-            <div className="flex flex-col gap-6 lg:gap-8">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="space-y-1">
-                        <p className="text-sm font-semibold uppercase tracking-[0.08em] text-purple-700">Cart</p>
-                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Your cart</h1>
-                        <p className="text-gray-600">Digital keys delivered instantly</p>
-                    </div>
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-800 shadow-sm ring-1 ring-purple-100">
-                        <span className="h-2 w-2 rounded-full bg-purple-500"></span>
-                        {itemCount} {itemCount === 1 ? 'item' : 'items'}
-                    </div>
+        <div className="cart-shell">
+            <div className="cart-head">
+                <div>
+                    <p className="cart-eyebrow">Cart</p>
+                    <h1 className="cart-title">Your cart</h1>
+                    <p className="cart-sub">Digital keys delivered instantly</p>
                 </div>
-
-                <PromoCodeCard />
-
-                {state.items.length === 0 ? (
-                    <div className="rounded-3xl border border-purple-100/70 bg-white/80 p-10 text-center shadow-lg shadow-purple-100">
-                        <h3 className="text-xl font-semibold text-gray-900">Your cart is empty</h3>
-                        <p className="mt-2 text-gray-600">Add some games to unlock instant delivery and exclusive deals.</p>
-                        <Link
-                            to="/"
-                            className="mt-6 inline-flex items-center justify-center rounded-full bg-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-200 transition hover:translate-y-0.5 hover:bg-purple-700"
-                        >
-                            Continue shopping
-                        </Link>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_0.8fr] lg:gap-10">
-                        <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-                            <div className="divide-y divide-gray-100/80">
-                                {state.items.map((item) => (
-                                    <CartItemRow
-                                        key={item.gameId}
-                                        item={item}
-                                        imageBaseUrl={urlService.apiBaseUrl}
-                                        onIncrease={handleIncreaseQuantity}
-                                        onDecrease={handleDecreaseQuantity}
-                                        onRemove={(id) => dispatch({type: 'REMOVE_FROM_CART', payload: id})}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="lg:sticky lg:top-6 space-y-4">
-                            <OrderSummary subtotal={subtotal} discount={discount} total={total} />
-                            <div className="grid gap-3 rounded-2xl border border-purple-100/70 bg-white/80 p-4 text-sm text-gray-700 shadow-lg shadow-purple-100/60">
-                                {[{label: 'Secure payments', icon: faShieldHalved}, {label: 'Instant email delivery', icon: faBolt}, {label: 'Refund policy', icon: faTruckFast}].map((feature) => (
-                                    <div key={feature.label} className="flex items-center gap-3 rounded-xl bg-purple-50/50 px-3 py-2 text-gray-800 ring-1 ring-purple-100">
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-purple-600 shadow-inner shadow-purple-100 ring-1 ring-purple-100">
-                                            <FontAwesomeIcon icon={feature.icon} />
-                                        </div>
-                                        <span className="font-semibold">{feature.label}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <RecommendedRow />
-                <SupportPolicies />
-                <CartCTA />
+                <span className="badge">{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
             </div>
+
+            {state.items.length === 0 ? (
+                <div className="card cart-empty">
+                    <h3>Your cart is empty</h3>
+                    <p>Add some games to unlock instant delivery and exclusive deals.</p>
+                    <Link to="/" className="btn btn-primary">Continue shopping</Link>
+                </div>
+            ) : (
+                <div className="cart-layout">
+                    <div className="card cart-items-card">
+                        {state.items.map((item) => (
+                            <CartItemRow
+                                key={item.gameId}
+                                item={item}
+                                imageBaseUrl={urlService.apiBaseUrl}
+                                onIncrease={handleIncreaseQuantity}
+                                onDecrease={handleDecreaseQuantity}
+                                onRemove={(id) => dispatch({type: 'REMOVE_FROM_CART', payload: id})}
+                            />
+                        ))}
+                    </div>
+
+                    <aside className="cart-aside">
+                        <OrderSummary subtotal={subtotal} total={total}/>
+                        <TrustStrip/>
+                    </aside>
+                </div>
+            )}
+
+            <RecommendedRow/>
         </div>
     );
 };

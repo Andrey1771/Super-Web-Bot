@@ -90,3 +90,50 @@ The account settings page supports avatar uploads and removal.
 * Upload endpoint: `POST /api/account/avatar` (multipart file, max 2MB, PNG/JPG/WebP)
 * Remove endpoint: `DELETE /api/account/avatar`
 * Avatars are stored under `wwwroot/uploads/avatars` and served via `/uploads/avatars/...`.
+
+## Stripe payments & webhook
+
+Order finalization (create order + dispense keys) happens in `OrderFinalizationService` and is
+triggered by two independent, idempotent paths:
+
+1. the client calling `POST /api/payments/confirm-payment-intent` after the redirect, and
+2. the Stripe webhook `POST /api/payments/webhook` (`payment_intent.succeeded`).
+
+The webhook is what makes the order survive a customer closing the tab right after paying.
+Both paths are safe to run concurrently — a duplicate order insert is detected and resolved.
+
+### Configuration
+
+| Setting | Env var | Where to get it |
+| --- | --- | --- |
+| `Stripe:SecretKey` | `STRIPE_SECRET_KEY` | Dashboard → Developers → API keys |
+| `Stripe:PublishableKey` | `STRIPE_PUBLISHABLE_KEY` | Dashboard → Developers → API keys |
+| `Stripe:WebhookSecret` | `STRIPE_WEBHOOK_SECRET` | see below — differs for local vs production |
+
+Without `STRIPE_WEBHOOK_SECRET` the webhook endpoint rejects every request (the signature
+cannot be verified), so finalization falls back to the client-side path only.
+
+### Local development
+
+Stripe cannot reach `localhost`, so webhook events have to be forwarded by the
+[Stripe CLI](https://docs.stripe.com/stripe-cli) — a developer tool installed on your machine.
+It is not part of the application and is not used in production, so don't commit its binary.
+
+```bash
+stripe login
+stripe listen --forward-to localhost:7002/api/payments/webhook
+```
+
+Copy the `whsec_…` it prints into `STRIPE_WEBHOOK_SECRET` in `.env`, then recreate the backend
+(`docker compose up -d backend`) and pay with test card `4242 4242 4242 4242`.
+
+### Production
+
+No CLI involved. In Stripe Dashboard → Developers → Webhooks → **Add endpoint**:
+
+* URL: `https://<your-domain>/api/payments/webhook`
+* Event: `payment_intent.succeeded`
+
+Copy the endpoint's signing secret into `STRIPE_WEBHOOK_SECRET`.
+
+> The secret from `stripe listen` and the secret of a Dashboard endpoint are **different** values.

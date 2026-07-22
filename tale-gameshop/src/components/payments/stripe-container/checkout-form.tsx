@@ -18,6 +18,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [hasExpressMethods, setHasExpressMethods] = useState(false);
     const publicAppUrl = window.__APP_CONFIG__?.publicAppUrl ?? window.location.origin;
 
     const handleSubmit = async (event: any) => {
@@ -61,12 +62,18 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
     };
 
     const paymentElementOptions: StripePaymentElementOptions = {
-        layout: "accordion"
+        layout: "tabs"
     };
 
     return (
         <form onSubmit={handleSubmit} className="checkout-stripe-form">
-            <ExpressCheckoutElement onConfirm={handleConfirmExpressCheckout}/>
+            <div className="checkout-stripe-express" hidden={!hasExpressMethods}>
+                <ExpressCheckoutElement
+                    onConfirm={handleConfirmExpressCheckout}
+                    onReady={(event) => setHasExpressMethods(Boolean(event.availablePaymentMethods))}
+                />
+            </div>
+            {hasExpressMethods && <div className="checkout-stripe-divider"><span>or pay with card</span></div>}
             <PaymentElement options={paymentElementOptions}/>
             <button
                 disabled={!stripe || isSubmitting}
@@ -76,11 +83,10 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret}) => {
             >
                 {isSubmitting ? 'Processing...' : 'Place Order'}
             </button>
-            <Link to="/checkout/cancel" className="btn btn-outline checkout-stripe-submit">
+            <Link to="/checkout/cancel" className="btn btn-outline checkout-stripe-cancel">
                 Cancel
             </Link>
-            {/* Show error message to your customers */}
-            {errorMessage && <div>{errorMessage}</div>}
+            {errorMessage && <div className="checkout-stripe-error" role="alert">{errorMessage}</div>}
         </form>
     );
 };

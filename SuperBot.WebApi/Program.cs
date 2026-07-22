@@ -134,6 +134,12 @@ builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
 builder.Services.AddScoped<ITelegramLinkRepository, TelegramLinkMongoDbRepository>();
 // Выдача ключей: из пула инвентаря. Публикует событие доставки в outbox — Telegram шлёт бот-сервис.
 builder.Services.AddScoped<IKeyFulfillmentService, KeyFulfillmentService>();
+// Единое ядро финализации платежа (создать заказ + выдать ключи). Используют И клиентский
+// confirm-payment-intent, И Stripe-вебхук — идемпотентно, без дублей заказа.
+builder.Services.AddScoped<IOrderFinalizationService, OrderFinalizationService>();
+// Ценообразование чекаута: единственное место, где считается сумма к списанию.
+// Клиент присылает только gameId+quantity — цены берутся из каталога.
+builder.Services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
 // Event-outbox: сайт только ПУБЛИКУЕТ события; консюмер (BotOutboxWorker) живёт в бот-сервисе.
 builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();

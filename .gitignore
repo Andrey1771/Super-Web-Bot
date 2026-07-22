@@ -416,3 +416,9 @@ Thumbs.db
 **/appsettings.*.Local.json
 **/appsettings.Local.json
 secrets.json
+
+# Stripe CLI — локальный инструмент, а не часть приложения.
+# Используй docker-сервис: docker compose --profile dev up stripe-cli
+stripe-cli/
+stripe.zip
+stripe.exe
