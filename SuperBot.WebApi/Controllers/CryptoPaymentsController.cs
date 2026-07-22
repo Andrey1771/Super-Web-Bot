@@ -12,6 +12,7 @@ using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using SuperBot.Infrastructure.Services;
 using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers
@@ -28,6 +29,7 @@ namespace SuperBot.WebApi.Controllers
         private readonly BtcPayClient _btcPay;
         private readonly IOrderRepository _orderRepository;
         private readonly IKeyFulfillmentService _keyFulfillmentService;
+        private readonly ICheckoutPricingService _pricing;
         private readonly IMongoCollection<CryptoInvoiceStateDb> _invoiceStates;
         private readonly ILogger<CryptoPaymentsController> _logger;
 
@@ -36,6 +38,7 @@ namespace SuperBot.WebApi.Controllers
             BtcPayClient btcPay,
             IOrderRepository orderRepository,
             IKeyFulfillmentService keyFulfillmentService,
+            ICheckoutPricingService pricing,
             IMongoDatabase database,
             ILogger<CryptoPaymentsController> logger)
         {
@@ -43,6 +46,7 @@ namespace SuperBot.WebApi.Controllers
             _btcPay = btcPay;
             _orderRepository = orderRepository;
             _keyFulfillmentService = keyFulfillmentService;
+            _pricing = pricing;
             _invoiceStates = database.GetCollection<CryptoInvoiceStateDb>("CryptoInvoiceStates");
             _logger = logger;
         }
@@ -66,9 +70,21 @@ namespace SuperBot.WebApi.Controllers
                 return Unauthorized();
             }
 
-            if (request?.Items == null || request.Items.Count == 0 || request.Total <= 0)
+            // Как и в Stripe-чекауте: из запроса берём только gameId + quantity.
+            // Сумму считает сервер по каталогу — клиентским ценам доверять нельзя.
+            var pricing = await _pricing.PriceAsync(new CheckoutPricingRequest
             {
-                return BadRequest("Items and positive total are required.");
+                Items = (request?.Items ?? new List<CryptoInvoiceItemRequest>())
+                    .Select(item => new CheckoutPricingItem { GameId = item.GameId, Quantity = item.Quantity })
+                    .ToList(),
+                PromoCode = request?.PromoCode,
+                Currency = "USD",
+                UserName = userId
+            });
+
+            if (!pricing.Success)
+            {
+                return BadRequest(pricing.Error ?? "Could not price your cart.");
             }
 
             var redirectBase = $"{Request.Scheme}://{Request.Host}";
@@ -78,17 +94,18 @@ namespace SuperBot.WebApi.Controllers
             {
                 // Инвойс в USD — BTCPay сам считает сумму в testnet-BTC по своему курсу.
                 // {InvoiceId} — плейсхолдер BTCPay, подставит id инвойса при редиректе обратно.
-                var invoice = await _btcPay.CreateInvoiceAsync(request.Total, $"{redirectBase}/checkout/success?crypto_invoice={{InvoiceId}}", metadata, ct);
+                var invoice = await _btcPay.CreateInvoiceAsync(pricing.Total, $"{redirectBase}/checkout/success?crypto_invoice={{InvoiceId}}", metadata, ct);
 
                 // Snapshot корзины: заказ создаст вебхук, когда инвойс будет оплачен.
+                // Кладём СЕРВЕРНЫЕ цены — именно из этого снапшота потом строится заказ.
                 await _invoiceStates.InsertOneAsync(new CryptoInvoiceStateDb
                 {
                     InvoiceId = invoice.Id,
                     UserId = userId,
-                    Subtotal = request.Subtotal,
-                    DiscountTotal = request.DiscountTotal,
-                    Total = request.Total,
-                    CheckoutItems = request.Items,
+                    Subtotal = pricing.Subtotal,
+                    DiscountTotal = pricing.DiscountTotal,
+                    Total = pricing.Total,
+                    CheckoutItems = pricing.Items,
                     CreatedAt = DateTime.UtcNow
                 }, cancellationToken: ct);
 
@@ -266,12 +283,20 @@ namespace SuperBot.WebApi.Controllers
             return CryptographicOperations.FixedTimeEquals(expected, provided);
         }
 
+        /// <summary>
+        /// Контракт намеренно НЕ содержит сумм — иначе снова открывается подмена цены.
+        /// Клиент сообщает только что и сколько покупает.
+        /// </summary>
         public class CryptoInvoiceRequest
         {
-            public decimal Subtotal { get; set; }
-            public decimal DiscountTotal { get; set; }
-            public decimal Total { get; set; }
-            public List<CheckoutLineItemStateDb> Items { get; set; } = new();
+            public string? PromoCode { get; set; }
+            public List<CryptoInvoiceItemRequest> Items { get; set; } = new();
+        }
+
+        public class CryptoInvoiceItemRequest
+        {
+            public string GameId { get; set; } = string.Empty;
+            public int Quantity { get; set; }
         }
 
         public class CryptoInvoiceStateDb

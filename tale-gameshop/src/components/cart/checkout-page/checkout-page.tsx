@@ -80,20 +80,12 @@ const CheckoutPage: React.FC = () => {
         setCryptoBusy(true);
         setCryptoError('');
         try {
+            // Как и в Stripe-чекауте: никаких сумм, сервер считает цену сам.
             const {data} = await apiClient.api.post('/api/payments/crypto/invoice', {
-                subtotal: totals.subtotal,
-                discountTotal: totals.discount,
-                total: totals.total,
+                promoCode: promoCode || undefined,
                 items: state.items.map((item) => ({
-                    productType: 'Game',
                     gameId: item.gameId,
-                    title: item.name,
-                    coverUrl: item.image,
                     quantity: item.quantity,
-                    unitPrice: item.price,
-                    discountPerUnit: 0,
-                    finalUnitPrice: item.price,
-                    lineTotal: item.price * item.quantity,
                 })),
             });
             // Hosted checkout BTCPay; после оплаты вернёт на /checkout/success?crypto_invoice=<id>.

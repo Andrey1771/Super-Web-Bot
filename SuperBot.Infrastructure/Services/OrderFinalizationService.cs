@@ -305,18 +305,29 @@ namespace SuperBot.Infrastructure.Services
                 // (пул, outbox, сеть) НЕ должен превращать успешную оплату в «order finalization issue».
                 // Заказ остаётся PENDING_KEYS/IsFulfilled=false и будет добит BackfillGameAsync при
                 // пополнении пула; клиент видит честное «awaiting keys», а не ошибку оплаты.
+                var fulfillmentFailed = false;
                 try
                 {
                     await _keyFulfillmentService.FulfillOrderAsync(order);
                 }
                 catch (Exception fulfillEx)
                 {
+                    fulfillmentFailed = true;
                     _logger.LogError(fulfillEx, "Order {OrderId} paid & created, but key fulfillment failed for {PaymentIntentId}. Left pending for backfill.",
                         order.Id, request.PaymentIntentId);
+
+                    // Клиенту — успех (заказ оплачен и создан), но админка обязана это УВИДЕТЬ.
+                    // Иначе сбой выдачи остаётся только в логах и о нём никто не узнает.
+                    await RecordFulfillmentFailureAsync(request.PaymentIntentId, resolvedUserId, order.Id.ToString(), fulfillEx, request.TraceId);
                 }
 
                 await MarkSucceededAsync(request.PaymentIntentId, resolvedUserId, attempts, order.Id.ToString());
-                await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id.ToString());
+
+                // Закрывать запись о проблеме можно только если выдача реально прошла.
+                if (!fulfillmentFailed)
+                {
+                    await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id.ToString());
+                }
 
                 return OrderFinalizationResult.Ok(FinalizationOutcome.Confirmed, order.Id.ToString(), "confirmed");
             }
@@ -443,6 +454,29 @@ namespace SuperBot.Infrastructure.Services
                 .SetOnInsert(item => item.CreatedAt, now);
 
             await _finalizationFailures.UpdateOneAsync(item => item.PaymentIntentId == paymentIntentId, failureUpdate, new UpdateOptions { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Заказ оплачен и создан, но ключи выдать не удалось. Финализация при этом УСПЕШНА
+        /// (клиенту не показываем ошибку оплаты), поэтому статус состояния не трогаем —
+        /// пишем только запись о проблеме, которую видит админка (Payment issues).
+        /// </summary>
+        private async Task RecordFulfillmentFailureAsync(string paymentIntentId, string userId, string orderId, Exception ex, string? traceId)
+        {
+            var now = DateTime.UtcNow;
+            var update = Builders<PaymentFinalizationFailureDb>.Update
+                .Set(item => item.UserId, userId)
+                .Set(item => item.OrderId, orderId)
+                .Set(item => item.LastSeenAt, now)
+                .Set(item => item.ErrorCode, "FULFILLMENT_FAILED")
+                .Set(item => item.ErrorMessage, "Order is paid, but key delivery failed. Keys are pending backfill.")
+                .Set(item => item.TechnicalDetails, $"{ex.GetType().Name}: {ex.Message}{Environment.NewLine}{ex.StackTrace}")
+                .Set(item => item.TraceId, traceId ?? string.Empty)
+                .Set(item => item.Status, "Open")
+                .SetOnInsert(item => item.PaymentIntentId, paymentIntentId)
+                .SetOnInsert(item => item.CreatedAt, now);
+
+            await _finalizationFailures.UpdateOneAsync(item => item.PaymentIntentId == paymentIntentId, update, new UpdateOptions { IsUpsert = true });
         }
 
         private async Task MarkFailureResolvedAsync(string paymentIntentId, string orderId)
