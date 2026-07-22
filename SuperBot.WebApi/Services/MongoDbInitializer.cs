@@ -45,7 +45,8 @@ namespace SuperBot.WebApi.Services
                 "PromoCodes",
                 "PromoCodeUsages",
                 "PaymentFinalizationStates",
-                "PaymentFinalizationFailures"
+                "PaymentFinalizationFailures",
+                "StripeWebhookEvents"
             };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
@@ -393,6 +394,20 @@ namespace SuperBot.WebApi.Services
             );
             await paymentStateCollection.Indexes.CreateOneAsync(paymentStateIntentIndex);
             await paymentStateCollection.Indexes.CreateOneAsync(paymentStateUserIndex);
+
+            // Журнал обработанных вебхуков Stripe: уникальность по EventId = защита от повторной
+            // обработки; TTL чистит записи, хранить их вечно незачем.
+            var stripeEventsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.StripeWebhookEventDb>("StripeWebhookEvents");
+            var stripeEventIdIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.StripeWebhookEventDb>(
+                Builders<SuperBot.Infrastructure.Data.StripeWebhookEventDb>.IndexKeys.Ascending(item => item.EventId),
+                new CreateIndexOptions { Name = "ix_stripe_events_event_id_unique", Unique = true }
+            );
+            var stripeEventTtlIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.StripeWebhookEventDb>(
+                Builders<SuperBot.Infrastructure.Data.StripeWebhookEventDb>.IndexKeys.Ascending(item => item.ProcessedAt),
+                new CreateIndexOptions { Name = "ix_stripe_events_ttl", ExpireAfter = TimeSpan.FromDays(30) }
+            );
+            await stripeEventsCollection.Indexes.CreateOneAsync(stripeEventIdIndex);
+            await stripeEventsCollection.Indexes.CreateOneAsync(stripeEventTtlIndex);
 
             var paymentFailureCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PaymentFinalizationFailureDb>("PaymentFinalizationFailures");
             var paymentFailureIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationFailureDb>(

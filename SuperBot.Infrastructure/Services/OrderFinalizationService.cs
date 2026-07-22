@@ -19,6 +19,12 @@ namespace SuperBot.Infrastructure.Services
         /// <summary>Пишет начальное состояние (Created) при создании PaymentIntent.</summary>
         Task RecordIntentCreatedAsync(IntentCreatedRecord record);
 
+        /// <summary>
+        /// Последнее ещё не оплаченное намерение пользователя — его можно обновить вместо
+        /// создания нового при каждом изменении корзины.
+        /// </summary>
+        Task<string?> FindReusableIntentIdAsync(string userId);
+
         /// <summary>Идемпотентно финализирует платёж: создаёт заказ + выдаёт ключи.</summary>
         Task<OrderFinalizationResult> FinalizeAsync(OrderFinalizationRequest request);
     }
@@ -134,6 +140,23 @@ namespace SuperBot.Infrastructure.Services
                 .SetOnInsert(item => item.CreatedAt, now);
 
             await _finalizationStates.UpdateOneAsync(item => item.PaymentIntentId == record.PaymentIntentId, stateUpdate, new UpdateOptions { IsUpsert = true });
+        }
+
+        public async Task<string?> FindReusableIntentIdAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return null;
+            }
+
+            // Только Created: Processing/Succeeded/Failed трогать нельзя — там уже идёт или прошла оплата.
+            // Индекс ix_payment_state_user_updated (UserId + UpdatedAt desc).
+            var state = await _finalizationStates
+                .Find(item => item.UserId == userId && item.Status == FinalizationStatus.Created)
+                .SortByDescending(item => item.UpdatedAt)
+                .FirstOrDefaultAsync();
+
+            return state?.PaymentIntentId;
         }
 
         public async Task<OrderFinalizationResult> FinalizeAsync(OrderFinalizationRequest request)

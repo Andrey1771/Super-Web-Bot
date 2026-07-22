@@ -14,11 +14,16 @@ namespace SuperBot.WebApi.Controllers
     {
         private readonly IOrderFinalizationService _finalization;
         private readonly ICheckoutPricingService _pricing;
+        private readonly ILogger<PaymentsController> _logger;
 
-        public PaymentsController(IOrderFinalizationService finalization, ICheckoutPricingService pricing)
+        public PaymentsController(
+            IOrderFinalizationService finalization,
+            ICheckoutPricingService pricing,
+            ILogger<PaymentsController> logger)
         {
             _finalization = finalization;
             _pricing = pricing;
+            _logger = logger;
         }
 
         [HttpPost("create-payment-intent")]
@@ -68,17 +73,32 @@ namespace SuperBot.WebApi.Controllers
                 metadata["promoCode"] = pricing.NormalizedPromoCode;
             }
 
-            var options = new PaymentIntentCreateOptions
-            {
-                // Сумма уже в минорных единицах (центах) — никакого *100 и потери копеек.
-                Amount = pricing.AmountMinorUnits,
-                Currency = currency.ToLowerInvariant(),
-                Metadata = metadata,
-                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true }
-            };
-
             var service = new PaymentIntentService();
-            var paymentIntent = service.Create(options);
+
+            // Изменил корзину — обновляем СУЩЕСТВУЮЩЕЕ намерение, а не плодим новые.
+            // Раньше каждое изменение создавало новый PaymentIntent: мусор в дашборде и битая воронка.
+            var paymentIntent = await TryUpdateReusableIntentAsync(service, userId, pricing, currency, metadata);
+
+            if (paymentIntent == null)
+            {
+                var options = new PaymentIntentCreateOptions
+                {
+                    // Сумма уже в минорных единицах (центах) — никакого *100 и потери копеек.
+                    Amount = pricing.AmountMinorUnits,
+                    Currency = currency.ToLowerInvariant(),
+                    Metadata = metadata,
+                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true }
+                };
+
+                // Идемпотентный ключ: если ответ Stripe потерялся в сети и мы повторим запрос,
+                // Stripe вернёт то же намерение, а не создаст второе.
+                var requestOptions = new RequestOptions
+                {
+                    IdempotencyKey = BuildIntentIdempotencyKey(userId, pricing, currency)
+                };
+
+                paymentIntent = await service.CreateAsync(options, requestOptions);
+            }
 
             await _finalization.RecordIntentCreatedAsync(new IntentCreatedRecord
             {
@@ -181,6 +201,70 @@ namespace SuperBot.WebApi.Controllers
                         TraceId = HttpContext.TraceIdentifier
                     });
             }
+        }
+
+        /// <summary>
+        /// Статусы, в которых сумму намерения ещё можно менять. Всё остальное
+        /// (succeeded / processing / canceled) означает, что нужно новое намерение.
+        /// </summary>
+        private static bool IsUpdatable(string? status) =>
+            status is "requires_payment_method" or "requires_confirmation" or "requires_action";
+
+        private async Task<PaymentIntent?> TryUpdateReusableIntentAsync(
+            PaymentIntentService service,
+            string userId,
+            CheckoutPricingResult pricing,
+            string currency,
+            Dictionary<string, string> metadata)
+        {
+            var reusableId = await _finalization.FindReusableIntentIdAsync(userId);
+            if (string.IsNullOrWhiteSpace(reusableId))
+            {
+                return null;
+            }
+
+            try
+            {
+                var existing = await service.GetAsync(reusableId);
+                if (existing == null || !IsUpdatable(existing.Status))
+                {
+                    // Штатный случай: намерение уже оплачено/отменено — заведём новое.
+                    return null;
+                }
+
+                return await service.UpdateAsync(reusableId, new PaymentIntentUpdateOptions
+                {
+                    Amount = pricing.AmountMinorUnits,
+                    Currency = currency.ToLowerInvariant(),
+                    Metadata = metadata
+                });
+            }
+            catch (StripeException ex)
+            {
+                // Намерение удалено/недоступно — покупателя это ломать не должно, создадим новое.
+                // Но молчать нельзя: если переиспользование ломается систематически (не тот ключ,
+                // урезаны права, лимиты), мы тихо вернёмся к созданию лишних намерений на каждое
+                // изменение корзины — ровно к той проблеме, ради которой это и делалось.
+                _logger.LogWarning(ex,
+                    "Could not reuse payment intent {PaymentIntentId} for user {UserId} ({ErrorCode}); creating a new one.",
+                    reusableId, userId, ex.StripeError?.Code);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Ключ должен быть ОДИНАКОВЫМ для повтора той же покупки и РАЗНЫМ для другой корзины.
+        /// Случайный GUID здесь был бы бесполезен — он не защищает ни от чего.
+        /// </summary>
+        private static string BuildIntentIdempotencyKey(string userId, CheckoutPricingResult pricing, string currency)
+        {
+            var items = string.Join(",", pricing.Items
+                .OrderBy(item => item.GameId, StringComparer.Ordinal)
+                .Select(item => $"{item.GameId}:{item.Quantity}"));
+            var payload = $"{userId}|{currency}|{pricing.AmountMinorUnits}|{pricing.NormalizedPromoCode}|{items}";
+
+            var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(payload));
+            return $"pi_create_{Convert.ToHexString(hash)[..32].ToLowerInvariant()}";
         }
 
         private string GetCurrentUserId()

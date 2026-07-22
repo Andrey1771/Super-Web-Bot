@@ -142,6 +142,8 @@ builder.Services.AddScoped<IOrderFinalizationService, OrderFinalizationService>(
 builder.Services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
 // Возвраты и чарджбеки: приводят заказ в соответствие с состоянием платежа после оплаты.
 builder.Services.AddScoped<IPaymentReconciliationService, PaymentReconciliationService>();
+// Дедупликация вебхуков: Stripe доставляет события «хотя бы один раз».
+builder.Services.AddScoped<IStripeEventLog, StripeEventLog>();
 // Event-outbox: сайт только ПУБЛИКУЕТ события; консюмер (BotOutboxWorker) живёт в бот-сервисе.
 builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();

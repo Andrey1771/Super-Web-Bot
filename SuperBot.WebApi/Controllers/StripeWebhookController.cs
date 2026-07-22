@@ -18,17 +18,20 @@ namespace SuperBot.WebApi.Controllers
     {
         private readonly IOrderFinalizationService _finalization;
         private readonly IPaymentReconciliationService _reconciliation;
+        private readonly IStripeEventLog _eventLog;
         private readonly StripeSettings _stripeSettings;
         private readonly ILogger<StripeWebhookController> _logger;
 
         public StripeWebhookController(
             IOrderFinalizationService finalization,
             IPaymentReconciliationService reconciliation,
+            IStripeEventLog eventLog,
             IOptions<StripeSettings> stripeSettings,
             ILogger<StripeWebhookController> logger)
         {
             _finalization = finalization;
             _reconciliation = reconciliation;
+            _eventLog = eventLog;
             _stripeSettings = stripeSettings.Value;
             _logger = logger;
         }
@@ -58,13 +61,34 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest("Invalid signature.");
             }
 
+            // Stripe доставляет события «хотя бы один раз» — повтор уже обработанного пропускаем.
+            if (await _eventLog.IsProcessedAsync(stripeEvent.Id))
+            {
+                _logger.LogInformation("Stripe event {EventId} ({Type}) already processed — skipping.", stripeEvent.Id, stripeEvent.Type);
+                return Ok();
+            }
+
+            var handled = await HandleEventAsync(stripeEvent);
+
+            // Помечаем ТОЛЬКО успешно обработанное: иначе неудача «съела» бы событие,
+            // и Stripe уже не смог бы его повторить.
+            if (handled.Success)
+            {
+                await _eventLog.MarkProcessedAsync(stripeEvent.Id, stripeEvent.Type);
+            }
+
+            return handled.Response;
+        }
+
+        private async Task<(bool Success, IActionResult Response)> HandleEventAsync(Event stripeEvent)
+        {
             // Возврат денег: заказ обязан перестать считаться оплаченным.
             if (stripeEvent.Type == "charge.refunded")
             {
                 if (stripeEvent.Data.Object is not Charge charge || string.IsNullOrWhiteSpace(charge.PaymentIntentId))
                 {
                     _logger.LogWarning("charge.refunded without a usable Charge payload ({EventId}).", stripeEvent.Id);
-                    return Ok();
+                    return (true, Ok());
                 }
 
                 var applied = await _reconciliation.ApplyRefundAsync(new RefundNotice
@@ -77,7 +101,9 @@ namespace SuperBot.WebApi.Controllers
                 });
 
                 // Не применилось (заказ ещё не создан) → просим Stripe повторить.
-                return applied ? Ok() : StatusCode(StatusCodes.Status500InternalServerError, "Refund not applied yet.");
+                return applied
+                    ? (true, Ok())
+                    : (false, StatusCode(StatusCodes.Status500InternalServerError, "Refund not applied yet."));
             }
 
             // Чарджбек: деньги оспорены, а ключ уже у покупателя — это всегда к человеку.
@@ -86,7 +112,7 @@ namespace SuperBot.WebApi.Controllers
                 if (stripeEvent.Data.Object is not Dispute dispute || string.IsNullOrWhiteSpace(dispute.PaymentIntentId))
                 {
                     _logger.LogWarning("charge.dispute.created without a usable Dispute payload ({EventId}).", stripeEvent.Id);
-                    return Ok();
+                    return (true, Ok());
                 }
 
                 var applied = await _reconciliation.ApplyDisputeAsync(new DisputeNotice
@@ -99,7 +125,9 @@ namespace SuperBot.WebApi.Controllers
                     EventId = stripeEvent.Id
                 });
 
-                return applied ? Ok() : StatusCode(StatusCodes.Status500InternalServerError, "Dispute not applied yet.");
+                return applied
+                    ? (true, Ok())
+                    : (false, StatusCode(StatusCodes.Status500InternalServerError, "Dispute not applied yet."));
             }
 
             if (stripeEvent.Type == "payment_intent.succeeded")
@@ -107,7 +135,7 @@ namespace SuperBot.WebApi.Controllers
                 if (stripeEvent.Data.Object is not PaymentIntent paymentIntent)
                 {
                     _logger.LogWarning("payment_intent.succeeded without a PaymentIntent payload ({EventId}).", stripeEvent.Id);
-                    return Ok();
+                    return (true, Ok());
                 }
 
                 var result = await _finalization.FinalizeAsync(new OrderFinalizationRequest
@@ -132,7 +160,7 @@ namespace SuperBot.WebApi.Controllers
                         paymentIntent.Id, result.Outcome, result.ErrorCode, result.ErrorMessage);
 
                     // Идемпотентность гарантирует, что повтор не создаст дубль заказа.
-                    return StatusCode(StatusCodes.Status500InternalServerError, $"Not finalized: {result.Outcome}.");
+                    return (false, StatusCode(StatusCodes.Status500InternalServerError, $"Not finalized: {result.Outcome}."));
                 }
 
                 _logger.LogInformation("Webhook finalized {PaymentIntentId}: {Outcome} (order {OrderId}).",
@@ -140,7 +168,7 @@ namespace SuperBot.WebApi.Controllers
             }
 
             // Остальные типы событий подтверждаем 200, чтобы Stripe не считал их неуспешными.
-            return Ok();
+            return (true, Ok());
         }
     }
 }
