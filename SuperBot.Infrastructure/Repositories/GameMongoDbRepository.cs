@@ -70,7 +70,15 @@ namespace SuperBot.Infrastructure.Repositories
                 return new List<Game>();
             }
 
-            var gamesDb = await _games.Find(game => idList.Contains(game.Id)).ToListAsync();
+            // Id хранится как ObjectId: непарсящийся идентификатор роняет запрос ещё на сериализации
+            // фильтра. Для вызывающего это должно выглядеть как «игра не найдена», а не как 500.
+            var validIds = idList.Where(id => ObjectId.TryParse(id, out _)).ToList();
+            if (validIds.Count == 0)
+            {
+                return new List<Game>();
+            }
+
+            var gamesDb = await _games.Find(game => validIds.Contains(game.Id)).ToListAsync();
             return _mapper.Map<List<Game>>(gamesDb);
         }
 

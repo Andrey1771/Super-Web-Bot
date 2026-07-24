@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
+using SuperBot.Common.Auth;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -64,7 +65,7 @@ namespace SuperBot.WebApi.Controllers
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, "Crypto payments are not configured.");
             }
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? string.Empty;
+            var userId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(userId))
             {
                 return Unauthorized();
@@ -104,7 +105,21 @@ namespace SuperBot.WebApi.Controllers
                     Subtotal = pricing.Subtotal,
                     DiscountTotal = pricing.DiscountTotal,
                     Total = pricing.Total,
-                    CheckoutItems = pricing.Items,
+                    CheckoutItems = pricing.Items.Select(item => new CheckoutLineItemStateDb
+                    {
+                        ProductType = item.ProductType,
+                        GameId = item.GameId,
+                        Title = item.Title,
+                        CoverUrl = item.CoverUrl,
+                        Platform = item.Platform,
+                        Region = item.Region,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        DiscountPerUnit = item.DiscountPerUnit,
+                        FinalUnitPrice = item.FinalUnitPrice,
+                        LineTotal = item.LineTotal,
+                        Currency = item.Currency
+                    }).ToList(),
                     CreatedAt = DateTime.UtcNow
                 }, cancellationToken: ct);
 
@@ -152,7 +167,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet("status/{invoiceId}")]
         public async Task<IActionResult> GetStatus(string invoiceId, CancellationToken ct)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? string.Empty;
+            var userId = User.GetUserKey();
             var state = await _invoiceStates.Find(item => item.InvoiceId == invoiceId).FirstOrDefaultAsync(ct);
             if (state == null || !string.Equals(state.UserId, userId, StringComparison.OrdinalIgnoreCase))
             {

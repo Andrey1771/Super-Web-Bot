@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
+using SuperBot.Common.Auth;
 using SuperBot.Infrastructure.Data;
 using SuperBot.Infrastructure.Services;
 
@@ -14,15 +15,18 @@ namespace SuperBot.WebApi.Controllers
     {
         private readonly IOrderFinalizationService _finalization;
         private readonly ICheckoutPricingService _pricing;
+        private readonly IStripePaymentIntentGateway _paymentIntents;
         private readonly ILogger<PaymentsController> _logger;
 
         public PaymentsController(
             IOrderFinalizationService finalization,
             ICheckoutPricingService pricing,
+            IStripePaymentIntentGateway paymentIntents,
             ILogger<PaymentsController> logger)
         {
             _finalization = finalization;
             _pricing = pricing;
+            _paymentIntents = paymentIntents;
             _logger = logger;
         }
 
@@ -73,32 +77,21 @@ namespace SuperBot.WebApi.Controllers
                 metadata["promoCode"] = pricing.NormalizedPromoCode;
             }
 
-            var service = new PaymentIntentService();
+            var draft = new PaymentIntentDraft
+            {
+                // Сумма уже в минорных единицах (центах) — никакого *100 и потери копеек.
+                AmountMinorUnits = pricing.AmountMinorUnits,
+                Currency = currency.ToLowerInvariant(),
+                Metadata = metadata
+            };
 
             // Изменил корзину — обновляем СУЩЕСТВУЮЩЕЕ намерение, а не плодим новые.
             // Раньше каждое изменение создавало новый PaymentIntent: мусор в дашборде и битая воронка.
-            var paymentIntent = await TryUpdateReusableIntentAsync(service, userId, pricing, currency, metadata);
+            var paymentIntent = await TryUpdateReusableIntentAsync(userId, draft);
 
-            if (paymentIntent == null)
-            {
-                var options = new PaymentIntentCreateOptions
-                {
-                    // Сумма уже в минорных единицах (центах) — никакого *100 и потери копеек.
-                    Amount = pricing.AmountMinorUnits,
-                    Currency = currency.ToLowerInvariant(),
-                    Metadata = metadata,
-                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true }
-                };
-
-                // Идемпотентный ключ: если ответ Stripe потерялся в сети и мы повторим запрос,
-                // Stripe вернёт то же намерение, а не создаст второе.
-                var requestOptions = new RequestOptions
-                {
-                    IdempotencyKey = BuildIntentIdempotencyKey(userId, pricing, currency)
-                };
-
-                paymentIntent = await service.CreateAsync(options, requestOptions);
-            }
+            // Идемпотентный ключ: если ответ Stripe потерялся в сети и мы повторим запрос,
+            // Stripe вернёт то же намерение, а не создаст второе.
+            paymentIntent ??= await _paymentIntents.CreateAsync(draft, BuildIntentIdempotencyKey(userId, pricing, currency));
 
             await _finalization.RecordIntentCreatedAsync(new IntentCreatedRecord
             {
@@ -203,19 +196,7 @@ namespace SuperBot.WebApi.Controllers
             }
         }
 
-        /// <summary>
-        /// Статусы, в которых сумму намерения ещё можно менять. Всё остальное
-        /// (succeeded / processing / canceled) означает, что нужно новое намерение.
-        /// </summary>
-        private static bool IsUpdatable(string? status) =>
-            status is "requires_payment_method" or "requires_confirmation" or "requires_action";
-
-        private async Task<PaymentIntent?> TryUpdateReusableIntentAsync(
-            PaymentIntentService service,
-            string userId,
-            CheckoutPricingResult pricing,
-            string currency,
-            Dictionary<string, string> metadata)
+        private async Task<PaymentIntentSnapshot?> TryUpdateReusableIntentAsync(string userId, PaymentIntentDraft draft)
         {
             var reusableId = await _finalization.FindReusableIntentIdAsync(userId);
             if (string.IsNullOrWhiteSpace(reusableId))
@@ -225,19 +206,14 @@ namespace SuperBot.WebApi.Controllers
 
             try
             {
-                var existing = await service.GetAsync(reusableId);
-                if (existing == null || !IsUpdatable(existing.Status))
+                var existing = await _paymentIntents.GetAsync(reusableId);
+                if (existing == null || !existing.IsUpdatable)
                 {
                     // Штатный случай: намерение уже оплачено/отменено — заведём новое.
                     return null;
                 }
 
-                return await service.UpdateAsync(reusableId, new PaymentIntentUpdateOptions
-                {
-                    Amount = pricing.AmountMinorUnits,
-                    Currency = currency.ToLowerInvariant(),
-                    Metadata = metadata
-                });
+                return await _paymentIntents.UpdateAsync(reusableId, draft);
             }
             catch (StripeException ex)
             {
@@ -267,10 +243,12 @@ namespace SuperBot.WebApi.Controllers
             return $"pi_create_{Convert.ToHexString(hash)[..32].ToLowerInvariant()}";
         }
 
-        private string GetCurrentUserId()
-        {
-            return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? string.Empty;
-        }
+        /// <summary>
+        /// ВАЖНО: та же идентификация, что и во всём остальном приложении (кабинет, вишлист, блог).
+        /// Раньше здесь брался sub, а `/api/users/me/keys` искал по email — из-за чего выданный
+        /// ключ не отображался в «Keys &amp; activation».
+        /// </summary>
+        private string GetCurrentUserId() => User.GetUserKey();
     }
 
     /// <summary>

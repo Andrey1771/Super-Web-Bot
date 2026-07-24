@@ -45,7 +45,7 @@ namespace SuperBot.Infrastructure.Services
                 }
 
                 var oldPrice = game.Price;
-                var newPrice = Math.Round(oldPrice * (1 - discount.DiscountPercent / 100m), 2, MidpointRounding.AwayFromZero);
+                var newPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(oldPrice, discount.DiscountPercent);
                 var gameUrl = $"{_urlService.MainUrl?.TrimEnd('/')}/games/{game.Slug}";
                 var template = _translationsService.Translation.WishlistDiscountAlert;
                 var text = string.IsNullOrWhiteSpace(template)

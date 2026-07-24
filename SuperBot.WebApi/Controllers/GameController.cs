@@ -197,15 +197,7 @@ namespace SuperBot.WebApi.Controllers
             return NoContent();
         }
 
-        private static decimal CalculateFinalPrice(decimal price, decimal? discountPercent)
-        {
-            if (!discountPercent.HasValue || discountPercent.Value <= 0)
-            {
-                return price;
-            }
-
-            var result = price * (1 - (discountPercent.Value / 100m));
-            return Math.Round(result, 2, MidpointRounding.AwayFromZero);
-        }
+        private static decimal CalculateFinalPrice(decimal price, decimal? discountPercent) =>
+            SuperBot.Core.Services.PriceCalculator.FinalPrice(price, discountPercent);
     }
 }

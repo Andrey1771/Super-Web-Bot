@@ -39,7 +39,7 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
             type: 'ADD_TO_CART',
             payload: {
                 gameId: game.id ?? "",
-                name: game.name,
+                name: game.title ?? game.name,
                 price: finalPrice,
                 quantity: 1,
                 image: game.imagePath

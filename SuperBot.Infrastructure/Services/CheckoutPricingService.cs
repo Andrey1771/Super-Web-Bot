@@ -28,12 +28,32 @@ namespace SuperBot.Infrastructure.Services
         public int Quantity { get; set; }
     }
 
+    /// <summary>
+    /// Посчитанная позиция заказа. Намеренно НЕ тип персистентности: раньше контракт сервиса
+    /// возвращал CheckoutLineItemStateDb, из-за чего деталь хранения протекала во все вызывающие.
+    /// </summary>
+    public class CheckoutLineItem
+    {
+        public string ProductType { get; set; } = "Game";
+        public string? GameId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? CoverUrl { get; set; }
+        public string? Platform { get; set; }
+        public string? Region { get; set; }
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal DiscountPerUnit { get; set; }
+        public decimal FinalUnitPrice { get; set; }
+        public decimal LineTotal { get; set; }
+        public string Currency { get; set; } = "USD";
+    }
+
     public class CheckoutPricingResult
     {
         public bool Success { get; set; }
         public string? Error { get; set; }
 
-        public List<CheckoutLineItemStateDb> Items { get; set; } = new();
+        public List<CheckoutLineItem> Items { get; set; } = new();
         public decimal Subtotal { get; set; }
         public decimal DiscountTotal { get; set; }
         public decimal TaxTotal { get; set; }
@@ -135,7 +155,7 @@ namespace SuperBot.Infrastructure.Services
 
             var currency = SettlementCurrency;
             var utcNow = DateTime.UtcNow;
-            var lineItems = new List<CheckoutLineItemStateDb>();
+            var lineItems = new List<CheckoutLineItem>();
 
             foreach (var (gameId, quantity) in quantityByGameId)
             {
@@ -152,11 +172,14 @@ namespace SuperBot.Infrastructure.Services
                     return CheckoutPricingResult.Fail("Invalid price configuration.");
                 }
 
-                lineItems.Add(new CheckoutLineItemStateDb
+                lineItems.Add(new CheckoutLineItem
                 {
                     ProductType = "Game",
                     GameId = gameId,
-                    Title = string.IsNullOrWhiteSpace(game.Name) ? game.Title ?? "Game" : game.Name,
+                    // В заказе должно стоять ТО ЖЕ название, что покупатель видел на витрине,
+                    // а витрина (каталог, карточка игры, рекомендации) показывает Title.
+                    // Раньше сюда попадал Name — и в чеке оказывалось другое имя товара.
+                    Title = !string.IsNullOrWhiteSpace(game.Title) ? game.Title : (game.Name ?? "Game"),
                     CoverUrl = game.ImagePath,
                     Quantity = quantity,
                     UnitPrice = unitPrice,
@@ -227,21 +250,8 @@ namespace SuperBot.Infrastructure.Services
             };
         }
 
-        /// <summary>
-        /// Та же формула, что на витрине (GameController.CalculateFinalPrice) — цена в чекауте
-        /// обязана совпадать с ценой в каталоге до копейки.
-        /// TODO: формула продублирована ещё в GameController/GamesDetailsController/NewsletterDispatcher —
-        /// стоит свести к одному месту отдельной задачей.
-        /// </summary>
-        private static decimal CalculateFinalPrice(decimal price, decimal? discountPercent)
-        {
-            if (!discountPercent.HasValue || discountPercent.Value <= 0)
-            {
-                return price;
-            }
-
-            var result = price * (1 - (discountPercent.Value / 100m));
-            return Math.Round(result, 2, MidpointRounding.AwayFromZero);
-        }
+        /// <summary>Цена в чекауте обязана совпадать с витриной — формула общая на весь проект.</summary>
+        private static decimal CalculateFinalPrice(decimal price, decimal? discountPercent) =>
+            SuperBot.Core.Services.PriceCalculator.FinalPrice(price, discountPercent);
     }
 }

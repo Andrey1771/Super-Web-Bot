@@ -121,7 +121,7 @@ const AccountSavedItemsPage: React.FC = () => {
             type: 'ADD_TO_CART',
             payload: {
                 gameId: game.id ?? '',
-                name: game.name,
+                name: game.title ?? game.name,
                 price: game.price,
                 quantity: 1,
                 image: game.imagePath

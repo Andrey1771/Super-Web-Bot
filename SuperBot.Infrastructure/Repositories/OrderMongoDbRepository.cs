@@ -145,6 +145,19 @@ namespace SuperBot.Infrastructure.Repositories
                 orderDb.OrderId = order.Id.ToString();
             }
 
+            // Доменный Order не носит в себе mongo-шный _id, поэтому после маппинга он пустой.
+            // ReplaceOne с пустым _id Mongo отвергает: «immutable field '_id' was altered» (код 66),
+            // из-за чего ЛЮБОЕ обновление заказа падало — в том числе сохранение выданных ключей.
+            var existingId = await _orders
+                .Find(o => o.OrderId == orderDb.OrderId)
+                .Project(o => o.Id)
+                .FirstOrDefaultAsync();
+
+            if (existingId != default)
+            {
+                orderDb.Id = existingId;
+            }
+
             await _orders.ReplaceOneAsync(o => o.OrderId == orderDb.OrderId, orderDb);
         }
 

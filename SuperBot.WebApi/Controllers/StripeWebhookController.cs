@@ -55,10 +55,13 @@ namespace SuperBot.WebApi.Controllers
             {
                 stripeEvent = EventUtility.ConstructEvent(payload, signature, webhookSecret);
             }
-            catch (StripeException ex)
+            catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Stripe webhook signature verification failed.");
-                return BadRequest("Invalid signature.");
+                // Эндпоинт публичный и принимает недоверенный ввод: на любой мусор он обязан
+                // отвечать 400, а не падать пятисоткой. Кроме StripeException тут вылетают и
+                // ошибки разбора JSON (вплоть до NullReferenceException внутри парсера SDK).
+                _logger.LogWarning(ex, "Stripe webhook rejected: bad signature or unparsable payload ({Message}).", ex.Message);
+                return BadRequest("Invalid payload or signature.");
             }
 
             // Stripe доставляет события «хотя бы один раз» — повтор уже обработанного пропускаем.

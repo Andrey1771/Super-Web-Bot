@@ -49,9 +49,7 @@ public class AdminGameDiscountsController : ControllerBase
                 discountMap.TryGetValue(game.Id, out var discount);
                 var status = GetStatus(discount, now);
                 var discountPercent = discount?.DiscountPercent;
-                var finalPrice = discountPercent.HasValue
-                    ? Math.Round(game.Price * (1 - (discountPercent.Value / 100m)), 2, MidpointRounding.AwayFromZero)
-                    : game.Price;
+                var finalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(game.Price, discountPercent);
 
                 return new
                 {

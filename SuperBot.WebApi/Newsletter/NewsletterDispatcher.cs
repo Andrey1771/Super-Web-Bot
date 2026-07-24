@@ -163,7 +163,7 @@ public class NewsletterDispatcher : INewsletterDispatcher
         var lines = string.Join("\n", fresh.Select(d =>
         {
             var game = gameById[d.GameId];
-            var finalPrice = Math.Round(game.Price * (1 - d.DiscountPercent / 100m), 2, MidpointRounding.AwayFromZero);
+            var finalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(game.Price, d.DiscountPercent);
             return $"• {game.Title} — ${game.Price:0.00} → ${finalPrice:0.00} (-{d.DiscountPercent:0}%)";
         }));
 

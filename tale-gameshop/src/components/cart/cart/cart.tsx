@@ -134,7 +134,7 @@ const RecommendedRow: React.FC = () => {
             type: 'ADD_TO_CART',
             payload: {
                 gameId: game.id ?? '',
-                name: game.name,
+                name: game.title ?? game.name,
                 price: finalPrice,
                 quantity: 1,
                 image: game.imagePath
@@ -218,7 +218,7 @@ const Cart: React.FC = () => {
                         type: 'ADD_TO_CART',
                         payload: {
                             gameId: data.id,
-                            name: data.name ?? data.title ?? 'Game',
+                            name: data.title ?? data.name ?? 'Game',
                             price: Number(data.finalPrice ?? data.price ?? 0),
                             quantity: 1,
                             image: data.imagePath ?? '',

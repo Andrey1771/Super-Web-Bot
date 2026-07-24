@@ -25,6 +25,12 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
 
     public CapturingMailSender Mail { get; } = new();
 
+    /// <summary>Stripe в памяти вместо сети — через него тесты «оплачивают» намерения.</summary>
+    public FakeStripePaymentIntentGateway Stripe { get; } = new();
+
+    /// <summary>Секрет, которым тесты подписывают вебхуки (как это делает настоящий Stripe).</summary>
+    public const string WebhookSecret = "whsec_test_secret_for_integration_tests";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Запоминаем PID нашего mongod: graceful shutdown EphemeralMongo6 требует сборку
@@ -60,6 +66,11 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
         // кандидат на зависание при старте под WebApplicationFactory).
         builder.UseSetting("Hangfire:Enabled", "false");
 
+        // Без секрета вебхук отклоняет всё (fail-closed) — тестам нужен известный секрет,
+        // чтобы подписывать запросы ровно так же, как это делает Stripe.
+        builder.UseSetting("Stripe:WebhookSecret", WebhookSecret);
+        builder.UseSetting("Stripe:SecretKey", "sk_test_not_used_gateway_is_faked");
+
         builder.ConfigureTestServices(services =>
         {
             // Фоновые циклы не нужны: рассылку двигаем руками через INewsletterDispatcher,
@@ -70,6 +81,10 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
             // Все письма — в память.
             services.RemoveAll<IMailSender>();
             services.AddSingleton<IMailSender>(Mail);
+
+            // Stripe — в память. Это и есть тот шов, ради которого выделялся IStripePaymentIntentGateway.
+            services.RemoveAll<SuperBot.Infrastructure.Services.IStripePaymentIntentGateway>();
+            services.AddSingleton<SuperBot.Infrastructure.Services.IStripePaymentIntentGateway>(Stripe);
 
             // Тестовая аутентификация вместо Keycloak JWT.
             services.AddAuthentication(TestAuthHandler.SchemeName)

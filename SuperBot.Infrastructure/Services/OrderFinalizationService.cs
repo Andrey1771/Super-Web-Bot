@@ -38,7 +38,8 @@ namespace SuperBot.Infrastructure.Services
         public decimal DiscountTotal { get; set; }
         public decimal TaxTotal { get; set; }
         public decimal Total { get; set; }
-        public List<CheckoutLineItemStateDb> CheckoutItems { get; set; } = new();
+        /// <summary>Позиции в доменном виде — маппинг в тип хранения делает сам сервис.</summary>
+        public List<CheckoutLineItem> CheckoutItems { get; set; } = new();
     }
 
     public class OrderFinalizationRequest
@@ -105,6 +106,7 @@ namespace SuperBot.Infrastructure.Services
 
         private readonly IOrderRepository _orderRepository;
         private readonly IKeyFulfillmentService _keyFulfillmentService;
+        private readonly IStripePaymentIntentGateway _paymentIntents;
         private readonly ILogger<OrderFinalizationService> _logger;
         private readonly IMongoCollection<PaymentFinalizationStateDb> _finalizationStates;
         private readonly IMongoCollection<PaymentFinalizationFailureDb> _finalizationFailures;
@@ -112,11 +114,13 @@ namespace SuperBot.Infrastructure.Services
         public OrderFinalizationService(
             IOrderRepository orderRepository,
             IKeyFulfillmentService keyFulfillmentService,
+            IStripePaymentIntentGateway paymentIntents,
             ILogger<OrderFinalizationService> logger,
             IMongoDatabase database)
         {
             _orderRepository = orderRepository;
             _keyFulfillmentService = keyFulfillmentService;
+            _paymentIntents = paymentIntents;
             _logger = logger;
             _finalizationStates = database.GetCollection<PaymentFinalizationStateDb>("PaymentFinalizationStates");
             _finalizationFailures = database.GetCollection<PaymentFinalizationFailureDb>("PaymentFinalizationFailures");
@@ -135,7 +139,7 @@ namespace SuperBot.Infrastructure.Services
                 .Set(item => item.DiscountTotal, record.DiscountTotal)
                 .Set(item => item.TaxTotal, record.TaxTotal)
                 .Set(item => item.Total, record.Total)
-                .Set(item => item.CheckoutItems, record.CheckoutItems)
+                .Set(item => item.CheckoutItems, record.CheckoutItems.Select(ToStateDb).ToList())
                 .Set(item => item.UpdatedAt, now)
                 .SetOnInsert(item => item.CreatedAt, now);
 
@@ -198,8 +202,7 @@ namespace SuperBot.Infrastructure.Services
             var resolvedUserId = request.ExpectedUserId ?? string.Empty;
             try
             {
-                var paymentIntentService = new PaymentIntentService();
-                var paymentIntent = await paymentIntentService.GetAsync(request.PaymentIntentId);
+                var paymentIntent = await _paymentIntents.GetAsync(request.PaymentIntentId);
                 if (paymentIntent == null)
                 {
                     await MarkFailedAsync(request.PaymentIntentId, resolvedUserId, attempts, "PAYMENT_INTENT_NOT_FOUND", "Payment intent not found.", null, request.TraceId);
@@ -402,7 +405,7 @@ namespace SuperBot.Infrastructure.Services
             }
         }
 
-        private static List<OrderItemSnapshot> BuildOrderItemsFromState(PaymentFinalizationStateDb? state, PaymentIntent paymentIntent)
+        private static List<OrderItemSnapshot> BuildOrderItemsFromState(PaymentFinalizationStateDb? state, PaymentIntentSnapshot paymentIntent)
         {
             if (state?.CheckoutItems?.Count > 0)
             {
@@ -551,6 +554,23 @@ namespace SuperBot.Infrastructure.Services
 
             await _finalizationFailures.UpdateOneAsync(item => item.PaymentIntentId == paymentIntentId, update);
         }
+
+        /// <summary>Доменная позиция → тип хранения. Держим маппинг здесь, а не у вызывающих.</summary>
+        private static CheckoutLineItemStateDb ToStateDb(CheckoutLineItem item) => new()
+        {
+            ProductType = item.ProductType,
+            GameId = item.GameId,
+            Title = item.Title,
+            CoverUrl = item.CoverUrl,
+            Platform = item.Platform,
+            Region = item.Region,
+            Quantity = item.Quantity,
+            UnitPrice = item.UnitPrice,
+            DiscountPerUnit = item.DiscountPerUnit,
+            FinalUnitPrice = item.FinalUnitPrice,
+            LineTotal = item.LineTotal,
+            Currency = item.Currency
+        };
 
         private static bool IsDuplicateKey(Exception ex) => ex switch
         {

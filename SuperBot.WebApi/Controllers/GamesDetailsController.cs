@@ -146,12 +146,7 @@ public class GamesDetailsController : ControllerBase
     private static object BuildPricing(GameDetails details)
     {
         var discount = details.DiscountPercent ?? 0;
-        var finalPrice = details.BasePrice;
-        if (discount > 0)
-        {
-            finalPrice = Math.Round(details.BasePrice * (1 - (discount / 100m)), 2, MidpointRounding.AwayFromZero);
-        }
-
+        var finalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(details.BasePrice, details.DiscountPercent);
         details.FinalPrice = finalPrice;
 
         return new

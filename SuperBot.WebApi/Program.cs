@@ -144,6 +144,8 @@ builder.Services.AddScoped<ICheckoutPricingService, CheckoutPricingService>();
 builder.Services.AddScoped<IPaymentReconciliationService, PaymentReconciliationService>();
 // Дедупликация вебхуков: Stripe доставляет события «хотя бы один раз».
 builder.Services.AddScoped<IStripeEventLog, StripeEventLog>();
+// Шов к Stripe: единственное место обращения к их SDK. В тестах подменяется фейком.
+builder.Services.AddScoped<IStripePaymentIntentGateway, StripePaymentIntentGateway>();
 // Event-outbox: сайт только ПУБЛИКУЕТ события; консюмер (BotOutboxWorker) живёт в бот-сервисе.
 builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();
