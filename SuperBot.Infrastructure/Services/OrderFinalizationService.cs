@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Stripe;
@@ -82,8 +83,14 @@ namespace SuperBot.Infrastructure.Services
         public string? ErrorCode { get; set; }
         public string? ErrorMessage { get; set; }
 
-        public static OrderFinalizationResult Ok(FinalizationOutcome outcome, string? orderId, string statusLabel)
-            => new() { Outcome = outcome, OrderId = orderId, StatusLabel = statusLabel };
+        /// <summary>Гостевая покупка: ключи придержаны до подтверждения почты по ссылке из письма.</summary>
+        public bool RequiresEmailVerification { get; set; }
+
+        /// <summary>Куда ушло письмо подтверждения — показать покупателю на success-странице.</summary>
+        public string? BuyerEmail { get; set; }
+
+        public static OrderFinalizationResult Ok(FinalizationOutcome outcome, string? orderId, string statusLabel, bool requiresEmailVerification = false)
+            => new() { Outcome = outcome, OrderId = orderId, StatusLabel = statusLabel, RequiresEmailVerification = requiresEmailVerification };
 
         public static OrderFinalizationResult Error(FinalizationOutcome outcome, string? code, string? message)
             => new() { Outcome = outcome, ErrorCode = code, ErrorMessage = message };
@@ -104,9 +111,16 @@ namespace SuperBot.Infrastructure.Services
         /// <summary>Окно, за которым счётчик неудачных попыток считается протухшим.</summary>
         private static readonly TimeSpan AttemptWindow = TimeSpan.FromMinutes(30);
 
+        /// <summary>Дефолт TTL токена подтверждения доставки, если конфиг не задан/битый.</summary>
+        private const int DefaultDeliveryVerificationTtlHours = 48;
+        private const string DeliveryVerificationTtlHoursKey = "Payments:DeliveryVerificationTtlHours";
+
         private readonly IOrderRepository _orderRepository;
         private readonly IKeyFulfillmentService _keyFulfillmentService;
         private readonly IStripePaymentIntentGateway _paymentIntents;
+        private readonly IDeliveryMailer _deliveryMailer;
+        private readonly IDeliveryVerificationTokenService _verificationTokens;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<OrderFinalizationService> _logger;
         private readonly IMongoCollection<PaymentFinalizationStateDb> _finalizationStates;
         private readonly IMongoCollection<PaymentFinalizationFailureDb> _finalizationFailures;
@@ -115,12 +129,18 @@ namespace SuperBot.Infrastructure.Services
             IOrderRepository orderRepository,
             IKeyFulfillmentService keyFulfillmentService,
             IStripePaymentIntentGateway paymentIntents,
+            IDeliveryMailer deliveryMailer,
+            IDeliveryVerificationTokenService verificationTokens,
+            IConfiguration configuration,
             ILogger<OrderFinalizationService> logger,
             IMongoDatabase database)
         {
             _orderRepository = orderRepository;
             _keyFulfillmentService = keyFulfillmentService;
             _paymentIntents = paymentIntents;
+            _deliveryMailer = deliveryMailer;
+            _verificationTokens = verificationTokens;
+            _configuration = configuration;
             _logger = logger;
             _finalizationStates = database.GetCollection<PaymentFinalizationStateDb>("PaymentFinalizationStates");
             _finalizationFailures = database.GetCollection<PaymentFinalizationFailureDb>("PaymentFinalizationFailures");
@@ -251,6 +271,11 @@ namespace SuperBot.Infrastructure.Services
                     totalAmount = orderItems.Sum(item => item.LineTotal) + taxTotal;
                 }
 
+                // Гостевая покупка: почта не подтверждена (metadata emailVerified=false при создании
+                // намерения) — ключи придерживаем до перехода по ссылке из письма. У залогиненных
+                // email уже проверен Keycloak'ом, у старых намерений метки нет — им выдаём сразу.
+                var requiresVerification = string.Equals(paymentIntent.MetadataValue("emailVerified"), "false", StringComparison.OrdinalIgnoreCase);
+
                 var firstItem = orderItems.FirstOrDefault();
                 var nowCreated = DateTime.UtcNow;
                 var orderId = Guid.NewGuid();
@@ -288,6 +313,9 @@ namespace SuperBot.Infrastructure.Services
                     },
                     Currency = state?.Currency ?? paymentIntent.Currency?.ToUpperInvariant() ?? "USD",
                     PromoCode = paymentIntent.Metadata.TryGetValue("promoCode", out var promoCode) ? promoCode : null,
+                    // Пока true — выдача ключей заблокирована в самой KeyFulfillmentService
+                    // (в т.ч. бэкфилл при пополнении пула). Флаг снимает только verify-delivery.
+                    RequiresDeliveryVerification = requiresVerification,
                     Notes = BuildPaymentNote(request.PaymentIntentId),
                     Events = new List<OrderEvent>
                     {
@@ -296,6 +324,16 @@ namespace SuperBot.Infrastructure.Services
                     },
                     Items = orderItems
                 };
+
+                if (requiresVerification)
+                {
+                    order.Events.Add(new OrderEvent
+                    {
+                        Type = "verification",
+                        Message = "Key delivery held until the buyer confirms their email",
+                        CreatedAt = nowCreated
+                    });
+                }
 
                 try
                 {
@@ -322,19 +360,32 @@ namespace SuperBot.Infrastructure.Services
                 // Заказ остаётся PENDING_KEYS/IsFulfilled=false и будет добит BackfillGameAsync при
                 // пополнении пула; клиент видит честное «awaiting keys», а не ошибку оплаты.
                 var fulfillmentFailed = false;
-                try
+                if (requiresVerification)
                 {
-                    await _keyFulfillmentService.FulfillOrderAsync(order);
+                    // Ключи НЕ выдаём — заказ остаётся PENDING_KEYS до подтверждения почты.
+                    await SendDeliveryVerificationAsync(order, resolvedUserId, request.TraceId);
                 }
-                catch (Exception fulfillEx)
+                else
                 {
-                    fulfillmentFailed = true;
-                    _logger.LogError(fulfillEx, "Order {OrderId} paid & created, but key fulfillment failed for {PaymentIntentId}. Left pending for backfill.",
-                        order.Id, request.PaymentIntentId);
+                    try
+                    {
+                        var delivered = await _keyFulfillmentService.FulfillOrderAsync(order);
+                        // Сайт обещает «key arrives by email» — шлём ключи на почту (не роняя финализацию).
+                        await SendKeysEmailBestEffortAsync(order, resolvedUserId, delivered);
+                    }
+                    catch (Exception fulfillEx)
+                    {
+                        fulfillmentFailed = true;
+                        _logger.LogError(fulfillEx, "Order {OrderId} paid & created, but key fulfillment failed for {PaymentIntentId}. Left pending for backfill.",
+                            order.Id, request.PaymentIntentId);
 
-                    // Клиенту — успех (заказ оплачен и создан), но админка обязана это УВИДЕТЬ.
-                    // Иначе сбой выдачи остаётся только в логах и о нём никто не узнает.
-                    await RecordFulfillmentFailureAsync(request.PaymentIntentId, resolvedUserId, order.Id.ToString(), fulfillEx, request.TraceId);
+                        // Клиенту — успех (заказ оплачен и создан), но админка обязана это УВИДЕТЬ.
+                        // Иначе сбой выдачи остаётся только в логах и о нём никто не узнает.
+                        await RecordDeliveryIssueAsync(request.PaymentIntentId, resolvedUserId, order.Id.ToString(),
+                            "FULFILLMENT_FAILED",
+                            "Order is paid, but key delivery failed. Keys are pending backfill.",
+                            fulfillEx, request.TraceId);
+                    }
                 }
 
                 await MarkSucceededAsync(request.PaymentIntentId, resolvedUserId, attempts, order.Id.ToString());
@@ -345,7 +396,13 @@ namespace SuperBot.Infrastructure.Services
                     await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id.ToString());
                 }
 
-                return OrderFinalizationResult.Ok(FinalizationOutcome.Confirmed, order.Id.ToString(), "confirmed");
+                var confirmedResult = OrderFinalizationResult.Ok(
+                    FinalizationOutcome.Confirmed,
+                    order.Id.ToString(),
+                    requiresVerification ? "confirmed_pending_verification" : "confirmed",
+                    requiresVerification);
+                confirmedResult.BuyerEmail = requiresVerification ? resolvedUserId : null;
+                return confirmedResult;
             }
             catch (Exception ex)
             {
@@ -523,19 +580,19 @@ namespace SuperBot.Infrastructure.Services
         }
 
         /// <summary>
-        /// Заказ оплачен и создан, но ключи выдать не удалось. Финализация при этом УСПЕШНА
-        /// (клиенту не показываем ошибку оплаты), поэтому статус состояния не трогаем —
-        /// пишем только запись о проблеме, которую видит админка (Payment issues).
+        /// Заказ оплачен и создан, но доставка споткнулась (выдача ключей / письмо).
+        /// Финализация при этом УСПЕШНА (клиенту не показываем ошибку оплаты), поэтому статус
+        /// состояния не трогаем — пишем запись о проблеме, которую видит админка (Payment issues).
         /// </summary>
-        private async Task RecordFulfillmentFailureAsync(string paymentIntentId, string userId, string orderId, Exception ex, string? traceId)
+        private async Task RecordDeliveryIssueAsync(string paymentIntentId, string userId, string orderId, string code, string message, Exception ex, string? traceId)
         {
             var now = DateTime.UtcNow;
             var update = Builders<PaymentFinalizationFailureDb>.Update
                 .Set(item => item.UserId, userId)
                 .Set(item => item.OrderId, orderId)
                 .Set(item => item.LastSeenAt, now)
-                .Set(item => item.ErrorCode, "FULFILLMENT_FAILED")
-                .Set(item => item.ErrorMessage, "Order is paid, but key delivery failed. Keys are pending backfill.")
+                .Set(item => item.ErrorCode, code)
+                .Set(item => item.ErrorMessage, message)
                 .Set(item => item.TechnicalDetails, $"{ex.GetType().Name}: {ex.Message}{Environment.NewLine}{ex.StackTrace}")
                 .Set(item => item.TraceId, traceId ?? string.Empty)
                 .Set(item => item.Status, "Open")
@@ -543,6 +600,62 @@ namespace SuperBot.Infrastructure.Services
                 .SetOnInsert(item => item.CreatedAt, now);
 
             await _finalizationFailures.UpdateOneAsync(item => item.PaymentIntentId == paymentIntentId, update, new UpdateOptions { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Гостевой заказ: письмо «подтвердите почту — получите ключи». Сбой письма не валит
+        /// финализацию (деньги взяты, заказ есть), но обязан быть виден админке — иначе гость
+        /// никогда не получит ключи и никто об этом не узнает.
+        /// </summary>
+        private async Task SendDeliveryVerificationAsync(Order order, string email, string? traceId)
+        {
+            try
+            {
+                var token = _verificationTokens.CreateToken(order.Id, email, DeliveryVerificationTtl());
+                var verifyUrl = $"{PublicBaseUrl()}/api/payments/verify-delivery?token={token}";
+                await _deliveryMailer.SendKeyDeliveryVerificationAsync(email, order.OrderNumber ?? order.Id.ToString(), verifyUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Delivery-verification email failed for order {OrderId} ({Email}).", order.Id, email);
+                await RecordDeliveryIssueAsync(order.PaymentIntentId ?? string.Empty, email, order.Id.ToString(),
+                    "VERIFICATION_EMAIL_FAILED",
+                    "Order is paid, but the delivery-verification email could not be sent. Resend it manually.",
+                    ex, traceId);
+            }
+        }
+
+        /// <summary>Ключи выданы — дублируем их на почту. Сбой письма не критичен: ключи уже в аккаунте.</summary>
+        private async Task SendKeysEmailBestEffortAsync(Order order, string email, IReadOnlyList<DeliveredKeyNotification> delivered)
+        {
+            if (delivered.Count == 0 || !email.Contains('@'))
+            {
+                return;
+            }
+
+            try
+            {
+                await _deliveryMailer.SendGameKeysAsync(email, order.OrderNumber ?? order.Id.ToString(), delivered,
+                    SuperBot.Core.Interfaces.KeyDeliveryReceipt.FromOrder(order),
+                    SuperBot.Core.Interfaces.KeyDeliveryProgress.FromOrder(order));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Keys email failed for order {OrderId} ({Email}); keys remain available in the account.", order.Id, email);
+            }
+        }
+
+        private string PublicBaseUrl() =>
+            (_configuration["Mail:PublicBaseUrl"] ?? _configuration["Recovery:PublicBaseUrl"] ?? string.Empty).TrimEnd('/');
+
+        /// <summary>
+        /// TTL токена подтверждения доставки — бизнес-политика (сколько у гостя есть времени
+        /// подтвердить почту), поэтому из конфига, а не хардкод. Битое/нулевое значение → дефолт.
+        /// </summary>
+        private TimeSpan DeliveryVerificationTtl()
+        {
+            var hours = _configuration.GetValue<int?>(DeliveryVerificationTtlHoursKey);
+            return TimeSpan.FromHours(hours is > 0 ? hours.Value : DefaultDeliveryVerificationTtlHours);
         }
 
         private async Task MarkFailureResolvedAsync(string paymentIntentId, string orderId)

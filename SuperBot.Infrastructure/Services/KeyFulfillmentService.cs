@@ -44,11 +44,20 @@ namespace SuperBot.Infrastructure.Services
             return await _gameKeyRepository.TryDispensePoolKeyAsync(gameId, userId);
         }
 
-        public async Task FulfillOrderAsync(Order order)
+        public async Task<IReadOnlyList<DeliveredKeyNotification>> FulfillOrderAsync(Order order)
         {
             if (order == null || string.IsNullOrWhiteSpace(order.UserId))
             {
-                return;
+                return Array.Empty<DeliveredKeyNotification>();
+            }
+
+            // Гейт гостевой покупки ЖИВЁТ ЗДЕСЬ, в самой выдаче: какой бы путь ни привёл
+            // (финализация, бэкфилл при пополнении пула, легаси-контроллер) — пока почта
+            // не подтверждена, ключи не выдаются. Снимает флаг только verify-delivery.
+            if (order.RequiresDeliveryVerification)
+            {
+                _logger.LogInformation("Order {OrderId}: key delivery held — buyer email not verified yet.", order.Id);
+                return Array.Empty<DeliveredKeyNotification>();
             }
 
             var newlyDelivered = await DispenseOutstandingAsync(order);
@@ -57,18 +66,20 @@ namespace SuperBot.Infrastructure.Services
 
             await _orderRepository.UpdateOrderAsync(order);
             await NotifyAsync(order, newlyDelivered);
+            return newlyDelivered;
         }
 
-        public async Task<int> BackfillGameAsync(string gameId)
+        public async Task<IReadOnlyList<OrderKeysDelivered>> BackfillGameAsync(string gameId)
         {
             if (string.IsNullOrWhiteSpace(gameId))
             {
-                return 0;
+                return Array.Empty<OrderKeysDelivered>();
             }
 
             // Только оплаченные и ещё не закрытые заказы, где есть эта игра.
+            // Заказы с неподтверждённой почтой FulfillOrderAsync пропустит сам (гейт внутри).
             var pending = await _orderRepository.GetUnfulfilledPaidOrdersAsync();
-            var affected = 0;
+            var delivered = new List<OrderKeysDelivered>();
 
             foreach (var order in pending)
             {
@@ -77,20 +88,19 @@ namespace SuperBot.Infrastructure.Services
                     continue;
                 }
 
-                var before = CountDeliveredKeys(order);
-                await FulfillOrderAsync(order);
-                if (CountDeliveredKeys(order) > before)
+                var keys = await FulfillOrderAsync(order);
+                if (keys.Count > 0)
                 {
-                    affected++;
+                    delivered.Add(new OrderKeysDelivered(order, keys));
                 }
             }
 
-            if (affected > 0)
+            if (delivered.Count > 0)
             {
-                _logger.LogInformation("Backfill for game {GameId}: {Affected} orders received keys.", gameId, affected);
+                _logger.LogInformation("Backfill for game {GameId}: {Affected} orders received keys.", gameId, delivered.Count);
             }
 
-            return affected;
+            return delivered;
         }
 
         /// <summary>
@@ -123,7 +133,7 @@ namespace SuperBot.Infrastructure.Services
 
                     item.Delivery.Keys.Add(new DeliveredKey { KeyMasked = MaskKey(key.Key), DeliveredAt = DateTime.UtcNow });
                     item.Delivery.DeliveredAt = DateTime.UtcNow;
-                    newlyDelivered.Add(new DeliveredKeyNotification(ResolveTitle(item, order), key.Key));
+                    newlyDelivered.Add(new DeliveredKeyNotification(ResolveTitle(item, order), key.Key, key.KeyType));
                 }
             }
 

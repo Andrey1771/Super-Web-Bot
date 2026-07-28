@@ -111,6 +111,159 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<List<Order>>(ordersDb);
         }
 
+        public async Task<IReadOnlyDictionary<string, int>> GetOwedKeyCountByGameAsync()
+        {
+            // Готовы к выдаче, но не закрыты: оплачен, не выдан, НЕ под верификацией почты, оплата в PAID
+            // (возвраты/споры/pending-возврат исключаем — по ним ключ не должны).
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true),
+                Builders<OrderDb>.Filter.Ne(order => order.IsFulfilled, true),
+                Builders<OrderDb>.Filter.Ne(order => order.RequiresDeliveryVerification, true),
+                Builders<OrderDb>.Filter.Eq(order => order.PaymentStatus, "PAID"));
+            var ordersDb = await _orders.Find(filter).ToListAsync();
+            var orders = _mapper.Map<List<Order>>(ordersDb);
+
+            var owed = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var order in orders)
+            {
+                foreach (var item in order.Items)
+                {
+                    if (string.IsNullOrWhiteSpace(item.GameId))
+                    {
+                        continue;
+                    }
+                    var needed = Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty);
+                    var delivered = item.Delivery?.Keys.Count ?? 0;
+                    var deficit = needed - delivered;
+                    if (deficit > 0)
+                    {
+                        owed[item.GameId] = (owed.TryGetValue(item.GameId, out var current) ? current : 0) + deficit;
+                    }
+                }
+            }
+            return owed;
+        }
+
+        public async Task<IReadOnlyList<OwedKeyLine>> GetOwedKeyOrdersAsync()
+        {
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true),
+                Builders<OrderDb>.Filter.Ne(order => order.IsFulfilled, true),
+                Builders<OrderDb>.Filter.Ne(order => order.RequiresDeliveryVerification, true),
+                Builders<OrderDb>.Filter.Eq(order => order.PaymentStatus, "PAID"));
+            var ordersDb = await _orders.Find(filter).ToListAsync();
+            var orders = _mapper.Map<List<Order>>(ordersDb);
+
+            var lines = new List<OwedKeyLine>();
+            foreach (var order in orders)
+            {
+                foreach (var item in order.Items)
+                {
+                    if (string.IsNullOrWhiteSpace(item.GameId))
+                    {
+                        continue;
+                    }
+                    var needed = Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty);
+                    var remaining = needed - (item.Delivery?.Keys.Count ?? 0);
+                    if (remaining > 0)
+                    {
+                        lines.Add(new OwedKeyLine(
+                            order.OrderNumber ?? order.Id.ToString(),
+                            order.UserId,
+                            item.GameId,
+                            remaining,
+                            order.CreatedAt));
+                    }
+                }
+            }
+
+            // Самые старые ожидания — вперёд (дольше всех ждут).
+            return lines.OrderBy(l => l.CreatedAt).ToList();
+        }
+
+        public async Task<List<Order>> GetUnverifiedGuestOrdersAsync(DateTime createdBeforeUtc)
+        {
+            // PAID — свежие кандидаты; REFUND_PENDING — прошлый заход не довёл возврат до конца
+            // (упал Stripe/процесс) и его надо повторить. Идемпотентный ключ возврата делает повтор безопасным.
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.RequiresDeliveryVerification, true),
+                Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true),
+                Builders<OrderDb>.Filter.In(order => order.PaymentStatus, new[] { "PAID", "REFUND_PENDING" }),
+                Builders<OrderDb>.Filter.Lt(order => order.CreatedAt, createdBeforeUtc));
+
+            var ordersDb = await _orders.Find(filter).ToListAsync();
+            await EnsureOrderGuidsAsync(ordersDb);
+            return _mapper.Map<List<Order>>(ordersDb);
+        }
+
+        public async Task<bool> HasVerifiedDeliveryEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return false;
+            }
+
+            // Почта = UserName заказа. Совпадение регистронезависимое: гостевые почты хранятся
+            // в нижнем регистре, но у залогиненных клейм может отличаться регистром.
+            // Проверена = хотя бы один заказ, где подтверждение уже снято, оплачен и оплата в PAID
+            // (возвраты/споры имеют иной PaymentStatus и в доверенные не попадают).
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Regex(order => order.UserName,
+                    new BsonRegularExpression("^" + System.Text.RegularExpressions.Regex.Escape(email.Trim()) + "$", "i")),
+                Builders<OrderDb>.Filter.Eq(order => order.RequiresDeliveryVerification, false),
+                Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true),
+                Builders<OrderDb>.Filter.Eq(order => order.PaymentStatus, "PAID"));
+
+            return await _orders.Find(filter).Limit(1).AnyAsync();
+        }
+
+        public async Task<bool> TryMarkRefundPendingAsync(string orderId)
+        {
+            // Атомарность критична: это «замок» против гонки с подтверждением почты.
+            // Проверка условия и запись — одна операция Mongo, вдвоём сюда не пройти.
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.OrderId, orderId),
+                Builders<OrderDb>.Filter.Eq(order => order.RequiresDeliveryVerification, true),
+                Builders<OrderDb>.Filter.Eq(order => order.PaymentStatus, "PAID"));
+
+            var update = Builders<OrderDb>.Update
+                .Set(order => order.PaymentStatus, "REFUND_PENDING")
+                .Set(order => order.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _orders.UpdateOneAsync(filter, update);
+            return result.ModifiedCount == 1;
+        }
+
+        public async Task<Order?> TryConfirmDeliveryVerificationAsync(string orderId)
+        {
+            // Зеркальный «замок»: подтверждение проходит, только пока заказ не занят возвратом.
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.OrderId, orderId),
+                Builders<OrderDb>.Filter.Eq(order => order.RequiresDeliveryVerification, true),
+                Builders<OrderDb>.Filter.Eq(order => order.PaymentStatus, "PAID"));
+
+            var update = Builders<OrderDb>.Update
+                .Set(order => order.RequiresDeliveryVerification, false)
+                .Set(order => order.UpdatedAt, DateTime.UtcNow)
+                .Push(order => order.Events, new OrderEventDb
+                {
+                    Type = "verification",
+                    Message = "Buyer confirmed their email",
+                    CreatedAt = DateTime.UtcNow
+                });
+
+            var updated = await _orders.FindOneAndUpdateAsync(filter, update,
+                new FindOneAndUpdateOptions<OrderDb> { ReturnDocument = ReturnDocument.After });
+
+            if (updated == null)
+            {
+                return null;
+            }
+
+            await EnsureOrderGuidAsync(updated);
+            return _mapper.Map<Order>(updated);
+        }
+
         public async Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(
             IReadOnlyCollection<string> userNames,
             OrderQueryParameters query)

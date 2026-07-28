@@ -165,6 +165,26 @@ namespace SuperBot.Tests
 
             public Task<List<Order>> GetUnfulfilledPaidOrdersAsync() => Task.FromResult(_orders.Where(order => order.IsPaid && !order.IsFulfilled).ToList());
 
+            public Task<IReadOnlyDictionary<string, int>> GetOwedKeyCountByGameAsync() =>
+                Task.FromResult<IReadOnlyDictionary<string, int>>(new Dictionary<string, int>());
+
+            public Task<IReadOnlyList<OwedKeyLine>> GetOwedKeyOrdersAsync() =>
+                Task.FromResult<IReadOnlyList<OwedKeyLine>>(new List<OwedKeyLine>());
+
+            public Task<List<Order>> GetUnverifiedGuestOrdersAsync(DateTime createdBeforeUtc) =>
+                Task.FromResult(_orders.Where(order => order.RequiresDeliveryVerification && order.CreatedAt < createdBeforeUtc).ToList());
+
+            public Task<bool> HasVerifiedDeliveryEmailAsync(string email) =>
+                Task.FromResult(_orders.Any(order =>
+                    string.Equals(order.UserName, email, StringComparison.OrdinalIgnoreCase)
+                    && !order.RequiresDeliveryVerification
+                    && order.IsPaid
+                    && string.Equals(order.PaymentStatus, "PAID", StringComparison.OrdinalIgnoreCase)));
+
+            public Task<bool> TryMarkRefundPendingAsync(string orderId) => Task.FromResult(false);
+
+            public Task<Order> TryConfirmDeliveryVerificationAsync(string orderId) => Task.FromResult<Order>(null);
+
             public Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(IReadOnlyCollection<string> userNames, OrderQueryParameters query)
             {
                 var items = _orders.Where(order => userNames.Contains(order.UserName)).ToList();

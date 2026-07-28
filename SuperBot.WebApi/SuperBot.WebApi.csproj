@@ -34,6 +34,9 @@
   <ItemGroup>
     <!-- HTML-шаблоны писем: правятся как обычный HTML, в рантайме читаются из сборки -->
     <EmbeddedResource Include="Newsletter\Templates\*.html" />
+    <!-- Логотип для шапки писем: раздаётся самим бэкендом (см. EmailAssetsController),
+         чтобы письмо не зависело от деплоя фронта. Едет вместе с DLL. -->
+    <EmbeddedResource Include="Mail\Assets\*.png" />
   </ItemGroup>
 
 </Project>

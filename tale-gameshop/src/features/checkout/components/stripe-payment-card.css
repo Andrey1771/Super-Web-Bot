@@ -67,6 +67,68 @@
     font-size: 15px;
 }
 
+/* Гостевая покупка: email вместо обязательного логина. */
+.checkout-guest {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-16) var(--space-4);
+}
+
+.checkout-guest h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.checkout-guest p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-muted);
+}
+
+.checkout-guest-label {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.checkout-guest-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.checkout-guest-divider::before,
+.checkout-guest-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+}
+
+/* Плашка над формой оплаты: куда придут ключи. */
+.checkout-guest-note {
+    margin: 0 0 var(--space-12);
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--color-border));
+    font-size: 13px;
+    color: var(--color-text);
+}
+
+.checkout-guest-change {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
 /* Гость: платёж требует авторизации ([Authorize] на PaymentsController). */
 .checkout-signin {
     display: flex;

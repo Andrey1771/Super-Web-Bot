@@ -211,11 +211,29 @@ namespace SuperBot.Core.Services
             HashSet<string> excludeIds,
             int limit)
         {
-            return allGames
+            var pool = allGames
                 .Where(game => game != null && !string.IsNullOrWhiteSpace(game.Id))
+                .ToList();
+
+            var filtered = pool
                 .Where(game => !excludeIds.Contains(game.Id))
                 .OrderByDescending(game => game.ReleaseDate)
                 .Take(limit)
+                .ToList();
+
+            // Последний рубеж: если после исключения купленного/вишлиста ничего не осталось
+            // (крошечный каталог, где пользователь уже всё «потрогал»), всё равно НЕ отдаём
+            // пустой блок — показываем топ каталога без исключений. Пустой «Recommended for you»
+            // на каждой странице выглядит как поломка; для витрины повтор уже виденной игры
+            // лучше пустоты. На большом каталоге эта ветка не срабатывает.
+            var source = filtered.Count > 0
+                ? filtered
+                : pool
+                    .OrderByDescending(game => game.ReleaseDate)
+                    .Take(limit)
+                    .ToList();
+
+            return source
                 .Select(game => new RecommendationItem
                 {
                     Game = game,

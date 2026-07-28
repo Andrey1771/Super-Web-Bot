@@ -40,6 +40,9 @@ namespace SuperBot.Infrastructure.Data
         public decimal? TaxTotal { get; set; }
         public string? PromoCode { get; set; }
         public decimal? PromoDiscountAmount { get; set; }
+
+        /// <summary>Гость ещё не подтвердил почту — выдача ключей запрещена (включая бэкфилл).</summary>
+        public bool RequiresDeliveryVerification { get; set; }
         public string? Currency { get; set; }
         public string? Notes { get; set; }
         public MoneyTotalsDb Totals { get; set; } = new();

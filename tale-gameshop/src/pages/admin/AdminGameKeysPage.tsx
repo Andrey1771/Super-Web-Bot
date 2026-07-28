@@ -4,6 +4,7 @@ import IDENTIFIERS from "../../constants/identifiers";
 import type { IGameService } from "../../iterfaces/i-game-service";
 import type { Game } from "../../models/game";
 import KeyInventorySection from "../../components/admin/KeyInventorySection";
+import KeyStockOverview from "../../components/admin/KeyStockOverview";
 
 const AdminGameKeysPage: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
@@ -16,7 +17,7 @@ const AdminGameKeysPage: React.FC = () => {
       .then((list) => {
         setGames(list);
         if (list.length > 0) {
-          setSelectedGameId((prev) => prev || list[0].id);
+          setSelectedGameId((prev) => prev || list[0].id || "");
         }
       })
       .catch(() => {
@@ -26,14 +27,16 @@ const AdminGameKeysPage: React.FC = () => {
 
   return (
     <div className="admin-grid">
+      <KeyStockOverview onSelectGame={setSelectedGameId} />
+
       <div className="admin-card">
         <h2>Game keys</h2>
         <p style={{ color: "#6b7280" }}>
-          Управление пулом активационных ключей по играм: залить ключи, посмотреть остаток, выдать пользователю.
+          Manage the activation-key pool per game: add keys, check stock, grant to a user.
         </p>
         {games.length === 0 ? (
           <p style={{ color: "#92400e" }}>
-            В каталоге пока нет игр. Сначала добавьте игру в разделе «Catalog», затем сможете управлять её ключами.
+            No games in the catalog yet. Add a game in Catalog first, then you can manage its keys.
           </p>
         ) : (
           <label>

@@ -1,4 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {Navigate} from 'react-router-dom';
 import {Elements} from '@stripe/react-stripe-js';
 import {useKeycloak} from '@react-keycloak/web';
 import {useCart} from '../../../context/cart-context';
@@ -50,6 +51,13 @@ const CheckoutPage: React.FC = () => {
 
     const handleLogin = () => keycloakAuthService.loginWithRedirect(keycloak, window.location.href);
 
+    // Гостевая покупка: платить можно без аккаунта, ключи придут на этот email
+    // после подтверждения (ссылка в письме). guestEmail — применённое значение,
+    // по нему создаётся платёж; input — черновик, чтобы не дёргать API на каждый символ.
+    const [guestEmailInput, setGuestEmailInput] = useState('');
+    const [guestEmail, setGuestEmail] = useState('');
+    const guestEmailValid = /^\S+@\S+\.\S+$/.test(guestEmailInput.trim());
+
     const [promoCode, setPromoCode] = useState('');
     const [promoDiscount, setPromoDiscount] = useState(0);
     const [promoMessage, setPromoMessage] = useState('');
@@ -63,6 +71,9 @@ const CheckoutPage: React.FC = () => {
     const [serverTotals, setServerTotals] = useState<{subtotal: number; discount: number; tax: number; total: number} | null>(null);
     const totals = serverTotals ?? previewTotals;
     const [clientSecret, setClientSecret] = useState<string | null>(null);
+    // Нужно ли подтверждать почту перед выдачей ключей: решает сервер (доверенные/уже
+    // подтверждённые почты выдают ключи сразу). По умолчанию true — до ответа считаем, что нужно.
+    const [requiresEmailVerification, setRequiresEmailVerification] = useState(true);
     const [paymentInitError, setPaymentInitError] = useState('');
     const hasTrackedCheckout = useRef(false);
     const [cryptoEnabled, setCryptoEnabled] = useState(false);
@@ -111,10 +122,10 @@ const CheckoutPage: React.FC = () => {
 
     useEffect(() => {
         const fetchClientSecret = async () => {
-            // Гость не может создать платёж (PaymentsController помечен [Authorize]).
-            // Не дёргаем API — экран «войти» покажем в рендере.
-            if (!isAuthenticated) {
+            // Гость без введённого email: платёж ещё не создаём — в рендере форма email.
+            if (!isAuthenticated && !guestEmail) {
                 setClientSecret(null);
+                setServerTotals(null);
                 setPaymentInitError('');
                 return;
             }
@@ -130,14 +141,16 @@ const CheckoutPage: React.FC = () => {
                 setPaymentInitError('');
                 // Шлём ТОЛЬКО что и сколько покупаем. Никаких сумм — их считает сервер по каталогу.
                 const {data} = await apiClient.api.post('/api/payments/create-payment-intent', {
-                    currency: 'USD',
                     promoCode: promoCode || undefined,
+                    email: isAuthenticated ? undefined : guestEmail,
                     items: state.items.map((item) => ({
                         gameId: item.gameId,
                         quantity: item.quantity,
                     })),
                 });
                 setClientSecret(data.clientSecret ?? data.ClientSecret ?? null);
+                setRequiresEmailVerification(
+                    Boolean(data.requiresEmailVerification ?? data.RequiresEmailVerification ?? true));
 
                 const serverTotalsPayload = data.totals ?? data.Totals;
                 if (serverTotalsPayload) {
@@ -158,9 +171,9 @@ const CheckoutPage: React.FC = () => {
         };
 
         fetchClientSecret();
-        // Зависим только от корзины и промокода: суммы теперь приходят ОТ сервера,
-        // держать их в зависимостях — значит зациклить запрос.
-    }, [apiClient.api, isAuthenticated, promoCode, state.items]);
+        // Зависим только от корзины, промокода и применённого email гостя:
+        // суммы приходят ОТ сервера, держать их в зависимостях — значит зациклить запрос.
+    }, [apiClient.api, isAuthenticated, guestEmail, promoCode, state.items]);
 
     const handleApplyPromo = async () => {
         setApplyingPromo(true);
@@ -192,6 +205,14 @@ const CheckoutPage: React.FC = () => {
         setPromoCode('');
     };
 
+    // Чекаут без товаров бессмысленен (сумма $0, платить нечего) — отправляем в корзину,
+    // у неё уже есть нормальное пустое состояние. Сюда же попадает возврат «назад»
+    // после успешной оплаты: корзина к тому моменту очищена.
+    // ВАЖНО: guard стоит ПОСЛЕ всех хуков (правило hooks), но ДО рендера.
+    if (state.items.length === 0) {
+        return <Navigate to="/cart" replace />;
+    }
+
     const options = {
         clientSecret: clientSecret ?? undefined,
         appearance: stripeAppearance,
@@ -220,19 +241,60 @@ const CheckoutPage: React.FC = () => {
                         </div>
                         <aside className="checkout-page-aside">
                             <StripePaymentCard>
-                                {initialized && !isAuthenticated ? (
-                                    <div className="checkout-signin">
-                                        <div className="checkout-signin-icon" aria-hidden="true">🔒</div>
-                                        <h3>Sign in to complete your purchase</h3>
-                                        <p>Your keys are tied to your account so you can access them anytime. It only takes a moment.</p>
-                                        <button type="button" className="btn btn-primary" onClick={handleLogin}>
-                                            Sign in to pay
+                                {initialized && !isAuthenticated && !clientSecret && !paymentInitError ? (
+                                    <div className="checkout-guest">
+                                        <h3>Where should we send your keys?</h3>
+                                        <p>No account needed — we'll email your keys and receipt. Create an account later with the same email to keep everything in one place.</p>
+                                        <p><strong>Double-check the address</strong> — the confirmation link and your keys go exactly there.</p>
+                                        <label className="checkout-guest-label" htmlFor="guest-email">Email</label>
+                                        <input
+                                            id="guest-email"
+                                            className="input"
+                                            type="email"
+                                            autoComplete="email"
+                                            placeholder="you@example.com"
+                                            value={guestEmailInput}
+                                            onChange={(event) => setGuestEmailInput(event.target.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' && guestEmailValid) {
+                                                    setGuestEmail(guestEmailInput.trim());
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            disabled={!guestEmailValid}
+                                            onClick={() => setGuestEmail(guestEmailInput.trim())}
+                                        >
+                                            Continue to payment
+                                        </button>
+                                        <div className="checkout-guest-divider"><span>or</span></div>
+                                        <button type="button" className="btn btn-outline" onClick={handleLogin}>
+                                            Sign in — I have an account
                                         </button>
                                     </div>
                                 ) : clientSecret && stripePromise ? (
-                                    <Elements stripe={stripePromise} options={options}>
-                                        <CheckoutForm clientSecret={clientSecret} />
-                                    </Elements>
+                                    <>
+                                        {!isAuthenticated && (
+                                            <p className="checkout-guest-note">
+                                                {requiresEmailVerification
+                                                    ? <>Keys will be sent to <strong>{guestEmail}</strong> after you confirm this address.</>
+                                                    : <>Keys will be sent to <strong>{guestEmail}</strong> right after payment.</>}
+                                                {' '}
+                                                <button
+                                                    type="button"
+                                                    className="checkout-guest-change"
+                                                    onClick={() => { setGuestEmail(''); setClientSecret(null); }}
+                                                >
+                                                    Change
+                                                </button>
+                                            </p>
+                                        )}
+                                        <Elements stripe={stripePromise} options={options}>
+                                            <CheckoutForm clientSecret={clientSecret} />
+                                        </Elements>
+                                    </>
                                 ) : (
                                     <div className="checkout-page-stripe-placeholder">
                                         {paymentInitError || !stripePromise

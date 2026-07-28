@@ -27,6 +27,12 @@ namespace SuperBot.Core.Entities
         public decimal? TaxTotal { get; set; }
         public string? PromoCode { get; set; }
         public decimal? PromoDiscountAmount { get; set; }
+
+        /// <summary>
+        /// Гостевая покупка: true, пока покупатель не подтвердил почту по ссылке из письма.
+        /// Пока флаг взведён, выдача ключей (включая бэкфилл при пополнении пула) запрещена.
+        /// </summary>
+        public bool RequiresDeliveryVerification { get; set; }
         public string? Currency { get; set; }
         public string? Notes { get; set; }
         public MoneyTotals Totals { get; set; } = new();

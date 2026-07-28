@@ -10,5 +10,6 @@ namespace SuperBot.Core.Interfaces
         Task NotifyKeysDeliveredAsync(IEnumerable<string> userAliases, IEnumerable<DeliveredKeyNotification> keys);
     }
 
-    public record DeliveredKeyNotification(string GameTitle, string Key);
+    /// <summary>Platform — площадка ключа (напр. «Steam»), показывается бейджем в письме. Опц.</summary>
+    public record DeliveredKeyNotification(string GameTitle, string Key, string? Platform = null);
 }

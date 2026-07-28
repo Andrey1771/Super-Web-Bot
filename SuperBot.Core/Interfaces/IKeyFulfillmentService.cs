@@ -12,13 +12,20 @@ namespace SuperBot.Core.Interfaces
         /// <summary>
         /// Выдаёт ключи по позициям оплаченного заказа, проставляет честный статус
         /// (DELIVERED / ожидание ключей), сохраняет заказ и уведомляет пользователя.
+        /// Возвращает РЕАЛЬНО выданные в этом вызове ключи — вызывающий решает,
+        /// как их доставить (email, страница), не залезая в маскированный снапшот.
         /// </summary>
-        Task FulfillOrderAsync(Order order);
+        Task<IReadOnlyList<DeliveredKeyNotification>> FulfillOrderAsync(Order order);
 
         /// <summary>
         /// Довыдача после пополнения пула: находит оплаченные заказы с этой игрой,
-        /// которым не хватило ключей, и допоставляет их. Возвращает число затронутых заказов. Идемпотентно.
+        /// которым не хватило ключей, и допоставляет их. Идемпотентно.
+        /// Возвращает, КОМУ и ЧТО довыдано — вызывающий обязан доставить это покупателю
+        /// (письмо), иначе ключи выдаются молча и гость о них никогда не узнает.
         /// </summary>
-        Task<int> BackfillGameAsync(string gameId);
+        Task<IReadOnlyList<OrderKeysDelivered>> BackfillGameAsync(string gameId);
     }
+
+    /// <summary>Результат довыдачи по одному заказу: заказ + реально выданные сейчас ключи.</summary>
+    public record OrderKeysDelivered(Order Order, IReadOnlyList<DeliveredKeyNotification> Keys);
 }

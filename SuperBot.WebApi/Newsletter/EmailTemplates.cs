@@ -32,8 +32,25 @@ public static class EmailTemplates
         return reader.ReadToEnd();
     });
 
-    /// <summary>Оборачивает готовый HTML-контент в брендированный макет письма.</summary>
-    public static string RenderLayout(string contentHtml) => Layout.Value.Replace("{{CONTENT}}", contentHtml);
+    // Текстовый вордмарк-фолбэк в шапке карточки (слева): показывается, если логотип-картинку
+    // не передали (нет PublicBaseUrl) или почтовый клиент заблокировал изображения.
+    // Настоящий SVG в письмо не ставим — почтовые клиенты вырезают <svg>; нужен растр (PNG).
+    private const string Wordmark =
+        "<span style=\"color:#1a1730;font-size:21px;font-weight:800;letter-spacing:0.3px;\">&#10022;&nbsp;Tale Shop</span>";
+
+    /// <summary>
+    /// Оборачивает готовый HTML-контент в брендированный макет письма (звёздный фон + логотип-марка слева сверху).
+    /// Логотип небольшой и прижат влево — как бренд-марка, чтобы не спорить с центральной иконкой письма.
+    /// <paramref name="logoUrl"/> — абсолютный URL растрового логотипа (PNG). Пусто → текстовый вордмарк-фолбэк.
+    /// </summary>
+    public static string RenderLayout(string contentHtml, string? logoUrl = null)
+    {
+        var logo = string.IsNullOrWhiteSpace(logoUrl)
+            ? Wordmark
+            : $"<img src=\"{logoUrl}\" width=\"116\" alt=\"Tale Shop\" " +
+              "style=\"display:block;width:116px;height:auto;border:0;outline:none;text-decoration:none;\" />";
+        return Layout.Value.Replace("{{LOGO}}", logo).Replace("{{CONTENT}}", contentHtml);
+    }
 
     /// <summary>"ru-RU"/"UK"/null → "ru"/"uk"/"en": первые два символа, только поддерживаемые языки.</summary>
     public static string Normalize(string? locale)

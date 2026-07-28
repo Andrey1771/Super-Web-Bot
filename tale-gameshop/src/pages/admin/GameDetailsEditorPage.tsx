@@ -8,7 +8,7 @@ import type { Game } from "../../models/game";
 import type { AdminGameDiscount, GameDetails, MediaItem } from "../../types/game-details";
 import MediaPickerModal from "../../components/admin-panel/media-library/MediaPickerModal";
 import { useToast } from "../../components/ui/ToastProvider";
-import KeyInventorySection from "../../components/admin/KeyInventorySection";
+import CollapsibleCard from "../../components/admin/CollapsibleCard";
 
 const emptyDetails = (gameId: string, slug: string, title: string): GameDetails => ({
   gameId,
@@ -304,10 +304,9 @@ const GameDetailsEditorPage: React.FC = () => {
         </div>
       </div>
 
-      {selectedGameId && <KeyInventorySection gameId={selectedGameId} />}
+      <div style={{ margin: "6px 2px 0", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "#9ca3af" }}>Content</div>
 
-      <div className="admin-card">
-        <h3>General</h3>
+      <CollapsibleCard title="General" defaultOpen>
         <div className="admin-grid admin-grid--2">
           <label>
             Title
@@ -341,10 +340,9 @@ const GameDetailsEditorPage: React.FC = () => {
             <textarea className="input" rows={4} value={details.keyFeatures.join("\n")} onChange={(event) => updateListField("keyFeatures", event.target.value)} />
           </label>
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>Media</h3>
+      <CollapsibleCard title="Media">
         <p className="text-sm text-gray-500">Upload images or videos, arrange the gallery, and mark a trailer.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -424,10 +422,11 @@ const GameDetailsEditorPage: React.FC = () => {
             ))
           )}
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>Pricing</h3>
+      <div style={{ margin: "18px 2px 0", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "#9ca3af" }}>Commerce</div>
+
+      <CollapsibleCard title="Pricing">
         <div className="admin-grid admin-grid--3">
           <label>
             Base price
@@ -466,10 +465,9 @@ const GameDetailsEditorPage: React.FC = () => {
           <button className="btn btn-outline" onClick={handleSaveDiscount}>Save discount</button>
           <button className="btn btn-outline" onClick={handleDeleteDiscount}>Delete discount</button>
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>Featured storefront settings</h3>
+      <CollapsibleCard title="Featured storefront settings">
         <div className="admin-grid admin-grid--3">
           <label>
             Show in homepage Featured / Top Picks
@@ -500,10 +498,9 @@ const GameDetailsEditorPage: React.FC = () => {
             />
           </label>
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>Editions</h3>
+      <CollapsibleCard title="Editions">
         {details.editions.map((edition, index) => (
           <div key={edition.code} className="admin-grid admin-grid--3">
             <input className="input" value={edition.title} onChange={(event) => updateEdition(index, { title: event.target.value })} />
@@ -512,10 +509,9 @@ const GameDetailsEditorPage: React.FC = () => {
           </div>
         ))}
         <button className="btn btn-outline" onClick={addEdition}>Add edition</button>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>DLC & bundles</h3>
+      <CollapsibleCard title="DLC & bundles">
         {details.dlcItems.map((dlc, index) => (
           <div key={dlc.id} className="admin-grid admin-grid--3">
             <input className="input" value={dlc.title} onChange={(event) => updateDlc(index, { title: event.target.value })} />
@@ -524,10 +520,9 @@ const GameDetailsEditorPage: React.FC = () => {
           </div>
         ))}
         <button className="btn btn-outline" onClick={addDlc}>Add DLC</button>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>System requirements (Windows)</h3>
+      <CollapsibleCard title="System requirements (Windows)">
         <div className="admin-grid admin-grid--2">
           <input className="input" placeholder="OS" value={details.systemRequirements.windows.minimum.os ?? ""} onChange={(event) => updateDetails({ systemRequirements: { ...details.systemRequirements, windows: { ...details.systemRequirements.windows, minimum: { ...details.systemRequirements.windows.minimum, os: event.target.value } } } })} />
           <input className="input" placeholder="CPU" value={details.systemRequirements.windows.minimum.cpu ?? ""} onChange={(event) => updateDetails({ systemRequirements: { ...details.systemRequirements, windows: { ...details.systemRequirements.windows, minimum: { ...details.systemRequirements.windows.minimum, cpu: event.target.value } } } })} />
@@ -535,15 +530,15 @@ const GameDetailsEditorPage: React.FC = () => {
           <input className="input" placeholder="GPU" value={details.systemRequirements.windows.minimum.gpu ?? ""} onChange={(event) => updateDetails({ systemRequirements: { ...details.systemRequirements, windows: { ...details.systemRequirements.windows, minimum: { ...details.systemRequirements.windows.minimum, gpu: event.target.value } } } })} />
           <input className="input" placeholder="Storage" value={details.systemRequirements.windows.minimum.storage ?? ""} onChange={(event) => updateDetails({ systemRequirements: { ...details.systemRequirements, windows: { ...details.systemRequirements.windows, minimum: { ...details.systemRequirements.windows.minimum, storage: event.target.value } } } })} />
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>Awards</h3>
+      <CollapsibleCard title="Awards">
         <textarea className="input" rows={4} value={details.awards.map((award) => award.title).join("\n")} onChange={(event) => updateDetails({ awards: event.target.value.split("\n").map((title) => ({ title })) })} />
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-card">
-        <h3>Recommendations</h3>
+      <div style={{ margin: "18px 2px 0", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: "#9ca3af" }}>Discovery</div>
+
+      <CollapsibleCard title="Recommendations">
         <label>
           Similar Game IDs (comma separated)
           <input className="input" value={details.similarGameIds.join(",")} onChange={(event) => updateDetails({ similarGameIds: event.target.value.split(",").map((id) => id.trim()).filter(Boolean) })} />
@@ -562,7 +557,7 @@ const GameDetailsEditorPage: React.FC = () => {
             <input type="checkbox" checked={details.autoRecommendRules.byPublisher} onChange={(event) => updateDetails({ autoRecommendRules: { ...details.autoRecommendRules, byPublisher: event.target.checked } })} />
           </label>
         </div>
-      </div>
+      </CollapsibleCard>
 
       <div className="admin-save-bar">
         <button className="btn btn-primary" onClick={handleSave}>Save all</button>

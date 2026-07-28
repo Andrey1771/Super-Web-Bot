@@ -21,6 +21,7 @@ import CardAdderPage from "../admin-panel/card-adder-page/card-adder-page";
 import {CartPage} from "../cart/cart-page/cart-page";
 import CheckoutPage from "../cart/checkout-page/checkout-page";
 import SuccessPurchasePage from "../cart/success-purchase-page/success-purchase-page";
+import DeliveryConfirmedPage from "../cart/delivery-confirmed-page/delivery-confirmed-page";
 import CancelPurchasePage from "../cart/cancel-purchase-page";
 import ApologyPage from "../apology-page/apology-page";
 import SupportPage from "../support-page/support-page";
@@ -129,6 +130,7 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/cart" element={<CartPage/>}/>
                     <Route path="/checkout" element={<CheckoutPage/>}/>
                     <Route path="/checkout/success" element={<SuccessPurchasePage/>}/>
+                    <Route path="/delivery-confirmed" element={<DeliveryConfirmedPage/>}/>
                     <Route path="/checkout/cancel" element={<CancelPurchasePage/>}/>
                     <Route path="/successPurchasePage" element={<Navigate to="/checkout/success" replace />}/>
                     <Route path="/support" element={<SupportPage/>}/>

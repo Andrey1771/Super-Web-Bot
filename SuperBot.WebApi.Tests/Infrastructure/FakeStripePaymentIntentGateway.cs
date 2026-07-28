@@ -18,6 +18,9 @@ public class FakeStripePaymentIntentGateway : IStripePaymentIntentGateway
     /// <summary>Идемпотентные ключи, с которыми приходили запросы на создание.</summary>
     public readonly ConcurrentBag<string> IdempotencyKeys = new();
 
+    /// <summary>Намерения, по которым запрашивался возврат, — с ключами идемпотентности.</summary>
+    public readonly ConcurrentDictionary<string, string> RefundedIntents = new();
+
     public Task<PaymentIntentSnapshot?> GetAsync(string paymentIntentId)
     {
         _intents.TryGetValue(paymentIntentId, out var intent);
@@ -69,6 +72,12 @@ public class FakeStripePaymentIntentGateway : IStripePaymentIntentGateway
         }
 
         return Task.FromResult<PaymentIntentSnapshot?>(intent);
+    }
+
+    public Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey)
+    {
+        RefundedIntents[paymentIntentId] = idempotencyKey;
+        return Task.FromResult(true);
     }
 
     /// <summary>Имитирует успешную оплату покупателем.</summary>

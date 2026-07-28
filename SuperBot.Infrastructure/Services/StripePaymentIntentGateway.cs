@@ -12,6 +12,13 @@ namespace SuperBot.Infrastructure.Services
         Task<PaymentIntentSnapshot?> GetAsync(string paymentIntentId);
         Task<PaymentIntentSnapshot> CreateAsync(PaymentIntentDraft draft, string idempotencyKey);
         Task<PaymentIntentSnapshot?> UpdateAsync(string paymentIntentId, PaymentIntentDraft draft);
+
+        /// <summary>
+        /// Полный возврат платежа. idempotencyKey ОБЯЗАН быть детерминированным (например,
+        /// от orderId): повтор при сетевом сбое не должен вернуть деньги дважды.
+        /// true = деньги возвращены (или уже были возвращены ранее).
+        /// </summary>
+        Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey);
     }
 
     /// <summary>Что мы хотим от намерения: сумма, валюта и метаданные.</summary>
@@ -20,6 +27,9 @@ namespace SuperBot.Infrastructure.Services
         public long AmountMinorUnits { get; set; }
         public string Currency { get; set; } = "usd";
         public Dictionary<string, string> Metadata { get; set; } = new();
+
+        /// <summary>Куда Stripe пришлёт чек. Для гостя это единственная квитанция о покупке.</summary>
+        public string? ReceiptEmail { get; set; }
     }
 
     /// <summary>Снимок намерения — ровно те поля, которые нужны нашей логике.</summary>
@@ -66,6 +76,7 @@ namespace SuperBot.Infrastructure.Services
                 Amount = draft.AmountMinorUnits,
                 Currency = draft.Currency,
                 Metadata = draft.Metadata,
+                ReceiptEmail = draft.ReceiptEmail,
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true }
             };
 
@@ -84,10 +95,28 @@ namespace SuperBot.Infrastructure.Services
             {
                 Amount = draft.AmountMinorUnits,
                 Currency = draft.Currency,
-                Metadata = draft.Metadata
+                Metadata = draft.Metadata,
+                ReceiptEmail = draft.ReceiptEmail
             });
 
             return intent == null ? null : Map(intent);
+        }
+
+        public async Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey)
+        {
+            try
+            {
+                var refunds = new RefundService();
+                await refunds.CreateAsync(
+                    new RefundCreateOptions { PaymentIntent = paymentIntentId },
+                    new RequestOptions { IdempotencyKey = idempotencyKey });
+                return true;
+            }
+            catch (StripeException ex) when (ex.StripeError?.Code == "charge_already_refunded")
+            {
+                // Деньги уже возвращены (например, админ успел руками) — цель достигнута.
+                return true;
+            }
         }
 
         private static PaymentIntentSnapshot Map(PaymentIntent intent) => new()

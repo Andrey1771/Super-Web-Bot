@@ -146,6 +146,11 @@ builder.Services.AddScoped<IPaymentReconciliationService, PaymentReconciliationS
 builder.Services.AddScoped<IStripeEventLog, StripeEventLog>();
 // Шов к Stripe: единственное место обращения к их SDK. В тестах подменяется фейком.
 builder.Services.AddScoped<IStripePaymentIntentGateway, StripePaymentIntentGateway>();
+// Гостевая покупка: ключи выдаются после подтверждения почты по HMAC-ссылке из письма.
+builder.Services.AddSingleton<IDeliveryVerificationTokenService, DeliveryVerificationTokenService>();
+builder.Services.AddScoped<IDeliveryMailer, SuperBot.WebApi.Mail.DeliveryMailService>();
+// Авто-возврат гостевых заказов с неподтверждённой почтой (48ч). Запускает Hangfire (ниже).
+builder.Services.AddScoped<IUnverifiedOrderRefundService, UnverifiedOrderRefundService>();
 // Event-outbox: сайт только ПУБЛИКУЕТ события; консюмер (BotOutboxWorker) живёт в бот-сервисе.
 builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();
@@ -435,6 +440,13 @@ if (hangfireEnabled)
         "clear-old-order-records",
         () => scope.ServiceProvider.GetRequiredService<IBackgroundTaskService>().ScheduleClearOutdatedDataJob(),
         Cron.Daily);
+
+    // Гостевые заказы, не подтвердившие почту за 48ч, автоматически возвращаются.
+    // Типизированная регистрация: Hangfire резолвит сервис из DI на каждый запуск (свой scope).
+    recurringJobManager.AddOrUpdate<IUnverifiedOrderRefundService>(
+        "auto-refund-unverified-orders",
+        service => service.RunAsync(),
+        Cron.Hourly);
 }
 
 app.Run();

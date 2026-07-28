@@ -295,6 +295,7 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_game_keys_user_issued" }
             );
             await gameKeyCollection.Indexes.CreateOneAsync(gameKeyUserIndex);
+            await EnsureGameKeyHashUniquenessAsync(gameKeyCollection);
 
             var ticketsCollection = _database.GetCollection<Support.Models.SupportTicket>("SupportTickets");
             var ticketUserUpdatedIndex = new CreateIndexModel<Support.Models.SupportTicket>(
@@ -430,6 +431,103 @@ namespace SuperBot.WebApi.Services
             }
 
             await SeedGameDetailsAsync(gameDetailsCollection);
+        }
+
+        /// <summary>
+        /// Уникальность ключа в рамках игры (по хешу) среди АКТИВНЫХ (Voided=false): защита от дублей/опечаток.
+        /// Индекс ЧАСТИЧНЫЙ — изъятые (Voided=true) в него не входят, поэтому изъятое значение можно залить заново.
+        /// Идемпотентно и безопасно к «грязным» данным:
+        ///   1) если частичный индекс уже есть — выходим (дешёвый no-op);
+        ///   2) добиваем KeyHash и Voided=false там, где их нет (старые записи);
+        ///   3) схлопываем дубли только среди ПУЛОВЫХ (невыданных) — мусор, клиента не затрагивает;
+        ///   4) сносим старый ПОЛНЫЙ уникальный индекс (из ранней версии), если он есть;
+        ///   5) создаём частичный уникальный индекс. Неустранимые конфликты (один ключ выдан нескольким) —
+        ///      логируем, старт не роняем.
+        /// </summary>
+        private async Task EnsureGameKeyHashUniquenessAsync(IMongoCollection<SuperBot.Infrastructure.Data.GameKeyDb> collection)
+        {
+            const string partialIndexName = "ix_game_keys_game_hash_active_unique";
+            const string legacyIndexName = "ix_game_keys_game_hash_unique";
+
+            var existingIndexes = await (await collection.Indexes.ListAsync()).ToListAsync();
+            var indexNames = existingIndexes
+                .Where(ix => ix.Contains("name"))
+                .Select(ix => ix["name"].AsString)
+                .ToHashSet();
+
+            if (indexNames.Contains(partialIndexName))
+            {
+                return;
+            }
+
+            // (2) Бэкфилл KeyHash и Voided для старых записей.
+            var missingHash = Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Filter.Or(
+                Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Filter.Exists(k => k.KeyHash, false),
+                Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Filter.In(k => k.KeyHash, new[] { null, string.Empty }));
+            var needHash = await collection.Find(missingHash).ToListAsync();
+            foreach (var doc in needHash)
+            {
+                await collection.UpdateOneAsync(
+                    k => k.Id == doc.Id,
+                    Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Update.Set(k => k.KeyHash, SuperBot.Core.Services.GameKeyHash.Compute(doc.Key)));
+            }
+            await collection.UpdateManyAsync(
+                Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Filter.Exists(k => k.Voided, false),
+                Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Update.Set(k => k.Voided, false));
+
+            // (3) Схлопываем дубли (GameId, KeyHash) среди АКТИВНЫХ пуловых записей; выданные/изъятые не трогаем.
+            var all = await collection.Find(Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Filter.Empty).ToListAsync();
+            var toDelete = new List<string>();
+            foreach (var group in all.Where(d => !d.Voided).GroupBy(d => new { d.GameId, d.KeyHash }))
+            {
+                if (group.Count() <= 1)
+                {
+                    continue;
+                }
+
+                var assigned = group.Where(d => !string.IsNullOrEmpty(d.UserId)).ToList();
+                var pool = group.Where(d => string.IsNullOrEmpty(d.UserId)).ToList();
+
+                if (assigned.Count >= 1)
+                {
+                    toDelete.AddRange(pool.Select(d => d.Id));
+                }
+                else
+                {
+                    toDelete.AddRange(pool.Skip(1).Select(d => d.Id));
+                }
+            }
+            if (toDelete.Count > 0)
+            {
+                await collection.DeleteManyAsync(Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Filter.In(k => k.Id, toDelete));
+            }
+
+            // (4) Сносим старый полный уникальный индекс — он бы блокировал повторную заливку изъятого значения.
+            if (indexNames.Contains(legacyIndexName))
+            {
+                try { await collection.Indexes.DropOneAsync(legacyIndexName); } catch (MongoCommandException) { }
+            }
+
+            // (5) Частичный уникальный индекс — только по активным (Voided=false).
+            try
+            {
+                await collection.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(
+                    Builders<SuperBot.Infrastructure.Data.GameKeyDb>.IndexKeys
+                        .Ascending(k => k.GameId)
+                        .Ascending(k => k.KeyHash),
+                    new CreateIndexOptions<SuperBot.Infrastructure.Data.GameKeyDb>
+                    {
+                        Name = partialIndexName,
+                        Unique = true,
+                        PartialFilterExpression = Builders<SuperBot.Infrastructure.Data.GameKeyDb>.Filter.Eq(k => k.Voided, false)
+                    }));
+            }
+            catch (MongoCommandException ex)
+            {
+                Console.Error.WriteLine(
+                    $"[GameKeys] Не удалось создать уникальный индекс {partialIndexName}: возможно, один ключ выдан нескольким. " +
+                    $"Требуется ручная разборка дублей. {ex.Message}");
+            }
         }
 
         private async Task SeedGameDetailsAsync(IMongoCollection<SuperBot.Infrastructure.Data.GameDetailsDb> gameDetailsCollection)

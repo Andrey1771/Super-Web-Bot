@@ -23,6 +23,10 @@ const SuccessPurchasePage: React.FC = () => {
     const [message, setMessage] = useState('Finalizing your order...');
     const [orderId, setOrderId] = useState<string | null>(null);
     const [traceId, setTraceId] = useState<string | null>(null);
+    // Гость: ключи придут после подтверждения почты — показываем кнопку «выслать письмо ещё раз».
+    const [pendingVerification, setPendingVerification] = useState(false);
+    const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
+    const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
     // Крипто-ветка (BTCPay): заказ создаёт вебхук, мы поллим статус до подтверждения.
     useEffect(() => {
@@ -89,7 +93,12 @@ const SuccessPurchasePage: React.FC = () => {
 
             setOrderId(data.orderId ?? null);
             setStatus('success');
-            setMessage('Payment successful. Your order has been added to account orders.');
+            // Гостевая покупка: ключи придержаны до подтверждения почты (ссылка в письме).
+            setPendingVerification(Boolean(data.requiresEmailVerification));
+            setBuyerEmail(data.buyerEmail ?? null);
+            setMessage(data.requiresEmailVerification
+                ? 'Payment received! One step left — confirm your email to get the keys.'
+                : 'Payment successful. Your order has been added to account orders.');
             dispatch({ type: 'CLEAR_CART' });
 
             if (typeof window !== 'undefined') {
@@ -106,6 +115,21 @@ const SuccessPurchasePage: React.FC = () => {
             setMessage("We couldn't finalize your order. Your payment may still be pending. Please try again or contact support.");
         }
     }, [apiClient.api, dispatch, paymentIntentId]);
+
+    // «Не пришло письмо?» — новое письмо с новым токеном (старый живёт 48ч).
+    // Сервер шлёт только на адрес из заказа и держит кулдаун 60 секунд.
+    const handleResendVerification = useCallback(async () => {
+        if (!paymentIntentId || resendState === 'sending') {
+            return;
+        }
+        setResendState('sending');
+        try {
+            await apiClient.api.post('/api/payments/resend-verification', { paymentIntentId });
+            setResendState('sent');
+        } catch {
+            setResendState('error');
+        }
+    }, [apiClient.api, paymentIntentId, resendState]);
 
     useEffect(() => {
         if (cryptoInvoiceId) {
@@ -141,6 +165,34 @@ const SuccessPurchasePage: React.FC = () => {
                 <p className="text-gray-600 mb-4">{message}</p>
                 {traceId && <p className="text-xs text-gray-500 mb-3">Reference: {traceId}</p>}
                 {orderId && <p className="text-gray-700 mb-6">Order #{orderId}</p>}
+                {pendingVerification && status === 'success' && (
+                    <div className="mb-4 rounded-lg bg-violet-50 border border-violet-200 p-4 text-sm text-gray-700 text-left space-y-2">
+                        {buyerEmail && (
+                            <p>We sent a confirmation link to <strong className="text-gray-900">{buyerEmail}</strong>.</p>
+                        )}
+                        <p>It usually arrives <strong>within 1–2 minutes</strong>. Nothing after 10 minutes? Check your spam folder, then resend:</p>
+                        <button
+                            type="button"
+                            className="px-4 py-2 bg-white border border-violet-300 text-violet-700 rounded-lg shadow-sm hover:bg-violet-100 disabled:opacity-60"
+                            onClick={handleResendVerification}
+                            disabled={resendState === 'sending' || resendState === 'sent'}
+                        >
+                            {resendState === 'sent' ? 'Email sent again ✓'
+                                : resendState === 'sending' ? 'Sending…'
+                                : resendState === 'error' ? 'Failed — try again'
+                                : 'Resend confirmation email'}
+                        </button>
+                        <p className="pt-1 border-t border-violet-200">
+                            <strong>Save your order number</strong> (shown above) — support will ask for it.
+                            Entered a wrong email? Contact support with the order number: we'll re-send the
+                            confirmation to the correct address or refund you — keys are never released until
+                            the email is confirmed.
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            Orders left unconfirmed for 48 hours are cancelled and fully refunded automatically.
+                        </p>
+                    </div>
+                )}
                 <div className="flex gap-3 justify-center flex-wrap">
                     <Link to="/account/orders" className="px-6 py-3 bg-violet-600 text-white rounded-lg shadow hover:bg-violet-700">
                         Go to Orders

@@ -108,7 +108,12 @@ namespace SuperBot.WebApi.Controllers
             if (!_memoryCache.TryGetValue(cacheKey, out IReadOnlyList<RecommendationItem> recommendations))
             {
                 recommendations = await _recommendationsService.GetRecommendationsAsync(currentUserId, normalizedLimit);
-                _memoryCache.Set(cacheKey, recommendations, TimeSpan.FromMinutes(3));
+                // Пустой результат НЕ кэшируем: транзиентная пустота (рестарт бэкенда / хиккап БД, когда каталог
+                // ещё не подтянулся) иначе «застряла» бы в кэше на 3 минуты. Кэшируем только непустое.
+                if (recommendations.Count > 0)
+                {
+                    _memoryCache.Set(cacheKey, recommendations, TimeSpan.FromMinutes(3));
+                }
             }
 
             _logger.LogInformation(

@@ -393,7 +393,8 @@ public class NewsletterService : INewsletterService
         }
 
         // Брендированный макет — Templates/EmailLayout.html (embedded resource).
-        var html = EmailTemplates.RenderLayout($"{htmlBody}{htmlCta}{htmlFooter}");
+        var logoUrl = string.IsNullOrWhiteSpace(BaseUrl) ? null : $"{BaseUrl}/api/email-assets/logo";
+        var html = EmailTemplates.RenderLayout($"{htmlBody}{htmlCta}{htmlFooter}", logoUrl);
         return (text, html);
     }
 }
