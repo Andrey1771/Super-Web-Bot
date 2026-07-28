@@ -113,6 +113,7 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     return mongoClient.GetDatabase(mongoName);  //     
 });
 builder.Services.AddScoped<MongoDbInitializer>();
+builder.Services.AddScoped<DemoDataSeeder>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepository>();
@@ -395,8 +396,12 @@ using (var scope = app.Services.CreateScope())
 {
     startupLogger.LogInformation("Initializing MongoDB collections and indexes...");
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
-    await mongoDbInitializer.InitializeAsync(); //   
+    await mongoDbInitializer.InitializeAsync(); //
     startupLogger.LogInformation("MongoDB initialization completed.");
+
+    // Демо-каталог (гейт Seed:Enabled, идемпотентно по версии) — чтобы витрина сразу была живой.
+    var demoSeeder = scope.ServiceProvider.GetRequiredService<DemoDataSeeder>();
+    await demoSeeder.SeedAsync();
 }
 
 //  

@@ -65,6 +65,10 @@ services:
       # Cloudflare Turnstile (bot check on chat session creation). Empty = disabled.
       - SupportChat__TurnstileSiteKey=${TURNSTILE_SITE_KEY}
       - SupportChat__TurnstileSecretKey=${TURNSTILE_SECRET_KEY}
+      # Демо-каталог витрины. Флаг деплоя: SEED_ENABLED=true в .env наполняет витрину при старте
+      # (идемпотентно). Пусто/false = прод без демо-данных. SEED_FORCE=true пересобирает каталог.
+      - Seed__Enabled=${SEED_ENABLED:-false}
+      - Seed__Force=${SEED_FORCE:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

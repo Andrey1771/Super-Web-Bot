@@ -96,6 +96,9 @@ namespace SuperBot.WebApi.Controllers
                     discountPercent,
                     discountActive,
                     genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },
+                    platforms = BuildPlatforms(details),
+                    ratingAvg = details?.RatingAvg ?? 0,
+                    reviewsCount = details?.ReviewsCount ?? 0,
                     showInFeaturedStorefront = details?.ShowInFeaturedStorefront ?? false,
                     featuredStorefrontPriority = details?.FeaturedStorefrontPriority ?? int.MaxValue
                 };
@@ -153,6 +156,9 @@ namespace SuperBot.WebApi.Controllers
                 discountPercent,
                 discountActive,
                 genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },
+                platforms = BuildPlatforms(details),
+                ratingAvg = details?.RatingAvg ?? 0,
+                reviewsCount = details?.ReviewsCount ?? 0,
                 showInFeaturedStorefront = details?.ShowInFeaturedStorefront ?? false,
                 featuredStorefrontPriority = details?.FeaturedStorefrontPriority ?? int.MaxValue
             });
@@ -199,5 +205,20 @@ namespace SuperBot.WebApi.Controllers
 
         private static decimal CalculateFinalPrice(decimal price, decimal? discountPercent) =>
             SuperBot.Core.Services.PriceCalculator.FinalPrice(price, discountPercent);
+
+        // Платформы для карточки/фильтра каталога — из GameDetails.Platforms (флаги ОС) в человекочитаемые метки.
+        private static string[] BuildPlatforms(GameDetails? details)
+        {
+            if (details?.Platforms is null)
+            {
+                return Array.Empty<string>();
+            }
+
+            var platforms = new List<string>(3);
+            if (details.Platforms.Windows) platforms.Add("Windows");
+            if (details.Platforms.Mac) platforms.Add("macOS");
+            if (details.Platforms.Linux) platforms.Add("Linux");
+            return platforms.ToArray();
+        }
     }
 }

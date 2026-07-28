@@ -8,6 +8,9 @@ export interface Game {
     discountPercent?: number;
     discountActive?: boolean;
     genres?: string[];
+    platforms?: string[];
+    ratingAvg?: number;
+    reviewsCount?: number;
     showInFeaturedStorefront?: boolean;
     featuredStorefrontPriority?: number;
     title: string;

@@ -1151,3 +1151,71 @@
         font-size: 12px;
     }
 }
+
+/* =========================================================================
+   Dark storefront theme — активна только под .theme-dark на обёртке витрины
+   (см. tale-gameshop-main-window). Аддитивно: светлая тема выше не трогается.
+   ========================================================================= */
+.theme-dark .site-header { background: #0d0a17; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5); border-bottom: 1px solid #221a3b; }
+.theme-dark .site-header.scrolled { box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6); }
+.theme-dark .header-nav-bar { background: #0d0a17; border-top: 1px solid #221a3b; }
+
+.theme-dark .brand-name { color: #f4f1ff; }
+.theme-dark .brand:hover .brand-name,
+.theme-dark .brand:focus-visible .brand-name { color: #9d80ff; }
+
+.theme-dark .header-search { background: #161027; border-color: #2a2148; }
+.theme-dark .header-search:focus-within,
+.theme-dark .drawer-search:focus-within { background: #1e1636; border-color: #7c5cff; box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.18); }
+.theme-dark .header-search-input { color: #f4f1ff; }
+.theme-dark .header-search-input::placeholder { color: #7d75a3; }
+.theme-dark .drawer-search { background: #161027; border-color: #2a2148; }
+
+.theme-dark .nav-item,
+.theme-dark .pref-trigger,
+.theme-dark .header-cart,
+.theme-dark .header-cart a,
+.theme-dark .admin-link,
+.theme-dark .menu-toggle { color: #c9c2ea; }
+.theme-dark .menu-toggle { background: #161027; border-color: #2a2148; }
+.theme-dark .nav-item:hover,
+.theme-dark .nav-item.is-active,
+.theme-dark .pref-trigger:hover,
+.theme-dark .header-cart a:hover,
+.theme-dark .admin-link:hover { color: #9d80ff; }
+.theme-dark .nav-item.is-active::after { background: #7c5cff; }
+.theme-dark .nav-trust { color: #8a7fb4; }
+.theme-dark .nav-trust svg { color: #9d80ff; }
+
+.theme-dark .account-trigger { background: #161027; border-color: #2a2148; color: #f4f1ff; }
+.theme-dark .account-trigger:hover,
+.theme-dark .account-trigger:focus-visible { border-color: #7c5cff; color: #9d80ff; }
+
+.theme-dark .header-auth .btn-outline { background: #161027; border-color: #2a2148; color: #d7d0f2; }
+.theme-dark .header-auth .btn-outline:hover { border-color: #7c5cff; color: #9d80ff; }
+
+/* Выпадашки/меню/дровер — тёмные поверхности с читаемым текстом. */
+.theme-dark .search-suggest,
+.theme-dark .pref-dropdown,
+.theme-dark .account-dropdown,
+.theme-dark .mega-inner,
+.theme-dark .nav-drawer,
+.theme-dark .drawer-account { background: #161027; border-color: #2a2148; }
+.theme-dark .account-dropdown::before { background: #161027; border-color: #2a2148; }
+.theme-dark .search-suggest-item,
+.theme-dark .pref-option,
+.theme-dark .account-link,
+.theme-dark .mega-genre,
+.theme-dark .mega-discover-label,
+.theme-dark .drawer-link,
+.theme-dark .account-signed-in span,
+.theme-dark .drawer-account-title { color: #e6e1ff; }
+.theme-dark .search-suggest-item.is-active,
+.theme-dark .pref-option:hover,
+.theme-dark .account-link:hover,
+.theme-dark .mega-genre:hover,
+.theme-dark .drawer-link:hover { background: rgba(124, 92, 255, 0.16); color: #b9a6ff; }
+.theme-dark .account-signed-in,
+.theme-dark .mega-discover-desc,
+.theme-dark .mega-heading { color: #8a7fb4; }
+.theme-dark .search-suggest-thumb { background: #1e1636; }

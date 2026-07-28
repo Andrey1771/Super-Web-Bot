@@ -66,6 +66,9 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
         // кандидат на зависание при старте под WebApplicationFactory).
         builder.UseSetting("Hangfire:Enabled", "false");
 
+        // Демо-каталог не сеем в тестах: 48 игр исказили бы ассерты по данным.
+        builder.UseSetting("Seed:Enabled", "false");
+
         // Без секрета вебхук отклоняет всё (fail-closed) — тестам нужен известный секрет,
         // чтобы подписывать запросы ровно так же, как это делает Stripe.
         builder.UseSetting("Stripe:WebhookSecret", WebhookSecret);

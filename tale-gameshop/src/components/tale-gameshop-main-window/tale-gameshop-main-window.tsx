@@ -4,6 +4,7 @@ import useScrollReveal from "../../hooks/use-scroll-reveal";
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
 import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-page";
 import './tale-gameshop-main-window.css'
+import '../../styles/storefront-theme.css'
 import {Navigate, Route, Routes, useLocation} from "react-router-dom";
 import TaleGameshopGameList from "../game-list-page/game-list-page";
 import AboutUs from "../about-us/about-us";
@@ -69,13 +70,19 @@ export default function TaleGameshopMainWindow() {
     // На главной распорку не рисуем — тёмный hero уходит под стеклянную шапку (свой отступ задаёт сам hero).
     const isHomeRoute = location.pathname === "/";
 
+    // Тёмная тема витрины включается ПОМАРШРУТНО — конвертируем страницы по одной, без «смешанных»
+    // экранов. По мере готовности маршрут добавляется сюда. Шапка/футер тоже уходят в тёмное только
+    // на этих маршрутах (они внутри обёртки).
+    const darkStorefrontRoutes = ["/games"];
+    const isDarkStorefront = !isChromeless && darkStorefrontRoutes.includes(location.pathname);
+
     // Scroll-reveal для всех .reveal на странице (см. styles/effects.css).
     const revealRootRef = useRef<HTMLDivElement | null>(null);
     useScrollReveal(revealRootRef, [location.pathname]);
 
     return (
         <AnalyticsProvider isAdminRoute={isAdminRoute}>
-            <div ref={revealRootRef}>
+            <div ref={revealRootRef} className={isDarkStorefront ? "theme-dark storefront-dark" : undefined}>
                 {!isChromeless && <TaleGameshopHeader></TaleGameshopHeader>}
                 {!isChromeless && !isHomeRoute && <div className="main-page-down-header-padding"></div>}
                 <Routes>

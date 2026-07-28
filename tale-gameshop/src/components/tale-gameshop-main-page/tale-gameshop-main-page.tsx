@@ -42,6 +42,7 @@ import {
 import SafeGameImage from "../common/SafeGameImage";
 import TestimonialsCarousel from "../testimonials/TestimonialsCarousel";
 import FeaturedStorefrontSection from "../featured-storefront/FeaturedStorefrontSection";
+import ProductCard from "../product-card/ProductCard";
 import type {
     BlogListItem
 } from "../../types/blog";
@@ -52,50 +53,150 @@ import {
     useKnownNewsletterSubscription,
 } from "../../hooks/use-newsletter-subscribed";
 
-// «Подбор по настроению» — фирменный блок Tale Shop: человек выбирает вайб вечера,
-// мы ведём его на готовый фильтр каталога. Категории совпадают с фильтрами стора.
-const moods = [
-    {
-        id: "adrenaline",
-        label: "Adrenaline rush",
-        icon: faBolt,
-        category: "Action",
-        title: "Something loud and fast",
-        description: "Explosive shooters and high-octane action — for nights when you want your pulse in your ears."
-    },
-    {
-        id: "story",
-        label: "Epic story night",
-        icon: faHatWizard,
-        category: "RPG",
-        title: "A tale to get lost in",
-        description: "Sprawling RPGs with choices that matter. Start tonight, surface next weekend."
-    },
-    {
-        id: "brain",
-        label: "Galaxy-brain plays",
-        icon: faChessKnight,
-        category: "Strategy",
-        title: "Outthink everything",
-        description: "Build, command and conquer. Strategy picks for players who plan three turns ahead."
-    },
-    {
-        id: "chill",
-        label: "Cozy & chill",
-        icon: faLeaf,
-        category: "Indie",
-        title: "Slow evening, warm game",
-        description: "Gentle indies and calm puzzles to unwind with — no pressure, just vibes."
-    },
-    {
-        id: "squad",
-        label: "Squad night",
-        icon: faUsers,
-        category: "Co-op",
-        title: "Better together",
-        description: "Co-op picks for duos and full squads. Grab your friends and split the chaos."
+// Мерчандайзинг-рельса: горизонтальный ряд карточек под конкретную мотивацию покупки
+// (скидки / новинки / ценовая корзина). Товар-first — как у настоящих магазинов ключей.
+const MerchRail: React.FC<{ title: string; subtitle: string; to: string; items: Game[] }> = ({
+    title,
+    subtitle,
+    to,
+    items,
+}) => {
+    if (items.length === 0) {
+        return null;
     }
-];
+    return (
+        <div className="merch-rail-block" style={{ marginBottom: 34 }}>
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    gap: 16,
+                    marginBottom: 14,
+                }}
+            >
+                <div>
+                    <h2 style={{ margin: 0 }}>{title}</h2>
+                    <p className="muted" style={{ margin: "4px 0 0" }}>{subtitle}</p>
+                </div>
+                <Link className="btn btn-ghost" to={to} style={{ whiteSpace: "nowrap" }}>
+                    View all →
+                </Link>
+            </div>
+            <div
+                style={{
+                    display: "flex",
+                    gap: 16,
+                    overflowX: "auto",
+                    paddingBottom: 10,
+                    scrollSnapType: "x proximity",
+                }}
+            >
+                {items.map((game) => (
+                    <div key={game.id} style={{ flex: "0 0 210px", scrollSnapAlign: "start" }}>
+                        <ProductCard game={game} />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// «Лидеры продаж» нумерованным списком — модуль ДРУГОЙ формы, чтобы главная не была
+// стопкой одинаковых рельс. Как у магазинов ключей: ранг + мини-обложка + цена.
+const TopSellers: React.FC<{ items: Game[]; baseUrl?: string }> = ({ items, baseUrl }) => {
+    if (items.length === 0) {
+        return null;
+    }
+    return (
+        <div style={{ marginBottom: 34 }}>
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    gap: 16,
+                    marginBottom: 14,
+                }}
+            >
+                <div>
+                    <h2 style={{ margin: 0 }}>Top sellers</h2>
+                    <p className="muted" style={{ margin: "4px 0 0" }}>Most popular this week</p>
+                </div>
+                <Link className="btn btn-ghost" to="/games" style={{ whiteSpace: "nowrap" }}>
+                    View all →
+                </Link>
+            </div>
+            <div
+                style={{
+                    display: "grid",
+                    gap: "10px 24px",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))",
+                }}
+            >
+                {items.map((game, index) => {
+                    const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
+                    const regularPrice = Number(game.price);
+                    const finalPrice = Number(game.finalPrice ?? game.price);
+                    const hasDiscount = Boolean(
+                        game.discountActive && (game.discountPercent ?? 0) > 0 && finalPrice < regularPrice
+                    );
+                    return (
+                        <Link
+                            key={game.id}
+                            to={`/games/${gameSlug}`}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 14,
+                                padding: "10px 14px",
+                                borderRadius: 14,
+                                background: "rgba(255,255,255,0.78)",
+                                border: "1px solid #ece8ff",
+                            }}
+                        >
+                            <span style={{ width: 30, textAlign: "center", fontWeight: 800, fontSize: 18, color: "#b9aee6" }}>
+                                {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <div style={{ width: 58, height: 58, borderRadius: 10, overflow: "hidden", flex: "0 0 auto" }}>
+                                <SafeGameImage
+                                    gameTitle={game.title}
+                                    src={game.imagePath}
+                                    baseUrl={baseUrl}
+                                    className="h-full w-full object-cover"
+                                />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div
+                                    style={{
+                                        fontWeight: 700,
+                                        color: "#2c2354",
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                    }}
+                                >
+                                    {game.title}
+                                </div>
+                                <div className="muted" style={{ fontSize: 12 }}>{game.genres?.[0] ?? ""}</div>
+                            </div>
+                            <div style={{ textAlign: "right", flex: "0 0 auto" }}>
+                                {hasDiscount && (
+                                    <div style={{ fontSize: 11, color: "#9b92c4", textDecoration: "line-through" }}>
+                                        ${regularPrice.toFixed(2)}
+                                    </div>
+                                )}
+                                <div style={{ fontWeight: 800, color: hasDiscount ? "#6b3ff2" : "#2c2354" }}>
+                                    ${finalPrice.toFixed(2)}
+                                </div>
+                            </div>
+                        </Link>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
 
 const genres = [
     { title: "Action", description: "High-impact firefights and fast pacing.", icon: faBolt },
@@ -111,12 +212,6 @@ const reasons = [
     { title: "Instant delivery", description: "Receive your key moments after purchase.", icon: faBolt },
     { title: "Curated picks", description: "Hand-selected games for every mood.", icon: faHatWizard },
     { title: "Friendly support", description: "Here to help with installs and access.", icon: faUsers }
-];
-
-const steps = [
-    { label: "Choose a game", helper: "Browse curated genres and picks." },
-    { label: "Pay securely", helper: "Checkout with verified payments." },
-    { label: "Get your key / download", helper: "Instant email delivery and quick access." }
 ];
 
 const testimonials = [
@@ -145,7 +240,6 @@ export default function TaleGameshopMainPage() {
     const [isHeroAnimating, setIsHeroAnimating] = useState(false);
     const [activeHero, setActiveHero] = useState<Game | null>(null);
     const [previousHero, setPreviousHero] = useState<Game | null>(null);
-    const [activeMoodId, setActiveMoodId] = useState(moods[0].id);
     const [newsletterEmail, setNewsletterEmail] = useState("");
     const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
     // "pending" — гостю ушло письмо-подтверждение; "confirmed" — владелец аккаунта, подписан сразу.
@@ -278,7 +372,34 @@ export default function TaleGameshopMainPage() {
     const isLoading = games.length === 0;
     const perks = ["Secure payments", "Instant delivery", "Curated picks"];
     const featuredBlogPosts = useMemo(() => blogPosts.slice(0, 3), [blogPosts]);
-    const activeMood = moods.find((mood) => mood.id === activeMoodId) ?? moods[0];
+
+    // Подборки для мерчандайзинг-рельс на главной (товар-first).
+    const bestDeals = useMemo(
+        () =>
+            games
+                .filter((game) => game.discountActive && (game.discountPercent ?? 0) > 0)
+                .sort((a, b) => (b.discountPercent ?? 0) - (a.discountPercent ?? 0))
+                .slice(0, 10),
+        [games]
+    );
+    const newReleases = useMemo(
+        () =>
+            [...games]
+                .sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime())
+                .slice(0, 10),
+        [games]
+    );
+    const under20 = useMemo(
+        () => games.filter((game) => Number(game.finalPrice ?? game.price) <= 20).slice(0, 10),
+        [games]
+    );
+    const topSellers = useMemo(
+        () =>
+            [...games]
+                .sort((a, b) => (a.featuredStorefrontPriority ?? 9999) - (b.featuredStorefrontPriority ?? 9999))
+                .slice(0, 8),
+        [games]
+    );
 
     const toggleFaq = (index: number) => {
         setOpenFaqIndex((prev) => (prev === index ? -1 : index));
@@ -431,6 +552,54 @@ const renderHeroSkeleton = () => (
 
             <FeaturedStorefrontSection games={games} isLoading={isLoading} />
 
+            {/* Мерчандайзинг: товар-first, сразу под featured. Модули РАЗНОЙ формы (рельса → список →
+                рельса), без reveal — видны без скролла, чтобы главная не была стопкой одинаковых рядов. */}
+            {!isLoading && games.length > 0 && (
+                <section className="merch-rails">
+                    <div className="container">
+                        <div
+                            style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 16,
+                                justifyContent: "center",
+                                padding: "16px 20px",
+                                marginBottom: 30,
+                                borderRadius: 18,
+                                background: "rgba(255,255,255,0.7)",
+                                border: "1px solid #ece8ff",
+                            }}
+                        >
+                            {[
+                                [`${games.length}+`, "Games in catalog"],
+                                ["Instant", "Key delivery"],
+                                ["4.8★", "Average rating"],
+                                ["24/7", "Support"],
+                            ].map(([value, label]) => (
+                                <div key={label} style={{ textAlign: "center", minWidth: 130 }}>
+                                    <div style={{ fontSize: 22, fontWeight: 800, color: "#2c2354" }}>{value}</div>
+                                    <div className="muted" style={{ fontSize: 13 }}>{label}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <MerchRail
+                            title="Best deals"
+                            subtitle="Biggest discounts on right now"
+                            to="/games?onSale=1"
+                            items={bestDeals}
+                        />
+                        <TopSellers items={topSellers} baseUrl={urlService.apiBaseUrl} />
+                        <MerchRail
+                            title="New releases"
+                            subtitle="Fresh in the store"
+                            to="/games"
+                            items={newReleases}
+                        />
+                    </div>
+                </section>
+            )}
+
             {/* Каталог по жанрам + блог. Пустой блог показывает дизайн-заглушку, а не сирую строку. */}
             <section className="explore-blog-section reveal fx-glow-tr">
                 <div className="container">
@@ -509,45 +678,6 @@ const renderHeroSkeleton = () => (
                 </div>
             </section>
 
-            {/* Фирменный интерактив: подбор игры по настроению вечера. */}
-            <section className="mood-section reveal">
-                <div className="container">
-                    <div className="mood-card">
-                        <div className="mood-copy">
-                            <div className="heading-eyebrow is-light">Tonight&rsquo;s pick</div>
-                            <h2>What are you in the mood for?</h2>
-                            <p>Tell us the vibe — we&rsquo;ll point you at the right shelf.</p>
-                            <div className="mood-chips" role="tablist" aria-label="Pick a mood">
-                                {moods.map((mood) => (
-                                    <button
-                                        key={mood.id}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={mood.id === activeMoodId}
-                                        className={`mood-chip ${mood.id === activeMoodId ? "is-active" : ""}`}
-                                        onClick={() => setActiveMoodId(mood.id)}
-                                    >
-                                        <FontAwesomeIcon icon={mood.icon} />
-                                        <span>{mood.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="mood-result" key={activeMood.id}>
-                            <div className="mood-result-icon" aria-hidden="true">
-                                <FontAwesomeIcon icon={activeMood.icon} />
-                            </div>
-                            <h3>{activeMood.title}</h3>
-                            <p>{activeMood.description}</p>
-                            <Link to={`/games?filterCategory=${activeMood.category}`} className="btn btn-primary mood-cta">
-                                Browse {activeMood.category} games
-                                <FontAwesomeIcon icon={faArrowRight} />
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <section className="why-section reveal">
                 <div className="container">
                     <div className="section-heading">
@@ -564,27 +694,6 @@ const renderHeroSkeleton = () => (
                                 <div className="why-copy">
                                     <div className="why-title">{reason.title}</div>
                                     <div className="why-description muted">{reason.description}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="how-section reveal fx-glow-bl">
-                <div className="container">
-                    <div className="section-heading">
-                        <div className="heading-eyebrow">Getting started</div>
-                        <h2>How it works</h2>
-                        <p className="muted">Three simple steps from browsing to playing.</p>
-                    </div>
-                    <div className="steps-grid">
-                        {steps.map((step, index) => (
-                            <div className="step-card lift" key={step.label}>
-                                <div className="step-marker">{index + 1}</div>
-                                <div className="step-body">
-                                    <div className="step-title">{step.label}</div>
-                                    <div className="step-helper muted">{step.helper}</div>
                                 </div>
                             </div>
                         ))}

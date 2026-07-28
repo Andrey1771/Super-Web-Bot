@@ -1,0 +1,21 @@
+/*
+ * Тёмная тема витрины Tale Shop.
+ * Применяется через класс .theme-dark.storefront-dark на обёртке витрины и ТОЛЬКО на
+ * сторефронт-маршрутах (см. tale-gameshop-main-window). Админка/аккаунт остаются светлыми.
+ * Компоненты с семантическими классами перекрашиваются доп. блоком «.theme-dark …» рядом
+ * со своими стилями (аддитивно, светлая тема не трогается). Каталог (utility-классы) —
+ * значения меняются на месте. ProductCard самотемится (см. product-card.css).
+ */
+.storefront-dark {
+  background:
+    radial-gradient(1100px 520px at 78% -6%, rgba(124, 92, 255, 0.18), transparent 60%),
+    radial-gradient(760px 440px at 4% 1%, rgba(255, 61, 129, 0.08), transparent 55%),
+    #0c0917;
+  color: #f4f1ff;
+  min-height: 100vh;
+}
+
+/* Подложка распорки под фиксированной шапкой — тоже тёмная. */
+.storefront-dark .main-page-down-header-padding {
+  background: transparent;
+}

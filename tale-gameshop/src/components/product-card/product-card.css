@@ -1,0 +1,195 @@
+/*
+ * Каноническая карточка товара — одна на всю витрину (каталог, рельсы, top-sellers, featured).
+ * Тема через токены: светлые значения по умолчанию, тёмные — под .theme-dark на любом предке.
+ * Так одна карточка работает и на текущей светлой витрине, и на будущей тёмной без переписывания.
+ */
+.product-card {
+  --pc-surface: #ffffff;
+  --pc-border: #ece8ff;
+  --pc-text: #2c2354;
+  --pc-muted: #8a81b5;
+  --pc-muted-dim: #a79ecf;
+  --pc-accent: #6b3ff2;
+  --pc-accent-strong: #5a2dd1;
+  --pc-deal: #ff3d81;
+  --pc-instant: #12b886;
+  --pc-gold: #f5a623;
+  --pc-shadow: 0 12px 30px rgba(84, 58, 193, 0.10);
+
+  display: flex;
+  flex-direction: column;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.theme-dark .product-card {
+  --pc-surface: #161027;
+  --pc-border: #221a3b;
+  --pc-text: #f4f1ff;
+  --pc-muted: #a79ecf;
+  --pc-muted-dim: #7d75a3;
+  --pc-instant: #34e0a1;
+  --pc-gold: #ffc861;
+  --pc-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+
+.product-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--pc-accent) 45%, var(--pc-border));
+  box-shadow: var(--pc-shadow);
+}
+
+.pc-cover {
+  position: relative;
+  container-type: size;
+  aspect-ratio: 3 / 4;
+  background: #efeaff;
+}
+
+.pc-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pc-cover-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.pc-badge-off {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 3;
+  background: var(--pc-deal);
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  box-shadow: 0 6px 14px rgba(255, 61, 129, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.pc-badge-plat {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 3;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  background: rgba(8, 6, 15, 0.6);
+  backdrop-filter: blur(4px);
+  color: #eae6ff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.pc-wish {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(8, 6, 15, 0.5);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #eae6ff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.pc-wish:hover { color: var(--pc-deal); background: rgba(8, 6, 15, 0.78); }
+.pc-wish.is-on { color: var(--pc-deal); }
+.pc-wish:disabled { opacity: 0.5; cursor: default; }
+
+.pc-body {
+  padding: 12px 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.pc-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--pc-text);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 2.5em;
+}
+.pc-title a { color: inherit; text-decoration: none; }
+.pc-title a:hover { color: var(--pc-accent); }
+
+.pc-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--pc-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pc-stars { color: var(--pc-gold); letter-spacing: 1px; font-size: 12px; }
+
+.pc-instant {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pc-instant);
+}
+.pc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pc-instant); box-shadow: 0 0 8px var(--pc-instant); }
+
+.pc-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pc-price { display: flex; flex-direction: column; line-height: 1.1; }
+.pc-old { font-size: 12px; color: var(--pc-muted-dim); text-decoration: line-through; font-variant-numeric: tabular-nums; }
+.pc-now { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--pc-text); font-variant-numeric: tabular-nums; }
+
+.pc-add {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, var(--pc-accent), var(--pc-accent-strong));
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(107, 63, 242, 0.28);
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+.pc-add:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+.product-card :focus-visible { outline: 2px solid var(--pc-accent); outline-offset: 2px; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .product-card, .pc-add, .pc-wish { transition: none; }
+  .product-card:hover, .pc-add:hover { transform: none; }
+}

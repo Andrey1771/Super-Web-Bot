@@ -1,9 +1,6 @@
 import React, { ImgHTMLAttributes, useEffect, useMemo, useState } from "react";
-import {
-  GAME_COVER_FALLBACK,
-  GAME_COVER_FALLBACK_ALT,
-  normalizeGameCoverUrl,
-} from "../../utils/game-cover";
+import { GAME_COVER_FALLBACK_ALT, normalizeGameCoverUrl } from "../../utils/game-cover";
+import GameCoverPlaceholder from "./GameCoverPlaceholder";
 
 type SafeGameImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt"> & {
   src?: string | null;
@@ -27,6 +24,10 @@ export default function SafeGameImage({
   baseUrl,
   fallbackAlt = GAME_COVER_FALLBACK_ALT,
   onError,
+  className,
+  style,
+  width,
+  height,
   ...props
 }: SafeGameImageProps) {
   const normalizedSrc = useMemo(() => normalizeGameCoverUrl(src, baseUrl), [src, baseUrl]);
@@ -36,8 +37,19 @@ export default function SafeGameImage({
     setHasError(false);
   }, [normalizedSrc]);
 
-  const resolvedSrc = hasError || !normalizedSrc ? GAME_COVER_FALLBACK : normalizedSrc;
-  const resolvedAlt = !hasError && normalizedSrc ? trimText(gameTitle) ?? GAME_COVER_FALLBACK_ALT : fallbackAlt;
+  // Нет валидного src или картинка не загрузилась → рисуем сгенерированную обложку
+  // (градиент + название) вместо статичной заглушки. Работает и для реальных игр без обложки.
+  if (hasError || !normalizedSrc) {
+    return (
+      <GameCoverPlaceholder
+        title={trimText(gameTitle) ?? fallbackAlt}
+        className={className}
+        style={style}
+        width={width}
+        height={height}
+      />
+    );
+  }
 
   const handleError: ImgHTMLAttributes<HTMLImageElement>["onError"] = (event) => {
     if (!hasError) {
@@ -47,5 +59,16 @@ export default function SafeGameImage({
     onError?.(event);
   };
 
-  return <img {...props} src={resolvedSrc} alt={resolvedAlt} onError={handleError} />;
+  return (
+    <img
+      {...props}
+      className={className}
+      style={style}
+      width={width}
+      height={height}
+      src={normalizedSrc}
+      alt={trimText(gameTitle) ?? GAME_COVER_FALLBACK_ALT}
+      onError={handleError}
+    />
+  );
 }

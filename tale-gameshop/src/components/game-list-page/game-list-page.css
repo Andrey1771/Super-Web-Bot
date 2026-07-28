@@ -179,9 +179,15 @@
     .catalog-layout {
         grid-template-columns: 300px minmax(0, 1fr);
     }
-
-    .catalog-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1.25rem;
-    }
 }
+
+/* Тёмная тема витрины — активна только под .theme-dark на обёртке (см. storefront-theme.css).
+   Аддитивно: светлые правила выше не трогаются. Плотную сетку задаёт inline-стиль на .catalog-grid. */
+.theme-dark .catalog-sidebar { background: #161027; border-color: #221a3b; box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45); }
+.theme-dark .catalog-toolbar { background: #161027; border-color: #221a3b; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); }
+.theme-dark .catalog-results-label { color: #a79ecf; }
+.theme-dark .catalog-clear-filters { color: #9d80ff; }
+.theme-dark .catalog-sidebar input[type="number"],
+.theme-dark .catalog-sort-wrap select { background: #0f0a1e; color: #f4f1ff; }
+.theme-dark .catalog-sidebar input[type="number"]:focus,
+.theme-dark .catalog-sort-wrap select:focus { border-color: #7c5cff; outline: none; }

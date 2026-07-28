@@ -16,6 +16,7 @@ import type { IRecommendationsService } from '../../iterfaces/i-recommendations-
 import { analyticsClient } from '../../utils/analytics-client';
 import { slugify } from '../../utils/slugify';
 import SafeGameImage from '../common/SafeGameImage';
+import ProductCard from '../product-card/ProductCard';
 
 const categoryOrder = [
     'Educational Games',
@@ -131,6 +132,7 @@ const TaleGameshopGameList: React.FC = () => {
             params.delete('sortBy');
             params.delete('page');
             params.delete('platforms');
+            params.delete('onSale');
         });
     };
 
@@ -248,6 +250,7 @@ const TaleGameshopGameList: React.FC = () => {
     const minPriceFilter = Number(searchParams.get('filterMinPrice') ?? availablePrices.min);
     const maxPriceFilter = Number(searchParams.get('filterMaxPrice') ?? availablePrices.max);
     const sortBy = searchParams.get('sortBy') ?? 'popular';
+    const onSaleOnly = searchParams.get('onSale') === '1';
     const currentPage = Math.max(1, Number(searchParams.get('page') ?? 1));
 
     const getCollapsed = useCallback(
@@ -376,7 +379,7 @@ const TaleGameshopGameList: React.FC = () => {
 
         return (
             <div
-                className={`relative flex h-full flex-col rounded-[20px] border border-[#ece8ff] bg-white/90 p-4 shadow-[0_12px_30px_rgba(84,58,193,0.08)] ${
+                className={`relative flex h-full flex-col rounded-[20px] border border-[#ece8ff] bg-[#161027]/90 p-4 shadow-[0_12px_30px_rgba(84,58,193,0.08)] ${
                     isLarge ? 'md:p-5' : ''
                 }`}
             >
@@ -399,7 +402,7 @@ const TaleGameshopGameList: React.FC = () => {
                     )}
                     <button
                         type="button"
-                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
+                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-[#161027]/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
                             wishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
                         }`}
                         aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
@@ -427,7 +430,7 @@ const TaleGameshopGameList: React.FC = () => {
                     <div className="mt-1 flex items-center gap-2 text-sm">
                         {hasActiveDiscount ? (
                             <>
-                                <span className="font-medium text-[#9b92c4] line-through">${regularPrice.toFixed(2)}</span>
+                                <span className="font-medium text-[#7d75a3] line-through">${regularPrice.toFixed(2)}</span>
                                 <span className="font-semibold text-[#6b3ff2]">${finalPrice.toFixed(2)}</span>
                                 <span className="rounded-full bg-[#e7dcff] px-2 py-0.5 text-xs font-semibold text-[#5a2dd1]">
                                     -{Number(game.discountPercent).toFixed(0)}%
@@ -502,7 +505,12 @@ const TaleGameshopGameList: React.FC = () => {
             return price >= minPriceFilter && price <= maxPriceFilter;
         });
 
-        const sorted = [...withinPriceRange].sort((a, b) => {
+        const withDiscount = onSaleOnly
+            ? withinPriceRange.filter(({ game }) =>
+                Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0))
+            : withinPriceRange;
+
+        const sorted = [...withDiscount].sort((a, b) => {
             const leftPrice = Number(a.game.finalPrice ?? a.game.price);
             const rightPrice = Number(b.game.finalPrice ?? b.game.price);
 
@@ -529,10 +537,11 @@ const TaleGameshopGameList: React.FC = () => {
         minPriceFilter,
         selectedPlatforms,
         sortBy,
+        onSaleOnly,
         extractPlatformsFromGame
     ]);
 
-    const pageSize = 12;
+    const pageSize = 18;
     const totalPages = Math.max(1, Math.ceil(filteredGames.length / pageSize));
     const safeCurrentPage = Math.min(currentPage, totalPages);
     const paginatedGames = filteredGames.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
@@ -543,6 +552,7 @@ const TaleGameshopGameList: React.FC = () => {
         Boolean(filterCategory) ||
         Boolean(filterName) ||
         selectedPlatforms.length > 0 ||
+        onSaleOnly ||
         minPriceFilter !== availablePrices.min ||
         maxPriceFilter !== availablePrices.max;
 
@@ -557,26 +567,26 @@ const TaleGameshopGameList: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
-            <div className="pointer-events-none fixed left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(204,190,255,0.55)_0%,rgba(246,242,251,0.1)_70%)] blur-3xl" />
+        <div className="min-h-screen text-[#f4f1ff]">
+            <div className="pointer-events-none fixed left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(124,92,255,0.22)_0%,rgba(12,9,23,0.05)_70%)] blur-3xl" />
             <main className="container relative z-10 px-4 pb-24 pt-12">
                 <div className="mx-auto max-w-3xl text-center">
-                    <h1 className="text-4xl font-semibold text-[#2b2350] sm:text-5xl">Game Catalog</h1>
-                    <p className="mt-4 text-base text-[#6c6393]">
+                    <h1 className="text-4xl font-semibold text-[#f4f1ff] sm:text-5xl">Game Catalog</h1>
+                    <p className="mt-4 text-base text-[#a79ecf]">
                         Discover and explore games across all genres. Use filters to quickly find what you're
                         looking for.
                     </p>
                 </div>
 
                 <div className="mt-10">
-                    <label className="flex w-full items-center gap-2 rounded-[14px] border border-[#e6e1ff] bg-white px-4 py-3 text-sm text-[#6b64a8] shadow-sm">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#9b92c4]">
+                    <label className="flex w-full items-center gap-2 rounded-[14px] border border-[#2a2148] bg-[#161027] px-4 py-3 text-sm text-[#a79ecf] shadow-sm">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#7d75a3]">
                             <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
                             <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
                         <input
                             type="text"
-                            className="w-full bg-transparent text-sm text-[#5a5286] placeholder:text-[#b0a7d4] focus:outline-none"
+                            className="w-full bg-transparent text-sm text-[#c9c2ea] placeholder:text-[#6f6690] focus:outline-none"
                             placeholder="Search games..."
                             value={searchNameDraft}
                             onChange={handleSearchChange}
@@ -586,18 +596,18 @@ const TaleGameshopGameList: React.FC = () => {
 
                 <section className="catalog-layout mt-8">
                     <aside className="catalog-sidebar">
-                        <h2 className="text-2xl font-semibold text-[#2b2350]">Filters</h2>
+                        <h2 className="text-2xl font-semibold text-[#f4f1ff]">Filters</h2>
 
-                        <div className="mt-6 border-t border-[#f0ebff] pt-5">
-                            <h3 className="text-lg font-semibold text-[#2b2350]">Categories</h3>
+                        <div className="mt-6 border-t border-[#221a3b] pt-5">
+                            <h3 className="text-lg font-semibold text-[#f4f1ff]">Categories</h3>
                             <div className="mt-3 space-y-2">
                                 {categoryOptions.map((category) => {
                                     const checked = filterCategory === category;
                                     return (
-                                        <label key={category} className="flex cursor-pointer items-center gap-3 text-sm text-[#5a5286]">
+                                        <label key={category} className="flex cursor-pointer items-center gap-3 text-sm text-[#c9c2ea]">
                                             <input
                                                 type="checkbox"
-                                                className="h-4 w-4 rounded border-[#d8d0ff] text-[#6b3ff2] focus:ring-[#6b3ff2]"
+                                                className="h-4 w-4 rounded border-[#2a2148] text-[#6b3ff2] focus:ring-[#6b3ff2]"
                                                 checked={checked}
                                                 onChange={() => setCategoryFilter(checked ? '' : category)}
                                             />
@@ -608,16 +618,16 @@ const TaleGameshopGameList: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="mt-6 border-t border-[#f0ebff] pt-5">
-                            <h3 className="text-lg font-semibold text-[#2b2350]">Platforms</h3>
+                        <div className="mt-6 border-t border-[#221a3b] pt-5">
+                            <h3 className="text-lg font-semibold text-[#f4f1ff]">Platforms</h3>
                             <div className="mt-3 space-y-2">
                                 {availablePlatforms.map((platform) => {
                                     const checked = selectedPlatforms.includes(platform);
                                     return (
-                                        <label key={platform} className="flex cursor-pointer items-center gap-3 text-sm text-[#5a5286]">
+                                        <label key={platform} className="flex cursor-pointer items-center gap-3 text-sm text-[#c9c2ea]">
                                             <input
                                                 type="checkbox"
-                                                className="h-4 w-4 rounded border-[#d8d0ff] text-[#6b3ff2] focus:ring-[#6b3ff2]"
+                                                className="h-4 w-4 rounded border-[#2a2148] text-[#6b3ff2] focus:ring-[#6b3ff2]"
                                                 checked={checked}
                                                 onChange={() =>
                                                     updateParams((params) => {
@@ -638,13 +648,35 @@ const TaleGameshopGameList: React.FC = () => {
                                     );
                                 })}
                                 {availablePlatforms.length === 0 && (
-                                    <p className="text-sm text-[#8a81b5]">No platform data available.</p>
+                                    <p className="text-sm text-[#7d75a3]">No platform data available.</p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="mt-6 border-t border-[#f0ebff] pt-5">
-                            <h3 className="text-lg font-semibold text-[#2b2350]">Price</h3>
+                        <div className="mt-6 border-t border-[#221a3b] pt-5">
+                            <h3 className="text-lg font-semibold text-[#f4f1ff]">Deals</h3>
+                            <label className="mt-3 flex cursor-pointer items-center gap-3 text-sm text-[#c9c2ea]">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-[#2a2148] text-[#6b3ff2] focus:ring-[#6b3ff2]"
+                                    checked={onSaleOnly}
+                                    onChange={() =>
+                                        updateParams((params) => {
+                                            if (onSaleOnly) {
+                                                params.delete('onSale');
+                                            } else {
+                                                params.set('onSale', '1');
+                                            }
+                                            params.set('page', '1');
+                                        })
+                                    }
+                                />
+                                <span>On sale only</span>
+                            </label>
+                        </div>
+
+                        <div className="mt-6 border-t border-[#221a3b] pt-5">
+                            <h3 className="text-lg font-semibold text-[#f4f1ff]">Price</h3>
                             <input
                                 type="range"
                                 min={availablePrices.min}
@@ -666,7 +698,7 @@ const TaleGameshopGameList: React.FC = () => {
                                     min={availablePrices.min}
                                     max={availablePrices.max}
                                     value={minPriceFilter}
-                                    className="h-10 rounded-[12px] border border-[#e6e1ff] px-3 text-sm text-[#5a5286] focus:outline-none"
+                                    className="h-10 rounded-[12px] border border-[#2a2148] px-3 text-sm text-[#c9c2ea] focus:outline-none"
                                     onChange={(event) => {
                                         const value = Number(event.target.value);
                                         updateParams((params) => {
@@ -682,7 +714,7 @@ const TaleGameshopGameList: React.FC = () => {
                                     min={availablePrices.min}
                                     max={availablePrices.max}
                                     value={maxPriceFilter}
-                                    className="h-10 rounded-[12px] border border-[#e6e1ff] px-3 text-sm text-[#5a5286] focus:outline-none"
+                                    className="h-10 rounded-[12px] border border-[#2a2148] px-3 text-sm text-[#c9c2ea] focus:outline-none"
                                     onChange={(event) => {
                                         const value = Number(event.target.value);
                                         updateParams((params) => {
@@ -728,7 +760,7 @@ const TaleGameshopGameList: React.FC = () => {
                             </div>
                             <div className="relative catalog-sort-wrap">
                                 <select
-                                    className="h-11 w-full rounded-[12px] border border-[#e6e1ff] bg-white px-4 pr-9 text-sm font-medium text-[#5a5286] shadow-sm focus:outline-none"
+                                    className="h-11 w-full rounded-[12px] border border-[#2a2148] bg-[#161027] px-4 pr-9 text-sm font-medium text-[#c9c2ea] shadow-sm focus:outline-none"
                                     value={sortBy}
                                     onChange={(event) =>
                                         updateParams((params) => {
@@ -743,7 +775,7 @@ const TaleGameshopGameList: React.FC = () => {
                                     <option value="name-asc">Sort by: Name A-Z</option>
                                     <option value="name-desc">Sort by: Name Z-A</option>
                                 </select>
-                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9b92c4]">
+                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#7d75a3]">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                                         <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                                     </svg>
@@ -751,74 +783,15 @@ const TaleGameshopGameList: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="catalog-grid">
-                            {paginatedGames.map(({ category, game }, index) => {
-                                const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
-                                const finalPrice = Number(game.finalPrice ?? game.price);
-                                const wishlisted = isWishlisted(game.id);
-
-                                return (
-                                    <article
-                                        key={`${game.id ?? index}-${category}`}
-                                        className="catalog-game-card group"
-                                    >
-                                        <div className="catalog-game-image">
-                                            <Link
-                                                to={`/games/${gameSlug}`}
-                                                className="absolute inset-0 z-[1]"
-                                                aria-label={`Open ${game.title}`}
-                                                onClick={() => handleRecordViewed(game)}
-                                            />
-                                            {renderImage(game)}
-                                            <button
-                                                type="button"
-                                                className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
-                                                    wishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
-                                                }`}
-                                                aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                                                aria-pressed={wishlisted}
-                                                onClick={() => toggleWishlist(game.id)}
-                                                disabled={!game.id}
-                                            >
-                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill={wishlisted ? 'currentColor' : 'none'}>
-                                                    <path
-                                                        d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
-                                                        stroke="currentColor"
-                                                        strokeWidth="1.5"
-                                                        strokeLinejoin="round"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </div>
-
-                                        <div className="catalog-game-body">
-                                            <h3 className="catalog-game-title">
-                                                <Link to={`/games/${gameSlug}`} onClick={() => handleRecordViewed(game)}>
-                                                    {game.title}
-                                                </Link>
-                                            </h3>
-                                            <span className="catalog-game-chip">
-                                                <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none">
-                                                    <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
-                                                    <circle cx="10" cy="10" r="1.8" fill="currentColor" />
-                                                </svg>
-                                                {category}
-                                            </span>
-                                            <div className="catalog-game-footer">
-                                                <span className="catalog-game-price">${finalPrice.toFixed(2)}</span>
-                                                <button
-                                                    className="catalog-game-cta"
-                                                    onClick={() => handleAddToCart(game)}
-                                                >
-                                                    Add to Cart
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </article>
-                                );
-                            })}
+                        <div
+                            className="catalog-grid"
+                            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 18 }}
+                        >
+                            {paginatedGames.map(({ game }, index) => (
+                                <ProductCard key={`${game.id ?? index}`} game={game} />
+                            ))}
                             {paginatedGames.length === 0 && (
-                                <div className="col-span-full rounded-[16px] border border-dashed border-[#e6e1ff] bg-white/70 py-12 text-center text-sm text-[#8a81b5]">
+                                <div className="col-span-full rounded-[16px] border border-dashed border-[#2a2148] bg-[#161027]/70 py-12 text-center text-sm text-[#7d75a3]">
                                     No games found for current filters.
                                 </div>
                             )}
@@ -826,7 +799,7 @@ const TaleGameshopGameList: React.FC = () => {
 
                         <div className="mt-8 flex items-center justify-center gap-2">
                             <button
-                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#e6e1ff] bg-white text-[#6b64a8] disabled:opacity-50"
+                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#2a2148] bg-[#161027] text-[#a79ecf] disabled:opacity-50"
                                 onClick={() =>
                                     updateParams((params) => {
                                         params.set('page', String(Math.max(1, safeCurrentPage - 1)));
@@ -842,7 +815,7 @@ const TaleGameshopGameList: React.FC = () => {
                                     className={`flex h-10 min-w-10 items-center justify-center rounded-[12px] px-3 text-sm font-semibold ${
                                         page === safeCurrentPage
                                             ? 'bg-[#6b3ff2] text-white'
-                                            : 'border border-[#e6e1ff] bg-white text-[#6b64a8]'
+                                            : 'border border-[#2a2148] bg-[#161027] text-[#a79ecf]'
                                     }`}
                                     onClick={() => updateParams((params) => params.set('page', String(page)))}
                                 >
@@ -850,7 +823,7 @@ const TaleGameshopGameList: React.FC = () => {
                                 </button>
                             ))}
                             <button
-                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#e6e1ff] bg-white text-[#6b64a8] disabled:opacity-50"
+                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#2a2148] bg-[#161027] text-[#a79ecf] disabled:opacity-50"
                                 onClick={() =>
                                     updateParams((params) => {
                                         params.set('page', String(Math.min(totalPages, safeCurrentPage + 1)));
@@ -864,166 +837,6 @@ const TaleGameshopGameList: React.FC = () => {
                     </div>
                 </section>
 
-                <section className="mt-12">
-                    <div className="max-w-2xl">
-                        <h2 className="text-2xl font-semibold text-[#2b2350]">Loved by players,</h2>
-                        <p className="mt-1 text-lg text-[#6f64a8]">trusted by hundreds of thousands</p>
-                    </div>
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {[
-                            {
-                                title: 'Secure payments',
-                                description: 'Safe payment methods you can trust.',
-                                icon: (
-                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
-                                        <path d="M6 10V7a6 6 0 1 1 12 0v3" stroke="currentColor" strokeWidth="1.6" />
-                                        <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" />
-                                    </svg>
-                                )
-                            },
-                            {
-                                title: 'Instant delivery',
-                                description: 'Get your purchased games instantly.',
-                                icon: (
-                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
-                                        <path d="M5 12h6l-2-3m2 3-2 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                        <path d="M13 7h5l1 5h-6V7Z" stroke="currentColor" strokeWidth="1.6" />
-                                    </svg>
-                                )
-                            },
-                            {
-                                title: 'Curated picks',
-                                description: 'Hand-picked collections & recommendations.',
-                                icon: (
-                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
-                                        <path d="m6 12 4 4 8-8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                        <path d="M8 6h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                    </svg>
-                                )
-                            },
-                            {
-                                title: 'Friendly support',
-                                description: "We’re here to help you 24/7.",
-                                icon: (
-                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#6b3ff2]" fill="none">
-                                        <path d="M4 11a8 8 0 1 1 16 0v5a3 3 0 0 1-3 3h-2" stroke="currentColor" strokeWidth="1.6" />
-                                        <path d="M7 11h2v4H7a3 3 0 0 1-3-3v-1a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="1.6" />
-                                    </svg>
-                                )
-                            }
-                        ].map((feature) => (
-                            <div
-                                key={feature.title}
-                                className="rounded-[18px] border border-[#efeaff] bg-white/90 p-4 shadow-[0_12px_24px_rgba(108,85,164,0.12)]"
-                            >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#f0ebff]">
-                                    {feature.icon}
-                                </div>
-                                <h3 className="mt-4 text-base font-semibold text-[#2b2350]">{feature.title}</h3>
-                                <p className="mt-2 text-sm text-[#6f64a8]">{feature.description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                <section className="mt-10 rounded-[22px] border border-[#ece8ff] bg-white/80 p-6 shadow-[0_18px_36px_rgba(108,85,164,0.14)]">
-                    <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-                        <div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl font-semibold text-[#2b2350]">4.8</span>
-                                <div className="flex items-center gap-1 text-[#6b3ff2]">
-                                    {Array.from({ length: 5 }).map((_, index) => (
-                                        <svg key={`rating-star-${index}`} viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
-                                            <path d="m10 15-5.878 3.09 1.122-6.545L.488 6.91 6.06 6.1 10 0l3.94 6.1 5.572.81-4.756 4.635 1.122 6.545L10 15Z" />
-                                        </svg>
-                                    ))}
-                                </div>
-                                <span className="text-sm text-[#6f64a8]">8,536 reviews</span>
-                            </div>
-                            <div className="mt-5 grid gap-4 md:grid-cols-2">
-                                {[
-                                    {
-                                        name: 'Mat S.',
-                                        initial: 'M',
-                                        review: 'Awesome selection of PC games and super fast delivery!'
-                                    },
-                                    {
-                                        name: 'Alex R.',
-                                        initial: 'A',
-                                        review: 'Great deals and instant keys, perfect for hassle-free gaming.'
-                                    }
-                                ].map((review) => (
-                                    <div key={review.name} className="rounded-[16px] border border-[#efeaff] bg-white px-4 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6b3ff2] text-sm font-semibold text-white">
-                                                {review.initial}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-[#2b2350]">{review.name}</p>
-                                                <div className="flex items-center gap-0.5 text-[#6b3ff2]">
-                                                    {Array.from({ length: 5 }).map((_, index) => (
-                                                        <svg key={`${review.name}-star-${index}`} viewBox="0 0 20 20" className="h-3 w-3" fill="currentColor">
-                                                            <path d="m10 15-5.878 3.09 1.122-6.545L.488 6.91 6.06 6.1 10 0l3.94 6.1 5.572.81-4.756 4.635 1.122 6.545L10 15Z" />
-                                                        </svg>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <p className="mt-3 text-sm text-[#6f64a8]">{review.review}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="rounded-[16px] border border-[#efeaff] bg-[#fbf9ff] p-4">
-                            <div className="space-y-2">
-                                {[
-                                    { label: '5', value: 78 },
-                                    { label: '4', value: 15 },
-                                    { label: '3', value: 5 },
-                                    { label: '2', value: 1 },
-                                    { label: '1', value: 1 }
-                                ].map((rating) => (
-                                    <div key={rating.label} className="flex items-center gap-3 text-sm text-[#6f64a8]">
-                                        <span className="w-4 text-right font-semibold text-[#2b2350]">{rating.label}</span>
-                                        <div className="flex flex-1 items-center gap-2">
-                                            <div className="h-2 flex-1 rounded-full bg-[#e6e1ff]">
-                                                <div
-                                                    className="h-2 rounded-full bg-[#6b3ff2]"
-                                                    style={{ width: `${rating.value}%` }}
-                                                />
-                                            </div>
-                                            <span className="w-8 text-right text-xs text-[#6f64a8]">{rating.value}%</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <button className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#e6e1ff] bg-white px-4 py-2 text-xs font-semibold text-[#6b64a8]">
-                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#6b3ff2] text-[10px] font-bold text-white">
-                                    ★
-                                </span>
-                                Trustpilot
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="mt-12 overflow-hidden rounded-[26px]">
-                    <div className="relative flex min-h-[260px] flex-col items-center justify-center rounded-[26px] bg-[linear-gradient(135deg,#141b33_0%,#3b2a69_55%,#2b1a49_100%)] px-6 py-12 text-center text-white shadow-[0_24px_48px_rgba(20,15,50,0.3)]">
-                        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,16,40,0.35)_0%,rgba(54,38,100,0.55)_60%,rgba(20,16,40,0.85)_100%)]" />
-                        <div className="relative z-10 max-w-2xl">
-                            <h2 className="text-3xl font-semibold md:text-4xl">Not sure what to play?</h2>
-                            <p className="mt-3 text-base text-white/80">Try curated picks based on genre and ratings.</p>
-                            <div className="mt-6 flex flex-wrap justify-center gap-3">
-                                <button className="rounded-[12px] bg-[#6b3ff2] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(107,63,242,0.35)]">
-                                    See Top Rated
-                                </button>
-                                <button className="rounded-[12px] border border-white/30 bg-white/90 px-6 py-2.5 text-sm font-semibold text-[#3d2f74] shadow-[0_12px_24px_rgba(12,10,30,0.2)]">
-                                    View Deals
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
             </main>
         </div>
     );
