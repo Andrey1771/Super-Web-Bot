@@ -115,7 +115,9 @@ namespace SuperBot.WebApi.Controllers
                 ["firstItemTitle"] = firstItem.Title,
                 ["currency"] = currency,
                 // По этой метке финализация решает, придержать ли ключи до подтверждения почты.
-                ["emailVerified"] = emailAlreadyVerified ? "true" : "false"
+                ["emailVerified"] = emailAlreadyVerified ? "true" : "false",
+                // Кэшбэк копят только залогиненные (у гостя userId — это email, не аккаунт).
+                ["cashbackEligible"] = isAuthenticated ? "true" : "false"
             };
 
             if (pricing.PromoApplied && !string.IsNullOrWhiteSpace(pricing.NormalizedPromoCode))

@@ -120,6 +120,7 @@ namespace SuperBot.Infrastructure.Services
         private readonly IStripePaymentIntentGateway _paymentIntents;
         private readonly IDeliveryMailer _deliveryMailer;
         private readonly IDeliveryVerificationTokenService _verificationTokens;
+        private readonly ICashbackService _cashback;
         private readonly IConfiguration _configuration;
         private readonly ILogger<OrderFinalizationService> _logger;
         private readonly IMongoCollection<PaymentFinalizationStateDb> _finalizationStates;
@@ -131,6 +132,7 @@ namespace SuperBot.Infrastructure.Services
             IStripePaymentIntentGateway paymentIntents,
             IDeliveryMailer deliveryMailer,
             IDeliveryVerificationTokenService verificationTokens,
+            ICashbackService cashback,
             IConfiguration configuration,
             ILogger<OrderFinalizationService> logger,
             IMongoDatabase database)
@@ -140,6 +142,7 @@ namespace SuperBot.Infrastructure.Services
             _paymentIntents = paymentIntents;
             _deliveryMailer = deliveryMailer;
             _verificationTokens = verificationTokens;
+            _cashback = cashback;
             _configuration = configuration;
             _logger = logger;
             _finalizationStates = database.GetCollection<PaymentFinalizationStateDb>("PaymentFinalizationStates");
@@ -394,6 +397,23 @@ namespace SuperBot.Infrastructure.Services
                 if (!fulfillmentFailed)
                 {
                     await MarkFailureResolvedAsync(request.PaymentIntentId, order.Id.ToString());
+                }
+
+                // Кэшбэк начисляется ТОЛЬКО залогиненным (метка проставлена при создании PaymentIntent)
+                // и best-effort: сбой лояльности не должен превращать оплаченный заказ в ошибку.
+                // Путь достигается лишь при создании НОВОГО заказа (already_confirmed выходит раньше),
+                // а идемпотентность дополнительно гарантирует уникальный индекс леджера.
+                if (string.Equals(paymentIntent.MetadataValue("cashbackEligible"), "true", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        await _cashback.AccrueForOrderAsync(order);
+                    }
+                    catch (Exception cashbackEx)
+                    {
+                        _logger.LogError(cashbackEx, "Cashback accrual failed for order {OrderId} ({PaymentIntentId}).",
+                            order.Id, request.PaymentIntentId);
+                    }
                 }
 
                 var confirmedResult = OrderFinalizationResult.Ok(

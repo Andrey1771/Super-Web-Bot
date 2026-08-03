@@ -44,6 +44,8 @@ namespace SuperBot.WebApi.Services
                 "SupportChatMessages",
                 "PromoCodes",
                 "PromoCodeUsages",
+                "CashbackAccounts",
+                "CashbackTransactions",
                 "PaymentFinalizationStates",
                 "PaymentFinalizationFailures",
                 "StripeWebhookEvents"
@@ -277,6 +279,7 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_promo_codes_code", Unique = true }
             );
             await promoCodeCollection.Indexes.CreateOneAsync(promoCodeIndex);
+            await SeedWelcomePromoAsync(promoCodeCollection);
 
             var promoUsageCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PromoCodeUsageDb>("PromoCodeUsages");
             var promoUsageCodeIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PromoCodeUsageDb>(
@@ -286,6 +289,26 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_promo_usages_code_user" }
             );
             await promoUsageCollection.Indexes.CreateOneAsync(promoUsageCodeIndex);
+
+            // Кошельки лояльности: один документ на пользователя.
+            var cashbackAccountCollection = _database.GetCollection<SuperBot.Infrastructure.Data.CashbackAccountDb>("CashbackAccounts");
+            await cashbackAccountCollection.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.CashbackAccountDb>(
+                Builders<SuperBot.Infrastructure.Data.CashbackAccountDb>.IndexKeys.Ascending(item => item.UserId),
+                new CreateIndexOptions { Name = "ix_cashback_accounts_user", Unique = true }));
+
+            // Леджер кэшбэка: уникальность (OrderId, Type) — гейт идемпотентности начисления/списания/реверса;
+            // (UserId, CreatedAt desc) — история в кабинете.
+            var cashbackTxnCollection = _database.GetCollection<SuperBot.Infrastructure.Data.CashbackTransactionDb>("CashbackTransactions");
+            await cashbackTxnCollection.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.CashbackTransactionDb>(
+                Builders<SuperBot.Infrastructure.Data.CashbackTransactionDb>.IndexKeys
+                    .Ascending(item => item.OrderId)
+                    .Ascending(item => item.Type),
+                new CreateIndexOptions { Name = "ix_cashback_txn_order_type", Unique = true, Sparse = true }));
+            await cashbackTxnCollection.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.CashbackTransactionDb>(
+                Builders<SuperBot.Infrastructure.Data.CashbackTransactionDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Descending(item => item.CreatedAt),
+                new CreateIndexOptions { Name = "ix_cashback_txn_user_created" }));
 
             var gameKeyCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameKeyDb>("GameKeys");
             var gameKeyUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(
@@ -528,6 +551,32 @@ namespace SuperBot.WebApi.Services
                     $"[GameKeys] Не удалось создать уникальный индекс {partialIndexName}: возможно, один ключ выдан нескольким. " +
                     $"Требуется ручная разборка дублей. {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Промокод приветственной скидки на первую покупку (баннер на главной ведёт к нему).
+        /// Идемпотентно: создаём один раз, дальше редактируется в админке. Процент/срок — стартовые.
+        /// </summary>
+        private static async Task SeedWelcomePromoAsync(IMongoCollection<SuperBot.Infrastructure.Data.PromoCodeDb> promoCodes)
+        {
+            const string code = "WELCOME10";
+            var exists = await promoCodes.Find(item => item.Code == code).AnyAsync();
+            if (exists)
+            {
+                return;
+            }
+
+            await promoCodes.InsertOneAsync(new SuperBot.Infrastructure.Data.PromoCodeDb
+            {
+                Code = code,
+                Type = SuperBot.Core.Entities.PromoCodeType.Percentage,
+                Value = 10m,
+                FirstOrderOnly = true,
+                StartDate = DateTime.UtcNow.AddDays(-1),
+                EndDate = DateTime.UtcNow.AddYears(5),
+                UsagePerUser = 1,
+                CreatedAt = DateTime.UtcNow
+            });
         }
 
         private async Task SeedGameDetailsAsync(IMongoCollection<SuperBot.Infrastructure.Data.GameDetailsDb> gameDetailsCollection)

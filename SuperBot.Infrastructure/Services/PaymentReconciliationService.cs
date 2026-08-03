@@ -51,15 +51,18 @@ namespace SuperBot.Infrastructure.Services
         public const string OrderStatusRefunded = "REFUNDED";
 
         private readonly IOrderRepository _orderRepository;
+        private readonly SuperBot.Core.Interfaces.ICashbackService _cashback;
         private readonly IMongoCollection<PaymentFinalizationFailureDb> _paymentIssues;
         private readonly ILogger<PaymentReconciliationService> _logger;
 
         public PaymentReconciliationService(
             IOrderRepository orderRepository,
+            SuperBot.Core.Interfaces.ICashbackService cashback,
             IMongoDatabase database,
             ILogger<PaymentReconciliationService> logger)
         {
             _orderRepository = orderRepository;
+            _cashback = cashback;
             _paymentIssues = database.GetCollection<PaymentFinalizationFailureDb>("PaymentFinalizationFailures");
             _logger = logger;
         }
@@ -102,6 +105,21 @@ namespace SuperBot.Infrastructure.Services
             });
 
             await _orderRepository.UpdateOrderAsync(order);
+
+            // Полный возврат — откатываем начисленный кэшбэк (защита от фарма «купил → вернул»).
+            // No-op, если по заказу ничего не начислялось (гость/выключенная программа). Best-effort:
+            // сбой лояльности не должен ронять сверку платежа.
+            if (isFullRefund)
+            {
+                try
+                {
+                    await _cashback.ReverseForOrderAsync(order.Id.ToString());
+                }
+                catch (Exception cashbackEx)
+                {
+                    _logger.LogError(cashbackEx, "Cashback reversal failed for refunded order {OrderId}.", order.Id);
+                }
+            }
 
             _logger.LogInformation("Order {OrderId} marked {Status} after refund of {Amount} {Currency}.",
                 order.Id, targetPaymentStatus, refunded, notice.Currency);

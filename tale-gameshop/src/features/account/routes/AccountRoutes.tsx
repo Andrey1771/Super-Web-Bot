@@ -6,6 +6,7 @@ import AccountKeysPage from '../pages/AccountKeysPage';
 import AccountSettingsPage from '../pages/AccountSettingsPage';
 import AccountBillingPage from '../pages/AccountBillingPage';
 import AccountSavedItemsPage from '../pages/AccountSavedItemsPage';
+import AccountRewardsPage from '../pages/AccountRewardsPage';
 import AccountSecurityPage from '../pages/AccountSecurityPage';
 import AccountHelpPage from '../pages/AccountHelpPage';
 import { AccountProfileProvider } from '../context/AccountProfileContext';
@@ -18,6 +19,7 @@ const AccountRoutes: React.FC = () => {
                 <Route path="orders" element={<AccountOrdersPage />} />
                 <Route path="keys" element={<AccountKeysPage />} />
                 <Route path="saved" element={<AccountSavedItemsPage />} />
+                <Route path="rewards" element={<AccountRewardsPage />} />
                 <Route path="settings" element={<AccountSettingsPage />} />
                 <Route path="billing" element={<AccountBillingPage />} />
                 <Route path="security" element={<AccountSecurityPage />} />

@@ -1,0 +1,178 @@
+.rewards-state {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-12);
+}
+
+/* Баланс + тир — «герой» страницы. */
+.rewards-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-24);
+}
+
+.rewards-balance {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+}
+
+.rewards-balance-icon {
+    width: 56px;
+    height: 56px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+    font-size: 24px;
+}
+
+.rewards-balance-label {
+    font-size: 13px;
+    color: var(--color-text-muted, #6b7280);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.rewards-balance-value {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.rewards-balance-sub {
+    font-size: 13px;
+    margin-top: 2px;
+}
+
+.rewards-tier {
+    text-align: right;
+}
+
+.rewards-tier-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+}
+
+.rewards-tier-rate {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--color-text-muted, #6b7280);
+}
+
+/* Прогресс к следующему тиру. */
+.rewards-progress-track {
+    height: 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    overflow: hidden;
+}
+
+.rewards-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 60%, #22c55e));
+    transition: width 0.4s ease;
+}
+
+.rewards-progress-caption {
+    margin: var(--space-12) 0 0;
+    font-size: 14px;
+}
+
+.rewards-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-24);
+    margin-top: var(--space-20);
+    padding-top: var(--space-16);
+    border-top: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+}
+
+.rewards-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rewards-stat-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted, #6b7280);
+}
+
+.rewards-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* История. */
+.rewards-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
+}
+
+.rewards-history-amount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.rewards-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rewards-badge.is-earn {
+    background: color-mix(in srgb, #22c55e 16%, transparent);
+    color: #15803d;
+}
+
+.rewards-badge.is-redeem {
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+}
+
+.rewards-badge.is-reverse {
+    background: color-mix(in srgb, #ef4444 14%, transparent);
+    color: #b91c1c;
+}
+
+.rewards-history-amount.is-earn {
+    color: #15803d;
+}
+
+.rewards-history-amount.is-redeem,
+.rewards-history-amount.is-reverse {
+    color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+    .rewards-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .rewards-tier {
+        text-align: left;
+    }
+}

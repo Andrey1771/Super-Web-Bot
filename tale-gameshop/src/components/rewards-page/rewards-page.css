@@ -1,0 +1,514 @@
+.rewards-page {
+    padding-bottom: 80px;
+}
+
+.rewards-page-hero {
+    position: relative;
+    padding: calc(var(--app-header-height, 150px) + 40px) 0 64px;
+    /* Тот же тёмно-фиолетовый, что у hero главной — страницы должны быть одной семьёй. */
+    background: radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%),
+        linear-gradient(135deg, #120c22 0%, #1b1233 60%, #120c22 100%);
+    color: #f3f4fb;
+    overflow: hidden;
+}
+
+.rewards-page-hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+}
+
+.rewards-page-eyebrow {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    color: #cdb5ff;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: var(--space-16);
+}
+
+.rewards-page-hero h1 {
+    font-size: clamp(34px, 4vw, 52px);
+    line-height: 1.08;
+    margin-bottom: var(--space-16);
+    color: #f8f9ff;
+}
+
+.rewards-page-lead {
+    font-size: 17px;
+    color: color-mix(in srgb, #ffffff 78%, transparent);
+    margin-bottom: var(--space-24);
+}
+
+.rewards-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-12);
+}
+
+.rewards-page-actions .btn-outline {
+    background: transparent;
+    color: #f3f4fb;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Пилюля залогиненного: баланс + тир + кнопка в кабинет — вместо продающих кнопок. */
+.rewards-hero-balance {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-12);
+    padding: var(--space-8) var(--space-8) var(--space-8) var(--space-16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--color-text);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+    font-size: 15px;
+}
+
+.rewards-hero-balance strong {
+    font-weight: 800;
+}
+
+.rewards-hero-balance-icon {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, #34d17e 18%, transparent);
+    color: #1c8f57;
+}
+
+.rewards-page-section {
+    margin-top: 56px;
+}
+
+.rewards-page-heading {
+    text-align: center;
+    margin-bottom: var(--space-24);
+}
+
+.rewards-page-heading h2 {
+    font-size: clamp(26px, 3vw, 34px);
+    margin-bottom: var(--space-8);
+}
+
+/* ---------- «Что такое кэшбек» ---------- */
+.rewards-about {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: var(--space-40);
+}
+
+/* Эйбров на светлом фоне (в hero он рассчитан на тёмный). */
+.rewards-about .rewards-page-eyebrow {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+}
+
+.rewards-about-copy h2 {
+    font-size: clamp(26px, 3vw, 34px);
+    margin-bottom: var(--space-12);
+}
+
+.rewards-about-copy p {
+    font-size: 15.5px;
+    line-height: 1.65;
+    max-width: 460px;
+}
+
+/* Визуал: мини-виджет уровня на мягком зелёном свечении + плашка начисления. */
+.rewards-about-visual {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 240px;
+}
+
+.rewards-about-glow {
+    position: absolute;
+    width: 320px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in srgb, #34d17e 22%, transparent), transparent);
+    filter: blur(6px);
+}
+
+.rewards-about-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    padding: var(--space-20) var(--space-24);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+    box-shadow: var(--shadow-lg);
+}
+
+/* Кольцо прогресса — conic-gradient, внутренний круг вырезает середину. */
+.rewards-about-ring {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex: none;
+    border-radius: 50%;
+    background: conic-gradient(#34d17e 43%, #e8ebf3 0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rewards-about-ring::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background: var(--color-surface, #fff);
+}
+
+.rewards-about-ring span {
+    position: relative;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--color-text);
+}
+
+.rewards-about-level-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.rewards-about-level {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 2px 0 6px;
+}
+
+.rewards-about-rate {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, #34d17e 14%, transparent);
+    color: #1c8f57;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* Плашка «+ $1.20» — только что упавшее начисление, чуть дрейфует. */
+.rewards-about-badge {
+    position: absolute;
+    top: 14%;
+    right: 16%;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #34d17e;
+    color: #0c3a24;
+    font-weight: 800;
+    font-size: 14px;
+    box-shadow: 0 12px 26px rgba(52, 209, 126, 0.35);
+    animation: rewards-drift 12s ease-in-out infinite alternate;
+}
+
+/* Таблица-сравнение тиров (по образцу конкурентов: метрики строками, тиры столбцами,
+   «твой» столбец подсвечен зелёным). Скроллится по горизонтали на узких экранах. */
+.rewards-tier-table-wrap {
+    border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+    border-radius: var(--radius-lg);
+    background: var(--color-surface, #fff);
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+}
+
+.rewards-tier-table-wrap.is-skeleton {
+    min-height: 180px;
+    background: color-mix(in srgb, var(--color-primary) 6%, #f1f1f4);
+}
+
+.rewards-tier-table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+.rewards-tier-table thead th {
+    padding: var(--space-20) var(--space-16) var(--space-16);
+    vertical-align: top;
+}
+
+.rewards-tier-table tbody th,
+.rewards-tier-table tbody td {
+    padding: var(--space-14) var(--space-16);
+    border-top: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+    font-size: 15px;
+}
+
+.rewards-tier-metric {
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-muted);
+    white-space: nowrap;
+    width: 160px;
+}
+
+.rewards-tier-trophy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto var(--space-8);
+    border-radius: 50%;
+    font-size: 17px;
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+}
+
+.rewards-tier-trophy.is-bronze {
+    background: rgba(205, 127, 50, 0.16);
+    color: #b06a24;
+}
+
+.rewards-tier-trophy.is-silver {
+    background: rgba(148, 163, 184, 0.2);
+    color: #64748b;
+}
+
+.rewards-tier-trophy.is-gold {
+    background: rgba(234, 179, 8, 0.18);
+    color: #b48708;
+}
+
+.rewards-tier-name {
+    display: block;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+/* Чип «твой уровень» + зелёная подсветка всего столбца. */
+.rewards-tier-current {
+    display: inline-block;
+    margin-top: var(--space-6);
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, #34d17e 18%, transparent);
+    color: #1c8f57;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rewards-tier-table .is-current {
+    background: color-mix(in srgb, #34d17e 7%, transparent);
+}
+
+.rewards-tier-rate {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--color-primary);
+}
+
+.rewards-page-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-16);
+}
+
+.rewards-page-step {
+    padding: var(--space-24);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+    background: var(--color-surface, #fff);
+}
+
+.rewards-page-step-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+    font-size: 20px;
+    margin-bottom: var(--space-12);
+}
+
+.rewards-page-step h3 {
+    margin-bottom: var(--space-8);
+    font-size: 18px;
+}
+
+/* ---------- FAQ с дрейфующим фоном ---------- */
+.rewards-page-faq-section {
+    position: relative;
+}
+
+.rewards-faq-list {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.rewards-faq-item {
+    border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+    border-radius: var(--radius-md);
+    background: var(--color-surface, #fff);
+    box-shadow: var(--shadow-sm);
+}
+
+.rewards-faq-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    padding: var(--space-16) var(--space-20);
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font-weight: 600;
+    font-size: 15.5px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.rewards-faq-trigger svg {
+    flex: none;
+    color: var(--color-primary);
+    transition: transform 0.25s ease;
+}
+
+.rewards-faq-item.is-open .rewards-faq-trigger svg {
+    transform: rotate(180deg);
+}
+
+.rewards-faq-answer {
+    padding: 0 var(--space-20) var(--space-16);
+    font-size: 14.5px;
+}
+
+/* Дрейфующие глифы позади аккордеона: крупные, полупрозрачные, каждый со своим
+   ритмом — фон живёт, но не мешает читать. */
+.rewards-faq-float {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.rewards-float {
+    position: absolute;
+    color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+    opacity: 0.14;
+    animation: rewards-drift 16s ease-in-out infinite alternate;
+}
+
+.rewards-float.is-f1 {
+    top: 12%;
+    left: 4%;
+    font-size: 64px;
+    transform: rotate(-12deg);
+}
+
+.rewards-float.is-f2 {
+    top: 58%;
+    left: 12%;
+    font-size: 44px;
+    animation-duration: 20s;
+    animation-delay: -6s;
+}
+
+.rewards-float.is-f3 {
+    top: 20%;
+    right: 7%;
+    font-size: 54px;
+    transform: rotate(10deg);
+    animation-duration: 18s;
+    animation-delay: -3s;
+}
+
+.rewards-float.is-f4 {
+    top: 68%;
+    right: 13%;
+    font-size: 38px;
+    animation-duration: 14s;
+    animation-delay: -9s;
+}
+
+@keyframes rewards-drift {
+    from {
+        translate: 0 -14px;
+    }
+
+    to {
+        translate: 0 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rewards-float,
+    .rewards-about-badge {
+        animation: none;
+    }
+}
+
+.rewards-page-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-32);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface, #fff));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.rewards-page-cta .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+@media (max-width: 860px) {
+    .rewards-page-steps {
+        grid-template-columns: 1fr;
+    }
+
+    /* Складываем: текст сверху, виджет под ним. */
+    .rewards-about {
+        grid-template-columns: 1fr;
+        gap: var(--space-20);
+    }
+
+    .rewards-about-copy {
+        order: -1;
+        text-align: center;
+    }
+
+    .rewards-about-copy p {
+        margin-inline: auto;
+    }
+
+    /* На узких экранах фоновые глифы теснят контент — прячем. */
+    .rewards-faq-float {
+        display: none;
+    }
+}

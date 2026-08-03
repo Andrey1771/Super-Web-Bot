@@ -40,7 +40,8 @@ const navGroups: NavGroup[] = [
             {label: 'Overview', to: '/account'},
             {label: 'Orders', to: '/account/orders', counter: 'orders'},
             {label: 'Keys & activation', to: '/account/keys', counter: 'keys'},
-            {label: 'Saved items', to: '/account/saved', counter: 'saved'}
+            {label: 'Saved items', to: '/account/saved', counter: 'saved'},
+            {label: 'Rewards', to: '/account/rewards'}
         ]
     },
     {

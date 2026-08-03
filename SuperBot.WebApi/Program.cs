@@ -166,6 +166,14 @@ builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
 builder.Services.AddScoped<IPromoCodeRepository, PromoCodeMongoDbRepository>();
 builder.Services.AddScoped<IPromoCodeUsageRepository, PromoCodeUsageMongoDbRepository>();
+// Лояльность (кэшбэк): кошельки, леджер, сервис начисления/списания/реверса.
+builder.Services.AddScoped<ICashbackAccountRepository, CashbackAccountMongoDbRepository>();
+builder.Services.AddScoped<ICashbackTransactionRepository, CashbackTransactionMongoDbRepository>();
+// Настройки программы (тиры/ставки/лимиты списания) — из секции Cashback, нормализуются один раз.
+builder.Services.AddSingleton(
+    (builder.Configuration.GetSection("Cashback").Get<SuperBot.Core.Entities.CashbackOptions>()
+        ?? new SuperBot.Core.Entities.CashbackOptions()).Normalized());
+builder.Services.AddScoped<ICashbackService, CashbackService>();
 builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddScoped<SupportRoleEvaluator>();
