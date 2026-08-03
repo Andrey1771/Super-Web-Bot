@@ -18,21 +18,6 @@
   animation: shimmer 1.6s infinite;
 }
 
-.main-page .skeleton-card {
-  pointer-events: none;
-}
-
-.main-page .skeleton-line {
-  display: inline-block;
-  height: 12px;
-  border-radius: 999px;
-  width: 60%;
-}
-
-.main-page .skeleton-line-short {
-  width: 35%;
-}
-
 .main-page .h-5 {
   height: 20px;
 }
@@ -60,7 +45,8 @@
   position: relative;
   /* Clear the fixed multi-tier header (height published as --app-header-height), plus breathing room. */
   padding: calc(var(--app-header-height, 150px) + 40px) 0 96px;
-  background: radial-gradient(circle at 78% 10%, color-mix(in srgb, var(--color-primary) 25%, transparent), transparent 55%), linear-gradient(135deg, #0c0f1a 0%, #11182b 60%, #0c0f1a 100%);
+  /* Тёмно-фиолетовая сцена (по макету витрины) вместо прежнего сине-чёрного градиента. */
+  background: radial-gradient(circle at 78% 10%, color-mix(in srgb, var(--color-primary) 25%, transparent), transparent 55%), linear-gradient(135deg, #120c22 0%, #1b1233 60%, #120c22 100%);
   color: #f3f4fb;
   overflow: hidden;
 }
@@ -102,243 +88,303 @@
   z-index: 1;
 }
 
-.main-page .hero-grid {
+/* «Сцена» — общая подложка витрины: чуть светлее фона hero, со скруглением, тонкой
+   рамкой и мягким фиолетовым свечением в верхнем левом углу. Собирает карусель,
+   промо и категории в один планшет, не споря с их собственными поверхностями. */
+.main-page .hero-stage {
+  position: relative;
+  padding: var(--space-24);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(520px 320px at 12% 0%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 70%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 55%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+/* Верхний ряд витрины: арт карусели стелется под ВЕСЬ ряд и растворяется вправо,
+   столбик из двух промо лежит поверх этой зоны — единая композиция, как на макете. */
+.main-page .hero-storefront {
+  position: relative;
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: var(--space-48);
-  align-items: center;
+  /* Единственный источник ширины промо-колонки: ~1/2.9 ряда (сетка 1.9fr/1fr).
+     Через var её же используют стрелка и отступ контента карусели. */
+  --hs-side-col: calc((100% - var(--space-20)) / 2.9);
+  grid-template-columns: minmax(0, 1fr) var(--hs-side-col);
+  gap: var(--space-20);
+  align-items: stretch;
+  min-height: clamp(340px, 27vw, 430px);
 }
 
-.main-page .hero-copy .eyebrow {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  color: #cdb5ff;
-  letter-spacing: 0.2em;
-  font-weight: 700;
-  font-size: 13px;
-  margin-bottom: var(--space-16);
+/* Правая колонка: две промо-карточки одинаковой высоты, поверх арта карусели.
+   Вертикальный отступ отрывает их от кромок карусели — карточки «плавают» на арте,
+   а не растягиваются на всю его высоту. */
+.main-page .hs-side {
+  position: relative;
+  z-index: 2;
+  grid-column: 2;
+  display: grid;
+  grid-auto-rows: 1fr;
+  gap: var(--space-20);
+  min-width: 0;
+  padding-block: var(--space-24);
+  /* Пустоты вокруг карточек — это всё ещё арт карусели: пропускаем наведение/клики
+     сквозь колонку к зоне перелистывания (сами карточки возвращают события себе). */
+  pointer-events: none;
 }
 
-.main-page .hero h1 {
-  font-size: clamp(44px, 4vw, 64px);
-  line-height: 1.05;
-  margin-bottom: var(--space-16);
-  color: #f8f9ff;
+.main-page .hs-side .hs-promo {
+  pointer-events: auto;
 }
 
-.main-page .hero-subtext {
-  max-width: 640px;
-  color: color-mix(in srgb, #ffffff 78%, transparent);
-  margin-bottom: var(--space-24);
-  font-size: 17px;
+/* Нижний ряд — карточки-категории (переход в каталог с фильтром по платформе). */
+.main-page .hero-categories {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-20);
+  margin-top: var(--space-20);
 }
 
-.main-page .hero-perks {
+/* Боковой промо-баннер: иконка слева от текста (как на макете), крупная кодовая иллюстрация
+   справа + свечение в цвете карточки (--accent). Фон полупрозрачный с блюром — карточка
+   лежит на растворяющемся арте карусели, а не закрывает его глухой плашкой. */
+.main-page .hs-promo {
+  position: relative;
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-  margin-bottom: var(--space-32);
+  align-items: center;
+  gap: var(--space-14);
+  padding: var(--space-16) var(--space-20);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: #f4f5fb;
+  background:
+    radial-gradient(150px 150px at 84% 86%, color-mix(in srgb, var(--accent, var(--color-primary)) 42%, transparent), transparent 70%),
+    radial-gradient(circle at 86% 16%, color-mix(in srgb, var(--accent, var(--color-primary)) 20%, transparent), transparent 60%),
+    rgba(18, 23, 40, 0.82);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
 }
 
-.main-page .hero-perk {
-  display: inline-flex;
+/* Иллюстрация карточки (SVG, нарисовано кодом) — в правом нижнем углу, под текстом. */
+.main-page .hs-promo-art {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  width: clamp(76px, 28%, 116px);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.96;
+}
+
+.main-page .hs-art-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.main-page .hs-promo-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 66%;
+}
+
+.main-page .hs-promo-icon {
+  position: relative;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: flex;
   align-items: center;
-  gap: var(--space-8);
-  padding: 10px 14px;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent, var(--color-primary)) 24%, transparent);
+  color: color-mix(in srgb, var(--accent, var(--color-primary)) 55%, #ffffff);
+  font-size: 16px;
+}
+
+.main-page .hs-promo-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #b79cff;
+}
+
+.main-page .hs-promo-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+/* Код первой покупки — чип с пунктирной рамкой: читается как «промокод», без пояснений. */
+.main-page .hs-promo-code {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border: 1px dashed color-mix(in srgb, var(--accent, var(--color-primary)) 55%, #ffffff);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #f4f0ff;
+}
+
+/* Карточка-категория в нижнем ряду: иконка + название, иллюстрация справа, свечение в цвете платформы (--accent). */
+.main-page .hs-category {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  min-height: 92px;
+  padding: var(--space-16) var(--space-24);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, #ffffff 4%, var(--color-hero-surface));
-  color: #e3e7f2;
+  text-decoration: none;
+  color: #eef0f8;
+  background:
+    radial-gradient(150px 100px at 80% 120%, color-mix(in srgb, var(--accent, var(--color-primary)) 30%, transparent), transparent 70%),
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--accent, var(--color-primary)) 14%, transparent), transparent 62%),
+    color-mix(in srgb, #ffffff 4%, var(--color-hero-surface));
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
 }
 
-.main-page .hero-perk svg {
-  color: #b79cff;
-}
-
-.main-page .hero-actions {
+.main-page .hs-category-icon {
+  position: relative;
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  flex: none;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-}
-
-.main-page .hero-actions .btn {
-  height: 50px;
-  padding-inline: var(--space-24);
-  font-size: 15px;
-}
-
-.main-page .hero-actions .btn-outline {
-  background: transparent;
-  color: #f3f4fb;
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.main-page .hero-actions .btn-outline:hover {
-  border-color: var(--color-primary);
-}
-
-.main-page .hero-showcase {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-14);
   align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent, var(--color-primary)) 18%, transparent);
+  color: color-mix(in srgb, var(--accent, var(--color-primary)) 55%, #ffffff);
+  font-size: 22px;
 }
 
-.main-page .hero-card {
+.main-page .hs-category-title {
   position: relative;
-  border-radius: var(--radius-lg);
+  z-index: 2;
+  font-weight: 700;
+  font-size: 17px;
+  /* Текст не заползает под непрозрачную часть фото-арта справа. */
+  max-width: 52%;
+}
+
+/* Фото-арт девайса (PNG из public/images/platforms) — заливает правую часть карточки
+   целиком, без отступов. Обёртка держит зону, маску растворения и обрезку; сам img
+   кадрируется и приближается per-вариант ниже — так зум не растягивает маску. */
+.main-page .hs-category-photo-wrap {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 46%;
   overflow: hidden;
-  background: #0f1423;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: var(--shadow-lg);
+  z-index: 1;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
 }
 
-.main-page .hero-card-link {
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 0.61, 0.36, 1), border-color 0.35s ease;
+.main-page .hs-category-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.main-page .hero-card-link:hover {
-  transform: translateY(0);
-  border-color: rgba(186, 156, 255, 0.3);
-  box-shadow: 0 14px 38px rgba(9, 12, 23, 0.22);
+/* Кроп по вариантам (подбирается под конкретные вырезки, см. README в папке картинок):
+   клавиатура — сильное приближение на клавиши + лёгкий наклон, чтобы не лежала параллельно
+   карточке; геймпад — у правого края, нижняя часть уходит за кромку; коллаж софта — как есть. */
+.main-page .is-pc .hs-category-photo {
+  /* Плюсовой угол усиливает естественный наклон съёмки (левый край выше),
+     минусовой — выравнивал бы клавиатуру «в горизонт». */
+  transform: scale(2.6) rotate(14deg);
 }
 
-.main-page .hero-card-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
-  outline-offset: 3px;
+/* Зона арта геймпада чуть шире карточки — пад слегка вылезает за правую кромку. */
+.main-page .hs-category-photo-wrap.is-console {
+  right: -12px;
 }
 
-.main-page .hero-card-large {
-  aspect-ratio: 4 / 5;
-  max-height: 520px;
+.main-page .is-console .hs-category-photo {
+  object-position: right center;
+  transform: scale(1.35) translateY(12%);
 }
 
-.main-page .hero-carousel-module {
-  display: grid;
-  gap: 0;
+/* Векторная иллюстрация категории (фолбэк, пока нет фото) — у правого края. */
+.main-page .hs-category-art {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 78px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.88;
 }
 
-.main-page .hero-carousel-stage {
-  position: relative;
-  will-change: transform, opacity;
-  aspect-ratio: 11 / 10;
-  min-height: 360px;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+/* Карусель-биллборд (см. HeroBillboardCarousel) — фоновый слой всего ряда витрины. */
+.main-page .hs-billboard {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-width: 0;
 }
 
-.main-page .hero-carousel-layer {
-  will-change: transform, opacity;
-}
-
-.main-page .hero-carousel-stage-is-animating .hero-carousel-layer-enter.hero-carousel-layer-next {
-  animation: heroSlideEnterNext 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
-}
-
-.main-page .hero-carousel-stage-is-animating .hero-carousel-layer-enter.hero-carousel-layer-prev {
-  animation: heroSlideEnterPrev 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
-}
-
-.main-page .hero-carousel-stage-is-animating .hero-carousel-layer-leave.hero-carousel-layer-next {
-  animation: heroSlideLeaveNext 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
-}
-
-.main-page .hero-carousel-stage-is-animating .hero-carousel-layer-leave.hero-carousel-layer-prev {
-  animation: heroSlideLeavePrev 520ms cubic-bezier(0.25, 0.55, 0.3, 1) both;
-}
-
-@keyframes heroSlideEnterNext {
-  from {
-    opacity: 0.74;
-    transform: translateX(6px) scale(0.996);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes heroSlideEnterPrev {
-  from {
-    opacity: 0.74;
-    transform: translateX(-6px) scale(0.996);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes heroSlideLeaveNext {
-  from {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-
-  to {
-    opacity: 0.36;
-    transform: translateX(-4px) scale(1.002);
-  }
-}
-
-@keyframes heroSlideLeavePrev {
-  from {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-
-  to {
-    opacity: 0.36;
-    transform: translateX(4px) scale(1.002);
-  }
-}
-
-.main-page .hero-carousel {
+.main-page .hero-billboard {
   position: relative;
   width: 100%;
-  aspect-ratio: 11 / 10;
-  min-height: 360px;
-  max-height: 500px;
+  min-width: 0;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  /* Растворение вправо — на контейнере, а не на слайдах: маска стоит в «окне» карусели,
+     и въезжающая при перелистывании обложка растворяется в той же зоне, а не приезжает
+     целиком поверх неё. Контент (бейдж, текст, точки) живёт в левой сплошной части маски. */
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 48%, rgba(0, 0, 0, 0.35) 75%, transparent 98%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 48%, rgba(0, 0, 0, 0.35) 75%, transparent 98%);
 }
 
-.main-page .hero-carousel.hero-carousel-layer {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-}
-
-.main-page .hero-carousel-link {
-  display: block;
+/* Лента слайдов: стоят в ряд, шаг карусели — сдвиг ленты на ширину слайда. */
+.main-page .hb-track {
+  display: flex;
   height: 100%;
-  border-radius: inherit;
+  transition: transform 700ms cubic-bezier(0.62, 0.02, 0.2, 1);
+  will-change: transform;
+}
+
+.main-page .hb-slide {
+  position: relative;
+  flex: 0 0 100%;
+  min-width: 0;
+  display: block;
+  color: inherit;
+  text-decoration: none;
   overflow: hidden;
 }
 
-.main-page .hero-carousel-link-passive {
-  pointer-events: none;
+.main-page .hb-slide:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
+  outline-offset: -3px;
 }
 
-.main-page .hero-carousel-track {
+.main-page .hb-media {
   position: absolute;
   inset: 0;
 }
 
-.main-page .hero-media {
-  position: absolute;
-  inset: 0;
-  background: #0f1423;
-}
-
-.main-page .hero-media img {
+.main-page .hb-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -346,127 +392,227 @@
   transition: transform 0.35s ease;
 }
 
-.main-page .hero-carousel:hover .hero-media img {
-  transform: scale(1.01);
+.main-page .hb-slide:hover .hb-media img {
+  transform: scale(1.03);
+}
+
+/* Затемнение слева и снизу: текст читается на любой обложке, правая часть арта остаётся открытой. */
+.main-page .hb-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(8, 7, 16, 0.78) 0%, rgba(8, 7, 16, 0.38) 42%, rgba(8, 7, 16, 0) 70%),
+    linear-gradient(180deg, rgba(8, 7, 16, 0) 45%, rgba(8, 7, 16, 0.55) 100%);
+}
+
+.main-page .hb-content {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-24) var(--space-28);
+  /* Текст не заезжает в зону растворения и под промо-колонку. */
+  padding-right: calc(var(--hs-side-col, 34%) + var(--space-28));
+}
+
+/* Нижний блок слайда: название, цена, CTA. */
+.main-page .hb-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+  max-width: min(78%, 560px);
+  /* Точки-навигация лежат у нижней кромки — приподнимаем контент над ними. */
+  padding-bottom: var(--space-12);
+}
+
+.main-page .hb-title {
+  font-size: clamp(26px, 3vw, 40px);
+  font-weight: 800;
+  line-height: 1.1;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: 2;
+}
+
+.main-page .hb-price-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  white-space: nowrap;
+}
+
+.main-page .hb-price-old {
+  font-weight: 600;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: line-through;
+}
+
+.main-page .hb-price {
+  font-weight: 700;
+  font-size: 20px;
+  color: #ffffff;
+}
+
+/* CTA в духе макета — контурная кнопка. Вся карточка и так ссылка, кнопка лишь усиливает призыв. */
+.main-page .hb-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 12px 22px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: rgba(10, 10, 22, 0.25);
+  transition: background-color 0.25s ease;
+}
+
+.main-page .hb-cta svg {
+  transition: transform 0.25s ease;
+}
+
+.main-page .hb-slide:hover .hb-cta {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.main-page .hb-slide:hover .hb-cta svg {
+  transform: translateX(4px);
+}
+
+/* Зоны перелистывания: невидимы, пока не наведёшься — тогда край мягко затемняется
+   фиолетовым градиентом (оттенок из палитры), без стрелок; клик листает.
+   z-index: 1 — выше ленты слайдов (у неё свой stacking context от will-change),
+   но НИЖЕ промо-колонки (z: 2): правый градиент ложится под карточки, а не на них. */
+.main-page .hb-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.main-page .hb-edge:hover,
+.main-page .hb-edge:focus-visible {
+  opacity: 1;
+}
+
+.main-page .hb-edge-prev {
+  left: 0;
+  width: 110px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 32%, rgb(8 5 18 / 0.7)), transparent);
+}
+
+.main-page .hb-edge-prev:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
+  outline-offset: -3px;
+}
+
+/* Правая зона тянется до самого края ряда (под растворение и промо), затемнение
+   сгущается к краю и гаснет к 72% ширины — мягко, без резкой границы. Кликается
+   только внутренняя полоса у кромки видимого арта (.hb-edge-hit): pointer-events
+   у кнопки выключены, иначе она перекрыла бы ссылки промо-карточек. */
+.main-page .hb-edge-next {
+  right: 0;
+  width: calc(var(--hs-side-col, 34%) + var(--space-20) + 170px);
+  pointer-events: none;
+  /* Стопы в px от левого края зоны: плотное затемнение начинается прямо на видимом
+     арте (первые ~170px зоны) и держится до края ряда. Если сгущать его только у
+     правого края, оно попадает на растворённую часть арта и его попросту не видно. */
+  background: linear-gradient(90deg, transparent 0, color-mix(in srgb, var(--color-primary) 30%, rgb(8 5 18 / 0.55)) 170px);
+}
+
+/* Кликабельна вся зона (включая растворение за промо): карточки лежат выше и
+   перехватывают свои клики, а пустоты между ними достаются перелистыванию. */
+.main-page .hb-edge-next .hb-edge-hit {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.main-page .hb-edge-next:focus-visible .hb-edge-hit {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
+  outline-offset: -3px;
+}
+
+/* Точки-навигация — выровнены по контенту слайда, а не по центру ряда. */
+.main-page .hb-dots {
+  position: absolute;
+  left: var(--space-28);
+  bottom: 14px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+}
+
+.main-page .hb-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.main-page .hb-dot.is-active {
+  width: 22px;
+  background: #fff;
+}
+
+.main-page .hb-dot:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
+  outline-offset: 2px;
+}
+
+/* Скидка — та же «пилюля», что у карточек каталога; живёт в строке цены
+   (углы заняты жанром и зоной растворения). */
+.main-page .hb-deal {
+  align-self: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.main-page .hb-skeleton {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  border-radius: var(--radius-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-page .hb-track {
+    transition-duration: 1ms;
+  }
 }
 
 .main-page .media-placeholder {
   width: 100%;
   height: 100%;
   display: block;
-}
-
-.main-page .hero-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(8, 10, 16, 0.82) 65%);
-  color: #f7f8ff;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-12);
-}
-
-.main-page .hero-overlay-large {
-  padding: 22px 22px 20px;
-  min-height: 108px;
-}
-
-.main-page .hero-title {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  text-overflow: ellipsis;
-}
-
-.main-page .hero-title-large {
-  font-weight: 700;
-  font-size: 24px;
-  line-height: 1.25;
-  -webkit-line-clamp: 2;
-}
-
-.main-page .hero-price {
-  font-weight: 700;
-  color: #d6cbff;
-  white-space: nowrap;
-  font-size: 18px;
-}
-
-.main-page .hero-carousel-hotspot {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: clamp(54px, 14%, 96px);
-  border: none;
-  background: transparent;
-  color: #f5f6ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.42s cubic-bezier(0.25, 0.55, 0.3, 1), background-color 0.42s ease;
-  z-index: 2;
-}
-
-.main-page .hero-carousel-hotspot span {
-  font-size: 24px;
-  font-weight: 700;
-  opacity: 0;
-  transform: translateY(-4px) scale(0.96);
-  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  transition: opacity 0.42s cubic-bezier(0.25, 0.55, 0.3, 1), transform 0.42s cubic-bezier(0.25, 0.55, 0.3, 1);
-}
-
-.main-page .hero-carousel-hotspot::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.42s cubic-bezier(0.25, 0.55, 0.3, 1);
-  pointer-events: none;
-}
-
-.main-page .hero-carousel-hotspot-prev {
-  left: 0;
-  background: linear-gradient(90deg, rgba(12, 16, 34, 0.4) 0%, rgba(12, 16, 34, 0) 100%);
-}
-
-.main-page .hero-carousel-hotspot-prev::after {
-  background: linear-gradient(90deg, rgba(120, 80, 255, 0.2) 0%, rgba(120, 80, 255, 0) 74%);
-}
-
-.main-page .hero-carousel-hotspot-next {
-  right: 0;
-  background: linear-gradient(270deg, rgba(12, 16, 34, 0.4) 0%, rgba(12, 16, 34, 0) 100%);
-}
-
-.main-page .hero-carousel-hotspot-next::after {
-  background: linear-gradient(270deg, rgba(120, 80, 255, 0.2) 0%, rgba(120, 80, 255, 0) 74%);
-}
-
-.main-page .hero-carousel-hotspot:hover,
-.main-page .hero-carousel-hotspot:focus-visible {
-  opacity: 0.32;
-}
-
-.main-page .hero-carousel-hotspot:hover span,
-.main-page .hero-carousel-hotspot:focus-visible span {
-  opacity: 1;
-  transform: translateY(-4px) scale(1);
-}
-
-.main-page .hero-carousel-hotspot:hover::after,
-.main-page .hero-carousel-hotspot:focus-visible::after {
-  opacity: 1;
-}
-
-.main-page .hero-carousel-hotspot:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 80%, #fff);
-  outline-offset: -2px;
 }
 
 /* Featured billboard */
@@ -1203,16 +1349,53 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .main-page .hero-stage {
+    padding: var(--space-16);
+  }
+
+  /* Витрина складывается: карусель наверх, промо парой под ней.
+     Композиция «арт под всем рядом» тут не работает — карусель снова обычная карточка. */
+  .main-page .hero-storefront {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    gap: var(--space-20);
+  }
+
+  .main-page .hs-billboard {
+    position: static;
+  }
+
+  /* Без боковой колонки нет высоты, которую повторять — задаём пропорцию сами.
+     Растворение тут не нужно: карусель — обычная карточка. */
+  .main-page .hero-billboard {
+    aspect-ratio: 16 / 9;
+    background: #0f1423;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: var(--shadow-lg);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .main-page .hb-content {
+    padding-right: var(--space-28);
+  }
+
+  /* Карусель тут обычная карточка без растворения — правая зона обычной ширины. */
+  .main-page .hb-edge-next {
+    width: 88px;
+  }
+
+  .main-page .hs-side {
+    grid-column: auto;
+    grid-auto-rows: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Карточки тут под каруселью, а не на её арте — отрывать от кромок нечего. */
+    padding-block: 0;
+  }
+}
+
 @media (max-width: 1200px) {
-  .main-page .hero-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-32);
-  }
-
-  .main-page .hero-showcase {
-    grid-template-columns: 1fr;
-  }
-
   .main-page .explore-grid {
     grid-template-columns: 1fr;
   }
@@ -1229,14 +1412,6 @@
 @media (max-width: 992px) {
   .main-page .hero {
     padding: 100px 0 72px;
-  }
-
-  .main-page .hero-showcase {
-    grid-template-columns: 1fr;
-  }
-
-  .main-page .hero-carousel {
-    max-height: 420px;
   }
 
   .main-page .hero-perks {
@@ -1304,30 +1479,16 @@
 }
 
 @media (max-width: 768px) {
-  .main-page .hero h1 {
-    font-size: clamp(34px, 7vw, 44px);
+  .main-page .hero-categories {
+    grid-template-columns: 1fr;
   }
 
-  /* На узком экране min-height + aspect-ratio раздували карточку по ширине (360*11/10=396px)
-     и она вылезала за экран. Убираем min/max-height — высоту диктует aspect-ratio от 100% ширины. */
-  .main-page .hero-carousel-stage,
-  .main-page .hero-carousel {
-    width: 100%;
-    min-height: 0;
-    max-height: none;
+  .main-page .hs-side {
+    grid-template-columns: 1fr;
   }
 
-  .main-page .hero-perk {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .main-page .hero-actions {
-    flex-direction: column;
-  }
-
-  .main-page .hero-actions .btn {
-    width: 100%;
+  .main-page .hb-content {
+    padding: var(--space-16) var(--space-20);
   }
 
   .main-page .genre-grid {
