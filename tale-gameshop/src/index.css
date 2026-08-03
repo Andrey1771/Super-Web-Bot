@@ -111,6 +111,27 @@ small {
   padding-right: var(--container-padding);
 }
 
+/* Витринные поверхности шире обычного контейнера: главная (правилом ниже) и каталог
+   (модификатор .container-wide на самом контейнере). Один токен — одна система. */
+.container.container-wide,
+.main-page .container {
+  max-width: var(--container-wide-max-width);
+}
+
+/* Каноничная утилита скрытого текста (SEO/скринридеры). Дубли в blog-page.css и
+   testimonials-carousel.css — исторические, новый код использует эту. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .section {
   padding: var(--space-64) 0;
 }

@@ -1,6 +1,5 @@
 import React, {
     useEffect,
-    useRef,
     useMemo,
     useState
 } from "react";
@@ -15,13 +14,20 @@ import {
     faCheckCircle,
     faChessKnight,
     faChevronDown,
+    faCoins,
     faEnvelope,
     faFeather,
+    faGamepad,
+    faGift,
     faHatWizard,
     faLeaf,
     faPuzzlePiece,
+    faScrewdriverWrench,
     faUsers
 } from "@fortawesome/free-solid-svg-icons";
+import {
+    faWindows
+} from "@fortawesome/free-brands-svg-icons";
 import container from "../../inversify.config";
 import type {
     IApiClient
@@ -39,13 +45,12 @@ import {
 import {
     IUrlService
 } from "../../iterfaces/i-url-service";
-import SafeGameImage from "../common/SafeGameImage";
+import HeroBillboardCarousel, { hasActiveGameDiscount } from "./HeroBillboardCarousel";
 import TestimonialsCarousel from "../testimonials/TestimonialsCarousel";
 import FeaturedStorefrontSection from "../featured-storefront/FeaturedStorefrontSection";
 import type {
     BlogListItem
 } from "../../types/blog";
-import { slugify } from "../../utils/slugify";
 import { subscribeNewsletter } from "../../api/newsletterApi";
 import {
     rememberNewsletterSubscription,
@@ -119,6 +124,159 @@ const steps = [
     { label: "Get your key / download", helper: "Instant email delivery and quick access." }
 ];
 
+// Верх главной — витрина-сетка: крупная карусель игр слева, справа столбик из двух
+// промо-карточек. Контент промо — плейсхолдеры, заменяются здесь без правки разметки.
+const heroPromos = {
+    // TODO: проценты/суммы — плейсхолдеры до продуктового решения. Ссылки ведут на будущие
+    // страницы фич (первая покупка → каталог, кэшбэк → /rewards), перевесим при их появлении.
+    // Минимум слов (ориентир — витрины конкурентов): только заголовок и чип кода,
+    // без поясняющих предложений и CTA-строк — карточка кликабельна целиком.
+    welcome: {
+        eyebrow: "Welcome offer",
+        title: "10% off your first order",
+        code: "WELCOME10",
+        to: "/games",
+        icon: faGift,
+        accent: "#8b5cf6",
+        art: "welcome"
+    },
+    cashback: {
+        eyebrow: "Rewards",
+        title: "Cashback on every order",
+        code: null,
+        to: "/rewards",
+        icon: faCoins,
+        accent: "#34d17e",
+        art: "cashback"
+    }
+};
+
+// Ряд категорий под витриной — ведут в каталог с готовым фильтром (game-list-page умеет
+// ?platforms= через запятую и ?filterCategory=). Значения должны совпадать с тем, как они
+// заведены у игр в каталоге. photo — PNG-вырезка «настоящего» девайса из
+// public/images/platforms (см. README там); пока файла нет, карточка откатывается на векторный art.
+// «Software» как категории в каталоге пока нет — ссылка оживёт сама, когда категорию заведут,
+// до тех пор каталог показывает дизайн-заглушку пустого фильтра.
+const heroCategoryCards = [
+    {
+        title: "PC Games",
+        icon: faWindows,
+        to: "/games?platforms=PC",
+        accent: "#8b5cf6",
+        art: "pc",
+        photo: "/images/platforms/keyboard.png"
+    },
+    {
+        title: "Console Games",
+        icon: faGamepad,
+        to: "/games?platforms=PlayStation,Xbox",
+        accent: "#3b82f6",
+        art: "console",
+        photo: "/images/platforms/gamepad.png"
+    },
+    {
+        title: "Software",
+        icon: faScrewdriverWrench,
+        to: "/games?filterCategory=Software",
+        accent: "#60a5fa",
+        art: "software",
+        photo: "/images/platforms/software.png"
+    }
+];
+
+type HeroPromo = typeof heroPromos[keyof typeof heroPromos];
+type HeroCategory = typeof heroCategoryCards[number];
+
+// Кодовые иллюстрации карточек витрины (никаких фото — только вектор в наших цветах).
+// Возвращают плоский SVG под конкретный вариант; заполняют пустые карточки и держат фирменный стиль.
+const heroArt: Record<string, React.ReactNode> = {
+    welcome: (
+        <svg className="hs-art-svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+            <rect x="30" y="60" width="70" height="48" rx="5" fill="#6d45d9" />
+            <rect x="24" y="47" width="82" height="17" rx="5" fill="#8b5cf6" />
+            <rect x="58" y="47" width="14" height="61" fill="#a985ff" />
+            <ellipse cx="50" cy="43" rx="10" ry="7" fill="#a985ff" />
+            <ellipse cx="80" cy="43" rx="10" ry="7" fill="#a985ff" />
+            <circle cx="65" cy="45" r="5" fill="#c4a9ff" />
+            <circle cx="18" cy="34" r="7" fill="#8b5cf6" />
+        </svg>
+    ),
+    cashback: (
+        <svg className="hs-art-svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+            <ellipse cx="64" cy="98" rx="40" ry="14" fill="#1c8f57" />
+            <ellipse cx="64" cy="87" rx="40" ry="14" fill="#2bb56e" />
+            <ellipse cx="64" cy="76" rx="40" ry="14" fill="#1c8f57" />
+            <ellipse cx="64" cy="65" rx="40" ry="14" fill="#2bb56e" />
+            <ellipse cx="64" cy="54" rx="40" ry="14" fill="#34d17e" />
+            <text x="64" y="60" textAnchor="middle" fontSize="17" fontWeight="700" fill="#0c3a24">$</text>
+            <circle cx="18" cy="38" r="10" fill="#2bb56e" />
+            <circle cx="104" cy="30" r="7" fill="#34d17e" />
+        </svg>
+    ),
+    pc: (
+        <svg className="hs-art-svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+            <rect x="28" y="38" width="27" height="27" rx="3" fill="#8b5cf6" />
+            <rect x="62" y="33" width="27" height="27" rx="3" fill="#a985ff" />
+            <rect x="28" y="72" width="27" height="27" rx="3" fill="#7c4de0" />
+            <rect x="62" y="67" width="27" height="27" rx="3" fill="#9a72ff" />
+        </svg>
+    ),
+    console: (
+        <svg className="hs-art-svg" viewBox="0 0 150 110" fill="none" aria-hidden="true">
+            <path d="M40 36h70c15 0 26 11 29 28l5 27c2 12-13 21-21 10l-15-19H42l-15 19c-8 11-23 2-21-10l5-27c3-17 14-28 29-28z" fill="#22407e" stroke="#3a63b8" strokeWidth="2" />
+            <rect x="48" y="60" width="14" height="4.5" rx="2.25" fill="#6ea0ff" />
+            <rect x="52.75" y="55.25" width="4.5" height="14" rx="2.25" fill="#6ea0ff" />
+            <circle cx="104" cy="46" r="4.5" fill="#9ec2ff" />
+            <circle cx="118" cy="58" r="4.5" fill="#9ec2ff" />
+            <circle cx="104" cy="70" r="4.5" fill="#9ec2ff" />
+            <circle cx="90" cy="58" r="4.5" fill="#9ec2ff" />
+        </svg>
+    ),
+    software: (
+        <svg className="hs-art-svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+            <rect x="20" y="30" width="56" height="44" rx="6" fill="#334667" />
+            <rect x="20" y="30" width="56" height="12" rx="6" fill="#4a5f85" />
+            <circle cx="28" cy="36" r="2.5" fill="#9db6e4" />
+            <circle cx="36" cy="36" r="2.5" fill="#9db6e4" />
+            <rect x="48" y="52" width="52" height="44" rx="6" fill="#60a5fa" opacity="0.92" />
+            <rect x="48" y="52" width="52" height="12" rx="6" fill="#93c5fd" />
+            <circle cx="56" cy="58" r="2.5" fill="#1e3a8a" />
+            <circle cx="64" cy="58" r="2.5" fill="#1e3a8a" />
+            <path d="M64 78l-6 5 6 5M84 78l6 5-6 5" stroke="#0f2a5e" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </svg>
+    )
+};
+
+const artFor = (variant?: string): React.ReactNode => (variant ? heroArt[variant] ?? null : null);
+
+// Карточка платформы: фото-вырезка девайса (клавиатура/геймпад), а не рисованная пиктограмма.
+// Отдельный компонент ради состояния фолбэка: PNG ещё не положили (404) → векторный art,
+// карточка не пустеет.
+function HeroCategoryCard({ category }: { category: HeroCategory }) {
+    const [photoFailed, setPhotoFailed] = useState(false);
+    return (
+        <Link to={category.to} className="hs-category lift" style={{ ["--accent" as string]: category.accent } as React.CSSProperties}>
+            <span className="hs-category-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={category.icon} />
+            </span>
+            <span className="hs-category-title">{category.title}</span>
+            {photoFailed ? (
+                <div className="hs-category-art" aria-hidden="true">{artFor(category.art)}</div>
+            ) : (
+                <span className={`hs-category-photo-wrap is-${category.art}`} aria-hidden="true">
+                    <img
+                        className="hs-category-photo"
+                        src={category.photo}
+                        alt=""
+                        loading="lazy"
+                        onError={() => setPhotoFailed(true)}
+                    />
+                </span>
+            )}
+        </Link>
+    );
+}
+
 const testimonials = [
     { quote: "Instant delivery and great picks. Every purchase has been smooth and fast.", name: "Alex P.", role: "Verified buyer", badge: "Verified purchase" },
     { quote: "Love the curated lists—found hidden gems I never would have tried.", name: "Maria K.", role: "Longtime customer", badge: "Verified purchase" },
@@ -140,18 +298,12 @@ export default function TaleGameshopMainPage() {
     const [blogPosts, setBlogPosts] = useState < BlogListItem[] > ([]);
     const [blogLoading, setBlogLoading] = useState(true);
     const [openFaqIndex, setOpenFaqIndex] = useState(0);
-    const [heroIndex, setHeroIndex] = useState(0);
-    const [heroDirection, setHeroDirection] = useState<"next" | "prev">("next");
-    const [isHeroAnimating, setIsHeroAnimating] = useState(false);
-    const [activeHero, setActiveHero] = useState<Game | null>(null);
-    const [previousHero, setPreviousHero] = useState<Game | null>(null);
     const [activeMoodId, setActiveMoodId] = useState(moods[0].id);
     const [newsletterEmail, setNewsletterEmail] = useState("");
     const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
     // "pending" — гостю ушло письмо-подтверждение; "confirmed" — владелец аккаунта, подписан сразу.
     const [newsletterResult, setNewsletterResult] = useState<"pending" | "confirmed">("pending");
     const knownSubscription = useKnownNewsletterSubscription();
-    const activeHeroRef = useRef<Game | null>(null);
     const urlService = container.get < IUrlService > (IDENTIFIERS.IUrlService);
     useEffect(() => {
         fetchGames();
@@ -195,88 +347,16 @@ export default function TaleGameshopMainPage() {
         });
     }, [games]);
 
-    useEffect(() => {
-        if (heroGames.length === 0) {
-            setHeroIndex(0);
-            return;
-        }
-
-        setHeroIndex((prev) => (prev >= heroGames.length ? 0 : prev));
-    }, [heroGames.length]);
-
-    useEffect(() => {
-        if (heroGames.length <= 1) {
-            return;
-        }
-
-        const intervalId = window.setInterval(() => {
-            setHeroDirection("next");
-            setHeroIndex((prev) => (prev + 1) % heroGames.length);
-        }, 6500);
-
-        return () => window.clearInterval(intervalId);
-    }, [heroGames.length]);
-
-    const heroPrimary = heroGames[heroIndex] ?? null;
-
-    useEffect(() => {
-        if (!heroPrimary) {
-            setActiveHero(null);
-            setPreviousHero(null);
-            setIsHeroAnimating(false);
-            activeHeroRef.current = null;
-            return;
-        }
-
-        const prevHero = activeHeroRef.current;
-        if (prevHero && prevHero.id !== heroPrimary.id) {
-            setPreviousHero(prevHero);
-        } else {
-            setPreviousHero(null);
-        }
-
-        setActiveHero(heroPrimary);
-        activeHeroRef.current = heroPrimary;
-        setIsHeroAnimating(true);
-        const timeoutId = window.setTimeout(() => {
-            setIsHeroAnimating(false);
-            setPreviousHero(null);
-        }, 500);
-        return () => window.clearTimeout(timeoutId);
-    }, [heroPrimary]);
-
-    const getGameHref = (game: Game) => {
-        const fallbackSlug = slugify(game.slug?.trim() || game.title || game.name || "game");
-        return `/games/${fallbackSlug}`;
-    };
-
-    const getHeroPrice = (game: Game) => {
-        if (Number.isFinite(game.finalPrice ?? NaN)) {
-            return Number(game.finalPrice);
-        }
-        return Number.isFinite(game.price) ? Number(game.price) : 0;
-    };
-
-    const formatHeroPrice = (price: number) => `$${price.toFixed(2)}`;
-
-    const goToNextHero = () => {
-        if (heroGames.length <= 1) {
-            return;
-        }
-        setHeroDirection("next");
-        setHeroIndex((prev) => (prev + 1) % heroGames.length);
-    };
-
-    const goToPrevHero = () => {
-        if (heroGames.length <= 1) {
-            return;
-        }
-        setHeroDirection("prev");
-        setHeroIndex((prev) => (prev - 1 + heroGames.length) % heroGames.length);
-    };
-
     const isLoading = games.length === 0;
-    const perks = ["Secure payments", "Instant delivery", "Curated picks"];
+    // Карусель — курируемая витрина, а не весь каталог: держим набор небольшим (иначе точки-навигация
+    // растягиваются в простыню). Скидочные игры поднимаем вперёд — витрина сама подсвечивает выгоду;
+    // внутри групп сохраняется порядок «свежие первыми». Memo обязателен — иначе новый массив
+    // на каждый рендер сбрасывал бы карусель на первый слайд.
+    const heroShowcase = useMemo(() => {
+        const discounted = heroGames.filter(hasActiveGameDiscount);
+        const rest = heroGames.filter((game) => !hasActiveGameDiscount(game));
+        return [...discounted, ...rest].slice(0, 7);
+    }, [heroGames]);
     const featuredBlogPosts = useMemo(() => blogPosts.slice(0, 3), [blogPosts]);
     const activeMood = moods.find((mood) => mood.id === activeMoodId) ?? moods[0];
 
@@ -302,129 +382,49 @@ export default function TaleGameshopMainPage() {
         }
     };
 
-    const renderHeroSlide = (game: Game, interactive = true, layerClassName = "") => {
-        const href = getGameHref(game);
-        const price = formatHeroPrice(getHeroPrice(game));
-        const rootClassName = ["hero-carousel hero-card", layerClassName].filter(Boolean).join(" ");
-        const linkClassName = [
-            "hero-carousel-link",
-            interactive ? "hero-card-link" : "hero-carousel-link-passive"
-        ].join(" ");
-
-        return (
-            <div className={rootClassName}>
-                <Link
-                    to={href}
-                    className={linkClassName}
-                    aria-label={`Open game ${game.title}`}
-                    tabIndex={interactive ? 0 : -1}
-                    aria-hidden={!interactive}
-                >
-                    <div className="hero-carousel-track">
-                        <div className="hero-media">
-                        <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
-                        </div>
-                    </div>
-                    <div className="hero-overlay hero-overlay-large">
-                        <span className="hero-title hero-title-large">{game.title}</span>
-                        <span className="hero-price">{price}</span>
-                    </div>
-                </Link>
-
-                {interactive && heroGames.length > 1 && (
-                    <>
-                        <button
-                            type="button"
-                            className="hero-carousel-hotspot hero-carousel-hotspot-prev"
-                            onClick={goToPrevHero}
-                            aria-label="Previous game"
-                        >
-                            <span aria-hidden="true">‹</span>
-                        </button>
-                        <button
-                            type="button"
-                            className="hero-carousel-hotspot hero-carousel-hotspot-next"
-                            onClick={goToNextHero}
-                            aria-label="Next game"
-                        >
-                            <span aria-hidden="true">›</span>
-                        </button>
-                    </>
-                )}
-            </div>
-        );
-    };
-
-const renderHeroSkeleton = () => (
-        <div className="hero-carousel hero-card skeleton-card" aria-hidden="true">
-            <div className="hero-carousel-track">
-                <div className="hero-media">
-                    <div className="media-placeholder skeleton" />
-                </div>
-            </div>
-            <div className="hero-overlay hero-overlay-large">
-                <span className="skeleton-line skeleton" />
-                <span className="skeleton-line skeleton-line-short skeleton" />
-            </div>
-        </div>
+    const renderHeroPromo = (promo: HeroPromo) => (
+        <Link to={promo.to} className="hs-promo lift" style={{ ["--accent" as string]: promo.accent } as React.CSSProperties}>
+            <div className="hs-promo-art" aria-hidden="true">{artFor(promo.art)}</div>
+            <span className="hs-promo-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={promo.icon} />
+            </span>
+            <span className="hs-promo-body">
+                <span className="hs-promo-eyebrow">{promo.eyebrow}</span>
+                <span className="hs-promo-title">{promo.title}</span>
+                {promo.code && <span className="hs-promo-code">{promo.code}</span>}
+            </span>
+        </Link>
     );
 
     return (
         <div className="main-page">
             <section className="hero">
+                {/* Витрина сознательно без видимого заголовка (представление несёт шапка),
+                    но h1 странице нужен — SEO и скринридеры получают его невидимо. */}
+                <h1 className="visually-hidden">Tale Shop — curated PC game keys with instant delivery</h1>
                 <i className="fx-texture" aria-hidden="true"></i>
                 <i className="fx-orb hero-orb-1" aria-hidden="true"></i>
                 <i className="fx-orb is-magenta hero-orb-2" aria-hidden="true"></i>
-                <div className="container hero-grid hero-container">
-                    <div className="hero-copy">
-                        <div className="eyebrow">Tale Shop · PC games</div>
-                        <h1>Discover your next favourite game</h1>
-                        <p className="hero-subtext">
-                            A curated marketplace built for PC gamers. Browse premium picks, pay securely, and jump in instantly.
-                        </p>
-                        <div className="hero-perks">
-                            {perks.map((perk) => (
-                                <div className="hero-perk" key={perk}>
-                                    <FontAwesomeIcon icon={faCheckCircle} />
-                                    <span>{perk}</span>
-                                </div>
+                <div className="container hero-container">
+                    {/* «Сцена» — общая подложка витрины: объединяет карусель, промо и категории
+                        в один приподнятый планшет (референс difmark, палитра наша). */}
+                    <div className="hero-stage">
+                        <div className="hero-storefront">
+                            <div className="hs-billboard">
+                                <HeroBillboardCarousel games={heroShowcase} isLoading={isLoading} apiBaseUrl={urlService.apiBaseUrl} />
+                            </div>
+
+                            <div className="hs-side">
+                                {renderHeroPromo(heroPromos.welcome)}
+                                {renderHeroPromo(heroPromos.cashback)}
+                            </div>
+                        </div>
+
+                        <div className="hero-categories">
+                            {heroCategoryCards.map((category) => (
+                                <HeroCategoryCard key={category.title} category={category} />
                             ))}
                         </div>
-                        <div className="hero-actions">
-                            <Link to="/games" className="btn btn-primary">Shop the catalog</Link>
-                            <Link to="/about" className="btn btn-outline">Learn more</Link>
-                        </div>
-                    </div>
-
-                    <div className="hero-showcase">
-                        {isLoading ? (
-                            renderHeroSkeleton()
-                        ) : heroPrimary ? (
-                            <div className="hero-carousel-module">
-                                <div
-                                    className={[
-                                        "hero-carousel-stage",
-                                        isHeroAnimating ? "hero-carousel-stage-is-animating" : "",
-                                        isHeroAnimating ? `hero-carousel-stage-${heroDirection}` : "",
-                                    ]
-                                        .filter(Boolean)
-                                        .join(" ")}
-                                >
-                                    {previousHero && isHeroAnimating && renderHeroSlide(
-                                        previousHero,
-                                        false,
-                                        `hero-carousel-layer hero-carousel-layer-leave hero-carousel-layer-${heroDirection}`
-                                    )}
-                                    {renderHeroSlide(
-                                        activeHero ?? heroPrimary,
-                                        true,
-                                        `hero-carousel-layer hero-carousel-layer-enter hero-carousel-layer-${heroDirection}`
-                                    )}
-                                </div>
-                            </div>
-                        ) : (
-                            renderHeroSkeleton()
-                        )}
                     </div>
                 </div>
             </section>

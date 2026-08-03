@@ -138,6 +138,14 @@ export default (env, { mode }) => {
                 { from: 'public/silent-check-sso.html', to: '' },
                 { from: 'public/manifest.json', to: '' },
                 { from: appConfigFile, to: 'app-config.js' },
+                // Статические картинки (фото-арты карточек платформ и т.п.): кладутся в
+                // public/images и доступны по /images/... README не тащим в сборку.
+                {
+                    from: 'public/images',
+                    to: 'images',
+                    noErrorOnMissing: true,
+                    globOptions: { ignore: ['**/*.md'] },
+                },
             ],
         }),
         ...((mode === 'production')
