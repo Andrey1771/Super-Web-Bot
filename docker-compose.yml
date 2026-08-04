@@ -1,13 +1,6 @@
 services:
-  frontend:
-    build:
-      context: ./tale-gameshop
-      dockerfile: Dockerfile
-    restart: always
-    volumes:
-      - ./tale-gameshop/dist:/frontend_build
-    networks:
-      - frontend_network
+  # Сервис "frontend" удалён как рудимент: фронт собирается внутри образа nginx
+  # (Dockerfile.nginx, multi-stage), отдельный контейнер собирал его второй раз впустую.
 
   backend:
     build:
@@ -252,7 +245,6 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - frontend
       - backend
       - bot
     #  - keycloak
@@ -261,8 +253,6 @@ services:
 
 networks:
   app_network:
-    driver: bridge
-  frontend_network:
     driver: bridge
   #keycloak-network:
   #  driver: bridge

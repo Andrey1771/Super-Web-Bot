@@ -4,7 +4,9 @@
 
 .rewards-page-hero {
     position: relative;
-    padding: calc(var(--app-header-height, 150px) + 40px) 0 64px;
+    /* Шапку уже компенсирует распорка приложения (main-page-down-header-padding) —
+       здесь только собственный вертикальный ритм секции, без высоты шапки. */
+    padding: 52px 0 56px;
     /* Тот же тёмно-фиолетовый, что у hero главной — страницы должны быть одной семьёй. */
     background: radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%),
         linear-gradient(135deg, #120c22 0%, #1b1233 60%, #120c22 100%);
@@ -12,10 +14,43 @@
     overflow: hidden;
 }
 
+/* Текстовый блок прижат к левому краю сетки; ширину ограничиваем сами.
+   ВАЖНО: не вешать max-width на .container — у него margin:auto, блок уплывёт в центр. */
 .rewards-page-hero-inner {
     position: relative;
     z-index: 1;
     max-width: 720px;
+}
+
+/* Правая половина hero не должна пустовать: стопка монет уравновешивает текст. */
+.rewards-hero-art {
+    position: absolute;
+    top: 50%;
+    right: clamp(24px, 9vw, 160px);
+    transform: translateY(-46%);
+    width: clamp(220px, 22vw, 300px);
+    pointer-events: none;
+}
+
+.rewards-hero-art::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(52, 209, 126, 0.22), transparent);
+}
+
+.rewards-hero-art svg {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+@media (max-width: 1024px) {
+    .rewards-hero-art {
+        display: none;
+    }
 }
 
 .rewards-page-eyebrow {
@@ -146,8 +181,8 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-16);
-    padding: var(--space-20) var(--space-24);
+    gap: var(--space-20);
+    padding: var(--space-24) var(--space-32);
     border-radius: var(--radius-lg);
     background: var(--color-surface, #fff);
     border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
@@ -157,8 +192,8 @@
 /* Кольцо прогресса — conic-gradient, внутренний круг вырезает середину. */
 .rewards-about-ring {
     position: relative;
-    width: 72px;
-    height: 72px;
+    width: 84px;
+    height: 84px;
     flex: none;
     border-radius: 50%;
     background: conic-gradient(#34d17e 43%, #e8ebf3 0);
@@ -226,6 +261,12 @@
 /* Таблица-сравнение тиров (по образцу конкурентов: метрики строками, тиры столбцами,
    «твой» столбец подсвечен зелёным). Скроллится по горизонтали на узких экранах. */
 .rewards-tier-table-wrap {
+    /* Не во всю ширину контейнера: на 1320px строки из трёх цифр «плывут» по воздуху. */
+    max-width: 920px;
+    margin-inline: auto;
+    /* Воздух между таблицей и краями карточки: контент и разделители не упираются
+       в скругления, линии сепараторов заканчиваются с отступом от рамки. */
+    padding: var(--space-8) var(--space-24) var(--space-14);
     border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
     border-radius: var(--radius-lg);
     background: var(--color-surface, #fff);
@@ -420,15 +461,17 @@
     animation: rewards-drift 16s ease-in-out infinite alternate;
 }
 
+/* Вертикаль — в px от верха секции, НЕ в %: высота секции меняется при открытии
+   вопросов аккордеона, и процентные якоря заставляли фон прыгать. */
 .rewards-float.is-f1 {
-    top: 12%;
+    top: 70px;
     left: 4%;
     font-size: 64px;
     transform: rotate(-12deg);
 }
 
 .rewards-float.is-f2 {
-    top: 58%;
+    top: 330px;
     left: 12%;
     font-size: 44px;
     animation-duration: 20s;
@@ -436,7 +479,7 @@
 }
 
 .rewards-float.is-f3 {
-    top: 20%;
+    top: 120px;
     right: 7%;
     font-size: 54px;
     transform: rotate(10deg);
@@ -445,7 +488,7 @@
 }
 
 .rewards-float.is-f4 {
-    top: 68%;
+    top: 390px;
     right: 13%;
     font-size: 38px;
     animation-duration: 14s;

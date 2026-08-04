@@ -97,7 +97,22 @@ const RewardsPage: React.FC = () => {
     return (
         <div className="rewards-page">
             <section className="rewards-page-hero">
-                <div className="container rewards-page-hero-inner">
+                {/* Правая половина hero: стопка монет (вектор в стиле промо-карточки главной). */}
+                <div className="rewards-hero-art" aria-hidden="true">
+                    <svg viewBox="0 0 240 210" fill="none">
+                        <ellipse cx="118" cy="176" rx="78" ry="27" fill="#1c8f57" />
+                        <ellipse cx="118" cy="155" rx="78" ry="27" fill="#2bb56e" />
+                        <ellipse cx="118" cy="134" rx="78" ry="27" fill="#1c8f57" />
+                        <ellipse cx="118" cy="113" rx="78" ry="27" fill="#2bb56e" />
+                        <ellipse cx="118" cy="92" rx="78" ry="27" fill="#34d17e" />
+                        <text x="118" y="103" textAnchor="middle" fontSize="32" fontWeight="700" fill="#0c3a24">$</text>
+                        <circle cx="36" cy="52" r="16" fill="#2bb56e" />
+                        <circle cx="206" cy="34" r="11" fill="#34d17e" />
+                        <circle cx="226" cy="86" r="7" fill="#2bb56e" />
+                    </svg>
+                </div>
+                <div className="container">
+                    <div className="rewards-page-hero-inner">
                     <div className="rewards-page-eyebrow">Tale Shop · Rewards</div>
                     <h1>Get up to {topRate || 3}% back on every order</h1>
                     <p className="rewards-page-lead">Buy games, earn points, spend them like money.</p>
@@ -128,6 +143,7 @@ const RewardsPage: React.FC = () => {
                             <Link to="/games" className="btn btn-outline">Browse games</Link>
                         </div>
                     )}
+                    </div>
                 </div>
             </section>
 
