@@ -7,7 +7,13 @@ export interface Game {
     finalPrice?: number;
     discountPercent?: number;
     discountActive?: boolean;
+    /** Конец активной скидки (UTC, ISO) — для обратного отсчёта на витрине. */
+    discountEndsAt?: string;
+    /** Статус релиза считает сервер — клиент даты не сравнивает (часы/таймзоны врут). */
+    isComingSoon?: boolean;
     genres?: string[];
+    /** Ярлыки платформ («PC», «PlayStation», «Xbox», …) — сервер отдаёт минимум ["PC"]. */
+    platforms?: string[];
     showInFeaturedStorefront?: boolean;
     featuredStorefrontPriority?: number;
     title: string;

@@ -11,17 +11,18 @@ import {
 import {
     faArrowRight,
     faBolt,
+    faCalendarDays,
     faCheckCircle,
     faChessKnight,
-    faChevronDown,
+    faClock,
     faCoins,
     faEnvelope,
-    faFeather,
+    faEye,
     faGamepad,
     faGift,
     faHatWizard,
     faLeaf,
-    faPuzzlePiece,
+    faNewspaper,
     faScrewdriverWrench,
     faUsers
 } from "@fortawesome/free-solid-svg-icons";
@@ -46,8 +47,11 @@ import {
     IUrlService
 } from "../../iterfaces/i-url-service";
 import HeroBillboardCarousel, { hasActiveGameDiscount } from "./HeroBillboardCarousel";
-import TestimonialsCarousel from "../testimonials/TestimonialsCarousel";
-import FeaturedStorefrontSection from "../featured-storefront/FeaturedStorefrontSection";
+import GameShelf, { gameHref } from "./GameShelf";
+import DealsCountdown from "./DealsCountdown";
+import DealOfWeekBanner from "./DealOfWeekBanner";
+import SafeGameImage from "../common/SafeGameImage";
+import { formatReleaseDate } from "../../utils/format-release-date";
 import type {
     BlogListItem
 } from "../../types/blog";
@@ -102,27 +106,31 @@ const moods = [
     }
 ];
 
-const genres = [
-    { title: "Action", description: "High-impact firefights and fast pacing.", icon: faBolt },
-    { title: "Puzzle", description: "Brain-teasing challenges to unwind.", icon: faPuzzlePiece },
-    { title: "RPG", description: "Deep stories with character growth.", icon: faHatWizard },
-    { title: "Strategy", description: "Command, conquer, and outthink.", icon: faChessKnight },
-    { title: "Indie", description: "Curated gems from small teams.", icon: faLeaf },
-    { title: "Co-op", description: "Jump in together and beat the odds.", icon: faUsers }
-];
-
+// Trust-полоса: весь бывший маркетинг (Why/How it works/отзывы) сжат в одну строку из
+// четырёх коротких обещаний — плотность difmark, подача наша. Живёт между полками
+// «New» и «Deals» (как перебивки у конкурентов). Акценты — из палитры hero-промо.
 const reasons = [
-    { title: "Secure payments", description: "Protected checkout with trusted partners.", icon: faCheckCircle },
-    { title: "Instant delivery", description: "Receive your key moments after purchase.", icon: faBolt },
-    { title: "Curated picks", description: "Hand-selected games for every mood.", icon: faHatWizard },
-    { title: "Friendly support", description: "Here to help with installs and access.", icon: faUsers }
+    { title: "Secure payments", description: "Protected checkout with trusted partners.", icon: faCheckCircle, accent: "#8b5cf6" },
+    { title: "Instant delivery", description: "Your key moments after purchase.", icon: faBolt, accent: "#3b82f6" },
+    { title: "Cashback on every order", description: "Tale Coins back on each purchase.", icon: faCoins, accent: "#34d17e" },
+    { title: "Friendly support", description: "Here to help with installs and access.", icon: faUsers, accent: "#f0a02f" }
 ];
 
-const steps = [
-    { label: "Choose a game", helper: "Browse curated genres and picks." },
-    { label: "Pay securely", helper: "Checkout with verified payments." },
-    { label: "Get your key / download", helper: "Instant email delivery and quick access." }
-];
+// Порог полки «Under $N» — и фильтр набора, и текст заголовка, и ссылка в каталог.
+const budgetShelfMaxPrice = 10;
+
+// Вместимость товарной полки: 4 колонки × 2 ряда (референс — витрины конкурентов).
+const shelfCapacity = 8;
+
+// Слайдов в hero-карусели: больше — и точки-навигация растягиваются в простыню.
+const heroCarouselCapacity = 7;
+
+// Новостей в полосе «Latest news»: ровно один ряд из четырёх карточек.
+const newsStripCapacity = 4;
+
+// Игр в подсказке mood-блока: три — достаточно, чтобы задать настроение, и не превращает
+// фирменный блок в ещё одну полку.
+const moodPreviewCapacity = 3;
 
 // Верх главной — витрина-сетка: крупная карусель игр слева, справа столбик из двух
 // промо-карточек. Контент промо — плейсхолдеры, заменяются здесь без правки разметки.
@@ -277,27 +285,39 @@ function HeroCategoryCard({ category }: { category: HeroCategory }) {
     );
 }
 
-const testimonials = [
-    { quote: "Instant delivery and great picks. Every purchase has been smooth and fast.", name: "Alex P.", role: "Verified buyer", badge: "Verified purchase" },
-    { quote: "Love the curated lists—found hidden gems I never would have tried.", name: "Maria K.", role: "Longtime customer", badge: "Verified purchase" },
-    { quote: "Checkout feels secure and the keys arrive immediately. Support is friendly too.", name: "Samir L.", role: "Verified buyer", badge: "Verified purchase" }
-];
-
-const faqs = [
-    { question: "How do I receive my key?", answer: "Keys are delivered instantly to your email and visible in your account after checkout." },
-    { question: "What payment methods do you support?", answer: "We support major cards and verified processors for secure payments." },
-    { question: "Can I request a refund?", answer: "Yes. If you experience an issue with your key or access, reach out and we will help." },
-    { question: "Is the delivery instant?", answer: "Delivery is typically instant. Most purchases reach your inbox within seconds." },
-    { question: "Do you support EN/RU?", answer: "We provide support in EN and RU, and the catalog lists language availability per game." }
-];
-
 const blogFallbackCover = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=800&q=80";
+
+// «16 hours ago» для новостных карточек; en-US, как весь витринный текст.
+const timeAgo = (iso?: string): string | null => {
+    if (!iso) {
+        return null;
+    }
+    const diffMs = Date.now() - Date.parse(iso);
+    if (Number.isNaN(diffMs) || diffMs < 0) {
+        return null;
+    }
+    const hours = Math.floor(diffMs / 3_600_000);
+    if (hours < 1) {
+        return "Just now";
+    }
+    if (hours < 24) {
+        return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+    }
+    const days = Math.floor(hours / 24);
+    if (days < 30) {
+        return `${days} ${days === 1 ? "day" : "days"} ago`;
+    }
+    const months = Math.floor(days / 30);
+    return `${months} ${months === 1 ? "month" : "months"} ago`;
+};
 
 export default function TaleGameshopMainPage() {
     const [games, setGames] = useState < Game[] > ([]);
     const [blogPosts, setBlogPosts] = useState < BlogListItem[] > ([]);
-    const [blogLoading, setBlogLoading] = useState(true);
-    const [openFaqIndex, setOpenFaqIndex] = useState(0);
+    // Серверный агрегат продаж за неделю: [{ gameId, sold }] — порядок полки «Popular this week».
+    const [weeklyChart, setWeeklyChart] = useState<{ gameId: string; sold: number }[]>([]);
+    // Конфиг баннера «Deal of the week» (герой + кулисы), настраивается в админке скидок.
+    const [dealSpotlight, setDealSpotlight] = useState<{ heroGameId?: string | null; wingGameIds?: string[] } | null>(null);
     const [activeMoodId, setActiveMoodId] = useState(moods[0].id);
     const [newsletterEmail, setNewsletterEmail] = useState("");
     const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -310,6 +330,12 @@ export default function TaleGameshopMainPage() {
     }, []);
     useEffect(() => {
         fetchBlogPosts();
+    }, []);
+    useEffect(() => {
+        fetchWeeklyChart();
+    }, []);
+    useEffect(() => {
+        fetchDealOfWeek();
     }, []);
     const fetchGames = async () => {
         try {
@@ -327,15 +353,32 @@ export default function TaleGameshopMainPage() {
 
     const fetchBlogPosts = async () => {
         try {
-            setBlogLoading(true);
             const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
             const response = await blogService.getPosts({ page: 1, pageSize: 5 });
             setBlogPosts(response.items);
         } catch (err) {
             console.error(err);
             setBlogPosts([]);
-        } finally {
-            setBlogLoading(false);
+        }
+    };
+
+    const fetchWeeklyChart = async () => {
+        try {
+            const apiClient = container.get < IApiClient > (IDENTIFIERS.IApiClient);
+            const response = await apiClient.api.get("/api/game/weekly-chart");
+            setWeeklyChart(Array.isArray(response.data) ? response.data : []);
+        } catch (err) {
+            // Нет данных — полка чарта просто не рисуется.
+        }
+    };
+
+    const fetchDealOfWeek = async () => {
+        try {
+            const apiClient = container.get < IApiClient > (IDENTIFIERS.IApiClient);
+            const response = await apiClient.api.get("/api/deal-of-week");
+            setDealSpotlight(response.data ?? null);
+        } catch (err) {
+            // Нет конфига — баннер просто не рисуется.
         }
     };
 
@@ -355,14 +398,107 @@ export default function TaleGameshopMainPage() {
     const heroShowcase = useMemo(() => {
         const discounted = heroGames.filter(hasActiveGameDiscount);
         const rest = heroGames.filter((game) => !hasActiveGameDiscount(game));
-        return [...discounted, ...rest].slice(0, 7);
+        return [...discounted, ...rest].slice(0, heroCarouselCapacity);
     }, [heroGames]);
-    const featuredBlogPosts = useMemo(() => blogPosts.slice(0, 3), [blogPosts]);
-    const activeMood = moods.find((mood) => mood.id === activeMoodId) ?? moods[0];
+    const latestNews = useMemo(() => blogPosts.slice(0, newsStripCapacity), [blogPosts]);
 
-    const toggleFaq = (index: number) => {
-        setOpenFaqIndex((prev) => (prev === index ? -1 : index));
-    };
+    // Полка «Upcoming»: статус считает сервер (isComingSoon), сортировка — ближайший релиз первым;
+    // непарсибельные даты в конец. Показываем немного — это анонс, а не каталог.
+    const upcomingGames = useMemo(() => {
+        const releaseTime = (game: Game) => {
+            const parsed = Date.parse(game.releaseDate || "");
+            return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+        };
+        return games
+            .filter((game) => game.isComingSoon)
+            .sort((a, b) => releaseTime(a) - releaseTime(b))
+            .slice(0, shelfCapacity);
+    }, [games]);
+
+    // Остальные полки собираются из вышедших игр; heroGames уже отсортированы «свежие первыми».
+    const releasedGames = useMemo(() => heroGames.filter((game) => !game.isComingSoon), [heroGames]);
+    const newGames = useMemo(() => releasedGames.slice(0, shelfCapacity), [releasedGames]);
+    const dealGames = useMemo(
+        () =>
+            releasedGames
+                .filter((game) => game.discountActive && (game.discountPercent ?? 0) > 0)
+                .sort((a, b) => Number(b.discountPercent ?? 0) - Number(a.discountPercent ?? 0))
+                .slice(0, shelfCapacity),
+        [releasedGames]
+    );
+    // Таймер полки дилов тикает к САМОМУ БЛИЖНЕМУ концу скидки из показанных.
+    const nearestDealEnd = useMemo(() => {
+        const endTimes = dealGames
+            .map((game) => Date.parse(game.discountEndsAt ?? ""))
+            .filter((time) => !Number.isNaN(time));
+        return endTimes.length > 0 ? new Date(Math.min(...endTimes)).toISOString() : undefined;
+    }, [dealGames]);
+    const budgetGames = useMemo(
+        () =>
+            releasedGames
+                .filter((game) => {
+                    const price = Number(game.finalPrice ?? game.price);
+                    return price > 0 && price <= budgetShelfMaxPrice;
+                })
+                .sort((a, b) => Number(a.finalPrice ?? a.price) - Number(b.finalPrice ?? b.price))
+                .slice(0, shelfCapacity),
+        [releasedGames]
+    );
+    // Баннер «Deal of the week»: героя и кулисы выбирает сервер (админ-конфиг с фолбэками),
+    // витрина только джойнит id с каталогом — цены/обложки не дублируются.
+    const dealOfWeek = useMemo(() => {
+        const heroId = dealSpotlight?.heroGameId?.toLowerCase();
+        if (!heroId) {
+            return null;
+        }
+        return releasedGames.find((game) => game.id?.toLowerCase() === heroId && game.discountActive) ?? null;
+    }, [dealSpotlight, releasedGames]);
+    const dealWings = useMemo(() => {
+        const gameById = new Map(
+            games.filter((game) => game.id).map((game) => [game.id!.toLowerCase(), game] as const)
+        );
+        return (dealSpotlight?.wingGameIds ?? [])
+            .map((id) => gameById.get(id.toLowerCase()))
+            .filter((game): game is Game => Boolean(game));
+    }, [dealSpotlight, games]);
+    // «Editor's picks»: ручное курирование из админки — прежний Featured-биллборд, ужатый
+    // до обычной полки. Данные те же: флаг showInFeaturedStorefront + приоритет.
+    const editorsPicks = useMemo(
+        () =>
+            releasedGames
+                .filter((game) => game.showInFeaturedStorefront)
+                .sort(
+                    (a, b) =>
+                        (a.featuredStorefrontPriority ?? Number.MAX_SAFE_INTEGER) -
+                        (b.featuredStorefrontPriority ?? Number.MAX_SAFE_INTEGER)
+                )
+                .slice(0, shelfCapacity),
+        [releasedGames]
+    );
+    // «Popular this week»: порядок задаёт серверный агрегат продаж, карточки — из каталога.
+    const weeklyGames = useMemo(() => {
+        if (weeklyChart.length === 0) {
+            return [];
+        }
+        const gameById = new Map(
+            releasedGames
+                .filter((game) => game.id)
+                .map((game) => [game.id!.toLowerCase(), game] as const)
+        );
+        return weeklyChart
+            .map((entry) => gameById.get(entry.gameId.toLowerCase()))
+            .filter((game): game is Game => Boolean(game))
+            .slice(0, shelfCapacity);
+    }, [weeklyChart, releasedGames]);
+    const activeMood = moods.find((mood) => mood.id === activeMoodId) ?? moods[0];
+    // Mood-picker 2.0: выбранный вайб сразу показывает живые игры категории, а не только текст.
+    // Совпадение по жанрам мягкое (подстрока) — «RPG» находит «Role-Playing Games (RPGs)».
+    const moodGames = useMemo(() => {
+        const target = activeMood.category.toLowerCase();
+        return releasedGames
+            .filter((game) => (game.genres ?? []).some((genre) => genre.toLowerCase().includes(target)))
+            .slice(0, moodPreviewCapacity);
+    }, [releasedGames, activeMood.category]);
 
     const handleNewsletterSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -429,85 +565,82 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <FeaturedStorefrontSection games={games} isLoading={isLoading} />
+            {/* Товарные полки — ядро главной («магазин = игры»). Каждая — курируемый срез каталога
+                со ссылкой «View all» в каталог с готовым фильтром; пустая полка не рисуется. */}
+            <GameShelf
+                eyebrow="Fresh arrivals"
+                title="New on Tale Shop"
+                subtitle="The latest additions to the shelves."
+                games={newGames}
+                baseUrl={urlService.apiBaseUrl}
+                viewAllTo="/games"
+            />
 
-            {/* Каталог по жанрам + блог. Пустой блог показывает дизайн-заглушку, а не сирую строку. */}
-            <section className="explore-blog-section reveal fx-glow-tr">
+            {/* Перебивка между полками: четыре обещания магазина отдельными карточками. */}
+            <section className="trust-strip-section reveal">
                 <div className="container">
-                    <div className="section-heading">
-                        <div className="heading-eyebrow">Catalog</div>
-                        <h2>Explore our games</h2>
-                        <p className="muted">Genres curated for every kind of player.</p>
-                    </div>
-                    <div className="explore-grid">
-                        <div className="explore-column">
-                            <div className="genre-grid">
-                                {genres.map((genre) => (
-                                    <Link className="genre-card" key={genre.title} to={`/games?filterCategory=${genre.title}`}>
-                                        <div className="genre-icon">
-                                            <FontAwesomeIcon icon={genre.icon} />
-                                        </div>
-                                        <div className="genre-copy">
-                                            <div className="genre-title">{genre.title}</div>
-                                            <div className="genre-description muted">{genre.description}</div>
-                                        </div>
-                                        <span className="genre-arrow" aria-hidden="true">
-                                            <FontAwesomeIcon icon={faArrowRight} />
-                                        </span>
-                                    </Link>
-                                ))}
+                    <div className="trust-strip">
+                        {reasons.map((reason) => (
+                            <div
+                                className="trust-item lift"
+                                key={reason.title}
+                                style={{ ["--accent" as string]: reason.accent } as React.CSSProperties}
+                            >
+                                <span className="trust-item-icon" aria-hidden="true">
+                                    <FontAwesomeIcon icon={reason.icon} />
+                                </span>
+                                <span className="trust-item-copy">
+                                    <strong>{reason.title}</strong>
+                                    <span className="muted">{reason.description}</span>
+                                </span>
                             </div>
-                            <Link className="btn btn-outline full-width" to="/games">
-                                Browse the full catalog
-                            </Link>
-                        </div>
-                        <div className="explore-column">
-                            <div className="column-header">
-                                <h3>From the blog</h3>
-                                <p className="muted">Guides, weekly picks and stories from the team.</p>
-                            </div>
-                            <div className="blog-list">
-                                {blogLoading ? (
-                                    Array.from({ length: 3 }).map((_, index) => (
-                                        <div className="blog-item" key={`blog-skeleton-${index}`}>
-                                            <div className="blog-thumb skeleton" aria-hidden="true" />
-                                            <div className="blog-copy">
-                                                <div className="skeleton h-5" />
-                                                <div className="skeleton h-4 mt-2" />
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : featuredBlogPosts.length === 0 ? (
-                                    <div className="blog-empty">
-                                        <div className="blog-empty-icon" aria-hidden="true">
-                                            <FontAwesomeIcon icon={faFeather} />
-                                        </div>
-                                        <strong>Stories are on the way</strong>
-                                        <p className="muted">Guides, weekly picks and dev stories will land here soon.</p>
-                                    </div>
-                                ) : (
-                                    featuredBlogPosts.map((post) => (
-                                        <Link className="blog-item" key={post.id} to={`/blog/${post.slug}`}>
-                                            <div
-                                                className="blog-thumb"
-                                                aria-hidden="true"
-                                                style={{ backgroundImage: `url(${post.coverUrl || blogFallbackCover})` }}
-                                            />
-                                            <div className="blog-copy">
-                                                <div className="blog-title">{post.title}</div>
-                                                <div className="blog-snippet muted">{post.excerpt}</div>
-                                            </div>
-                                        </Link>
-                                    ))
-                                )}
-                            </div>
-                            <Link className="btn btn-ghost" to="/blog">
-                                Go to blog
-                            </Link>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>
+
+            <GameShelf
+                eyebrow="Deals"
+                title="Best deals right now"
+                subtitle="Prices drop, keys stay instant — while the timer runs."
+                games={dealGames}
+                baseUrl={urlService.apiBaseUrl}
+                viewAllTo="/deals"
+                headerAside={<DealsCountdown endsAt={nearestDealEnd} />}
+            />
+
+            {dealOfWeek && (
+                <DealOfWeekBanner game={dealOfWeek} wings={dealWings} baseUrl={urlService.apiBaseUrl} />
+            )}
+
+            <GameShelf
+                eyebrow="Editor's picks"
+                title="Hand-picked by the team"
+                subtitle="Curated highlights our editors vouch for."
+                games={editorsPicks}
+                baseUrl={urlService.apiBaseUrl}
+                viewAllTo="/games"
+            />
+
+            <GameShelf
+                eyebrow="On the horizon"
+                title="Upcoming games"
+                subtitle="Release dates locked — wishlist now, play on day one."
+                games={upcomingGames}
+                baseUrl={urlService.apiBaseUrl}
+                viewAllTo="/games?comingSoon=1"
+                coverChip={(game) => formatReleaseDate(game.releaseDate) ?? "Coming soon"}
+                emptyState={
+                    // Полка-анонс живёт на странице постоянно: пока будущих релизов нет — заглушка.
+                    <>
+                        <span className="shelf-empty-icon" aria-hidden="true">
+                            <FontAwesomeIcon icon={faCalendarDays} />
+                        </span>
+                        <strong>Announcements on the way</strong>
+                        <p className="muted">Fresh release dates land here the moment they&rsquo;re locked.</p>
+                    </>
+                }
+            />
 
             {/* Фирменный интерактив: подбор игры по настроению вечера. */}
             <section className="mood-section reveal">
@@ -534,65 +667,123 @@ export default function TaleGameshopMainPage() {
                             </div>
                         </div>
                         <div className="mood-result" key={activeMood.id}>
-                            <div className="mood-result-icon" aria-hidden="true">
-                                <FontAwesomeIcon icon={activeMood.icon} />
-                            </div>
-                            <h3>{activeMood.title}</h3>
-                            <p>{activeMood.description}</p>
-                            <Link to={`/games?filterCategory=${activeMood.category}`} className="btn btn-primary mood-cta">
-                                Browse {activeMood.category} games
-                                <FontAwesomeIcon icon={faArrowRight} />
-                            </Link>
+                            {moodGames.length > 0 ? (
+                                // Живые игры выбранного вайба — полка прямо в mood-блоке.
+                                <>
+                                    <h3>{activeMood.title}</h3>
+                                    <div className="mood-games">
+                                        {moodGames.map((game) => (
+                                            <Link className="mood-game" key={game.id ?? game.title} to={gameHref(game)}>
+                                                <span className="mood-game-cover" aria-hidden="true">
+                                                    <SafeGameImage
+                                                        gameTitle={game.title}
+                                                        src={game.imagePath}
+                                                        baseUrl={urlService.apiBaseUrl}
+                                                        loading="lazy"
+                                                    />
+                                                </span>
+                                                <span className="mood-game-title">{game.title}</span>
+                                                <span className="mood-game-price">
+                                                    ${Number(game.finalPrice ?? game.price).toFixed(2)}
+                                                </span>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                    <Link to={`/games?filterCategory=${activeMood.category}`} className="btn btn-primary mood-cta">
+                                        Browse {activeMood.category} games
+                                        <FontAwesomeIcon icon={faArrowRight} />
+                                    </Link>
+                                </>
+                            ) : (
+                                // В категории пока пусто — прежний текстовый вариант с переходом в каталог.
+                                <>
+                                    <div className="mood-result-icon" aria-hidden="true">
+                                        <FontAwesomeIcon icon={activeMood.icon} />
+                                    </div>
+                                    <h3>{activeMood.title}</h3>
+                                    <p>{activeMood.description}</p>
+                                    <Link to={`/games?filterCategory=${activeMood.category}`} className="btn btn-primary mood-cta">
+                                        Browse {activeMood.category} games
+                                        <FontAwesomeIcon icon={faArrowRight} />
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section className="why-section reveal">
+            {/* Недельный чарт продаж — порядок отдаёт сервер (/api/game/weekly-chart). */}
+            <GameShelf
+                eyebrow="Weekly chart"
+                title="Popular this week"
+                subtitle="The most bought games of the last 7 days."
+                games={weeklyGames}
+                baseUrl={urlService.apiBaseUrl}
+                viewAllTo="/games"
+            />
+
+            <GameShelf
+                eyebrow={`Under $${budgetShelfMaxPrice}`}
+                title="Big fun, small price"
+                subtitle={`Every pick on this shelf is $${budgetShelfMaxPrice} or less.`}
+                games={budgetGames}
+                baseUrl={urlService.apiBaseUrl}
+                viewAllTo={`/games?filterMaxPrice=${budgetShelfMaxPrice}`}
+            />
+
+            {/* Latest news (наш блог = раздел «News»): карточки в стиле новостной витрины.
+                Секция видна всегда; пока постов нет — оформленная заглушка. */}
+            <section className="news-strip-section reveal">
                 <div className="container">
-                    <div className="section-heading">
-                        <div className="heading-eyebrow">Why Tale Shop</div>
-                        <h2>Built around a safe purchase</h2>
-                        <p className="muted">Curated games, secure payments, and delivery in moments.</p>
+                    <div className="shelf-head">
+                        <div className="section-heading">
+                            <div className="heading-eyebrow">News</div>
+                            <h2>Latest news</h2>
+                        </div>
+                        <div className="shelf-head-side">
+                            <Link className="shelf-view-all" to="/news">
+                                View all →
+                            </Link>
+                        </div>
                     </div>
-                    <div className="why-grid">
-                        {reasons.map((reason) => (
-                            <div className="why-card lift" key={reason.title}>
-                                <div className="why-icon">
-                                    <FontAwesomeIcon icon={reason.icon} />
-                                </div>
-                                <div className="why-copy">
-                                    <div className="why-title">{reason.title}</div>
-                                    <div className="why-description muted">{reason.description}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    {latestNews.length === 0 ? (
+                        <div className="shelf-empty">
+                            <span className="shelf-empty-icon" aria-hidden="true">
+                                <FontAwesomeIcon icon={faNewspaper} />
+                            </span>
+                            <strong>The newsroom is warming up</strong>
+                            <p className="muted">Game news, guides and weekly picks will land here soon.</p>
+                        </div>
+                    ) : (
+                        <div className="news-grid">
+                            {latestNews.map((post) => (
+                                <Link className="news-card lift" key={post.id} to={`/news/${post.slug}`}>
+                                    <div
+                                        className="news-cover"
+                                        aria-hidden="true"
+                                        style={{ backgroundImage: `url(${post.coverUrl || blogFallbackCover})` }}
+                                    />
+                                    <div className="news-body">
+                                        <span className="news-meta muted">
+                                            <FontAwesomeIcon icon={faClock} />
+                                            {timeAgo(post.publishedAt) ?? "Recently"}
+                                        </span>
+                                        <div className="news-title">{post.title}</div>
+                                        <p className="news-excerpt muted">{post.excerpt}</p>
+                                        {typeof post.viewsCount === "number" && post.viewsCount > 0 && (
+                                            <span className="news-views muted">
+                                                <FontAwesomeIcon icon={faEye} />
+                                                {post.viewsCount}
+                                            </span>
+                                        )}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </section>
-
-            <section className="how-section reveal fx-glow-bl">
-                <div className="container">
-                    <div className="section-heading">
-                        <div className="heading-eyebrow">Getting started</div>
-                        <h2>How it works</h2>
-                        <p className="muted">Three simple steps from browsing to playing.</p>
-                    </div>
-                    <div className="steps-grid">
-                        {steps.map((step, index) => (
-                            <div className="step-card lift" key={step.label}>
-                                <div className="step-marker">{index + 1}</div>
-                                <div className="step-body">
-                                    <div className="step-title">{step.label}</div>
-                                    <div className="step-helper muted">{step.helper}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <TestimonialsCarousel testimonials={testimonials} />
 
             <section className="newsletter-section reveal">
                 <div className="container">
@@ -656,50 +847,6 @@ export default function TaleGameshopMainPage() {
                 </div>
             </section>
 
-            <section className="faq-section reveal">
-                <div className="container">
-                    <div className="section-heading">
-                        <div className="heading-eyebrow">FAQ</div>
-                        <h3>Quick answers</h3>
-                        <p className="muted">Common questions about delivery and payments.</p>
-                    </div>
-                    <div className="faq-list">
-                        {faqs.map((item, index) => (
-                            <div
-                                className={`faq-item ${openFaqIndex === index ? "open" : ""}`}
-                                key={item.question}
-                            >
-                                <button className="faq-trigger" onClick={() => toggleFaq(index)}>
-                                    <span>{item.question}</span>
-                                    <FontAwesomeIcon icon={faChevronDown} />
-                                </button>
-                                {openFaqIndex === index && (
-                                    <div className="faq-answer muted">{item.answer}</div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="store-prefooter reveal">
-                <div className="container">
-                    <div className="store-prefooter-card">
-                        <div className="store-prefooter-copy">
-                            <h3>Find your next game today</h3>
-                            <p className="muted">Step into the full catalog with weekly deals and curated picks.</p>
-                        </div>
-                        <div className="store-prefooter-actions">
-                            <Link to="/games" className="btn btn-primary">
-                                Go to Store
-                            </Link>
-                            <Link to="/blog" className="btn btn-outline">
-                                Read the blog
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
     );
 }

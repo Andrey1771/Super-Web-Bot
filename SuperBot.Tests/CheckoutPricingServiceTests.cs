@@ -212,6 +212,30 @@ namespace SuperBot.Tests
             Assert.False(result.Success);
         }
 
+        [Fact]
+        public async Task Rejects_game_that_is_not_released_yet()
+        {
+            // Невышедшая игра видна на витрине, но прайсинг — общий вход всех оплат — её не пропускает.
+            var upcoming = Game(60m);
+            upcoming.ReleaseDate = DateTime.UtcNow.AddDays(7);
+
+            var result = await Build(new[] { upcoming }).PriceAsync(Cart());
+
+            Assert.False(result.Success);
+            Assert.Contains("isn't released yet", result.Error);
+        }
+
+        [Fact]
+        public async Task Released_game_with_past_release_date_is_purchasable()
+        {
+            var released = Game(60m);
+            released.ReleaseDate = DateTime.UtcNow.AddYears(-1);
+
+            var result = await Build(new[] { released }).PriceAsync(Cart());
+
+            Assert.True(result.Success);
+        }
+
         private sealed class FakeGameRepository : IGameRepository
         {
             private readonly List<Game> _games;

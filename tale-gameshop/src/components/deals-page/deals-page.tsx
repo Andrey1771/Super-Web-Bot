@@ -131,6 +131,8 @@ export default function DealsPage() {
             return [];
         }
         const priced = games
+            // Невышедшие не продаются — в бюджетную подборку не попадают.
+            .filter((game) => !game.isComingSoon)
             .map((game) => ({
                 game,
                 price: Number.isFinite(game.finalPrice ?? game.price)
@@ -144,6 +146,9 @@ export default function DealsPage() {
     }, [deals.length, games]);
 
     const handleAddToCart = (game: Game, price: number) => {
+        if (game.isComingSoon) {
+            return;
+        }
         dispatch({
             type: "ADD_TO_CART",
             payload: {

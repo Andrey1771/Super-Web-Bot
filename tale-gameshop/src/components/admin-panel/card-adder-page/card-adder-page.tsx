@@ -19,6 +19,7 @@ import { useToast } from "../../ui/ToastProvider";
 import MediaPickerModal from "../media-library/MediaPickerModal";
 import type { MediaAsset } from "../../../types/media";
 import { slugify } from "../../../utils/slugify";
+import { getKeyOverview } from "../../../api/adminKeysApi";
 
 type DrawerMode = "edit" | "create" | null;
 
@@ -32,7 +33,12 @@ type GameItem = {
   imagePath?: string;
   coverMediaId?: string;
   releaseDate?: string;
+  isComingSoon?: boolean;
 };
+
+// Релиз наступает сам по дате — админ должен узнать о пустом пуле ДО этого дня, а не в него.
+const NO_KEYS_WARNING =
+  "Release happens automatically when the date arrives — with an empty key pool the game would go on sale without keys.";
 
 const emptyForm: Form = {
   id: "",
@@ -71,6 +77,8 @@ const CardAdderPage: React.FC = () => {
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<MediaAsset | null>(null);
   const [mediaLoading, setMediaLoading] = useState(false);
+  // null = остатки ключей не загрузились; предупреждения в этом случае не показываем, чтобы не врать.
+  const [availableKeysByGameId, setAvailableKeysByGameId] = useState<Record<string, number> | null>(null);
   const { addToast } = useToast();
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
@@ -85,6 +93,25 @@ const CardAdderPage: React.FC = () => {
   React.useEffect(() => {
     fetchItems(page, true);
   }, [page]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const overview = await getKeyOverview();
+        if (!cancelled) {
+          setAvailableKeysByGameId(
+            Object.fromEntries(overview.games.map((row) => [row.gameId, row.available]))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load key stock overview", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
 
   React.useEffect(() => {
@@ -541,6 +568,33 @@ const CardAdderPage: React.FC = () => {
     setPendingRemoveTarget(null);
   };
 
+  // Статус релиза приходит с сервера (isComingSoon в DTO) — клиент даты не сравнивает.
+  // withNote — развёрнутая строка для карточки «Date» в панели деталей.
+  const renderReleaseStatus = (item: GameItem, withNote = false) => {
+    if (!item.isComingSoon) {
+      return null;
+    }
+    const availableKeys = availableKeysByGameId ? availableKeysByGameId[item.id] ?? 0 : null;
+    return (
+      <>
+        <span className="admin-release-pills">
+          <span className="admin-release-pill">Coming soon</span>
+          {availableKeys === 0 && (
+            <span className="admin-release-pill admin-release-pill--warn" title={NO_KEYS_WARNING}>
+              No keys yet
+            </span>
+          )}
+        </span>
+        {withNote && (
+          <p className="admin-release-note">
+            Goes on sale automatically on the release date
+            {availableKeys === 0 ? " — add keys to the pool before it arrives." : "."}
+          </p>
+        )}
+      </>
+    );
+  };
+
   const drawerTitle = drawerMode === "create" ? "Create game" : "Edit game";
 
   return (
@@ -604,7 +658,7 @@ const CardAdderPage: React.FC = () => {
                     <th>Name</th>
                     <th>Price</th>
                     <th>Type</th>
-                    <th>Updated</th>
+                    <th>Release date</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -619,6 +673,7 @@ const CardAdderPage: React.FC = () => {
                           <strong title={item.name || "Unnamed"} className="admin-table__cell-truncate">
                             {item.name || "Unnamed"}
                           </strong>
+                          {renderReleaseStatus(item)}
                           <div className="admin-table__cell-muted admin-table__cell-truncate" title={item.title}>
                             {item.title}
                           </div>
@@ -689,6 +744,7 @@ const CardAdderPage: React.FC = () => {
               <Card>
                 <h3>Date</h3>
                 <p>{selectedGame.releaseDate?.split("T")[0] ?? "—"}</p>
+                {renderReleaseStatus(selectedGame, true)}
               </Card>
 
               <Card>

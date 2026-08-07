@@ -237,6 +237,20 @@
   background: #432fa8;
 }
 
+/* Невышедшая игра в featured-подборке: вместо кнопки покупки — дата релиза. */
+.main-page .premium-storefront .billboard-coming-soon {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  border: 1px dashed #d9d3ff;
+  background: #f6f2ff;
+  color: #5a2dd1;
+  padding: 11px 20px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .main-page .premium-storefront .billboard-rail {
   border: 1px solid #ece8f5;
   border-radius: var(--radius-lg);

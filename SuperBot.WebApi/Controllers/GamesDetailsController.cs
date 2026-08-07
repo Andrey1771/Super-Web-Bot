@@ -63,6 +63,14 @@ public class GamesDetailsController : ControllerBase
         details.RatingAvg = summary.Average;
         details.ReviewsCount = summary.Count;
 
+        // Продаваемость определяет Game.ReleaseDate (единый источник истины, см. GameRelease) —
+        // ReleaseDate внутри GameDetails чисто витринный и на статус не влияет.
+        var linkedGame = string.IsNullOrWhiteSpace(details.GameId)
+            ? null
+            : await _gameRepository.GetByIdAsync(details.GameId);
+        var isComingSoon = linkedGame != null &&
+            SuperBot.Core.Services.GameRelease.IsUpcoming(linkedGame.ReleaseDate, DateTime.UtcNow);
+
         var heroBadges = BuildHeroBadges(details);
         var recommendations = new
         {
@@ -74,6 +82,7 @@ public class GamesDetailsController : ControllerBase
         return Ok(new
         {
             game = details,
+            isComingSoon,
             pricing,
             ratingSummary = new
             {

@@ -70,7 +70,7 @@ export default function PostCard({
     };
 
     const openPost = () => {
-        navigate(`/blog/${post.slug}`);
+        navigate(`/news/${post.slug}`);
     };
 
     const handleCardClick = (event: MouseEvent<HTMLElement>) => {
@@ -127,7 +127,7 @@ export default function PostCard({
                     <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} />
                 </div>
                 <div className="post-card__body post-card__body--mini">
-                    <Link className="post-card__title-link" to={`/blog/${post.slug}`}>
+                    <Link className="post-card__title-link" to={`/news/${post.slug}`}>
                         <TitleTag className={`post-card__title ${titleClamp}`}>{post.title}</TitleTag>
                     </Link>
                     <div className="meta-row">
@@ -215,7 +215,7 @@ export default function PostCard({
                 <div className={`post-card__footer${isFeatured ? " post-card__footer--featured" : ""}`}>
                     {isFeatured ? (
                         <>
-                            <Link className="btn btn-primary" to={`/blog/${post.slug}`}>
+                            <Link className="btn btn-primary" to={`/news/${post.slug}`}>
                                 Read article
                             </Link>
                             {showActions && onTagSelect && (
@@ -230,7 +230,7 @@ export default function PostCard({
                             )}
                         </>
                     ) : (
-                        <Link className="link-primary" to={`/blog/${post.slug}`}>
+                        <Link className="link-primary" to={`/news/${post.slug}`}>
                             Read more
                             <FontAwesomeIcon icon={faArrowRightLong} />
                         </Link>

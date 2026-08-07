@@ -8,6 +8,7 @@ using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Payments;
+using SuperBot.Core.Services;
 using SuperBot.BotApi.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -149,7 +150,8 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         var gameRepository = scope.ServiceProvider.GetRequiredService<IGameRepository>();
 
         var game = string.IsNullOrWhiteSpace(gameId) ? null : await gameRepository.GetByIdAsync(gameId);
-        if (game == null)
+        // Невышедшая игра для покупателя в чате — то же «недоступна», отдельного сообщения не заводим.
+        if (game == null || GameRelease.IsUpcoming(game.ReleaseDate, DateTime.UtcNow))
         {
             await _bot.SendTextMessageAsync(chatId, _translationsService.Translation.StarsGameUnavailable, cancellationToken: cancellationToken);
             return;

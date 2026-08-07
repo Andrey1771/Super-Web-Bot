@@ -161,6 +161,18 @@ namespace SuperBot.Infrastructure.Services
             {
                 var game = gameById[gameId];
 
+                // В заказе должно стоять ТО ЖЕ название, что покупатель видел на витрине,
+                // а витрина (каталог, карточка игры, рекомендации) показывает Title.
+                // Раньше сюда попадал Name — и в чеке оказывалось другое имя товара.
+                var title = !string.IsNullOrWhiteSpace(game.Title) ? game.Title : (game.Name ?? "Game");
+
+                // Невышедшие игры видны на витрине, но не продаются. Прайсинг — единая точка
+                // всех оплат (Stripe, крипто), поэтому запрет живёт именно здесь.
+                if (SuperBot.Core.Services.GameRelease.IsUpcoming(game.ReleaseDate, utcNow))
+                {
+                    return CheckoutPricingResult.Fail($"“{title}” isn't released yet.");
+                }
+
                 discountByGameId.TryGetValue(gameId, out var discount);
                 var discountActive = discount is not null && discount.IsActiveAt(utcNow);
                 var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
@@ -176,10 +188,7 @@ namespace SuperBot.Infrastructure.Services
                 {
                     ProductType = "Game",
                     GameId = gameId,
-                    // В заказе должно стоять ТО ЖЕ название, что покупатель видел на витрине,
-                    // а витрина (каталог, карточка игры, рекомендации) показывает Title.
-                    // Раньше сюда попадал Name — и в чеке оказывалось другое имя товара.
-                    Title = !string.IsNullOrWhiteSpace(game.Title) ? game.Title : (game.Name ?? "Game"),
+                    Title = title,
                     CoverUrl = game.ImagePath,
                     Quantity = quantity,
                     UnitPrice = unitPrice,

@@ -1,4 +1,4 @@
-.main-page {
+﻿.main-page {
   background: var(--color-bg);
 }
 
@@ -662,137 +662,166 @@
 }
 
 /* Explore / blog */
-.main-page .explore-blog-section {
+/* Товарные полки главной (New/Deals/Upcoming/Under $N): единый компонент GameShelf.
+   Карточка целиком — ссылка на страницу игры, покупки на полке нет. */
+.main-page .shelf-section {
   background: var(--color-bg);
-  padding: 76px 0;
+  padding: 56px 0 0;
 }
 
-.main-page .explore-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: var(--space-24);
-  align-items: start;
-}
-
-.main-page .explore-column {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: var(--space-24);
+.main-page .shelf-head {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-24);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-16);
+  flex-wrap: wrap;
 }
 
-.main-page .column-header p {
-  margin-bottom: 0;
+.main-page .shelf-head .section-heading {
+  margin-bottom: var(--space-16);
 }
 
-.main-page .genre-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-12);
-}
-
-.main-page .genre-card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+.main-page .shelf-head-side {
+  display: flex;
   align-items: center;
   gap: var(--space-12);
-  padding: 14px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: color-mix(in srgb, #ffffff 85%, var(--color-bg));
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  margin-bottom: var(--space-16);
 }
 
-.main-page .genre-card:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.main-page .genre-arrow {
-  color: var(--color-muted);
-  font-size: 13px;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease;
-}
-
-.main-page .genre-card:hover .genre-arrow {
-  opacity: 1;
-  transform: translateX(0);
-  color: var(--color-primary);
-}
-
-.main-page .genre-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--color-primary) 12%, #f4f5fb);
-  color: var(--color-primary);
-}
-
-.main-page .genre-title {
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--color-text);
-}
-
-.main-page .genre-description {
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.main-page .genre-link {
+.main-page .shelf-view-all {
   font-weight: 600;
   color: var(--color-primary);
-  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
-.main-page .genre-link:hover {
+.main-page .shelf-view-all:hover {
   text-decoration: underline;
 }
 
-.main-page .full-width {
-  width: 100%;
-  justify-content: center;
+.main-page .shelf-countdown {
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.main-page .blog-list {
+.main-page .shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.main-page .shelf-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
-}
-
-.main-page .blog-item {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: var(--space-12);
-  align-items: center;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  background: color-mix(in srgb, #ffffff 90%, var(--color-bg));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
-.main-page .blog-item:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+.main-page .shelf-cover {
+  position: relative;
+  /* Выше, чем классический 16:9 — карточка читается как «витринная» (референс difmark). */
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
 }
 
-/* Дизайн-заглушка пустого блога — вместо голой строки текста. */
-.main-page .blog-empty {
+.main-page .shelf-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.main-page .shelf-chip {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  border-radius: 999px;
+  background: rgba(20, 16, 40, 0.78);
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.main-page .shelf-discount-badge {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Ценовая полоса поверх низа обложки: градиент-затемнение, платформы слева, цена справа. */
+.main-page .shelf-price-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: 22px 12px 8px;
+  background: linear-gradient(180deg, rgba(20, 16, 40, 0) 0%, rgba(20, 16, 40, 0.72) 100%);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.main-page .shelf-platforms {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.main-page .shelf-price-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+
+.main-page .shelf-price {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.main-page .shelf-price-old {
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: line-through;
+  font-size: 12.5px;
+}
+
+.main-page .shelf-body {
+  padding: var(--space-12) var(--space-16);
+}
+
+.main-page .shelf-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Заглушка постоянной, но пока пустой полки (Upcoming, Latest news):
+   дизайн — как у прежнего пустого блога («Stories are on the way»). */
+.main-page .shelf-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -804,7 +833,7 @@
   background: color-mix(in srgb, var(--color-primary) 3%, #ffffff);
 }
 
-.main-page .blog-empty-icon {
+.main-page .shelf-empty-icon {
   width: 44px;
   height: 44px;
   border-radius: 14px;
@@ -815,34 +844,1041 @@
   font-size: 17px;
 }
 
-.main-page .blog-empty strong {
+.main-page .shelf-empty strong {
   color: var(--color-text);
 }
 
-.main-page .blog-empty p {
+.main-page .shelf-empty p {
   margin: 0;
   font-size: 14px;
-  max-width: 300px;
+  max-width: 340px;
 }
 
-.main-page .blog-thumb {
-  height: 68px;
+@media (max-width: 991px) {
+  .main-page .shelf-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575px) {
+  .main-page .shelf-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* «Deal of the week»: единственная полноширинная (edge-to-edge) полоса страницы.
+   «Расклад недели» — сказочное таро: три карты на тёмном «столе», в центре дил недели,
+   слева «карта удачи» (персональный рандомный промокод), справа закрытый запасной дил. */
+.main-page .deal-week-section {
+  background: var(--color-bg);
+  padding: 56px 0 0;
+}
+
+.main-page .deal-week {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(48px, 6vw, 76px) 0;
+  background: #10142a;
+  color: #ffffff;
+}
+
+.main-page .tarot-band {
+  background: radial-gradient(80% 120% at 50% 110%, #221a4d 0%, #0d1024 60%);
+}
+
+/* Таймер расклада — «убывающие лунные руны»: круглые медальоны, у каждого дуга-кольцо
+   в долю своего цикла (--p). Кольца тают с разной скоростью, секундное бежит по кругу. */
+.main-page .tarot-timer-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.main-page .tarot-timer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(196, 181, 253, 0.7);
+}
+
+.main-page .tarot-timer-label i {
+  font-style: normal;
+  font-size: 9px;
+  color: rgba(196, 181, 253, 0.55);
+}
+
+.main-page .tarot-runes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.main-page .t-rune {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  /* Тёмный «лунный диск» с мягким внутренним свечением. */
+  background:
+    radial-gradient(circle at 50% 30%, rgba(139, 92, 246, 0.22) 0%, transparent 65%),
+    rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Кольцо-дуга: SVG со скруглёнными концами (conic-gradient давал рубленый срез). */
+.main-page .t-rune-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Старт дуги сверху. */
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.main-page .t-rune-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 3;
+}
+
+.main-page .t-rune-arc {
+  fill: none;
+  stroke: #a78bfa;
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 7px rgba(139, 92, 246, 0.75));
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.main-page .t-rune-value {
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  text-shadow: 0 0 18px rgba(139, 92, 246, 0.6);
+}
+
+.main-page .t-rune-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* Секундная руна дышит в такт отсчёту. */
+.main-page .t-rune.is-seconds {
+  animation: t-rune-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes t-rune-pulse {
+  from {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 rgba(139, 92, 246, 0);
+  }
+  to {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 22px rgba(139, 92, 246, 0.45);
+  }
+}
+
+.main-page .t-rune-sep {
+  font-size: 11px;
+  color: rgba(196, 181, 253, 0.45);
+}
+
+.main-page .tarot-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-24);
+}
+
+.main-page .tarot-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* Заголовок расклада: градиентная «магическая» типографика с искрами по бокам. */
+.main-page .tarot-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  margin: 0;
+  font-size: clamp(28px, 3.4vw, 40px);
+  letter-spacing: 0.5px;
+}
+
+.main-page .tarot-title-text {
+  background: linear-gradient(180deg, #ffffff 0%, #d9ceff 55%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  /* Свечение под текстом — сам текст прозрачный, поэтому тень идёт от слоя-подложки. */
+  filter: drop-shadow(0 0 26px rgba(139, 92, 246, 0.45));
+}
+
+.main-page .tarot-title-spark {
+  font-style: normal;
+  font-size: 16px;
+  color: #c4b5fd;
+  text-shadow: 0 0 14px rgba(139, 92, 246, 0.9);
+  animation: t-twinkle 2.6s ease-in-out infinite alternate;
+}
+
+.main-page .tarot-title-spark:last-child {
+  animation-delay: 1.3s;
+}
+
+.main-page .tarot-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: clamp(18px, 3vw, 36px);
+  perspective: 1200px;
+}
+
+/* Карта. ВАЖНО: вращается внутренний слой .t-card-3d, а не сам <button>/<a> —
+   Chrome принудительно «сплющивает» preserve-3d на элементах форм, из-за чего
+   рубашка показывалась зеркально. Внешний элемент отвечает только за вылет из колоды. */
+.main-page .t-card {
+  position: relative;
+  width: 210px;
+  height: 300px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  perspective: 1200px;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+  /* Веер: наклон и просадка — переменными; сама карта только «держит позу» в веере
+     и плавно выдвигается на hover. Анимация вылета живёт на внутреннем .t-deal-layer,
+     иначе её финальный кейфрейм (fill: both) блокировал бы hover-подъём. */
+  --fan-rot: 0deg;
+  --fan-y: 0px;
+  transform: translateY(var(--fan-y)) rotate(var(--fan-rot));
+  transform-origin: 50% 100%;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.25s ease;
+}
+
+/* Боковые карты веера: сильный наклон к центру и глубокое перекрытие — как карты в руке. */
+.main-page .t-fan-left {
+  --fan-rot: -14deg;
+  --fan-y: 34px;
+  margin-right: -60px;
+}
+
+.main-page .t-fan-right {
+  --fan-rot: 14deg;
+  --fan-y: 34px;
+  margin-left: -60px;
+}
+
+/* Слой вылета из колоды: между картой (веер) и 3D-слоем (переворот). */
+.main-page .t-deal-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-style: preserve-3d;
+}
+
+/* У каждой карты своя «магия» (--arc): золото удачи, фиолетовый герой, голубая тайна.
+   Цвет окрашивает искру рубашки, арканную плашку и свечение при выдвижении. */
+.main-page .t-lucky { --arc: #f2c66d; }
+.main-page .t-hero { --arc: #c4b5fd; }
+.main-page .t-peek { --arc: #7fb1ff; }
+
+/* Hover: карта выдвигается из веера вверх и светится своим цветом.
+   Свечение — box-shadow на лице карты, а НЕ filter: drop-shadow на контейнере:
+   drop-shadow пересчитывает весь 3D-слой и зажигается с заметной задержкой. */
+/* Без scale: масштабирование 3D-слоя растягивает растр и мылит текст.
+   Вместо увеличения карта выше поднимается и наполовину выпрямляется —
+   «достали из веера в руку», и текст при этом читается даже чётче. */
+.main-page .t-card.t-dealt:hover,
+.main-page .t-card.t-dealt:focus-visible {
+  transform: translateY(calc(var(--fan-y) - 38px)) rotate(calc(var(--fan-rot) * 0.45));
+  z-index: 6;
+}
+
+.main-page .t-card.t-dealt:hover .t-face,
+.main-page .t-card.t-dealt:focus-visible .t-face {
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.55),
+    0 0 42px color-mix(in srgb, var(--arc, #8b5cf6) 45%, transparent);
+}
+
+/* Соседи выдвинутой карты слегка отступают в тень. */
+.main-page .tarot-row:hover .t-card.t-dealt:not(:hover) {
+  opacity: 0.8;
+}
+
+.main-page .t-card-3d {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.main-page .t-card.is-flipped .t-card-3d,
+.main-page .t-card.t-peek:hover .t-card-3d,
+.main-page .t-card.t-peek:focus-visible .t-card-3d {
+  transform: rotateY(180deg);
+}
+
+/* Слот ещё не разданной карты: держит место в ряду, но невидим и некликабелен. */
+.main-page .t-undealt {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Выход карты из колоды: подъём снизу с разворотом и вспышкой свечения на пике.
+   Анимируется внутренний слой — карта в это время уже стоит в позе веера. */
+.main-page .t-dealt .t-deal-layer {
+  animation: t-deal-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes t-deal-in {
+  from {
+    opacity: 0;
+    transform: translateY(140px) scale(0.55) rotate(-8deg);
+    filter: drop-shadow(0 0 0 rgba(139, 92, 246, 0));
+  }
+  60% {
+    opacity: 1;
+    filter: drop-shadow(0 0 34px rgba(139, 92, 246, 0.9));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 0 rgba(139, 92, 246, 0));
+  }
+}
+
+/* «Магический выброс»: два расходящихся кольца в момент появления карты. */
+.main-page .t-burst {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.main-page .t-burst::before,
+.main-page .t-burst::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 2px solid rgba(196, 181, 253, 0.9);
+  opacity: 0;
+}
+
+.main-page .t-dealt .t-burst::before {
+  animation: t-burst-ring 0.75s ease-out both;
+}
+
+.main-page .t-dealt .t-burst::after {
+  animation: t-burst-ring 0.75s ease-out 0.18s both;
+  border-color: rgba(139, 92, 246, 0.7);
+}
+
+@keyframes t-burst-ring {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(11);
+  }
+}
+
+.main-page .t-hero {
+  width: 244px;
+  height: 344px;
+  z-index: 2;
+}
+
+.main-page .t-side {
+  opacity: 0.95;
+  z-index: 1;
+}
+
+.main-page .t-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.28s ease;
+  /* НИКАКИХ will-change / translateZ здесь: они растрируют карту заранее в фиксированном
+     разрешении, и при наклоне веера растр растягивается — текст «мылится».
+     Кромку держит кант .t-face::after, форсировать слой не требуется. */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Кант ПОВЕРХ содержимого (внутренняя тень самого лица рисуется ПОД дочерними
+   элементами и кромку арта не закрывает).
+   Цвет — почти чёрный и полупрозрачный: любой оттенок светлее фона секции сам
+   читается как белёсая рамка, поэтому кант должен ЗАТЕМНЯТЬ кромку, а не рисовать линию.
+   Второй слой размытый — переход в арт получается мягким, без видимой границы. */
+.main-page .t-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(6, 8, 20, 0.95),
+    inset 0 0 7px 2px rgba(6, 8, 20, 0.6);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.main-page .t-back {
+  background: linear-gradient(140deg, #251a4d 0%, #141b33 100%);
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Орнаментальная рамка рубашки. */
+.main-page .t-back-spark {
+  font-size: 44px;
+  color: var(--arc, #c4b5fd);
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--arc, #8b5cf6) 85%, transparent));
+}
+
+/* Арканная плашка: номер и имя карты — то, что делает каждую уникальной. */
+.main-page .t-arcana {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--arc, #c4b5fd);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--arc, #8b5cf6) 60%, transparent);
+  /* Без backdrop-filter: он создаёт композитный слой и «мылит» собственный текст
+     на повёрнутой карте. Плотный фон читается не хуже. */
+  background: rgba(10, 10, 26, 0.72);
+  border-radius: 999px;
+  padding: 3px 11px;
+}
+
+.main-page .t-back-hint {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Карта, которую можно тянуть, зовёт пульсом свечения. */
+.main-page .t-lucky.can-draw .t-back-spark {
+  animation: t-pulse 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes t-pulse {
+  from {
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
+    transform: scale(0.95);
+  }
+  to {
+    filter: drop-shadow(0 0 22px rgba(139, 92, 246, 1));
+    transform: scale(1.1);
+  }
+}
+
+/* Лицо карты — анатомия таро: тёмное поле, арт врезан в поле, внизу — картуш с ✦,
+   названием капителью и ценой. Орнаментальной рамки (как у рубашки) тут нет осознанно:
+   вместе с кромкой карты и рамкой арта она давала три обводки впритык. */
+/* Лицо: арт заливает карту целиком, кромку закрывает кант .t-face::after. */
+.main-page .t-front {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, #1b1440 0%, #12172e 100%);
+}
+
+/* Без своей маски: обрезает только карта (.t-face), иначе получаем два шва вместо одного. */
+.main-page .t-cover {
+  position: relative;
+  display: block;
+  flex: 1;
+}
+
+.main-page .t-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.main-page .t-pct {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 3px 9px;
+  font-weight: 800;
+  font-size: 12px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 55%, transparent);
+}
+
+/* Подпись героя поверх арта: затемняющий градиент снизу, кнопки нет —
+   карта кликабельна целиком, «Grab the deal →» проявляется на hover. */
+.main-page .t-hero-scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  color: #ffffff;
+  padding: 34px 12px 12px;
+  /* Плотнее к низу: на светлом арте прежний градиент серел и «отдавал белым». */
+  background: linear-gradient(180deg, rgba(18, 15, 40, 0) 0%, rgba(18, 15, 40, 0.78) 40%, rgba(18, 15, 40, 0.97) 100%);
+}
+
+.main-page .t-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #c4b5fd;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.main-page .t-hero:hover .t-hero-cta,
+.main-page .t-hero:focus-visible .t-hero-cta {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.main-page .t-caption-spark {
+  font-size: 10px;
+  letter-spacing: 6px;
+  color: rgba(196, 181, 253, 0.75);
+}
+
+.main-page .t-caption-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-page .t-caption-price {
+  font-size: 14px;
+}
+
+.main-page .t-caption-price s {
+  color: rgba(255, 255, 255, 0.5);
+  margin-right: 8px;
+}
+
+/* Лицевая сторона карты удачи. */
+.main-page .t-lucky-front {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  color: #fff;
+  /* Свечение лица — в цвете арканы карты (у удачи — золото). */
+  background:
+    radial-gradient(80% 60% at 50% 0%, color-mix(in srgb, var(--arc, var(--color-primary)) 28%, transparent) 0%, transparent 70%),
+    #171c38;
+}
+
+.main-page .t-lucky-percent {
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 24px color-mix(in srgb, var(--arc, var(--color-primary)) 80%, transparent);
+}
+
+.main-page .t-lucky-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.main-page .t-lucky-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+}
+
+.main-page .t-lucky-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed rgba(196, 181, 253, 0.6);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 1px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.main-page .t-lucky-code:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Кнопка карты — арканная, а не «сайтовая»: капитель с разрядкой, тонкая обводка
+   в цвете арканы (--arc) и искры по бокам. Заливка приходит только на hover. */
+.main-page .t-lucky-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 2px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--arc, var(--color-primary)) 50%, transparent);
+  background: color-mix(in srgb, var(--arc, var(--color-primary)) 9%, transparent);
+  color: var(--arc, var(--color-primary));
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.main-page .t-lucky-btn i {
+  font-style: normal;
+  font-size: 8px;
+  opacity: 0.8;
+}
+
+.main-page .t-lucky-btn:hover,
+.main-page .t-lucky-btn:focus-visible {
+  background: color-mix(in srgb, var(--arc, var(--color-primary)) 20%, transparent);
+  border-color: color-mix(in srgb, var(--arc, var(--color-primary)) 75%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--arc, var(--color-primary)) 35%, transparent);
+}
+
+.main-page .tarot-hint {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Интро: колода рубашек + волшебная кнопка «Deal the cards». */
+.main-page .tarot-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.main-page .tarot-deck {
+  position: relative;
+  width: 210px;
+  height: 300px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.main-page .t-deck-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(140deg, #251a4d 0%, #141b33 100%);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  color: #c4b5fd;
+}
+
+.main-page .tdc-1 {
+  transform: rotate(-7deg) translateX(-14px);
+}
+
+.main-page .tdc-2 {
+  transform: rotate(4deg) translateX(10px);
+}
+
+.main-page .tdc-3 {
+  animation: t-deck-breathe 2.4s ease-in-out infinite alternate;
+}
+
+.main-page .tarot-deck:hover .tdc-3 {
+  transform: translateY(-8px);
+}
+
+@keyframes t-deck-breathe {
+  from {
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5), 0 0 24px rgba(139, 92, 246, 0.25);
+  }
+  to {
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5), 0 0 52px rgba(139, 92, 246, 0.65);
+  }
+}
+
+/* «Волшебная» кнопка раздачи: крупнее обычной, с дышащим свечением. */
+.main-page .tarot-deal-btn {
+  min-height: 52px;
+  padding: 14px var(--space-32);
+  font-size: 16px;
+  gap: 10px;
+  animation: t-btn-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes t-btn-glow {
+  from {
+    box-shadow: 0 12px 28px rgba(107, 63, 242, 0.35);
+  }
+  to {
+    box-shadow: 0 12px 44px rgba(107, 63, 242, 0.8);
+  }
+}
+
+/* «Пожелания» по бокам полосы: тихие фразы проявляются, всплывают вверх и тают.
+   Живут в пустых зонах слева/справа от веера; на узких экранах скрыты. */
+.main-page .tarot-wishes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.main-page .t-wish {
+  position: absolute;
+  font-style: italic;
+  font-size: 14.5px;
+  letter-spacing: 0.4px;
+  color: #b9a8f5;
+  opacity: 0;
+  white-space: nowrap;
+  text-shadow: 0 0 16px rgba(139, 92, 246, 0.55);
+  animation: t-wish-float 11s ease-in-out infinite;
+}
+
+.main-page .t-wish-1 { left: 5%; top: 42%; }
+.main-page .t-wish-2 { right: 4%; top: 34%; animation-delay: 2.8s; }
+.main-page .t-wish-3 { left: 8%; bottom: 18%; animation-delay: 5.6s; }
+.main-page .t-wish-4 { right: 7%; bottom: 24%; animation-delay: 8.4s; }
+
+@keyframes t-wish-float {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  10% {
+    opacity: 0.55;
+  }
+  32% {
+    opacity: 0.55;
+  }
+  46% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+}
+
+@media (max-width: 1199px) {
+  .main-page .tarot-wishes {
+    display: none;
+  }
+}
+
+/* Мерцающие искры по полосе — язык hero-арта. */
+.main-page .tarot-spark {
+  position: absolute;
+  z-index: 1;
+  font-style: normal;
+  color: #c4b5fd;
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.9);
+  animation: t-twinkle 3s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.main-page .ts-1 { top: 14%; left: 12%; font-size: 18px; }
+.main-page .ts-2 { top: 22%; right: 14%; font-size: 12px; animation-delay: 0.8s; }
+.main-page .ts-3 { bottom: 16%; left: 22%; font-size: 14px; animation-delay: 1.5s; }
+.main-page .ts-4 { bottom: 24%; right: 24%; font-size: 11px; animation-delay: 2.2s; }
+
+@keyframes t-twinkle {
+  from {
+    opacity: 0.2;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-page .t-card-3d {
+    transition: none;
+  }
+
+  .main-page .t-dealt .t-deal-layer,
+  .main-page .t-dealt .t-burst::before,
+  .main-page .t-dealt .t-burst::after,
+  .main-page .tdc-3,
+  .main-page .tarot-deal-btn,
+  .main-page .tarot-spark,
+  .main-page .tarot-title-spark,
+  .main-page .t-rune.is-seconds,
+  .main-page .t-lucky.can-draw .t-back-spark {
+    animation: none;
+  }
+
+  .main-page .t-wish {
+    animation: none;
+    opacity: 0.3;
+    transform: none;
+  }
+
+  .main-page .t-card {
+    transition: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .main-page .tarot-row {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* На узких экранах веер распрямляется — карты встают колонкой/сеткой без наклона. */
+  .main-page .t-fan-left,
+  .main-page .t-fan-right {
+    --fan-rot: 0deg;
+    --fan-y: 0px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  /* Руны отсчёта ужимаются, чтобы ряд помещался на узком экране. */
+  .main-page .tarot-runes {
+    gap: var(--space-8);
+  }
+
+  .main-page .t-rune {
+    width: 68px;
+    height: 68px;
+  }
+
+  .main-page .t-rune-value {
+    font-size: 23px;
+  }
+
+  .main-page .t-rune-label {
+    font-size: 8.5px;
+    letter-spacing: 1px;
+  }
+}
+
+/* Trust-полоса: перебивка между полками «New» и «Deals» — четыре обещания магазина,
+   каждое своей карточкой с цветовым акцентом (--accent задаётся из reasons). */
+.main-page .trust-strip-section {
+  background: var(--color-bg);
+  padding: 56px 0 0;
+}
+
+.main-page .trust-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.main-page .trust-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-16);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--color-border));
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 55%),
+    var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.main-page .trust-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border-radius: var(--radius-md);
-  background: linear-gradient(140deg, #f1f2f7 0%, #e7e9f2 100%);
+  background: color-mix(in srgb, var(--accent) 16%, #ffffff);
+  color: var(--accent);
+  font-size: 17px;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.main-page .trust-item-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.main-page .trust-item-copy strong {
+  color: var(--color-text);
+}
+
+.main-page .trust-item-copy .muted {
+  font-size: 12.5px;
+}
+
+@media (max-width: 991px) {
+  .main-page .trust-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575px) {
+  .main-page .trust-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Latest news: карточки новостной витрины (обложка сверху, «N hours ago», заголовок,
+   выдержка, просмотры) — блог сайта подаётся как раздел «News». */
+.main-page .news-strip-section {
+  background: var(--color-bg);
+  padding: 56px 0 0;
+}
+
+.main-page .news-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.main-page .news-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-sm);
+}
+
+.main-page .news-cover {
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(140deg, #f1f2f7 0%, #e7e9f2 100%);
   background-size: cover;
   background-position: center;
 }
 
-.main-page .blog-title {
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: 6px;
+.main-page .news-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  flex: 1;
 }
 
-.main-page .blog-snippet {
-  font-size: 14px;
+.main-page .news-meta,
+.main-page .news-views {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.main-page .news-views {
+  margin-top: auto;
+}
+
+.main-page .news-title {
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.main-page .news-excerpt {
+  margin: 0;
+  font-size: 13.5px;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+  .main-page .news-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575px) {
+  .main-page .news-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .main-page .text-link {
@@ -857,8 +1893,65 @@
 
 /* «Подбор по настроению» — тёмная акцентная секция с интерактивными чипами. */
 .main-page .mood-section {
-  padding: 0 0 76px;
+  /* Полки над mood-блоком несут только верхний отступ — свой верх секция задаёт сама. */
+  padding: 56px 0 0;
   background: var(--color-bg);
+}
+
+/* Mood-picker 2.0: живые игры выбранного вайба внутри тёмной mood-карточки. */
+.main-page .mood-games {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: var(--space-16) 0;
+  width: 100%;
+}
+
+.main-page .mood-game {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 8px 12px 8px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.main-page .mood-game:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.main-page .mood-game-cover {
+  display: block;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.main-page .mood-game-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.main-page .mood-game-title {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-page .mood-game-price {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .main-page .mood-card {
@@ -1026,17 +2119,6 @@
   max-width: 320px;
 }
 
-/* Why / how */
-.main-page .why-section {
-  background: linear-gradient(180deg, #f7f6fc 0%, #fbfbfe 100%);
-  padding: 76px 0 36px;
-}
-
-.main-page .how-section {
-  background: linear-gradient(180deg, #fbfbfe 0%, var(--color-bg) 100%);
-  padding: 36px 0 76px;
-}
-
 .main-page .section-heading {
   display: flex;
   flex-direction: column;
@@ -1053,111 +2135,9 @@
   margin: 0;
 }
 
-.main-page .why-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-16);
-}
-
-.main-page .why-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-20, var(--space-24));
-  box-shadow: var(--shadow-sm);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-12);
-  align-items: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.main-page .why-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
-  border-color: color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
-}
-
-.main-page .why-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius-md);
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--color-primary) 14%, #f2ecff);
-  color: var(--color-primary);
-  font-size: 18px;
-}
-
-.main-page .why-title {
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--color-text);
-}
-
-.main-page .why-description {
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.main-page .steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-16);
-  margin-bottom: var(--space-24);
-}
-
-.main-page .step-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-sm);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-12);
-  align-items: center;
-  position: relative;
-}
-
-.main-page .step-card::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: -10px;
-  width: 20px;
-  height: 1px;
-  background: var(--color-border);
-}
-
-.main-page .step-card:last-child::after {
-  display: none;
-}
-
-.main-page .step-marker {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--color-primary) 12%, #f2ecff);
-  color: var(--color-primary);
-  font-weight: 800;
-}
-
-.main-page .step-title {
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--color-text);
-}
-
-.main-page .step-helper {
-  font-size: 14px;
-}
-
-/* Newsletter */
+/* Newsletter — последняя секция перед футером, поэтому несёт и нижний отступ страницы. */
 .main-page .newsletter-section {
-  padding: 60px 0 24px;
+  padding: 60px 0 96px;
 }
 
 .main-page .newsletter-card {
@@ -1238,116 +2218,6 @@
   margin-top: 8px;
 }
 
-/* FAQ */
-.main-page .faq-section {
-  padding: 48px 0 76px;
-}
-
-.main-page .faq-list {
-  display: grid;
-  gap: var(--space-12);
-}
-
-.main-page .faq-item {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.main-page .faq-trigger {
-  width: 100%;
-  background: transparent;
-  border: none;
-  padding: var(--space-16) var(--space-16);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  /* Кнопки центрируют текст по умолчанию — из-за этого вопрос, переносящийся на две строки,
-     выглядел «выбивающимся». Выравниваем по левому краю и даём зазор до шеврона. */
-  text-align: left;
-  gap: 12px;
-  color: var(--color-text);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.main-page .faq-trigger svg {
-  flex-shrink: 0;
-}
-
-.main-page .faq-trigger svg {
-  transition: transform 0.2s ease;
-}
-
-.main-page .faq-item.open .faq-trigger svg {
-  transform: rotate(180deg);
-  color: var(--color-primary);
-}
-
-.main-page .faq-item:hover .faq-trigger {
-  color: var(--color-primary);
-}
-
-.main-page .faq-answer {
-  padding: 0 var(--space-16) var(--space-16);
-  line-height: 1.6;
-  font-size: 15px;
-}
-
-.main-page .section-bridge {
-  padding: 32px 0 16px;
-}
-
-.main-page .bridge-copy {
-  text-align: center;
-  margin-top: 12px;
-  font-size: 14px;
-}
-
-/* Store prefooter */
-.main-page .store-prefooter {
-  padding: 24px 0 96px;
-}
-
-.main-page .store-prefooter-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  padding: clamp(24px, 3vw, 36px);
-  background: radial-gradient(circle at 85% 20%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 45%), linear-gradient(135deg, #0f1322 0%, #121a2f 65%, #0f1322 100%);
-  color: #f4f6ff;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: var(--shadow-lg);
-  display: grid;
-  grid-template-columns: 1.2fr auto;
-  gap: var(--space-24);
-  align-items: center;
-}
-
-.main-page .store-prefooter-copy h3 {
-  margin: 0 0 10px;
-  color: #ffffff;
-  font-size: clamp(26px, 2.6vw, 34px);
-}
-
-.main-page .store-prefooter-copy p {
-  margin: 0;
-  color: color-mix(in srgb, #ffffff 70%, transparent);
-}
-
-.main-page .store-prefooter-actions {
-  display: flex;
-  gap: var(--space-12);
-  flex-wrap: wrap;
-}
-
-.main-page .store-prefooter-actions .btn {
-  height: 48px;
-  padding-inline: var(--space-24);
-  font-weight: 700;
-}
-
 /* Responsive */
 @media (max-width: 1024px) {
   .main-page .hero-stage {
@@ -1395,20 +2265,6 @@
   }
 }
 
-@media (max-width: 1200px) {
-  .main-page .explore-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .main-page .why-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .main-page .store-prefooter-card {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 992px) {
   .main-page .hero {
     padding: 100px 0 72px;
@@ -1418,27 +2274,7 @@
     gap: var(--space-8);
   }
 
-  .main-page .blog-item {
-    grid-template-columns: 80px 1fr;
-  }
-
-  .main-page .why-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .main-page .steps-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .main-page .step-card::after {
-    display: none;
-  }
-
   .main-page .mood-card {
-    grid-template-columns: 1fr;
-  }
-
-  .main-page .testimonial-cards {
     grid-template-columns: 1fr;
   }
 
@@ -1472,10 +2308,6 @@
     width: 100%;
     height: 44px;
   }
-
-  .main-page .store-prefooter-card {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 768px) {
@@ -1491,14 +2323,6 @@
     padding: var(--space-16) var(--space-20);
   }
 
-  .main-page .genre-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .main-page .why-grid {
-    grid-template-columns: 1fr;
-  }
-
   .main-page .mood-chip {
     flex: 1 1 calc(50% - 10px);
     justify-content: center;
@@ -1507,21 +2331,5 @@
   .main-page .mood-cta {
     align-self: stretch;
     justify-content: center;
-  }
-
-  .main-page .testimonial-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .main-page .rating-card {
-    width: 100%;
-  }
-
-  .main-page .store-prefooter {
-    padding: 48px 0 72px;
-  }
-
-  .main-page .store-prefooter-card {
-    align-items: flex-start;
   }
 }

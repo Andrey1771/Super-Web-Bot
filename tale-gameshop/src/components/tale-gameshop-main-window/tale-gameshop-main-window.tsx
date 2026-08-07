@@ -4,7 +4,7 @@ import useScrollReveal from "../../hooks/use-scroll-reveal";
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
 import TaleGameshopMainPage from "../tale-gameshop-main-page/tale-gameshop-main-page";
 import './tale-gameshop-main-window.css'
-import {Navigate, Route, Routes, useLocation} from "react-router-dom";
+import {Navigate, Route, Routes, useLocation, useParams} from "react-router-dom";
 import TaleGameshopGameList from "../game-list-page/game-list-page";
 import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
@@ -59,6 +59,12 @@ import AccountRecoveryPage, { AccountRecoveryCancelPage } from "../account-recov
 import GameDiscountsPage from "../../pages/admin/GameDiscountsPage";
 import AdminBotStatusPage from "../../pages/admin/AdminBotStatusPage";
 import MiniAppPage from "../../features/miniapp/MiniAppPage";
+
+// Старые ссылки /blog/<slug> (закладки, письма) ведут на тот же пост в разделе News.
+function BlogSlugRedirect() {
+    const { slug } = useParams<{ slug: string }>();
+    return <Navigate to={slug ? `/news/${slug}` : "/news"} replace />;
+}
 
 export default function TaleGameshopMainWindow() {
     const location = useLocation();
@@ -138,8 +144,12 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/account-recovery" element={<AccountRecoveryPage/>}/>
                     <Route path="/account-recovery/cancel" element={<AccountRecoveryCancelPage/>}/>
                     <Route path="/apologyPage" element={<ApologyPage/>}/>
-                    <Route path="/blog" element={<BlogPage/>}/>
-                    <Route path="/blog/:slug" element={<BlogPostPage/>}/>
+                    {/* Блог живёт под именем «News» (/news); старые /blog-ссылки редиректят,
+                        чтобы не умерли закладки и письма рассылки. */}
+                    <Route path="/news" element={<BlogPage/>}/>
+                    <Route path="/news/:slug" element={<BlogPostPage/>}/>
+                    <Route path="/blog" element={<Navigate to="/news" replace/>}/>
+                    <Route path="/blog/:slug" element={<BlogSlugRedirect/>}/>
                     <Route path="/tg" element={<MiniAppPage/>}/>
                     <Route
                         path="/account/*"

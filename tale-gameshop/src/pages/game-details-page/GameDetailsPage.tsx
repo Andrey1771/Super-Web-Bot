@@ -26,6 +26,7 @@ import { useWishlist } from '../../context/wishlist-context';
 import { useCart } from '../../context/cart-context';
 import { Product } from '../../reducers/cart-reducer';
 import NotFoundPage from '../../components/utils/not-found-page/not-found-page';
+import { formatReleaseDate } from '../../utils/format-release-date';
 
 const formatPrice = (price: number, currency: string) => {
   const formatter = new Intl.NumberFormat('en-US', {
@@ -217,18 +218,23 @@ const GamePurchaseCard = ({
   ratingSummary,
   gameId,
   gameTitle,
-  coverUrl
+  coverUrl,
+  isComingSoon,
+  releaseDate
 }: {
   pricing: { price: number; oldPrice?: number; currency: string; discountPercent?: number };
   ratingSummary: { average: number; totalReviews: number; label: string };
   gameId?: string;
   gameTitle?: string;
   coverUrl?: string;
+  isComingSoon?: boolean;
+  releaseDate?: string | null;
 }) => {
   const { isWishlisted, toggle } = useWishlist();
   const { state: cartState, dispatch } = useCart();
   const wishlisted = isWishlisted(gameId);
   const inCart = Boolean(gameId) && cartState.items.some((item) => item.gameId === gameId);
+  const releaseDateLabel = formatReleaseDate(releaseDate);
 
   const handleCartClick = () => {
     if (!gameId) {
@@ -255,9 +261,9 @@ const GamePurchaseCard = ({
       <div className="purchase-price">
         <div className="price-row">
           <span className="price">{formatPrice(pricing.price, pricing.currency)}</span>
-          {pricing.oldPrice && <span className="old-price">{formatPrice(pricing.oldPrice, pricing.currency)}</span>}
+          {!isComingSoon && pricing.oldPrice && <span className="old-price">{formatPrice(pricing.oldPrice, pricing.currency)}</span>}
         </div>
-        {pricing.discountPercent && <span className="discount">Save {pricing.discountPercent}% today</span>}
+        {!isComingSoon && pricing.discountPercent && <span className="discount">Save {pricing.discountPercent}% today</span>}
       </div>
       <div className="purchase-rating">
         <StarRating rating={ratingSummary.average} size={14} />
@@ -265,16 +271,26 @@ const GamePurchaseCard = ({
         <span className="rating-pill">{ratingSummary.label}</span>
       </div>
       <div className="purchase-actions">
+        {isComingSoon ? (
+          // Невышедшая игра: покупки нет (чекаут всё равно откажет), главным CTA становится вишлист.
+          <div className="purchase-coming-soon">
+            <span className="purchase-coming-soon-chip">Coming soon</span>
+            <span className="purchase-coming-soon-date">
+              {releaseDateLabel ? `Releases ${releaseDateLabel}` : 'Release date to be announced'}
+            </span>
+          </div>
+        ) : (
+          <button
+            className={`btn ${inCart ? 'btn-outline' : 'btn-primary'}`}
+            type="button"
+            onClick={handleCartClick}
+            disabled={!gameId}
+          >
+            {inCart ? 'Remove from cart' : 'Add to cart'}
+          </button>
+        )}
         <button
-          className={`btn ${inCart ? 'btn-outline' : 'btn-primary'}`}
-          type="button"
-          onClick={handleCartClick}
-          disabled={!gameId}
-        >
-          {inCart ? 'Remove from cart' : 'Add to cart'}
-        </button>
-        <button
-          className={`btn btn-outline purchase-wishlist ${wishlisted ? 'is-active' : ''}`}
+          className={`btn ${isComingSoon && !wishlisted ? 'btn-primary' : 'btn-outline'} purchase-wishlist ${wishlisted ? 'is-active' : ''}`}
           type="button"
           onClick={() => toggle(gameId)}
           disabled={!gameId}
@@ -293,7 +309,11 @@ const GamePurchaseCard = ({
           {wishlisted ? 'In wishlist' : 'Wishlist'}
         </button>
       </div>
-      <p className="purchase-note">Instant delivery • Official key • Refund policy</p>
+      <p className="purchase-note">
+        {isComingSoon
+          ? 'Wishlist it — buy the moment it releases.'
+          : 'Instant delivery • Official key • Refund policy'}
+      </p>
     </div>
   );
 };
@@ -990,6 +1010,12 @@ const GameDetailsPage: React.FC = () => {
     if (key.includes('linux')) {
       return '🐧';
     }
+    if (key.includes('playstation')) {
+      return '🎮';
+    }
+    if (key.includes('xbox')) {
+      return '🟢';
+    }
     return '💻';
   };
 
@@ -1045,7 +1071,9 @@ const GameDetailsPage: React.FC = () => {
   const platforms = [
     data.game.platforms.windows ? 'Windows' : null,
     data.game.platforms.mac ? 'Mac' : null,
-    data.game.platforms.linux ? 'Linux' : null
+    data.game.platforms.linux ? 'Linux' : null,
+    data.game.platforms.playStation ? 'PlayStation' : null,
+    data.game.platforms.xbox ? 'Xbox' : null
   ].filter(Boolean) as string[];
 
   const mediaItems = data.game.gallery?.length
@@ -1184,7 +1212,7 @@ const GameDetailsPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="meta-label">Release date</span>
-                    <span>{data.game.releaseDate ?? 'TBA'}</span>
+                    <span>{formatReleaseDate(data.game.releaseDate) ?? 'TBA'}</span>
                   </div>
                   <div>
                     <span className="meta-label">Platforms</span>
@@ -1228,6 +1256,8 @@ const GameDetailsPage: React.FC = () => {
                   gameId={data.game.gameId}
                   gameTitle={data.game.title}
                   coverUrl={data.game.cover?.url}
+                  isComingSoon={data.isComingSoon}
+                  releaseDate={data.game.releaseDate}
                 />
               </div>
             </div>

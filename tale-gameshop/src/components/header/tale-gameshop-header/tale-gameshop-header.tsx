@@ -39,7 +39,7 @@ const IDLE_RECOLLAPSE_MS = 2600;
 const navLinks = [
     { label: "Home", to: "/" },
     { label: "Deals", to: "/deals" },
-    { label: "Blog", to: "/blog" },
+    { label: "News", to: "/news" },
     { label: "About", to: "/about" },
     { label: "Support", to: "/support" },
 ];

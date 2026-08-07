@@ -49,6 +49,17 @@ type MiniAppGame = {
     discountActive?: boolean;
     discountPercent?: number;
     genres?: string[];
+    /** Статус релиза считает сервер; невышедшие показываем, но не продаём (бэкенд всё равно откажет). */
+    isComingSoon?: boolean;
+    releaseDate?: string;
+};
+
+// Дата релиза по-русски (Mini App — русская витрина), «скоро» — если даты нет/не парсится.
+const releaseLabel = (game: MiniAppGame): string => {
+    const parsed = game.releaseDate ? new Date(game.releaseDate) : null;
+    return parsed && !Number.isNaN(parsed.getTime())
+        ? parsed.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'скоро';
 };
 
 // Честные сигналы доверия (не выдуманное соцдоказательство) — реальные ценностные обещания магазина.
@@ -203,6 +214,10 @@ const MiniAppPage: React.FC = () => {
     const qtyInCart = useCallback((id: string) => cart.find((line) => line.game.id === id)?.qty ?? 0, [cart]);
 
     const addToCart = useCallback((game: MiniAppGame, quantity = 1) => {
+        if (game.isComingSoon) {
+            haptic('warning');
+            return;
+        }
         setCart((prev) => {
             const existing = prev.find((line) => line.game.id === game.id);
             if (existing) {
@@ -411,7 +426,9 @@ const MiniAppPage: React.FC = () => {
                                             {discounted ? <s>{money(game.price)}</s> : null}
                                         </span>
                                     </div>
-                                    {inCart > 0 ? (
+                                    {game.isComingSoon ? (
+                                        <span className="miniapp__soon">Выйдет {releaseLabel(game)}</span>
+                                    ) : inCart > 0 ? (
                                         <div className="miniapp__stepper miniapp__stepper--card">
                                             <button onClick={() => setQty(game.id, inCart - 1)} aria-label="Меньше">−</button>
                                             <span>{inCart}</span>
@@ -465,7 +482,9 @@ const MiniAppPage: React.FC = () => {
                     <li><span>🛡️</span> Не активировался — вернём звёзды</li>
                 </ul>
 
-                {inCart > 0 ? (
+                {selected.isComingSoon ? (
+                    <span className="miniapp__soon miniapp__soon--wide">Выйдет {releaseLabel(selected)} — покупка откроется в день релиза</span>
+                ) : inCart > 0 ? (
                     <div className="miniapp__productcart">
                         <div className="miniapp__stepper">
                             <button onClick={() => setQty(selected.id, inCart - 1)} aria-label="Меньше">−</button>

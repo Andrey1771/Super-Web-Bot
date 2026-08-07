@@ -10,6 +10,7 @@ import { useCart } from "../../context/cart-context";
 import type { Product } from "../../reducers/cart-reducer";
 import SafeGameImage from "../common/SafeGameImage";
 import { slugify } from "../../utils/slugify";
+import { formatReleaseDate } from "../../utils/format-release-date";
 import "./featured-storefront-section.css";
 
 type FeaturedStorefrontSectionProps = {
@@ -101,6 +102,10 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
 
   const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>, game: Game) => {
     event.stopPropagation();
+    // Невышедшие игры не продаются — UI кнопку не показывает, guard страхует.
+    if (game.isComingSoon) {
+      return;
+    }
     const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
     const finalPrice = Number.isFinite(game.finalPrice ?? game.price)
       ? Number(game.finalPrice ?? game.price)
@@ -278,15 +283,21 @@ const FeaturedStorefrontSection: React.FC<FeaturedStorefrontSectionProps> = ({ g
                           )}
                         </div>
 
-                        <button
-                          type="button"
-                          className="billboard-cta"
-                          onClick={(event) => handleAddToCart(event, activeGame)}
-                          aria-label={`Add ${activeGame.title} to cart`}
-                        >
-                          Add to cart
-                          <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
+                        {activeGame.isComingSoon ? (
+                          <span className="billboard-coming-soon">
+                            Coming {formatReleaseDate(activeGame.releaseDate) ?? "soon"}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="billboard-cta"
+                            onClick={(event) => handleAddToCart(event, activeGame)}
+                            aria-label={`Add ${activeGame.title} to cart`}
+                          >
+                            Add to cart
+                            <FontAwesomeIcon icon={faArrowRight} />
+                          </button>
+                        )}
                       </div>
 
                       <div className="billboard-trust" aria-label="Store trust points">

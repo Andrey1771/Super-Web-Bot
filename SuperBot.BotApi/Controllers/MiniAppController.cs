@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Payments;
+using SuperBot.Core.Services;
 using SuperBot.BotApi.Services;
 using SuperBot.BotApi.Types;
 using Telegram.Bot;
@@ -51,6 +52,12 @@ namespace SuperBot.BotApi.Controllers
             if (game == null)
             {
                 return NotFound("Game not found.");
+            }
+
+            // Stars-оплата идёт мимо CheckoutPricingService, поэтому запрет на невышедшие — здесь.
+            if (GameRelease.IsUpcoming(game.ReleaseDate, DateTime.UtcNow))
+            {
+                return BadRequest("Game is not released yet.");
             }
 
             var title = string.IsNullOrWhiteSpace(game.Title) ? game.Name : game.Title;
@@ -120,6 +127,11 @@ namespace SuperBot.BotApi.Controllers
                 if (game == null)
                 {
                     return NotFound($"Game not found: {line.GameId}.");
+                }
+
+                if (GameRelease.IsUpcoming(game.ReleaseDate, DateTime.UtcNow))
+                {
+                    return BadRequest($"Game is not released yet: {line.GameId}.");
                 }
 
                 var quantity = Math.Clamp(line.Quantity, 1, 10);

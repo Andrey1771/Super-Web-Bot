@@ -383,7 +383,7 @@ const BlogPostPage: React.FC = () => {
       return window.location.href;
     }
 
-    return `${window.location.origin}/blog/${post.slug}`;
+    return `${window.location.origin}/news/${post.slug}`;
   }, [post?.slug]);
 
   const emailShareLink = useMemo(() => {
@@ -465,11 +465,11 @@ ${excerptLine}${shareUrl}`;
       <main className="blog-page">
         <section className="section">
           <div className="container blog-post-state-card">
-            <p className="eyebrow">Blog</p>
+            <p className="eyebrow">News</p>
             <h2>Something went wrong</h2>
             <p className="muted">{error}</p>
-            <Link className="btn btn-primary" to="/blog">
-              Back to blog
+            <Link className="btn btn-primary" to="/news">
+              Back to news
             </Link>
           </div>
         </section>
@@ -482,11 +482,11 @@ ${excerptLine}${shareUrl}`;
       <main className="blog-page">
         <section className="section">
           <div className="container blog-post-state-card">
-            <p className="eyebrow">Blog</p>
+            <p className="eyebrow">News</p>
             <h2>Post not found</h2>
             <p className="muted">We couldn&apos;t locate this article. It may have been moved or removed.</p>
-            <Link className="btn btn-primary" to="/blog">
-              Back to blog
+            <Link className="btn btn-primary" to="/news">
+              Back to news
             </Link>
           </div>
         </section>
@@ -501,7 +501,7 @@ ${excerptLine}${shareUrl}`;
           <nav className="blog-breadcrumbs" aria-label="Breadcrumb">
             <Link to="/">Home</Link>
             <span aria-hidden="true">/</span>
-            <Link to="/blog">Blog</Link>
+            <Link to="/news">News</Link>
             <span aria-hidden="true">/</span>
             <span className="blog-breadcrumbs__current" aria-current="page">
               {post.title}
@@ -528,8 +528,8 @@ ${excerptLine}${shareUrl}`;
               )}
 
               <div className="blog-post-hero__actions" aria-label="Article actions">
-                <Link className="btn btn-outline" to="/blog" aria-label="Back to blog list">
-                  Back to blog
+                <Link className="btn btn-outline" to="/news" aria-label="Back to news list">
+                  Back to news
                 </Link>
                 <a className="btn btn-ghost" href="#post-content">
                   Jump to content
@@ -605,7 +605,7 @@ ${excerptLine}${shareUrl}`;
                   <h3>Tags</h3>
                   <div className="blog-post-tags">
                     {post.tags.map((tag) => (
-                      <Link key={tag} to={`/blog?tag=${encodeURIComponent(tag)}`} className="blog-tag">
+                      <Link key={tag} to={`/news?tag=${encodeURIComponent(tag)}`} className="blog-tag">
                         #{tag}
                       </Link>
                     ))}
@@ -630,8 +630,8 @@ ${excerptLine}${shareUrl}`;
               </div>
 
               <div className="blog-post-footer__group">
-                <Link className="btn btn-primary" to="/blog">
-                  Back to blog
+                <Link className="btn btn-primary" to="/news">
+                  Back to news
                 </Link>
               </div>
             </div>
@@ -640,7 +640,7 @@ ${excerptLine}${shareUrl}`;
               <div className="blog-post-author-card surface">
                 <p className="eyebrow">Author</p>
                 <h3>{post.authorName}</h3>
-                <p className="muted">Writes about games, updates, and practical buying guides at Tale Shop Blog.</p>
+                <p className="muted">Writes about games, updates, and practical buying guides at Tale Shop News.</p>
               </div>
             )}
           </footer>
@@ -669,8 +669,8 @@ ${excerptLine}${shareUrl}`;
               </div>
             ) : (
               <div className="related-posts-empty surface">
-                <p className="muted">No related posts yet. Explore the full blog for more articles.</p>
-                <Link className="btn btn-outline" to="/blog">
+                <p className="muted">No related posts yet. Explore all the news for more articles.</p>
+                <Link className="btn btn-outline" to="/news">
                   Browse all posts
                 </Link>
               </div>

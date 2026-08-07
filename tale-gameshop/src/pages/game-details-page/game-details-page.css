@@ -427,6 +427,31 @@
   font-size: 13px;
 }
 
+/* Состояние «игра ещё не вышла»: вместо кнопки покупки — чип и дата релиза. */
+.purchase-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+}
+
+.purchase-coming-soon-chip {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-primary);
+}
+
+.purchase-coming-soon-date {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
 .quick-info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

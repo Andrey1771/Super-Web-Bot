@@ -315,7 +315,7 @@ export default function BlogPage() {
         if (!editorialInsert) {
             return;
         }
-        navigate(`/blog/${editorialInsert.slug}`);
+        navigate(`/news/${editorialInsert.slug}`);
     };
 
     return (
@@ -328,7 +328,7 @@ export default function BlogPage() {
             <section className="blog-hero section">
                 <div className="container blog-hero__inner">
                     <div className="blog-hero__copy">
-                        <div className="eyebrow">Tale Shop Blog</div>
+                        <div className="eyebrow">Tale Shop News</div>
                         <h1>News, guides &amp; weekly picks</h1>
                         <p className="hero-subtitle">Curated gaming news, guides, and updates to keep you ahead of the drop.</p>
                     </div>
@@ -505,7 +505,7 @@ export default function BlogPage() {
                                             {typeof editorialEngagement?.viewsCount === "number" ? ` • ${editorialEngagement.viewsCount} views` : ""}
                                         </p>
                                     </div>
-                                    <Link className="btn btn-primary" to={`/blog/${editorialInsert.slug}`}>
+                                    <Link className="btn btn-primary" to={`/news/${editorialInsert.slug}`}>
                                         Read pick
                                         <FontAwesomeIcon icon={faArrowRightLong} />
                                     </Link>
@@ -514,7 +514,7 @@ export default function BlogPage() {
                         </>
                     ) : (
                         <div className="blog-feed-empty surface">
-                            <h3>Blog is preparing new stories</h3>
+                            <h3>The newsroom is preparing new stories</h3>
                             <p className="muted">Check back soon for fresh posts and updates.</p>
                         </div>
                     )}

@@ -150,6 +150,9 @@ export interface GamePlatforms {
   windows: boolean;
   mac: boolean;
   linux: boolean;
+  /** Консольные ключи (PSN/Xbox-стор); у старых записей поля нет — трактуется как false. */
+  playStation?: boolean;
+  xbox?: boolean;
 }
 
 export interface GameLanguageSupport {
@@ -222,6 +225,8 @@ export interface GameUserContext {
 
 export interface GameDetailsResponse {
   game: GameDetails;
+  /** Статус релиза считает сервер по Game.ReleaseDate — клиент даты не сравнивает. */
+  isComingSoon?: boolean;
   pricing: Pricing;
   ratingSummary: RatingSummaryResponse;
   heroBadges: string[];

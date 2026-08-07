@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Services;
 using SuperBot.Infrastructure.Data;
 using SuperBot.Core.Interfaces;
 
@@ -97,6 +98,27 @@ namespace SuperBot.WebApi.Controllers
 
             var order = _mapper.Map<Order>(orderDto);
             order.OrderDate = order.OrderDate == default ? DateTime.UtcNow : order.OrderDate;
+
+            // Путь легаси/админский, но правило общее с чекаутом: невышедшую игру продать нельзя.
+            var orderGameIds = order.Items
+                .Select(item => item.GameId)
+                .Append(order.GameId)
+                .Where(gameId => !string.IsNullOrWhiteSpace(gameId))
+                .Select(gameId => gameId!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (orderGameIds.Count > 0)
+            {
+                var utcNow = DateTime.UtcNow;
+                var orderGames = await _gameRepository.GetByIdsAsync(orderGameIds);
+                var upcomingGame = orderGames.FirstOrDefault(game => GameRelease.IsUpcoming(game.ReleaseDate, utcNow));
+                if (upcomingGame != null)
+                {
+                    var title = !string.IsNullOrWhiteSpace(upcomingGame.Title) ? upcomingGame.Title : upcomingGame.Name;
+                    return BadRequest(new { message = $"“{title}” isn't released yet." });
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(order.PromoCode) && order.TotalAmount.HasValue)
             {

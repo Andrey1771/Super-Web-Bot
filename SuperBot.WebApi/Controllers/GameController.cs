@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Services;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -10,10 +11,20 @@ namespace SuperBot.WebApi.Controllers
     [Route("api/[controller]")]
     public class GameController : ControllerBase
     {
+        /// <summary>Окно «недельного чарта» продаж на витрине.</summary>
+        private const int WeeklyChartWindowDays = 7;
+        /// <summary>Потолок выдачи чарта — защита от запроса «отдай весь каталог одним списком».</summary>
+        private const int WeeklyChartMaxLimit = 24;
+        /// <summary>Столько игр просит витрина по умолчанию: полка — 4 колонки × 2 ряда.</summary>
+        private const int WeeklyChartDefaultLimit = 8;
+        /// <summary>Заказ дораспределённых версий: одна позиция без списка Items = одна проданная копия.</summary>
+        private const int LegacyOrderSoldQuantity = 1;
+
         private readonly IGameRepository _gameRepository;
         private readonly IGameDiscountRepository _gameDiscountRepository;
         private readonly IGameDetailsRepository _gameDetailsRepository;
         private readonly IMediaAssetRepository _mediaRepository;
+        private readonly IOrderRepository _orderRepository;
         private readonly IMapper _mapper;
 
         public GameController(
@@ -21,13 +32,71 @@ namespace SuperBot.WebApi.Controllers
             IGameDiscountRepository gameDiscountRepository,
             IGameDetailsRepository gameDetailsRepository,
             IMediaAssetRepository mediaRepository,
+            IOrderRepository orderRepository,
             IMapper mapper)
         {
             _gameRepository = gameRepository;
             _gameDiscountRepository = gameDiscountRepository;
             _gameDetailsRepository = gameDetailsRepository;
             _mediaRepository = mediaRepository;
+            _orderRepository = orderRepository;
             _mapper = mapper;
+        }
+
+        /// <summary>
+        /// Топ продаж за последнюю неделю для полки «Popular this week»:
+        /// [{ gameId, sold }] по оплаченным заказам, отсортировано по количеству.
+        /// Витрина сама джойнит с каталогом — здесь только агрегат.
+        /// </summary>
+        [HttpGet("weekly-chart")]
+        public async Task<IActionResult> GetWeeklyChart([FromQuery] int limit = WeeklyChartDefaultLimit)
+        {
+            limit = Math.Clamp(limit, 1, WeeklyChartMaxLimit);
+            var since = DateTime.UtcNow.AddDays(-WeeklyChartWindowDays);
+            var orders = await _orderRepository.GetAllOrdersAsync();
+
+            var soldByGameId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            void AddSold(string? gameId, int quantity)
+            {
+                if (string.IsNullOrWhiteSpace(gameId) || quantity <= 0)
+                {
+                    return;
+                }
+                soldByGameId[gameId] = soldByGameId.TryGetValue(gameId, out var current) ? current + quantity : quantity;
+            }
+
+            foreach (var order in orders)
+            {
+                var paidAt = order.PaidAt ?? order.OrderDate;
+                var countsTowardsChart = order.IsPaid && paidAt >= since;
+                if (!countsTowardsChart)
+                {
+                    continue;
+                }
+
+                var hasItemLines = order.Items != null && order.Items.Count > 0;
+                if (hasItemLines)
+                {
+                    foreach (var item in order.Items!)
+                    {
+                        // Qty — легаси-алиас Quantity: у старых снапшотов заполнен только он.
+                        var quantity = item.Quantity > 0 ? item.Quantity : item.Qty;
+                        AddSold(item.GameId, quantity);
+                    }
+                }
+                else
+                {
+                    // Заказ ранних версий: списка позиций нет, покупка описана полями самого заказа.
+                    AddSold(order.GameId, LegacyOrderSoldQuantity);
+                }
+            }
+
+            var chart = soldByGameId
+                .OrderByDescending(entry => entry.Value)
+                .Take(limit)
+                .Select(entry => new { gameId = entry.Key, sold = entry.Value });
+
+            return Ok(chart);
         }
 
         [HttpGet]
@@ -67,7 +136,10 @@ namespace SuperBot.WebApi.Controllers
             {
                 discountByGameId.TryGetValue(game.Id, out var discount);
                 detailsByGameId.TryGetValue(game.Id, out var details);
-                var discountActive = discount is not null && discount.IsActiveAt(utcNow);
+                // Статус релиза считает сервер (клиентским часам доверять нельзя), а скидка
+                // на невышедшую игру гасится: продать её всё равно нельзя — прайсинг откажет.
+                var isComingSoon = GameRelease.IsUpcoming(game.ReleaseDate, utcNow);
+                var discountActive = !isComingSoon && discount is not null && discount.IsActiveAt(utcNow);
                 var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
                 var finalPrice = CalculateFinalPrice(game.Price, discountPercent);
                 var genres = details?.Genres?.Where(item => !string.IsNullOrWhiteSpace(item)).ToArray()
@@ -91,11 +163,15 @@ namespace SuperBot.WebApi.Controllers
                     imagePath = resolvedImagePath,
                     coverMediaId = game.CoverMediaId,
                     releaseDate = game.ReleaseDate,
+                    isComingSoon,
                     price = game.Price,
                     finalPrice,
                     discountPercent,
                     discountActive,
+                    // Когда скидка закончится (UTC) — витрина рисует обратный отсчёт «deal ends in…».
+                    discountEndsAt = discountActive ? discount!.EndDate : (DateTime?)null,
                     genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },
+                    platforms = BuildPlatformLabels(details?.Platforms),
                     showInFeaturedStorefront = details?.ShowInFeaturedStorefront ?? false,
                     featuredStorefrontPriority = details?.FeaturedStorefrontPriority ?? int.MaxValue
                 };
@@ -115,7 +191,9 @@ namespace SuperBot.WebApi.Controllers
 
             var discount = await _gameDiscountRepository.GetByGameIdAsync(id);
             var details = await _gameDetailsRepository.GetByGameIdAsync(id);
-            var discountActive = discount is not null && discount.IsActiveAt(DateTime.UtcNow);
+            // Та же логика, что в списке: релиз-статус от сервера, скидка на невышедшую гасится.
+            var isComingSoon = GameRelease.IsUpcoming(game.ReleaseDate, DateTime.UtcNow);
+            var discountActive = !isComingSoon && discount is not null && discount.IsActiveAt(DateTime.UtcNow);
             var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
             var finalPrice = CalculateFinalPrice(game.Price, discountPercent);
             var genres = details?.Genres?.Where(item => !string.IsNullOrWhiteSpace(item)).ToArray()
@@ -148,11 +226,13 @@ namespace SuperBot.WebApi.Controllers
                 imagePath = resolvedImagePath,
                 coverMediaId = game.CoverMediaId,
                 releaseDate = game.ReleaseDate,
+                isComingSoon,
                 price = game.Price,
                 finalPrice,
                 discountPercent,
                 discountActive,
                 genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },
+                platforms = BuildPlatformLabels(details?.Platforms),
                 showInFeaturedStorefront = details?.ShowInFeaturedStorefront ?? false,
                 featuredStorefrontPriority = details?.FeaturedStorefrontPriority ?? int.MaxValue
             });
@@ -199,5 +279,21 @@ namespace SuperBot.WebApi.Controllers
 
         private static decimal CalculateFinalPrice(decimal price, decimal? discountPercent) =>
             SuperBot.Core.Services.PriceCalculator.FinalPrice(price, discountPercent);
+
+        /// <summary>
+        /// Ярлыки платформ для витрины (иконки на карточках, фильтр каталога ?platforms=).
+        /// Магазин исторически PC-first: пока платформы у игры не заполнены — считаем её PC-игрой,
+        /// чтобы карточки не оставались без иконки.
+        /// </summary>
+        private static string[] BuildPlatformLabels(GamePlatforms? platforms)
+        {
+            var labels = new List<string>();
+            if (platforms?.Windows == true) labels.Add("PC");
+            if (platforms?.Mac == true) labels.Add("Mac");
+            if (platforms?.Linux == true) labels.Add("Linux");
+            if (platforms?.PlayStation == true) labels.Add("PlayStation");
+            if (platforms?.Xbox == true) labels.Add("Xbox");
+            return labels.Count > 0 ? labels.ToArray() : new[] { "PC" };
+        }
     }
 }

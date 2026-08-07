@@ -40,7 +40,7 @@ export default function FeaturedEditorsPickCard({post}: FeaturedEditorsPickCardP
                 <h3>{post.title}</h3>
                 <p className="featured-editors-card__excerpt">{post.excerpt}</p>
                 <p className="featured-editors-card__meta">{formatDate(post.publishedAt)}{readTime ? ` • ${readTime}` : ""}</p>
-                <Link className="featured-editors-card__cta" to={`/blog/${post.slug}`}>
+                <Link className="featured-editors-card__cta" to={`/news/${post.slug}`}>
                     Read more →
                 </Link>
             </div>

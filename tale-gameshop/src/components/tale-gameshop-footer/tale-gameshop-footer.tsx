@@ -70,7 +70,7 @@ export default function TaleGameshopFooter() {
             <div className="footer-column">
               <div className="footer-title">Company</div>
               <Link to="/about">About</Link>
-              <Link to="/blog">Blog</Link>
+              <Link to="/news">News</Link>
               <Link to="/support">Support</Link>
               <Link to="/faq">Help / FAQ</Link>
             </div>

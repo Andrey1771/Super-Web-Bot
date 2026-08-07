@@ -316,6 +316,36 @@
   color: var(--color-muted);
 }
 
+/* Релиз-статус игры в каталоге: «Coming soon» + предупреждение о пустом пуле ключей.
+   Палитра предупреждения — та же, что у Low stock в KeyStockOverview. */
+.admin-release-pills {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.admin-release-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+  color: var(--color-primary);
+}
+
+.admin-release-pill--warn {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.admin-release-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
 .admin-table__cell-truncate {
   max-width: 220px;
   white-space: nowrap;

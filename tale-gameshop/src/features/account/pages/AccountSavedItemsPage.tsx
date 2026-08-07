@@ -117,6 +117,9 @@ const AccountSavedItemsPage: React.FC = () => {
     };
 
     const handleAddToCart = (game: Game) => {
+        if (game.isComingSoon) {
+            return;
+        }
         dispatch({
             type: 'ADD_TO_CART',
             payload: {
@@ -215,13 +218,24 @@ const AccountSavedItemsPage: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="saved-item-actions">
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary saved-item-btn"
-                                            onClick={() => handleAddToCart(item)}
-                                        >
-                                            Add to cart
-                                        </button>
+                                        {item.isComingSoon ? (
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline saved-item-btn"
+                                                disabled
+                                                title="Not released yet — it unlocks for purchase on release day"
+                                            >
+                                                Coming soon
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary saved-item-btn"
+                                                onClick={() => handleAddToCart(item)}
+                                            >
+                                                Add to cart
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             className="btn btn-outline saved-item-btn"
@@ -255,13 +269,24 @@ const AccountSavedItemsPage: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="saved-item-actions">
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary saved-item-btn"
-                                            onClick={() => handleAddToCart(item)}
-                                        >
-                                            Add to cart
-                                        </button>
+                                        {item.isComingSoon ? (
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline saved-item-btn"
+                                                disabled
+                                                title="Not released yet — it unlocks for purchase on release day"
+                                            >
+                                                Coming soon
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary saved-item-btn"
+                                                onClick={() => handleAddToCart(item)}
+                                            >
+                                                Add to cart
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             className="btn btn-outline saved-item-btn"

@@ -23,7 +23,7 @@ const emptyDetails = (gameId: string, slug: string, title: string): GameDetails 
   developer: { name: "" },
   publisher: { name: "" },
   releaseDate: undefined,
-  platforms: { windows: true, mac: false, linux: false },
+  platforms: { windows: true, mac: false, linux: false, playStation: false, xbox: false },
   languages: { audio: [], text: [] },
   ageRating: { system: "", label: "" },
   onlineFeatures: [],
@@ -497,6 +497,31 @@ const GameDetailsEditorPage: React.FC = () => {
               readOnly
             />
           </label>
+        </div>
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Platforms">
+        {/* Для чего продаётся ключ — иконки на витринных карточках и фильтр каталога ?platforms=.
+            Пока ничего не отмечено, витрина считает игру PC-игрой (дефолт сервера). */}
+        <div className="admin-grid admin-grid--3">
+          {([
+            ["windows", "PC (Windows)"],
+            ["mac", "Mac"],
+            ["linux", "Linux"],
+            ["playStation", "PlayStation"],
+            ["xbox", "Xbox"]
+          ] as const).map(([key, label]) => (
+            <label key={key} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(details.platforms[key])}
+                onChange={(event) =>
+                  updateDetails({ platforms: { ...details.platforms, [key]: event.target.checked } })
+                }
+              />
+              <span>{label}</span>
+            </label>
+          ))}
         </div>
       </CollapsibleCard>
 

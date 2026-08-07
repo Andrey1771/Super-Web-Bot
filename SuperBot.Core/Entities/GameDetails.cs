@@ -99,6 +99,10 @@ namespace SuperBot.Core.Entities
         public bool Windows { get; set; }
         public bool Mac { get; set; }
         public bool Linux { get; set; }
+        // Консоли: ключ может быть для PSN/Xbox-стора, а не только PC-лаунчеров.
+        // Добавлены позже — у старых документов Mongo вернёт false, что и требуется.
+        public bool PlayStation { get; set; }
+        public bool Xbox { get; set; }
     }
 
     public class GameLanguageSupport

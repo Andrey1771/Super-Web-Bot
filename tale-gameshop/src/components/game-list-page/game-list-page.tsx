@@ -15,6 +15,7 @@ import type { IKeycloakService } from '../../iterfaces/i-keycloak-service';
 import type { IRecommendationsService } from '../../iterfaces/i-recommendations-service';
 import { analyticsClient } from '../../utils/analytics-client';
 import { slugify } from '../../utils/slugify';
+import { formatReleaseDate } from '../../utils/format-release-date';
 import SafeGameImage from '../common/SafeGameImage';
 
 const categoryOrder = [
@@ -131,6 +132,7 @@ const TaleGameshopGameList: React.FC = () => {
             params.delete('sortBy');
             params.delete('page');
             params.delete('platforms');
+            params.delete('comingSoon');
         });
     };
 
@@ -245,6 +247,7 @@ const TaleGameshopGameList: React.FC = () => {
             .filter(Boolean);
     }, [searchParams]);
 
+    const comingSoonOnly = searchParams.get('comingSoon') === '1';
     const minPriceFilter = Number(searchParams.get('filterMinPrice') ?? availablePrices.min);
     const maxPriceFilter = Number(searchParams.get('filterMaxPrice') ?? availablePrices.max);
     const sortBy = searchParams.get('sortBy') ?? 'popular';
@@ -268,6 +271,11 @@ const TaleGameshopGameList: React.FC = () => {
     }, [settingsCategoryByTitle]);
 
     const handleAddToCart = (game: Game) => {
+        // Невышедшая игра в корзину не кладётся (чекаут всё равно откажет) — UI кнопку
+        // не показывает, guard страхует от будущих вызовов из нового кода.
+        if (game.isComingSoon) {
+            return;
+        }
         dispatch({
             type: 'ADD_TO_CART',
             payload: {
@@ -366,90 +374,6 @@ const TaleGameshopGameList: React.FC = () => {
         );
     };
 
-    const CatalogCard = ({ game, variant, showBadge }: { game: Game; variant: 'large' | 'small'; showBadge?: boolean }) => {
-        const isLarge = variant === 'large';
-        const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
-        const finalPrice = Number.isFinite(game.finalPrice ?? game.price) ? Number(game.finalPrice ?? game.price) : regularPrice;
-        const hasActiveDiscount = Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0 && finalPrice < regularPrice);
-        const wishlisted = isWishlisted(game.id);
-        const gameSlug = game.slug ? slugify(game.slug) : slugify(game.title || game.name);
-
-        return (
-            <div
-                className={`relative flex h-full flex-col rounded-[20px] border border-[#ece8ff] bg-white/90 p-4 shadow-[0_12px_30px_rgba(84,58,193,0.08)] ${
-                    isLarge ? 'md:p-5' : ''
-                }`}
-            >
-                <div
-                    className={`relative mb-4 overflow-hidden rounded-[16px] ${
-                        isLarge ? 'h-[190px]' : 'h-[120px]'
-                    }`}
-                >
-                    <Link
-                        to={`/games/${gameSlug}`}
-                        className="absolute inset-0 z-[1]"
-                        aria-label={`Open ${game.title}`}
-                        onClick={() => handleRecordViewed(game)}
-                    />
-                    {renderImage(game)}
-                    {showBadge && (
-                        <span className="absolute left-3 top-3 rounded-full bg-[#6b3ff2] px-3 py-1 text-xs font-semibold text-white shadow-sm">
-                            New
-                        </span>
-                    )}
-                    <button
-                        type="button"
-                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
-                            wishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
-                        }`}
-                        aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                        aria-pressed={wishlisted}
-                        onClick={() => toggleWishlist(game.id)}
-                        disabled={!game.id}
-                        aria-disabled={!game.id}
-                    >
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill={wishlisted ? 'currentColor' : 'none'}>
-                            <path
-                                d="M12 20.2c-4.4-2.8-7.4-5.5-8.7-8.4-1.4-3.1.5-6.5 3.9-6.8 2.1-.2 3.6.8 4.8 2.2 1.2-1.4 2.7-2.4 4.8-2.2 3.4.3 5.3 3.7 3.9 6.8-1.3 2.9-4.3 5.6-8.7 8.4Z"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
-                    </button>
-                </div>
-                <div className="flex flex-1 flex-col">
-                    <h3 className={`${isLarge ? 'text-lg' : 'text-sm'} font-semibold text-[#2c2354]`}>
-                        <Link to={`/games/${gameSlug}`} onClick={() => handleRecordViewed(game)}>
-                            {game.title}
-                        </Link>
-                    </h3>
-                    <div className="mt-1 flex items-center gap-2 text-sm">
-                        {hasActiveDiscount ? (
-                            <>
-                                <span className="font-medium text-[#9b92c4] line-through">${regularPrice.toFixed(2)}</span>
-                                <span className="font-semibold text-[#6b3ff2]">${finalPrice.toFixed(2)}</span>
-                                <span className="rounded-full bg-[#e7dcff] px-2 py-0.5 text-xs font-semibold text-[#5a2dd1]">
-                                    -{Number(game.discountPercent).toFixed(0)}%
-                                </span>
-                            </>
-                        ) : (
-                            <span className="font-medium text-[#6f64a8]">${finalPrice.toFixed(2)}</span>
-                        )}
-                    </div>
-                    <button
-                        className={`mt-auto w-full rounded-[12px] border border-[#d9d3ff] bg-[#6b3ff2] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(107,63,242,0.25)] transition hover:brightness-110 ${
-                            isLarge ? 'mt-6' : 'mt-4'
-                        }`}
-                        onClick={() => handleAddToCart(game)}
-                    >
-                        Add to Cart
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
     const iconFallbackMap: Record<string, 'cap' | 'bolt' | 'rpg' | 'strategy' | 'sports'> = {
         'Educational Games': 'cap',
         Action: 'bolt',
@@ -497,7 +421,11 @@ const TaleGameshopGameList: React.FC = () => {
             return selectedPlatforms.some((platform) => gamePlatforms.includes(platform));
         });
 
-        const withinPriceRange = withPlatform.filter(({ game }) => {
+        const withReleaseStatus = comingSoonOnly
+            ? withPlatform.filter(({ game }) => Boolean(game.isComingSoon))
+            : withPlatform;
+
+        const withinPriceRange = withReleaseStatus.filter(({ game }) => {
             const price = Number(game.finalPrice ?? game.price);
             return price >= minPriceFilter && price <= maxPriceFilter;
         });
@@ -525,6 +453,7 @@ const TaleGameshopGameList: React.FC = () => {
     }, [
         categoriesForDisplay,
         filteredGamesByCategory,
+        comingSoonOnly,
         maxPriceFilter,
         minPriceFilter,
         selectedPlatforms,
@@ -543,6 +472,7 @@ const TaleGameshopGameList: React.FC = () => {
         Boolean(filterCategory) ||
         Boolean(filterName) ||
         selectedPlatforms.length > 0 ||
+        comingSoonOnly ||
         minPriceFilter !== availablePrices.min ||
         maxPriceFilter !== availablePrices.max;
 
@@ -641,6 +571,28 @@ const TaleGameshopGameList: React.FC = () => {
                                     <p className="text-sm text-[#8a81b5]">No platform data available.</p>
                                 )}
                             </div>
+                        </div>
+
+                        <div className="mt-6 border-t border-[#f0ebff] pt-5">
+                            <h3 className="text-lg font-semibold text-[#2b2350]">Availability</h3>
+                            <label className="mt-3 flex cursor-pointer items-center gap-3 text-sm text-[#5a5286]">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-[#d8d0ff] text-[#6b3ff2] focus:ring-[#6b3ff2]"
+                                    checked={comingSoonOnly}
+                                    onChange={() =>
+                                        updateParams((params) => {
+                                            if (comingSoonOnly) {
+                                                params.delete('comingSoon');
+                                            } else {
+                                                params.set('comingSoon', '1');
+                                            }
+                                            params.set('page', '1');
+                                        })
+                                    }
+                                />
+                                <span>Coming soon</span>
+                            </label>
                         </div>
 
                         <div className="mt-6 border-t border-[#f0ebff] pt-5">
@@ -770,6 +722,11 @@ const TaleGameshopGameList: React.FC = () => {
                                                 onClick={() => handleRecordViewed(game)}
                                             />
                                             {renderImage(game)}
+                                            {game.isComingSoon && (
+                                                <span className="absolute left-3 top-3 z-[2] rounded-full bg-[#2c2354] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                                                    Coming soon
+                                                </span>
+                                            )}
                                             <button
                                                 type="button"
                                                 className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
@@ -806,12 +763,18 @@ const TaleGameshopGameList: React.FC = () => {
                                             </span>
                                             <div className="catalog-game-footer">
                                                 <span className="catalog-game-price">${finalPrice.toFixed(2)}</span>
-                                                <button
-                                                    className="catalog-game-cta"
-                                                    onClick={() => handleAddToCart(game)}
-                                                >
-                                                    Add to Cart
-                                                </button>
+                                                {game.isComingSoon ? (
+                                                    <span className="catalog-game-soon" title="Not released yet — wishlist it to catch the launch">
+                                                        {formatReleaseDate(game.releaseDate) ?? 'Coming soon'}
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        className="catalog-game-cta"
+                                                        onClick={() => handleAddToCart(game)}
+                                                    >
+                                                        Add to Cart
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </article>
