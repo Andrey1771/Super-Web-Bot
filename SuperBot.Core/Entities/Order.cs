@@ -72,19 +72,6 @@ namespace SuperBot.Core.Entities
         public decimal LineTotal { get; set; }
         public PricingSnapshot Pricing { get; set; } = new();
         public DeliverySnapshot? Delivery { get; set; }
-
-        // legacy aliases kept for backward compatibility with older UI/service code
-        public string TitleSnapshot { get; set; } = string.Empty;
-        public string? CoverUrlSnapshot { get; set; }
-        public string? PlatformSnapshot { get; set; }
-        public string? RegionSnapshot { get; set; }
-        public int Qty { get; set; }
-        public decimal UnitPriceSnapshot { get; set; }
-        public string UnitPriceCurrency { get; set; } = "USD";
-        public decimal? DiscountSnapshot { get; set; }
-        public decimal FinalUnitPriceSnapshot { get; set; }
-        public decimal LineTotalSnapshot { get; set; }
-        public string? DeliveryType { get; set; }
     }
 
     public class PricingSnapshot

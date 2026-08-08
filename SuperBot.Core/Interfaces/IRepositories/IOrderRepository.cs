@@ -12,9 +12,23 @@ namespace SuperBot.Core.Interfaces.IRepositories
         /// <summary>Заказ по платёжному намерению — по индексу ix_orders_payment_intent_unique.</summary>
         Task<Order?> GetByPaymentIntentIdAsync(string paymentIntentId);
         Task<IEnumerable<Order>> GetAllOrdersAsync();
+
+        /// <summary>
+        /// Оплаченные заказы начиная с даты — для витринных агрегатов (чарт продаж).
+        /// Фильтрация идёт в базе: тянуть всю коллекцию ради недельного среза нельзя.
+        /// Датой продажи считается PaidAt, а если его нет (заказ до появления поля) — OrderDate.
+        /// </summary>
+        Task<List<Order>> GetPaidOrdersSinceAsync(DateTime sinceUtc);
+
         Task<List<Order>> GetOrdersByUserAsync(string userName);
         /// <summary>Оплаченные, но не полностью выданные заказы — для довыдачи при пополнении пула.</summary>
         Task<List<Order>> GetUnfulfilledPaidOrdersAsync();
+
+        /// <summary>
+        /// Есть ли у пользователя хотя бы одна оплаченная покупка. Проверка идёт в базе
+        /// (наличие, а не выборка) — вызывается на каждый показ «карты удачи».
+        /// </summary>
+        Task<bool> HasPaidOrderAsync(string userKey);
 
         /// <summary>
         /// Сколько ключей «должны» по каждой игре: оплаченные, готовые к выдаче (НЕ под верификацией почты,

@@ -325,16 +325,11 @@ export default function TaleGameshopMainPage() {
     const [newsletterResult, setNewsletterResult] = useState<"pending" | "confirmed">("pending");
     const knownSubscription = useKnownNewsletterSubscription();
     const urlService = container.get < IUrlService > (IDENTIFIERS.IUrlService);
+    // Одна загрузка при открытии страницы: запросы независимы и идут параллельно.
     useEffect(() => {
         fetchGames();
-    }, []);
-    useEffect(() => {
         fetchBlogPosts();
-    }, []);
-    useEffect(() => {
         fetchWeeklyChart();
-    }, []);
-    useEffect(() => {
         fetchDealOfWeek();
     }, []);
     const fetchGames = async () => {

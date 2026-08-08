@@ -11,6 +11,18 @@ namespace SuperBot.Core.Interfaces.IRepositories
     public interface ITarotDrawRepository
     {
         Task<TarotDraw?> GetLatestByUserAsync(string userId);
+
+        /// <summary>
+        /// Атомарно занимает право на розыгрыш до expiresAt. false — уже занято
+        /// (кулдаун не истёк ЛИБО параллельный запрос успел первым).
+        /// Проверять кулдауном отдельно нельзя: между проверкой и записью есть зазор,
+        /// в который проходит второй запрос и выдаёт лишний промокод.
+        /// </summary>
+        Task<bool> TryAcquireDrawLockAsync(string userId, DateTime expiresAtUtc);
+
+        /// <summary>Освободить лок, если розыгрыш сорвался, — иначе пользователь ждёт зря.</summary>
+        Task ReleaseDrawLockAsync(string userId);
+
         Task<TarotDraw> CreateAsync(TarotDraw draw);
         Task<long> CountAsync();
         Task<long> CountSinceAsync(DateTime sinceUtc);

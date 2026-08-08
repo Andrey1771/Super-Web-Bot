@@ -14,46 +14,16 @@ namespace SuperBot.Infrastructure.Models
             CreateMap<DeliveredKey, DeliveredKeyDb>().ReverseMap();
             CreateMap<DeliverySnapshot, DeliverySnapshotDb>().ReverseMap();
 
+            // Позиция заказа маппится один в один. Раньше здесь синхронизировались
+            // legacy-дубли каждого поля (TitleSnapshot, Qty, UnitPriceSnapshot и т.д.) —
+            // они удалены, остался только идентификатор позиции.
             CreateMap<OrderItemSnapshot, OrderItemSnapshotDb>()
                 .AfterMap((src, dest) =>
                 {
                     dest.ItemId = string.IsNullOrWhiteSpace(src.ItemId) ? Guid.NewGuid().ToString("N") : src.ItemId;
-                    dest.TitleSnapshot = string.IsNullOrWhiteSpace(src.TitleSnapshot) ? src.Title : src.TitleSnapshot;
-                    dest.CoverUrlSnapshot ??= src.CoverUrl;
-                    dest.PlatformSnapshot ??= src.Platform;
-                    dest.RegionSnapshot ??= src.Region;
-                    dest.Qty = src.Qty > 0 ? src.Qty : src.Quantity;
-                    dest.UnitPriceSnapshot = src.UnitPriceSnapshot > 0 ? src.UnitPriceSnapshot : src.UnitPrice;
-                    dest.DiscountSnapshot ??= src.UnitDiscount;
-                    dest.FinalUnitPriceSnapshot = src.FinalUnitPriceSnapshot > 0 ? src.FinalUnitPriceSnapshot : src.FinalUnitPrice;
-                    dest.LineTotalSnapshot = src.LineTotalSnapshot > 0 ? src.LineTotalSnapshot : src.LineTotal;
-                    dest.DeliveryType ??= src.Delivery?.DeliveryType;
                 });
 
-            CreateMap<OrderItemSnapshotDb, OrderItemSnapshot>()
-                .AfterMap((src, dest) =>
-                {
-                    dest.Title = string.IsNullOrWhiteSpace(src.Title) ? src.TitleSnapshot : src.Title;
-                    dest.CoverUrl ??= src.CoverUrlSnapshot;
-                    dest.Platform ??= src.PlatformSnapshot;
-                    dest.Region ??= src.RegionSnapshot;
-                    dest.Quantity = src.Quantity > 0 ? src.Quantity : src.Qty;
-                    dest.UnitPrice = src.UnitPrice > 0 ? src.UnitPrice : src.UnitPriceSnapshot;
-                    dest.UnitDiscount = src.UnitDiscount > 0 ? src.UnitDiscount : src.DiscountSnapshot ?? 0m;
-                    dest.FinalUnitPrice = src.FinalUnitPrice > 0 ? src.FinalUnitPrice : src.FinalUnitPriceSnapshot;
-                    dest.LineTotal = src.LineTotal > 0 ? src.LineTotal : src.LineTotalSnapshot;
-                    dest.Delivery ??= string.IsNullOrWhiteSpace(src.DeliveryType)
-                        ? null
-                        : new DeliverySnapshot { DeliveryType = src.DeliveryType };
-
-                    dest.TitleSnapshot = string.IsNullOrWhiteSpace(src.TitleSnapshot) ? dest.Title : src.TitleSnapshot;
-                    dest.Qty = src.Qty > 0 ? src.Qty : dest.Quantity;
-                    dest.UnitPriceSnapshot = src.UnitPriceSnapshot > 0 ? src.UnitPriceSnapshot : dest.UnitPrice;
-                    dest.DiscountSnapshot ??= src.DiscountSnapshot ?? dest.UnitDiscount;
-                    dest.FinalUnitPriceSnapshot = src.FinalUnitPriceSnapshot > 0 ? src.FinalUnitPriceSnapshot : dest.FinalUnitPrice;
-                    dest.LineTotalSnapshot = src.LineTotalSnapshot > 0 ? src.LineTotalSnapshot : dest.LineTotal;
-                    dest.DeliveryType ??= src.DeliveryType;
-                });
+            CreateMap<OrderItemSnapshotDb, OrderItemSnapshot>();
 
             CreateMap<Order, OrderDb>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

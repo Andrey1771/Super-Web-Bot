@@ -16,37 +16,79 @@ namespace SuperBot.WebApi.Services
         // Метод для инициализации коллекций
         public async Task InitializeAsync()
         {
-            // Список коллекций, которые нужно проверить/создать
+            // ПОЛНЫЙ перечень коллекций проекта — единственное место, где видно состав базы целиком.
+            // Mongo создала бы их и сама при первой записи; список нужен как карта хранилища,
+            // поэтому при появлении новой коллекции её обязательно добавлять сюда.
             var collectionsToEnsure = new[]
             {
-                "Users",
+                // Каталог и контент товара
                 "Games",
                 "GameDetails",
+                "GameDiscounts",
+                "GameKeys",
                 "GameReviews",
                 "GameReviewHelpfulVotes",
                 "GameQuestions",
                 "GameTrackingEvents",
-                "Orders",
+                "MediaAssets",
+
+                // Покупатель: аккаунт, корзина, витринные списки
+                "Users",
+                "Cart",
                 "WishlistItems",
                 "ViewedGames",
-                "GameKeys",
+                "BillingProfiles",
+                "RecoveryRequests",
+
+                // Заказы и платежи
+                "Orders",
+                "SteamOrders",
+                "PaymentFinalizationStates",
+                "PaymentFinalizationFailures",
+                "StripeWebhookEvents",
+                "CryptoInvoiceStates",
+                "PromoCodes",
+                "PromoCodeUsages",
+
+                // Витрина главной страницы
+                "DealOfWeekSettings",
+                "TarotSettings",
+                "TarotDraws",
+                "TarotDrawLocks",
+
+                // Раздел News (бывший блог)
                 "BlogPosts",
                 "BlogPostVersions",
                 "BlogEvents",
                 "BlogPostUniqueViews",
                 "BlogViewSettings",
+                "BlogHomepageSettings",
                 "UserBlogProfiles",
+
+                // Рассылка
+                "NewsletterSubscribers",
+                "NewsletterCampaigns",
+                "NewsletterState",
+
+                // Поддержка: тикеты и живой чат
                 "SupportTickets",
                 "SupportMessages",
                 "SupportAttachments",
                 "SupportTicketCounters",
                 "SupportChatSessions",
                 "SupportChatMessages",
-                "PromoCodes",
-                "PromoCodeUsages",
-                "PaymentFinalizationStates",
-                "PaymentFinalizationFailures",
-                "StripeWebhookEvents"
+
+                // Telegram-бот: привязка аккаунтов, состояние диалогов, исходящие события
+                "TelegramLinks",
+                "TelegramLinkTokens",
+                "BotChatStates",
+                "BotResources",
+                "BotOutbox",
+
+                // Служебное: настройки сайта, аналитика, импорт данных
+                "Settings",
+                "AnalyticsSettings",
+                "ImportJobs"
             };
 
             var existingCollections = await _database.ListCollectionNamesAsync();
@@ -377,9 +419,55 @@ namespace SuperBot.WebApi.Services
                 Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.Status),
                 new CreateIndexOptions { Name = "ix_orders_status" }
             );
+            // Под витринный чарт продаж: выборка «оплаченные за последнюю неделю».
+            // Без него выборка по дате продажи сканирует всю коллекцию заказов.
+            var ordersPaidAtIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
+                Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys
+                    .Ascending(item => item.IsPaid)
+                    .Descending(item => item.PaidAt),
+                new CreateIndexOptions { Name = "ix_orders_paid_at" }
+            );
+            // Заказ ищут по трём идентификаторам (см. BuildOrderIdentityFilter): ObjectId покрыт
+            // индексом _id, а OrderNumber и OrderId — обычные поля, и без индексов открытие заказа
+            // по номеру (кабинет, письмо, админка) сканировало коллекцию целиком.
+            var ordersNumberIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
+                Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.OrderNumber),
+                new CreateIndexOptions { Name = "ix_orders_number" }
+            );
+            var ordersOrderIdIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
+                Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.OrderId),
+                new CreateIndexOptions { Name = "ix_orders_order_id" }
+            );
+
             await ordersCollection.Indexes.CreateOneAsync(ordersPaymentIntentIndex);
             await ordersCollection.Indexes.CreateOneAsync(ordersUserCreatedIndex);
             await ordersCollection.Indexes.CreateOneAsync(ordersStatusIndex);
+            await ordersCollection.Indexes.CreateOneAsync(ordersPaidAtIndex);
+            await ordersCollection.Indexes.CreateOneAsync(ordersNumberIndex);
+            await ordersCollection.Indexes.CreateOneAsync(ordersOrderIdIndex);
+
+            // Локи розыгрыша «карты удачи» живут ровно до конца кулдауна и удаляются сами.
+            // ExpireAfter = 0 означает «удалить, когда наступит время в поле ExpiresAt»
+            // (Mongo проверяет это фоново, раз в ~минуту — для суточного кулдауна достаточно).
+            var tarotLocksCollection = _database.GetCollection<SuperBot.Infrastructure.Data.TarotDrawLockDb>("TarotDrawLocks");
+            var tarotLockTtlIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.TarotDrawLockDb>(
+                Builders<SuperBot.Infrastructure.Data.TarotDrawLockDb>.IndexKeys.Ascending(item => item.ExpiresAt),
+                new CreateIndexOptions { Name = "ix_tarot_locks_ttl", ExpireAfter = TimeSpan.Zero }
+            );
+            await tarotLocksCollection.Indexes.CreateOneAsync(tarotLockTtlIndex);
+
+            // Розыгрыши: выборка «последний по пользователю» для состояния карты и кулдауна.
+            var tarotDrawsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.TarotDrawDb>("TarotDraws");
+            var tarotDrawUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.TarotDrawDb>(
+                Builders<SuperBot.Infrastructure.Data.TarotDrawDb>.IndexKeys
+                    .Ascending(item => item.UserId)
+                    .Descending(item => item.DrawnAt),
+                new CreateIndexOptions { Name = "ix_tarot_draws_user_drawn" }
+            );
+            await tarotDrawsCollection.Indexes.CreateOneAsync(tarotDrawUserIndex);
+
+            await EnsureCatalogAndLookupIndexesAsync();
+            await EnsureRetentionIndexesAsync();
 
             var paymentStateCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>("PaymentFinalizationStates");
             var paymentStateIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>(
@@ -431,6 +519,138 @@ namespace SuperBot.WebApi.Services
             }
 
             await SeedGameDetailsAsync(gameDetailsCollection);
+        }
+
+        /// <summary>
+        /// TTL-индексы: сроки хранения для коллекций, которые иначе растут бесконечно.
+        /// Mongo удаляет просроченные документы фоново (проверка примерно раз в минуту) —
+        /// ни планировщика, ни кода чистки не требуется.
+        ///
+        /// ВАЖНО: TTL стирает данные безвозвратно, поэтому сроки выбраны с запасом,
+        /// а коллекции, нужные для разбора инцидентов и отчётности, сюда не входят.
+        /// </summary>
+        private async Task EnsureRetentionIndexesAsync()
+        {
+            // События просмотра игр — самая быстрорастущая коллекция (запись на каждый просмотр).
+            // Трёх месяцев хватает и рекомендациям, и аналитике; более старое никем не читается.
+            var tracking = _database.GetCollection<SuperBot.Infrastructure.Data.GameTrackingEventDb>("GameTrackingEvents");
+            await CreateIndexSafelyAsync(tracking, new CreateIndexModel<SuperBot.Infrastructure.Data.GameTrackingEventDb>(
+                Builders<SuperBot.Infrastructure.Data.GameTrackingEventDb>.IndexKeys.Ascending(item => item.Timestamp),
+                new CreateIndexOptions { Name = "ix_game_tracking_ttl", ExpireAfter = TimeSpan.FromDays(90) }));
+
+            // События блога — полгода: на них строятся «популярное за период» и статистика постов.
+            var blogEvents = _database.GetCollection<SuperBot.Infrastructure.Data.BlogEventDb>("BlogEvents");
+            await CreateIndexSafelyAsync(blogEvents, new CreateIndexModel<SuperBot.Infrastructure.Data.BlogEventDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogEventDb>.IndexKeys.Ascending(item => item.Timestamp),
+                new CreateIndexOptions { Name = "ix_blog_events_ttl", ExpireAfter = TimeSpan.FromDays(180) }));
+
+            // Отметки уникальных просмотров: нужны, чтобы не считать один и тот же просмотр дважды.
+            // Через полгода отметка теряет смысл — вернувшийся читатель по сути новый визит.
+            // Счётчики просмотров в самих постах хранятся отдельно и от чистки не страдают.
+            var uniqueViews = _database.GetCollection<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>("BlogPostUniqueViews");
+            await CreateIndexSafelyAsync(uniqueViews, new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>.IndexKeys.Ascending(item => item.LastViewedAt),
+                new CreateIndexOptions { Name = "ix_blog_unique_views_ttl", ExpireAfter = TimeSpan.FromDays(180) }));
+
+            // Одноразовые токены привязки Telegram: живут считанные минуты, но лежали вечно.
+            // Сутки после истечения — запас на разбор «почему ссылка не сработала».
+            // Через BsonDocument: тип токена объявлен внутри репозитория.
+            var linkTokens = _database.GetCollection<MongoDB.Bson.BsonDocument>("TelegramLinkTokens");
+            await CreateIndexSafelyAsync(linkTokens, new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("ExpiresAt"),
+                new CreateIndexOptions { Name = "ix_telegram_link_tokens_ttl", ExpireAfter = TimeSpan.FromDays(1) }));
+
+            // RecoveryRequests TTL сознательно НЕ получают: это заявки на восстановление доступа,
+            // то есть след действий с чужим аккаунтом. Их держим как аудит безопасности —
+            // объём небольшой, а автоудаление стёрло бы историю подозрительных попыток.
+        }
+
+        /// <summary>
+        /// Индексы под точечные выборки каталога, пользователей, медиа и одноразовых токенов.
+        /// Эти коллекции запрашиваются по конкретным полям на горячих путях (открытие каталога,
+        /// страницы игры, авторизованный запрос, приём вебхука), но исторически остались без индексов —
+        /// каждый такой запрос сканировал коллекцию целиком.
+        ///
+        /// Все индексы НЕуникальные: цель — скорость выборки, а не защита инвариантов.
+        /// Уникальные потребовали бы чистки существующих дублей и могли бы уронить старт.
+        /// </summary>
+        private async Task EnsureCatalogAndLookupIndexesAsync()
+        {
+            // Скидки: дёргаются на каждой загрузке каталога, карточки игры, чарта и баннера недели.
+            var discounts = _database.GetCollection<SuperBot.Infrastructure.Data.GameDiscountDb>("GameDiscounts");
+            await CreateIndexSafelyAsync(discounts, new CreateIndexModel<SuperBot.Infrastructure.Data.GameDiscountDb>(
+                Builders<SuperBot.Infrastructure.Data.GameDiscountDb>.IndexKeys.Ascending(item => item.GameId),
+                new CreateIndexOptions { Name = "ix_game_discounts_game" }));
+
+            // Каталог: Slug — открытие карточки товара, ExternalId — импорт, CoverMediaId — медиатека.
+            var games = _database.GetCollection<SuperBot.Infrastructure.Data.GameDb>("Games");
+            await CreateIndexSafelyAsync(games, new CreateIndexModel<SuperBot.Infrastructure.Data.GameDb>(
+                Builders<SuperBot.Infrastructure.Data.GameDb>.IndexKeys.Ascending(item => item.Slug),
+                new CreateIndexOptions { Name = "ix_games_slug" }));
+            await CreateIndexSafelyAsync(games, new CreateIndexModel<SuperBot.Infrastructure.Data.GameDb>(
+                Builders<SuperBot.Infrastructure.Data.GameDb>.IndexKeys.Ascending(item => item.ExternalId),
+                new CreateIndexOptions { Name = "ix_games_external_id", Sparse = true }));
+            await CreateIndexSafelyAsync(games, new CreateIndexModel<SuperBot.Infrastructure.Data.GameDb>(
+                Builders<SuperBot.Infrastructure.Data.GameDb>.IndexKeys.Ascending(item => item.CoverMediaId),
+                new CreateIndexOptions { Name = "ix_games_cover_media", Sparse = true }));
+
+            // Пользователи: поиск идёт на каждом авторизованном запросе.
+            var users = _database.GetCollection<SuperBot.Infrastructure.Data.UserDb>("Users");
+            await CreateIndexSafelyAsync(users, new CreateIndexModel<SuperBot.Infrastructure.Data.UserDb>(
+                Builders<SuperBot.Infrastructure.Data.UserDb>.IndexKeys.Ascending(item => item.UserId),
+                new CreateIndexOptions { Name = "ix_users_user_id" }));
+            await CreateIndexSafelyAsync(users, new CreateIndexModel<SuperBot.Infrastructure.Data.UserDb>(
+                Builders<SuperBot.Infrastructure.Data.UserDb>.IndexKeys.Ascending(item => item.Username),
+                new CreateIndexOptions { Name = "ix_users_username" }));
+
+            // Медиа: дедупликация при загрузке ищет по хешу и размеру, библиотека фильтрует по типу.
+            var media = _database.GetCollection<SuperBot.Infrastructure.Data.MediaAssetDb>("MediaAssets");
+            await CreateIndexSafelyAsync(media, new CreateIndexModel<SuperBot.Infrastructure.Data.MediaAssetDb>(
+                Builders<SuperBot.Infrastructure.Data.MediaAssetDb>.IndexKeys
+                    .Ascending(item => item.HashSha256)
+                    .Ascending(item => item.SizeBytes),
+                new CreateIndexOptions { Name = "ix_media_hash_size" }));
+            await CreateIndexSafelyAsync(media, new CreateIndexModel<SuperBot.Infrastructure.Data.MediaAssetDb>(
+                Builders<SuperBot.Infrastructure.Data.MediaAssetDb>.IndexKeys.Ascending(item => item.Type),
+                new CreateIndexOptions { Name = "ix_media_type" }));
+
+            // TelegramLinkTokens индекса НЕ требуют: сам токен объявлен как [BsonId],
+            // то есть поиск идёт по _id, у которого индекс есть всегда.
+
+            // Заявки на восстановление: поиск по почте (активная заявка) и по токену отмены из письма.
+            var recovery = _database.GetCollection<SuperBot.WebApi.Recovery.Models.RecoveryRequest>("RecoveryRequests");
+            await CreateIndexSafelyAsync(recovery, new CreateIndexModel<SuperBot.WebApi.Recovery.Models.RecoveryRequest>(
+                Builders<SuperBot.WebApi.Recovery.Models.RecoveryRequest>.IndexKeys.Ascending(item => item.AccountEmail),
+                new CreateIndexOptions { Name = "ix_recovery_account_email" }));
+            await CreateIndexSafelyAsync(recovery, new CreateIndexModel<SuperBot.WebApi.Recovery.Models.RecoveryRequest>(
+                Builders<SuperBot.WebApi.Recovery.Models.RecoveryRequest>.IndexKeys.Ascending(item => item.CancelToken),
+                new CreateIndexOptions { Name = "ix_recovery_cancel_token", Sparse = true }));
+
+            // Крипто-инвойсы: по InvoiceId приходит вебхук платёжного шлюза.
+            // Через BsonDocument — тип состояния объявлен внутри контроллера, тащить его сюда незачем.
+            var cryptoInvoices = _database.GetCollection<MongoDB.Bson.BsonDocument>("CryptoInvoiceStates");
+            await CreateIndexSafelyAsync(cryptoInvoices, new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("InvoiceId"),
+                new CreateIndexOptions { Name = "ix_crypto_invoices_invoice_id" }));
+        }
+
+        /// <summary>
+        /// Создаёт индекс, не роняя старт приложения: проблема с одним индексом не должна
+        /// оставлять сайт лежать — она логируется, остальные индексы создаются дальше.
+        /// </summary>
+        private static async Task CreateIndexSafelyAsync<TDocument>(
+            IMongoCollection<TDocument> collection,
+            CreateIndexModel<TDocument> index)
+        {
+            try
+            {
+                await collection.Indexes.CreateOneAsync(index);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"[MongoInit] Не удалось создать индекс {index.Options?.Name} в {collection.CollectionNamespace}: {ex.Message}");
+            }
         }
 
         /// <summary>

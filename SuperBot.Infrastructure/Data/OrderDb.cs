@@ -82,18 +82,6 @@ namespace SuperBot.Infrastructure.Data
         public decimal LineTotal { get; set; }
         public PricingSnapshotDb Pricing { get; set; } = new();
         public DeliverySnapshotDb? Delivery { get; set; }
-
-        public string TitleSnapshot { get; set; } = string.Empty;
-        public string? CoverUrlSnapshot { get; set; }
-        public string? PlatformSnapshot { get; set; }
-        public string? RegionSnapshot { get; set; }
-        public int Qty { get; set; }
-        public decimal UnitPriceSnapshot { get; set; }
-        public string UnitPriceCurrency { get; set; } = "USD";
-        public decimal? DiscountSnapshot { get; set; }
-        public decimal FinalUnitPriceSnapshot { get; set; }
-        public decimal LineTotalSnapshot { get; set; }
-        public string? DeliveryType { get; set; }
     }
 
     public class PricingSnapshotDb

@@ -17,7 +17,8 @@ namespace SuperBot.WebApi.Tests;
 /// Покрывают путь гостя (double opt-in → кампания → отписка), путь владельца аккаунта,
 /// защиту (валидация, rate-limit, роли админки) и автодайджест скидок.
 /// </summary>
-public class NewsletterPipelineTests : IClassFixture<TaleShopApiFactory>
+[Collection(IntegrationTestCollection.Name)]
+public class NewsletterPipelineTests
 {
     private readonly TaleShopApiFactory _factory;
 

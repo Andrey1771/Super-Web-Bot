@@ -49,17 +49,20 @@ namespace SuperBot.WebApi.Controllers
         private readonly ITarotDrawRepository _drawRepository;
         private readonly IPromoCodeRepository _promoCodeRepository;
         private readonly IPromoCodeUsageRepository _promoCodeUsageRepository;
+        private readonly IOrderRepository _orderRepository;
 
         public TarotController(
             ITarotSettingsRepository settingsRepository,
             ITarotDrawRepository drawRepository,
             IPromoCodeRepository promoCodeRepository,
-            IPromoCodeUsageRepository promoCodeUsageRepository)
+            IPromoCodeUsageRepository promoCodeUsageRepository,
+            IOrderRepository orderRepository)
         {
             _settingsRepository = settingsRepository;
             _drawRepository = drawRepository;
             _promoCodeRepository = promoCodeRepository;
             _promoCodeUsageRepository = promoCodeUsageRepository;
+            _orderRepository = orderRepository;
         }
 
         /// <summary>Состояние карты для текущего пользователя: можно ли тянуть и что уже вытянуто.</summary>
@@ -77,11 +80,15 @@ namespace SuperBot.WebApi.Controllers
             var latest = await _drawRepository.GetLatestByUserAsync(userId);
             var utcNow = DateTime.UtcNow;
             var nextDrawAt = latest?.DrawnAt.AddHours(settings.CooldownHours);
+            var purchaseRequired = settings.RequirePurchase && !await _orderRepository.HasPaidOrderAsync(userId);
 
             return Ok(new
             {
                 enabled = settings.Enabled,
-                canDraw = settings.Enabled && (nextDrawAt == null || nextDrawAt <= utcNow),
+                // Витрина по этому флагу показывает «карта откроется после первой покупки»
+                // вместо кнопки розыгрыша.
+                purchaseRequired,
+                canDraw = settings.Enabled && !purchaseRequired && (nextDrawAt == null || nextDrawAt <= utcNow),
                 nextDrawAt,
                 // Действующий код показываем снова — карта «помнит» вытянутое до истечения срока.
                 current = latest != null && latest.ExpiresAt > utcNow
@@ -106,51 +113,81 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest(new { message = "The lucky card is taking a rest — check back later." });
             }
 
+            // Карта — награда покупателю. Заодно это барьер против мультиаккаунтов:
+            // новый аккаунт завести легко, а покупку ради небольшой скидки — бессмысленно.
+            if (settings.RequirePurchase && !await _orderRepository.HasPaidOrderAsync(userId))
+            {
+                return BadRequest(new
+                {
+                    message = "The deck opens after your first purchase.",
+                    purchaseRequired = true
+                });
+            }
+
             var utcNow = DateTime.UtcNow;
-            var latest = await _drawRepository.GetLatestByUserAsync(userId);
-            var nextDrawAt = latest?.DrawnAt.AddHours(settings.CooldownHours);
-            if (nextDrawAt != null && nextDrawAt > utcNow)
+            var nextDrawAt = utcNow.AddHours(settings.CooldownHours);
+
+            // Право на розыгрыш занимается АТОМАРНО и ДО создания чего-либо: проверка «можно ли»
+            // отдельным запросом оставляла зазор, в который проходил второй параллельный запрос
+            // и выдавал лишний промокод. Лок исчезнет сам, когда кулдаун истечёт.
+            if (!await _drawRepository.TryAcquireDrawLockAsync(userId, nextDrawAt))
             {
-                return BadRequest(new { message = "You've already drawn your card.", nextDrawAt });
+                var latest = await _drawRepository.GetLatestByUserAsync(userId);
+                return BadRequest(new
+                {
+                    message = "You've already drawn your card.",
+                    nextDrawAt = latest?.DrawnAt.AddHours(settings.CooldownHours)
+                });
             }
 
-            var tier = RollTier(settings.Tiers);
-            var code = await GenerateUniqueCodeAsync();
-            if (code == null)
+            try
             {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "Could not conjure a code — try again." });
+                var tier = RollTier(settings.Tiers);
+                var code = await GenerateUniqueCodeAsync();
+                if (code == null)
+                {
+                    // Лок отпускаем: пользователь не виноват, что коды закончились.
+                    await _drawRepository.ReleaseDrawLockAsync(userId);
+                    return StatusCode(StatusCodes.Status500InternalServerError,
+                        new { message = "Could not conjure a code — try again." });
+                }
+
+                var expiresAt = utcNow.AddHours(settings.CodeTtlHours);
+                var promo = await _promoCodeRepository.CreateAsync(new PromoCode
+                {
+                    Code = code,
+                    Type = PromoCodeType.Percentage,
+                    Value = tier.Percent,
+                    StartDate = utcNow - CodeActivationBackdate,
+                    EndDate = expiresAt,
+                    // Карта удачи — персональная: код сгорает после первого применения.
+                    UsageLimit = SingleUseLimit
+                });
+
+                await _drawRepository.CreateAsync(new TarotDraw
+                {
+                    UserId = userId,
+                    Code = code,
+                    PromoCodeId = promo.Id,
+                    Percent = tier.Percent,
+                    DrawnAt = utcNow,
+                    ExpiresAt = expiresAt
+                });
+
+                return Ok(new
+                {
+                    code,
+                    percent = tier.Percent,
+                    expiresAt,
+                    nextDrawAt
+                });
             }
-
-            var expiresAt = utcNow.AddHours(settings.CodeTtlHours);
-            var promo = await _promoCodeRepository.CreateAsync(new PromoCode
+            catch
             {
-                Code = code,
-                Type = PromoCodeType.Percentage,
-                Value = tier.Percent,
-                StartDate = utcNow - CodeActivationBackdate,
-                EndDate = expiresAt,
-                // Карта удачи — персональная: код сгорает после первого применения.
-                UsageLimit = SingleUseLimit
-            });
-
-            await _drawRepository.CreateAsync(new TarotDraw
-            {
-                UserId = userId,
-                Code = code,
-                PromoCodeId = promo.Id,
-                Percent = tier.Percent,
-                DrawnAt = utcNow,
-                ExpiresAt = expiresAt
-            });
-
-            return Ok(new
-            {
-                code,
-                percent = tier.Percent,
-                expiresAt,
-                nextDrawAt = utcNow.AddHours(settings.CooldownHours)
-            });
+                // Розыгрыш сорвался — снимаем лок, иначе пользователь ждал бы сутки впустую.
+                await _drawRepository.ReleaseDrawLockAsync(userId);
+                throw;
+            }
         }
 
         [HttpGet("api/admin/tarot")]
@@ -163,6 +200,7 @@ namespace SuperBot.WebApi.Controllers
                 settings = new
                 {
                     enabled = settings.Enabled,
+                    requirePurchase = settings.RequirePurchase,
                     cooldownHours = settings.CooldownHours,
                     codeTtlHours = settings.CodeTtlHours,
                     tiers = settings.Tiers.Select(tier => new { percent = tier.Percent, weight = tier.Weight })
@@ -192,6 +230,7 @@ namespace SuperBot.WebApi.Controllers
             var saved = await _settingsRepository.UpsertAsync(new TarotSettings
             {
                 Enabled = request?.Enabled ?? true,
+                RequirePurchase = request?.RequirePurchase ?? true,
                 CooldownHours = Math.Clamp(
                     request?.CooldownHours ?? DefaultCooldownHours, MinSettingHours, MaxSettingHours),
                 CodeTtlHours = Math.Clamp(
@@ -205,6 +244,7 @@ namespace SuperBot.WebApi.Controllers
                 settings = new
                 {
                     enabled = saved.Enabled,
+                    requirePurchase = saved.RequirePurchase,
                     cooldownHours = saved.CooldownHours,
                     codeTtlHours = saved.CodeTtlHours,
                     tiers = saved.Tiers.Select(tier => new { percent = tier.Percent, weight = tier.Weight })
@@ -271,6 +311,7 @@ namespace SuperBot.WebApi.Controllers
     public class UpdateTarotSettingsRequest
     {
         public bool? Enabled { get; set; }
+        public bool? RequirePurchase { get; set; }
         public int? CooldownHours { get; set; }
         public int? CodeTtlHours { get; set; }
         public List<TarotTierRequest>? Tiers { get; set; }

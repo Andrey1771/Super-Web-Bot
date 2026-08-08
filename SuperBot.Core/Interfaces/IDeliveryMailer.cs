@@ -41,7 +41,7 @@ namespace SuperBot.Core.Interfaces
 
             foreach (var item in order.Items)
             {
-                var needed = Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty);
+                var needed = Math.Max(1, item.Quantity);
                 var got = item.Delivery?.Keys.Count ?? 0;
                 total += needed;
                 delivered += Math.Min(got, needed);
@@ -49,8 +49,7 @@ namespace SuperBot.Core.Interfaces
                 var remaining = needed - got;
                 if (remaining > 0)
                 {
-                    var title = !string.IsNullOrWhiteSpace(item.Title) ? item.Title
-                        : (!string.IsNullOrWhiteSpace(item.TitleSnapshot) ? item.TitleSnapshot : "Game");
+                    var title = string.IsNullOrWhiteSpace(item.Title) ? "Game" : item.Title;
                     pending.Add(new KeyDeliveryPendingLine(title, remaining));
                 }
             }

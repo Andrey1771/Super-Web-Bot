@@ -485,19 +485,7 @@ namespace SuperBot.Infrastructure.Services
                         FinalUnitPrice = finalUnitPrice,
                         LineTotal = lineTotal,
                         Pricing = new PricingSnapshot { PriceSource = "catalog", OriginalUnitPrice = item.UnitPrice },
-                        Delivery = new DeliverySnapshot { DeliveryType = "Key" },
-
-                        TitleSnapshot = string.IsNullOrWhiteSpace(item.Title) ? "Game purchase" : item.Title,
-                        CoverUrlSnapshot = item.CoverUrl,
-                        PlatformSnapshot = item.Platform,
-                        RegionSnapshot = item.Region,
-                        Qty = item.Quantity,
-                        UnitPriceSnapshot = item.UnitPrice,
-                        UnitPriceCurrency = string.IsNullOrWhiteSpace(item.Currency) ? (state.Currency ?? "USD") : item.Currency,
-                        DiscountSnapshot = item.DiscountPerUnit,
-                        FinalUnitPriceSnapshot = finalUnitPrice,
-                        LineTotalSnapshot = lineTotal,
-                        DeliveryType = "Key"
+                        Delivery = new DeliverySnapshot { DeliveryType = "Key" }
                     };
                 }).ToList();
             }
@@ -520,15 +508,7 @@ namespace SuperBot.Infrastructure.Services
                     FinalUnitPrice = total,
                     LineTotal = total,
                     Pricing = new PricingSnapshot { PriceSource = "metadata" },
-                    Delivery = new DeliverySnapshot { DeliveryType = "Key" },
-
-                    TitleSnapshot = gameTitle,
-                    Qty = 1,
-                    UnitPriceSnapshot = total,
-                    UnitPriceCurrency = currency,
-                    FinalUnitPriceSnapshot = total,
-                    LineTotalSnapshot = total,
-                    DeliveryType = "Key"
+                    Delivery = new DeliverySnapshot { DeliveryType = "Key" }
                 }
             ];
         }

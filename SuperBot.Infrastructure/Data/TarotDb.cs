@@ -11,6 +11,9 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("enabled")]
         public bool Enabled { get; set; } = true;
 
+        [BsonElement("require_purchase")]
+        public bool RequirePurchase { get; set; } = true;
+
         [BsonElement("cooldown_hours")]
         public int CooldownHours { get; set; } = 24;
 
@@ -31,6 +34,21 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("weight")]
         public int Weight { get; set; }
+    }
+
+    /// <summary>
+    /// Лок розыгрыша: пока документ существует, пользователь не может вытянуть карту.
+    /// _id = идентификатор пользователя, поэтому вторая вставка физически невозможна —
+    /// это и есть защита от гонки параллельных запросов.
+    /// Документ удаляется сам по TTL-индексу, когда наступает ExpiresAt.
+    /// </summary>
+    public class TarotDrawLockDb
+    {
+        [BsonId]
+        public string UserId { get; set; } = string.Empty;
+
+        [BsonElement("expires_at")]
+        public DateTime ExpiresAt { get; set; }
     }
 
     public class TarotDrawDb

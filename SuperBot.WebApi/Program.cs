@@ -154,6 +154,8 @@ builder.Services.AddSingleton<IDeliveryVerificationTokenService, DeliveryVerific
 builder.Services.AddScoped<IDeliveryMailer, SuperBot.WebApi.Mail.DeliveryMailService>();
 // Авто-возврат гостевых заказов с неподтверждённой почтой (48ч). Запускает Hangfire (ниже).
 builder.Services.AddScoped<IUnverifiedOrderRefundService, UnverifiedOrderRefundService>();
+// Уборка протухших промокодов «карты удачи». Запускает Hangfire (ниже).
+builder.Services.AddScoped<ITarotMaintenanceService, TarotMaintenanceService>();
 // Event-outbox: сайт только ПУБЛИКУЕТ события; консюмер (BotOutboxWorker) живёт в бот-сервисе.
 builder.Services.AddScoped<IBotEventPublisher, MongoBotEventPublisher>();
 builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>();
@@ -450,6 +452,13 @@ if (hangfireEnabled)
         "auto-refund-unverified-orders",
         service => service.RunAsync(),
         Cron.Hourly);
+
+    // «Карта удачи» создаёт по одноразовому промокоду на каждый розыгрыш — без уборки
+    // они копятся в админ-списке промокодов навсегда.
+    recurringJobManager.AddOrUpdate<ITarotMaintenanceService>(
+        "purge-expired-tarot-codes",
+        service => service.PurgeExpiredCodesAsync(),
+        Cron.Daily);
 }
 
 app.Run();

@@ -15,6 +15,8 @@ import { analyticsClient } from "../../utils/analytics-client";
 // Состояние «карты удачи» текущего пользователя (GET /api/tarot/state).
 type TarotState = {
     enabled: boolean;
+    /** Карта открывается после первой покупки — так механика остаётся наградой, а не приманкой. */
+    purchaseRequired: boolean;
     canDraw: boolean;
     nextDrawAt?: string | null;
     current?: { code: string; percent: number; expiresAt: string } | null;
@@ -217,6 +219,8 @@ export default function DealOfWeekBanner({
             const result = response.data as { code: string; percent: number; expiresAt: string; nextDrawAt: string };
             setTarot({
                 enabled: true,
+                // Розыгрыш удался — значит покупка у пользователя есть.
+                purchaseRequired: false,
                 canDraw: false,
                 nextDrawAt: result.nextDrawAt,
                 current: { code: result.code, percent: result.percent, expiresAt: result.expiresAt }
@@ -272,6 +276,21 @@ export default function DealOfWeekBanner({
                     <Link className="t-lucky-btn" to="/logIn">
                         <i aria-hidden="true">✦</i>
                         Log in to draw
+                        <i aria-hidden="true">✦</i>
+                    </Link>
+                </span>
+            );
+        }
+        if (tarot?.purchaseRequired) {
+            return (
+                <span className="t-lucky-front">
+                    <span className="t-lucky-title">Sealed until your first purchase</span>
+                    <span className="t-lucky-text">
+                        Buy any game — and the deck starts dealing you a personal discount every day.
+                    </span>
+                    <Link className="t-lucky-btn" to="/games">
+                        <i aria-hidden="true">✦</i>
+                        Browse games
                         <i aria-hidden="true">✦</i>
                     </Link>
                 </span>

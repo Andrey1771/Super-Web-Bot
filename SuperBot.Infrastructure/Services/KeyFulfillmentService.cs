@@ -119,7 +119,7 @@ namespace SuperBot.Infrastructure.Services
                     continue;
                 }
 
-                var needed = Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty);
+                var needed = Math.Max(1, item.Quantity);
                 item.Delivery ??= new DeliverySnapshot { DeliveryType = "Key" };
                 var alreadyDelivered = item.Delivery.Keys.Count;
 
@@ -143,7 +143,7 @@ namespace SuperBot.Infrastructure.Services
         private void RecomputeOrderStatus(Order order)
         {
             var items = NormalizeItems(order);
-            var totalNeeded = items.Sum(item => Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty));
+            var totalNeeded = items.Sum(item => Math.Max(1, item.Quantity));
             var totalDelivered = items.Sum(item => item.Delivery?.Keys.Count ?? 0);
 
             string fulfillment;
@@ -217,7 +217,6 @@ namespace SuperBot.Infrastructure.Services
 
         private static string ResolveTitle(OrderItemSnapshot item, Order order) =>
             !string.IsNullOrWhiteSpace(item.Title) ? item.Title
-            : !string.IsNullOrWhiteSpace(item.TitleSnapshot) ? item.TitleSnapshot
             : string.IsNullOrWhiteSpace(order.GameName) ? "Game purchase" : order.GameName;
 
         /// <summary>Маскирует ключ для истории заказа: видны только последние 4 символа.</summary>

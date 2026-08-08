@@ -94,6 +94,43 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<IEnumerable<Order>>(ordersDb);
         }
 
+        public async Task<bool> HasPaidOrderAsync(string userKey)
+        {
+            if (string.IsNullOrWhiteSpace(userKey))
+            {
+                return false;
+            }
+
+            // Владелец заказа пишется и в UserId, и в UserName (см. OrderFinalizationService),
+            // но у заказов из разных источников заполнено может быть только одно — проверяем оба.
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true),
+                Builders<OrderDb>.Filter.Or(
+                    Builders<OrderDb>.Filter.Eq(order => order.UserId, userKey),
+                    Builders<OrderDb>.Filter.Eq(order => order.UserName, userKey)));
+
+            return await _orders.Find(filter).AnyAsync();
+        }
+
+        public async Task<List<Order>> GetPaidOrdersSinceAsync(DateTime sinceUtc)
+        {
+            // Дата продажи — PaidAt; у заказов, созданных до появления этого поля, берём OrderDate.
+            var soldSince = Builders<OrderDb>.Filter.Or(
+                Builders<OrderDb>.Filter.Gte(order => order.PaidAt, sinceUtc),
+                Builders<OrderDb>.Filter.And(
+                    Builders<OrderDb>.Filter.Eq(order => order.PaidAt, null),
+                    Builders<OrderDb>.Filter.Gte(order => order.OrderDate, sinceUtc)));
+
+            var filter = Builders<OrderDb>.Filter.And(
+                Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true),
+                soldSince);
+
+            var ordersDb = await _orders.Find(filter).ToListAsync();
+            // EnsureOrderGuidsAsync намеренно не зовём: агрегату номера заказов не нужны,
+            // а он делает дополнительную запись в базу.
+            return _mapper.Map<List<Order>>(ordersDb);
+        }
+
         public async Task<List<Order>> GetOrdersByUserAsync(string userName)
         {
             var ordersDb = await _orders.Find(order => order.UserName == userName).ToListAsync();
@@ -132,7 +169,7 @@ namespace SuperBot.Infrastructure.Repositories
                     {
                         continue;
                     }
-                    var needed = Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty);
+                    var needed = Math.Max(1, item.Quantity);
                     var delivered = item.Delivery?.Keys.Count ?? 0;
                     var deficit = needed - delivered;
                     if (deficit > 0)
@@ -163,7 +200,7 @@ namespace SuperBot.Infrastructure.Repositories
                     {
                         continue;
                     }
-                    var needed = Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty);
+                    var needed = Math.Max(1, item.Quantity);
                     var remaining = needed - (item.Delivery?.Keys.Count ?? 0);
                     if (remaining > 0)
                     {
@@ -374,8 +411,7 @@ namespace SuperBot.Infrastructure.Repositories
                     Builders<OrderDb>.Filter.Regex(order => order.GameName, regex),
                     Builders<OrderDb>.Filter.Regex(order => order.UserName, regex),
                     Builders<OrderDb>.Filter.Regex(order => order.OrderNumber, regex),
-                    Builders<OrderDb>.Filter.ElemMatch(order => order.Items, Builders<OrderItemSnapshotDb>.Filter.Regex(item => item.Title, regex)),
-                    Builders<OrderDb>.Filter.ElemMatch(order => order.Items, Builders<OrderItemSnapshotDb>.Filter.Regex(item => item.TitleSnapshot, regex))
+                    Builders<OrderDb>.Filter.ElemMatch(order => order.Items, Builders<OrderItemSnapshotDb>.Filter.Regex(item => item.Title, regex))
                 );
                 filter &= searchFilter;
             }

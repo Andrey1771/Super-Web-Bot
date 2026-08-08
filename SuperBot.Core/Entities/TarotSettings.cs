@@ -31,6 +31,14 @@ namespace SuperBot.Core.Entities
 
         public string Id { get; set; } = "default";
         public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Карта — награда покупателю, а не приманка: без покупок в истории розыгрыш закрыт.
+        /// Это же главный барьер против мультиаккаунтов — завести новый аккаунт легко,
+        /// а вот совершить покупку ради скидки в 5% смысла нет.
+        /// </summary>
+        public bool RequirePurchase { get; set; } = true;
+
         public int CooldownHours { get; set; } = DefaultCooldownHours;
         public int CodeTtlHours { get; set; } = DefaultCodeTtlHours;
         public List<TarotLuckyTier> Tiers { get; set; } = DefaultTiers();

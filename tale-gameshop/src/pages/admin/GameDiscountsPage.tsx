@@ -24,7 +24,7 @@ type DealOfWeekConfig = {
 // «Карта удачи» (таро на главной): механика рандомного персонального промокода.
 type TarotTier = { percent: number; weight: number };
 type TarotAdminResponse = {
-  settings: { enabled: boolean; cooldownHours: number; codeTtlHours: number; tiers: TarotTier[] };
+  settings: { enabled: boolean; requirePurchase: boolean; cooldownHours: number; codeTtlHours: number; tiers: TarotTier[] };
   stats: { totalDraws: number; draws7d: number; redeemedInSample: number; sampleSize: number };
 };
 
@@ -70,6 +70,7 @@ const GameDiscountsPage: React.FC = () => {
   const [dealSaving, setDealSaving] = useState(false);
 
   const [tarotEnabled, setTarotEnabled] = useState(true);
+  const [tarotRequirePurchase, setTarotRequirePurchase] = useState(true);
   const [tarotCooldown, setTarotCooldown] = useState(24);
   const [tarotTtl, setTarotTtl] = useState(24);
   const [tarotTiers, setTarotTiers] = useState<TarotTier[]>([]);
@@ -183,6 +184,7 @@ const GameDiscountsPage: React.FC = () => {
 
   const applyTarotResponse = useCallback((config: TarotAdminResponse) => {
     setTarotEnabled(config.settings.enabled);
+    setTarotRequirePurchase(config.settings.requirePurchase);
     setTarotCooldown(config.settings.cooldownHours);
     setTarotTtl(config.settings.codeTtlHours);
     setTarotTiers(config.settings.tiers);
@@ -211,6 +213,7 @@ const GameDiscountsPage: React.FC = () => {
     try {
       const response = await apiClient.api.put("/api/admin/tarot", {
         enabled: tarotEnabled,
+        requirePurchase: tarotRequirePurchase,
         cooldownHours: tarotCooldown,
         codeTtlHours: tarotTtl,
         tiers: tarotTiers
@@ -359,10 +362,20 @@ const GameDiscountsPage: React.FC = () => {
           random percent (weighted tiers below). Codes go through the regular promo pipeline at checkout.
         </p>
         <div className="admin-grid admin-grid--4" style={{ marginTop: 12 }}>
-          <label className="flex items-center gap-2" style={{ alignSelf: "end" }}>
-            <input type="checkbox" checked={tarotEnabled} onChange={(event) => setTarotEnabled(event.target.checked)} />
-            <span>Enabled</span>
-          </label>
+          <div style={{ alignSelf: "end" }}>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={tarotEnabled} onChange={(event) => setTarotEnabled(event.target.checked)} />
+              <span>Enabled</span>
+            </label>
+            <label className="flex items-center gap-2" title="Blocks multi-account farming: a new account is free, a purchase is not">
+              <input
+                type="checkbox"
+                checked={tarotRequirePurchase}
+                onChange={(event) => setTarotRequirePurchase(event.target.checked)}
+              />
+              <span>Buyers only</span>
+            </label>
+          </div>
           <label>
             Cooldown (hours)
             <input

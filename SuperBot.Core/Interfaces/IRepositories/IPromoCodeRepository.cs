@@ -10,4 +10,11 @@ public interface IPromoCodeRepository
     Task<PromoCode> CreateAsync(PromoCode promoCode);
     Task UpdateAsync(PromoCode promoCode);
     Task DeleteAsync(string id);
+
+    /// <summary>
+    /// Удаляет протухшие коды с заданным префиксом. Нужно для автовыдаваемых кодов
+    /// (карта удачи), которые иначе копятся в админ-списке навсегда.
+    /// Возвращает количество удалённых.
+    /// </summary>
+    Task<long> DeleteExpiredByPrefixAsync(string codePrefix, DateTime expiredBeforeUtc);
 }

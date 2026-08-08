@@ -21,7 +21,8 @@ namespace SuperBot.WebApi.Tests;
 /// Смысл этих тестов: они ловят ровно те дефекты, которые мы находили руками —
 /// подмену цены, гонку двух финализаторов, повторные события и потерянные заказы.
 /// </summary>
-public class PaymentsPipelineTests : IClassFixture<TaleShopApiFactory>
+[Collection(IntegrationTestCollection.Name)]
+public class PaymentsPipelineTests
 {
     // Фабрика (и её Mongo) общая на класс, поэтому у КАЖДОГО теста свой покупатель:
     // иначе переиспользование намерения из одного теста ломало бы соседний.

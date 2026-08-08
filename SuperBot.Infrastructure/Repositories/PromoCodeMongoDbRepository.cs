@@ -42,6 +42,26 @@ public class PromoCodeMongoDbRepository : IPromoCodeRepository
         return _mapper.Map<PromoCode?>(item);
     }
 
+    public async Task<long> DeleteExpiredByPrefixAsync(string codePrefix, DateTime expiredBeforeUtc)
+    {
+        if (string.IsNullOrWhiteSpace(codePrefix))
+        {
+            return 0;
+        }
+
+        // ^PREFIX — якорь в начале, чтобы не задеть коды, где префикс встречается в середине.
+        var prefixFilter = Builders<PromoCodeDb>.Filter.Regex(
+            item => item.Code,
+            new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(codePrefix)}"));
+
+        var filter = Builders<PromoCodeDb>.Filter.And(
+            prefixFilter,
+            Builders<PromoCodeDb>.Filter.Lt(item => item.EndDate, expiredBeforeUtc));
+
+        var result = await _collection.DeleteManyAsync(filter);
+        return result.DeletedCount;
+    }
+
     public async Task<PromoCode> CreateAsync(PromoCode promoCode)
     {
         promoCode.Code = promoCode.Code.Trim().ToUpperInvariant();

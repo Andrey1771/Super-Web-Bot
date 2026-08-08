@@ -27,6 +27,7 @@ namespace SuperBot.Infrastructure.Repositories
             {
                 Id = SingletonId,
                 Enabled = settings.Enabled,
+                RequirePurchase = settings.RequirePurchase,
                 CooldownHours = settings.CooldownHours,
                 CodeTtlHours = settings.CodeTtlHours,
                 Tiers = (settings.Tiers ?? TarotSettings.DefaultTiers())
@@ -43,6 +44,7 @@ namespace SuperBot.Infrastructure.Repositories
         {
             Id = db.Id,
             Enabled = db.Enabled,
+            RequirePurchase = db.RequirePurchase,
             CooldownHours = db.CooldownHours,
             CodeTtlHours = db.CodeTtlHours,
             Tiers = db.Tiers is { Count: > 0 }
@@ -55,11 +57,31 @@ namespace SuperBot.Infrastructure.Repositories
     public class TarotDrawMongoDbRepository : ITarotDrawRepository
     {
         private readonly IMongoCollection<TarotDrawDb> _draws;
+        private readonly IMongoCollection<TarotDrawLockDb> _locks;
 
         public TarotDrawMongoDbRepository(IMongoDatabase database)
         {
             _draws = database.GetCollection<TarotDrawDb>("TarotDraws");
+            _locks = database.GetCollection<TarotDrawLockDb>("TarotDrawLocks");
         }
+
+        public async Task<bool> TryAcquireDrawLockAsync(string userId, DateTime expiresAtUtc)
+        {
+            try
+            {
+                // _id уникален по определению: вставка второго лока для того же пользователя
+                // не пройдёт — базой, а не проверкой в коде.
+                await _locks.InsertOneAsync(new TarotDrawLockDb { UserId = userId, ExpiresAt = expiresAtUtc });
+                return true;
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                return false;
+            }
+        }
+
+        public Task ReleaseDrawLockAsync(string userId) =>
+            _locks.DeleteOneAsync(item => item.UserId == userId);
 
         public async Task<TarotDraw?> GetLatestByUserAsync(string userId)
         {

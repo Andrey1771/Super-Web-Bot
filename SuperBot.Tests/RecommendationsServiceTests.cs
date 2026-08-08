@@ -161,6 +161,15 @@ namespace SuperBot.Tests
 
             public Task<IEnumerable<Order>> GetAllOrdersAsync() => Task.FromResult<IEnumerable<Order>>(_orders);
 
+            public Task<bool> HasPaidOrderAsync(string userKey) =>
+                Task.FromResult(_orders.Any(order => order.IsPaid
+                    && (order.UserId == userKey || order.UserName == userKey)));
+
+            public Task<List<Order>> GetPaidOrdersSinceAsync(DateTime sinceUtc) =>
+                Task.FromResult(_orders
+                    .Where(order => order.IsPaid && (order.PaidAt ?? order.OrderDate) >= sinceUtc)
+                    .ToList());
+
             public Task<List<Order>> GetOrdersByUserAsync(string userName) => Task.FromResult(_orders.Where(order => order.UserName == userName).ToList());
 
             public Task<List<Order>> GetUnfulfilledPaidOrdersAsync() => Task.FromResult(_orders.Where(order => order.IsPaid && !order.IsFulfilled).ToList());

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
@@ -17,26 +18,46 @@ namespace SuperBot.WebApi.Controllers
         /// <summary>Сколько обложек в «кулисах» баннера (по три с каждой стороны).</summary>
         public const int MaxWingGames = 6;
 
+        /// <summary>
+        /// Состав баннера одинаков для всех посетителей, поэтому кэш общий (ключ без пользователя).
+        /// TTL короткий: правку в админке админ ожидает увидеть почти сразу, а не через 10 минут.
+        /// При сохранении настроек кэш сбрасывается явно — см. Update.
+        /// </summary>
+        public const string SpotlightCacheKey = "deal-of-week:spotlight";
+        private static readonly TimeSpan SpotlightCacheTtl = TimeSpan.FromMinutes(2);
+
         private readonly IDealOfWeekSettingsRepository _settingsRepository;
         private readonly IGameRepository _gameRepository;
         private readonly IGameDiscountRepository _gameDiscountRepository;
+        private readonly IMemoryCache _memoryCache;
 
         public DealOfWeekController(
             IDealOfWeekSettingsRepository settingsRepository,
             IGameRepository gameRepository,
-            IGameDiscountRepository gameDiscountRepository)
+            IGameDiscountRepository gameDiscountRepository,
+            IMemoryCache memoryCache)
         {
             _settingsRepository = settingsRepository;
             _gameRepository = gameRepository;
             _gameDiscountRepository = gameDiscountRepository;
+            _memoryCache = memoryCache;
         }
 
         [HttpGet("api/deal-of-week")]
         public async Task<IActionResult> GetPublic()
         {
-            var resolved = await ResolveAsync();
-            return Ok(new { heroGameId = resolved.HeroGameId, wingGameIds = resolved.WingGameIds });
+            var spotlight = await _memoryCache.GetOrCreateAsync(SpotlightCacheKey, async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = SpotlightCacheTtl;
+                var resolved = await ResolveAsync();
+                return new DealSpotlight(resolved.HeroGameId, resolved.WingGameIds);
+            }) ?? new DealSpotlight(null, new List<string>());
+
+            return Ok(new { heroGameId = spotlight.HeroGameId, wingGameIds = spotlight.WingGameIds });
         }
+
+        /// <summary>Состав баннера для витрины. Именованный тип, а не анонимный: кладётся в кэш.</summary>
+        private sealed record DealSpotlight(string? HeroGameId, List<string> WingGameIds);
 
         [HttpGet("api/admin/deal-of-week")]
         [Authorize(Roles = "admin")]
@@ -75,6 +96,9 @@ namespace SuperBot.WebApi.Controllers
                 WingGameIds = wingGameIds,
                 UpdatedAt = DateTime.UtcNow
             });
+
+            // Иначе админ сохранил бы новый состав и до двух минут видел на главной старый.
+            _memoryCache.Remove(SpotlightCacheKey);
 
             return Ok(await BuildAdminResponseAsync(saved));
         }

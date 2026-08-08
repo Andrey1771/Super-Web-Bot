@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
@@ -19,12 +20,20 @@ namespace SuperBot.WebApi.Controllers
         private const int WeeklyChartDefaultLimit = 8;
         /// <summary>Заказ дораспределённых версий: одна позиция без списка Items = одна проданная копия.</summary>
         private const int LegacyOrderSoldQuantity = 1;
+        /// <summary>
+        /// Чарт одинаков для всех посетителей, поэтому кэш общий (ключ без пользователя):
+        /// первый зашедший считает, остальные получают готовое. Топ продаж не обязан быть
+        /// точным до секунды — 10 минут «свежести» дешевле, чем расчёт на каждое открытие главной.
+        /// </summary>
+        public const string WeeklyChartCacheKey = "game:weekly-chart";
+        private static readonly TimeSpan WeeklyChartCacheTtl = TimeSpan.FromMinutes(10);
 
         private readonly IGameRepository _gameRepository;
         private readonly IGameDiscountRepository _gameDiscountRepository;
         private readonly IGameDetailsRepository _gameDetailsRepository;
         private readonly IMediaAssetRepository _mediaRepository;
         private readonly IOrderRepository _orderRepository;
+        private readonly IMemoryCache _memoryCache;
         private readonly IMapper _mapper;
 
         public GameController(
@@ -33,6 +42,7 @@ namespace SuperBot.WebApi.Controllers
             IGameDetailsRepository gameDetailsRepository,
             IMediaAssetRepository mediaRepository,
             IOrderRepository orderRepository,
+            IMemoryCache memoryCache,
             IMapper mapper)
         {
             _gameRepository = gameRepository;
@@ -40,6 +50,7 @@ namespace SuperBot.WebApi.Controllers
             _gameDetailsRepository = gameDetailsRepository;
             _mediaRepository = mediaRepository;
             _orderRepository = orderRepository;
+            _memoryCache = memoryCache;
             _mapper = mapper;
         }
 
@@ -52,8 +63,24 @@ namespace SuperBot.WebApi.Controllers
         public async Task<IActionResult> GetWeeklyChart([FromQuery] int limit = WeeklyChartDefaultLimit)
         {
             limit = Math.Clamp(limit, 1, WeeklyChartMaxLimit);
+
+            // Кэшируем ПОЛНЫЙ чарт (до максимума), а limit применяем уже к готовому списку —
+            // иначе на каждый limit заводился бы свой кэш и своя загрузка заказов.
+            var chart = await _memoryCache.GetOrCreateAsync(WeeklyChartCacheKey, async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = WeeklyChartCacheTtl;
+                return await BuildWeeklyChartAsync();
+            }) ?? new List<WeeklyChartEntry>();
+
+            return Ok(chart.Take(limit));
+        }
+
+        /// <summary>Считает топ продаж за неделю. Дорогая операция — зовётся только при промахе кэша.</summary>
+        private async Task<List<WeeklyChartEntry>> BuildWeeklyChartAsync()
+        {
             var since = DateTime.UtcNow.AddDays(-WeeklyChartWindowDays);
-            var orders = await _orderRepository.GetAllOrdersAsync();
+            // Отбор идёт в базе: раньше здесь читалась вся коллекция заказов и фильтровалась в памяти.
+            var orders = await _orderRepository.GetPaidOrdersSinceAsync(since);
 
             var soldByGameId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             void AddSold(string? gameId, int quantity)
@@ -67,21 +94,12 @@ namespace SuperBot.WebApi.Controllers
 
             foreach (var order in orders)
             {
-                var paidAt = order.PaidAt ?? order.OrderDate;
-                var countsTowardsChart = order.IsPaid && paidAt >= since;
-                if (!countsTowardsChart)
-                {
-                    continue;
-                }
-
                 var hasItemLines = order.Items != null && order.Items.Count > 0;
                 if (hasItemLines)
                 {
                     foreach (var item in order.Items!)
                     {
-                        // Qty — легаси-алиас Quantity: у старых снапшотов заполнен только он.
-                        var quantity = item.Quantity > 0 ? item.Quantity : item.Qty;
-                        AddSold(item.GameId, quantity);
+                        AddSold(item.GameId, item.Quantity);
                     }
                 }
                 else
@@ -91,13 +109,15 @@ namespace SuperBot.WebApi.Controllers
                 }
             }
 
-            var chart = soldByGameId
+            return soldByGameId
                 .OrderByDescending(entry => entry.Value)
-                .Take(limit)
-                .Select(entry => new { gameId = entry.Key, sold = entry.Value });
-
-            return Ok(chart);
+                .Take(WeeklyChartMaxLimit)
+                .Select(entry => new WeeklyChartEntry(entry.Key, entry.Value))
+                .ToList();
         }
+
+        /// <summary>Строка чарта продаж. Именованный тип, а не анонимный: значение кладётся в кэш.</summary>
+        public sealed record WeeklyChartEntry(string GameId, int Sold);
 
         [HttpGet]
         public async Task<IActionResult> GetAllGames()

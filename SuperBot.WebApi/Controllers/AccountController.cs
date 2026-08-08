@@ -324,15 +324,13 @@ public class AccountController : ControllerBase
             var hasSnapshotItems = items.Count > 0;
             var firstTitle = !string.IsNullOrWhiteSpace(firstItem?.Title)
                 ? firstItem.Title
-                : !string.IsNullOrWhiteSpace(firstItem?.TitleSnapshot)
-                    ? firstItem.TitleSnapshot
-                    : !string.IsNullOrWhiteSpace(order.GameName)
-                        ? order.GameName
-                        : "Game purchase";
+                : !string.IsNullOrWhiteSpace(order.GameName)
+                    ? order.GameName
+                    : "Game purchase";
 
-            var cover = firstItem?.CoverUrl ?? firstItem?.CoverUrlSnapshot;
+            var cover = firstItem?.CoverUrl;
             var itemsCount = hasSnapshotItems
-                ? items.Sum(item => Math.Max(1, item.Quantity > 0 ? item.Quantity : item.Qty))
+                ? items.Sum(item => Math.Max(1, item.Quantity))
                 : !string.IsNullOrWhiteSpace(order.GameName) || !string.IsNullOrWhiteSpace(order.GameId)
                     ? 1
                     : 0;
@@ -370,29 +368,22 @@ public class AccountController : ControllerBase
         var items = order.Items ?? new List<OrderItemSnapshot>();
         var detailItems = items.Select(item =>
         {
-            var title = !string.IsNullOrWhiteSpace(item.Title) ? item.Title : item.TitleSnapshot;
-            var quantity = item.Quantity > 0 ? item.Quantity : item.Qty;
-            var unitPrice = item.UnitPrice > 0 ? item.UnitPrice : item.UnitPriceSnapshot;
-            var discount = item.UnitDiscount > 0 ? item.UnitDiscount : item.DiscountSnapshot;
-            var finalUnit = item.FinalUnitPrice > 0 ? item.FinalUnitPrice : item.FinalUnitPriceSnapshot;
-            var lineTotal = item.LineTotal > 0 ? item.LineTotal : item.LineTotalSnapshot;
-
             return new AccountOrderDetailItem
             {
                 ItemId = item.ItemId,
                 ProductType = string.IsNullOrWhiteSpace(item.ProductType) ? "Game" : item.ProductType,
                 GameId = item.GameId,
-                Title = string.IsNullOrWhiteSpace(title) ? "Game purchase" : title,
-                CoverUrl = item.CoverUrl ?? item.CoverUrlSnapshot,
-                Platform = item.Platform ?? item.PlatformSnapshot,
-                Region = item.Region ?? item.RegionSnapshot,
-                Quantity = Math.Max(1, quantity),
-                UnitPrice = unitPrice,
+                Title = string.IsNullOrWhiteSpace(item.Title) ? "Game purchase" : item.Title,
+                CoverUrl = item.CoverUrl,
+                Platform = item.Platform,
+                Region = item.Region,
+                Quantity = Math.Max(1, item.Quantity),
+                UnitPrice = item.UnitPrice,
                 Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
-                UnitDiscount = discount ?? 0m,
-                FinalUnitPrice = finalUnit,
-                LineTotal = lineTotal,
-                DeliveryType = item.Delivery?.DeliveryType ?? item.DeliveryType,
+                UnitDiscount = item.UnitDiscount,
+                FinalUnitPrice = item.FinalUnitPrice,
+                LineTotal = item.LineTotal,
+                DeliveryType = item.Delivery?.DeliveryType,
                 Keys = item.Delivery?.Keys?.Select(k => k.KeyMasked ?? string.Empty).Where(k => !string.IsNullOrWhiteSpace(k)).ToList() ?? new List<string>()
             };
         }).ToList();
