@@ -1,13 +1,14 @@
 import React, {KeyboardEvent, MouseEvent, useEffect, useMemo, useRef} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faArrowRightLong} from "@fortawesome/free-solid-svg-icons";
+import {faArrowRightLong, faEye} from "@fortawesome/free-solid-svg-icons";
 import {Link, useNavigate} from "react-router-dom";
 import type {BlogListItem} from "../../../types/blog";
 import {useBlogTracking} from "../../../hooks/use-blog-tracking";
 import SafeBlogImage from "../../../components/blog-page/SafeBlogImage";
 import {getBlogPostCoverUrl} from "../../../utils/blog-cover";
 
-type PostCardVariant = "compact" | "featured" | "mini";
+/** "row" — широкая горизонтальная карточка ленты новостей: обложка сбоку, текст рядом. */
+type PostCardVariant = "compact" | "featured" | "mini" | "row";
 
 type PostCardProps = {
     post: BlogListItem;
@@ -46,18 +47,14 @@ export default function PostCard({
     const isFeatured = variant === "featured";
     const isMini = variant === "mini";
     const titleClamp = useMemo(() => {
-        if (isFeatured) {
-            return "line-clamp-2";
-        }
-        if (isMini) {
+        if (isFeatured || isMini || variant === "row") {
             return "line-clamp-2";
         }
         return "line-clamp-3";
-    }, [isFeatured, isMini]);
+    }, [isFeatured, isMini, variant]);
     const excerptClamp = isFeatured ? "line-clamp-4" : "line-clamp-3";
     const TitleTag = (isFeatured ? "h2" : isMini ? "h4" : "h3") as React.ElementType;
     const resolvedViews = typeof engagement?.viewsCount === "number" ? engagement.viewsCount : post.viewsCount;
-    const viewsText = typeof resolvedViews === "number" ? `${resolvedViews} views` : "";
     const reactionsText = typeof engagement?.totalReactions === "number" && engagement.totalReactions > 0 ? `${engagement.totalReactions} reactions` : "";
     const reactionOptions = ["👍", "❤️", "🔥", "🎮", "👀"];
 
@@ -138,12 +135,10 @@ export default function PostCard({
                                 <span>{`${post.readingTime} min read`}</span>
                             </>
                         ) : null}
-                        {viewsText ? (
-                            <>
-                                <span className="divider-dot" aria-hidden="true">•</span>
-                                <span>{viewsText}</span>
-                            </>
-                        ) : null}
+                        <span className="views-pill" title="Views">
+                            <FontAwesomeIcon icon={faEye} aria-hidden="true" />
+                            {typeof resolvedViews === "number" ? resolvedViews : 0}
+                        </span>
                     </div>
                 </div>
             </article>
@@ -177,12 +172,12 @@ export default function PostCard({
                             </>
                         ) : null}
                         {isFeatured && tag && <span className="meta-pill">{tag}</span>}
-                        {viewsText ? (
-                            <>
-                                <span className="divider-dot" aria-hidden="true">•</span>
-                                <span>{viewsText}</span>
-                            </>
-                        ) : null}
+                        {/* Просмотры — заметной плашкой с глазом, а не серым словом в хвосте
+                            строки: это единственная цифра «живости» поста, видная до клика. */}
+                        <span className="views-pill" title="Views">
+                            <FontAwesomeIcon icon={faEye} aria-hidden="true" />
+                            {typeof resolvedViews === "number" ? resolvedViews : 0}
+                        </span>
                         {reactionsText ? (
                             <>
                                 <span className="divider-dot" aria-hidden="true">•</span>

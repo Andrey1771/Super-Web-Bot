@@ -24,6 +24,12 @@ namespace SuperBot.Core.Interfaces.IRepositories
     /// <summary>Сводка по ключам одной игры: остаток в пуле, выдано, изъято. Для обзора запасов по всем играм.</summary>
     public sealed record GameKeyInventoryStat(string GameId, int Available, int Delivered, int Voided);
 
+    /// <summary>
+    /// Какими типами ключей игра вообще продаётся. Считаются и выданные ключи: то, что запас
+    /// временно кончился, не отменяет факта, что игра продаётся, например, для Xbox.
+    /// </summary>
+    public sealed record GameKeyTypeStat(string GameId, string KeyType, int Total);
+
     public interface IGameKeyRepository
     {
         Task<List<GameKey>> GetByUserAsync(string userId, int limit);
@@ -41,6 +47,12 @@ namespace SuperBot.Core.Interfaces.IRepositories
 
         /// <summary>Сводка запасов по ВСЕМ играм (одним агрегатом): остаток/выдано/изъято на игру.</summary>
         Task<IReadOnlyList<GameKeyInventoryStat>> GetInventorySummaryAsync();
+
+        /// <summary>
+        /// Типы ключей по ВСЕМ играм (одним агрегатом) — из них витрина выводит платформы
+        /// на карточке и фильтр по платформам. Изъятые ключи не учитываются.
+        /// </summary>
+        Task<IReadOnlyList<GameKeyTypeStat>> GetKeyTypeSummaryAsync();
 
         /// <summary>Мягко изымает ПУЛОВЫЙ ключ: Voided=true, plaintext стирается, KeyHash остаётся. false — не найден/не пуловый.</summary>
         Task<bool> VoidPoolKeyAsync(string gameId, string keyId);

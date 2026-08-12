@@ -27,6 +27,9 @@ import { useCart } from '../../context/cart-context';
 import { Product } from '../../reducers/cart-reducer';
 import NotFoundPage from '../../components/utils/not-found-page/not-found-page';
 import { formatReleaseDate } from '../../utils/format-release-date';
+import PageMeta from '../../components/common/PageMeta';
+import Breadcrumbs from '../../components/common/Breadcrumbs';
+import { slugify } from '../../utils/slugify';
 
 const formatPrice = (price: number, currency: string) => {
   const formatter = new Intl.NumberFormat('en-US', {
@@ -920,7 +923,6 @@ const GameDetailsPage: React.FC = () => {
         const response = await gameDetailsService.getGameDetails(slug ?? '');
         if (isMounted) {
           setData(response);
-          document.title = `${response.game.title} — Tale Shop`;
           if (response.game.editions?.length > 0) {
             const defaultEdition = response.game.editions.find((edition) => edition.isDefault) ?? response.game.editions[0];
             setSelectedEditionId(defaultEdition.code);
@@ -1104,6 +1106,40 @@ const GameDetailsPage: React.FC = () => {
 
   const reviewTags: ReviewTag[] = (data.game.tags ?? []).slice(0, 3).map((tag, index) => ({ id: `${index}-${tag}`, label: tag }));
 
+  /**
+   * Разметка товара для поисковиков. Благодаря ей в выдаче рядом со ссылкой могут появиться
+   * цена и звёзды — а это и есть разница между строчкой в списке и заметным результатом.
+   *
+   * Оценку добавляем ТОЛЬКО когда отзывы действительно есть: разметка с нулевым рейтингом
+   * считается недостоверной и такую страницу поисковик отбраковывает целиком.
+   */
+  const productStructuredData: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: data.game.title,
+    description: data.game.tagline || data.game.title,
+    ...(data.game.cover?.url ? { image: data.game.cover.url } : {}),
+    ...(data.game.developer?.name ? { brand: { '@type': 'Brand', name: data.game.developer.name } } : {}),
+    offers: {
+      '@type': 'Offer',
+      price: displayPricing?.price ?? 0,
+      priceCurrency: displayPricing?.currency ?? 'USD',
+      availability: data.isComingSoon
+        ? 'https://schema.org/PreOrder'
+        : 'https://schema.org/InStock',
+      url: `${window.location.origin}/games/${slug}`
+    },
+    ...(data.ratingSummary.count > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: data.ratingSummary.avg,
+            reviewCount: data.ratingSummary.count
+          }
+        }
+      : {})
+  };
+
   const quickInfoTiles: QuickInfoTile[] = [
     {
       id: 'languages',
@@ -1158,7 +1194,30 @@ const GameDetailsPage: React.FC = () => {
 
   return (
     <main className="game-details-page">
+      <PageMeta
+        title={data.game.title}
+        description={
+          data.game.tagline?.trim() ||
+          `Buy ${data.game.title} — instant key delivery and secure checkout at Tale Shop.`
+        }
+        canonicalPath={`/games/${slug}`}
+        imageUrl={data.game.cover?.url}
+        ogType="product"
+        structuredData={productStructuredData}
+      />
       <div className="container game-details-container">
+        {/* Путь до товара: человек часто приходит сюда прямо из поиска, минуя каталог,
+            и без крошек не понимает, где оказался и куда идти дальше. */}
+        <Breadcrumbs
+          items={[
+            { label: 'Home', to: '/' },
+            { label: 'Game keys', to: '/games' },
+            ...(data.game.genres?.[0]
+              ? [{ label: data.game.genres[0], to: `/games/category/${slugify(data.game.genres[0])}` }]
+              : []),
+            { label: data.game.title }
+          ]}
+        />
         <div className="game-details-hero">
           <div className="hero-left">
             <GameMediaGallery

@@ -25,6 +25,25 @@ namespace SuperBot.Core.Interfaces.IRepositories
     {
         Task<(IReadOnlyList<GameReview> Items, long Total)> GetPagedAsync(GameReviewQuery query);
         Task<GameReviewSummary> GetSummaryAsync(string gameId);
+
+        /// <summary>
+        /// Оценки сразу по списку игр — для каталога, где карточек десятки.
+        /// Одним агрегатом вместо запроса на игру. Игры без отзывов в результате отсутствуют.
+        /// </summary>
+        Task<IReadOnlyDictionary<string, GameReviewSummary>> GetSummariesAsync(IEnumerable<string> gameIds);
+
+        /// <summary>
+        /// Сводка по опубликованным отзывам на ВСЕ игры — витринный «рейтинг магазина».
+        /// Считается агрегатом на стороне базы: коллекция растёт без ограничений,
+        /// и тянуть её в память ради среднего нельзя.
+        /// </summary>
+        Task<GameReviewSummary> GetSiteSummaryAsync();
+
+        /// <summary>
+        /// Свежие опубликованные отзывы по всем играм — живые цитаты вместо выдуманных.
+        /// Отзывы без текста (одна оценка звёздами) не возвращаются: цитировать в них нечего.
+        /// </summary>
+        Task<IReadOnlyList<GameReview>> GetRecentPublishedAsync(int limit);
         Task<GameReview> GetByIdAsync(string reviewId);
         Task<GameReview> GetByUserAsync(string gameId, string userId);
         Task CreateAsync(GameReview review);

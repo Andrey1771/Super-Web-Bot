@@ -5,6 +5,7 @@ import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { Game } from "../../models/game";
 import SafeGameImage from "../common/SafeGameImage";
 import { slugify } from "../../utils/slugify";
+import { discountPercentOf, finalPriceOf, hasVisibleDiscount } from "../../utils/game-pricing";
 
 // Главный баннер витрины — плоская слайд-карусель игр (лента, сдвигаемая по горизонтали).
 // Слайд целиком — ссылка на страницу игры: жанровый бейдж, название, цена и CTA поверх обложки.
@@ -21,25 +22,12 @@ interface HeroBillboardCarouselProps {
 const gameHref = (game: Game) =>
     `/games/${slugify(game.slug?.trim() || game.title || game.name || "game")}`;
 
-// Активная скидка по правилам каталога — только реальные данные GameDiscount.
-// Экспортируется: главная поднимает скидочные игры в начало витрины.
-export const hasActiveGameDiscount = (game: Game) => {
-    const regular = Number.isFinite(game.price) ? Number(game.price) : 0;
-    const final = Number.isFinite(game.finalPrice ?? NaN) ? Number(game.finalPrice) : regular;
-    return Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0 && final < regular);
-};
-
-const gamePrice = (game: Game) => {
-    const regular = Number.isFinite(game.price) ? Number(game.price) : 0;
-    const final = Number.isFinite(game.finalPrice ?? NaN) ? Number(game.finalPrice) : regular;
-    const hasDiscount = hasActiveGameDiscount(game);
-    return {
-        regular,
-        final,
-        hasDiscount,
-        percent: hasDiscount ? Math.round(Number(game.discountPercent)) : 0
-    };
-};
+const gamePrice = (game: Game) => ({
+    regular: Number.isFinite(game.price) ? Number(game.price) : 0,
+    final: finalPriceOf(game),
+    hasDiscount: hasVisibleDiscount(game),
+    percent: discountPercentOf(game)
+});
 
 const mod = (value: number, size: number) => ((value % size) + size) % size;
 

@@ -46,7 +46,7 @@ import {
 import {
     IUrlService
 } from "../../iterfaces/i-url-service";
-import HeroBillboardCarousel, { hasActiveGameDiscount } from "./HeroBillboardCarousel";
+import HeroBillboardCarousel from "./HeroBillboardCarousel";
 import GameShelf, { gameHref } from "./GameShelf";
 import DealsCountdown from "./DealsCountdown";
 import DealOfWeekBanner from "./DealOfWeekBanner";
@@ -56,6 +56,9 @@ import type {
     BlogListItem
 } from "../../types/blog";
 import { subscribeNewsletter } from "../../api/newsletterApi";
+import { getWeeklyChart, type WeeklyChartEntry } from "../../api/catalogApi";
+import { hasVisibleDiscount } from "../../utils/game-pricing";
+import PageMeta from "../common/PageMeta";
 import {
     rememberNewsletterSubscription,
     useKnownNewsletterSubscription,
@@ -315,7 +318,7 @@ export default function TaleGameshopMainPage() {
     const [games, setGames] = useState < Game[] > ([]);
     const [blogPosts, setBlogPosts] = useState < BlogListItem[] > ([]);
     // Серверный агрегат продаж за неделю: [{ gameId, sold }] — порядок полки «Popular this week».
-    const [weeklyChart, setWeeklyChart] = useState<{ gameId: string; sold: number }[]>([]);
+    const [weeklyChart, setWeeklyChart] = useState<WeeklyChartEntry[]>([]);
     // Конфиг баннера «Deal of the week» (герой + кулисы), настраивается в админке скидок.
     const [dealSpotlight, setDealSpotlight] = useState<{ heroGameId?: string | null; wingGameIds?: string[] } | null>(null);
     const [activeMoodId, setActiveMoodId] = useState(moods[0].id);
@@ -359,9 +362,7 @@ export default function TaleGameshopMainPage() {
 
     const fetchWeeklyChart = async () => {
         try {
-            const apiClient = container.get < IApiClient > (IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.get("/api/game/weekly-chart");
-            setWeeklyChart(Array.isArray(response.data) ? response.data : []);
+            setWeeklyChart(await getWeeklyChart());
         } catch (err) {
             // Нет данных — полка чарта просто не рисуется.
         }
@@ -391,8 +392,8 @@ export default function TaleGameshopMainPage() {
     // внутри групп сохраняется порядок «свежие первыми». Memo обязателен — иначе новый массив
     // на каждый рендер сбрасывал бы карусель на первый слайд.
     const heroShowcase = useMemo(() => {
-        const discounted = heroGames.filter(hasActiveGameDiscount);
-        const rest = heroGames.filter((game) => !hasActiveGameDiscount(game));
+        const discounted = heroGames.filter(hasVisibleDiscount);
+        const rest = heroGames.filter((game) => !hasVisibleDiscount(game));
         return [...discounted, ...rest].slice(0, heroCarouselCapacity);
     }, [heroGames]);
     const latestNews = useMemo(() => blogPosts.slice(0, newsStripCapacity), [blogPosts]);
@@ -529,6 +530,11 @@ export default function TaleGameshopMainPage() {
 
     return (
         <div className="main-page">
+            <PageMeta
+                title="Tale Shop — curated PC game keys"
+                description="Hand-picked PC game keys with secure checkout and instant delivery. Global keys, no region locks."
+                canonicalPath="/"
+            />
             <section className="hero">
                 {/* Витрина сознательно без видимого заголовка (представление несёт шапка),
                     но h1 странице нужен — SEO и скринридеры получают его невидимо. */}

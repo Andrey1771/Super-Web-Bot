@@ -1,0 +1,103 @@
+/*
+ * Наложения на обложку товара: чип, размер скидки и ценовая полоса.
+ * Стили самодостаточны и не привязаны к странице — компонент используют
+ * и полки главной, и сетка каталога. Родитель должен быть position: relative.
+ */
+
+/* Тот же язык, что и у плашек внизу: белая непрозрачная пилюля с тёмным текстом.
+   Тёмная подложка осталась бы единственным чёрным пятном на светлой карточке. */
+.gco-chip {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    border-radius: 999px;
+    background: #fff;
+    color: #2b2350;
+    box-shadow: 0 2px 8px rgba(30, 20, 70, 0.16);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.gco-discount {
+    position: absolute;
+    top: 12px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    color: #fff;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.gco-discount-right {
+    right: 12px;
+}
+
+.gco-discount-left {
+    left: 12px;
+}
+
+/* Платформы слева, цена справа.
+   Градиента здесь нет намеренно: тёмная полоса поперёк обложки — приём тёмных витрин,
+   на нашей светлой она читалась как чужая заплатка. Контраст держат сами плашки —
+   они непрозрачные, поэтому текст остаётся читаемым на любом арте, хоть на белом небе,
+   хоть на чёрной пещере, и при этом остаются в светлой палитре сайта. */
+.gco-strip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    padding: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.gco-platforms {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(30, 20, 70, 0.16);
+    font-size: 12px;
+    color: #8a81b5;
+}
+
+/* Плашка с ценой пустой не бывает, а плашка платформ — бывает: если ярлыков нет,
+   пустой белый кружок выглядел бы браком. */
+.gco-platforms:empty {
+    display: none;
+}
+
+.gco-price-group {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(30, 20, 70, 0.16);
+}
+
+.gco-price {
+    font-weight: 700;
+    font-size: 14.5px;
+    color: #2b2350;
+}
+
+/* Старая цена: сам текст приглушён, а линия красная — так «было дороже» считывается
+   с одного взгляда, при этом красным не кричит вся плашка. */
+.gco-price-old {
+    color: #8a81b5;
+    text-decoration: line-through;
+    text-decoration-color: #e0483d;
+    text-decoration-thickness: 1.5px;
+    font-size: 12px;
+}

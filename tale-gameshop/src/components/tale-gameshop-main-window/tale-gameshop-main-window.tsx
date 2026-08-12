@@ -87,6 +87,10 @@ export default function TaleGameshopMainWindow() {
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
+                    {/* Посадочная страница жанра: свой адрес, заголовок и описание,
+                        чтобы каждая категория могла попасть в поиск отдельной страницей.
+                        Три сегмента, поэтому с карточкой товара (/games/:slug) не спорит. */}
+                    <Route path="/games/category/:categorySlug" element={<TaleGameshopGameList/>}/>
                     <Route path="/games/:slug" element={<GameDetailsPage/>}/>
                     <Route path="/deals" element={<DealsPage/>}/>
                     <Route path="/faq" element={<FaqPage/>}/>

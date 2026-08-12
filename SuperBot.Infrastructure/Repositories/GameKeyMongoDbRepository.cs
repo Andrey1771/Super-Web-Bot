@@ -234,6 +234,29 @@ namespace SuperBot.Infrastructure.Repositories
                 .ToList();
         }
 
+        public async Task<IReadOnlyList<GameKeyTypeStat>> GetKeyTypeSummaryAsync()
+        {
+            // Группируем по паре (игра, тип ключа). Изъятые не считаем — их не продать,
+            // а вот выданные считаем: игра всё равно продаётся в этом виде.
+            var grouped = await _gameKeys.AsQueryable()
+                .Where(key => !key.Voided)
+                .GroupBy(key => new { key.GameId, key.KeyType })
+                .Select(group => new
+                {
+                    group.Key.GameId,
+                    group.Key.KeyType,
+                    Total = group.Count()
+                })
+                .ToListAsync();
+
+            return grouped
+                .Select(item => new GameKeyTypeStat(
+                    item.GameId ?? string.Empty,
+                    item.KeyType ?? string.Empty,
+                    item.Total))
+                .ToList();
+        }
+
         public Task<int> CountAvailableByGameAsync(string gameId) => CountAsync(gameId, assigned: false);
 
         public Task<int> CountAssignedByGameAsync(string gameId) => CountAsync(gameId, assigned: true);

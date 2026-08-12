@@ -743,70 +743,8 @@
   display: block;
 }
 
-.main-page .shelf-chip {
-  position: absolute;
-  left: 12px;
-  top: 12px;
-  border-radius: 999px;
-  background: rgba(20, 16, 40, 0.78);
-  color: #fff;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.main-page .shelf-discount-badge {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  border-radius: 999px;
-  background: var(--color-primary);
-  color: #fff;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* Ценовая полоса поверх низа обложки: градиент-затемнение, платформы слева, цена справа. */
-.main-page .shelf-price-strip {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-  padding: 22px 12px 8px;
-  background: linear-gradient(180deg, rgba(20, 16, 40, 0) 0%, rgba(20, 16, 40, 0.72) 100%);
-  color: #fff;
-  white-space: nowrap;
-}
-
-.main-page .shelf-platforms {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.main-page .shelf-price-group {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-8);
-}
-
-.main-page .shelf-price {
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.main-page .shelf-price-old {
-  color: rgba(255, 255, 255, 0.72);
-  text-decoration: line-through;
-  font-size: 12.5px;
-}
+/* Чип, бейдж скидки и ценовая полоса живут в common/game-cover-overlay.css:
+   ими пользуется и сетка каталога, поэтому стили не привязаны к главной странице. */
 
 .main-page .shelf-body {
   padding: var(--space-12) var(--space-16);

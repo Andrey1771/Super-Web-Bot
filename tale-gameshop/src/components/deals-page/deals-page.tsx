@@ -17,6 +17,7 @@ import {
 import { slugify } from "../../utils/slugify";
 import SafeGameImage from "../common/SafeGameImage";
 import CountUp from "../effects/CountUp";
+import PageMeta from "../common/PageMeta";
 
 interface DealGame {
     game: Game;
@@ -184,6 +185,11 @@ export default function DealsPage() {
 
     return (
         <div className="deals-page">
+            <PageMeta
+                title="Game deals &amp; discounts"
+                description="Current discounts on PC game keys at Tale Shop — limited-time offers with instant delivery."
+                canonicalPath="/deals"
+            />
             <section className="deals-hero">
                 <i className="fx-texture" aria-hidden="true"></i>
                 <i className="fx-orb deals-orb-1" aria-hidden="true"></i>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 
@@ -9,18 +10,88 @@ namespace SuperBot.WebApi.Controllers;
 [Route("api")]
 public class GameReviewsController : ControllerBase
 {
+    /// <summary>Ключ и срок кэша витринной сводки: она общая для всех, поэтому ключ фиксированный.</summary>
+    public const string SiteSummaryCacheKey = "reviews:site-summary";
+    private static readonly TimeSpan SiteSummaryCacheTtl = TimeSpan.FromMinutes(10);
+
+    /// <summary>Сколько свежих отзывов показываем цитатами на витрине.</summary>
+    private const int SiteSummaryQuoteCount = 2;
+
     private readonly IGameReviewRepository _gameReviewRepository;
     private readonly IGameReviewHelpfulRepository _helpfulRepository;
     private readonly IOrderRepository _orderRepository;
+    private readonly IGameRepository _gameRepository;
+    private readonly IMemoryCache _memoryCache;
 
     public GameReviewsController(
         IGameReviewRepository gameReviewRepository,
         IGameReviewHelpfulRepository helpfulRepository,
-        IOrderRepository orderRepository)
+        IOrderRepository orderRepository,
+        IGameRepository gameRepository,
+        IMemoryCache memoryCache)
     {
         _gameReviewRepository = gameReviewRepository;
         _helpfulRepository = helpfulRepository;
         _orderRepository = orderRepository;
+        _gameRepository = gameRepository;
+        _memoryCache = memoryCache;
+    }
+
+    /// <summary>Витринная цитата: отзыв вместе с игрой, на которую он написан.</summary>
+    public sealed record SiteReviewQuote(
+        string Author, int Rating, string Text, bool VerifiedPurchase,
+        DateTime CreatedAt, string? GameTitle, string? GameSlug);
+
+    /// <summary>Рейтинг магазина: средняя оценка, распределение и пара свежих цитат.</summary>
+    public sealed record SiteReviewSummary(
+        double Average, int Count, IReadOnlyDictionary<int, int> Distribution, IReadOnlyList<SiteReviewQuote> Quotes);
+
+    /// <summary>
+    /// Сводка отзывов по всему магазину для витрины каталога.
+    /// Одинакова для всех посетителей, поэтому кэш общий и с фиксированным ключом.
+    /// </summary>
+    [HttpGet("reviews/summary")]
+    public async Task<IActionResult> GetSiteSummary()
+    {
+        var summary = await _memoryCache.GetOrCreateAsync(SiteSummaryCacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = SiteSummaryCacheTtl;
+            return await BuildSiteSummaryAsync();
+        });
+
+        return Ok(summary);
+    }
+
+    private async Task<SiteReviewSummary> BuildSiteSummaryAsync()
+    {
+        var summary = await _gameReviewRepository.GetSiteSummaryAsync();
+        if (summary.Count == 0)
+        {
+            // Пустая сводка — нормальное состояние молодого магазина, а не ошибка:
+            // витрина по нулевому счётчику рисует «отзывов пока нет».
+            return new SiteReviewSummary(0, 0, new Dictionary<int, int>(), Array.Empty<SiteReviewQuote>());
+        }
+
+        var recent = await _gameReviewRepository.GetRecentPublishedAsync(SiteSummaryQuoteCount);
+        var games = await _gameRepository.GetByIdsAsync(recent.Select(review => review.GameId));
+        var gameById = games
+            .Where(game => !string.IsNullOrWhiteSpace(game.Id))
+            .ToDictionary(game => game.Id!, game => game);
+
+        var quotes = recent.Select(review =>
+        {
+            gameById.TryGetValue(review.GameId ?? string.Empty, out var game);
+            return new SiteReviewQuote(
+                review.UserName,
+                review.Rating,
+                review.Text,
+                review.VerifiedPurchase,
+                review.CreatedAt,
+                game?.Title ?? game?.Name,
+                game?.Slug);
+        }).ToList();
+
+        return new SiteReviewSummary(summary.Average, summary.Count, summary.Distribution, quotes);
     }
 
     [HttpGet("games/{gameId}/reviews")]
@@ -91,6 +162,7 @@ public class GameReviewsController : ControllerBase
         };
 
         await _gameReviewRepository.CreateAsync(review);
+        _memoryCache.Remove(SiteSummaryCacheKey);
         return Ok(review);
     }
 
@@ -118,6 +190,8 @@ public class GameReviewsController : ControllerBase
         review.UpdatedAt = DateTime.UtcNow;
 
         await _gameReviewRepository.UpdateAsync(reviewId, review);
+        // Оценку могли изменить — средняя по магазину пересчитается при следующем запросе.
+        _memoryCache.Remove(SiteSummaryCacheKey);
         return Ok(review);
     }
 

@@ -1,0 +1,38 @@
+/* Путь до текущей страницы. Тихий по цвету: это ориентир, а не призыв кликать. */
+
+.breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8rem;
+}
+
+.breadcrumbs li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.breadcrumbs a {
+    color: #6f64a8;
+    text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+    color: #6b3ff2;
+    text-decoration: underline;
+}
+
+/* Текущая страница — не ссылка и заметно темнее: видно, где остановился путь. */
+.breadcrumbs [aria-current='page'] {
+    color: #2b2350;
+    font-weight: 600;
+}
+
+.breadcrumbs-separator {
+    color: #c2bade;
+}

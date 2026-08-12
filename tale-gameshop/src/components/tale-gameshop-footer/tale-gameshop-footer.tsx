@@ -3,6 +3,8 @@ import "./tale-gameshop-footer.css";
 import { Link } from "react-router-dom";
 import { useAnalyticsConsent } from "../analytics/AnalyticsProvider";
 import { useSitePreferences, type LangCode } from "../../context/site-preferences";
+import { getCatalogPage } from "../../api/catalogApi";
+import { slugify } from "../../utils/slugify";
 
 // TODO: replace with the store's real social profiles.
 const socialLinks = [
@@ -26,8 +28,40 @@ const socialLinks = [
   },
 ];
 
+// Сколько жанров показывает подвал: шесть строк — высота колонки «Company»,
+// колонки остаются вровень.
+const FOOTER_GENRE_LIMIT = 6;
+
 export default function TaleGameshopFooter() {
   const { analyticsAvailable, settingsLoaded, setSettingsOpen } = useAnalyticsConsent();
+  const [genres, setGenres] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Товар не нужен — нужен только список жанров из фасетов, поэтому просим
+        // страницу из одной позиции. Ответ сервер отдаёт из собранного каталога.
+        const page = await getCatalogPage(new URLSearchParams({ pageSize: "1" }));
+        if (!cancelled) {
+          // Только самые наполненные жанры: полный список из 12 строк делал колонку
+          // вдвое выше соседних, и подвал разбухал. За остальным — «All games».
+          setGenres(
+            [...page.facets.categories]
+              .sort((a, b) => b.count - a.count)
+              .slice(0, FOOTER_GENRE_LIMIT)
+              .map((facet) => facet.value)
+          );
+        }
+      } catch {
+        // Каталог недоступен — колонка жанров просто не рисуется.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const year = new Date().getFullYear();
 
   // Shared source of truth — the same store the header language switch writes to.
@@ -66,6 +100,20 @@ export default function TaleGameshopFooter() {
               <Link to="/deals">Deals</Link>
               <Link to="/games?filterMaxPrice=20">Budget picks</Link>
             </div>
+
+            {/* Ссылки на страницы жанров. Живут здесь, а не над каталогом: место в подвале
+                бесплатно, а без единой ссылки эти страницы не нашёл бы ни человек,
+                ни поисковик. Список настоящий — приходит из фасетов каталога. */}
+            {genres.length > 0 && (
+              <div className="footer-column">
+                <div className="footer-title">Genres</div>
+                {genres.map((genre) => (
+                  <Link key={genre} to={`/games/category/${slugify(genre)}`}>
+                    {genre}
+                  </Link>
+                ))}
+              </div>
+            )}
 
             <div className="footer-column">
               <div className="footer-title">Company</div>

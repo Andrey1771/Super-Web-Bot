@@ -4,6 +4,7 @@ using SuperBot.Core.Entities;
 using SuperBot.Core.Events;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -15,15 +16,18 @@ public class AdminGameDiscountsController : ControllerBase
     private readonly IGameRepository _gameRepository;
     private readonly IGameDiscountRepository _discountRepository;
     private readonly IBotEventPublisher _botEvents;
+    private readonly ICatalogSnapshotService _catalogSnapshot;
 
     public AdminGameDiscountsController(
         IGameRepository gameRepository,
         IGameDiscountRepository discountRepository,
-        IBotEventPublisher botEvents)
+        IBotEventPublisher botEvents,
+        ICatalogSnapshotService catalogSnapshot)
     {
         _gameRepository = gameRepository;
         _discountRepository = discountRepository;
         _botEvents = botEvents;
+        _catalogSnapshot = catalogSnapshot;
     }
 
     [HttpGet("discounts")]
@@ -125,6 +129,8 @@ public class AdminGameDiscountsController : ControllerBase
         };
 
         await _discountRepository.UpsertAsync(discount);
+        // Скидка меняет цену на витрине — собранный каталог устарел.
+        _catalogSnapshot.Invalidate();
 
         // Событие в outbox — Telegram-алерты по wishlist разошлёт бот-сервис.
         await _botEvents.PublishAsync(BotEventTypes.GameDiscountActivated, new GameDiscountActivatedEvent(id));
@@ -149,6 +155,7 @@ public class AdminGameDiscountsController : ControllerBase
         }
 
         await _discountRepository.DeleteByGameIdAsync(id);
+        _catalogSnapshot.Invalidate();
         return NoContent();
     }
 
@@ -184,6 +191,7 @@ public class AdminGameDiscountsController : ControllerBase
         });
 
         await Task.WhenAll(discounts.Values.Select(_discountRepository.UpsertAsync));
+        _catalogSnapshot.Invalidate();
 
         // События в outbox — алерты по wishlist разошлёт бот-сервис.
         foreach (var id in discounts.Keys)
@@ -208,6 +216,7 @@ public class AdminGameDiscountsController : ControllerBase
             .Select(_discountRepository.DeleteByGameIdAsync);
 
         await Task.WhenAll(tasks);
+        _catalogSnapshot.Invalidate();
         return Ok(new { cleared = request.GameIds.Count });
     }
 

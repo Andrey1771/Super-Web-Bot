@@ -162,6 +162,9 @@ builder.Services.AddScoped<IGameReviewRepository, GameReviewMongoDbRepository>()
 builder.Services.AddScoped<IGameReviewHelpfulRepository, GameReviewHelpfulMongoDbRepository>();
 builder.Services.AddScoped<IGameQuestionRepository, GameQuestionMongoDbRepository>();
 builder.Services.AddScoped<IGameTrackingRepository, GameTrackingMongoDbRepository>();
+// Собранный каталог для витрины. Сам объект кэшируется в IMemoryCache, поэтому сервис
+// может быть scoped — состояния он не держит.
+builder.Services.AddScoped<ICatalogSnapshotService, CatalogSnapshotService>();
 builder.Services.AddScoped<IRecommendationsService, RecommendationsService>();
 builder.Services.AddScoped<IBlogRecommendationsService, BlogRecommendationsService>();
 builder.Services.AddScoped<IPromoCodeService, PromoCodeService>();

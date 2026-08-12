@@ -1,22 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { faDesktop } from "@fortawesome/free-solid-svg-icons";
-import { faApple, faLinux, faPlaystation, faXbox } from "@fortawesome/free-brands-svg-icons";
 import { Game } from "../../models/game";
 import SafeGameImage from "../common/SafeGameImage";
+import GameCoverOverlay from "../common/GameCoverOverlay";
 import { slugify } from "../../utils/slugify";
-
-// Иконки платформ в ценовой полосе карточки — покупатель сразу видит, для чего ключ.
-// Неизвестный ярлык просто не рисуется (лучше без иконки, чем с чужой).
-const platformIcons: Record<string, IconDefinition> = {
-    PC: faDesktop,
-    Mac: faApple,
-    Linux: faLinux,
-    PlayStation: faPlaystation,
-    Xbox: faXbox
-};
 
 // Универсальная «полка» главной страницы: ряд товарных карточек с заголовком и ссылкой
 // «View all» в каталог с готовым фильтром. Все полки (New/Deals/Upcoming/Under $10)
@@ -42,15 +29,6 @@ export interface GameShelfProps {
 
 export const gameHref = (game: Game) =>
     `/games/${game.slug ? slugify(game.slug) : slugify(game.title || game.name)}`;
-
-const finalPriceOf = (game: Game): number => {
-    const regular = Number.isFinite(game.price) ? Number(game.price) : 0;
-    return Number.isFinite(game.finalPrice ?? NaN) ? Number(game.finalPrice) : regular;
-};
-
-const hasVisibleDiscount = (game: Game): boolean =>
-    Boolean(game.discountActive && game.discountPercent && game.discountPercent > 0 &&
-        finalPriceOf(game) < Number(game.price));
 
 export default function GameShelf({
     eyebrow,
@@ -88,53 +66,22 @@ export default function GameShelf({
                     <div className="shelf-empty">{emptyState}</div>
                 ) : (
                 <div className="shelf-grid">
-                    {games.map((game) => {
-                        const chip = coverChip?.(game) ?? null;
-                        const discounted = hasVisibleDiscount(game);
-                        return (
-                            <Link className="shelf-card lift" key={game.id ?? game.title} to={gameHref(game)}>
-                                <div className="shelf-cover">
-                                    <SafeGameImage
-                                        gameTitle={game.title}
-                                        src={game.imagePath}
-                                        baseUrl={baseUrl}
-                                        loading="lazy"
-                                    />
-                                    {chip && <span className="shelf-chip">{chip}</span>}
-                                    {discounted && (
-                                        <span className="shelf-discount-badge">
-                                            −{Number(game.discountPercent).toFixed(0)}%
-                                        </span>
-                                    )}
-                                    {/* Цена лежит поверх обложки (референс — витрины конкурентов),
-                                        под ней — затемняющий градиент, чтобы читалась на любом арте.
-                                        Слева — платформы ключа, справа — цена. */}
-                                    <span className="shelf-price-strip">
-                                        <span className="shelf-platforms">
-                                            {(game.platforms ?? [])
-                                                .filter((platform) => platformIcons[platform])
-                                                .map((platform) => (
-                                                    <FontAwesomeIcon
-                                                        key={platform}
-                                                        icon={platformIcons[platform]}
-                                                        title={platform}
-                                                    />
-                                                ))}
-                                        </span>
-                                        <span className="shelf-price-group">
-                                            {discounted && (
-                                                <span className="shelf-price-old">${Number(game.price).toFixed(2)}</span>
-                                            )}
-                                            <span className="shelf-price">${finalPriceOf(game).toFixed(2)}</span>
-                                        </span>
-                                    </span>
-                                </div>
-                                <div className="shelf-body">
-                                    <div className="shelf-title">{game.title}</div>
-                                </div>
-                            </Link>
-                        );
-                    })}
+                    {games.map((game) => (
+                        <Link className="shelf-card lift" key={game.id ?? game.title} to={gameHref(game)}>
+                            <div className="shelf-cover">
+                                <SafeGameImage
+                                    gameTitle={game.title}
+                                    src={game.imagePath}
+                                    baseUrl={baseUrl}
+                                    loading="lazy"
+                                />
+                                <GameCoverOverlay game={game} chip={coverChip?.(game) ?? null} />
+                            </div>
+                            <div className="shelf-body">
+                                <div className="shelf-title">{game.title}</div>
+                            </div>
+                        </Link>
+                    ))}
                 </div>
                 )}
             </div>

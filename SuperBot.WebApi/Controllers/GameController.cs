@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -28,11 +29,18 @@ namespace SuperBot.WebApi.Controllers
         public const string WeeklyChartCacheKey = "game:weekly-chart";
         private static readonly TimeSpan WeeklyChartCacheTtl = TimeSpan.FromMinutes(10);
 
+        /// <summary>
+        /// Начиная с этого остатка витрина торопит покупателя («Only 3 left»). Точный размер запаса
+        /// наружу не отдаём: это коммерческая информация, конкуренту знать её незачем.
+        /// </summary>
+        public const int LowStockThreshold = CatalogSnapshotService.LowStockThreshold;
+
         private readonly IGameRepository _gameRepository;
         private readonly IGameDiscountRepository _gameDiscountRepository;
         private readonly IGameDetailsRepository _gameDetailsRepository;
         private readonly IMediaAssetRepository _mediaRepository;
         private readonly IOrderRepository _orderRepository;
+        private readonly ICatalogSnapshotService _catalogSnapshot;
         private readonly IMemoryCache _memoryCache;
         private readonly IMapper _mapper;
 
@@ -42,6 +50,7 @@ namespace SuperBot.WebApi.Controllers
             IGameDetailsRepository gameDetailsRepository,
             IMediaAssetRepository mediaRepository,
             IOrderRepository orderRepository,
+            ICatalogSnapshotService catalogSnapshot,
             IMemoryCache memoryCache,
             IMapper mapper)
         {
@@ -50,6 +59,7 @@ namespace SuperBot.WebApi.Controllers
             _gameDetailsRepository = gameDetailsRepository;
             _mediaRepository = mediaRepository;
             _orderRepository = orderRepository;
+            _catalogSnapshot = catalogSnapshot;
             _memoryCache = memoryCache;
             _mapper = mapper;
         }
@@ -63,17 +73,22 @@ namespace SuperBot.WebApi.Controllers
         public async Task<IActionResult> GetWeeklyChart([FromQuery] int limit = WeeklyChartDefaultLimit)
         {
             limit = Math.Clamp(limit, 1, WeeklyChartMaxLimit);
+            var chart = await GetWeeklyChartAsync();
 
-            // Кэшируем ПОЛНЫЙ чарт (до максимума), а limit применяем уже к готовому списку —
-            // иначе на каждый limit заводился бы свой кэш и своя загрузка заказов.
-            var chart = await _memoryCache.GetOrCreateAsync(WeeklyChartCacheKey, async entry =>
+            return Ok(chart.Take(limit));
+        }
+
+        /// <summary>
+        /// Готовый чарт продаж. Кэшируем его ПОЛНЫМ (до максимума), а limit применяется уже
+        /// к готовому списку — иначе на каждый limit заводился бы свой кэш и своя загрузка заказов.
+        /// Тем же чартом задаётся порядок «Most Popular» в каталоге.
+        /// </summary>
+        private async Task<List<WeeklyChartEntry>> GetWeeklyChartAsync() =>
+            await _memoryCache.GetOrCreateAsync(WeeklyChartCacheKey, async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = WeeklyChartCacheTtl;
                 return await BuildWeeklyChartAsync();
             }) ?? new List<WeeklyChartEntry>();
-
-            return Ok(chart.Take(limit));
-        }
 
         /// <summary>Считает топ продаж за неделю. Дорогая операция — зовётся только при промахе кэша.</summary>
         private async Task<List<WeeklyChartEntry>> BuildWeeklyChartAsync()
@@ -119,86 +134,131 @@ namespace SuperBot.WebApi.Controllers
         /// <summary>Строка чарта продаж. Именованный тип, а не анонимный: значение кладётся в кэш.</summary>
         public sealed record WeeklyChartEntry(string GameId, int Sold);
 
+        /// <summary>
+        /// Весь каталог одним списком — этим живут полки главной страницы, которым нужен
+        /// сразу весь набор. Сетка каталога ходит в постраничный <see cref="GetCatalog"/>.
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetAllGames()
         {
-            var games = await _gameRepository.GetAllAsync();
-            var discounts = await _gameDiscountRepository.GetByGameIdsAsync(games.Select(game => game.Id));
-            var gameDetails = await _gameDetailsRepository.GetByGameIdsAsync(games.Select(game => game.Id));
-            var coverMediaIds = games
-                .Where(game => string.IsNullOrWhiteSpace(game.ImagePath) && !string.IsNullOrWhiteSpace(game.CoverMediaId))
-                .Select(game => game.CoverMediaId)
-                .Distinct()
-                .ToArray();
-            var coverUrlByMediaId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var coverMediaId in coverMediaIds)
-            {
-                try
-                {
-                    var media = await _mediaRepository.GetByIdAsync(coverMediaId);
-                    if (!string.IsNullOrWhiteSpace(media?.Url))
-                    {
-                        coverUrlByMediaId[coverMediaId] = media.Url;
-                    }
-                }
-                catch
-                {
-                    // Ignore media lookup errors and keep existing game imagePath.
-                }
-            }
-            var discountByGameId = discounts.ToDictionary(discount => discount.GameId, discount => discount);
-            var detailsByGameId = gameDetails
-                .Where(details => !string.IsNullOrWhiteSpace(details.GameId))
-                .ToDictionary(details => details.GameId!, details => details);
-            var utcNow = DateTime.UtcNow;
-
-            var result = games.Select(game =>
-            {
-                discountByGameId.TryGetValue(game.Id, out var discount);
-                detailsByGameId.TryGetValue(game.Id, out var details);
-                // Статус релиза считает сервер (клиентским часам доверять нельзя), а скидка
-                // на невышедшую игру гасится: продать её всё равно нельзя — прайсинг откажет.
-                var isComingSoon = GameRelease.IsUpcoming(game.ReleaseDate, utcNow);
-                var discountActive = !isComingSoon && discount is not null && discount.IsActiveAt(utcNow);
-                var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
-                var finalPrice = CalculateFinalPrice(game.Price, discountPercent);
-                var genres = details?.Genres?.Where(item => !string.IsNullOrWhiteSpace(item)).ToArray()
-                    ?? Array.Empty<string>();
-                var resolvedImagePath = game.ImagePath;
-                if (string.IsNullOrWhiteSpace(resolvedImagePath) &&
-                    !string.IsNullOrWhiteSpace(game.CoverMediaId) &&
-                    coverUrlByMediaId.TryGetValue(game.CoverMediaId, out var mediaUrl))
-                {
-                    resolvedImagePath = mediaUrl;
-                }
-
-                return new
-                {
-                    id = game.Id,
-                    slug = game.Slug,
-                    name = game.Name,
-                    description = game.Description,
-                    title = game.Title,
-                    gameType = game.GameType,
-                    imagePath = resolvedImagePath,
-                    coverMediaId = game.CoverMediaId,
-                    releaseDate = game.ReleaseDate,
-                    isComingSoon,
-                    price = game.Price,
-                    finalPrice,
-                    discountPercent,
-                    discountActive,
-                    // Когда скидка закончится (UTC) — витрина рисует обратный отсчёт «deal ends in…».
-                    discountEndsAt = discountActive ? discount!.EndDate : (DateTime?)null,
-                    genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },
-                    platforms = BuildPlatformLabels(details?.Platforms),
-                    showInFeaturedStorefront = details?.ShowInFeaturedStorefront ?? false,
-                    featuredStorefrontPriority = details?.FeaturedStorefrontPriority ?? int.MaxValue
-                };
-            });
-
-            return Ok(result);
+            var catalog = await _catalogSnapshot.GetAsync();
+            return Ok(catalog.Select(ToCardDto));
         }
+
+        /// <summary>
+        /// Страница каталога: отбор, поиск, порядок и счётчики фильтров считает сервер.
+        /// Витрина получает ровно то, что показывает, а не весь каталог целиком.
+        /// </summary>
+        [HttpGet("catalog")]
+        public async Task<IActionResult> GetCatalog(
+            [FromQuery] string q = "",
+            [FromQuery] string categories = "",
+            [FromQuery] string categoryQuery = "",
+            [FromQuery] string categorySlug = "",
+            [FromQuery] string platforms = "",
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] bool onSale = false,
+            [FromQuery] bool inStock = false,
+            [FromQuery] bool comingSoon = false,
+            [FromQuery] string sort = CatalogQuery.DefaultSort,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = CatalogQuery.DefaultPageSize)
+        {
+            var catalog = await _catalogSnapshot.GetAsync();
+            var chart = await GetWeeklyChartAsync();
+            var popularityRank = chart
+                .Select((entry, index) => (entry.GameId, index))
+                .ToDictionary(pair => pair.GameId, pair => pair.index);
+
+            var result = CatalogQuery.Apply(
+                catalog,
+                new CatalogQueryOptions(
+                    q,
+                    SplitList(categories),
+                    categoryQuery,
+                    categorySlug,
+                    SplitList(platforms),
+                    minPrice,
+                    maxPrice,
+                    onSale,
+                    inStock,
+                    comingSoon,
+                    sort,
+                    page,
+                    pageSize),
+                popularityRank);
+
+            return Ok(new
+            {
+                items = result.Items.Select(ToCardDto),
+                total = result.Total,
+                page = result.Page,
+                pageSize = result.PageSize,
+                priceRange = new { min = result.PriceRange.Min, max = result.PriceRange.Max },
+                facets = new
+                {
+                    categories = result.Facets.Categories.Select(facet => new { value = facet.Value, count = facet.Count }),
+                    platforms = result.Facets.Platforms.Select(facet => new { value = facet.Value, count = facet.Count }),
+                    availability = new
+                    {
+                        inStock = result.Facets.Availability.InStock,
+                        onSale = result.Facets.Availability.OnSale,
+                        comingSoon = result.Facets.Availability.ComingSoon
+                    },
+                    priceHistogram = result.Facets.PriceHistogram.Select(bucket => new
+                    {
+                        from = bucket.From,
+                        to = bucket.To,
+                        count = bucket.Count
+                    }),
+                    pricePresets = result.Facets.PricePresets.Select(preset => new
+                    {
+                        label = preset.Label,
+                        from = preset.From,
+                        to = preset.To,
+                        count = preset.Count
+                    })
+                }
+            });
+        }
+
+        /// <summary>Список значений из строки запроса вида `?platforms=PC,Mac`.</summary>
+        private static string[] SplitList(string value) =>
+            (value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        /// <summary>
+        /// Карточка товара для витрины. Один вид ответа и для полок, и для сетки каталога —
+        /// иначе поля начали бы расходиться между страницами.
+        /// </summary>
+        private static object ToCardDto(CatalogItem item) => new
+        {
+            id = item.Id,
+            slug = item.Slug,
+            name = item.Name,
+            description = item.Description,
+            title = item.Title,
+            gameType = item.GameType,
+            category = item.Category,
+            imagePath = item.ImagePath,
+            coverMediaId = item.CoverMediaId,
+            releaseDate = item.ReleaseDate,
+            isComingSoon = item.IsComingSoon,
+            price = item.Price,
+            finalPrice = item.FinalPrice,
+            discountPercent = item.DiscountPercent,
+            discountActive = item.DiscountActive,
+            // Когда скидка закончится (UTC) — витрина рисует обратный отсчёт «deal ends in…».
+            discountEndsAt = item.DiscountEndsAt,
+            genres = item.Genres,
+            platforms = item.Platforms,
+            rating = item.Rating,
+            reviewCount = item.ReviewCount,
+            inStock = item.InStock,
+            lowStockLeft = item.LowStockLeft,
+            showInFeaturedStorefront = item.ShowInFeaturedStorefront,
+            featuredStorefrontPriority = item.FeaturedStorefrontPriority
+        };
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetGameById(string id)
@@ -264,6 +324,7 @@ namespace SuperBot.WebApi.Controllers
         {
             var game = _mapper.Map<Game>(newGame);
             await _gameRepository.CreateAsync(game);
+            _catalogSnapshot.Invalidate();
             return CreatedAtAction(nameof(GetGameById), new { id = Guid.NewGuid() }, game);
         }
 
@@ -279,6 +340,7 @@ namespace SuperBot.WebApi.Controllers
 
             var updatedGameForDb = _mapper.Map<Game>(updatedGame);
             await _gameRepository.UpdateAsync(id, updatedGameForDb);
+            _catalogSnapshot.Invalidate();
             return NoContent();
         }
 
@@ -294,6 +356,7 @@ namespace SuperBot.WebApi.Controllers
 
             await _gameRepository.DeleteAsync(id);
             await _gameDiscountRepository.DeleteByGameIdAsync(id);
+            _catalogSnapshot.Invalidate();
             return NoContent();
         }
 

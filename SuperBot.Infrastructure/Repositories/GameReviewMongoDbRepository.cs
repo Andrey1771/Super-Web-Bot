@@ -9,6 +9,10 @@ namespace SuperBot.Infrastructure.Repositories
     {
         private readonly IMongoCollection<GameReviewDb> _reviews;
 
+        /// <summary>Скрытые и ждущие модерации отзывы наружу не отдаём — ни в списках, ни в сводках.</summary>
+        private static readonly FilterDefinition<GameReviewDb> PublishedFilter =
+            Builders<GameReviewDb>.Filter.Eq(item => item.Status, ReviewStatus.Published.ToString());
+
         public GameReviewMongoDbRepository(IMongoDatabase database)
         {
             _reviews = database.GetCollection<GameReviewDb>("GameReviews");
@@ -31,8 +35,7 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task<GameReviewSummary> GetSummaryAsync(string gameId)
         {
-            var filter = Builders<GameReviewDb>.Filter.Eq(item => item.GameId, gameId) &
-                         Builders<GameReviewDb>.Filter.Eq(item => item.Status, ReviewStatus.Published.ToString());
+            var filter = Builders<GameReviewDb>.Filter.Eq(item => item.GameId, gameId) & PublishedFilter;
 
             var items = await _reviews.Find(filter).ToListAsync();
             if (items.Count == 0)
@@ -52,6 +55,76 @@ namespace SuperBot.Infrastructure.Repositories
             }
 
             return summary;
+        }
+
+        public async Task<IReadOnlyDictionary<string, GameReviewSummary>> GetSummariesAsync(IEnumerable<string> gameIds)
+        {
+            var ids = gameIds?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToArray() ?? Array.Empty<string>();
+            if (ids.Length == 0)
+            {
+                return new Dictionary<string, GameReviewSummary>();
+            }
+
+            // Группируем по паре (игра, оценка): наружу приходит не больше пяти строк на игру,
+            // сколько бы отзывов на неё ни было.
+            var buckets = await _reviews.Aggregate()
+                .Match(PublishedFilter & Builders<GameReviewDb>.Filter.In(item => item.GameId, ids))
+                .Group(
+                    item => new { item.GameId, item.Rating },
+                    group => new { group.Key.GameId, group.Key.Rating, Count = group.Count() })
+                .ToListAsync();
+
+            return buckets
+                .GroupBy(bucket => bucket.GameId)
+                .ToDictionary(
+                    game => game.Key,
+                    game =>
+                    {
+                        var total = game.Sum(bucket => bucket.Count);
+                        return new GameReviewSummary
+                        {
+                            Count = total,
+                            Average = (double)game.Sum(bucket => (long)bucket.Rating * bucket.Count) / total,
+                            Distribution = game.ToDictionary(bucket => bucket.Rating, bucket => bucket.Count)
+                        };
+                    });
+        }
+
+        public async Task<GameReviewSummary> GetSiteSummaryAsync()
+        {
+            // Группировка по оценке идёт в базе: наружу приходит максимум пять строк
+            // (по числу возможных оценок), сколько бы отзывов ни накопилось.
+            var buckets = await _reviews.Aggregate()
+                .Match(PublishedFilter)
+                .Group(item => item.Rating, group => new { Rating = group.Key, Count = group.Count() })
+                .ToListAsync();
+
+            var total = buckets.Sum(bucket => bucket.Count);
+            if (total == 0)
+            {
+                return new GameReviewSummary();
+            }
+
+            return new GameReviewSummary
+            {
+                Count = total,
+                Average = (double)buckets.Sum(bucket => (long)bucket.Rating * bucket.Count) / total,
+                Distribution = buckets.ToDictionary(bucket => bucket.Rating, bucket => bucket.Count)
+            };
+        }
+
+        public async Task<IReadOnlyList<GameReview>> GetRecentPublishedAsync(int limit)
+        {
+            var withText = PublishedFilter &
+                           Builders<GameReviewDb>.Filter.Ne(item => item.Text, null) &
+                           Builders<GameReviewDb>.Filter.Ne(item => item.Text, string.Empty);
+
+            var items = await _reviews.Find(withText)
+                .Sort(Builders<GameReviewDb>.Sort.Descending(item => item.CreatedAt))
+                .Limit(limit)
+                .ToListAsync();
+
+            return items.Select(MapToEntity).ToList();
         }
 
         public async Task<GameReview> GetByIdAsync(string reviewId)
@@ -89,8 +162,7 @@ namespace SuperBot.Infrastructure.Repositories
         private FilterDefinition<GameReviewDb> BuildFilter(GameReviewQuery query)
         {
             var builder = Builders<GameReviewDb>.Filter;
-            var filter = builder.Eq(item => item.GameId, query.GameId) &
-                         builder.Eq(item => item.Status, ReviewStatus.Published.ToString());
+            var filter = builder.Eq(item => item.GameId, query.GameId) & PublishedFilter;
 
             if (query.Rating.HasValue)
             {

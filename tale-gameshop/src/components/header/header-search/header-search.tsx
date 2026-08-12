@@ -8,6 +8,7 @@ import { Game } from "../../../models/game";
 import { useSitePreferences, formatMoney } from "../../../context/site-preferences";
 import { slugify } from "../../../utils/slugify";
 import SafeGameImage from "../../common/SafeGameImage";
+import { analyticsClient } from "../../../utils/analytics-client";
 
 // Header search with typeahead suggestions.
 //
@@ -127,6 +128,14 @@ const HeaderSearch: React.FC<HeaderSearchProps> = ({ variant = "bar", onNavigate
         const query = value.trim();
         close();
         onNavigated?.();
+
+        // Событие поиска отправляем отсюда: это единственное место, где поиск
+        // действительно происходит. У каталога своего поля больше нет — он лишь
+        // показывает результат по параметру адреса.
+        if (query.length >= MIN_QUERY_LENGTH) {
+            analyticsClient.trackEvent("search", { search_term: query });
+        }
+
         navigate(query ? `/games?filterName=${encodeURIComponent(query)}` : "/games");
     };
 
