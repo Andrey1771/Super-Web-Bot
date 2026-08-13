@@ -15,6 +15,9 @@ public interface ILlmSpendTracker
     decimal SpentTodayUsd { get; }
 
     void Record(LlmUsage? usage);
+
+    /// <summary>Цена вызова по текущему прайсу. Для локальной модели — ноль.</summary>
+    decimal EstimateUsd(LlmUsage? usage);
 }
 
 public class LlmSpendTracker : ILlmSpendTracker
@@ -75,17 +78,26 @@ public class LlmSpendTracker : ILlmSpendTracker
         }
     }
 
-    public void Record(LlmUsage? usage)
+    public decimal EstimateUsd(LlmUsage? usage)
     {
-        if (usage == null)
+        if (usage is not { Billable: true })
         {
-            return;
+            return 0m;
         }
 
-        var cost =
+        return
             usage.InputTokens / 1_000_000m * _options.InputPricePerMillionUsd +
             usage.CachedInputTokens / 1_000_000m * _options.CachedInputPricePerMillionUsd +
             usage.OutputTokens / 1_000_000m * _options.OutputPricePerMillionUsd;
+    }
+
+    public void Record(LlmUsage? usage)
+    {
+        var cost = EstimateUsd(usage);
+        if (cost <= 0m)
+        {
+            return;
+        }
 
         lock (_gate)
         {

@@ -18,6 +18,14 @@ public class SupportChatAdminController : ControllerBase
         _chatService = chatService;
     }
 
+    /// <summary>Сводка за период: сколько обращений закрыл бот, за что платим, что оценили плохо.</summary>
+    [HttpGet("stats")]
+    public async Task<ActionResult<SupportChatStatsDto>> GetStats([FromQuery] int days = 30)
+    {
+        var result = await _chatService.GetStatsAsync(days);
+        return Ok(result);
+    }
+
     [HttpGet("sessions")]
     public async Task<ActionResult<ChatSessionListResponse>> ListSessions(
         [FromQuery] string? status,

@@ -464,6 +464,42 @@
   gap: 6px;
 }
 
+/* Время и оценка ответа в одной строке под пузырём. */
+.support-chat__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.support-chat__rate {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.support-chat__rate-button {
+  border: none;
+  background: transparent;
+  padding: 1px 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.support-chat__rate-button:hover,
+.support-chat__rate-button:focus-visible {
+  opacity: 1;
+  background: #f3efff;
+}
+
+.support-chat__rate-button.is-active {
+  opacity: 1;
+  background: #ece4ff;
+}
+
 /* Диалог завершён специалистом: переписка остаётся, но продолжить можно только новым чатом. */
 .support-chat__closed {
   margin-top: 14px;

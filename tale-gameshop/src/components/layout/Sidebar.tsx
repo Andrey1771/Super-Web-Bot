@@ -138,6 +138,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             roles: ["admin", "support"],
           },
           {
+            label: "Chat stats",
+            to: "/admin/support/chat-stats",
+            icon: "📈",
+            roles: ["admin", "support"],
+          },
+          {
             label: "Account recovery",
             to: "/admin/support/recovery",
             icon: "🛟",

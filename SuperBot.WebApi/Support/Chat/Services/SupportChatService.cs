@@ -26,6 +26,8 @@ public interface ISupportChatService
     Task<ChatSessionDto> AssignSessionAsync(string sessionId, SupportUserContext agent);
     Task<ChatSessionDto> UpdateSessionAsync(string sessionId, UpdateChatSessionRequest request);
     Task<ChatMessageDto> AddAgentMessageAsync(string sessionId, SupportUserContext agent, string text);
+    Task<ChatMessageDto> SetMessageFeedbackAsync(string sessionId, string messageId, string? feedback);
+    Task<SupportChatStatsDto> GetStatsAsync(int days);
     Task<ChatMessageDto?> StreamAssistantResponseAsync(
         string sessionId,
         SupportUserContext? user,
@@ -127,6 +129,7 @@ public class SupportChatService : ISupportChatService
     private readonly ISupportNotificationService _notifications;
     private readonly ILlmConcurrencyLimiter _llmLimiter;
     private readonly ITurnstileVerifier _turnstile;
+    private readonly ILlmSpendTracker _spend;
     private readonly ILogger<SupportChatService> _logger;
 
     private static readonly JsonSerializerOptions ToolArgsJsonOptions = new(JsonSerializerDefaults.Web);
@@ -140,6 +143,7 @@ public class SupportChatService : ISupportChatService
         ISupportNotificationService notifications,
         ILlmConcurrencyLimiter llmLimiter,
         ITurnstileVerifier turnstile,
+        ILlmSpendTracker spend,
         ILogger<SupportChatService> logger)
     {
         _sessions = database.GetCollection<ChatSession>("SupportChatSessions");
@@ -151,6 +155,7 @@ public class SupportChatService : ISupportChatService
         _notifications = notifications;
         _llmLimiter = llmLimiter;
         _turnstile = turnstile;
+        _spend = spend;
         _logger = logger;
     }
 
@@ -344,7 +349,7 @@ public class SupportChatService : ISupportChatService
         var pre = EvaluatePreEscalation(sanitized);
         if (pre.ShouldEscalate)
         {
-            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null);
+            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null, pre.Source);
             return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = MapMessage(handoff) };
         }
 
@@ -385,7 +390,7 @@ public class SupportChatService : ISupportChatService
         var pre = EvaluatePreEscalation(sanitized);
         if (pre.ShouldEscalate)
         {
-            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null);
+            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null, pre.Source);
             await onChunk(handoff.Text);
             return MapMessage(handoff);
         }
@@ -405,6 +410,8 @@ public class SupportChatService : ISupportChatService
         var toolCallArguments = string.Empty;
         var filter = ReasoningFilter.CreateStreamFilter();
         var responseBuilder = new StringBuilder();
+        // Расход провайдер присылает последним чанком, когда весь текст уже отдан клиенту.
+        LlmUsage? usage = null;
 
         try
         {
@@ -424,6 +431,8 @@ public class SupportChatService : ISupportChatService
                 {
                     toolCallArguments = toolCall.ArgumentsJson;
                 }
+
+                usage ??= chunk.Usage;
             }, cancellationToken);
         }
         catch (Exception ex)
@@ -447,7 +456,7 @@ public class SupportChatService : ISupportChatService
             var args = ParseHandoffArgs(toolCallArguments);
             var handoff = await HandleEscalationAsync(
                 session, sanitized, args.Reason ?? "Assistant requested a specialist.",
-                args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary);
+                args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary, EscalationSource.AssistantDecision);
             await onChunk("\n\n" + handoff.Text);
             return MapMessage(handoff);
         }
@@ -459,7 +468,7 @@ public class SupportChatService : ISupportChatService
             await onChunk(assistantText);
         }
 
-        var assistantMessage = await SaveAssistantMessageAsync(session, assistantText);
+        var assistantMessage = await SaveAssistantMessageAsync(session, assistantText, usage);
         return MapMessage(assistantMessage);
     }
 
@@ -552,6 +561,160 @@ public class SupportChatService : ISupportChatService
         return MapMessage(message);
     }
 
+    public async Task<ChatMessageDto> SetMessageFeedbackAsync(string sessionId, string messageId, string? feedback)
+    {
+        var session = await GetSessionEntityAsync(sessionId);
+        if (!ObjectId.TryParse(messageId, out _))
+        {
+            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound);
+        }
+
+        var message = await _messages
+            .Find(m => m.Id == messageId && m.SessionId == session.Id)
+            .FirstOrDefaultAsync();
+
+        if (message == null)
+        {
+            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound);
+        }
+
+        // Оценивать имеет смысл только ответ бота: реплики оператора и свои же сообщения — нет.
+        if (message.Role != ChatMessageRole.Assistant)
+        {
+            throw new SupportChatRequestException("Only assistant replies can be rated.", StatusCodes.Status400BadRequest);
+        }
+
+        var parsed = ParseFeedback(feedback);
+        message.Metadata ??= new ChatMessageMetadata();
+        message.Metadata.Feedback = parsed;
+
+        await _messages.UpdateOneAsync(
+            m => m.Id == message.Id,
+            Builders<ChatMessage>.Update.Set(m => m.Metadata.Feedback, parsed));
+
+        return MapMessage(message);
+    }
+
+    public async Task<SupportChatStatsDto> GetStatsAsync(int days)
+    {
+        var window = Math.Clamp(days, 1, 180);
+        var from = DateTime.UtcNow.Date.AddDays(-(window - 1));
+
+        var sessions = await _sessions
+            .Find(s => s.CreatedAt >= from)
+            .Project(s => new SessionStatRow
+            {
+                CreatedAt = s.CreatedAt,
+                WasEscalated = s.WasEscalated,
+                Source = s.EscalationSource,
+                Category = s.Category
+            })
+            .ToListAsync();
+
+        var replies = await _messages
+            .Find(m => m.CreatedAt >= from && m.Role == ChatMessageRole.Assistant)
+            .Project(m => new MessageStatRow
+            {
+                CreatedAt = m.CreatedAt,
+                CostUsd = m.Metadata.CostUsd,
+                Feedback = m.Metadata.Feedback
+            })
+            .ToListAsync();
+
+        var escalated = sessions.Count(s => s.WasEscalated);
+        var totalCost = replies.Sum(r => r.CostUsd ?? 0);
+
+        var daily = Enumerable.Range(0, window)
+            .Select(offset => from.AddDays(offset))
+            .Select(date => new DailyStatDto
+            {
+                Date = date,
+                Sessions = sessions.Count(s => s.CreatedAt.Date == date),
+                Escalated = sessions.Count(s => s.CreatedAt.Date == date && s.WasEscalated),
+                CostUsd = replies.Where(r => r.CreatedAt.Date == date).Sum(r => r.CostUsd ?? 0)
+            })
+            .ToList();
+
+        return new SupportChatStatsDto
+        {
+            Days = window,
+            From = from,
+            Sessions = sessions.Count,
+            EscalatedSessions = escalated,
+            // Доля диалогов, которые бот закрыл сам. Без обращений считаем нулём, а не делим на ноль.
+            DeflectionRate = sessions.Count == 0 ? 0 : (double)(sessions.Count - escalated) / sessions.Count,
+            EscalationsBySource = sessions
+                .Where(s => s.WasEscalated)
+                .GroupBy(s => FormatEscalationSource(s.Source))
+                .Select(g => new StatCountDto { Label = g.Key, Count = g.Count() })
+                .OrderByDescending(item => item.Count)
+                .ToList(),
+            TopCategories = sessions
+                .Where(s => !string.IsNullOrWhiteSpace(s.Category))
+                .GroupBy(s => s.Category!)
+                .Select(g => new StatCountDto { Label = g.Key, Count = g.Count() })
+                .OrderByDescending(item => item.Count)
+                .Take(6)
+                .ToList(),
+            AiReplies = replies.Count,
+            BilledReplies = replies.Count(r => r.CostUsd > 0),
+            TotalCostUsd = totalCost,
+            CostPerSessionUsd = sessions.Count == 0 ? 0 : totalCost / sessions.Count,
+            FeedbackHelpful = replies.Count(r => r.Feedback == ChatMessageFeedback.Helpful),
+            FeedbackNotHelpful = replies.Count(r => r.Feedback == ChatMessageFeedback.NotHelpful),
+            SpentTodayUsd = (double)_spend.SpentTodayUsd,
+            DailyBudgetUsd = _options.DailyBudgetUsd,
+            Daily = daily
+        };
+    }
+
+    private static ChatMessageFeedback? ParseFeedback(string? feedback)
+    {
+        return feedback?.Trim().ToLowerInvariant() switch
+        {
+            "helpful" => ChatMessageFeedback.Helpful,
+            "not_helpful" => ChatMessageFeedback.NotHelpful,
+            null or "" => null,
+            _ => throw new SupportChatRequestException("Unknown feedback value.", StatusCodes.Status400BadRequest)
+        };
+    }
+
+    private static string? FormatFeedback(ChatMessageFeedback? feedback) => feedback switch
+    {
+        ChatMessageFeedback.Helpful => "helpful",
+        ChatMessageFeedback.NotHelpful => "not_helpful",
+        _ => null
+    };
+
+    private static string FormatEscalationSource(EscalationSource? source) => source switch
+    {
+        EscalationSource.HighRisk => "high_risk",
+        EscalationSource.CustomerRequest => "customer_request",
+        EscalationSource.AssistantDecision => "assistant_decision",
+        // Диалоги, эскалированные до появления этого поля.
+        _ => "unknown"
+    };
+
+    private class SessionStatRow
+    {
+        public DateTime CreatedAt { get; set; }
+
+        public bool WasEscalated { get; set; }
+
+        public EscalationSource? Source { get; set; }
+
+        public string? Category { get; set; }
+    }
+
+    private class MessageStatRow
+    {
+        public DateTime CreatedAt { get; set; }
+
+        public double? CostUsd { get; set; }
+
+        public ChatMessageFeedback? Feedback { get; set; }
+    }
+
     private async Task InsertUserMessageAsync(ChatSession session, SupportUserContext? user, string text, DateTime now)
     {
         var userMessage = new ChatMessage
@@ -602,7 +765,7 @@ public class SupportChatService : ISupportChatService
                 var args = ParseHandoffArgs(toolCallArguments);
                 var handoff = await HandleEscalationAsync(
                     session, userText, args.Reason ?? "Assistant requested a specialist.",
-                    args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary);
+                    args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary, EscalationSource.AssistantDecision);
                 return (handoff, session);
             }
 
@@ -611,7 +774,7 @@ public class SupportChatService : ISupportChatService
                 assistantText = ClarifyPrompt(session.Language);
             }
 
-            var assistantMessage = await SaveAssistantMessageAsync(session, assistantText);
+            var assistantMessage = await SaveAssistantMessageAsync(session, assistantText, response.Usage);
             return (assistantMessage, session);
         }
         catch (Exception ex)
@@ -629,7 +792,7 @@ public class SupportChatService : ISupportChatService
         }
     }
 
-    private async Task<ChatMessage> SaveAssistantMessageAsync(ChatSession session, string text)
+    private async Task<ChatMessage> SaveAssistantMessageAsync(ChatSession session, string text, LlmUsage? usage = null)
     {
         var now = DateTime.UtcNow;
         var message = new ChatMessage
@@ -639,12 +802,26 @@ public class SupportChatService : ISupportChatService
             AuthorName = AssistantName,
             Text = text,
             CreatedAt = now,
-            Metadata = new ChatMessageMetadata { Model = _llm.Model }
+            Metadata = new ChatMessageMetadata
+            {
+                Model = _llm.Model,
+                InputTokens = usage?.InputTokens,
+                CachedInputTokens = usage?.CachedInputTokens,
+                OutputTokens = usage?.OutputTokens,
+                CostUsd = ToCostUsd(usage)
+            }
         };
 
         await _messages.InsertOneAsync(message);
         await UpdateSessionActivityAsync(session, now);
         return message;
+    }
+
+    // Стоимость есть только у платного провайдера — у локальной модели токены бесплатны.
+    private double? ToCostUsd(LlmUsage? usage)
+    {
+        var cost = _spend.EstimateUsd(usage);
+        return cost > 0m ? (double?)cost : null;
     }
 
     private async Task<ChatMessage> HandleEscalationAsync(
@@ -653,7 +830,8 @@ public class SupportChatService : ISupportChatService
         string reason,
         string? category,
         ChatPriority priority,
-        string? providedSummary)
+        string? providedSummary,
+        EscalationSource source)
     {
         var resolvedCategory = category ?? InferCategory(userText) ?? "Other";
         var summary = string.IsNullOrWhiteSpace(providedSummary)
@@ -665,6 +843,8 @@ public class SupportChatService : ISupportChatService
         session.Category = resolvedCategory;
         session.Priority = priority;
         session.Summary = summary;
+        session.WasEscalated = true;
+        session.EscalationSource = source;
         session.UpdatedAt = DateTime.UtcNow;
 
         await _sessions.UpdateOneAsync(
@@ -675,6 +855,8 @@ public class SupportChatService : ISupportChatService
                 .Set(s => s.Category, session.Category)
                 .Set(s => s.Priority, session.Priority)
                 .Set(s => s.Summary, session.Summary)
+                .Set(s => s.WasEscalated, session.WasEscalated)
+                .Set(s => s.EscalationSource, session.EscalationSource)
                 .Set(s => s.UpdatedAt, session.UpdatedAt));
 
         var needsContact = string.IsNullOrWhiteSpace(session.Email) && string.IsNullOrWhiteSpace(session.OrderId);
@@ -875,22 +1057,22 @@ public class SupportChatService : ISupportChatService
 
     // ---- Escalation heuristics -------------------------------------------------
 
-    private (bool ShouldEscalate, string Reason, string? Category, ChatPriority Priority) EvaluatePreEscalation(string userText)
+    private (bool ShouldEscalate, string Reason, string? Category, ChatPriority Priority, EscalationSource Source) EvaluatePreEscalation(string userText)
     {
         foreach (var signal in HighRiskSignals)
         {
             if (signal.Matches(userText))
             {
-                return (true, $"High-risk signal detected: '{signal.Keyword}'.", signal.Category, ChatPriority.High);
+                return (true, $"High-risk signal detected: '{signal.Keyword}'.", signal.Category, ChatPriority.High, EscalationSource.HighRisk);
             }
         }
 
         if (HumanRequestSignals.Any(signal => signal.Matches(userText)))
         {
-            return (true, "Customer explicitly asked for a human specialist.", InferCategory(userText), ChatPriority.Normal);
+            return (true, "Customer explicitly asked for a human specialist.", InferCategory(userText), ChatPriority.Normal, EscalationSource.CustomerRequest);
         }
 
-        return (false, string.Empty, null, ChatPriority.Normal);
+        return (false, string.Empty, null, ChatPriority.Normal, EscalationSource.AssistantDecision);
     }
 
     private static string? InferCategory(string userText)
@@ -1082,7 +1264,8 @@ public class SupportChatService : ISupportChatService
                 Confidence = message.Metadata?.Confidence,
                 EscalationReason = message.Metadata?.EscalationReason,
                 ToolCall = message.Metadata?.ToolCall,
-                Handoff = message.Metadata?.Handoff ?? false
+                Handoff = message.Metadata?.Handoff ?? false,
+                Feedback = FormatFeedback(message.Metadata?.Feedback)
             }
         };
     }

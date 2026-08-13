@@ -2,7 +2,14 @@ import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import type { IUrlService } from "../iterfaces/i-url-service";
-import type { ChatConfig, ChatMessage, ChatSessionDetail, ChatSessionListResponse } from "../types/support-chat";
+import type {
+  ChatConfig,
+  ChatFeedback,
+  ChatMessage,
+  ChatSessionDetail,
+  ChatSessionListResponse,
+  SupportChatStats,
+} from "../types/support-chat";
 
 const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 const apiBaseUrl = () => container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
@@ -122,6 +129,24 @@ export const streamChatMessage = async (
       }
     });
   }
+};
+
+// null снимает ранее поставленную оценку — повторное нажатие той же кнопки.
+export const sendMessageFeedback = async (
+  sessionId: string,
+  messageId: string,
+  feedback: ChatFeedback | null
+): Promise<ChatMessage> => {
+  const response = await apiClient().post(
+    `/api/support/chat/sessions/${sessionId}/messages/${messageId}/feedback`,
+    { feedback }
+  );
+  return response.data as ChatMessage;
+};
+
+export const getSupportChatStats = async (days: number): Promise<SupportChatStats> => {
+  const response = await apiClient().get("/api/support/admin/chat/stats", { params: { days } });
+  return response.data as SupportChatStats;
 };
 
 export const listChatSessions = async (params: {

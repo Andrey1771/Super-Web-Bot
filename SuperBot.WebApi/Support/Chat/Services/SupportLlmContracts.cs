@@ -75,5 +75,8 @@ public class LlmToolDefinition
     public object Parameters { get; set; } = new();
 }
 
-/// <summary>Расход токенов за один вызов — по нему считается дневной бюджет.</summary>
-public record LlmUsage(int InputTokens, int CachedInputTokens, int OutputTokens);
+/// <summary>
+/// Расход токенов за один вызов. Флаг Billable отделяет платного провайдера от локальной модели:
+/// считать бесплатные токены в деньгах нельзя, иначе резерв сам выберет дневной бюджет.
+/// </summary>
+public record LlmUsage(int InputTokens, int CachedInputTokens, int OutputTokens, bool Billable = false);

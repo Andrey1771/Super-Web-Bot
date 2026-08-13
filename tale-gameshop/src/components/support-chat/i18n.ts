@@ -25,6 +25,8 @@ type Dict = {
   newChat: string;
   closedNotice: string;
   scrollDown: string;
+  feedbackHelpful: string;
+  feedbackNotHelpful: string;
   welcomeTitle: string;
   welcomeBody: string;
   quickRepliesLabel: string;
@@ -68,6 +70,8 @@ const en: Dict = {
   newChat: "New chat",
   closedNotice: "This conversation was closed by our specialist. Start a new one if you still need help.",
   scrollDown: "Jump to latest",
+  feedbackHelpful: "This helped",
+  feedbackNotHelpful: "This didn't help",
   welcomeTitle: "Hi there! 👋",
   welcomeBody:
     "I’m the Tale Shop assistant. I can help with orders, keys, activation, payments and refunds — and bring in a human specialist whenever you need one.",
@@ -118,6 +122,8 @@ const ru: Dict = {
   newChat: "Новый диалог",
   closedNotice: "Специалист завершил этот диалог. Если остались вопросы — начните новый.",
   scrollDown: "К последнему сообщению",
+  feedbackHelpful: "Помогло",
+  feedbackNotHelpful: "Не помогло",
   welcomeTitle: "Здравствуйте! 👋",
   welcomeBody:
     "Я ассистент Tale Shop. Помогу с заказами, ключами, активацией, оплатой и возвратами — и в любой момент подключу живого специалиста.",

@@ -121,6 +121,71 @@ public class ChatMessageMetadataDto
     public string? ToolCall { get; set; }
 
     public bool Handoff { get; set; }
+
+    /// <summary>"helpful" | "not_helpful" | null — оценка ответа клиентом.</summary>
+    public string? Feedback { get; set; }
+}
+
+public class ChatMessageFeedbackRequest
+{
+    /// <summary>"helpful", "not_helpful" или пусто, чтобы снять оценку.</summary>
+    public string? Feedback { get; set; }
+}
+
+/// <summary>Сводка по чату поддержки для админки: сколько забрал бот, за что платим, что не понравилось.</summary>
+public class SupportChatStatsDto
+{
+    public int Days { get; set; }
+
+    public DateTime From { get; set; }
+
+    public int Sessions { get; set; }
+
+    public int EscalatedSessions { get; set; }
+
+    /// <summary>Доля диалогов, закрытых без оператора.</summary>
+    public double DeflectionRate { get; set; }
+
+    public List<StatCountDto> EscalationsBySource { get; set; } = new();
+
+    public List<StatCountDto> TopCategories { get; set; } = new();
+
+    public int AiReplies { get; set; }
+
+    /// <summary>Ответов, за которые платили внешнему провайдеру.</summary>
+    public int BilledReplies { get; set; }
+
+    public double TotalCostUsd { get; set; }
+
+    public double CostPerSessionUsd { get; set; }
+
+    public int FeedbackHelpful { get; set; }
+
+    public int FeedbackNotHelpful { get; set; }
+
+    public double SpentTodayUsd { get; set; }
+
+    public decimal DailyBudgetUsd { get; set; }
+
+    public List<DailyStatDto> Daily { get; set; } = new();
+}
+
+public class StatCountDto
+{
+    public string Label { get; set; } = string.Empty;
+
+    public int Count { get; set; }
+}
+
+public class DailyStatDto
+{
+    public DateTime Date { get; set; }
+
+    public int Sessions { get; set; }
+
+    public int Escalated { get; set; }
+
+    public double CostUsd { get; set; }
 }
 
 public class UpdateChatContactRequest

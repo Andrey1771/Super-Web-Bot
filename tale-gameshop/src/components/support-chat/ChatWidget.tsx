@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import ChatLauncherButton from "./ChatLauncherButton";
 import ChatWindow from "./ChatWindow";
 import "./support-chat.css";
-import type { ChatMessage, ChatSession } from "../../types/support-chat";
+import type { ChatFeedback, ChatMessage, ChatSession } from "../../types/support-chat";
 import {
   createChatSession,
   fetchChatConfig,
   getChatMessages,
   getChatSession,
   sendChatMessage,
+  sendMessageFeedback,
   streamChatMessage,
   updateChatContact,
 } from "../../api/supportChatApi";
@@ -388,6 +389,37 @@ const ChatWidget: React.FC = () => {
     }
   }, [contactForm.email, contactForm.orderId, handleSessionGone, sessionId]);
 
+  // Оценку показываем сразу, не дожидаясь сервера: если запрос упадёт, вернём как было.
+  const handleFeedback = useCallback(
+    async (messageId: string, feedback: ChatFeedback | null) => {
+      if (!sessionId) {
+        return;
+      }
+      const previous = messagesRef.current.find((message) => message.id === messageId)?.metadata?.feedback;
+      const apply = (value: ChatFeedback | null | undefined) =>
+        setMessages((prev) => {
+          const next = prev.map((message) =>
+            message.id === messageId
+              ? { ...message, metadata: { ...message.metadata, feedback: value ?? undefined } }
+              : message
+          );
+          persistMessages(next);
+          return next;
+        });
+
+      apply(feedback);
+      try {
+        await sendMessageFeedback(sessionId, messageId, feedback);
+      } catch (err) {
+        apply(previous);
+        if (!handleSessionGone(err)) {
+          console.error(err);
+        }
+      }
+    },
+    [handleSessionGone, sessionId]
+  );
+
   const onToggle = () => {
     setIsOpen((prev) => !prev);
     setUnreadCount(0);
@@ -417,6 +449,7 @@ const ChatWidget: React.FC = () => {
         onContactSubmit={handleContactSubmit}
         error={error}
         onRetry={() => handleSend(lastUserMessage)}
+        onFeedback={handleFeedback}
       />
     </div>
   );

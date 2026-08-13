@@ -214,7 +214,7 @@ public class DeepSeekChatClient : ISupportLlmClient
         // Попадание в кэш стоит в десятки раз дешевле промаха, поэтому считаем их раздельно.
         var cached = usage.PromptCacheHitTokens;
         var fresh = usage.PromptCacheMissTokens > 0 ? usage.PromptCacheMissTokens : usage.PromptTokens - cached;
-        return new LlmUsage(Math.Max(fresh, 0), cached, usage.CompletionTokens);
+        return new LlmUsage(Math.Max(fresh, 0), cached, usage.CompletionTokens, Billable: true);
     }
 
     private class CompletionRequest

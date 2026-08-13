@@ -145,7 +145,8 @@ public class OllamaChatClient : ISupportLlmClient
         return new LlmToolCall { Name = call.Function.Name, ArgumentsJson = call.Function.ArgumentsJson };
     }
 
-    // Локальная модель ничего не стоит, но счётчик заполняем — так в логах видно нагрузку.
+    // Локальная модель ничего не стоит: токены считаем ради наглядности, но Billable=false —
+    // в деньги они не попадут.
     private static LlmUsage? MapUsage(OllamaWireResponse response)
     {
         if (response.PromptEvalCount == 0 && response.EvalCount == 0)

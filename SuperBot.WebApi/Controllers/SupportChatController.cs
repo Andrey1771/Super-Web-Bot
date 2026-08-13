@@ -104,6 +104,28 @@ public class SupportChatController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Оценка ответа бота. Доступна анонимно, как и сам чат: клиент оценивает свой же диалог,
+    /// а идентификатор сессии у него уже есть.
+    /// </summary>
+    [HttpPost("sessions/{sessionId}/messages/{messageId}/feedback")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ChatMessageDto>> SetMessageFeedback(
+        [FromRoute] string sessionId,
+        [FromRoute] string messageId,
+        [FromBody] ChatMessageFeedbackRequest request)
+    {
+        try
+        {
+            var result = await _chatService.SetMessageFeedbackAsync(sessionId, messageId, request.Feedback);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
     [HttpPost("sessions/{sessionId}/contact")]
     [AllowAnonymous]
     public async Task<ActionResult<ChatSessionDto>> UpdateContact(

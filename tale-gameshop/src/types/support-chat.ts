@@ -17,8 +17,11 @@ export type ChatMessage = {
     escalationReason?: string;
     toolCall?: string;
     handoff?: boolean;
+    feedback?: ChatFeedback;
   };
 };
+
+export type ChatFeedback = "helpful" | "not_helpful";
 
 export type ChatSession = {
   id: string;
@@ -64,4 +67,23 @@ export type ChatSessionListResponse = {
   page: number;
   pageSize: number;
   total: number;
+};
+
+export type SupportChatStats = {
+  days: number;
+  from: string;
+  sessions: number;
+  escalatedSessions: number;
+  deflectionRate: number;
+  escalationsBySource: Array<{ label: string; count: number }>;
+  topCategories: Array<{ label: string; count: number }>;
+  aiReplies: number;
+  billedReplies: number;
+  totalCostUsd: number;
+  costPerSessionUsd: number;
+  feedbackHelpful: number;
+  feedbackNotHelpful: number;
+  spentTodayUsd: number;
+  dailyBudgetUsd: number;
+  daily: Array<{ date: string; sessions: number; escalated: number; costUsd: number }>;
 };

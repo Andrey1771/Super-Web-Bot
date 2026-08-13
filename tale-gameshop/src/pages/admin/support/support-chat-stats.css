@@ -1,0 +1,142 @@
+.chat-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chat-stats__periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chat-stats__period {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chat-stats__period.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.chat-stats__period:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.chat-stats__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.chat-stats__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-stats__tile-label {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* Крупное число — главный носитель смысла плитки, поэтому цифры моноширинные по ширине. */
+.chat-stats__tile-value {
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-stats__tile-note {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.chat-stats__section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 12px;
+}
+
+.chat-stats__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.chat-stats__ranked {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chat-stats__ranked-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 32px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.chat-stats__ranked-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-stats__ranked-track {
+  background: #f1f0f7;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.chat-stats__ranked-bar {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+.chat-stats__ranked-count {
+  text-align: right;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-stats__feedback {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.chat-stats__empty,
+.chat-stats__error {
+  font-size: 13px;
+  color: var(--color-muted);
+  padding: 8px 0;
+}
+
+.chat-stats__error {
+  color: #b73b5c;
+}
+
+@media (max-width: 560px) {
+  .chat-stats__ranked-row {
+    grid-template-columns: minmax(0, 1fr) 64px 28px;
+  }
+}

@@ -3,7 +3,7 @@ import MessageList from "./MessageList";
 import Composer from "./Composer";
 import QuickReplies from "./QuickReplies";
 import TurnstileWidget from "./TurnstileWidget";
-import type { ChatMessage, ChatSession } from "../../types/support-chat";
+import type { ChatFeedback, ChatMessage, ChatSession } from "../../types/support-chat";
 import { getSupportDict, type SupportLang } from "./i18n";
 
 type ContactForm = {
@@ -33,6 +33,7 @@ type ChatWindowProps = {
   onContactSubmit: () => void;
   error?: string | null;
   onRetry: () => void;
+  onFeedback: (messageId: string, feedback: ChatFeedback | null) => void;
 };
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -56,6 +57,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onContactSubmit,
   error,
   onRetry,
+  onFeedback,
 }) => {
   const t = getSupportDict(lang);
 
@@ -168,7 +170,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const hasContact = Boolean(session?.email || session?.orderId);
   const showContactForm = isQueue && !hasContact && !contactForm.sent;
 
-  const labels = { authorAi: t.authorAi, authorAgent: t.authorAgent, you: t.you };
+  const labels = {
+    authorAi: t.authorAi,
+    authorAgent: t.authorAgent,
+    you: t.you,
+    helpful: t.feedbackHelpful,
+    notHelpful: t.feedbackNotHelpful,
+  };
 
   return (
     <div
@@ -229,6 +237,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             isTyping={isTyping}
             typingLabel={isAssigned ? t.typingAgent : t.typingAi}
             labels={labels}
+            onFeedback={onFeedback}
           />
         )}
 

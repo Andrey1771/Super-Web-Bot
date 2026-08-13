@@ -404,6 +404,19 @@ namespace SuperBot.WebApi.Services
             );
             await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageSessionIndex);
 
+            // Сводка в админке считается по окну дат, а не по одной сессии — ей нужен свой индекс.
+            var chatSessionCreatedIndex = new CreateIndexModel<Support.Chat.Models.ChatSession>(
+                Builders<Support.Chat.Models.ChatSession>.IndexKeys.Descending(session => session.CreatedAt),
+                new CreateIndexOptions { Name = "ix_support_chat_sessions_created" }
+            );
+            await chatSessionsCollection.Indexes.CreateOneAsync(chatSessionCreatedIndex);
+
+            var chatMessageCreatedIndex = new CreateIndexModel<Support.Chat.Models.ChatMessage>(
+                Builders<Support.Chat.Models.ChatMessage>.IndexKeys.Descending(message => message.CreatedAt),
+                new CreateIndexOptions { Name = "ix_support_chat_messages_created" }
+            );
+            await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageCreatedIndex);
+
             var ordersCollection = _database.GetCollection<SuperBot.Infrastructure.Data.OrderDb>("Orders");
             var ordersPaymentIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
                 Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.PaymentIntentId),
