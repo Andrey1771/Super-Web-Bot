@@ -75,6 +75,23 @@ public class SupportChatOptions
 
     public int InstantAnswerMaxChars { get; set; } = 160;
 
+    // --- Часы работы поддержки -------------------------------------------------
+    // Выключено — обещаем только типичное ожидание, без «ответим утром».
+    public bool BusinessHoursEnabled { get; set; } = false;
+
+    // IANA-идентификатор, например "Europe/Moscow". Неизвестный — считаем по UTC.
+    public string BusinessHoursTimeZone { get; set; } = "UTC";
+
+    public int BusinessHoursStart { get; set; } = 10;
+
+    public int BusinessHoursEnd { get; set; } = 19;
+
+    // Дни недели числами 1–7 (пн–вс). Пустой список — работаем всю неделю.
+    public int[] BusinessDays { get; set; } = { 1, 2, 3, 4, 5 };
+
+    // Типичное время ответа специалиста в рабочие часы. 0 — не называть срок.
+    public int ExpectedWaitMinutes { get; set; } = 15;
+
     // Email address that receives a notification when a chat is escalated to a human.
     // Falls back to the SMTP FromAddress channel; empty disables the email notification.
     public string? SpecialistEmail { get; set; }

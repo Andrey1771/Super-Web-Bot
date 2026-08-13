@@ -34,6 +34,8 @@ type ChatWindowProps = {
   error?: string | null;
   onRetry: () => void;
   onFeedback: (messageId: string, feedback: ChatFeedback | null) => void;
+  onHandoff: (note: string) => void;
+  waitHint: string;
 };
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -58,6 +60,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   error,
   onRetry,
   onFeedback,
+  onHandoff,
+  waitHint,
 }) => {
   const t = getSupportDict(lang);
 
@@ -114,6 +118,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return () => document.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
+  // Кнопку эскалации показываем не сразу: сперва даём ассистенту ответить.
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [handoffNote, setHandoffNote] = useState("");
+
   // Автопрокрутка только когда человек и так внизу — иначе его выбрасывало
   // из середины переписки на каждый кусочек ответа.
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -166,6 +174,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         : t.statusOnline;
 
   const statusModifier = isClosed ? "closed" : isQueue ? "queue" : isAssigned ? "assigned" : "online";
+
+  const hasAssistantReply = messages.some((message) => message.role === "assistant" && message.text.trim().length > 0);
+  const canAskForHuman = hasAssistantReply && !isQueue && !isAssigned && !isClosed;
 
   const hasContact = Boolean(session?.email || session?.orderId);
   const showContactForm = isQueue && !hasContact && !contactForm.sent;
@@ -239,6 +250,51 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             labels={labels}
             onFeedback={onFeedback}
           />
+        )}
+
+        {canAskForHuman && (
+          <div className="support-chat__escape">
+            {!handoffOpen ? (
+              <button type="button" className="support-chat__escape-link" onClick={() => setHandoffOpen(true)}>
+                {t.didNotHelp}
+              </button>
+            ) : (
+              <div className="support-chat__escape-panel">
+                <div className="support-chat__escape-title">{t.didNotHelpTitle}</div>
+                <p className="support-chat__escape-hint">{waitHint}</p>
+                <textarea
+                  className="support-chat__escape-note"
+                  rows={2}
+                  value={handoffNote}
+                  placeholder={t.handoffNotePlaceholder}
+                  onChange={(event) => setHandoffNote(event.target.value)}
+                />
+                <div className="support-chat__escape-actions">
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setHandoffOpen(false);
+                      setHandoffNote("");
+                    }}
+                  >
+                    {t.rephrase}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => {
+                      onHandoff(handoffNote.trim());
+                      setHandoffOpen(false);
+                      setHandoffNote("");
+                    }}
+                  >
+                    {t.handoffSubmit}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {isQueue && (

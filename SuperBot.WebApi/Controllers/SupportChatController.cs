@@ -104,6 +104,27 @@ public class SupportChatController : ControllerBase
         }
     }
 
+    /// <summary>Явная просьба клиента передать диалог специалисту (кнопка в чате).</summary>
+    [HttpPost("sessions/{sessionId}/handoff")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AddChatMessageResponse>> RequestHandoff(
+        [FromRoute] string sessionId,
+        [FromBody] RequestHandoffRequest request)
+    {
+        try
+        {
+            var userContext = User.Identity?.IsAuthenticated == true
+                ? SupportUserContext.FromClaims(User)
+                : null;
+            var result = await _chatService.RequestHandoffAsync(sessionId, userContext, request);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
     /// <summary>
     /// Оценка ответа бота. Доступна анонимно, как и сам чат: клиент оценивает свой же диалог,
     /// а идентификатор сессии у него уже есть.

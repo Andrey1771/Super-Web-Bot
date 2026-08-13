@@ -16,7 +16,8 @@ const PERIODS = [7, 30, 90];
 
 const SOURCE_LABELS: Record<string, string> = {
   high_risk: "Риск: взлом, чарджбэк, суд",
-  customer_request: "Клиент попросил человека",
+  customer_request: "Клиент написал словами",
+  customer_button: "Клиент нажал кнопку",
   assistant_decision: "Решение ассистента",
   unknown: "Без источника (старые диалоги)",
 };

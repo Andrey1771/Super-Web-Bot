@@ -131,6 +131,16 @@ export const streamChatMessage = async (
   }
 };
 
+// Явная просьба передать специалисту: отдельный источник в статистике плюс описание и контакты,
+// чтобы оператор открыл диалог с готовым делом.
+export const requestHandoff = async (
+  sessionId: string,
+  payload: { note?: string; email?: string; orderId?: string }
+): Promise<{ session: ChatSessionDetail["session"]; assistantMessage?: ChatMessage | null }> => {
+  const response = await apiClient().post(`/api/support/chat/sessions/${sessionId}/handoff`, payload);
+  return response.data;
+};
+
 // null снимает ранее поставленную оценку — повторное нажатие той же кнопки.
 export const sendMessageFeedback = async (
   sessionId: string,

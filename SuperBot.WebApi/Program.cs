@@ -191,6 +191,7 @@ builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ILlmSpendTra
 builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportLlmClient, SuperBot.WebApi.Support.Chat.Services.SupportLlmRouter>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeBase, SuperBot.WebApi.Support.Chat.Services.SupportKnowledgeBase>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportInstantAnswers, SuperBot.WebApi.Support.Chat.Services.SupportInstantAnswers>();
+builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportAvailability, SuperBot.WebApi.Support.Chat.Services.SupportAvailability>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ILlmConcurrencyLimiter, SuperBot.WebApi.Support.Chat.Services.LlmConcurrencyLimiter>();
 builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.ITurnstileVerifier, SuperBot.WebApi.Support.Chat.Services.TurnstileVerifier>();
 builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportNotificationService, SuperBot.WebApi.Support.Chat.Services.SupportNotificationService>();

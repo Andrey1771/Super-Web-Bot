@@ -27,6 +27,16 @@ type Dict = {
   scrollDown: string;
   feedbackHelpful: string;
   feedbackNotHelpful: string;
+  didNotHelp: string;
+  didNotHelpTitle: string;
+  rephrase: string;
+  askHuman: string;
+  handoffNotePlaceholder: string;
+  handoffSubmit: string;
+  handoffCancel: string;
+  waitOpen: (minutes: number) => string;
+  waitClosed: (opensAt?: string) => string;
+  waitUnknown: string;
   welcomeTitle: string;
   welcomeBody: string;
   quickRepliesLabel: string;
@@ -72,6 +82,19 @@ const en: Dict = {
   scrollDown: "Jump to latest",
   feedbackHelpful: "This helped",
   feedbackNotHelpful: "This didn't help",
+  didNotHelp: "This didn't help",
+  didNotHelpTitle: "What would help more?",
+  rephrase: "Ask differently",
+  askHuman: "Pass to a specialist",
+  handoffNotePlaceholder: "What's going wrong? Add the order ID if you have one.",
+  handoffSubmit: "Send to a specialist",
+  handoffCancel: "Never mind",
+  waitOpen: (minutes) => `A specialist usually replies within ${minutes} minutes — I can answer right now.`,
+  waitClosed: (opensAt) =>
+    opensAt
+      ? `We're outside working hours — a specialist replies after ${opensAt}. I can answer right now.`
+      : "We're outside working hours — a specialist replies when we're back. I can answer right now.",
+  waitUnknown: "A specialist will join this chat — I can answer right now.",
   welcomeTitle: "Hi there! 👋",
   welcomeBody:
     "I’m the Tale Shop assistant. I can help with orders, keys, activation, payments and refunds — and bring in a human specialist whenever you need one.",
@@ -81,7 +104,7 @@ const en: Dict = {
     "I have a payment issue",
     "Refund request",
     "Account & security",
-    "Talk to a human",
+    "How do I activate a key?",
   ],
   talkToHumanMessage: "I’d like to talk to a human specialist.",
   composerPlaceholder: "Type your message…",
@@ -124,6 +147,19 @@ const ru: Dict = {
   scrollDown: "К последнему сообщению",
   feedbackHelpful: "Помогло",
   feedbackNotHelpful: "Не помогло",
+  didNotHelp: "Это не помогло",
+  didNotHelpTitle: "Что сделать дальше?",
+  rephrase: "Спросить иначе",
+  askHuman: "Передать специалисту",
+  handoffNotePlaceholder: "Что именно не так? Если есть номер заказа — добавьте его.",
+  handoffSubmit: "Отправить специалисту",
+  handoffCancel: "Не надо",
+  waitOpen: (minutes) => `Специалист обычно отвечает в течение ${minutes} минут — я могу ответить прямо сейчас.`,
+  waitClosed: (opensAt) =>
+    opensAt
+      ? `Сейчас нерабочее время — специалист ответит после ${opensAt}. Я могу ответить прямо сейчас.`
+      : "Сейчас нерабочее время — специалист ответит, когда мы вернёмся. Я могу ответить прямо сейчас.",
+  waitUnknown: "Специалист подключится к чату — я могу ответить прямо сейчас.",
   welcomeTitle: "Здравствуйте! 👋",
   welcomeBody:
     "Я ассистент Tale Shop. Помогу с заказами, ключами, активацией, оплатой и возвратами — и в любой момент подключу живого специалиста.",
@@ -133,7 +169,7 @@ const ru: Dict = {
     "Проблема с оплатой",
     "Хочу возврат",
     "Аккаунт и безопасность",
-    "Связаться со специалистом",
+    "Как активировать ключ?",
   ],
   talkToHumanMessage: "Хочу связаться со специалистом.",
   composerPlaceholder: "Введите сообщение…",

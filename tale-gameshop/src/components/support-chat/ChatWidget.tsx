@@ -9,6 +9,7 @@ import {
   getChatMessages,
   getChatSession,
   sendChatMessage,
+  requestHandoff,
   sendMessageFeedback,
   streamChatMessage,
   updateChatContact,
@@ -68,6 +69,12 @@ const ChatWidget: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | undefined>();
+  const [availability, setAvailability] = useState<{
+    configured: boolean;
+    isOpen: boolean;
+    waitMinutes: number;
+    opensAt?: string;
+  }>({ configured: false, isOpen: true, waitMinutes: 0 });
   const [turnstileToken, setTurnstileToken] = useState<string | undefined>();
   const [contactForm, setContactForm] = useState({ email: "", orderId: "", sent: false });
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
@@ -171,6 +178,12 @@ const ChatWidget: React.FC = () => {
       .then((config) => {
         setStreamingEnabled(config.streamingEnabled);
         setTurnstileSiteKey(config.turnstileSiteKey || undefined);
+        setAvailability({
+          configured: Boolean(config.businessHoursConfigured),
+          isOpen: config.supportIsOpen !== false,
+          waitMinutes: config.expectedWaitMinutes ?? 0,
+          opensAt: config.opensAt || undefined,
+        });
       })
       .catch(() => setStreamingEnabled(false));
 
@@ -389,6 +402,37 @@ const ChatWidget: React.FC = () => {
     }
   }, [contactForm.email, contactForm.orderId, handleSessionGone, sessionId]);
 
+  // Сколько ждать человека — говорим до переключения, а не после. Честный срок
+  // удерживает от эскалации лучше, чем спрятанная кнопка.
+  const waitHint = useMemo(() => {
+    if (availability.configured && !availability.isOpen) {
+      return dict.waitClosed(availability.opensAt);
+    }
+    return availability.waitMinutes > 0 ? dict.waitOpen(availability.waitMinutes) : dict.waitUnknown;
+  }, [availability, dict]);
+
+  const handleHandoff = useCallback(
+    async (note: string) => {
+      setError(null);
+      try {
+        const sessionId = await ensureSession();
+        const response = await requestHandoff(sessionId, {
+          note: note || undefined,
+          email: contactForm.email.trim() || undefined,
+          orderId: contactForm.orderId.trim() || undefined,
+        });
+        setSession(response.session);
+        await loadSession(sessionId);
+      } catch (err) {
+        if (!handleSessionGone(err)) {
+          console.error(err);
+          setError(dict.errorGeneric);
+        }
+      }
+    },
+    [contactForm.email, contactForm.orderId, dict.errorGeneric, ensureSession, handleSessionGone, loadSession]
+  );
+
   // Оценку показываем сразу, не дожидаясь сервера: если запрос упадёт, вернём как было.
   const handleFeedback = useCallback(
     async (messageId: string, feedback: ChatFeedback | null) => {
@@ -450,6 +494,8 @@ const ChatWidget: React.FC = () => {
         error={error}
         onRetry={() => handleSend(lastUserMessage)}
         onFeedback={handleFeedback}
+        onHandoff={handleHandoff}
+        waitHint={waitHint}
       />
     </div>
   );

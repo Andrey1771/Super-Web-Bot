@@ -60,8 +60,11 @@ public enum EscalationSource
     /// <summary>Сработало слово из списка высокого риска: взлом, чарджбэк, угроза судом.</summary>
     HighRisk,
 
-    /// <summary>Клиент сам попросил человека.</summary>
+    /// <summary>Клиент написал словами, что хочет человека.</summary>
     CustomerRequest,
+
+    /// <summary>Клиент нажал кнопку передачи специалисту — осознанное действие, а не оборот речи.</summary>
+    CustomerButton,
 
     /// <summary>Модель решила, что не справляется, и вызвала handoff_to_human.</summary>
     AssistantDecision

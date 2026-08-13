@@ -126,6 +126,16 @@ public class ChatMessageMetadataDto
     public string? Feedback { get; set; }
 }
 
+/// <summary>Явная просьба передать диалог специалисту: с описанием проблемы и контактами.</summary>
+public class RequestHandoffRequest
+{
+    public string? Note { get; set; }
+
+    public string? Email { get; set; }
+
+    public string? OrderId { get; set; }
+}
+
 public class ChatMessageFeedbackRequest
 {
     /// <summary>"helpful", "not_helpful" или пусто, чтобы снять оценку.</summary>
@@ -212,6 +222,16 @@ public class AddChatMessageResponse
 
 public class ChatConfigDto
 {
+    /// <summary>Часы работы заданы — виджету есть что обещать по срокам.</summary>
+    public bool BusinessHoursConfigured { get; set; }
+
+    public bool SupportIsOpen { get; set; }
+
+    public int ExpectedWaitMinutes { get; set; }
+
+    /// <summary>Время открытия «HH:mm» в часовом поясе поддержки, когда сейчас закрыто.</summary>
+    public string? OpensAt { get; set; }
+
     public bool StreamingEnabled { get; set; }
 
     // Public Turnstile site key for the frontend to render the widget; null/empty = disabled.

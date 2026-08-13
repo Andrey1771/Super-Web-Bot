@@ -119,6 +119,25 @@ conversation — if it did not help the first time, the model takes over. Set
 Instant replies are counted separately on the admin stats screen, so the share of traffic they
 absorb is visible next to what the rest costs.
 
+### Handing over to a human
+
+The chat does not open with a "talk to a human" button. The welcome screen offers topics; a
+quiet "this didn't help" link appears only once the assistant has actually answered, and opens a
+small panel with the honest wait ("a specialist usually replies within 15 minutes — I can answer
+right now") plus a box for what is going wrong. What the customer types there goes into the
+conversation as their own message, so the agent opens a case that already has a description
+instead of "hello, what happened?".
+
+Set `BusinessHoursEnabled` with `BusinessHoursTimeZone` (IANA id), `BusinessHoursStart`/`End`,
+`BusinessDays` (1–7, Mon–Sun) and `ExpectedWaitMinutes` to promise a real time. Outside working
+hours the handoff says when a specialist will reply and asks for contact details instead of
+leaving someone waiting on a chat nobody is watching. Left disabled, the chat only mentions the
+typical wait and never invents an opening time.
+
+Typing "оператор" still escalates instantly, and so does a high-risk word like a break-in or a
+chargeback — hiding the button was never the point. The escalation source is recorded separately
+for the button and for typed words, so the stats screen shows which one people actually use.
+
 `SupportChat:MaxResponseTokens` caps reply length (output tokens cost more than input), and
 `SupportChat:StreamingEnabled` set to `false` turns streaming off. If no model can be reached at
 all, the assistant apologises and offers a human handoff.

@@ -500,6 +500,70 @@
   background: #ece4ff;
 }
 
+/* Выход к человеку: ссылка появляется только после первого ответа ассистента. */
+.support-chat__escape {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.support-chat__escape-link {
+  background: none;
+  border: none;
+  color: #6b6b82;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.support-chat__escape-link:hover {
+  color: #5a2cff;
+}
+
+.support-chat__escape-panel {
+  width: 100%;
+  padding: 12px 14px;
+  background: #f6f5fa;
+  border: 1px solid #e2dcf0;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.support-chat__escape-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c1d62;
+}
+
+.support-chat__escape-hint {
+  font-size: 12px;
+  color: #4a4266;
+}
+
+.support-chat__escape-note {
+  width: 100%;
+  border: 1px solid rgba(109, 59, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.support-chat__escape-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.support-chat__escape-actions .btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 /* Диалог завершён специалистом: переписка остаётся, но продолжить можно только новым чатом. */
 .support-chat__closed {
   margin-top: 14px;

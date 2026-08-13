@@ -27,6 +27,7 @@ public interface ISupportChatService
     Task<ChatSessionDto> UpdateSessionAsync(string sessionId, UpdateChatSessionRequest request);
     Task<ChatMessageDto> AddAgentMessageAsync(string sessionId, SupportUserContext agent, string text);
     Task<ChatMessageDto> SetMessageFeedbackAsync(string sessionId, string messageId, string? feedback);
+    Task<AddChatMessageResponse> RequestHandoffAsync(string sessionId, SupportUserContext? user, RequestHandoffRequest request);
     Task<SupportChatStatsDto> GetStatsAsync(int days);
     Task<ChatMessageDto?> StreamAssistantResponseAsync(
         string sessionId,
@@ -127,6 +128,7 @@ public class SupportChatService : ISupportChatService
     private readonly ISupportLlmClient _llm;
     private readonly ISupportKnowledgeBase _knowledgeBase;
     private readonly ISupportInstantAnswers _instantAnswers;
+    private readonly ISupportAvailability _availability;
     private readonly ISupportNotificationService _notifications;
     private readonly ILlmConcurrencyLimiter _llmLimiter;
     private readonly ITurnstileVerifier _turnstile;
@@ -142,6 +144,7 @@ public class SupportChatService : ISupportChatService
         ISupportLlmClient llm,
         ISupportKnowledgeBase knowledgeBase,
         ISupportInstantAnswers instantAnswers,
+        ISupportAvailability availability,
         ISupportNotificationService notifications,
         ILlmConcurrencyLimiter llmLimiter,
         ITurnstileVerifier turnstile,
@@ -155,6 +158,7 @@ public class SupportChatService : ISupportChatService
         _llm = llm;
         _knowledgeBase = knowledgeBase;
         _instantAnswers = instantAnswers;
+        _availability = availability;
         _notifications = notifications;
         _llmLimiter = llmLimiter;
         _turnstile = turnstile;
@@ -164,10 +168,17 @@ public class SupportChatService : ISupportChatService
 
     public Task<ChatConfigDto> GetConfigAsync()
     {
+        // Сроки отдаём виджету заранее: честное «оператор ответит через 15 минут, а я отвечу
+        // сейчас» удерживает от переключения лучше, чем спрятанная кнопка.
+        var availability = _availability.GetState();
         return Task.FromResult(new ChatConfigDto
         {
             StreamingEnabled = _options.StreamingEnabled,
-            TurnstileSiteKey = _options.TurnstileSiteKey
+            TurnstileSiteKey = _options.TurnstileSiteKey,
+            BusinessHoursConfigured = availability.Configured,
+            SupportIsOpen = availability.IsOpen,
+            ExpectedWaitMinutes = availability.ExpectedWaitMinutes,
+            OpensAt = availability.OpensAt?.ToString("HH:mm")
         });
     }
 
@@ -578,6 +589,59 @@ public class SupportChatService : ISupportChatService
         return MapMessage(message);
     }
 
+    /// <summary>
+    /// Клиент нажал «передать специалисту». В отличие от слов в переписке это осознанное
+    /// действие, поэтому источник помечается отдельно, а описание проблемы и контакты
+    /// собираются здесь же — оператор получает диалог с готовым делом.
+    /// </summary>
+    public async Task<AddChatMessageResponse> RequestHandoffAsync(
+        string sessionId,
+        SupportUserContext? user,
+        RequestHandoffRequest request)
+    {
+        var session = await GetSessionEntityAsync(sessionId);
+        EnsureSessionOpen(session);
+
+        if (IsHumanHandlingSession(session))
+        {
+            return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = null };
+        }
+
+        var note = SanitizeText(request.Note ?? string.Empty);
+        if (note.Length > _options.MessageMaxLength)
+        {
+            throw new SupportChatRequestException(
+                $"Message exceeds {_options.MessageMaxLength} characters.", StatusCodes.Status400BadRequest);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email) || !string.IsNullOrWhiteSpace(request.OrderId))
+        {
+            await UpdateContactAsync(sessionId, new UpdateChatContactRequest
+            {
+                Email = request.Email,
+                OrderId = request.OrderId
+            });
+            session = await GetSessionEntityAsync(sessionId);
+        }
+
+        // Описание уходит в переписку как реплика клиента: специалист читает диалог, а не карточку.
+        if (note.Length > 0)
+        {
+            await InsertUserMessageAsync(session, user, note, DateTime.UtcNow);
+        }
+
+        var handoff = await HandleEscalationAsync(
+            session,
+            note,
+            "Customer asked for a specialist from the chat.",
+            InferCategory(note),
+            ChatPriority.Normal,
+            null,
+            EscalationSource.CustomerButton);
+
+        return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = MapMessage(handoff) };
+    }
+
     public async Task<ChatMessageDto> SetMessageFeedbackAsync(string sessionId, string messageId, string? feedback)
     {
         var session = await GetSessionEntityAsync(sessionId);
@@ -709,6 +773,7 @@ public class SupportChatService : ISupportChatService
     {
         EscalationSource.HighRisk => "high_risk",
         EscalationSource.CustomerRequest => "customer_request",
+        EscalationSource.CustomerButton => "customer_button",
         EscalationSource.AssistantDecision => "assistant_decision",
         // Диалоги, эскалированные до появления этого поля.
         _ => "unknown"
@@ -923,7 +988,7 @@ public class SupportChatService : ISupportChatService
                 .Set(s => s.UpdatedAt, session.UpdatedAt));
 
         var needsContact = string.IsNullOrWhiteSpace(session.Email) && string.IsNullOrWhiteSpace(session.OrderId);
-        var text = BuildHandoffMessage(session.Language, needsContact);
+        var text = BuildHandoffMessage(session.Language, needsContact, _availability.GetState());
 
         var message = new ChatMessage
         {
@@ -1232,18 +1297,48 @@ public class SupportChatService : ISupportChatService
         "I want to make sure I help with the right details. Could you share your order ID or account email, and a bit more about the issue?",
         "Хочу помочь точно по вашему случаю. Подскажите, пожалуйста, номер заказа или email аккаунта и пару слов о проблеме.");
 
-    private static string BuildHandoffMessage(string? language, bool needsContact)
+    /// <summary>
+    /// «Скоро подключится» одинаково означает пять минут и следующее утро, поэтому в текст
+    /// подставляется реальный срок: типичное ожидание в рабочее время и час открытия — вне его.
+    /// </summary>
+    private static string BuildHandoffMessage(string? language, bool needsContact, SupportAvailabilityState availability)
     {
-        if (IsRussian(language))
+        var russian = IsRussian(language);
+        var opening = russian ? "Подключаю специалиста Tale Shop." : "I'm connecting you with a Tale Shop specialist.";
+
+        string timing;
+        if (availability.Configured && !availability.IsOpen)
         {
-            return needsContact
-                ? "Подключаю специалиста Tale Shop. Оставьте, пожалуйста, email или номер заказа — так мы быстрее разберёмся. Сотрудник скоро присоединится к чату."
-                : "Подключаю специалиста Tale Shop — сотрудник скоро присоединится к чату и продолжит с вами.";
+            var opensAt = availability.OpensAt?.ToString("HH:mm");
+            timing = russian
+                ? opensAt == null
+                    ? " Сейчас нерабочее время — ответим, как только вернёмся."
+                    : $" Сейчас нерабочее время — специалист ответит после {opensAt}."
+                : opensAt == null
+                    ? " We're outside working hours right now — we'll reply as soon as we're back."
+                    : $" We're outside working hours right now — a specialist will reply after {opensAt}.";
+        }
+        else if (availability.ExpectedWaitMinutes > 0)
+        {
+            timing = russian
+                ? $" Обычно специалист отвечает в течение {availability.ExpectedWaitMinutes} минут."
+                : $" A specialist usually replies within {availability.ExpectedWaitMinutes} minutes.";
+        }
+        else
+        {
+            timing = russian
+                ? " Сотрудник скоро присоединится к чату."
+                : " A human will join this chat shortly.";
         }
 
-        return needsContact
-            ? "I'm connecting you with a Tale Shop specialist. Please share your email or order ID so we can look into it faster — a human will join this chat shortly."
-            : "I'm connecting you with a Tale Shop specialist — a human will join this chat shortly to continue with you.";
+        // Вне рабочего времени контакты нужны сильнее всего: иначе ответить будет некуда.
+        var contact = needsContact
+            ? russian
+                ? " Оставьте email или номер заказа — так мы точно сможем вам ответить."
+                : " Leave your email or order ID so we can definitely reach you."
+            : string.Empty;
+
+        return opening + timing + contact;
     }
 
     // ---- Mapping & validation --------------------------------------------------

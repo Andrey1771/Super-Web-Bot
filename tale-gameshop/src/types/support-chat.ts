@@ -50,6 +50,10 @@ export type ChatSessionDetail = {
 export type ChatConfig = {
   streamingEnabled: boolean;
   turnstileSiteKey?: string;
+  businessHoursConfigured: boolean;
+  supportIsOpen: boolean;
+  expectedWaitMinutes: number;
+  opensAt?: string;
 };
 
 export type ChatSessionListResponse = {
