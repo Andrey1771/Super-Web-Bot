@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import './sort-select.css';
 
 export type SortOption = { value: string; label: string };
 
@@ -6,19 +7,23 @@ export type SortSelectProps = {
     options: SortOption[];
     value: string;
     onChange: (value: string) => void;
+    /** Подпись списка для скринридеров: «Sort games», «Sort posts»… */
+    listLabel?: string;
+    /** Видимая подпись на кнопке («SORT»). Без неё кнопка показывает только значение. */
+    caption?: string;
 };
 
 /**
- * Выбор порядка выдачи.
+ * Выбор порядка выдачи. Общий для каталога и ленты новостей.
  *
  * Собственный список вместо системного `<select>`: тот рисуется средствами операционной
  * системы и в оформление сайта не вписывается — на светлой витрине открывалась синяя
- * системная панель. Здесь же список выглядит так же, как остальные элементы каталога.
+ * системная панель. Здесь же список выглядит так же, как остальные элементы страницы.
  *
  * Клавиатура работает как у настоящего списка: стрелки водят по пунктам, Enter выбирает,
  * Escape закрывает и возвращает фокус на кнопку.
  */
-const SortSelect: React.FC<SortSelectProps> = ({ options, value, onChange }) => {
+const SortSelect: React.FC<SortSelectProps> = ({ options, value, onChange, listLabel = 'Sort options', caption }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const rootRef = useRef<HTMLDivElement | null>(null);
@@ -86,7 +91,7 @@ const SortSelect: React.FC<SortSelectProps> = ({ options, value, onChange }) => 
                 aria-expanded={isOpen}
                 onClick={() => (isOpen ? setIsOpen(false) : open())}
             >
-                <span className="sort-select-caption">Sort</span>
+                {caption && <span className="sort-select-caption">{caption}</span>}
                 <span className="sort-select-value">{selected?.label}</span>
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -94,7 +99,7 @@ const SortSelect: React.FC<SortSelectProps> = ({ options, value, onChange }) => 
             </button>
 
             {isOpen && (
-                <ul className="sort-select-list" role="listbox" aria-label="Sort games">
+                <ul className="sort-select-list" role="listbox" aria-label={listLabel}>
                     {options.map((option, index) => (
                         <li
                             key={option.value}

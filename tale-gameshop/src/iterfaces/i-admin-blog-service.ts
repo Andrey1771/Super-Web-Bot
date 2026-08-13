@@ -75,7 +75,32 @@ export type AdminBlogBreakdown = {
   }>;
 };
 
+export type AdminBlogCommentStatus = "Visible" | "Hidden";
+
+export type AdminBlogComment = {
+  id: string;
+  postId: string;
+  postTitle: string;
+  postSlug?: string;
+  authorName: string;
+  isGuest: boolean;
+  /** Автор забанен и не может оставлять новые комментарии. */
+  authorBanned: boolean;
+  text: string;
+  status: AdminBlogCommentStatus;
+  createdAt: string;
+};
+
 export interface IAdminBlogService {
+  getComments(params: {
+    page: number;
+    pageSize: number;
+    status?: AdminBlogCommentStatus | "";
+  }): Promise<{ items: AdminBlogComment[]; total: number }>;
+  setCommentStatus(id: string, status: AdminBlogCommentStatus): Promise<void>;
+  deleteComment(id: string): Promise<void>;
+  banCommentAuthor(commentId: string): Promise<void>;
+  unbanCommentAuthor(commentId: string): Promise<void>;
   getPosts(params: {
     page: number;
     pageSize: number;

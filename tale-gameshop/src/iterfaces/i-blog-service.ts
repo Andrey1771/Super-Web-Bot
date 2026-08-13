@@ -1,6 +1,9 @@
-import type { BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostStats, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
+import type { BlogComment, BlogCommentsResponse, BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostStats, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
 
 export interface IBlogService {
+  getComments(params: { postId: string; page: number; pageSize: number }): Promise<BlogCommentsResponse>;
+  /** Требует авторизации: подпись комментария сервер берёт из ника профиля. */
+  addComment(params: { postId: string; anonId?: string; text: string }): Promise<BlogComment>;
   getPosts(params: { page: number; pageSize: number; tag?: string; search?: string; featured?: boolean }): Promise<BlogListResponse>;
   getPostBySlug(slug: string): Promise<{ post: BlogPost; version: BlogPostVersion; stats?: BlogPostStats }>;
   getHomeRecommendations(params: { anonId?: string; limit?: number }): Promise<BlogRecommendationsResponse>;

@@ -3,7 +3,7 @@ import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import type { BlogEventPayload, IBlogService } from "../iterfaces/i-blog-service";
-import type { BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostStats, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
+import type { BlogComment, BlogCommentsResponse, BlogEngagementSummary, BlogListResponse, BlogPost, BlogPostStats, BlogPostVersion, BlogRecommendationsResponse } from "../types/blog";
 import { getAnonId, getSessionId } from "../hooks/use-blog-tracking";
 
 @injectable()
@@ -55,8 +55,29 @@ export class BlogService implements IBlogService {
     if (params.limit) {
       query.append("limit", String(params.limit));
     }
-    const response = await this._apiClient.api.get(`/api/blog/recommendations/home?${query.toString()}`);
+    // Адрес без слова «recommendations»: его режут фильтры блокировщиков рекламы,
+    // и у части посетителей запрос не уходил вовсе.
+    const response = await this._apiClient.api.get(`/api/blog/home-feed?${query.toString()}`);
     return response.data as BlogRecommendationsResponse;
+  }
+
+  async getComments(params: { postId: string; page: number; pageSize: number }): Promise<BlogCommentsResponse> {
+    const query = new URLSearchParams({
+      postId: params.postId,
+      page: String(params.page),
+      pageSize: String(params.pageSize)
+    });
+    const response = await this._apiClient.api.get(`/api/blog/comments?${query.toString()}`);
+    return response.data as BlogCommentsResponse;
+  }
+
+  async addComment(params: { postId: string; anonId?: string; text: string }): Promise<BlogComment> {
+    const response = await this._apiClient.api.post("/api/blog/comments", {
+      postId: params.postId,
+      anonId: params.anonId,
+      text: params.text
+    });
+    return response.data as BlogComment;
   }
 
   async trackEvent(payload: BlogEventPayload): Promise<void> {

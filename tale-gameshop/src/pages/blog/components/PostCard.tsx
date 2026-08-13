@@ -4,8 +4,7 @@ import {faArrowRightLong, faEye} from "@fortawesome/free-solid-svg-icons";
 import {Link, useNavigate} from "react-router-dom";
 import type {BlogListItem} from "../../../types/blog";
 import {useBlogTracking} from "../../../hooks/use-blog-tracking";
-import SafeBlogImage from "../../../components/blog-page/SafeBlogImage";
-import {getBlogPostCoverUrl} from "../../../utils/blog-cover";
+import PostCoverArt from "../../../components/blog-page/PostCoverArt";
 
 /** "row" — широкая горизонтальная карточка ленты новостей: обложка сбоку, текст рядом. */
 type PostCardVariant = "compact" | "featured" | "mini" | "row";
@@ -26,7 +25,9 @@ const formatDate = (value?: string) => {
     if (!value) {
         return "Draft";
     }
-    return new Date(value).toLocaleDateString();
+    // en-US всегда: сайт англоязычный, а формат локали браузера («27.07.2026»)
+    // выглядит на нём чужеродно.
+    return new Date(value).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric"});
 };
 
 export default function PostCard({
@@ -121,7 +122,7 @@ export default function PostCard({
                 onKeyDown={handleCardKeyDown}
             >
                 <div className="post-card__media post-card__media--mini" aria-hidden="true">
-                    <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} />
+                    <PostCoverArt post={post} />
                 </div>
                 <div className="post-card__body post-card__body--mini">
                     <Link className="post-card__title-link" to={`/news/${post.slug}`}>
@@ -157,7 +158,7 @@ export default function PostCard({
             <div className={`post-card__media post-card__media--${variant}`} aria-hidden="true">
                 {showCategoryBadge && tag && !isFeatured && <span className="badge category-badge">{tag}</span>}
                 <div className="media-overlay" />
-                <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} />
+                <PostCoverArt post={post} />
             </div>
             <div className={`post-card__body post-card__body--${variant}`}>
                 <div className={`post-card__content${isFeatured ? " measure-60ch" : ""}`}>

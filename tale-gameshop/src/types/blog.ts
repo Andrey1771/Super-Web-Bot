@@ -67,6 +67,18 @@ export type BlogListResponse = {
   total: number;
 };
 
+export type BlogComment = {
+  id: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+};
+
+export type BlogCommentsResponse = {
+  items: BlogComment[];
+  total: number;
+};
+
 export type BlogEngagementSummary = {
   postId: string;
   viewsCount: number;

@@ -4,6 +4,7 @@ import './index.css';
 import App from './app/tale-gameshop/App';
 import reportWebVitals from './reportWebVitals';
 import {BrowserRouter} from "react-router-dom";
+import ScrollToTop from "./components/common/ScrollToTop";
 import {Provider as InversifyProvider} from 'inversify-react';
 import container from './inversify.config';
 import {store} from './store';
@@ -48,6 +49,7 @@ if (isMiniApp) {
                             <CartProvider>
                                 <WishlistProvider>
                                     <BrowserRouter>
+                                        <ScrollToTop/>
                                         <App/>
                                     </BrowserRouter>
                                 </WishlistProvider>

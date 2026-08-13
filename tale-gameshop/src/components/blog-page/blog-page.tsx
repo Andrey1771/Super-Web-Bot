@@ -17,6 +17,7 @@ import IDENTIFIERS from "../../constants/identifiers";
 import type {IBlogService} from "../../iterfaces/i-blog-service";
 import type {BlogEngagementSummary, BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
 import PostCard from "../../pages/blog/components/PostCard";
+import SortSelect from "../common/SortSelect";
 import {getAnonId, getSessionId} from "../../hooks/use-blog-tracking";
 import {subscribeNewsletter} from "../../api/newsletterApi";
 import {
@@ -103,7 +104,12 @@ export default function BlogPage() {
     const location = useLocation();
     // Выбранные теги. Пустой список — «All». Мультивыбор: у поста тегов несколько,
     // и фильтр «только один тег за раз» заставлял выбирать между Guides и Support.
-    const [activeTags, setActiveTags] = useState<string[]>([]);
+    // Стартовое значение — из ?tag= адреса: сюда ведут чипы тегов со страницы
+    // статьи, и без этого они «не работали» — просто открывали ленту.
+    const [activeTags, setActiveTags] = useState<string[]>(() => {
+        const tagFromUrl = new URLSearchParams(window.location.search).get("tag");
+        return tagFromUrl ? [tagFromUrl] : [];
+    });
 
     // Подписка на еженедельный дайджест из нижнего баннера.
     // "pending" — гостю ушло письмо-подтверждение; "confirmed" — владелец аккаунта, подписан сразу.
@@ -120,6 +126,9 @@ export default function BlogPage() {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // Мягкая деградация (часть запросов не доехала, лента всё равно работает) —
+    // отдельно от error: это заметка мелким шрифтом, а не тревожная плашка.
+    const [notice, setNotice] = useState<string | null>(null);
     const [headerOffset, setHeaderOffset] = useState(88);
     const [engagementMap, setEngagementMap] = useState<Record<string, BlogEngagementSummary>>({});
     const [refreshTick, setRefreshTick] = useState(0);
@@ -141,6 +150,26 @@ export default function BlogPage() {
     const [isPillExpanded, setIsPillExpanded] = useState(false);
     const stuckSentinelRef = useRef<HTMLDivElement | null>(null);
     const toolbarWrapRef = useRef<HTMLElement | null>(null);
+    // Естественная высота блока панели в потоке. Когда панель сворачивается в
+    // таблетку (fixed), блок без этого схлопывался в ноль, и лента прыгала вверх
+    // на его высоту — держим место спейсером той же высоты.
+    const [toolbarHolderHeight, setToolbarHolderHeight] = useState(0);
+
+    useEffect(() => {
+        const wrap = toolbarWrapRef.current;
+        // Меряем только в развёрнутом «потоковом» состоянии: в прилипшем высота
+        // блока — это и есть наш спейсер, мерить его бессмысленно.
+        if (!wrap || isToolbarStuck) {
+            return;
+        }
+
+        const measure = () => setToolbarHolderHeight(wrap.offsetHeight);
+        measure();
+        // Высота панели зависит от переноса строки чипов — следим за изменениями.
+        const resizeObserver = new ResizeObserver(measure);
+        resizeObserver.observe(wrap);
+        return () => resizeObserver.disconnect();
+    }, [isToolbarStuck]);
 
     useEffect(() => {
         const sentinel = stuckSentinelRef.current;
@@ -221,6 +250,7 @@ export default function BlogPage() {
         const fetchData = async () => {
             setLoading(true);
             setError(null);
+            setNotice(null);
 
             const [recommendationsResult, featuredResult, fallbackResult] = await Promise.allSettled([
                 blogService.getHomeRecommendations({anonId: getAnonId(), limit: RECOMMENDATION_LIMIT}),
@@ -241,7 +271,7 @@ export default function BlogPage() {
             if (!recommendations && fallbackPosts.length === 0 && featuredPool.length === 0) {
                 setError("Unable to load blog posts right now.");
             } else if (recommendationsResult.status === "rejected" || featuredResult.status === "rejected" || fallbackResult.status === "rejected") {
-                setError("Some recommendations are unavailable, showing latest published posts.");
+                setNotice("Personalized picks are unavailable — showing the latest posts.");
             }
 
             setData({recommendations, featuredPool, fallbackPosts});
@@ -487,6 +517,9 @@ export default function BlogPage() {
             <section
                 ref={toolbarWrapRef}
                 className={`blog-toolbar-wrap section${isToolbarStuck ? " is-stuck" : ""}`}
+                /* Спейсер: в прилипшем состоянии блок держит свою «потоковую» высоту,
+                   чтобы контент под ним не прыгал при переключении на таблетку. */
+                style={isToolbarStuck && toolbarHolderHeight > 0 ? { minHeight: toolbarHolderHeight } : undefined}
             >
                 <div className="container">
                     {isToolbarStuck && !isPillExpanded ? (
@@ -557,14 +590,14 @@ export default function BlogPage() {
                             })}
                         </div>
 
-                        <label className="sort-select">
-                            <span className="visually-hidden">Sort posts</span>
-                            <select value={sort} onChange={(event) => setSort(event.target.value as SortOption)}>
-                                {sortOptions.map((option) => (
-                                    <option key={option}>{option}</option>
-                                ))}
-                            </select>
-                        </label>
+                        {/* Общий SortSelect вместо системного <select>: системная
+                            панель выпадала синей и выбивалась из оформления сайта. */}
+                        <SortSelect
+                            options={sortOptions.map((option) => ({ value: option, label: option }))}
+                            value={sort}
+                            onChange={(value) => setSort(value as SortOption)}
+                            listLabel="Sort posts"
+                        />
 
                         {isFiltering ? (
                             <button className="btn btn-outline blog-toolbar__clear" type="button" onClick={handleClearFilters}>
@@ -581,6 +614,7 @@ export default function BlogPage() {
             <section className="blog-feed section">
                 <div className="container">
                     {error ? <p className="blog-feed__warning">{error}</p> : null}
+                    {notice ? <p className="blog-feed__notice">{notice}</p> : null}
 
                     {loading ? (
                         <div className="posts-grid posts-grid--rows">

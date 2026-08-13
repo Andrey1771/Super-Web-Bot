@@ -46,6 +46,7 @@ import GameDetailsEditorPage from "../../pages/admin/GameDetailsEditorPage";
 import AdminGameKeysPage from "../../pages/admin/AdminGameKeysPage";
 import BlogPostsPage from "../../pages/admin/blog/BlogPostsPage";
 import BlogPostEditorPage from "../../pages/admin/blog/BlogPostEditorPage";
+import BlogCommentsPage from "../../pages/admin/blog/BlogCommentsPage";
 import AnalyticsOverviewPage from "../../pages/admin/analytics/AnalyticsOverviewPage";
 import AnalyticsSettingsPage from "../../pages/admin/analytics/AnalyticsSettingsPage";
 import AnalyticsProvider from "../analytics/AnalyticsProvider";
@@ -118,6 +119,7 @@ export default function TaleGameshopMainWindow() {
                         <Route path="game-discounts" element={<GameDiscountsPage />} />
                         <Route path="newsletter" element={<NewsletterPage />} />
                         <Route path="blog" element={<BlogPostsPage />} />
+                        <Route path="blog/comments" element={<BlogCommentsPage />} />
                         <Route path="blog/new" element={<BlogPostEditorPage />} />
                         <Route path="blog/:id/edit" element={<BlogPostEditorPage />} />
                         <Route path="blog/posts" element={<Navigate to="/admin/blog" replace />} />
