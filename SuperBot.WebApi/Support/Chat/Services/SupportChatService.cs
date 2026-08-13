@@ -61,6 +61,8 @@ public class SupportChatService : ISupportChatService
         STYLE
         - Friendly, professional and concise. Lead with the answer, then give concrete next steps
           (short numbered steps when it helps). Light Markdown is fine (bold, links, short lists).
+        - Keep replies short — around 120 words. Only a step-by-step activation or refund walkthrough
+          may run longer. Never pad an answer with a recap of what the customer just said.
 
         SECURITY (critical)
         - Never ask for a password, a full card number, or authenticator/2FA codes. Account recovery happens
@@ -747,36 +749,94 @@ public class SupportChatService : ISupportChatService
         await _sessions.UpdateOneAsync(s => s.Id == session.Id, update);
     }
 
+    /// <summary>
+    /// Собирает запрос так, чтобы его начало как можно дольше оставалось неизменным: у внешнего
+    /// провайдера повторяющийся префикс оплачивается по цене кэша, а она в десятки раз ниже.
+    /// Отсюда порядок: неизменная инструкция → язык → выжимка отброшенного → история →
+    /// база знаний последней, потому что она меняется каждый ход и рвёт кэш всему, что за ней.
+    /// </summary>
     private async Task<List<LlmChatMessage>> BuildHistoryAsync(string sessionId, string latestUserText, string? language)
     {
-        var context = _knowledgeBase.BuildContextBlock(latestUserText, _options.KnowledgeArticles);
-        // Explicit, deterministic reply language driven by the site locale (not model guesswork).
-        var languageDirective = $"Reply language: {LanguageName(language)}.";
-        var systemContent = string.IsNullOrEmpty(context)
-            ? $"{SystemPromptBase}\n\n{languageDirective}"
-            : $"{SystemPromptBase}\n\n{languageDirective}\n\n{context}";
-
-        var history = new List<LlmChatMessage>
+        var prompt = new List<LlmChatMessage>
         {
-            new() { Role = "system", Content = systemContent }
+            // Одинаково для всех диалогов и всех ходов — самый ценный кусок кэша.
+            new() { Role = "system", Content = SystemPromptBase },
+            // Explicit, deterministic reply language driven by the site locale (not model guesswork).
+            new() { Role = "system", Content = $"Reply language: {LanguageName(language)}." }
         };
 
-        var recent = await _messages
+        var total = (int)await _messages.CountDocumentsAsync(m => m.SessionId == sessionId);
+        var skip = HistoryAnchor(total);
+
+        if (skip > 0)
+        {
+            var earlier = await BuildEarlierContextAsync(sessionId, skip);
+            if (!string.IsNullOrEmpty(earlier))
+            {
+                prompt.Add(new LlmChatMessage { Role = "system", Content = earlier });
+            }
+        }
+
+        var window = await _messages
             .Find(m => m.SessionId == sessionId)
-            .SortByDescending(m => m.CreatedAt)
-            .Limit(_options.HistoryLimit)
+            .SortBy(m => m.CreatedAt)
+            .Skip(skip)
             .ToListAsync();
 
-        foreach (var message in recent.OrderBy(m => m.CreatedAt))
+        foreach (var message in window)
         {
-            history.Add(new LlmChatMessage
+            prompt.Add(new LlmChatMessage
             {
                 Role = MapRole(message.Role),
                 Content = message.Text
             });
         }
 
-        return history;
+        var context = _knowledgeBase.BuildContextBlock(
+            latestUserText, _options.KnowledgeArticles, _options.KnowledgeArticleMaxChars);
+        if (!string.IsNullOrEmpty(context))
+        {
+            prompt.Add(new LlmChatMessage { Role = "system", Content = context });
+        }
+
+        return prompt;
+    }
+
+    /// <summary>
+    /// Сколько сообщений отбросить с начала. Значение квантовано шагом, поэтому окно съезжает
+    /// не каждый ход, а раз в несколько — между сдвигами начало запроса совпадает дословно.
+    /// </summary>
+    private int HistoryAnchor(int totalMessages)
+    {
+        var step = Math.Max(1, _options.HistoryTrimStepMessages);
+        var window = Math.Max(4, _options.HistoryLimit - step);
+        if (totalMessages <= window)
+        {
+            return 0;
+        }
+
+        return (totalMessages - window) / step * step;
+    }
+
+    /// <summary>
+    /// Замена отброшенному началу переписки. Намеренно без обращения к модели: отдельный вызов
+    /// ради пересказа съел бы всю экономию. Первая реплика клиента несёт суть обращения,
+    /// остальное восстанавливается из карточки диалога.
+    /// </summary>
+    private async Task<string> BuildEarlierContextAsync(string sessionId, int skipped)
+    {
+        var first = await _messages
+            .Find(m => m.SessionId == sessionId && m.Role == ChatMessageRole.User)
+            .SortBy(m => m.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (first == null)
+        {
+            return string.Empty;
+        }
+
+        return $"EARLIER IN THIS CONVERSATION ({skipped} older messages are not shown):\n" +
+               $"The customer originally wrote: \"{Shorten(first.Text, 300)}\"";
     }
 
     private LlmChatRequest BuildLlmRequest(List<LlmChatMessage> messages)

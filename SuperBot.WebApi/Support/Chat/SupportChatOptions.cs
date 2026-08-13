@@ -46,7 +46,13 @@ public class SupportChatOptions
 
     public int RateLimitPerMinute { get; set; } = 12;
 
-    public int HistoryLimit { get; set; } = 30;
+    // Потолок числа сообщений диалога в запросе.
+    public int HistoryLimit { get; set; } = 24;
+
+    // Обрезаем историю не каждый ход, а ступенями по столько сообщений. Начало запроса при этом
+    // остаётся байт-в-байт прежним несколько ходов подряд — только так работает кэш промпта
+    // у внешнего провайдера (попадание в кэш дешевле промаха в десятки раз).
+    public int HistoryTrimStepMessages { get; set; } = 8;
 
     public int LlmTimeoutSeconds { get; set; } = 45;
 
@@ -54,7 +60,10 @@ public class SupportChatOptions
     public double Temperature { get; set; } = 0.3;
 
     // How many knowledge-base articles to inject as grounding context per turn.
-    public int KnowledgeArticles { get; set; } = 3;
+    public int KnowledgeArticles { get; set; } = 2;
+
+    // Потолок длины одной статьи базы знаний в запросе. 0 — не обрезать.
+    public int KnowledgeArticleMaxChars { get; set; } = 700;
 
     // Email address that receives a notification when a chat is escalated to a human.
     // Falls back to the SMTP FromAddress channel; empty disables the email notification.

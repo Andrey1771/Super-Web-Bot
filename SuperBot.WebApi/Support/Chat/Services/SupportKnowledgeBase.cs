@@ -14,8 +14,11 @@ public interface ISupportKnowledgeBase
     /// <summary>Returns the most relevant articles for a free-text query, best match first.</summary>
     IReadOnlyList<KnowledgeArticle> Search(string query, int limit);
 
-    /// <summary>Renders the retrieved articles as a compact context block for the system prompt.</summary>
-    string BuildContextBlock(string query, int limit);
+    /// <summary>
+    /// Renders the retrieved articles as a compact context block for the prompt.
+    /// <paramref name="maxArticleChars"/> caps each article; 0 keeps them whole.
+    /// </summary>
+    string BuildContextBlock(string query, int limit, int maxArticleChars = 0);
 }
 
 public record KnowledgeArticle(
@@ -170,7 +173,7 @@ public class SupportKnowledgeBase : ISupportKnowledgeBase
         return scored;
     }
 
-    public string BuildContextBlock(string query, int limit)
+    public string BuildContextBlock(string query, int limit, int maxArticleChars = 0)
     {
         var articles = Search(query, limit);
         if (articles.Count == 0)
@@ -183,11 +186,27 @@ public class SupportKnowledgeBase : ISupportKnowledgeBase
         foreach (var article in articles)
         {
             builder.AppendLine($"### {article.Title} [{article.Category}]");
-            builder.AppendLine(article.Content);
+            builder.AppendLine(Trim(article.Content, maxArticleChars));
             builder.AppendLine();
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Обрезает статью по границе строки: этот блок уходит в каждый запрос и оплачивается
+    /// целиком, а обрывать инструкцию посреди предложения — хуже, чем не дослать её вовсе.
+    /// </summary>
+    private static string Trim(string content, int maxChars)
+    {
+        if (maxChars <= 0 || content.Length <= maxChars)
+        {
+            return content;
+        }
+
+        var cut = content[..maxChars];
+        var boundary = cut.LastIndexOfAny(new[] { '\n', '.' });
+        return boundary > maxChars / 2 ? cut[..(boundary + 1)] : cut;
     }
 
     private static double Score(KnowledgeArticle article, IReadOnlyCollection<string> terms)
