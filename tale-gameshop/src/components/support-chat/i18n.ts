@@ -22,6 +22,9 @@ type Dict = {
   statusClosed: string;
   minimize: string;
   close: string;
+  newChat: string;
+  closedNotice: string;
+  scrollDown: string;
   welcomeTitle: string;
   welcomeBody: string;
   quickRepliesLabel: string;
@@ -62,6 +65,9 @@ const en: Dict = {
   statusClosed: "Chat closed",
   minimize: "Minimize chat",
   close: "Close chat",
+  newChat: "New chat",
+  closedNotice: "This conversation was closed by our specialist. Start a new one if you still need help.",
+  scrollDown: "Jump to latest",
   welcomeTitle: "Hi there! 👋",
   welcomeBody:
     "I’m the Tale Shop assistant. I can help with orders, keys, activation, payments and refunds — and bring in a human specialist whenever you need one.",
@@ -109,6 +115,9 @@ const ru: Dict = {
   statusClosed: "Чат закрыт",
   minimize: "Свернуть чат",
   close: "Закрыть чат",
+  newChat: "Новый диалог",
+  closedNotice: "Специалист завершил этот диалог. Если остались вопросы — начните новый.",
+  scrollDown: "К последнему сообщению",
   welcomeTitle: "Здравствуйте! 👋",
   welcomeBody:
     "Я ассистент Tale Shop. Помогу с заказами, ключами, активацией, оплатой и возвратами — и в любой момент подключу живого специалиста.",

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -76,34 +77,41 @@ public class SupportChatService : ISupportChatService
         """;
 
     // Explicit requests for a human — safe to escalate immediately without calling the model.
-    private static readonly string[] HumanRequestSignals =
+    // Word(...) matches the whole word only; Stem(...) also matches longer forms of it
+    // (оператору, взломали, compromised). Plain substring matching used to fire on innocent
+    // text — "суд" inside "судя по всему" escalated the chat at high priority.
+    private static readonly EscalationSignal[] HumanRequestSignals =
     {
-        "human", "real person", "live agent", "real agent", "speak to someone", "talk to a person",
-        "talk to someone", "operator", "manager", "representative", "agent please",
-        "оператор", "человек", "живой", "живого", "специалист", "менеджер", "сотрудник"
+        Stem("human"), Word("real person"), Word("live agent"), Word("real agent"),
+        Word("speak to someone"), Word("talk to a person"), Word("talk to someone"),
+        Stem("operator"), Stem("manager"), Stem("representative"), Word("agent please"),
+        Stem("оператор"), Stem("человек"), Word("живой"), Word("живого"),
+        Stem("специалист"), Stem("менеджер"), Stem("сотрудник")
     };
 
     // High-risk situations that should reach a human even if not explicitly requested.
-    private static readonly (string Keyword, string Category)[] HighRiskSignals =
+    private static readonly EscalationSignal[] HighRiskSignals =
     {
-        ("hacked", "Account & security"), ("stolen", "Account & security"),
-        ("unauthorized", "Account & security"), ("compromis", "Account & security"),
-        ("взлом", "Account & security"), ("украл", "Account & security"), ("доступ к аккаунт", "Account & security"),
-        ("chargeback", "Payment & checkout"), ("fraud", "Payment & checkout"), ("scam", "Payment & checkout"),
-        ("мошен", "Payment & checkout"), ("чарджбэк", "Payment & checkout"),
-        ("lawsuit", "Other"), ("legal action", "Other"), ("court", "Other"),
-        ("суд", "Other"), ("полиц", "Other")
+        Word("hacked", "Account & security"), Word("stolen", "Account & security"),
+        Word("unauthorized", "Account & security"), Stem("compromis", "Account & security"),
+        Stem("взлом", "Account & security"), Stem("украл", "Account & security"),
+        Stem("доступ к аккаунт", "Account & security"),
+        Word("chargeback", "Payment & checkout"), Word("fraud", "Payment & checkout"),
+        Word("scam", "Payment & checkout"), Stem("мошен", "Payment & checkout"),
+        Stem("чарджбэк", "Payment & checkout"),
+        Word("lawsuit", "Other"), Word("legal action", "Other"), Word("court", "Other"),
+        Word("суд", "Other"), Stem("судебн", "Other"), Stem("полиц", "Other")
     };
 
     // Lightweight category inference from the customer's words (mirrors the support taxonomy).
-    private static readonly (string[] Keywords, string Category)[] CategoryRules =
+    private static readonly (EscalationSignal[] Signals, string Category)[] CategoryRules =
     {
-        (new[] { "refund", "money back", "возврат", "вернуть деньги" }, "Refund request"),
-        (new[] { "payment", "card", "pay ", "declined", "оплат", "карта", "платеж" }, "Payment & checkout"),
-        (new[] { "activate", "redeem", "key", "code", "region", "актив", "ключ", "код", "регион" }, "Key delivery / activation"),
-        (new[] { "order", "delivery", "delivered", "заказ", "доставк" }, "Order status"),
-        (new[] { "account", "login", "2fa", "password", "аккаунт", "вход", "пароль" }, "Account & security"),
-        (new[] { "bug", "error", "crash", "not working", "ошибк", "баг", "не работает" }, "Technical issue / bug"),
+        (new[] { Stem("refund"), Word("money back"), Stem("возврат"), Word("вернуть деньги") }, "Refund request"),
+        (new[] { Stem("payment"), Stem("card"), Word("pay"), Word("declined"), Stem("оплат"), Stem("карта"), Stem("платеж") }, "Payment & checkout"),
+        (new[] { Stem("activat"), Stem("redeem"), Stem("key"), Stem("code"), Stem("region"), Stem("актив"), Stem("ключ"), Stem("код"), Stem("регион") }, "Key delivery / activation"),
+        (new[] { Stem("order"), Stem("deliver"), Stem("заказ"), Stem("доставк") }, "Order status"),
+        (new[] { Stem("account"), Stem("login"), Word("2fa"), Stem("password"), Stem("аккаунт"), Stem("вход"), Stem("пароль") }, "Account & security"),
+        (new[] { Stem("bug"), Stem("error"), Stem("crash"), Word("not working"), Stem("ошибк"), Word("баг"), Word("не работает") }, "Technical issue / bug"),
     };
 
     private readonly IMongoCollection<ChatSession> _sessions;
@@ -316,6 +324,7 @@ public class SupportChatService : ISupportChatService
         EnsureIpMessageLimit(clientIp);
 
         var session = await GetSessionEntityAsync(sessionId);
+        EnsureSessionOpen(session);
         await EnsureSessionMessageCapAsync(session);
         var now = DateTime.UtcNow;
         await InsertUserMessageAsync(session, user, sanitized, now);
@@ -355,6 +364,7 @@ public class SupportChatService : ISupportChatService
         EnsureIpMessageLimit(clientIp);
 
         var session = await GetSessionEntityAsync(sessionId);
+        EnsureSessionOpen(session);
         await EnsureSessionMessageCapAsync(session);
         var now = DateTime.UtcNow;
         await InsertUserMessageAsync(session, user, sanitized, now);
@@ -809,17 +819,15 @@ public class SupportChatService : ISupportChatService
 
     private (bool ShouldEscalate, string Reason, string? Category, ChatPriority Priority) EvaluatePreEscalation(string userText)
     {
-        var lower = userText.ToLowerInvariant();
-
-        foreach (var (keyword, category) in HighRiskSignals)
+        foreach (var signal in HighRiskSignals)
         {
-            if (lower.Contains(keyword, StringComparison.Ordinal))
+            if (signal.Matches(userText))
             {
-                return (true, $"High-risk signal detected: '{keyword}'.", category, ChatPriority.High);
+                return (true, $"High-risk signal detected: '{signal.Keyword}'.", signal.Category, ChatPriority.High);
             }
         }
 
-        if (HumanRequestSignals.Any(signal => lower.Contains(signal, StringComparison.Ordinal)))
+        if (HumanRequestSignals.Any(signal => signal.Matches(userText)))
         {
             return (true, "Customer explicitly asked for a human specialist.", InferCategory(userText), ChatPriority.Normal);
         }
@@ -829,16 +837,36 @@ public class SupportChatService : ISupportChatService
 
     private static string? InferCategory(string userText)
     {
-        var lower = userText.ToLowerInvariant();
-        foreach (var (keywords, category) in CategoryRules)
+        foreach (var (signals, category) in CategoryRules)
         {
-            if (keywords.Any(k => lower.Contains(k, StringComparison.Ordinal)))
+            if (signals.Any(signal => signal.Matches(userText)))
             {
                 return category;
             }
         }
 
         return null;
+    }
+
+    // A keyword anchored to a word boundary, so it can no longer fire from inside another word.
+    private sealed record EscalationSignal(string Keyword, Regex Pattern, string? Category)
+    {
+        public bool Matches(string text) => Pattern.IsMatch(text);
+    }
+
+    /// <summary>Matches the keyword as a whole word: "суд" no longer fires on "судя по всему".</summary>
+    private static EscalationSignal Word(string keyword, string? category = null) =>
+        new(keyword, BuildSignalPattern(keyword, wholeWord: true), category);
+
+    /// <summary>Matches the keyword as the start of a word, for stems with many endings (взлом → взломали).</summary>
+    private static EscalationSignal Stem(string keyword, string? category = null) =>
+        new(keyword, BuildSignalPattern(keyword, wholeWord: false), category);
+
+    private static Regex BuildSignalPattern(string keyword, bool wholeWord)
+    {
+        var escaped = Regex.Escape(keyword);
+        var pattern = wholeWord ? $@"\b{escaped}\b" : $@"\b{escaped}";
+        return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     }
 
     private static ChatPriority MapUrgency(string? urgency, bool highRisk)
@@ -999,6 +1027,16 @@ public class SupportChatService : ISupportChatService
                 Handoff = message.Metadata?.Handoff ?? false
             }
         };
+    }
+
+    // Читать закрытую сессию уже нельзя (409), поэтому и писать в неё не даём —
+    // иначе сообщение сохранялось бы в диалог, который клиент больше не видит.
+    private static void EnsureSessionOpen(ChatSession session)
+    {
+        if (session.Status == ChatSessionStatus.Closed)
+        {
+            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict);
+        }
     }
 
     private void ValidateText(string text)

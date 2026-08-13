@@ -18,6 +18,8 @@ type ChatWindowProps = {
   onMinimize: () => void;
   messages: ChatMessage[];
   session?: ChatSession;
+  closed?: boolean;
+  onNewChat: () => void;
   isTyping: boolean;
   inputValue: string;
   onInputChange: (value: string) => void;
@@ -39,6 +41,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onMinimize,
   messages,
   session,
+  closed,
+  onNewChat,
   isTyping,
   inputValue,
   onInputChange,
@@ -108,6 +112,40 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return () => document.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
+  // Автопрокрутка только когда человек и так внизу — иначе его выбрасывало
+  // из середины переписки на каждый кусочек ответа.
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [atBottom, setAtBottom] = useState(true);
+
+  const scrollToBottom = (smooth = true) => {
+    const body = bodyRef.current;
+    if (!body) {
+      return;
+    }
+    body.scrollTo({ top: body.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  };
+
+  const handleBodyScroll = () => {
+    const body = bodyRef.current;
+    if (!body) {
+      return;
+    }
+    setAtBottom(body.scrollHeight - body.scrollTop - body.clientHeight < 48);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setAtBottom(true);
+      scrollToBottom(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (atBottom) {
+      scrollToBottom();
+    }
+  }, [messages, isTyping, atBottom]);
+
   if (!isOpen) {
     return null;
   }
@@ -115,7 +153,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const status = session?.status;
   const isQueue = status === "needs_agent";
   const isAssigned = status === "assigned";
-  const isClosed = status === "closed";
+  const isClosed = status === "closed" || Boolean(closed);
 
   const statusLabel = isClosed
     ? t.statusClosed
@@ -154,6 +192,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="support-chat__header-actions">
+          {messages.length > 0 && (
+            <button type="button" aria-label={t.newChat} title={t.newChat} onClick={onNewChat}>
+              ⟳
+            </button>
+          )}
           <button type="button" aria-label={t.minimize} onClick={onMinimize}>
             —
           </button>
@@ -163,7 +206,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </div>
 
-      <div className="support-chat__body">
+      <div className="support-chat__body" ref={bodyRef} onScroll={handleBodyScroll}>
         {messages.length === 0 && (
           <div className="support-chat__welcome">
             <h4>{t.welcomeTitle}</h4>
@@ -223,7 +266,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         )}
 
-        {error && (
+        {isClosed && (
+          <div className="support-chat__closed">
+            <p>{t.closedNotice}</p>
+            <button type="button" className="btn btn-primary" onClick={onNewChat}>
+              {t.newChat}
+            </button>
+          </div>
+        )}
+
+        {error && !isClosed && (
           <div className="support-chat__error">
             <span>{error}</span>
             <div className="support-chat__error-actions">
@@ -239,6 +291,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </button>
             </div>
           </div>
+        )}
+
+        {!atBottom && messages.length > 0 && (
+          <button
+            type="button"
+            className="support-chat__scroll-down"
+            aria-label={t.scrollDown}
+            title={t.scrollDown}
+            onClick={() => scrollToBottom()}
+          >
+            ↓
+          </button>
         )}
       </div>
 

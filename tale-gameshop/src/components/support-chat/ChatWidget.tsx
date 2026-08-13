@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ChatLauncherButton from "./ChatLauncherButton";
 import ChatWindow from "./ChatWindow";
 import "./support-chat.css";
@@ -20,6 +20,41 @@ import type { IKeycloakService } from "../../iterfaces/i-keycloak-service";
 const SESSION_KEY = "tale_support_chat_session";
 const HISTORY_KEY = "tale_support_chat_history";
 
+// Сообщения, нарисованные до ответа сервера: у них временный id и время по часам браузера.
+const isLocalId = (id: string) => id.startsWith("local-") || id.startsWith("stream-");
+
+// Курсор опроса берём только по подтверждённым сервером сообщениям: часы браузера и сервера
+// расходятся, и время оптимистичной заглушки может «перепрыгнуть» ответ специалиста.
+const lastServerTimestamp = (list: ChatMessage[]): string | undefined => {
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    if (!isLocalId(list[index].id)) {
+      return list[index].createdAt;
+    }
+  }
+  return undefined;
+};
+
+// Склейка по id, а не по времени: иначе своё же сообщение приходило вторым экземпляром.
+const mergeMessages = (prev: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] => {
+  const known = new Set(prev.map((message) => message.id));
+  const fresh = incoming.filter((message) => !known.has(message.id));
+  if (fresh.length === 0) {
+    return prev;
+  }
+
+  // Пришла серверная копия — временная заглушка с тем же текстом больше не нужна.
+  const kept = prev.filter(
+    (message) =>
+      !isLocalId(message.id) ||
+      !fresh.some((item) => item.role === message.role && item.text.trim() === message.text.trim())
+  );
+
+  return [...kept, ...fresh];
+};
+
+const responseStatus = (error: unknown): number | undefined =>
+  (error as { response?: { status?: number } } | undefined)?.response?.status;
+
 const ChatWidget: React.FC = () => {
   const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
   const [isOpen, setIsOpen] = useState(false);
@@ -35,9 +70,16 @@ const ChatWidget: React.FC = () => {
   const [turnstileToken, setTurnstileToken] = useState<string | undefined>();
   const [contactForm, setContactForm] = useState({ email: "", orderId: "", sent: false });
   const [lastUserMessage, setLastUserMessage] = useState<string>("");
+  // Специалист закрыл диалог: переписку оставляем на экране, но писать в неё уже нельзя.
+  const [isClosed, setIsClosed] = useState(false);
 
   const lang = useMemo(detectSupportLang, []);
   const dict = useMemo(() => getSupportDict(lang), [lang]);
+
+  const messagesRef = useRef<ChatMessage[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const isAuthenticated = Boolean(keycloakService.keycloak?.authenticated);
 
@@ -57,8 +99,10 @@ const ChatWidget: React.FC = () => {
 
   const syncUnread = useCallback(
     (incoming: ChatMessage[]) => {
-      if (!isOpen && incoming.length > 0) {
-        setUnreadCount((prev) => prev + incoming.length);
+      // Свои же сообщения, вернувшиеся с сервера, непрочитанными не считаем.
+      const fromSupport = incoming.filter((message) => message.role !== "user");
+      if (!isOpen && fromSupport.length > 0) {
+        setUnreadCount((prev) => prev + fromSupport.length);
       }
     },
     [isOpen]
@@ -69,19 +113,56 @@ const ChatWidget: React.FC = () => {
     ? (keycloakService.keycloak?.tokenParsed as { email?: string } | undefined)?.email
     : undefined;
 
+  // Сессии больше нет на сервере — начинаем с чистого листа, иначе виджет
+  // навсегда упирался бы в ошибку на каждой отправке.
+  const startNewChat = useCallback(() => {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(HISTORY_KEY);
+    setSessionId("");
+    setSession(undefined);
+    setMessages([]);
+    setContactForm({ email: "", orderId: "", sent: false });
+    setTurnstileToken(undefined);
+    setIsClosed(false);
+    setError(null);
+    setIsTyping(false);
+  }, []);
+
+  // 409 — диалог закрыт специалистом: переписку показываем, писать не даём.
+  // 404 — сессии нет вовсе (например, чистили базу): молча начинаем новую.
+  const handleSessionGone = useCallback(
+    (error: unknown): boolean => {
+      const status = responseStatus(error);
+      if (status === 409 || status === 410) {
+        setIsClosed(true);
+        setIsTyping(false);
+        return true;
+      }
+      if (status === 404) {
+        startNewChat();
+        return true;
+      }
+      return false;
+    },
+    [startNewChat]
+  );
+
   const loadSession = useCallback(
     async (sessionId: string) => {
       try {
         const data = await getChatSession(sessionId);
         setSession(data.session);
+        setIsClosed(data.session?.status === "closed");
         const safeMessages = Array.isArray(data.messages) ? data.messages : [];
         setMessages(safeMessages);
         persistMessages(safeMessages);
       } catch (err) {
-        console.error(err);
+        if (!handleSessionGone(err)) {
+          console.error(err);
+        }
       }
     },
-    []
+    [handleSessionGone]
   );
 
   useEffect(() => {
@@ -114,27 +195,32 @@ const ChatWidget: React.FC = () => {
   }, [loadSession, sessionId]);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId || isClosed) {
       return;
     }
     const interval = window.setInterval(async () => {
       try {
-        const after = messages[messages.length - 1]?.createdAt;
+        const after = lastServerTimestamp(messagesRef.current);
         const incoming = await getChatMessages(sessionId, after);
         if (incoming.length > 0) {
           setMessages((prev) => {
-            const next = [...prev, ...incoming];
+            const next = mergeMessages(prev, incoming);
+            if (next === prev) {
+              return prev;
+            }
             persistMessages(next);
             return next;
           });
           syncUnread(incoming);
         }
       } catch (err) {
-        console.error(err);
+        if (!handleSessionGone(err)) {
+          console.error(err);
+        }
       }
     }, 3000);
     return () => window.clearInterval(interval);
-  }, [messages, sessionId, syncUnread]);
+  }, [handleSessionGone, isClosed, sessionId, syncUnread]);
 
   const ensureSession = useCallback(async () => {
     if (sessionId) {
@@ -160,6 +246,9 @@ const ChatWidget: React.FC = () => {
   }, [authedEmail, loadSession, sessionId, turnstileSiteKey, turnstileToken]);
 
   const handleSend = useCallback(async (overrideText?: string | null) => {
+    if (isClosed) {
+      return;
+    }
     const rawText = typeof overrideText === "string" ? overrideText : inputValue;
     const text = rawText.trim();
     if (!text) {
@@ -246,6 +335,9 @@ const ChatWidget: React.FC = () => {
       }
       setSession(response.session);
     } catch (err) {
+      if (handleSessionGone(err)) {
+        return;
+      }
       console.error(err);
       if (err instanceof Error && err.message === "turnstile-pending") {
         setInputValue(text); // restore the message; the bot check is still resolving
@@ -256,7 +348,16 @@ const ChatWidget: React.FC = () => {
     } finally {
       setIsTyping(false);
     }
-  }, [dict.errorGeneric, dict.verifying, ensureSession, inputValue, loadSession, streamingEnabled]);
+  }, [
+    dict.errorGeneric,
+    dict.verifying,
+    ensureSession,
+    handleSessionGone,
+    inputValue,
+    isClosed,
+    loadSession,
+    streamingEnabled,
+  ]);
 
   const handleQuickReply = useCallback(
     (value: string) => {
@@ -281,9 +382,11 @@ const ChatWidget: React.FC = () => {
       setSession(updated);
       setContactForm((prev) => ({ ...prev, sent: true }));
     } catch (err) {
-      console.error(err);
+      if (!handleSessionGone(err)) {
+        console.error(err);
+      }
     }
-  }, [contactForm.email, contactForm.orderId, sessionId]);
+  }, [contactForm.email, contactForm.orderId, handleSessionGone, sessionId]);
 
   const onToggle = () => {
     setIsOpen((prev) => !prev);
@@ -299,6 +402,8 @@ const ChatWidget: React.FC = () => {
         onMinimize={() => setIsOpen(false)}
         messages={messages}
         session={session}
+        closed={isClosed}
+        onNewChat={startNewChat}
         isTyping={isTyping}
         inputValue={inputValue}
         onInputChange={setInputValue}

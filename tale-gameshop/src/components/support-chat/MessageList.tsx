@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import type { ChatMessage } from "../../types/support-chat";
 import MessageBubble from "./MessageBubble";
 
@@ -9,13 +9,9 @@ type MessageListProps = {
   labels: { authorAi: string; authorAgent: string; you: string };
 };
 
+// Прокруткой владеет ChatWindow: скроллится вся область .support-chat__body,
+// и решение «прокручивать или нет» зависит от того, где сейчас находится читатель.
 const MessageList: React.FC<MessageListProps> = ({ messages, isTyping, typingLabel, labels }) => {
-  const endRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
-
   return (
     <div className="support-chat__messages" role="log" aria-live="polite">
       {messages.map((message) => (
@@ -31,7 +27,6 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isTyping, typingLab
           {typingLabel}
         </div>
       )}
-      <div ref={endRef} />
     </div>
   );
 };

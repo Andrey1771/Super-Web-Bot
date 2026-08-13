@@ -464,6 +464,43 @@
   gap: 6px;
 }
 
+/* Диалог завершён специалистом: переписка остаётся, но продолжить можно только новым чатом. */
+.support-chat__closed {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #f6f5fa;
+  border: 1px solid #e2dcf0;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #4a4266;
+}
+
+/* Кнопка возврата к последнему сообщению — sticky, поэтому висит над лентой без абсолютных координат. */
+.support-chat__scroll-down {
+  position: sticky;
+  bottom: 4px;
+  display: block;
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(109, 59, 255, 0.2);
+  background: #fff;
+  color: #6d3bff;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(30, 22, 70, 0.16);
+}
+
+.support-chat__scroll-down:hover {
+  background: #f3efff;
+}
+
 @media (max-width: 768px) {
   .support-chat {
     right: 12px;
