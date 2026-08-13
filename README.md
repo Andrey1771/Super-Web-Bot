@@ -106,6 +106,19 @@ those in sync with the current price list. When `DailyBudgetUsd` is reached, the
 the local model until the next UTC day. The counter lives in process memory, so it resets on
 restart and is per-instance, same as the chat's other limiters.
 
+### Instant answers
+
+The most common questions — where the key is, how to activate it, refunds, a declined card,
+account recovery — are answered from pre-written bilingual text without calling a model at all:
+instant and free. A question is only matched when every required word group hits and the question
+is short (`InstantAnswerMaxWords` / `InstantAnswerMaxChars`); anything longer carries specifics a
+template cannot address and goes to the model. The same template is never repeated twice in one
+conversation — if it did not help the first time, the model takes over. Set
+`InstantAnswersEnabled` to `false` to route everything to the model.
+
+Instant replies are counted separately on the admin stats screen, so the share of traffic they
+absorb is visible next to what the rest costs.
+
 `SupportChat:MaxResponseTokens` caps reply length (output tokens cost more than input), and
 `SupportChat:StreamingEnabled` set to `false` turns streaming off. If no model can be reached at
 all, the assistant apologises and offers a human handoff.

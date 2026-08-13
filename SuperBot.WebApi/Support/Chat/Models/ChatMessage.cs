@@ -47,6 +47,12 @@ public class ChatMessageMetadata
 
     public double? CostUsd { get; set; }
 
+    // Ответ выдан из заготовки, без обращения к модели. Тема нужна, чтобы не повторять
+    // тот же шаблон второй раз в одном диалоге.
+    public bool Instant { get; set; }
+
+    public string? InstantTopic { get; set; }
+
     // Оценка ответа клиентом. Единственный дешёвый способ понять, какие темы бот тянет плохо.
     [BsonRepresentation(BsonType.String)]
     public ChatMessageFeedback? Feedback { get; set; }

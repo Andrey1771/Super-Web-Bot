@@ -152,6 +152,9 @@ public class SupportChatStatsDto
 
     public int AiReplies { get; set; }
 
+    /// <summary>Ответов, выданных из заготовок — без обращения к модели и бесплатно.</summary>
+    public int InstantReplies { get; set; }
+
     /// <summary>Ответов, за которые платили внешнему провайдеру.</summary>
     public int BilledReplies { get; set; }
 

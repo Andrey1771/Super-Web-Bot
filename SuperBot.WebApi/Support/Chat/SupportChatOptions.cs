@@ -65,6 +65,16 @@ public class SupportChatOptions
     // Потолок длины одной статьи базы знаний в запросе. 0 — не обрезать.
     public int KnowledgeArticleMaxChars { get; set; } = 700;
 
+    // --- Готовые ответы без обращения к модели ---------------------------------
+    // Частые вопросы закрываются заранее написанным текстом: мгновенно и бесплатно.
+    public bool InstantAnswersEnabled { get; set; } = true;
+
+    // Пороги «простоты» вопроса: длинный вопрос почти всегда со своими деталями,
+    // и шаблон на него не отвечает — такие уходят модели.
+    public int InstantAnswerMaxWords { get; set; } = 10;
+
+    public int InstantAnswerMaxChars { get; set; } = 160;
+
     // Email address that receives a notification when a chat is escalated to a human.
     // Falls back to the SMTP FromAddress channel; empty disables the email notification.
     public string? SpecialistEmail { get; set; }

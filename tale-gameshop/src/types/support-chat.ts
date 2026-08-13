@@ -78,6 +78,7 @@ export type SupportChatStats = {
   escalationsBySource: Array<{ label: string; count: number }>;
   topCategories: Array<{ label: string; count: number }>;
   aiReplies: number;
+  instantReplies: number;
   billedReplies: number;
   totalCostUsd: number;
   costPerSessionUsd: number;

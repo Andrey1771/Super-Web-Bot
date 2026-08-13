@@ -132,7 +132,9 @@ const SupportChatStatsPage: React.FC = () => {
               <div className="chat-stats__tile">
                 <span className="chat-stats__tile-label">Обращений за период</span>
                 <strong className="chat-stats__tile-value">{stats.sessions}</strong>
-                <span className="chat-stats__tile-note">{stats.aiReplies} ответов бота</span>
+                <span className="chat-stats__tile-note">
+                  {stats.aiReplies} ответов бота · {stats.instantReplies} без модели
+                </span>
               </div>
             </Card>
             <Card>

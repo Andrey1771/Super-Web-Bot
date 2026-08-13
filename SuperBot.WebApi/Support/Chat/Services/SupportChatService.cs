@@ -126,6 +126,7 @@ public class SupportChatService : ISupportChatService
     private readonly IMemoryCache _cache;
     private readonly ISupportLlmClient _llm;
     private readonly ISupportKnowledgeBase _knowledgeBase;
+    private readonly ISupportInstantAnswers _instantAnswers;
     private readonly ISupportNotificationService _notifications;
     private readonly ILlmConcurrencyLimiter _llmLimiter;
     private readonly ITurnstileVerifier _turnstile;
@@ -140,6 +141,7 @@ public class SupportChatService : ISupportChatService
         IMemoryCache cache,
         ISupportLlmClient llm,
         ISupportKnowledgeBase knowledgeBase,
+        ISupportInstantAnswers instantAnswers,
         ISupportNotificationService notifications,
         ILlmConcurrencyLimiter llmLimiter,
         ITurnstileVerifier turnstile,
@@ -152,6 +154,7 @@ public class SupportChatService : ISupportChatService
         _cache = cache;
         _llm = llm;
         _knowledgeBase = knowledgeBase;
+        _instantAnswers = instantAnswers;
         _notifications = notifications;
         _llmLimiter = llmLimiter;
         _turnstile = turnstile;
@@ -353,6 +356,12 @@ public class SupportChatService : ISupportChatService
             return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = MapMessage(handoff) };
         }
 
+        var instant = await TryInstantAnswerAsync(session, sanitized);
+        if (instant != null)
+        {
+            return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = MapMessage(instant) };
+        }
+
         var (assistantMessage, updatedSession) = await GenerateAssistantReplyAsync(session, sanitized, CancellationToken.None);
         return new AddChatMessageResponse
         {
@@ -393,6 +402,14 @@ public class SupportChatService : ISupportChatService
             var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null, pre.Source);
             await onChunk(handoff.Text);
             return MapMessage(handoff);
+        }
+
+        // Заготовку отдаём одним куском: генерировать нечего, ждать нечего.
+        var instant = await TryInstantAnswerAsync(session, sanitized);
+        if (instant != null)
+        {
+            await onChunk(instant.Text);
+            return MapMessage(instant);
         }
 
         var streamLease = await _llmLimiter.TryAcquireAsync(cancellationToken);
@@ -617,6 +634,7 @@ public class SupportChatService : ISupportChatService
             {
                 CreatedAt = m.CreatedAt,
                 CostUsd = m.Metadata.CostUsd,
+                Instant = m.Metadata.Instant,
                 Feedback = m.Metadata.Feedback
             })
             .ToListAsync();
@@ -657,6 +675,7 @@ public class SupportChatService : ISupportChatService
                 .Take(6)
                 .ToList(),
             AiReplies = replies.Count,
+            InstantReplies = replies.Count(r => r.Instant),
             BilledReplies = replies.Count(r => r.CostUsd > 0),
             TotalCostUsd = totalCost,
             CostPerSessionUsd = sessions.Count == 0 ? 0 : totalCost / sessions.Count,
@@ -711,6 +730,8 @@ public class SupportChatService : ISupportChatService
         public DateTime CreatedAt { get; set; }
 
         public double? CostUsd { get; set; }
+
+        public bool Instant { get; set; }
 
         public ChatMessageFeedback? Feedback { get; set; }
     }
@@ -790,6 +811,48 @@ public class SupportChatService : ISupportChatService
         {
             lease.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Частые вопросы закрываются заранее написанным текстом — без обращения к модели.
+    /// Возвращает null, если вопрос не опознан: тогда отвечает модель.
+    /// </summary>
+    private async Task<ChatMessage?> TryInstantAnswerAsync(ChatSession session, string userText)
+    {
+        if (!_options.InstantAnswersEnabled)
+        {
+            return null;
+        }
+
+        var answer = _instantAnswers.TryAnswer(
+            userText, session.Language, _options.InstantAnswerMaxWords, _options.InstantAnswerMaxChars);
+        if (answer == null)
+        {
+            return null;
+        }
+
+        // Тот же шаблон второй раз в одном диалоге означает, что он не помог, — зовём модель.
+        var alreadyAnswered = await _messages.CountDocumentsAsync(
+            m => m.SessionId == session.Id && m.Metadata.InstantTopic == answer.Topic);
+        if (alreadyAnswered > 0)
+        {
+            return null;
+        }
+
+        var now = DateTime.UtcNow;
+        var message = new ChatMessage
+        {
+            SessionId = session.Id,
+            Role = ChatMessageRole.Assistant,
+            AuthorName = AssistantName,
+            Text = answer.Text,
+            CreatedAt = now,
+            Metadata = new ChatMessageMetadata { Instant = true, InstantTopic = answer.Topic }
+        };
+
+        await _messages.InsertOneAsync(message);
+        await UpdateSessionActivityAsync(session, now);
+        return message;
     }
 
     private async Task<ChatMessage> SaveAssistantMessageAsync(ChatSession session, string text, LlmUsage? usage = null)
