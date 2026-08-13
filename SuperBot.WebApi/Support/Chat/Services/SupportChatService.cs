@@ -197,16 +197,8 @@ public class SupportChatService : ISupportChatService
     public async Task<ChatSessionDetailDto> GetSessionAsync(string sessionId, int messageLimit)
     {
         var session = await GetSessionEntityAsync(sessionId);
-        if (session.Status == ChatSessionStatus.Closed)
-        {
-            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict);
-        }
-        var messages = await GetMessagesInternalAsync(session.Id, messageLimit);
-        return new ChatSessionDetailDto
-        {
-            Session = MapSession(session),
-            Messages = messages.Select(MapMessage).ToList()
-        };
+        EnsureSessionOpen(session);
+        return await BuildSessionDetailAsync(session, messageLimit);
     }
 
     public async Task<ChatSessionListResponse> ListSessionsAsync(string? status, string? query, int page, int pageSize)
@@ -266,18 +258,28 @@ public class SupportChatService : ISupportChatService
         };
     }
 
-    public Task<ChatSessionDetailDto> GetSessionForAdminAsync(string sessionId, int messageLimit)
+    // Оператору закрытый диалог доступен: это история обращений, и открыть её
+    // из списка (фильтр «closed») он должен уметь. Проверки на закрытость здесь нет намеренно.
+    public async Task<ChatSessionDetailDto> GetSessionForAdminAsync(string sessionId, int messageLimit)
     {
-        return GetSessionAsync(sessionId, messageLimit);
+        var session = await GetSessionEntityAsync(sessionId);
+        return await BuildSessionDetailAsync(session, messageLimit);
+    }
+
+    private async Task<ChatSessionDetailDto> BuildSessionDetailAsync(ChatSession session, int messageLimit)
+    {
+        var messages = await GetMessagesInternalAsync(session.Id, messageLimit);
+        return new ChatSessionDetailDto
+        {
+            Session = MapSession(session),
+            Messages = messages.Select(MapMessage).ToList()
+        };
     }
 
     public async Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(string sessionId, DateTime? after)
     {
         var session = await GetSessionEntityAsync(sessionId);
-        if (session.Status == ChatSessionStatus.Closed)
-        {
-            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict);
-        }
+        EnsureSessionOpen(session);
         var filter = Builders<ChatMessage>.Filter.Eq(m => m.SessionId, session.Id);
         if (after.HasValue)
         {
@@ -1029,8 +1031,8 @@ public class SupportChatService : ISupportChatService
         };
     }
 
-    // Читать закрытую сессию уже нельзя (409), поэтому и писать в неё не даём —
-    // иначе сообщение сохранялось бы в диалог, который клиент больше не видит.
+    // Закрытый диалог недоступен клиенту ни на чтение, ни на запись: по 409 виджет
+    // предложит начать новый. Оператора это не касается — см. GetSessionForAdminAsync.
     private static void EnsureSessionOpen(ChatSession session)
     {
         if (session.Status == ChatSessionStatus.Closed)
