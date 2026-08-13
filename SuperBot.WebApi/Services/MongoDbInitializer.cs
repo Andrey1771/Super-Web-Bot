@@ -77,6 +77,7 @@ namespace SuperBot.WebApi.Services
                 "SupportTicketCounters",
                 "SupportChatSessions",
                 "SupportChatMessages",
+                "SupportKnowledgeArticles",
 
                 // Telegram-бот: привязка аккаунтов, состояние диалогов, исходящие события
                 "TelegramLinks",
@@ -416,6 +417,14 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_support_chat_messages_created" }
             );
             await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageCreatedIndex);
+
+            // Темы поддержки: slug — стабильный ключ, по нему не должно быть дублей.
+            var knowledgeCollection = _database.GetCollection<Support.Chat.Models.SupportKnowledgeArticle>("SupportKnowledgeArticles");
+            var knowledgeSlugIndex = new CreateIndexModel<Support.Chat.Models.SupportKnowledgeArticle>(
+                Builders<Support.Chat.Models.SupportKnowledgeArticle>.IndexKeys.Ascending(article => article.Slug),
+                new CreateIndexOptions { Name = "ix_support_knowledge_slug_unique", Unique = true }
+            );
+            await knowledgeCollection.Indexes.CreateOneAsync(knowledgeSlugIndex);
 
             var ordersCollection = _database.GetCollection<SuperBot.Infrastructure.Data.OrderDb>("Orders");
             var ordersPaymentIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(

@@ -189,8 +189,11 @@ builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.DeepSeekCha
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.LlmProviderHealth>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ILlmSpendTracker, SuperBot.WebApi.Support.Chat.Services.LlmSpendTracker>();
 builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportLlmClient, SuperBot.WebApi.Support.Chat.Services.SupportLlmRouter>();
-builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeBase, SuperBot.WebApi.Support.Chat.Services.SupportKnowledgeBase>();
-builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportInstantAnswers, SuperBot.WebApi.Support.Chat.Services.SupportInstantAnswers>();
+// База знаний и готовые ответы живут в Mongo и правятся из админки, поэтому Scoped:
+// подключение к базе тоже Scoped. От частых чтений спасает кэш внутри хранилища.
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeStore, SuperBot.WebApi.Support.Chat.Services.SupportKnowledgeStore>();
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeBase, SuperBot.WebApi.Support.Chat.Services.SupportKnowledgeBase>();
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportInstantAnswers, SuperBot.WebApi.Support.Chat.Services.SupportInstantAnswers>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportAvailability, SuperBot.WebApi.Support.Chat.Services.SupportAvailability>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ILlmConcurrencyLimiter, SuperBot.WebApi.Support.Chat.Services.LlmConcurrencyLimiter>();
 builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.ITurnstileVerifier, SuperBot.WebApi.Support.Chat.Services.TurnstileVerifier>();
@@ -414,6 +417,10 @@ using (var scope = app.Services.CreateScope())
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
     await mongoDbInitializer.InitializeAsync(); //   
     startupLogger.LogInformation("MongoDB initialization completed.");
+
+    // Первый запуск после обновления: темы поддержки переезжают из кода в базу.
+    var knowledgeStore = scope.ServiceProvider.GetRequiredService<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeStore>();
+    await knowledgeStore.SeedIfEmptyAsync();
 }
 
 //  

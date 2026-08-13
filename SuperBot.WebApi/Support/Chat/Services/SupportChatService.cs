@@ -889,7 +889,7 @@ public class SupportChatService : ISupportChatService
             return null;
         }
 
-        var answer = _instantAnswers.TryAnswer(
+        var answer = await _instantAnswers.TryAnswerAsync(
             userText, session.Language, _options.InstantAnswerMaxWords, _options.InstantAnswerMaxChars);
         if (answer == null)
         {
@@ -1102,7 +1102,7 @@ public class SupportChatService : ISupportChatService
             });
         }
 
-        var context = _knowledgeBase.BuildContextBlock(
+        var context = await _knowledgeBase.BuildContextBlockAsync(
             latestUserText, _options.KnowledgeArticles, _options.KnowledgeArticleMaxChars);
         if (!string.IsNullOrEmpty(context))
         {

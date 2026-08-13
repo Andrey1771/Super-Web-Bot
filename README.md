@@ -119,6 +119,23 @@ conversation — if it did not help the first time, the model takes over. Set
 Instant replies are counted separately on the admin stats screen, so the share of traffic they
 absorb is visible next to what the rest costs.
 
+### Editing what the chat knows
+
+Both the grounding articles and the instant answers live in MongoDB
+(`SupportKnowledgeArticles`) and are edited from **Admin → Support → Knowledge**. On the first
+start after this change the topics are copied out of the code into the database, so nothing
+changes behaviourally; the lists in `SupportKnowledgeBase` and `SupportInstantAnswers` remain only
+as that seed. Edits apply without a deploy — the store caches for two minutes and drops the cache
+on every save.
+
+One topic is one row: the English text the model answers from, the search words that find it, and
+optionally a ready reply with its trigger word groups. That is the pair that used to live in two
+separate hardcoded lists and could drift apart.
+
+The customer-facing docs under `/support` still come from `src/content/support/docs.ts`. They are
+a different shape — routed pages with sections, callouts and actions — and moving them into the
+same store is its own piece of work rather than a side effect of this one.
+
 ### Handing over to a human
 
 The chat does not open with a "talk to a human" button. The welcome screen offers topics; a

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace SuperBot.WebApi.Support.Chat.Services;
@@ -10,7 +11,7 @@ namespace SuperBot.WebApi.Support.Chat.Services;
 public interface ISupportInstantAnswers
 {
     /// <param name="maxWords">Длинный вопрос почти всегда со своими деталями — такому шаблон не подходит.</param>
-    InstantAnswer? TryAnswer(string question, string? language, int maxWords, int maxChars);
+    Task<InstantAnswer?> TryAnswerAsync(string question, string? language, int maxWords, int maxChars);
 }
 
 /// <param name="Topic">Идентификатор темы: пишется в метаданные, чтобы не повторять тот же текст дважды.</param>
@@ -23,12 +24,13 @@ public class SupportInstantAnswers : ISupportInstantAnswers
     /// Тема считается опознанной, когда сработала хотя бы одна альтернатива в КАЖДОЙ группе.
     /// Одиночного слова «ключ» мало — нужен ещё признак того, что именно про него спрашивают.
     /// </summary>
-    private sealed record Topic(string Id, string[][] Groups, string TextRu, string TextEn);
+    internal sealed record Topic(string Id, string[][] Groups, string TextRu, string TextEn);
 
     private const string TailRu = "\n\nЕсли вопрос о конкретном заказе — напишите его номер или email, и я подключу специалиста.";
     private const string TailEn = "\n\nIf this is about a specific order, send the order ID or your email and I'll bring in a specialist.";
 
-    private static readonly Topic[] Topics =
+    /// <summary>Исходные данные для первичного переноса в базу. В рантайме не используются.</summary>
+    internal static readonly Topic[] SeedTopics =
     {
         new(
             Id: "key_delivery",
@@ -121,9 +123,17 @@ public class SupportInstantAnswers : ISupportInstantAnswers
     };
 
     // Слово ищем по началу слова: «оплат» покрывает «оплата», «оплатить», «оплаты».
-    private static readonly Dictionary<string, Regex> Patterns = BuildPatterns();
+    // Список слов приходит из базы и меняется из админки, поэтому регулярки собираем лениво.
+    private static readonly ConcurrentDictionary<string, Regex> Patterns = new(StringComparer.Ordinal);
 
-    public InstantAnswer? TryAnswer(string question, string? language, int maxWords, int maxChars)
+    private readonly ISupportKnowledgeStore _store;
+
+    public SupportInstantAnswers(ISupportKnowledgeStore store)
+    {
+        _store = store;
+    }
+
+    public async Task<InstantAnswer?> TryAnswerAsync(string question, string? language, int maxWords, int maxChars)
     {
         if (string.IsNullOrWhiteSpace(question) || question.Length > maxChars)
         {
@@ -138,28 +148,37 @@ public class SupportInstantAnswers : ISupportInstantAnswers
             return null;
         }
 
-        foreach (var topic in Topics)
+        var isRussian = string.Equals(language, "ru", StringComparison.OrdinalIgnoreCase);
+        var articles = await _store.GetActiveAsync();
+
+        foreach (var article in articles)
         {
-            if (topic.Groups.All(group => group.Any(term => Patterns[term].IsMatch(question))))
+            if (!article.InstantEnabled || article.InstantTriggers.Count == 0)
             {
-                var isRussian = string.Equals(language, "ru", StringComparison.OrdinalIgnoreCase);
-                return new InstantAnswer(topic.Id, isRussian ? topic.TextRu : topic.TextEn);
+                continue;
+            }
+
+            var text = isRussian ? article.InstantTextRu : article.InstantTextEn;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                continue;
+            }
+
+            var matched = article.InstantTriggers.All(group =>
+                group.Terms.Count > 0 && group.Terms.Any(term => Pattern(term).IsMatch(question)));
+
+            if (matched)
+            {
+                return new InstantAnswer(article.Slug, text);
             }
         }
 
         return null;
     }
 
-    private static Dictionary<string, Regex> BuildPatterns()
-    {
-        var patterns = new Dictionary<string, Regex>(StringComparer.Ordinal);
-        foreach (var term in Topics.SelectMany(topic => topic.Groups).SelectMany(group => group).Distinct())
-        {
-            patterns[term] = new Regex(
-                $@"\b{Regex.Escape(term)}",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-        }
-
-        return patterns;
-    }
+    private static Regex Pattern(string term) => Patterns.GetOrAdd(
+        term,
+        key => new Regex(
+            $@"\b{Regex.Escape(key)}",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled));
 }

@@ -20,6 +20,7 @@ const pageTitles: Record<string, string> = {
   "/admin/data-tools": "Import / Export",
   "/admin/support/live-chat": "Support / Live Chat",
   "/admin/support/chat-stats": "Support / Chat stats",
+  "/admin/support/knowledge": "Support / Knowledge",
 };
 
 const AdminLayout: React.FC = () => {

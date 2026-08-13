@@ -126,6 +126,39 @@ public class ChatMessageMetadataDto
     public string? Feedback { get; set; }
 }
 
+/// <summary>Тема поддержки в админке: материал для модели плюс необязательный готовый ответ.</summary>
+public class SupportKnowledgeArticleDto
+{
+    public string? Id { get; set; }
+
+    public string? Slug { get; set; }
+
+    public string Title { get; set; } = string.Empty;
+
+    public string? Category { get; set; }
+
+    public List<string>? Keywords { get; set; }
+
+    public string Content { get; set; } = string.Empty;
+
+    public bool Enabled { get; set; } = true;
+
+    public int SortOrder { get; set; }
+
+    public bool InstantEnabled { get; set; }
+
+    /// <summary>Группы слов-триггеров: тема опознана, когда сработала альтернатива в каждой.</summary>
+    public List<List<string>>? InstantTriggers { get; set; }
+
+    public string? InstantTextRu { get; set; }
+
+    public string? InstantTextEn { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
+    public string? UpdatedBy { get; set; }
+}
+
 /// <summary>Явная просьба передать диалог специалисту: с описанием проблемы и контактами.</summary>
 public class RequestHandoffRequest
 {
