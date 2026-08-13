@@ -308,6 +308,8 @@ const ChatWidget: React.FC = () => {
           sessionId,
           text,
           (chunk) => {
+            // Текст пошёл — «печатает…» больше не нужно: иначе индикатор и пузырь дублируют друг друга.
+            setIsTyping(false);
             setMessages((prev) => {
               const next = prev.map((message) =>
                 message.id === streamingMessageId
@@ -319,10 +321,12 @@ const ChatWidget: React.FC = () => {
             });
           },
           (payload) => {
-            if (payload.message) {
+            // Через локальную переменную: внутри колбэка сужение типа по payload.message теряется.
+            const finalMessage = payload.message;
+            if (finalMessage) {
               setMessages((prev) => {
                 const next = prev.map((message) =>
-                  message.id === streamingMessageId ? { ...payload.message } : message
+                  message.id === streamingMessageId ? finalMessage : message
                 );
                 persistMessages(next);
                 return next;

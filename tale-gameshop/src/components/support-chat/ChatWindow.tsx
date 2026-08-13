@@ -38,6 +38,23 @@ type ChatWindowProps = {
   waitHint: string;
 };
 
+// На телефоне окно раскрывается во весь экран — иначе от него после появления
+// клавиатуры остаётся полоска. Заодно отключаем перетаскивание: двигать нечего.
+const useCompactViewport = () => {
+  const [compact, setCompact] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 560px)").matches
+  );
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 560px)");
+    const handler = (event: MediaQueryListEvent) => setCompact(event.matches);
+    query.addEventListener("change", handler);
+    return () => query.removeEventListener("change", handler);
+  }, []);
+
+  return compact;
+};
+
 const ChatWindow: React.FC<ChatWindowProps> = ({
   isOpen,
   onClose,
@@ -64,6 +81,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   waitHint,
 }) => {
   const t = getSupportDict(lang);
+  const compact = useCompactViewport();
+  const [expanded, setExpanded] = useState(false);
 
   // Drag-to-move the window by its header. Position is an offset from the default anchor.
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -187,21 +206,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     you: t.you,
     helpful: t.feedbackHelpful,
     notHelpful: t.feedbackNotHelpful,
+    today: t.today,
+    yesterday: t.yesterday,
   };
 
   return (
     <div
-      className="support-chat__window"
+      className={[
+        "support-chat__window",
+        compact ? "support-chat__window--fullscreen" : "",
+        !compact && expanded ? "support-chat__window--expanded" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="dialog"
       aria-label={t.title}
-      style={pos.x || pos.y ? { transform: `translate(${pos.x}px, ${pos.y}px)` } : undefined}
+      style={!compact && (pos.x || pos.y) ? { transform: `translate(${pos.x}px, ${pos.y}px)` } : undefined}
     >
       <div
-        className="support-chat__header support-chat__header--draggable"
-        onPointerDown={onHeaderPointerDown}
-        onPointerMove={onHeaderPointerMove}
-        onPointerUp={endHeaderDrag}
-        onPointerCancel={endHeaderDrag}
+        className={`support-chat__header${compact ? "" : " support-chat__header--draggable"}`}
+        onPointerDown={compact ? undefined : onHeaderPointerDown}
+        onPointerMove={compact ? undefined : onHeaderPointerMove}
+        onPointerUp={compact ? undefined : endHeaderDrag}
+        onPointerCancel={compact ? undefined : endHeaderDrag}
       >
         <div>
           <div className="support-chat__title">{t.title}</div>
@@ -214,6 +241,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           {messages.length > 0 && (
             <button type="button" aria-label={t.newChat} title={t.newChat} onClick={onNewChat}>
               ⟳
+            </button>
+          )}
+          {!compact && (
+            <button
+              type="button"
+              aria-label={expanded ? t.collapse : t.expand}
+              title={expanded ? t.collapse : t.expand}
+              aria-pressed={expanded}
+              onClick={() => setExpanded((prev) => !prev)}
+            >
+              {expanded ? "⤡" : "⤢"}
             </button>
           )}
           <button type="button" aria-label={t.minimize} onClick={onMinimize}>
@@ -247,6 +285,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             messages={messages}
             isTyping={isTyping}
             typingLabel={isAssigned ? t.typingAgent : t.typingAi}
+            lang={lang}
             labels={labels}
             onFeedback={onFeedback}
           />

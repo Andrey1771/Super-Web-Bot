@@ -4,6 +4,17 @@
   right: 16px;
   z-index: 50;
   font-family: "Inter", "Segoe UI", sans-serif;
+
+  /* Нейтральные цвета берём из токенов сайта: когда на сайте появится тёмная тема,
+     виджет поедет за ней сам. Фирменный фиолетовый остаётся локальным. */
+  --chat-surface: var(--color-surface, #ffffff);
+  --chat-body: #fbfaff;
+  --chat-text: var(--color-text, #2b2b33);
+  --chat-muted: var(--color-muted, #6b6b82);
+  --chat-border: var(--color-border, #e5e7eb);
+  --chat-accent: #6d3bff;
+  --chat-accent-soft: #ece3ff;
+  --chat-accent-wash: #f3efff;
 }
 
 /* Компактная круглая иконка: не перекрывает CTA страниц. */
@@ -50,14 +61,33 @@
 
 .support-chat__window {
   width: 360px;
-  max-height: 560px;
-  background: #fff;
+  max-height: min(560px, calc(100vh - 32px));
+  background: var(--chat-surface);
   border-radius: var(--radius-lg);
   box-shadow: 0 24px 48px rgba(30, 22, 70, 0.2);
   border: 1px solid rgba(109, 59, 255, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Развёрнутое окно: длинную инструкцию из пяти шагов надо читать целиком. */
+.support-chat__window--expanded {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+}
+
+/* Телефон: во весь экран, включая область под клавиатурой (dvh учитывает её появление). */
+.support-chat__window--fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  border: none;
 }
 
 .support-chat__header {
@@ -146,7 +176,7 @@
 
 .support-chat__body {
   flex: 1;
-  background: #fbfaff;
+  background: var(--chat-body);
   padding: 16px;
   overflow-y: auto;
 }
@@ -239,6 +269,41 @@
   display: flex;
   gap: 10px;
   align-items: flex-start;
+  max-width: 100%;
+}
+
+/* Продолжение группы прижимается к предыдущей реплике — она уже подписана. */
+.support-chat__message--continued {
+  margin-top: -8px;
+}
+
+.support-chat__message-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.support-chat__message--user .support-chat__message-body {
+  align-items: flex-end;
+}
+
+/* Разделитель дат: разговор, продолжившийся назавтра, не должен читаться одной лентой. */
+.support-chat__day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  color: var(--chat-muted);
+  font-size: 11px;
+}
+
+.support-chat__day::before,
+.support-chat__day::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--chat-border);
 }
 
 .support-chat__message--user {
@@ -249,12 +314,23 @@
 .support-chat__avatar {
   width: 32px;
   height: 32px;
+  flex-shrink: 0;
   border-radius: 50%;
-  background: #ede6ff;
+  background: var(--chat-accent-soft);
+  color: var(--chat-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+}
+
+.support-chat__avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Место под аватар держим, чтобы продолжение группы не съезжало влево. */
+.support-chat__avatar--hidden {
+  visibility: hidden;
 }
 
 .support-chat__author {
@@ -270,13 +346,22 @@
 .support-chat__bubble {
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  max-width: 240px;
+  /* Было 240px — списки и ссылки в маркдауне рвались на куски. */
+  max-width: min(85%, 460px);
+  width: fit-content;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* Внутри группы верхний угол не срезаем: срез отмечает начало реплики. */
+.support-chat__bubble--continued {
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
 }
 
 .support-chat__bubble--assistant {
-  background: #ece3ff;
+  background: var(--chat-accent-soft);
   color: #2c1d62;
   border-top-left-radius: 4px;
 }
@@ -332,8 +417,8 @@
 
 .support-chat__timestamp {
   font-size: 10px;
-  color: #9b9bb2;
-  margin-top: 4px;
+  color: var(--chat-muted);
+  opacity: 0.85;
 }
 
 .support-chat__typing {
@@ -612,9 +697,11 @@
   }
 }
 
-@media (max-width: 480px) {
-  .support-chat__window {
-    width: calc(100vw - 24px);
+@media (max-width: 560px) {
+  /* Контейнер не трогаем: в нём же живёт кнопка-лаунчер, когда чат закрыт.
+     Полноэкранное окно позиционируется от вьюпорта самостоятельно. */
+  .support-chat__bubble {
+    max-width: 88%;
   }
 }
 

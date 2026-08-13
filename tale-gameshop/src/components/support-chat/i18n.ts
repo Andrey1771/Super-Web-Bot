@@ -25,6 +25,10 @@ type Dict = {
   newChat: string;
   closedNotice: string;
   scrollDown: string;
+  expand: string;
+  collapse: string;
+  today: string;
+  yesterday: string;
   feedbackHelpful: string;
   feedbackNotHelpful: string;
   didNotHelp: string;
@@ -80,6 +84,10 @@ const en: Dict = {
   newChat: "New chat",
   closedNotice: "This conversation was closed by our specialist. Start a new one if you still need help.",
   scrollDown: "Jump to latest",
+  expand: "Expand chat",
+  collapse: "Shrink chat",
+  today: "Today",
+  yesterday: "Yesterday",
   feedbackHelpful: "This helped",
   feedbackNotHelpful: "This didn't help",
   didNotHelp: "This didn't help",
@@ -145,6 +153,10 @@ const ru: Dict = {
   newChat: "Новый диалог",
   closedNotice: "Специалист завершил этот диалог. Если остались вопросы — начните новый.",
   scrollDown: "К последнему сообщению",
+  expand: "Развернуть чат",
+  collapse: "Свернуть до обычного размера",
+  today: "Сегодня",
+  yesterday: "Вчера",
   feedbackHelpful: "Помогло",
   feedbackNotHelpful: "Не помогло",
   didNotHelp: "Это не помогло",
