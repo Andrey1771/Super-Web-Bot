@@ -2,6 +2,37 @@ namespace SuperBot.WebApi.Support.Chat;
 
 public class SupportChatOptions
 {
+    // --- Провайдер модели ------------------------------------------------------
+    // "ollama" — локальная модель, "deepseek" — внешний API. Выбор не жёсткий: если внешний
+    // провайдер не настроен, недоступен или выбран дневной бюджет, ответы идёт давать Ollama.
+    public string Provider { get; set; } = "ollama";
+
+    // Сколько секунд не трогать внешний API после сбоя, чтобы не ждать таймаут на каждом запросе.
+    public int ProviderCooldownSeconds { get; set; } = 60;
+
+    // Потолок длины ответа. Выход дороже входа, а хороший ответ поддержки — 3–5 предложений.
+    public int MaxResponseTokens { get; set; } = 400;
+
+    // --- DeepSeek (OpenAI-совместимый API) -------------------------------------
+    public string DeepSeekBaseUrl { get; set; } = "https://api.deepseek.com/v1";
+
+    // Ключ приходит из env/user-secrets. Пусто — провайдер считается ненастроенным.
+    public string? DeepSeekApiKey { get; set; }
+
+    // Имя модели задаётся явно: список моделей у провайдера меняется, а reasoning-версию брать
+    // не нужно — её «размышления» оплачиваются как ответ и для поддержки бесполезны.
+    public string DeepSeekModel { get; set; } = string.Empty;
+
+    // --- Дневной бюджет --------------------------------------------------------
+    // 0 — без ограничения. Цены за миллион токенов, сверяться с прайсом провайдера.
+    public decimal DailyBudgetUsd { get; set; } = 0m;
+
+    public decimal InputPricePerMillionUsd { get; set; } = 0.14m;
+
+    public decimal CachedInputPricePerMillionUsd { get; set; } = 0.0028m;
+
+    public decimal OutputPricePerMillionUsd { get; set; } = 0.28m;
+
     public string OllamaBaseUrl { get; set; } = "http://localhost:11434";
 
     // qwen2.5 has strong tool-calling + multilingual (RU/EN) support and does not emit reasoning

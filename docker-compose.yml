@@ -39,7 +39,15 @@ services:
       - Recovery__SmtpPort=1025
       - Recovery__PublicBaseUrl=${PUBLIC_URL:-http://localhost}
       - Recovery__WaitingPeriodHours=72
+      # Модель за чатом поддержки: ollama (локально) или deepseek (внешний API).
+      # Ollama остаётся резервом при любом выборе, поэтому адрес нужен всегда.
       - SupportChat__OllamaBaseUrl=http://host.docker.internal:11434
+      - SupportChat__Provider=${SUPPORT_CHAT_PROVIDER:-ollama}
+      - SupportChat__DeepSeekApiKey=${DEEPSEEK_API_KEY}
+      # Имя модели берётся из актуального прайса провайдера; reasoning-версию не используем.
+      - SupportChat__DeepSeekModel=${DEEPSEEK_MODEL}
+      # Дневной потолок расходов в USD. 0 = без ограничения; при исчерпании чат уходит на Ollama.
+      - SupportChat__DailyBudgetUsd=${SUPPORT_CHAT_DAILY_BUDGET_USD:-0}
       # Public site URLs — set PUBLIC_URL in .env to your real domain (defaults to localhost for dev).
       - MainUrl=${PUBLIC_URL:-http://localhost}
       - FrontendConfiguration__Uri=${PUBLIC_URL:-http://localhost}

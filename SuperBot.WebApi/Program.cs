@@ -181,7 +181,14 @@ builder.Services.AddScoped<SupportRoleEvaluator>();
 builder.Services.Configure<SuperBot.WebApi.Recovery.RecoveryOptions>(builder.Configuration.GetSection("Recovery"));
 builder.Services.AddScoped<SuperBot.WebApi.Recovery.Services.RecoveryMailService>();
 builder.Services.AddScoped<SuperBot.WebApi.Recovery.Services.IRecoveryRequestService, SuperBot.WebApi.Recovery.Services.RecoveryRequestService>();
-builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.IOllamaChatClient, SuperBot.WebApi.Support.Chat.Services.OllamaChatClient>();
+// Модель за чатом поддержки. Оба клиента регистрируются всегда: DeepSeek — основной провайдер
+// по настройке SupportChat:Provider, Ollama — резерв, на который роутер уходит при сбое,
+// отсутствующей конфигурации или исчерпанном дневном бюджете.
+builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.OllamaChatClient>();
+builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.DeepSeekChatClient>();
+builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.LlmProviderHealth>();
+builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ILlmSpendTracker, SuperBot.WebApi.Support.Chat.Services.LlmSpendTracker>();
+builder.Services.AddScoped<SuperBot.WebApi.Support.Chat.Services.ISupportLlmClient, SuperBot.WebApi.Support.Chat.Services.SupportLlmRouter>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeBase, SuperBot.WebApi.Support.Chat.Services.SupportKnowledgeBase>();
 builder.Services.AddSingleton<SuperBot.WebApi.Support.Chat.Services.ILlmConcurrencyLimiter, SuperBot.WebApi.Support.Chat.Services.LlmConcurrencyLimiter>();
 builder.Services.AddHttpClient<SuperBot.WebApi.Support.Chat.Services.ITurnstileVerifier, SuperBot.WebApi.Support.Chat.Services.TurnstileVerifier>();
@@ -220,7 +227,7 @@ builder.Services.AddAutoMapper(typeof(PromoCodeProfile));
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<Ga4Client>();
 builder.Services.AddScoped<YandexMetrikaClient>();
-builder.Services.AddHostedService<SuperBot.WebApi.Support.Chat.Services.OllamaStartupLogger>();
+builder.Services.AddHostedService<SuperBot.WebApi.Support.Chat.Services.SupportLlmStartupLogger>();
 
 //TODO     ,     ,   
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
@@ -315,13 +322,13 @@ var startupLogger = app.Logger;
 app.Lifetime.ApplicationStarted.Register(() =>
 {
     var supportChatSection = app.Configuration.GetSection("SupportChat");
-    var ollamaBaseUrl = supportChatSection.GetValue<string>("OllamaBaseUrl") ?? "n/a";
-    var ollamaModel = supportChatSection.GetValue<string>("OllamaModel") ?? "n/a";
+    var provider = supportChatSection.GetValue<string>("Provider") ?? "ollama";
     var streamingEnabled = supportChatSection.GetValue<bool>("StreamingEnabled");
 
     startupLogger.LogInformation("SuperBot.WebApi started. Environment: {Environment}", app.Environment.EnvironmentName);
-    startupLogger.LogInformation("Support chat AI: {OllamaBaseUrl} (model={OllamaModel}, streaming={StreamingEnabled})",
-        ollamaBaseUrl, ollamaModel, streamingEnabled);
+    // Подробности по провайдеру и резерву пишет SupportLlmStartupLogger.
+    startupLogger.LogInformation("Support chat AI: provider={Provider}, streaming={StreamingEnabled}",
+        provider, streamingEnabled);
     startupLogger.LogInformation("CORS allowed origin: {Origin}",
         app.Configuration.GetSection("FrontendConfiguration:Uri").Value ?? "not configured");
 });

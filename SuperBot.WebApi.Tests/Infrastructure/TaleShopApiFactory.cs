@@ -76,7 +76,7 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
             // Фоновые циклы не нужны: рассылку двигаем руками через INewsletterDispatcher,
             // а Ollama-логгер только шумит в тестовом выводе.
             RemoveHostedService<NewsletterSendWorker>(services);
-            RemoveHostedService<SuperBot.WebApi.Support.Chat.Services.OllamaStartupLogger>(services);
+            RemoveHostedService<SuperBot.WebApi.Support.Chat.Services.SupportLlmStartupLogger>(services);
 
             // Все письма — в память.
             services.RemoveAll<IMailSender>();

@@ -39,6 +39,8 @@ public class SupportChatService : ISupportChatService
 {
     private const string AssistantName = "Tale Support (AI)";
 
+    private const string HandoffToolName = "handoff_to_human";
+
     // Grounded, multilingual, safety-aware persona. Knowledge-base context is appended per turn.
     private const string SystemPromptBase = """
         You are "Tale Assistant", the AI support agent for Tale Shop — a digital game store that sells
@@ -118,7 +120,7 @@ public class SupportChatService : ISupportChatService
     private readonly IMongoCollection<ChatMessage> _messages;
     private readonly SupportChatOptions _options;
     private readonly IMemoryCache _cache;
-    private readonly IOllamaChatClient _ollamaClient;
+    private readonly ISupportLlmClient _llm;
     private readonly ISupportKnowledgeBase _knowledgeBase;
     private readonly ISupportNotificationService _notifications;
     private readonly ILlmConcurrencyLimiter _llmLimiter;
@@ -131,7 +133,7 @@ public class SupportChatService : ISupportChatService
         IMongoDatabase database,
         IOptions<SupportChatOptions> options,
         IMemoryCache cache,
-        IOllamaChatClient ollamaClient,
+        ISupportLlmClient llm,
         ISupportKnowledgeBase knowledgeBase,
         ISupportNotificationService notifications,
         ILlmConcurrencyLimiter llmLimiter,
@@ -142,7 +144,7 @@ public class SupportChatService : ISupportChatService
         _messages = database.GetCollection<ChatMessage>("SupportChatMessages");
         _options = options.Value;
         _cache = cache;
-        _ollamaClient = ollamaClient;
+        _llm = llm;
         _knowledgeBase = knowledgeBase;
         _notifications = notifications;
         _llmLimiter = llmLimiter;
@@ -396,7 +398,7 @@ public class SupportChatService : ISupportChatService
         }
 
         var history = await BuildHistoryAsync(session.Id, sanitized, session.Language);
-        var request = BuildOllamaRequest(history, stream: true);
+        var request = BuildLlmRequest(history);
 
         var toolCallArguments = string.Empty;
         var filter = ReasoningFilter.CreateStreamFilter();
@@ -404,12 +406,11 @@ public class SupportChatService : ISupportChatService
 
         try
         {
-            await _ollamaClient.StreamChatAsync(request, async chunk =>
+            await _llm.StreamChatAsync(request, async chunk =>
             {
-                var content = chunk.Message?.Content ?? string.Empty;
-                if (!string.IsNullOrEmpty(content))
+                if (!string.IsNullOrEmpty(chunk.Content))
                 {
-                    var visible = filter.Push(content);
+                    var visible = filter.Push(chunk.Content);
                     if (!string.IsNullOrEmpty(visible))
                     {
                         responseBuilder.Append(visible);
@@ -417,10 +418,9 @@ public class SupportChatService : ISupportChatService
                     }
                 }
 
-                var toolCall = chunk.Message?.ToolCalls?.FirstOrDefault(t => t.Function.Name == "handoff_to_human");
-                if (toolCall != null)
+                if (chunk.ToolCall is { } toolCall && toolCall.Name == HandoffToolName)
                 {
-                    toolCallArguments = toolCall.Function.ArgumentsJson;
+                    toolCallArguments = toolCall.ArgumentsJson;
                 }
             }, cancellationToken);
         }
@@ -576,7 +576,7 @@ public class SupportChatService : ISupportChatService
         CancellationToken cancellationToken)
     {
         var history = await BuildHistoryAsync(session.Id, userText, session.Language);
-        var request = BuildOllamaRequest(history, stream: false);
+        var request = BuildLlmRequest(history);
 
         var lease = await _llmLimiter.TryAcquireAsync(cancellationToken);
         if (lease == null)
@@ -589,11 +589,11 @@ public class SupportChatService : ISupportChatService
         {
             using var timeoutSource = new CancellationTokenSource(TimeSpan.FromSeconds(_options.LlmTimeoutSeconds));
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutSource.Token, cancellationToken);
-            var response = await _ollamaClient.ChatAsync(request, linked.Token);
+            var response = await _llm.ChatAsync(request, linked.Token);
 
-            var assistantText = ReasoningFilter.Strip(response.Message?.Content ?? string.Empty).Trim();
-            var toolCall = response.Message?.ToolCalls?.FirstOrDefault(t => t.Function.Name == "handoff_to_human");
-            var toolCallArguments = toolCall?.Function.ArgumentsJson ?? string.Empty;
+            var assistantText = ReasoningFilter.Strip(response.Content).Trim();
+            var toolCall = response.ToolCall is { } call && call.Name == HandoffToolName ? call : null;
+            var toolCallArguments = toolCall?.ArgumentsJson ?? string.Empty;
 
             if (!string.IsNullOrWhiteSpace(toolCallArguments))
             {
@@ -637,7 +637,7 @@ public class SupportChatService : ISupportChatService
             AuthorName = AssistantName,
             Text = text,
             CreatedAt = now,
-            Metadata = new ChatMessageMetadata { Model = _options.OllamaModel }
+            Metadata = new ChatMessageMetadata { Model = _llm.Model }
         };
 
         await _messages.InsertOneAsync(message);
@@ -687,7 +687,7 @@ public class SupportChatService : ISupportChatService
             CreatedAt = DateTime.UtcNow,
             Metadata = new ChatMessageMetadata
             {
-                Model = _options.OllamaModel,
+                Model = _llm.Model,
                 EscalationReason = reason,
                 Handoff = true
             }
@@ -747,7 +747,7 @@ public class SupportChatService : ISupportChatService
         await _sessions.UpdateOneAsync(s => s.Id == session.Id, update);
     }
 
-    private async Task<List<OllamaChatMessage>> BuildHistoryAsync(string sessionId, string latestUserText, string? language)
+    private async Task<List<LlmChatMessage>> BuildHistoryAsync(string sessionId, string latestUserText, string? language)
     {
         var context = _knowledgeBase.BuildContextBlock(latestUserText, _options.KnowledgeArticles);
         // Explicit, deterministic reply language driven by the site locale (not model guesswork).
@@ -756,7 +756,7 @@ public class SupportChatService : ISupportChatService
             ? $"{SystemPromptBase}\n\n{languageDirective}"
             : $"{SystemPromptBase}\n\n{languageDirective}\n\n{context}";
 
-        var history = new List<OllamaChatMessage>
+        var history = new List<LlmChatMessage>
         {
             new() { Role = "system", Content = systemContent }
         };
@@ -769,7 +769,7 @@ public class SupportChatService : ISupportChatService
 
         foreach (var message in recent.OrderBy(m => m.CreatedAt))
         {
-            history.Add(new OllamaChatMessage
+            history.Add(new LlmChatMessage
             {
                 Role = MapRole(message.Role),
                 Content = message.Text
@@ -779,38 +779,34 @@ public class SupportChatService : ISupportChatService
         return history;
     }
 
-    private OllamaChatRequest BuildOllamaRequest(List<OllamaChatMessage> messages, bool stream)
+    private LlmChatRequest BuildLlmRequest(List<LlmChatMessage> messages)
     {
-        return new OllamaChatRequest
+        return new LlmChatRequest
         {
-            Model = _options.OllamaModel,
             Messages = messages,
-            Stream = stream,
-            Options = new Dictionary<string, object> { ["temperature"] = _options.Temperature },
-            Tools = new List<OllamaToolDefinition>
+            Temperature = _options.Temperature,
+            MaxOutputTokens = _options.MaxResponseTokens > 0 ? _options.MaxResponseTokens : null,
+            Tools = new List<LlmToolDefinition>
             {
                 new()
                 {
-                    Function = new OllamaFunctionDefinition
+                    Name = HandoffToolName,
+                    Description = "Escalate the conversation to a live human support specialist.",
+                    Parameters = new
                     {
-                        Name = "handoff_to_human",
-                        Description = "Escalate the conversation to a live human support specialist.",
-                        Parameters = new
+                        type = "object",
+                        properties = new
                         {
-                            type = "object",
-                            properties = new
+                            reason = new { type = "string", description = "Why a human is needed." },
+                            category = new
                             {
-                                reason = new { type = "string", description = "Why a human is needed." },
-                                category = new
-                                {
-                                    type = "string",
-                                    description = "One of: Order status, Payment & checkout, Key delivery / activation, Refund request, Game / product question, Account & security, Technical issue / bug, Other."
-                                },
-                                urgency = new { type = "string", @enum = new[] { "low", "normal", "high" } },
-                                summary = new { type = "string", description = "A short summary of the customer's issue for the specialist." }
+                                type = "string",
+                                description = "One of: Order status, Payment & checkout, Key delivery / activation, Refund request, Game / product question, Account & security, Technical issue / bug, Other."
                             },
-                            required = new[] { "reason" }
-                        }
+                            urgency = new { type = "string", @enum = new[] { "low", "normal", "high" } },
+                            summary = new { type = "string", description = "A short summary of the customer's issue for the specialist." }
+                        },
+                        required = new[] { "reason" }
                     }
                 }
             }

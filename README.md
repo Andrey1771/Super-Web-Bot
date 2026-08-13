@@ -58,30 +58,57 @@ choco install ffmpeg -y
 PS: You need to configure users in Keycloak and import the realm-export from "keycloak settings (temp)"
 In the future, you must create a user with the tale-shop-app role "admin" in the "TaleShop" (realm) to enable editing product cards, adding new products, and configuring the bot and website.
 
-## Support Chat + Ollama (local LLM)
+## Support Chat (AI replies)
 
-The storefront support widget uses a local Ollama model for AI replies. Configure these settings in `SuperBot.WebApi/appsettings.json` or via environment variables:
+The storefront support widget answers with either a local Ollama model or the DeepSeek API.
+The choice is `SupportChat:Provider`; Ollama stays the fallback in both cases, so the chat keeps
+answering when the external API is down, unconfigured, or the daily budget is spent.
 
 ```json
 SupportChat: {
+  "Provider": "ollama",
   "OllamaBaseUrl": "http://localhost:11434",
-  "OllamaModel": "gemma3",
+  "OllamaModel": "qwen2.5:7b",
   "StreamingEnabled": true
 }
 ```
 
-### Quick start
+### Local model (default)
 1. Install and start Ollama locally:
    ```bash
    ollama serve
    ```
 2. Pull the model configured above:
    ```bash
-   ollama pull gemma3
+   ollama pull qwen2.5:7b
    ```
 3. Run the Web API (Docker or local). The chat widget will call the API at `/api/support/chat/...`.
 
-If Ollama is unavailable, the assistant gracefully falls back and offers a human handoff. You can also disable streaming by setting `SupportChat:StreamingEnabled` to `false`.
+### DeepSeek
+Set the provider and the credentials — in Docker via `.env`, locally via user-secrets or
+`appsettings.Development.json`:
+
+```bash
+SUPPORT_CHAT_PROVIDER=deepseek
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=<model id from DeepSeek's current price list>
+SUPPORT_CHAT_DAILY_BUDGET_USD=5      # 0 = no limit
+```
+
+The model id is deliberately not defaulted: DeepSeek's model list changes, and a reasoning model
+is the wrong choice here — its thinking tokens are billed as output and slow a streamed reply
+down for no benefit. The startup log states which provider is active and warns when the chosen
+model looks like a reasoning one.
+
+Spend is tracked per day from the provider's reported token usage, priced by
+`InputPricePerMillionUsd` / `CachedInputPricePerMillionUsd` / `OutputPricePerMillionUsd` — keep
+those in sync with the current price list. When `DailyBudgetUsd` is reached, the chat switches to
+the local model until the next UTC day. The counter lives in process memory, so it resets on
+restart and is per-instance, same as the chat's other limiters.
+
+`SupportChat:MaxResponseTokens` caps reply length (output tokens cost more than input), and
+`SupportChat:StreamingEnabled` set to `false` turns streaming off. If no model can be reached at
+all, the assistant apologises and offers a human handoff.
 
 ## Account avatar uploads
 
