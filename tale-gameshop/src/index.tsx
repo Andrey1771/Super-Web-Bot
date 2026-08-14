@@ -48,7 +48,9 @@ if (isMiniApp) {
                         <AppErrorBoundary>
                             <CartProvider>
                                 <WishlistProvider>
-                                    <BrowserRouter>
+                                    {/* future-флаги v7: снимают deprecation-варнинги в консоли
+                                        и заранее включают поведение следующей мажорной версии. */}
+                                    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                                         <ScrollToTop/>
                                         <App/>
                                     </BrowserRouter>

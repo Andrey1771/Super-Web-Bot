@@ -4,3 +4,8 @@
 .main-page-down-header-padding {
     margin-top: var(--app-header-height, 150px);
 }
+/* Заглушка на время догрузки lazy-чанка (админка): держит высоту,
+   чтобы футер не мелькал у верха экрана. */
+.route-chunk-loading {
+    min-height: 60vh;
+}

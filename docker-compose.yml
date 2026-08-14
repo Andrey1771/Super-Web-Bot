@@ -142,6 +142,23 @@ services:
     networks:
       - app_network
 
+  # Демо-сид стенда: наполняет базу и uploads-том правдоподобными данными.
+  # В обычный `up` не входит — запускается вручную:
+  #   docker compose --profile demo run --rm demo-seeder
+  # Подробности и принципы — в seeds/README.md.
+  demo-seeder:
+    image: mongo:latest
+    profiles:
+      - demo
+    depends_on:
+      - mongo3
+    volumes:
+      - ./seeds:/seeds:ro
+      - uploads_data:/seed-uploads
+    networks:
+      - app_network
+    entrypoint: ["bash", "/seeds/run-all.sh"]
+
   mongo-init:
     image: mongo:latest
     depends_on:

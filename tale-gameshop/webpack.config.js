@@ -58,6 +58,9 @@ export default (env, { mode }) => {
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: (mode === 'production') ? 'bundle.[contenthash].js' : 'bundle.js',
+        // Lazy-чанки (админка): в проде — с contenthash, чтобы после деплоя браузеры
+        // не цеплялись за закэшированную старую версию чанка.
+        chunkFilename: (mode === 'production') ? 'chunk.[name].[contenthash].js' : 'chunk.[name].js',
         publicPath: '/',
         assetModuleFilename: 'images/[hash][ext][query]',
     },
