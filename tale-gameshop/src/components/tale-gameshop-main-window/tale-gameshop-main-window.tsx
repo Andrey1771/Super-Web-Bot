@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { Suspense, lazy, useRef } from "react";
 import TaleGameshopHeader from "../header/tale-gameshop-header/tale-gameshop-header";
 import useScrollReveal from "../../hooks/use-scroll-reveal";
 import TaleGameshopFooter from "../tale-gameshop-footer/tale-gameshop-footer";
@@ -10,14 +10,10 @@ import AboutUs from "../about-us/about-us";
 import LoginPage from "../login-page/login-page";
 import RegistrationPage from "../registration-page/registration-page";
 import ChatWidget from "../support-chat/ChatWidget";
-import AdminPanelPage from "../admin-panel/admin-panel-page/admin-panel-page";
 import CallbackPage from "../callback-page/callback-page";
 import PrivateRoute from "../utils/private-route/private-route";
 import AuthorizedRoute from "../utils/authorized-route/authorized-route";
 import NotFoundPage from "../utils/not-found-page/not-found-page";
-import BotChangerPage from "../admin-panel/bot-changer-page/bot-changer-page";
-import SiteChangerPage from "../admin-panel/site-changer-page/site-changer-page";
-import CardAdderPage from "../admin-panel/card-adder-page/card-adder-page";
 import {CartPage} from "../cart/cart-page/cart-page";
 import CheckoutPage from "../cart/checkout-page/checkout-page";
 import SuccessPurchasePage from "../cart/success-purchase-page/success-purchase-page";
@@ -26,41 +22,26 @@ import CancelPurchasePage from "../cart/cancel-purchase-page";
 import ApologyPage from "../apology-page/apology-page";
 import SupportPage from "../support-page/support-page";
 import SupportDocPage from "../support-docs/support-doc-page";
-import UserInfoPage from "../admin-panel/user-info-page/user-info-page";
-import UserStatsPage from "../admin-panel/user-stats-page/user-stats-page";
 import BlogPage from "../blog-page/blog-page";
 import BlogPostPage from "../blog-page/blog-post-page";
 import DealsPage from "../deals-page/deals-page";
 import FaqPage from "../faq-page/faq-page";
 import NewsletterConfirmPage from "../newsletter/NewsletterConfirmPage";
 import NewsletterUnsubscribePage from "../newsletter/NewsletterUnsubscribePage";
-import NewsletterPage from "../../pages/admin/NewsletterPage";
 import GameDetailsPage from "../../pages/game-details-page/GameDetailsPage";
 import AccountRoutes from "../../features/account/routes/AccountRoutes";
-import AdminLayout from "../layout/AdminLayout";
-import OrdersPage from "../../pages/admin/OrdersPage";
-import ProfilePage from "../../pages/admin/ProfilePage";
-import SettingsPage from "../../pages/admin/SettingsPage";
-import DataToolsPage from "../../pages/admin/DataToolsPage";
-import GameDetailsEditorPage from "../../pages/admin/GameDetailsEditorPage";
-import AdminGameKeysPage from "../../pages/admin/AdminGameKeysPage";
-import BlogPostsPage from "../../pages/admin/blog/BlogPostsPage";
-import BlogPostEditorPage from "../../pages/admin/blog/BlogPostEditorPage";
-import AnalyticsOverviewPage from "../../pages/admin/analytics/AnalyticsOverviewPage";
-import AnalyticsSettingsPage from "../../pages/admin/analytics/AnalyticsSettingsPage";
 import AnalyticsProvider from "../analytics/AnalyticsProvider";
 import CookieBanner from "../analytics/CookieBanner";
-import SupportLiveChatPage from "../../pages/admin/support/SupportLiveChatPage";
-import SupportChatStatsPage from "../../pages/admin/support/SupportChatStatsPage";
-import SupportKnowledgePage from "../../pages/admin/support/SupportKnowledgePage";
-import SupportTicketsPage from "../../pages/admin/SupportTicketsPage";
-import PromoCodesPage from "../../pages/admin/PromoCodesPage";
-import PaymentIssuesPage from "../../pages/admin/PaymentIssuesPage";
-import AccountRecoveryAdminPage from "../../pages/admin/AccountRecoveryAdminPage";
 import AccountRecoveryPage, { AccountRecoveryCancelPage } from "../account-recovery/AccountRecoveryPage";
-import GameDiscountsPage from "../../pages/admin/GameDiscountsPage";
-import AdminBotStatusPage from "../../pages/admin/AdminBotStatusPage";
 import MiniAppPage from "../../features/miniapp/MiniAppPage";
+
+// Вся админка — ОДНИМ lazy-модулем: AdminApp внутри статически импортирует все
+// админ-страницы и их роуты, поэтому весь граф (включая DevExtreme и Highcharts)
+// уезжает в отдельный chunk.admin автоматически — забыть «обернуть страницу
+// в lazy» невозможно. Посетителю магазина чанк не выдаётся, браузер запросит его
+// только при заходе в /admin. Это про скорость и вес публичного бандла, не про
+// секретность: файл чанка остаётся публично доступным, защита — на сервере ([Authorize]).
+const AdminApp = lazy(() => import(/* webpackChunkName: "admin" */ "../../pages/admin/AdminApp"));
 
 // Старые ссылки /blog/<slug> (закладки, письма) ведут на тот же пост в разделе News.
 function BlogSlugRedirect() {
@@ -86,6 +67,9 @@ export default function TaleGameshopMainWindow() {
             <div ref={revealRootRef}>
                 {!isChromeless && <TaleGameshopHeader></TaleGameshopHeader>}
                 {!isChromeless && !isHomeRoute && <div className="main-page-down-header-padding"></div>}
+                {/* Suspense ловит догрузку lazy-чанка админки; публичные страницы
+                    импортированы статически и через фолбэк не проходят. */}
+                <Suspense fallback={<div className="route-chunk-loading" aria-busy="true" />}>
                 <Routes>
                     <Route path="/" element={<TaleGameshopMainPage/>}/>
                     <Route path="/games" element={<TaleGameshopGameList/>}/>
@@ -101,45 +85,16 @@ export default function TaleGameshopMainWindow() {
                     <Route path="/about" element={<AboutUs/>}/>
                     <Route path="/logIn" element={<LoginPage/>}/>
                     <Route path="/signUp" element={<RegistrationPage/>}/>
+                    {/* Splat + вложенные <Routes> внутри AdminApp: конкретные
+                        админ-маршруты живут рядом со страницами в одном модуле-чанке. */}
                     <Route
-                        path="/admin"
+                        path="/admin/*"
                         element={
                             <PrivateRoute>
-                                <AdminLayout />
+                                <AdminApp />
                             </PrivateRoute>
                         }
-                    >
-                        <Route index element={<AdminPanelPage />} />
-                        <Route path="bot" element={<AdminBotStatusPage />} />
-                        <Route path="botChanger" element={<BotChangerPage />} />
-                        <Route path="siteChanger" element={<SiteChangerPage />} />
-                        <Route path="cardAdder" element={<CardAdderPage />} />
-                        <Route path="orders" element={<OrdersPage />} />
-                        <Route path="payments/issues" element={<PaymentIssuesPage />} />
-                        <Route path="promo-codes" element={<PromoCodesPage />} />
-                        <Route path="game-discounts" element={<GameDiscountsPage />} />
-                        <Route path="newsletter" element={<NewsletterPage />} />
-                        <Route path="blog" element={<BlogPostsPage />} />
-                        <Route path="blog/new" element={<BlogPostEditorPage />} />
-                        <Route path="blog/:id/edit" element={<BlogPostEditorPage />} />
-                        <Route path="blog/posts" element={<Navigate to="/admin/blog" replace />} />
-                        <Route path="blog/posts/new" element={<Navigate to="/admin/blog/new" replace />} />
-                        <Route path="blog/posts/:id/edit" element={<Navigate to="/admin/blog/:id/edit" replace />} />
-                        <Route path="analytics" element={<AnalyticsOverviewPage />} />
-                        <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
-                        <Route path="support/live-chat" element={<SupportLiveChatPage />} />
-                        <Route path="support/chat-stats" element={<SupportChatStatsPage />} />
-                        <Route path="support/knowledge" element={<SupportKnowledgePage />} />
-                        <Route path="support/tickets" element={<SupportTicketsPage />} />
-                        <Route path="support/recovery" element={<AccountRecoveryAdminPage />} />
-                        <Route path="profile" element={<ProfilePage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                        <Route path="data-tools" element={<DataToolsPage />} />
-                        <Route path="games/details" element={<GameDetailsEditorPage />} />
-                        <Route path="games/keys" element={<AdminGameKeysPage />} />
-                        <Route path="userInfo" element={<UserInfoPage />} />
-                        <Route path="userStats" element={<UserStatsPage />} />
-                    </Route>
+                    />
                     <Route path="/callback" element={<CallbackPage/>}/>
                     <Route path="/cart" element={<CartPage/>}/>
                     <Route path="/checkout" element={<CheckoutPage/>}/>
@@ -169,6 +124,7 @@ export default function TaleGameshopMainWindow() {
                     />
                     <Route path="*" element={<NotFoundPage />} />
                 </Routes>
+                </Suspense>
                 {!isChromeless && <TaleGameshopFooter></TaleGameshopFooter>}
                 {!isChromeless && <ChatWidget />}
                 {!isChromeless && <CookieBanner />}

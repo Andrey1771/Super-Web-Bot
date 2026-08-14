@@ -60,6 +60,8 @@ namespace SuperBot.WebApi.Services
                 "BlogPosts",
                 "BlogPostVersions",
                 "BlogEvents",
+                "BlogComments",
+                "BlogCommentBans",
                 "BlogPostUniqueViews",
                 "BlogViewSettings",
                 "BlogHomepageSettings",
@@ -265,6 +267,24 @@ namespace SuperBot.WebApi.Services
             await blogEventsCollection.Indexes.CreateOneAsync(blogEventUserIndex);
             await blogEventsCollection.Indexes.CreateOneAsync(blogEventAnonIndex);
             await blogEventsCollection.Indexes.CreateOneAsync(blogEventTypeIndex);
+
+            // Комментарии читаются только лентой конкретного поста, новые первыми.
+            var blogCommentsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogCommentDb>("BlogComments");
+            var blogCommentsPostIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogCommentDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogCommentDb>.IndexKeys
+                    .Ascending(item => item.PostId)
+                    .Descending(item => item.CreatedAt),
+                new CreateIndexOptions { Name = "ix_blog_comments_post_created" }
+            );
+            await blogCommentsCollection.Indexes.CreateOneAsync(blogCommentsPostIndex);
+
+            // Один бан на пользователя; проверка «забанен ли» идёт по userId на каждый POST.
+            var blogCommentBansCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogCommentBanDb>("BlogCommentBans");
+            var blogCommentBansUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogCommentBanDb>(
+                Builders<SuperBot.Infrastructure.Data.BlogCommentBanDb>.IndexKeys.Ascending(item => item.UserId),
+                new CreateIndexOptions { Unique = true, Name = "ix_blog_comment_bans_user" }
+            );
+            await blogCommentBansCollection.Indexes.CreateOneAsync(blogCommentBansUserIndex);
 
             var blogUniqueViewsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>("BlogPostUniqueViews");
             var uniqueViewerIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.BlogPostUniqueViewDb>(

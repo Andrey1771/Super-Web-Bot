@@ -4,11 +4,17 @@ import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IBlogService } from "../../iterfaces/i-blog-service";
 import type { BlogEngagementSummary, BlogListItem, BlogPost, BlogPostStats, BlogPostVersion } from "../../types/blog";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck, faEnvelope, faEye, faLink } from "@fortawesome/free-solid-svg-icons";
+import { faFacebookF, faTelegram, faWhatsapp, faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { renderMarkdown } from "../../utils/markdown";
-import { getAnonId, getSessionId, useBlogTracking } from "../../hooks/use-blog-tracking";
-import SafeBlogImage from "./SafeBlogImage";
-import { getBlogPostCoverUrl } from "../../utils/blog-cover";
+import { getAnonId, getSessionId } from "../../hooks/use-blog-tracking";
+import PostCoverArt from "./PostCoverArt";
+import BlogComments from "./BlogComments";
 import PostCard from "../../pages/blog/components/PostCard";
+import PageMeta from "../common/PageMeta";
+import Breadcrumbs from "../common/Breadcrumbs";
+import { normalizeBlogCoverUrl } from "../../utils/blog-cover";
 import "./blog-page.css";
 
 type TocItem = {
@@ -47,7 +53,9 @@ const formatDate = (value?: string) => {
     return "Draft";
   }
 
-  return new Date(value).toLocaleDateString(undefined, {
+  // Дата всегда в en-US: интерфейс англоязычный, а локаль браузера у покупателя
+  // может быть любой — «9 августа 2026 г.» посреди английской страницы выглядит багом.
+  return new Date(value).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric"
@@ -105,7 +113,10 @@ const BlogPostPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogListItem[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
-  const [activeHeading, setActiveHeading] = useState<string | null>(null);
+  const [adjacentPosts, setAdjacentPosts] = useState<{ newer: BlogListItem | null; older: BlogListItem | null }>({
+    newer: null,
+    older: null
+  });
   const [shareFeedback, setShareFeedback] = useState<string>("");
   const [engagement, setEngagement] = useState<BlogEngagementSummary | null>(null);
   const [postStats, setPostStats] = useState<BlogPostStats | null>(null);
@@ -113,7 +124,7 @@ const BlogPostPage: React.FC = () => {
   const viewTrackedRef = useRef(false);
   const interactedRef = useRef(false);
   const readTrackedRef = useRef(false);
-  const { trackBookmark } = useBlogTracking();
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
   const reactions = ["👍", "❤️", "🔥", "🎮", "👀"];
 
   useEffect(() => {
@@ -252,6 +263,78 @@ const BlogPostPage: React.FC = () => {
     return () => window.clearInterval(interval);
   }, [blogService, post, slug]);
 
+  // Соседи по ленте для навигации «новее/старше». Отдельного эндпоинта для
+  // соседних постов нет — берём первую сотню ленты (отсортирована по дате,
+  // новые первыми) и находим текущий пост в ней; на объёмах нашего блога
+  // этого хватает с большим запасом.
+  useEffect(() => {
+    if (!post) {
+      setAdjacentPosts({ newer: null, older: null });
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const feed = await blogService.getPosts({ page: 1, pageSize: 100 });
+        if (cancelled) {
+          return;
+        }
+        const index = feed.items.findIndex((item) => item.id === post.id);
+        if (index === -1) {
+          setAdjacentPosts({ newer: null, older: null });
+          return;
+        }
+        setAdjacentPosts({
+          newer: index > 0 ? feed.items[index - 1] : null,
+          older: index < feed.items.length - 1 ? feed.items[index + 1] : null
+        });
+      } catch (navigationError) {
+        console.warn("Failed to load adjacent posts", navigationError);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blogService, post]);
+
+  // Полоса прогресса чтения под верхним краем окна. Ширина обновляется напрямую
+  // через style.transform (не через state): setState на каждый скролл перерисовывал
+  // бы всю страницу.
+  useEffect(() => {
+    if (!post) {
+      return;
+    }
+
+    let rafId = 0;
+    const update = () => {
+      rafId = 0;
+      const articleElement = document.getElementById("post-content");
+      const bar = progressBarRef.current;
+      if (!(articleElement instanceof HTMLElement) || !bar) {
+        return;
+      }
+      bar.style.transform = `scaleX(${getArticleReadProgress(articleElement)})`;
+    };
+    const requestUpdate = () => {
+      if (!rafId) {
+        rafId = window.requestAnimationFrame(update);
+      }
+    };
+
+    requestUpdate();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+    return () => {
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [post]);
+
   useEffect(() => {
     const fetchRelated = async () => {
       if (!post) {
@@ -308,35 +391,6 @@ const BlogPostPage: React.FC = () => {
   const articleContent = useMemo(() => buildTocAndInjectAnchors(contentHtml), [contentHtml]);
 
   useEffect(() => {
-    if (!articleContent.headings.length) {
-      setActiveHeading(null);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-
-        if (visibleEntry?.target?.id) {
-          setActiveHeading(visibleEntry.target.id);
-        }
-      },
-      { rootMargin: "0px 0px -70% 0px", threshold: [0.1, 1] }
-    );
-
-    articleContent.headings.forEach((heading) => {
-      const element = document.getElementById(heading.id);
-      if (element) {
-        observer.observe(element);
-      }
-    });
-
-    return () => observer.disconnect();
-  }, [articleContent]);
-
-  useEffect(() => {
     const fetchEngagement = async () => {
       if (!post) {
         setEngagement(null);
@@ -375,6 +429,18 @@ const BlogPostPage: React.FC = () => {
     }
   }, [blogService, post]);
 
+  // Плавный переход по оглавлению; #hash в адресе сохраняем для шаринга ссылкой.
+  const handleTocClick = useCallback((event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    const target = document.getElementById(id);
+    if (!target) {
+      return;
+    }
+    event.preventDefault();
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "start" });
+    window.history.replaceState(null, "", `#${id}`);
+  }, []);
+
   const topic = post?.topics?.[0] ?? post?.tags?.[0];
   const hasMeta = Boolean(post?.authorName || post?.publishedAt || post?.readingTime);
 
@@ -396,6 +462,36 @@ const BlogPostPage: React.FC = () => {
 ${excerptLine}${shareUrl}`;
     return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }, [post?.excerpt, post?.title, shareUrl]);
+
+  // Настоящая обложка поста (не заглушка) — для превью в соцсетях и разметки.
+  // Адрес приводим к абсолютному: роботы не резолвят относительные пути в JSON-LD.
+  const absoluteCoverUrl = useMemo(() => {
+    const cover = normalizeBlogCoverUrl(post?.coverUrl ?? post?.imageUrl);
+    if (!cover) {
+      return undefined;
+    }
+    return cover.startsWith("http") ? cover : `${window.location.origin}${cover}`;
+  }, [post?.coverUrl, post?.imageUrl]);
+
+  const articleStructuredData = useMemo(() => {
+    if (!post) {
+      return null;
+    }
+
+    return {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: post.title,
+      ...(post.excerpt ? { description: post.excerpt } : {}),
+      ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+      dateModified: post.updatedAt,
+      mainEntityOfPage: shareUrl,
+      ...(absoluteCoverUrl ? { image: absoluteCoverUrl } : {}),
+      // Автор у нас редакция, а не персона — поэтому Organization, не Person.
+      ...(post.authorName ? { author: { "@type": "Organization", name: post.authorName } } : {}),
+      publisher: { "@type": "Organization", name: "Tale Shop" }
+    };
+  }, [post, shareUrl, absoluteCoverUrl]);
 
   const handleCopyLink = useCallback(async () => {
     try {
@@ -421,25 +517,17 @@ ${excerptLine}${shareUrl}`;
     }
   }, [shareUrl]);
 
-  const handleShare = useCallback(async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: post?.title,
-          text: post?.excerpt?.trim() || undefined,
-          url: shareUrl
-        });
-        setShareFeedback("Shared");
-      } catch {
-        // user canceled or browser denied share
-      } finally {
-        window.setTimeout(() => setShareFeedback(""), 1800);
-      }
-      return;
-    }
-
-    await handleCopyLink();
-  }, [handleCopyLink, post?.excerpt, post?.title, shareUrl]);
+  // Шеринг — прямые ссылки на соцсети (как у конкурентов), а не кнопки-слова.
+  const shareTargets = useMemo(() => {
+    const url = encodeURIComponent(shareUrl);
+    const title = encodeURIComponent(post?.title ?? "");
+    return [
+      { label: "Telegram", href: `https://t.me/share/url?url=${url}&text=${title}`, icon: faTelegram },
+      { label: "WhatsApp", href: `https://wa.me/?text=${title}%20${url}`, icon: faWhatsapp },
+      { label: "X", href: `https://twitter.com/intent/tweet?url=${url}&text=${title}`, icon: faXTwitter },
+      { label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${url}`, icon: faFacebookF }
+    ];
+  }, [shareUrl, post?.title]);
 
   if (loading) {
     return (
@@ -496,24 +584,37 @@ ${excerptLine}${shareUrl}`;
 
   return (
     <main className="blog-page">
+      <PageMeta
+        title={post.title}
+        description={post.excerpt || undefined}
+        canonicalPath={`/news/${post.slug}`}
+        imageUrl={absoluteCoverUrl}
+        ogType="article"
+        structuredData={articleStructuredData}
+      />
+      <div className="blog-post-progress" aria-hidden="true">
+        <div className="blog-post-progress__bar" ref={progressBarRef} />
+      </div>
       <section className="section blog-post-section">
         <div className="container blog-post-shell">
-          <nav className="blog-breadcrumbs" aria-label="Breadcrumb">
-            <Link to="/">Home</Link>
-            <span aria-hidden="true">/</span>
-            <Link to="/news">News</Link>
-            <span aria-hidden="true">/</span>
-            <span className="blog-breadcrumbs__current" aria-current="page">
-              {post.title}
-            </span>
-          </nav>
+          {/* Общий компонент крошек: тот же вид, что в каталоге, плюс
+              разметка BreadcrumbList для выдачи. */}
+          <Breadcrumbs
+            items={[
+              { label: "Home", to: "/" },
+              { label: "News", to: "/news" },
+              { label: post.title }
+            ]}
+          />
 
+          {/* Хиро как у конкурентов: компактная обложка слева, справа заголовок,
+              экскерпт, мета и ряд иконок шеринга — весь «социальный» блок наверху. */}
           <header className="blog-post-hero surface">
-            <div className="blog-post-cover" role="img" aria-label={`${post.title} cover`}>
-              <SafeBlogImage src={getBlogPostCoverUrl(post)} alt={post.title} loading="eager" />
+            <div className="blog-post-cover">
+              <PostCoverArt post={post} loading="eager" />
             </div>
 
-            <div className="blog-post-hero__copy">
+            <div className="blog-post-hero__head">
               {topic && <p className="badge blog-post-hero__topic">{topic}</p>}
               <h1>{post.title}</h1>
               {post.excerpt && <p className="blog-post-hero__excerpt">{post.excerpt}</p>}
@@ -523,25 +624,72 @@ ${excerptLine}${shareUrl}`;
                   {post.authorName && <span>By {post.authorName}</span>}
                   {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
                   {post.readingTime && <span>{post.readingTime} min read</span>}
-                  {typeof postStats?.viewsCount === "number" && <span>{postStats.viewsCount} views</span>}
                 </div>
               )}
 
-              <div className="blog-post-hero__actions" aria-label="Article actions">
-                <Link className="btn btn-outline" to="/news" aria-label="Back to news list">
-                  Back to news
-                </Link>
-                <a className="btn btn-ghost" href="#post-content">
-                  Jump to content
-                </a>
-                <button className="btn btn-ghost" type="button" onClick={() => trackBookmark(post.id)} aria-label="Save article for later">
-                  Save for later
+              <div className="blog-post-share-icons" aria-label="Share article">
+                <button
+                  className="share-icon"
+                  type="button"
+                  onClick={handleCopyLink}
+                  aria-label="Copy link"
+                  title={shareFeedback === "Link copied" ? "Copied" : "Copy link"}
+                >
+                  <FontAwesomeIcon icon={shareFeedback === "Link copied" ? faCheck : faLink} />
                 </button>
+                {shareTargets.map((target) => (
+                  <a
+                    key={target.label}
+                    className="share-icon"
+                    href={target.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Share on ${target.label}`}
+                    title={target.label}
+                  >
+                    <FontAwesomeIcon icon={target.icon} />
+                  </a>
+                ))}
+                <a className="share-icon" href={emailShareLink} aria-label="Share via email" title="Email">
+                  <FontAwesomeIcon icon={faEnvelope} />
+                </a>
               </div>
+            </div>
+          </header>
 
-              <div className="post-reactions surface" aria-label="Post reactions">
-                <p className="post-reactions__title">React to this post</p>
-                <div className="post-reactions__list">
+          {/* Одна карточка статьи во всю ширину — как обложка. Внутри: текст,
+              а за разделителем реакции, шеринг и теги. Отдельные плавающие блоки
+              (полоска реакций, карточка автора) читались как несвязанные куски;
+              карточка автора убрана совсем — автор у нас всегда редакция. */}
+          <div className="blog-post-card surface">
+            {/* Оглавление из двух пунктов навигационной ценности не имеет —
+                показываем только от трёх заголовков. */}
+            {articleContent.headings.length >= 3 && (
+              <nav className="blog-post-toc-inline" aria-label="Table of contents">
+                <span className="blog-post-toc-inline__title">On this page</span>
+                {articleContent.headings.map((heading) => (
+                  <a key={heading.id} href={`#${heading.id}`} onClick={(event) => handleTocClick(event, heading.id)}>
+                    {heading.text}
+                  </a>
+                ))}
+              </nav>
+            )}
+
+            {articleHasMeaningfulContent ? (
+              <article id="post-content" className="blog-post-content blog-post-content--article" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
+            ) : (
+              <article id="post-content" className="blog-post-content blog-post-content--empty">
+                <h2>Article content is coming soon</h2>
+                <p className="muted">This post has metadata, but the full article body is not available yet.</p>
+              </article>
+            )}
+
+            {/* Низ карточки: реакции слева, просмотры справа (сюда они переехали
+                из шапки), теги — строкой ниже. */}
+            <div className="blog-post-card__footer">
+              <div className="blog-post-card__row">
+                <div className="post-reactions-inline" aria-label="Post reactions">
+                  <span className="blog-post-card__label">React</span>
                   {reactions.map((emoji) => {
                     const count = engagement?.reactions?.[emoji] ?? 0;
                     const isActive = engagement?.myReaction === emoji;
@@ -559,91 +707,44 @@ ${excerptLine}${shareUrl}`;
                     );
                   })}
                 </div>
+
+                {typeof postStats?.viewsCount === "number" && (
+                  <span className="views-pill" title="Views">
+                    <FontAwesomeIcon icon={faEye} aria-hidden="true" />
+                    {`${postStats.viewsCount} ${postStats.viewsCount === 1 ? "view" : "views"}`}
+                  </span>
+                )}
               </div>
-            </div>
-          </header>
 
-          <div className={`blog-post-layout${articleContent.headings.length > 1 ? " blog-post-layout--with-aside" : ""}`}>
-            {articleContent.headings.length > 1 && (
-              <aside className="blog-post-aside surface" aria-label="Article tools">
-                <p className="blog-post-aside__title">On this page</p>
-                <ul className="blog-post-toc">
-                  {articleContent.headings.map((heading) => (
-                    <li key={heading.id} className={`blog-post-toc__item blog-post-toc__item--h${heading.level}`}>
-                      <a className={activeHeading === heading.id ? "is-active" : ""} href={`#${heading.id}`}>
-                        {heading.text}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <div className="blog-post-share">
-                  <p className="blog-post-aside__title">Share</p>
-                  <button className="btn btn-outline" type="button" onClick={handleCopyLink}>{shareFeedback === "Link copied" ? "Copied" : "Copy link"}</button>
-                  <button className="btn btn-ghost" type="button" onClick={handleShare}>Share</button>
-                  <a href={emailShareLink}>
-                    Share via email
-                  </a>
-                  {shareFeedback && <span className="blog-post-share__feedback">{shareFeedback}</span>}
-                </div>
-              </aside>
-            )}
-
-            {articleHasMeaningfulContent ? (
-              <article id="post-content" className="blog-post-content blog-post-content--article surface" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
-            ) : (
-              <article id="post-content" className="blog-post-content surface blog-post-content--empty">
-                <h2>Article content is coming soon</h2>
-                <p className="muted">This post has metadata, but the full article body is not available yet.</p>
-              </article>
-            )}
-          </div>
-
-          <footer className="blog-post-footer">
-            <div className="blog-post-footer__main surface">
               {post.tags.length > 0 && (
-                <div className="blog-post-footer__group" aria-label="Post tags">
-                  <h3>Tags</h3>
-                  <div className="blog-post-tags">
-                    {post.tags.map((tag) => (
-                      <Link key={tag} to={`/news?tag=${encodeURIComponent(tag)}`} className="blog-tag">
-                        #{tag}
-                      </Link>
-                    ))}
-                  </div>
+                <div className="blog-post-tags" aria-label="Post tags">
+                  {post.tags.map((tag) => (
+                    <Link key={tag} to={`/news?tag=${encodeURIComponent(tag)}`} className="blog-tag">
+                      #{tag}
+                    </Link>
+                  ))}
                 </div>
               )}
-
-              <div className="blog-post-footer__group" aria-label="Share article">
-                <h3>Share this article</h3>
-                <div className="blog-post-footer__share-row">
-                  <button className="btn btn-outline" type="button" onClick={handleCopyLink}>
-                    Copy link
-                  </button>
-                  <button className="btn btn-outline" type="button" onClick={handleShare}>
-                    Share
-                  </button>
-                  <a className="btn btn-outline" href={emailShareLink}>
-                    Share via email
-                  </a>
-                </div>
-                {shareFeedback && <p className="blog-post-share__feedback">{shareFeedback}</p>}
-              </div>
-
-              <div className="blog-post-footer__group">
-                <Link className="btn btn-primary" to="/news">
-                  Back to news
-                </Link>
-              </div>
             </div>
+          </div>
 
-            {post.authorName && (
-              <div className="blog-post-author-card surface">
-                <p className="eyebrow">Author</p>
-                <h3>{post.authorName}</h3>
-                <p className="muted">Writes about games, updates, and practical buying guides at Tale Shop News.</p>
-              </div>
-            )}
-          </footer>
+          <BlogComments postId={post.id} />
+
+          {/* Соседние посты — сдержанные текстовые ссылки, а не отдельные карточки. */}
+          {(adjacentPosts.newer || adjacentPosts.older) && (
+            <nav className="blog-post-nav" aria-label="Adjacent posts">
+              {adjacentPosts.newer && (
+                <Link className="blog-post-nav__link" to={`/news/${adjacentPosts.newer.slug}`}>
+                  ← Newer post: <span>{adjacentPosts.newer.title}</span>
+                </Link>
+              )}
+              {adjacentPosts.older && (
+                <Link className="blog-post-nav__link blog-post-nav__link--right" to={`/news/${adjacentPosts.older.slug}`}>
+                  Older post: <span>{adjacentPosts.older.title}</span> →
+                </Link>
+              )}
+            </nav>
+          )}
 
           <section className="related-posts-section" aria-labelledby="related-posts-title">
             <div className="related-posts-section__header">

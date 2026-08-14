@@ -51,6 +51,7 @@ import GameShelf, { gameHref } from "./GameShelf";
 import DealsCountdown from "./DealsCountdown";
 import DealOfWeekBanner from "./DealOfWeekBanner";
 import SafeGameImage from "../common/SafeGameImage";
+import PostCoverArt from "../blog-page/PostCoverArt";
 import { formatReleaseDate } from "../../utils/format-release-date";
 import type {
     BlogListItem
@@ -287,8 +288,6 @@ function HeroCategoryCard({ category }: { category: HeroCategory }) {
         </Link>
     );
 }
-
-const blogFallbackCover = "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=800&q=80";
 
 // «16 hours ago» для новостных карточек; en-US, как весь витринный текст.
 const timeAgo = (iso?: string): string | null => {
@@ -760,11 +759,12 @@ export default function TaleGameshopMainPage() {
                         <div className="news-grid">
                             {latestNews.map((post) => (
                                 <Link className="news-card lift" key={post.id} to={`/news/${post.slug}`}>
-                                    <div
-                                        className="news-cover"
-                                        aria-hidden="true"
-                                        style={{ backgroundImage: `url(${post.coverUrl || blogFallbackCover})` }}
-                                    />
+                                    {/* Та же обложка, что в ленте и статье: настоящая картинка
+                                        поста или детерминированная заглушка по рубрике — вместо
+                                        прежнего стокового фото с Unsplash на всех карточках. */}
+                                    <div className="news-cover" aria-hidden="true">
+                                        <PostCoverArt post={post} />
+                                    </div>
                                     <div className="news-body">
                                         <span className="news-meta muted">
                                             <FontAwesomeIcon icon={faClock} />

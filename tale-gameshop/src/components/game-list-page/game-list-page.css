@@ -416,112 +416,8 @@
     outline: none;
 }
 
-/* Свой список выбора вместо системного: тот рисуется средствами ОС и в оформление
-   светлой витрины не вписывался — открывалась синяя системная панель. */
-.sort-select {
-    position: relative;
-    display: inline-flex;
-}
-
-/* Кнопка задаёт ширину всему блоку, а список ниже её повторяет — иначе список,
-   заметно более широкий, выглядел съехавшим и не читался как часть этого элемента. */
-.sort-select-button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    min-width: 14rem;
-    height: 2.5rem;
-    padding: 0 0.75rem 0 0.85rem;
-    border: 1px solid #e6e1ff;
-    border-radius: var(--radius-md);
-    background: #fff;
-    cursor: pointer;
-}
-
-/* Стрелка прижата к правому краю, значение занимает остальное место. */
-.sort-select-button svg:last-child {
-    margin-left: auto;
-}
-
-.sort-select-button:hover {
-    border-color: #c9bfff;
-}
-
-.sort-select-caption {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #a79fcb;
-}
-
-.sort-select-value {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: #3d2f74;
-    white-space: nowrap;
-}
-
-.sort-select-button svg {
-    width: 0.9rem;
-    height: 0.9rem;
-    color: #9b92c4;
-}
-
-.sort-select-list {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(100% + 0.3rem);
-    z-index: 30;
-    margin: 0;
-    padding: 0.3rem;
-    list-style: none;
-    border: 1px solid #ece8ff;
-    border-radius: var(--radius-lg);
-    background: #fff;
-    box-shadow: 0 20px 40px rgba(92, 69, 160, 0.18);
-}
-
-@keyframes sort-select-in {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-}
-
-.sort-select-list {
-    animation: sort-select-in 0.16s ease both;
-}
-
-.sort-select-list li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.6rem;
-    border-radius: var(--radius-md);
-    font-size: 0.86rem;
-    color: #5a5286;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.sort-select-list li.is-active {
-    background: #f7f4ff;
-}
-
-.sort-select-list li.is-selected {
-    color: #3d2f74;
-    font-weight: 600;
-}
-
-.sort-select-list li svg {
-    width: 0.9rem;
-    height: 0.9rem;
-    margin-left: auto;
-    color: #6b3ff2;
-}
+/* Стили выбора порядка живут в components/common/sort-select.css — компонент общий
+   для каталога и ленты новостей. */
 
 .catalog-view {
     display: flex;
@@ -950,7 +846,6 @@
     .catalog-game-card,
     .catalog-game-card img,
     .catalog-filter-chip,
-    .sort-select-list,
     .catalog-grid,
     .price-presets button {
         animation: none !important;

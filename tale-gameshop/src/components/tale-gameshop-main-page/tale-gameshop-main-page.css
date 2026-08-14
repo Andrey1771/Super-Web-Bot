@@ -1764,11 +1764,19 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* relative + overflow — контейнер под PostCoverArt (absolute-заглушка или <img>). */
 .main-page .news-cover {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 16 / 9;
   background: linear-gradient(140deg, #f1f2f7 0%, #e7e9f2 100%);
-  background-size: cover;
-  background-position: center;
+}
+
+.main-page .news-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .main-page .news-body {

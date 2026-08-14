@@ -21,7 +21,7 @@ import GameCoverOverlay from '../common/GameCoverOverlay';
 import PageMeta from '../common/PageMeta';
 import Breadcrumbs, { type Crumb } from '../common/Breadcrumbs';
 import PriceRangeFilter from './PriceRangeFilter';
-import SortSelect, { type SortOption } from './SortSelect';
+import SortSelect, { type SortOption } from '../common/SortSelect';
 import {
     EMPTY_CATALOG_PAGE,
     getCatalogPage,
@@ -861,6 +861,7 @@ const TaleGameshopGameList: React.FC = () => {
 
                                 <SortSelect
                                     options={SORT_OPTIONS}
+                                    caption="Sort"
                                     value={sortBy}
                                     onChange={(next) =>
                                         updateParams((params) => {

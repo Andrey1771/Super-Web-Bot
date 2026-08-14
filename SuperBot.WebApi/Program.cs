@@ -127,6 +127,7 @@ builder.Services.AddScoped<ITarotSettingsRepository, TarotSettingsMongoDbReposit
 builder.Services.AddScoped<ITarotDrawRepository, TarotDrawMongoDbRepository>();
 builder.Services.AddScoped<IBlogEventRepository, BlogEventMongoDbRepository>();
 builder.Services.AddScoped<IBlogPostUniqueViewRepository, BlogPostUniqueViewMongoDbRepository>();
+builder.Services.AddScoped<IBlogCommentRepository, BlogCommentMongoDbRepository>();
 builder.Services.AddScoped<IBlogViewSettingsRepository, BlogViewSettingsMongoDbRepository>();
 builder.Services.AddScoped<IUserBlogProfileRepository, UserBlogProfileMongoDbRepository>();
 builder.Services.AddScoped<IAnalyticsSettingsRepository, AnalyticsSettingsMongoDbRepository>();

@@ -16,7 +16,12 @@ public class BlogRecommendationsController : ControllerBase
         _recommendationsService = recommendationsService;
     }
 
+    // Второй адрес — «/api/blog/home-feed»: слово «recommendations» в URL режут
+    // популярные фильтры блокировщиков рекламы (правила про recommendation-виджеты),
+    // и у посетителей с блокировщиком лента вставала на фолбэк. Старый адрес
+    // оставлен для совместимости.
     [HttpGet("home")]
+    [HttpGet("/api/blog/home-feed")]
     public async Task<IActionResult> GetHomeRecommendations([FromQuery] string anonId = "", [FromQuery] int limit = 6)
     {
         var userId = GetCurrentUserId();

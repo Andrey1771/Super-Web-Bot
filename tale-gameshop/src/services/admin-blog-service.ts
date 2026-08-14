@@ -2,7 +2,7 @@ import { injectable } from "inversify";
 import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
-import type { IAdminBlogService, AdminBlogPayload, AdminBlogPostAnalytics, AdminBlogOverviewAnalytics, AdminBlogBreakdown } from "../iterfaces/i-admin-blog-service";
+import type { IAdminBlogService, AdminBlogPayload, AdminBlogPostAnalytics, AdminBlogOverviewAnalytics, AdminBlogBreakdown, AdminBlogComment, AdminBlogCommentStatus } from "../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../types/blog";
 
 @injectable()
@@ -11,6 +11,37 @@ export class AdminBlogService implements IAdminBlogService {
 
   constructor() {
     this._apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+  }
+
+  async getComments(params: {
+    page: number;
+    pageSize: number;
+    status?: AdminBlogCommentStatus | "";
+  }): Promise<{ items: AdminBlogComment[]; total: number }> {
+    const query = new URLSearchParams();
+    query.append("page", String(params.page));
+    query.append("pageSize", String(params.pageSize));
+    if (params.status) {
+      query.append("status", params.status);
+    }
+    const response = await this._apiClient.api.get(`/api/admin/blog/comments?${query.toString()}`);
+    return response.data as { items: AdminBlogComment[]; total: number };
+  }
+
+  async setCommentStatus(id: string, status: AdminBlogCommentStatus): Promise<void> {
+    await this._apiClient.api.post(`/api/admin/blog/comments/${id}/status`, { status });
+  }
+
+  async deleteComment(id: string): Promise<void> {
+    await this._apiClient.api.delete(`/api/admin/blog/comments/${id}`);
+  }
+
+  async banCommentAuthor(commentId: string): Promise<void> {
+    await this._apiClient.api.post(`/api/admin/blog/comments/${commentId}/ban-author`, {});
+  }
+
+  async unbanCommentAuthor(commentId: string): Promise<void> {
+    await this._apiClient.api.post(`/api/admin/blog/comments/${commentId}/unban-author`, {});
   }
 
   async getPosts(params: {
