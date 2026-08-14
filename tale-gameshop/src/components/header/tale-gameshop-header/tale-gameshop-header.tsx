@@ -120,7 +120,7 @@ const PrefMenu: React.FC<PrefMenuProps> = ({ id, triggerLabel, ariaLabel, align 
 export default function TaleGameshopHeader() {
     const { keycloak } = useKeycloak();
     const location = useLocation();
-    const { lang, currency, setLang, setCurrency, languages, currencies } = useSitePreferences();
+    const { lang, currency, setLang, setCurrency, languages, currencies, canSwitchCurrency } = useSitePreferences();
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isDrawerAccountOpen, setIsDrawerAccountOpen] = useState(false);
@@ -410,35 +410,39 @@ export default function TaleGameshopHeader() {
                                 }
                             </PrefMenu>
 
-                            <PrefMenu
-                                id="currency-menu"
-                                ariaLabel="Change currency"
-                                triggerLabel={
-                                    <span className="pref-trigger-label">
-                                        <span className="pref-currency-symbol">{currentCurrency.symbol}</span>
-                                        {currentCurrency.code}
-                                    </span>
-                                }
-                            >
-                                {(close) =>
-                                    currencies.map((option) => (
-                                        <button
-                                            key={option.code}
-                                            type="button"
-                                            role="menuitemradio"
-                                            aria-checked={option.code === currency}
-                                            className={`pref-option ${option.code === currency ? "is-active" : ""}`}
-                                            onClick={() => {
-                                                setCurrency(option.code);
-                                                close();
-                                            }}
-                                        >
-                                            <span className="pref-option-badge">{option.symbol}</span>
-                                            {option.code} · {option.label}
-                                        </button>
-                                    ))
-                                }
-                            </PrefMenu>
+                            {/* Выбирать не из чего, пока сервер отдаёт одну валюту — меню скрыто,
+                                чтобы не обещать выбор, которого нет. */}
+                            {canSwitchCurrency && (
+                                <PrefMenu
+                                    id="currency-menu"
+                                    ariaLabel="Change currency"
+                                    triggerLabel={
+                                        <span className="pref-trigger-label">
+                                            <span className="pref-currency-symbol">{currentCurrency.symbol}</span>
+                                            {currentCurrency.code}
+                                        </span>
+                                    }
+                                >
+                                    {(close) =>
+                                        currencies.map((option) => (
+                                            <button
+                                                key={option.code}
+                                                type="button"
+                                                role="menuitemradio"
+                                                aria-checked={option.code === currency}
+                                                className={`pref-option ${option.code === currency ? "is-active" : ""}`}
+                                                onClick={() => {
+                                                    setCurrency(option.code);
+                                                    close();
+                                                }}
+                                            >
+                                                <span className="pref-option-badge">{option.symbol}</span>
+                                                {option.code} · {option.label}
+                                            </button>
+                                        ))
+                                    }
+                                </PrefMenu>
+                            )}
                         </div>
 
                         <div className="header-cart">
@@ -650,21 +654,23 @@ export default function TaleGameshopHeader() {
                             ))}
                         </div>
                     </div>
-                    <div className="drawer-pref-group" role="group" aria-label="Currency">
-                        <span className="drawer-pref-caption">Currency</span>
-                        <div className="drawer-pref-options">
-                            {currencies.map((option) => (
-                                <button
-                                    key={option.code}
-                                    type="button"
-                                    className={`drawer-pref-chip ${option.code === currency ? "is-active" : ""}`}
-                                    onClick={() => setCurrency(option.code)}
-                                >
-                                    {option.code}
-                                </button>
-                            ))}
+                    {canSwitchCurrency && (
+                        <div className="drawer-pref-group" role="group" aria-label="Currency">
+                            <span className="drawer-pref-caption">Currency</span>
+                            <div className="drawer-pref-options">
+                                {currencies.map((option) => (
+                                    <button
+                                        key={option.code}
+                                        type="button"
+                                        className={`drawer-pref-chip ${option.code === currency ? "is-active" : ""}`}
+                                        onClick={() => setCurrency(option.code)}
+                                    >
+                                        {option.code}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <div className="drawer-actions">

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { PriceBucket } from '../../api/catalogApi';
+import { useSitePreferences } from '../../context/site-preferences';
+import { formatMoney } from '../../utils/format-money';
 
 export type PriceRangeFilterProps = {
     /** Границы по всему каталогу — предел, дальше которого ручки не уезжают. */
@@ -26,6 +28,7 @@ const CHART_HEIGHT = 40;
  * вводить числом.
  */
 const PriceRangeFilter: React.FC<PriceRangeFilterProps> = ({ min, max, from, to, histogram, onChange }) => {
+    const { currency } = useSitePreferences();
     // Пока тянут ручку, значение живёт локально: иначе каждый пиксель движения уходил бы
     // в адресную строку и в запрос к серверу.
     const [draft, setDraft] = useState<[number, number]>([from, to]);
@@ -106,8 +109,8 @@ const PriceRangeFilter: React.FC<PriceRangeFilterProps> = ({ min, max, from, to,
             </div>
 
             <div className="price-filter-values">
-                <span>${Math.round(draftFrom)}</span>
-                <span>${Math.round(draftTo)}</span>
+                <span>{formatMoney(Math.round(draftFrom), currency, {compact: true})}</span>
+                <span>{formatMoney(Math.round(draftTo), currency, {compact: true})}</span>
             </div>
         </div>
     );

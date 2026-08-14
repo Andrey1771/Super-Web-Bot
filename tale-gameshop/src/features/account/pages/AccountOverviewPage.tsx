@@ -18,9 +18,12 @@ import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
 import { usePaymentMethodsSummary } from '../../../hooks/use-payment-methods-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import SafeGameImage from '../../../components/common/SafeGameImage';
+import { useSitePreferences } from '../../../context/site-preferences';
+import { formatMoney } from '../../../utils/format-money';
 import './account-overview-page.css';
 
 const AccountOverviewPage: React.FC = () => {
+    const { currency } = useSitePreferences();
     const {dispatch} = useCart();
     const navigate = useNavigate();
     const {
@@ -360,7 +363,7 @@ const AccountOverviewPage: React.FC = () => {
                             <div className="account-recommendation-body">
                                 <strong>{item.game.title}</strong>
                                 <span className="account-recommendation-price">
-                                    ${Number(item.game.price).toFixed(2)}
+                                    {formatMoney(Number(item.game.price), currency)}
                                 </span>
                             </div>
                             <button

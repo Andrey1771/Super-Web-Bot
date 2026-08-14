@@ -5,9 +5,12 @@ import {useRecommendations} from '../../../../hooks/use-recommendations';
 import RecommendationsSection from '../../../../components/recommendations/recommendations-section';
 import {useCart} from '../../../../context/cart-context';
 import SafeGameImage from '../../../../components/common/SafeGameImage';
+import {useSitePreferences} from '../../../../context/site-preferences';
+import {formatMoney} from '../../../../utils/format-money';
 
 const RecommendationsRow: React.FC = () => {
     const {dispatch} = useCart();
+    const {currency} = useSitePreferences();
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -60,7 +63,7 @@ const RecommendationsRow: React.FC = () => {
                         <div className="security-recommendation-body">
                             <strong>{item.game.title}</strong>
                             <span className="security-recommendation-price">
-                                ${Number(item.game.price).toFixed(2)}
+                                {formatMoney(Number(item.game.price), currency)}
                             </span>
                         </div>
                         <button

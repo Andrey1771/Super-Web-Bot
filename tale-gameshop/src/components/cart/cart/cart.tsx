@@ -19,6 +19,8 @@ import {
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {Product} from "../../../reducers/cart-reducer";
 import SafeGameImage from "../../common/SafeGameImage";
+import {useSitePreferences} from "../../../context/site-preferences";
+import {formatMoney} from "../../../utils/format-money";
 import './cart.css';
 
 type CartItemRowProps = {
@@ -34,12 +36,15 @@ type OrderSummaryProps = {
     total: number;
 };
 
-const formatPrice = (value: number) => `$${value.toFixed(2)}`;
+// Валюта приходит из настроек сайта, а не из символа в шаблоне: корзина обязана
+// показывать ту же валюту, в которой сервер посчитает чекаут.
+const formatPrice = (value: number, currency: string) => formatMoney(value, currency);
 
 const PAYMENT_BADGES = ['Visa', 'Mastercard', 'PayPal', 'Apple Pay', 'Google Pay'];
 
 const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, onRemove, imageBaseUrl}) => {
     const itemTotal = item.price * item.quantity;
+    const {currency} = useSitePreferences();
 
     return (
         <div className="cart-item">
@@ -52,7 +57,7 @@ const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, 
                         <h3 className="cart-item-name">{item.name}</h3>
                         <p className="cart-item-meta">Platform: Steam · Region: Global · Edition: Standard</p>
                     </div>
-                    <div className="cart-item-price">{formatPrice(itemTotal)}</div>
+                    <div className="cart-item-price">{formatPrice(itemTotal, currency)}</div>
                 </div>
                 <div className="cart-chips">
                     <span className="cart-chip"><FontAwesomeIcon icon={faBolt}/>Instant delivery</span>
@@ -74,29 +79,33 @@ const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, 
     );
 };
 
-const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, total}) => (
-    <div className="card cart-summary">
-        <div className="cart-summary-head">
-            <h2>Order summary</h2>
-            <span className="badge">Secure checkout</span>
+const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, total}) => {
+    const {currency} = useSitePreferences();
+
+    return (
+        <div className="card cart-summary">
+            <div className="cart-summary-head">
+                <h2>Order summary</h2>
+                <span className="badge">Secure checkout</span>
+            </div>
+            <div className="cart-summary-lines">
+                <div className="cart-summary-line"><span>Subtotal</span><strong>{formatPrice(subtotal, currency)}</strong></div>
+                <div className="cart-summary-line cart-summary-line-muted"><span>Taxes &amp; promo</span><span>Calculated at checkout</span></div>
+            </div>
+            <div className="cart-summary-total">
+                <span>Total</span>
+                <span className="cart-summary-amount">{formatPrice(total, currency)}</span>
+            </div>
+            <div className="cart-summary-actions">
+                <Link to="/checkout" className="btn btn-primary">Checkout</Link>
+                <Link to="/" className="btn btn-outline">Continue shopping</Link>
+            </div>
+            <div className="cart-pay-badges">
+                {PAYMENT_BADGES.map((label) => <span key={label} className="cart-pay-badge">{label}</span>)}
+            </div>
         </div>
-        <div className="cart-summary-lines">
-            <div className="cart-summary-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div>
-            <div className="cart-summary-line cart-summary-line-muted"><span>Taxes &amp; promo</span><span>Calculated at checkout</span></div>
-        </div>
-        <div className="cart-summary-total">
-            <span>Total</span>
-            <span className="cart-summary-amount">{formatPrice(total)}</span>
-        </div>
-        <div className="cart-summary-actions">
-            <Link to="/checkout" className="btn btn-primary">Checkout</Link>
-            <Link to="/" className="btn btn-outline">Continue shopping</Link>
-        </div>
-        <div className="cart-pay-badges">
-            {PAYMENT_BADGES.map((label) => <span key={label} className="cart-pay-badge">{label}</span>)}
-        </div>
-    </div>
-);
+    );
+};
 
 const TrustStrip: React.FC = () => (
     <div className="card cart-trust">
@@ -124,6 +133,7 @@ const RecommendedRow: React.FC = () => {
         reload: reloadRecommendations
     } = useRecommendations(4);
     const {dispatch} = useCart();
+    const {currency} = useSitePreferences();
 
     // Добавление в корзину — тот же контракт, что в GameCard: цена с учётом активной скидки.
     const handleAddRecommended = (game: RecommendationItem['game']) => {
@@ -176,7 +186,7 @@ const RecommendedRow: React.FC = () => {
                             <h3 className="rec-card-title">{item.game.title}</h3>
                             <p className="rec-card-tag">Steam</p>
                             <div className="rec-card-foot">
-                                <span className="rec-card-price">{formatPrice(Number(item.game.price))}</span>
+                                <span className="rec-card-price">{formatPrice(Number(item.game.price), currency)}</span>
                                 <button type="button" className="btn btn-outline" onClick={() => handleAddRecommended(item.game)}>
                                     <FontAwesomeIcon icon={faCartPlus}/>
                                     Add

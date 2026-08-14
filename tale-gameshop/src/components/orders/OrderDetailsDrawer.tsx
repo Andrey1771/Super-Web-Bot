@@ -4,6 +4,7 @@ import Card from "../ui/Card";
 import ModalConfirm from "../ui/ModalConfirm";
 import { useToast } from "../ui/ToastProvider";
 import type { Order } from "../../types/orders";
+import { formatOrderMoney } from "../../utils/format-money";
 
 type OrderDetailsDrawerProps = {
   order: Order | null;
@@ -51,7 +52,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({
     if (!order) {
       return "";
     }
-    return `${order.totalAmount.toFixed(2)} ${order.currency}`;
+    return formatOrderMoney(order.totalAmount, order.currency);
   }, [order]);
 
   const handleCopy = async (value: string, label: string) => {

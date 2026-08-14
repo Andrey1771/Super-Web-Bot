@@ -10,6 +10,8 @@ import type { IAdminGameDiscountsService } from "../../iterfaces/i-admin-game-di
 import type { IApiClient } from "../../iterfaces/i-api-client";
 import type { IUrlService } from "../../iterfaces/i-url-service";
 import type { AdminGameDiscountRow, GameDiscountStatus } from "../../types/admin-game-discounts";
+import { useSitePreferences } from "../../context/site-preferences";
+import { formatMoney } from "../../utils/format-money";
 
 // Конфиг баннера «Deal of the week» на главной: герой (его скидка = предложение) + кулисы.
 type DealOfWeekConfig = {
@@ -40,6 +42,7 @@ const statusLabels: Record<GameDiscountStatus, string> = {
 const toDateInput = (iso?: string | null) => (iso ? iso.slice(0, 10) : new Date().toISOString().slice(0, 10));
 
 const GameDiscountsPage: React.FC = () => {
+  const { baseCurrency } = useSitePreferences();
   const service = container.get<IAdminGameDiscountsService>(IDENTIFIERS.IAdminGameDiscountsService);
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
   const { addToast } = useToast();
@@ -510,10 +513,10 @@ const GameDiscountsPage: React.FC = () => {
                   ) : "—"}
                 </td>
                 <td title={item.title}>{item.title}</td>
-                <td>${Number(item.basePrice).toFixed(2)}</td>
+                <td>{formatMoney(Number(item.basePrice), baseCurrency)}</td>
                 <td>{item.discountType ?? "—"}</td>
                 <td>{item.discountPercent ? `${Number(item.discountPercent).toFixed(0)}%` : "—"}</td>
-                <td>${Number(item.finalPrice).toFixed(2)}</td>
+                <td>{formatMoney(Number(item.finalPrice), baseCurrency)}</td>
                 <td>{item.startDate?.slice(0, 10) ?? "—"}</td>
                 <td>{item.endDate?.slice(0, 10) ?? "—"}</td>
                 <td>{statusLabels[item.status]}</td>

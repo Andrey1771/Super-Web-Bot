@@ -59,6 +59,8 @@ import type {
 import { subscribeNewsletter } from "../../api/newsletterApi";
 import { getWeeklyChart, type WeeklyChartEntry } from "../../api/catalogApi";
 import { hasVisibleDiscount } from "../../utils/game-pricing";
+import { useSitePreferences } from "../../context/site-preferences";
+import { formatMoney } from "../../utils/format-money";
 import PageMeta from "../common/PageMeta";
 import {
     rememberNewsletterSubscription,
@@ -314,6 +316,7 @@ const timeAgo = (iso?: string): string | null => {
 };
 
 export default function TaleGameshopMainPage() {
+    const { currency } = useSitePreferences();
     const [games, setGames] = useState < Game[] > ([]);
     const [blogPosts, setBlogPosts] = useState < BlogListItem[] > ([]);
     // Серверный агрегат продаж за неделю: [{ gameId, sold }] — порядок полки «Popular this week».
@@ -684,7 +687,7 @@ export default function TaleGameshopMainPage() {
                                                 </span>
                                                 <span className="mood-game-title">{game.title}</span>
                                                 <span className="mood-game-price">
-                                                    ${Number(game.finalPrice ?? game.price).toFixed(2)}
+                                                    {formatMoney(Number(game.finalPrice ?? game.price), currency)}
                                                 </span>
                                             </Link>
                                         ))}
@@ -724,9 +727,9 @@ export default function TaleGameshopMainPage() {
             />
 
             <GameShelf
-                eyebrow={`Under $${budgetShelfMaxPrice}`}
+                eyebrow={`Under ${formatMoney(budgetShelfMaxPrice, currency, {compact: true})}`}
                 title="Big fun, small price"
-                subtitle={`Every pick on this shelf is $${budgetShelfMaxPrice} or less.`}
+                subtitle={`Every pick on this shelf is ${formatMoney(budgetShelfMaxPrice, currency, {compact: true})} or less.`}
                 games={budgetGames}
                 baseUrl={urlService.apiBaseUrl}
                 viewAllTo={`/games?filterMaxPrice=${budgetShelfMaxPrice}`}

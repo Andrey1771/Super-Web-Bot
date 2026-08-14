@@ -16,6 +16,8 @@ import RecommendationsSection from '../../../components/recommendations/recommen
 import { fetchAccountOrderDetails } from '../../../api/accountApi';
 import type { AccountOrderDetails, AccountOrderListItem } from '../../../types/account-orders';
 import SafeGameImage from '../../../components/common/SafeGameImage';
+import { useSitePreferences } from '../../../context/site-preferences';
+import { formatMoney, formatOrderMoney } from '../../../utils/format-money';
 import './account-orders-page.css';
 
 const PAGE_SIZE = 10;
@@ -25,9 +27,8 @@ type SortOption = 'newest' | 'oldest' | 'total_desc' | 'total_asc';
 
 type OrderDetailItem = AccountOrderDetails['items'][number];
 
-const formatCurrency = (value: number, currency = 'USD') => (
-  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value)
-);
+// Суммы заказа форматируются в валюте самого заказа — она зафиксирована при оплате.
+const formatCurrency = (value: number, currency?: string | null) => formatOrderMoney(value, currency);
 
 const formatDate = (value: string) => {
   const date = new Date(value);
@@ -232,6 +233,7 @@ const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
 };
 
 const AccountOrdersPage: React.FC = () => {
+  const { currency } = useSitePreferences();
   const [status, setStatus] = useState<StatusFilter>('all');
   const [sort, setSort] = useState<SortOption>('newest');
   const [searchInput, setSearchInput] = useState('');
@@ -435,7 +437,7 @@ const AccountOrdersPage: React.FC = () => {
               <div className="orders-recommendation-body">
                 <strong>{item.game.title}</strong>
                 <span className="orders-recommendation-price">
-                  ${Number(item.game.price).toFixed(2)}
+                  {formatMoney(Number(item.game.price), currency)}
                 </span>
               </div>
               <button

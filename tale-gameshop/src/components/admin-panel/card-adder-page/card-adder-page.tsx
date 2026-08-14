@@ -8,6 +8,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { Form } from "../../../store";
 import GameTypeDropdown from "../game-type-dropdown/game-type-dropdown";
 import PageHeader from "../../layout/PageHeader";
+import { useSitePreferences } from "../../../context/site-preferences";
+import { formatMoney } from "../../../utils/format-money";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
 import Card from "../../ui/Card";
 import Drawer from "../../ui/Drawer";
@@ -53,6 +55,7 @@ const emptyForm: Form = {
 };
 
 const CardAdderPage: React.FC = () => {
+  const { baseCurrency } = useSitePreferences();
   const [items, setItems] = useState<GameItem[]>([]);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [selectedGame, setSelectedGame] = useState<GameItem | null>(null);
@@ -217,10 +220,10 @@ const CardAdderPage: React.FC = () => {
 
   const isFormValid = Object.keys(validationErrors).length === 0;
 
-  const formatPrice = (price: number | undefined) => {
-    const value = typeof price === "number" ? price : 0;
-    return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" }).format(value);
-  };
+  // Была зашита RUB, при том что сервер считает чекаут в валюте каталога:
+  // менеджер вводил цену и видел «1 999 ₽», а покупателю выставлялось $1999.
+  const formatPrice = (price: number | undefined) =>
+    formatMoney(typeof price === "number" ? price : 0, baseCurrency);
 
   const getLegacyFileName = (path: string) => {
     if (!path) {

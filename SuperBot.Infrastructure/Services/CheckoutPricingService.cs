@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Payments;
 using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Services
@@ -78,8 +79,10 @@ namespace SuperBot.Infrastructure.Services
         /// Валюта, в которой ведётся каталог и происходит списание. Задаётся сервером и только им.
         /// Цены в каталоге — числа без валюты, конвертации нет, поэтому смена валюты означала бы
         /// списание того же числа в другой (более дешёвой) валюте.
-        /// Прежде чем добавлять мультивалютность: нужны курсы, хранение валюты у товара и учёт
-        /// валют без копеек (JPY и т.п.), где допущение «умножить на 100» неверно.
+        /// Прежде чем добавлять мультивалютность: нужны курсы и хранение валюты у товара.
+        /// Валюты без копеек (JPY, XTR) уже учтены — см. <see cref="CurrencyMinorUnits"/>.
+        /// Витрина обязана показывать ИМЕННО эту валюту: её отдаёт /api/storefront/currency,
+        /// чтобы фронт не мог разойтись с расчётом.
         /// </summary>
         public const string SettlementCurrency = "USD";
 
@@ -234,10 +237,11 @@ namespace SuperBot.Infrastructure.Services
                 total = 0m;
             }
 
-            total = Math.Round(total, 2, MidpointRounding.AwayFromZero);
+            // Точность округления берём у валюты, а не из константы: у JPY и XTR дробной части нет.
+            total = CurrencyMinorUnits.Round(total, currency);
 
             // Центы считаем один раз и здесь же — дальше сумма никем не пересчитывается.
-            var amountMinorUnits = (long)Math.Round(total * 100m, MidpointRounding.AwayFromZero);
+            var amountMinorUnits = CurrencyMinorUnits.ToMinor(total, currency);
             if (amountMinorUnits <= 0)
             {
                 return CheckoutPricingResult.Fail("Order total must be greater than zero.");

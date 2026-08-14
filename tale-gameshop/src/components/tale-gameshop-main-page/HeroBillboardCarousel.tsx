@@ -6,6 +6,8 @@ import { Game } from "../../models/game";
 import SafeGameImage from "../common/SafeGameImage";
 import { slugify } from "../../utils/slugify";
 import { discountPercentOf, finalPriceOf, hasVisibleDiscount } from "../../utils/game-pricing";
+import { useSitePreferences } from "../../context/site-preferences";
+import { formatMoney } from "../../utils/format-money";
 
 // Главный баннер витрины — плоская слайд-карусель игр (лента, сдвигаемая по горизонтали).
 // Слайд целиком — ссылка на страницу игры: жанровый бейдж, название, цена и CTA поверх обложки.
@@ -32,6 +34,7 @@ const gamePrice = (game: Game) => ({
 const mod = (value: number, size: number) => ((value % size) + size) % size;
 
 export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: HeroBillboardCarouselProps) {
+    const { currency } = useSitePreferences();
     const count = games.length;
     // Позиция в расширенной ленте [клон последнего, ...игры, клон первого]:
     // -1 и count — клоны. Благодаря им обход края всегда едет в сторону движения
@@ -181,10 +184,10 @@ export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: 
                                         {price.hasDiscount && (
                                             <>
                                                 <span className="hb-deal">−{price.percent}%</span>
-                                                <span className="hb-price-old">${price.regular.toFixed(2)}</span>
+                                                <span className="hb-price-old">{formatMoney(price.regular, currency)}</span>
                                             </>
                                         )}
-                                        <span className="hb-price">${price.final.toFixed(2)}</span>
+                                        <span className="hb-price">{formatMoney(price.final, currency)}</span>
                                     </span>
                                     <span className="hb-cta">
                                         View game

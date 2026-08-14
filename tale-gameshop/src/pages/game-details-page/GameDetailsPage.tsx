@@ -30,15 +30,10 @@ import { formatReleaseDate } from '../../utils/format-release-date';
 import PageMeta from '../../components/common/PageMeta';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import { slugify } from '../../utils/slugify';
+import { useSitePreferences } from '../../context/site-preferences';
+import { formatMoney } from '../../utils/format-money';
 
-const formatPrice = (price: number, currency: string) => {
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2
-  });
-  return formatter.format(price);
-};
+const formatPrice = (price: number, currency: string) => formatMoney(price, currency);
 
 const formatDuration = (durationSec?: number) => {
   if (!durationSec) return '';
@@ -552,55 +547,63 @@ const EditionSelector = ({
   editions: Edition[];
   selectedId: string;
   onSelect: (id: string) => void;
-}) => (
-  <div className="card" id="dlc-editions">
-    <h2>Edition</h2>
-    <div className="edition-list">
-      {editions.map((edition) => (
-        <label key={edition.code} className={`edition-item ${selectedId === edition.code ? 'is-active' : ''}`}>
-          <input
-            type="radio"
-            name="edition"
-            checked={selectedId === edition.code}
-            onChange={() => onSelect(edition.code)}
-          />
-          <div>
-            <p className="edition-name">{edition.title}</p>
-            <p className="edition-description">{edition.description}</p>
-          </div>
-          <div className="edition-pricing">
-            <span className="edition-price">{formatPrice(edition.price, 'USD')}</span>
-            {edition.discountPercent && (
-              <span className="edition-old">
-                {formatPrice(edition.price / (1 - edition.discountPercent / 100), 'USD')}
-              </span>
-            )}
-          </div>
-        </label>
-      ))}
-    </div>
-  </div>
-);
+}) => {
+  const { currency: siteCurrency } = useSitePreferences();
 
-const DLCList = ({ items }: { items: DLC[] }) => (
-  <div className="card">
-    <h2>DLC & bundles</h2>
-    <div className="dlc-list">
-      {items.map((dlc) => (
-        <div key={dlc.id} className="dlc-item">
-          <SafeGameImage src={dlc.coverUrl} gameTitle={dlc.title} />
-          <div>
-            <p className="dlc-title">{dlc.title}</p>
-            <span className="dlc-price">{formatPrice(dlc.price, 'USD')}</span>
-          </div>
-          <button type="button" className="btn btn-outline" disabled title="Coming soon">
-            Add
-          </button>
-        </div>
-      ))}
+  return (
+    <div className="card" id="dlc-editions">
+      <h2>Edition</h2>
+      <div className="edition-list">
+        {editions.map((edition) => (
+          <label key={edition.code} className={`edition-item ${selectedId === edition.code ? 'is-active' : ''}`}>
+            <input
+              type="radio"
+              name="edition"
+              checked={selectedId === edition.code}
+              onChange={() => onSelect(edition.code)}
+            />
+            <div>
+              <p className="edition-name">{edition.title}</p>
+              <p className="edition-description">{edition.description}</p>
+            </div>
+            <div className="edition-pricing">
+              <span className="edition-price">{formatPrice(edition.price, siteCurrency)}</span>
+              {edition.discountPercent && (
+                <span className="edition-old">
+                  {formatPrice(edition.price / (1 - edition.discountPercent / 100), siteCurrency)}
+                </span>
+              )}
+            </div>
+          </label>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+const DLCList = ({ items }: { items: DLC[] }) => {
+  const { currency: siteCurrency } = useSitePreferences();
+
+  return (
+    <div className="card">
+      <h2>DLC & bundles</h2>
+      <div className="dlc-list">
+        {items.map((dlc) => (
+          <div key={dlc.id} className="dlc-item">
+            <SafeGameImage src={dlc.coverUrl} gameTitle={dlc.title} />
+            <div>
+              <p className="dlc-title">{dlc.title}</p>
+              <span className="dlc-price">{formatPrice(dlc.price, siteCurrency)}</span>
+            </div>
+            <button type="button" className="btn btn-outline" disabled title="Coming soon">
+              Add
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const DeveloperPublisherCard = ({ items }: { items: { id: string; name: string; logoUrl: string; website: string }[] }) => (
   <div className="card">
@@ -843,6 +846,7 @@ const QASection = ({
 };
 
 const RecommendationsCarousel = ({ items }: { items: GameCardItem[] }) => {
+  const { currency: siteCurrency } = useSitePreferences();
   const trackRef = useRef<HTMLDivElement | null>(null);
 
   const handleScroll = (direction: 'left' | 'right') => {
@@ -872,7 +876,7 @@ const RecommendationsCarousel = ({ items }: { items: GameCardItem[] }) => {
               <p className="line-clamp-2">{item.title}</p>
             </Link>
             <div className="recommendation-meta">
-              <span>{formatPrice(item.price, 'USD')}</span>
+              <span>{formatPrice(item.price, siteCurrency)}</span>
               <span className="recommendation-rating">★ {item.rating.toFixed(1)}</span>
             </div>
             <button className="btn btn-primary btn-small" type="button" disabled title="Coming soon">
@@ -886,6 +890,7 @@ const RecommendationsCarousel = ({ items }: { items: GameCardItem[] }) => {
 };
 
 const GameDetailsPage: React.FC = () => {
+  const { currency: siteCurrency } = useSitePreferences();
   const { slug } = useParams<{ slug: string }>();
   const [data, setData] = useState<GameDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -991,14 +996,18 @@ const GameDetailsPage: React.FC = () => {
   }, [data?.game?.gameId, gameDetailsService]);
 
   const selectedEdition = data?.game.editions?.find((edition) => edition.code === selectedEditionId);
+  // Валюту берём у витрины, а не из свободного текстового поля GameDetails: списание
+  // всё равно пройдёт в валюте расчёта сервера, и показать другую — значит соврать.
   const displayPricing = selectedEdition
     ? {
         price: selectedEdition.price,
         oldPrice: selectedEdition.discountPercent ? selectedEdition.price / (1 - selectedEdition.discountPercent / 100) : undefined,
-        currency: data?.pricing.currency ?? 'USD',
+        currency: siteCurrency,
         discountPercent: selectedEdition.discountPercent
       }
-    : data?.pricing;
+    : data?.pricing
+      ? { ...data.pricing, currency: siteCurrency }
+      : undefined;
   const isAuthenticated = Boolean(keycloakService.keycloak?.authenticated);
 
   const renderPlatformIcon = (platform: string) => {
