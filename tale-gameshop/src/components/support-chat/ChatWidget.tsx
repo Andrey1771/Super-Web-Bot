@@ -23,7 +23,9 @@ const SESSION_KEY = "tale_support_chat_session";
 const HISTORY_KEY = "tale_support_chat_history";
 
 // Сообщения, нарисованные до ответа сервера: у них временный id и время по часам браузера.
-const isLocalId = (id: string) => id.startsWith("local-") || id.startsWith("stream-");
+// Проверка на строку не лишняя: неожиданная форма ответа не должна ронять весь магазин.
+const isLocalId = (id: string) =>
+  typeof id === "string" && (id.startsWith("local-") || id.startsWith("stream-"));
 
 // Курсор опроса берём только по подтверждённым сервером сообщениям: часы браузера и сервера
 // расходятся, и время оптимистичной заглушки может «перепрыгнуть» ответ специалиста.
@@ -48,7 +50,7 @@ const mergeMessages = (prev: ChatMessage[], incoming: ChatMessage[]): ChatMessag
   const kept = prev.filter(
     (message) =>
       !isLocalId(message.id) ||
-      !fresh.some((item) => item.role === message.role && item.text.trim() === message.text.trim())
+      !fresh.some((item) => item.role === message.role && (item.text ?? "").trim() === (message.text ?? "").trim())
   );
 
   return [...kept, ...fresh];

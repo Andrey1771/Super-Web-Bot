@@ -35,7 +35,9 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isTyping, typingLab
   const rows = useMemo(() => {
     // Пустая заглушка ответа висит до первого куска стрима — рисовать её незачем,
     // роль «сейчас печатает» играет отдельный индикатор.
-    const visible = messages.filter((message) => message.role === "user" || message.text.trim().length > 0);
+    const visible = messages.filter(
+      (message) => message.role === "user" || (message.text ?? "").trim().length > 0
+    );
     const locale = lang === "ru" ? "ru-RU" : "en-US";
     const today = startOfDay(new Date().toISOString());
     const yesterday = today - 24 * 60 * 60 * 1000;

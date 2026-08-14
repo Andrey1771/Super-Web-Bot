@@ -50,11 +50,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, labels, startsGr
 
   // Оценить можно только сохранённый ответ бота: у заглушки стрима ещё нет серверного id,
   // а сообщение о передаче специалисту оценивать бессмысленно.
-  const isPending = message.id.startsWith("local-") || message.id.startsWith("stream-");
-  const canRate = Boolean(onFeedback) && !isUser && !isAgent && !isHandoff && !isPending && message.text.trim().length > 0;
+  const text = message.text ?? "";
+  const messageId = message.id ?? "";
+  const isPending = messageId.startsWith("local-") || messageId.startsWith("stream-");
+  const canRate = Boolean(onFeedback) && !isUser && !isAgent && !isHandoff && !isPending && text.trim().length > 0;
   const feedback = message.metadata?.feedback;
 
-  const rate = (value: ChatFeedback) => onFeedback?.(message.id, feedback === value ? null : value);
+  const rate = (value: ChatFeedback) => onFeedback?.(messageId, feedback === value ? null : value);
 
   const bubbleClass = [
     "support-chat__bubble",
@@ -94,12 +96,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, labels, startsGr
           ))}
         <div className={bubbleClass}>
           {isUser ? (
-            <p>{message.text}</p>
+            <p>{text}</p>
           ) : (
             <div
               className="support-chat__markdown"
               // Sanitized in renderMarkdown (DOMPurify + strict tag/attr whitelist).
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.text) }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
             />
           )}
         </div>

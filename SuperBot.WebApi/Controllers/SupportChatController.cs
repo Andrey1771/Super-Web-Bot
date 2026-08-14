@@ -11,6 +11,10 @@ namespace SuperBot.WebApi.Controllers;
 [Route("api/support/chat")]
 public class SupportChatController : ControllerBase
 {
+    // SSE-события сериализуются вручную, поэтому camelCase из MVC на них не распространяется.
+    // Без этого клиент получал поля ответа в PascalCase, не находил text/id и падал в конце стрима.
+    private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly ISupportChatService _chatService;
     private readonly ILogger _streamLogger;
     private readonly ILogger _pollLogger;
@@ -186,20 +190,20 @@ public class SupportChatController : ControllerBase
                 GetClientIp(),
                 async chunk =>
                 {
-                    var payload = JsonSerializer.Serialize(new { text = chunk });
+                    var payload = JsonSerializer.Serialize(new { text = chunk }, StreamJsonOptions);
                     await Response.WriteAsync($"data: {payload}\n\n", cancellationToken);
                     await Response.Body.FlushAsync(cancellationToken);
                 },
                 cancellationToken);
 
-            var donePayload = JsonSerializer.Serialize(new { message });
+            var donePayload = JsonSerializer.Serialize(new { message }, StreamJsonOptions);
             await Response.WriteAsync($"event: done\ndata: {donePayload}\n\n", cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
             _streamLogger.LogInformation("Support chat stream finished. SessionId={SessionId}", sessionId);
         }
         catch (SupportChatRequestException ex)
         {
-            var errorPayload = JsonSerializer.Serialize(new { error = ex.Message });
+            var errorPayload = JsonSerializer.Serialize(new { error = ex.Message }, StreamJsonOptions);
             await Response.WriteAsync($"event: error\ndata: {errorPayload}\n\n", cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
             _streamLogger.LogWarning("Support chat stream failed. SessionId={SessionId} Error={Error}", sessionId, ex.Message);
