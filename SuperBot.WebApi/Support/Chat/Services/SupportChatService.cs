@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -25,6 +26,9 @@ public interface ISupportChatService
     Task<ChatSessionDto> AssignSessionAsync(string sessionId, SupportUserContext agent);
     Task<ChatSessionDto> UpdateSessionAsync(string sessionId, UpdateChatSessionRequest request);
     Task<ChatMessageDto> AddAgentMessageAsync(string sessionId, SupportUserContext agent, string text);
+    Task<ChatMessageDto> SetMessageFeedbackAsync(string sessionId, string messageId, string? feedback);
+    Task<AddChatMessageResponse> RequestHandoffAsync(string sessionId, SupportUserContext? user, RequestHandoffRequest request);
+    Task<SupportChatStatsDto> GetStatsAsync(int days);
     Task<ChatMessageDto?> StreamAssistantResponseAsync(
         string sessionId,
         SupportUserContext? user,
@@ -37,6 +41,8 @@ public interface ISupportChatService
 public class SupportChatService : ISupportChatService
 {
     private const string AssistantName = "Tale Support (AI)";
+
+    private const string HandoffToolName = "handoff_to_human";
 
     // Grounded, multilingual, safety-aware persona. Knowledge-base context is appended per turn.
     private const string SystemPromptBase = """
@@ -58,6 +64,8 @@ public class SupportChatService : ISupportChatService
         STYLE
         - Friendly, professional and concise. Lead with the answer, then give concrete next steps
           (short numbered steps when it helps). Light Markdown is fine (bold, links, short lists).
+        - Keep replies short — around 120 words. Only a step-by-step activation or refund walkthrough
+          may run longer. Never pad an answer with a recap of what the customer just said.
 
         SECURITY (critical)
         - Never ask for a password, a full card number, or authenticator/2FA codes. Account recovery happens
@@ -76,45 +84,56 @@ public class SupportChatService : ISupportChatService
         """;
 
     // Explicit requests for a human — safe to escalate immediately without calling the model.
-    private static readonly string[] HumanRequestSignals =
+    // Word(...) matches the whole word only; Stem(...) also matches longer forms of it
+    // (оператору, взломали, compromised). Plain substring matching used to fire on innocent
+    // text — "суд" inside "судя по всему" escalated the chat at high priority.
+    private static readonly EscalationSignal[] HumanRequestSignals =
     {
-        "human", "real person", "live agent", "real agent", "speak to someone", "talk to a person",
-        "talk to someone", "operator", "manager", "representative", "agent please",
-        "оператор", "человек", "живой", "живого", "специалист", "менеджер", "сотрудник"
+        Stem("human"), Word("real person"), Word("live agent"), Word("real agent"),
+        Word("speak to someone"), Word("talk to a person"), Word("talk to someone"),
+        Stem("operator"), Stem("manager"), Stem("representative"), Word("agent please"),
+        Stem("оператор"), Stem("человек"), Word("живой"), Word("живого"),
+        Stem("специалист"), Stem("менеджер"), Stem("сотрудник")
     };
 
     // High-risk situations that should reach a human even if not explicitly requested.
-    private static readonly (string Keyword, string Category)[] HighRiskSignals =
+    private static readonly EscalationSignal[] HighRiskSignals =
     {
-        ("hacked", "Account & security"), ("stolen", "Account & security"),
-        ("unauthorized", "Account & security"), ("compromis", "Account & security"),
-        ("взлом", "Account & security"), ("украл", "Account & security"), ("доступ к аккаунт", "Account & security"),
-        ("chargeback", "Payment & checkout"), ("fraud", "Payment & checkout"), ("scam", "Payment & checkout"),
-        ("мошен", "Payment & checkout"), ("чарджбэк", "Payment & checkout"),
-        ("lawsuit", "Other"), ("legal action", "Other"), ("court", "Other"),
-        ("суд", "Other"), ("полиц", "Other")
+        Word("hacked", "Account & security"), Word("stolen", "Account & security"),
+        Word("unauthorized", "Account & security"), Stem("compromis", "Account & security"),
+        Stem("взлом", "Account & security"), Stem("украл", "Account & security"),
+        Stem("доступ к аккаунт", "Account & security"),
+        Word("chargeback", "Payment & checkout"), Word("fraud", "Payment & checkout"),
+        Word("scam", "Payment & checkout"), Stem("мошен", "Payment & checkout"),
+        Stem("чарджбэк", "Payment & checkout"),
+        Word("lawsuit", "Other"), Word("legal action", "Other"), Word("court", "Other"),
+        Word("суд", "Other"), Stem("судебн", "Other"), Stem("полиц", "Other")
     };
 
     // Lightweight category inference from the customer's words (mirrors the support taxonomy).
-    private static readonly (string[] Keywords, string Category)[] CategoryRules =
+    private static readonly (EscalationSignal[] Signals, string Category)[] CategoryRules =
     {
-        (new[] { "refund", "money back", "возврат", "вернуть деньги" }, "Refund request"),
-        (new[] { "payment", "card", "pay ", "declined", "оплат", "карта", "платеж" }, "Payment & checkout"),
-        (new[] { "activate", "redeem", "key", "code", "region", "актив", "ключ", "код", "регион" }, "Key delivery / activation"),
-        (new[] { "order", "delivery", "delivered", "заказ", "доставк" }, "Order status"),
-        (new[] { "account", "login", "2fa", "password", "аккаунт", "вход", "пароль" }, "Account & security"),
-        (new[] { "bug", "error", "crash", "not working", "ошибк", "баг", "не работает" }, "Technical issue / bug"),
+        (new[] { Stem("refund"), Word("money back"), Stem("возврат"), Word("вернуть деньги") }, "Refund request"),
+        (new[] { Stem("payment"), Stem("card"), Word("pay"), Word("declined"), Stem("оплат"), Stem("карта"), Stem("платеж") }, "Payment & checkout"),
+        (new[] { Stem("activat"), Stem("redeem"), Stem("key"), Stem("code"), Stem("region"), Stem("актив"), Stem("ключ"), Stem("код"), Stem("регион") }, "Key delivery / activation"),
+        (new[] { Stem("order"), Stem("deliver"), Stem("заказ"), Stem("доставк") }, "Order status"),
+        (new[] { Stem("account"), Stem("login"), Word("2fa"), Stem("password"), Stem("аккаунт"), Stem("вход"), Stem("пароль") }, "Account & security"),
+        (new[] { Stem("bug"), Stem("error"), Stem("crash"), Word("not working"), Stem("ошибк"), Word("баг"), Word("не работает") }, "Technical issue / bug"),
     };
 
     private readonly IMongoCollection<ChatSession> _sessions;
     private readonly IMongoCollection<ChatMessage> _messages;
     private readonly SupportChatOptions _options;
     private readonly IMemoryCache _cache;
-    private readonly IOllamaChatClient _ollamaClient;
+    private readonly ISupportLlmClient _llm;
     private readonly ISupportKnowledgeBase _knowledgeBase;
+    private readonly ISupportInstantAnswers _instantAnswers;
+    private readonly ISupportAvailability _availability;
     private readonly ISupportNotificationService _notifications;
     private readonly ILlmConcurrencyLimiter _llmLimiter;
+    private readonly ISupportSessionGate _sessionGate;
     private readonly ITurnstileVerifier _turnstile;
+    private readonly ILlmSpendTracker _spend;
     private readonly ILogger<SupportChatService> _logger;
 
     private static readonly JsonSerializerOptions ToolArgsJsonOptions = new(JsonSerializerDefaults.Web);
@@ -123,31 +142,46 @@ public class SupportChatService : ISupportChatService
         IMongoDatabase database,
         IOptions<SupportChatOptions> options,
         IMemoryCache cache,
-        IOllamaChatClient ollamaClient,
+        ISupportLlmClient llm,
         ISupportKnowledgeBase knowledgeBase,
+        ISupportInstantAnswers instantAnswers,
+        ISupportAvailability availability,
         ISupportNotificationService notifications,
         ILlmConcurrencyLimiter llmLimiter,
+        ISupportSessionGate sessionGate,
         ITurnstileVerifier turnstile,
+        ILlmSpendTracker spend,
         ILogger<SupportChatService> logger)
     {
         _sessions = database.GetCollection<ChatSession>("SupportChatSessions");
         _messages = database.GetCollection<ChatMessage>("SupportChatMessages");
         _options = options.Value;
         _cache = cache;
-        _ollamaClient = ollamaClient;
+        _llm = llm;
         _knowledgeBase = knowledgeBase;
+        _instantAnswers = instantAnswers;
+        _availability = availability;
         _notifications = notifications;
         _llmLimiter = llmLimiter;
+        _sessionGate = sessionGate;
         _turnstile = turnstile;
+        _spend = spend;
         _logger = logger;
     }
 
     public Task<ChatConfigDto> GetConfigAsync()
     {
+        // Сроки отдаём виджету заранее: честное «оператор ответит через 15 минут, а я отвечу
+        // сейчас» удерживает от переключения лучше, чем спрятанная кнопка.
+        var availability = _availability.GetState();
         return Task.FromResult(new ChatConfigDto
         {
             StreamingEnabled = _options.StreamingEnabled,
-            TurnstileSiteKey = _options.TurnstileSiteKey
+            TurnstileSiteKey = _options.TurnstileSiteKey,
+            BusinessHoursConfigured = availability.Configured,
+            SupportIsOpen = availability.IsOpen,
+            ExpectedWaitMinutes = availability.ExpectedWaitMinutes,
+            OpensAt = availability.OpensAt?.ToString("HH:mm")
         });
     }
 
@@ -189,16 +223,8 @@ public class SupportChatService : ISupportChatService
     public async Task<ChatSessionDetailDto> GetSessionAsync(string sessionId, int messageLimit)
     {
         var session = await GetSessionEntityAsync(sessionId);
-        if (session.Status == ChatSessionStatus.Closed)
-        {
-            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict);
-        }
-        var messages = await GetMessagesInternalAsync(session.Id, messageLimit);
-        return new ChatSessionDetailDto
-        {
-            Session = MapSession(session),
-            Messages = messages.Select(MapMessage).ToList()
-        };
+        EnsureSessionOpen(session);
+        return await BuildSessionDetailAsync(session, messageLimit);
     }
 
     public async Task<ChatSessionListResponse> ListSessionsAsync(string? status, string? query, int page, int pageSize)
@@ -258,18 +284,28 @@ public class SupportChatService : ISupportChatService
         };
     }
 
-    public Task<ChatSessionDetailDto> GetSessionForAdminAsync(string sessionId, int messageLimit)
+    // Оператору закрытый диалог доступен: это история обращений, и открыть её
+    // из списка (фильтр «closed») он должен уметь. Проверки на закрытость здесь нет намеренно.
+    public async Task<ChatSessionDetailDto> GetSessionForAdminAsync(string sessionId, int messageLimit)
     {
-        return GetSessionAsync(sessionId, messageLimit);
+        var session = await GetSessionEntityAsync(sessionId);
+        return await BuildSessionDetailAsync(session, messageLimit);
+    }
+
+    private async Task<ChatSessionDetailDto> BuildSessionDetailAsync(ChatSession session, int messageLimit)
+    {
+        var messages = await GetMessagesInternalAsync(session.Id, messageLimit);
+        return new ChatSessionDetailDto
+        {
+            Session = MapSession(session),
+            Messages = messages.Select(MapMessage).ToList()
+        };
     }
 
     public async Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(string sessionId, DateTime? after)
     {
         var session = await GetSessionEntityAsync(sessionId);
-        if (session.Status == ChatSessionStatus.Closed)
-        {
-            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict);
-        }
+        EnsureSessionOpen(session);
         var filter = Builders<ChatMessage>.Filter.Eq(m => m.SessionId, session.Id);
         if (after.HasValue)
         {
@@ -315,10 +351,14 @@ public class SupportChatService : ISupportChatService
         EnsureRateLimit(sessionId);
         EnsureIpMessageLimit(clientIp);
 
+        using var turn = await EnterTurnAsync(sessionId, CancellationToken.None);
+
         var session = await GetSessionEntityAsync(sessionId);
+        EnsureSessionOpen(session);
         await EnsureSessionMessageCapAsync(session);
         var now = DateTime.UtcNow;
         await InsertUserMessageAsync(session, user, sanitized, now);
+        await ApplyDetectedLanguageAsync(session, sanitized);
 
         if (IsHumanHandlingSession(session))
         {
@@ -329,8 +369,14 @@ public class SupportChatService : ISupportChatService
         var pre = EvaluatePreEscalation(sanitized);
         if (pre.ShouldEscalate)
         {
-            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null);
+            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null, pre.Source);
             return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = MapMessage(handoff) };
+        }
+
+        var instant = await TryInstantAnswerAsync(session, sanitized);
+        if (instant != null)
+        {
+            return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = MapMessage(instant) };
         }
 
         var (assistantMessage, updatedSession) = await GenerateAssistantReplyAsync(session, sanitized, CancellationToken.None);
@@ -354,10 +400,16 @@ public class SupportChatService : ISupportChatService
         EnsureRateLimit(sessionId);
         EnsureIpMessageLimit(clientIp);
 
+        // Ход держим целиком: вставка вопроса, сборка истории и сохранение ответа. Иначе соседний
+        // запрос успевает собрать промпт без этого вопроса и ответить не на то.
+        using var turn = await EnterTurnAsync(sessionId, cancellationToken);
+
         var session = await GetSessionEntityAsync(sessionId);
+        EnsureSessionOpen(session);
         await EnsureSessionMessageCapAsync(session);
         var now = DateTime.UtcNow;
         await InsertUserMessageAsync(session, user, sanitized, now);
+        await ApplyDetectedLanguageAsync(session, sanitized);
 
         if (IsHumanHandlingSession(session))
         {
@@ -369,9 +421,17 @@ public class SupportChatService : ISupportChatService
         var pre = EvaluatePreEscalation(sanitized);
         if (pre.ShouldEscalate)
         {
-            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null);
+            var handoff = await HandleEscalationAsync(session, sanitized, pre.Reason, pre.Category, pre.Priority, null, pre.Source);
             await onChunk(handoff.Text);
             return MapMessage(handoff);
+        }
+
+        // Заготовку отдаём одним куском: генерировать нечего, ждать нечего.
+        var instant = await TryInstantAnswerAsync(session, sanitized);
+        if (instant != null)
+        {
+            await onChunk(instant.Text);
+            return MapMessage(instant);
         }
 
         var streamLease = await _llmLimiter.TryAcquireAsync(cancellationToken);
@@ -384,20 +444,21 @@ public class SupportChatService : ISupportChatService
         }
 
         var history = await BuildHistoryAsync(session.Id, sanitized, session.Language);
-        var request = BuildOllamaRequest(history, stream: true);
+        var request = BuildLlmRequest(history);
 
         var toolCallArguments = string.Empty;
         var filter = ReasoningFilter.CreateStreamFilter();
         var responseBuilder = new StringBuilder();
+        // Расход провайдер присылает последним чанком, когда весь текст уже отдан клиенту.
+        LlmUsage? usage = null;
 
         try
         {
-            await _ollamaClient.StreamChatAsync(request, async chunk =>
+            await _llm.StreamChatAsync(request, async chunk =>
             {
-                var content = chunk.Message?.Content ?? string.Empty;
-                if (!string.IsNullOrEmpty(content))
+                if (!string.IsNullOrEmpty(chunk.Content))
                 {
-                    var visible = filter.Push(content);
+                    var visible = filter.Push(chunk.Content);
                     if (!string.IsNullOrEmpty(visible))
                     {
                         responseBuilder.Append(visible);
@@ -405,11 +466,12 @@ public class SupportChatService : ISupportChatService
                     }
                 }
 
-                var toolCall = chunk.Message?.ToolCalls?.FirstOrDefault(t => t.Function.Name == "handoff_to_human");
-                if (toolCall != null)
+                if (chunk.ToolCall is { } toolCall && toolCall.Name == HandoffToolName)
                 {
-                    toolCallArguments = toolCall.Function.ArgumentsJson;
+                    toolCallArguments = toolCall.ArgumentsJson;
                 }
+
+                usage ??= chunk.Usage;
             }, cancellationToken);
         }
         catch (Exception ex)
@@ -433,7 +495,7 @@ public class SupportChatService : ISupportChatService
             var args = ParseHandoffArgs(toolCallArguments);
             var handoff = await HandleEscalationAsync(
                 session, sanitized, args.Reason ?? "Assistant requested a specialist.",
-                args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary);
+                args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary, EscalationSource.AssistantDecision);
             await onChunk("\n\n" + handoff.Text);
             return MapMessage(handoff);
         }
@@ -445,7 +507,7 @@ public class SupportChatService : ISupportChatService
             await onChunk(assistantText);
         }
 
-        var assistantMessage = await SaveAssistantMessageAsync(session, assistantText);
+        var assistantMessage = await SaveAssistantMessageAsync(session, assistantText, usage);
         return MapMessage(assistantMessage);
     }
 
@@ -538,6 +600,218 @@ public class SupportChatService : ISupportChatService
         return MapMessage(message);
     }
 
+    /// <summary>
+    /// Клиент нажал «передать специалисту». В отличие от слов в переписке это осознанное
+    /// действие, поэтому источник помечается отдельно, а описание проблемы и контакты
+    /// собираются здесь же — оператор получает диалог с готовым делом.
+    /// </summary>
+    public async Task<AddChatMessageResponse> RequestHandoffAsync(
+        string sessionId,
+        SupportUserContext? user,
+        RequestHandoffRequest request)
+    {
+        var session = await GetSessionEntityAsync(sessionId);
+        EnsureSessionOpen(session);
+
+        if (IsHumanHandlingSession(session))
+        {
+            return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = null };
+        }
+
+        var note = SanitizeText(request.Note ?? string.Empty);
+        if (note.Length > _options.MessageMaxLength)
+        {
+            throw new SupportChatRequestException(
+                $"Message exceeds {_options.MessageMaxLength} characters.", StatusCodes.Status400BadRequest);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email) || !string.IsNullOrWhiteSpace(request.OrderId))
+        {
+            await UpdateContactAsync(sessionId, new UpdateChatContactRequest
+            {
+                Email = request.Email,
+                OrderId = request.OrderId
+            });
+            session = await GetSessionEntityAsync(sessionId);
+        }
+
+        // Описание уходит в переписку как реплика клиента: специалист читает диалог, а не карточку.
+        if (note.Length > 0)
+        {
+            await InsertUserMessageAsync(session, user, note, DateTime.UtcNow);
+        }
+
+        var handoff = await HandleEscalationAsync(
+            session,
+            note,
+            "Customer asked for a specialist from the chat.",
+            InferCategory(note),
+            ChatPriority.Normal,
+            null,
+            EscalationSource.CustomerButton);
+
+        return new AddChatMessageResponse { Session = MapSession(session), AssistantMessage = MapMessage(handoff) };
+    }
+
+    public async Task<ChatMessageDto> SetMessageFeedbackAsync(string sessionId, string messageId, string? feedback)
+    {
+        var session = await GetSessionEntityAsync(sessionId);
+        if (!ObjectId.TryParse(messageId, out _))
+        {
+            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound);
+        }
+
+        var message = await _messages
+            .Find(m => m.Id == messageId && m.SessionId == session.Id)
+            .FirstOrDefaultAsync();
+
+        if (message == null)
+        {
+            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound);
+        }
+
+        // Оценивать имеет смысл только ответ бота: реплики оператора и свои же сообщения — нет.
+        if (message.Role != ChatMessageRole.Assistant)
+        {
+            throw new SupportChatRequestException("Only assistant replies can be rated.", StatusCodes.Status400BadRequest);
+        }
+
+        var parsed = ParseFeedback(feedback);
+        message.Metadata ??= new ChatMessageMetadata();
+        message.Metadata.Feedback = parsed;
+
+        await _messages.UpdateOneAsync(
+            m => m.Id == message.Id,
+            Builders<ChatMessage>.Update.Set(m => m.Metadata.Feedback, parsed));
+
+        return MapMessage(message);
+    }
+
+    public async Task<SupportChatStatsDto> GetStatsAsync(int days)
+    {
+        var window = Math.Clamp(days, 1, 180);
+        var from = DateTime.UtcNow.Date.AddDays(-(window - 1));
+
+        var sessions = await _sessions
+            .Find(s => s.CreatedAt >= from)
+            .Project(s => new SessionStatRow
+            {
+                CreatedAt = s.CreatedAt,
+                WasEscalated = s.WasEscalated,
+                Source = s.EscalationSource,
+                Category = s.Category
+            })
+            .ToListAsync();
+
+        var replies = await _messages
+            .Find(m => m.CreatedAt >= from && m.Role == ChatMessageRole.Assistant)
+            .Project(m => new MessageStatRow
+            {
+                CreatedAt = m.CreatedAt,
+                CostUsd = m.Metadata.CostUsd,
+                Instant = m.Metadata.Instant,
+                Feedback = m.Metadata.Feedback
+            })
+            .ToListAsync();
+
+        var escalated = sessions.Count(s => s.WasEscalated);
+        var totalCost = replies.Sum(r => r.CostUsd ?? 0);
+
+        var daily = Enumerable.Range(0, window)
+            .Select(offset => from.AddDays(offset))
+            .Select(date => new DailyStatDto
+            {
+                Date = date,
+                Sessions = sessions.Count(s => s.CreatedAt.Date == date),
+                Escalated = sessions.Count(s => s.CreatedAt.Date == date && s.WasEscalated),
+                CostUsd = replies.Where(r => r.CreatedAt.Date == date).Sum(r => r.CostUsd ?? 0)
+            })
+            .ToList();
+
+        return new SupportChatStatsDto
+        {
+            Days = window,
+            From = from,
+            Sessions = sessions.Count,
+            EscalatedSessions = escalated,
+            // Доля диалогов, которые бот закрыл сам. Без обращений считаем нулём, а не делим на ноль.
+            DeflectionRate = sessions.Count == 0 ? 0 : (double)(sessions.Count - escalated) / sessions.Count,
+            EscalationsBySource = sessions
+                .Where(s => s.WasEscalated)
+                .GroupBy(s => FormatEscalationSource(s.Source))
+                .Select(g => new StatCountDto { Label = g.Key, Count = g.Count() })
+                .OrderByDescending(item => item.Count)
+                .ToList(),
+            TopCategories = sessions
+                .Where(s => !string.IsNullOrWhiteSpace(s.Category))
+                .GroupBy(s => s.Category!)
+                .Select(g => new StatCountDto { Label = g.Key, Count = g.Count() })
+                .OrderByDescending(item => item.Count)
+                .Take(6)
+                .ToList(),
+            AiReplies = replies.Count,
+            InstantReplies = replies.Count(r => r.Instant),
+            BilledReplies = replies.Count(r => r.CostUsd > 0),
+            TotalCostUsd = totalCost,
+            CostPerSessionUsd = sessions.Count == 0 ? 0 : totalCost / sessions.Count,
+            FeedbackHelpful = replies.Count(r => r.Feedback == ChatMessageFeedback.Helpful),
+            FeedbackNotHelpful = replies.Count(r => r.Feedback == ChatMessageFeedback.NotHelpful),
+            SpentTodayUsd = (double)_spend.SpentTodayUsd,
+            DailyBudgetUsd = _options.DailyBudgetUsd,
+            Daily = daily
+        };
+    }
+
+    private static ChatMessageFeedback? ParseFeedback(string? feedback)
+    {
+        return feedback?.Trim().ToLowerInvariant() switch
+        {
+            "helpful" => ChatMessageFeedback.Helpful,
+            "not_helpful" => ChatMessageFeedback.NotHelpful,
+            null or "" => null,
+            _ => throw new SupportChatRequestException("Unknown feedback value.", StatusCodes.Status400BadRequest)
+        };
+    }
+
+    private static string? FormatFeedback(ChatMessageFeedback? feedback) => feedback switch
+    {
+        ChatMessageFeedback.Helpful => "helpful",
+        ChatMessageFeedback.NotHelpful => "not_helpful",
+        _ => null
+    };
+
+    private static string FormatEscalationSource(EscalationSource? source) => source switch
+    {
+        EscalationSource.HighRisk => "high_risk",
+        EscalationSource.CustomerRequest => "customer_request",
+        EscalationSource.CustomerButton => "customer_button",
+        EscalationSource.AssistantDecision => "assistant_decision",
+        // Диалоги, эскалированные до появления этого поля.
+        _ => "unknown"
+    };
+
+    private class SessionStatRow
+    {
+        public DateTime CreatedAt { get; set; }
+
+        public bool WasEscalated { get; set; }
+
+        public EscalationSource? Source { get; set; }
+
+        public string? Category { get; set; }
+    }
+
+    private class MessageStatRow
+    {
+        public DateTime CreatedAt { get; set; }
+
+        public double? CostUsd { get; set; }
+
+        public bool Instant { get; set; }
+
+        public ChatMessageFeedback? Feedback { get; set; }
+    }
+
     private async Task InsertUserMessageAsync(ChatSession session, SupportUserContext? user, string text, DateTime now)
     {
         var userMessage = new ChatMessage
@@ -564,7 +838,7 @@ public class SupportChatService : ISupportChatService
         CancellationToken cancellationToken)
     {
         var history = await BuildHistoryAsync(session.Id, userText, session.Language);
-        var request = BuildOllamaRequest(history, stream: false);
+        var request = BuildLlmRequest(history);
 
         var lease = await _llmLimiter.TryAcquireAsync(cancellationToken);
         if (lease == null)
@@ -577,18 +851,18 @@ public class SupportChatService : ISupportChatService
         {
             using var timeoutSource = new CancellationTokenSource(TimeSpan.FromSeconds(_options.LlmTimeoutSeconds));
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutSource.Token, cancellationToken);
-            var response = await _ollamaClient.ChatAsync(request, linked.Token);
+            var response = await _llm.ChatAsync(request, linked.Token);
 
-            var assistantText = ReasoningFilter.Strip(response.Message?.Content ?? string.Empty).Trim();
-            var toolCall = response.Message?.ToolCalls?.FirstOrDefault(t => t.Function.Name == "handoff_to_human");
-            var toolCallArguments = toolCall?.Function.ArgumentsJson ?? string.Empty;
+            var assistantText = ReasoningFilter.Strip(response.Content).Trim();
+            var toolCall = response.ToolCall is { } call && call.Name == HandoffToolName ? call : null;
+            var toolCallArguments = toolCall?.ArgumentsJson ?? string.Empty;
 
             if (!string.IsNullOrWhiteSpace(toolCallArguments))
             {
                 var args = ParseHandoffArgs(toolCallArguments);
                 var handoff = await HandleEscalationAsync(
                     session, userText, args.Reason ?? "Assistant requested a specialist.",
-                    args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary);
+                    args.Category, MapUrgency(args.Urgency, highRisk: false), args.Summary, EscalationSource.AssistantDecision);
                 return (handoff, session);
             }
 
@@ -597,7 +871,7 @@ public class SupportChatService : ISupportChatService
                 assistantText = ClarifyPrompt(session.Language);
             }
 
-            var assistantMessage = await SaveAssistantMessageAsync(session, assistantText);
+            var assistantMessage = await SaveAssistantMessageAsync(session, assistantText, response.Usage);
             return (assistantMessage, session);
         }
         catch (Exception ex)
@@ -615,7 +889,49 @@ public class SupportChatService : ISupportChatService
         }
     }
 
-    private async Task<ChatMessage> SaveAssistantMessageAsync(ChatSession session, string text)
+    /// <summary>
+    /// Частые вопросы закрываются заранее написанным текстом — без обращения к модели.
+    /// Возвращает null, если вопрос не опознан: тогда отвечает модель.
+    /// </summary>
+    private async Task<ChatMessage?> TryInstantAnswerAsync(ChatSession session, string userText)
+    {
+        if (!_options.InstantAnswersEnabled)
+        {
+            return null;
+        }
+
+        var answer = await _instantAnswers.TryAnswerAsync(
+            userText, session.Language, _options.InstantAnswerMaxWords, _options.InstantAnswerMaxChars);
+        if (answer == null)
+        {
+            return null;
+        }
+
+        // Тот же шаблон второй раз в одном диалоге означает, что он не помог, — зовём модель.
+        var alreadyAnswered = await _messages.CountDocumentsAsync(
+            m => m.SessionId == session.Id && m.Metadata.InstantTopic == answer.Topic);
+        if (alreadyAnswered > 0)
+        {
+            return null;
+        }
+
+        var now = DateTime.UtcNow;
+        var message = new ChatMessage
+        {
+            SessionId = session.Id,
+            Role = ChatMessageRole.Assistant,
+            AuthorName = AssistantName,
+            Text = answer.Text,
+            CreatedAt = now,
+            Metadata = new ChatMessageMetadata { Instant = true, InstantTopic = answer.Topic }
+        };
+
+        await _messages.InsertOneAsync(message);
+        await UpdateSessionActivityAsync(session, now);
+        return message;
+    }
+
+    private async Task<ChatMessage> SaveAssistantMessageAsync(ChatSession session, string text, LlmUsage? usage = null)
     {
         var now = DateTime.UtcNow;
         var message = new ChatMessage
@@ -625,12 +941,26 @@ public class SupportChatService : ISupportChatService
             AuthorName = AssistantName,
             Text = text,
             CreatedAt = now,
-            Metadata = new ChatMessageMetadata { Model = _options.OllamaModel }
+            Metadata = new ChatMessageMetadata
+            {
+                Model = _llm.Model,
+                InputTokens = usage?.InputTokens,
+                CachedInputTokens = usage?.CachedInputTokens,
+                OutputTokens = usage?.OutputTokens,
+                CostUsd = ToCostUsd(usage)
+            }
         };
 
         await _messages.InsertOneAsync(message);
         await UpdateSessionActivityAsync(session, now);
         return message;
+    }
+
+    // Стоимость есть только у платного провайдера — у локальной модели токены бесплатны.
+    private double? ToCostUsd(LlmUsage? usage)
+    {
+        var cost = _spend.EstimateUsd(usage);
+        return cost > 0m ? (double?)cost : null;
     }
 
     private async Task<ChatMessage> HandleEscalationAsync(
@@ -639,7 +969,8 @@ public class SupportChatService : ISupportChatService
         string reason,
         string? category,
         ChatPriority priority,
-        string? providedSummary)
+        string? providedSummary,
+        EscalationSource source)
     {
         var resolvedCategory = category ?? InferCategory(userText) ?? "Other";
         var summary = string.IsNullOrWhiteSpace(providedSummary)
@@ -651,6 +982,8 @@ public class SupportChatService : ISupportChatService
         session.Category = resolvedCategory;
         session.Priority = priority;
         session.Summary = summary;
+        session.WasEscalated = true;
+        session.EscalationSource = source;
         session.UpdatedAt = DateTime.UtcNow;
 
         await _sessions.UpdateOneAsync(
@@ -661,10 +994,12 @@ public class SupportChatService : ISupportChatService
                 .Set(s => s.Category, session.Category)
                 .Set(s => s.Priority, session.Priority)
                 .Set(s => s.Summary, session.Summary)
+                .Set(s => s.WasEscalated, session.WasEscalated)
+                .Set(s => s.EscalationSource, session.EscalationSource)
                 .Set(s => s.UpdatedAt, session.UpdatedAt));
 
         var needsContact = string.IsNullOrWhiteSpace(session.Email) && string.IsNullOrWhiteSpace(session.OrderId);
-        var text = BuildHandoffMessage(session.Language, needsContact);
+        var text = BuildHandoffMessage(session.Language, needsContact, _availability.GetState());
 
         var message = new ChatMessage
         {
@@ -675,7 +1010,7 @@ public class SupportChatService : ISupportChatService
             CreatedAt = DateTime.UtcNow,
             Metadata = new ChatMessageMetadata
             {
-                Model = _options.OllamaModel,
+                Model = _llm.Model,
                 EscalationReason = reason,
                 Handoff = true
             }
@@ -707,6 +1042,19 @@ public class SupportChatService : ISupportChatService
 
         var builder = new StringBuilder();
         builder.AppendLine($"Escalation reason: {reason}");
+
+        // Суть обращения обычно в первой реплике, а хвост из 12 сообщений её уже не захватывает.
+        // Показываем её отдельно — и только если в хвост она не попала, чтобы не дублировать.
+        var first = await _messages
+            .Find(m => m.SessionId == session.Id && m.Role == ChatMessageRole.User)
+            .SortBy(m => m.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (first != null && recent.All(m => m.Id != first.Id))
+        {
+            builder.AppendLine($"Customer originally wrote: {Shorten(first.Text, 300)}");
+        }
+
         builder.AppendLine("Recent conversation:");
         foreach (var message in recent.OrderBy(m => m.CreatedAt))
         {
@@ -735,70 +1083,124 @@ public class SupportChatService : ISupportChatService
         await _sessions.UpdateOneAsync(s => s.Id == session.Id, update);
     }
 
-    private async Task<List<OllamaChatMessage>> BuildHistoryAsync(string sessionId, string latestUserText, string? language)
+    /// <summary>
+    /// Собирает запрос так, чтобы его начало как можно дольше оставалось неизменным: у внешнего
+    /// провайдера повторяющийся префикс оплачивается по цене кэша, а она в десятки раз ниже.
+    /// Отсюда порядок: неизменная инструкция → язык → выжимка отброшенного → история →
+    /// база знаний последней, потому что она меняется каждый ход и рвёт кэш всему, что за ней.
+    /// </summary>
+    private async Task<List<LlmChatMessage>> BuildHistoryAsync(string sessionId, string latestUserText, string? language)
     {
-        var context = _knowledgeBase.BuildContextBlock(latestUserText, _options.KnowledgeArticles);
-        // Explicit, deterministic reply language driven by the site locale (not model guesswork).
-        var languageDirective = $"Reply language: {LanguageName(language)}.";
-        var systemContent = string.IsNullOrEmpty(context)
-            ? $"{SystemPromptBase}\n\n{languageDirective}"
-            : $"{SystemPromptBase}\n\n{languageDirective}\n\n{context}";
-
-        var history = new List<OllamaChatMessage>
+        var prompt = new List<LlmChatMessage>
         {
-            new() { Role = "system", Content = systemContent }
+            // Одинаково для всех диалогов и всех ходов — самый ценный кусок кэша.
+            new() { Role = "system", Content = SystemPromptBase },
+            // Explicit, deterministic reply language driven by the site locale (not model guesswork).
+            new() { Role = "system", Content = $"Reply language: {LanguageName(language)}." }
         };
 
-        var recent = await _messages
+        var total = (int)await _messages.CountDocumentsAsync(m => m.SessionId == sessionId);
+        var skip = HistoryAnchor(total);
+
+        if (skip > 0)
+        {
+            var earlier = await BuildEarlierContextAsync(sessionId, skip);
+            if (!string.IsNullOrEmpty(earlier))
+            {
+                prompt.Add(new LlmChatMessage { Role = "system", Content = earlier });
+            }
+        }
+
+        var window = await _messages
             .Find(m => m.SessionId == sessionId)
-            .SortByDescending(m => m.CreatedAt)
-            .Limit(_options.HistoryLimit)
+            .SortBy(m => m.CreatedAt)
+            .Skip(skip)
             .ToListAsync();
 
-        foreach (var message in recent.OrderBy(m => m.CreatedAt))
+        foreach (var message in window)
         {
-            history.Add(new OllamaChatMessage
+            prompt.Add(new LlmChatMessage
             {
                 Role = MapRole(message.Role),
                 Content = message.Text
             });
         }
 
-        return history;
+        var context = await _knowledgeBase.BuildContextBlockAsync(
+            latestUserText, _options.KnowledgeArticles, _options.KnowledgeArticleMaxChars);
+        if (!string.IsNullOrEmpty(context))
+        {
+            prompt.Add(new LlmChatMessage { Role = "system", Content = context });
+        }
+
+        return prompt;
     }
 
-    private OllamaChatRequest BuildOllamaRequest(List<OllamaChatMessage> messages, bool stream)
+    /// <summary>
+    /// Сколько сообщений отбросить с начала. Значение квантовано шагом, поэтому окно съезжает
+    /// не каждый ход, а раз в несколько — между сдвигами начало запроса совпадает дословно.
+    /// </summary>
+    private int HistoryAnchor(int totalMessages)
     {
-        return new OllamaChatRequest
+        var step = Math.Max(1, _options.HistoryTrimStepMessages);
+        var window = Math.Max(4, _options.HistoryLimit - step);
+        if (totalMessages <= window)
         {
-            Model = _options.OllamaModel,
+            return 0;
+        }
+
+        return (totalMessages - window) / step * step;
+    }
+
+    /// <summary>
+    /// Замена отброшенному началу переписки. Намеренно без обращения к модели: отдельный вызов
+    /// ради пересказа съел бы всю экономию. Первая реплика клиента несёт суть обращения,
+    /// остальное восстанавливается из карточки диалога.
+    /// </summary>
+    private async Task<string> BuildEarlierContextAsync(string sessionId, int skipped)
+    {
+        var first = await _messages
+            .Find(m => m.SessionId == sessionId && m.Role == ChatMessageRole.User)
+            .SortBy(m => m.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (first == null)
+        {
+            return string.Empty;
+        }
+
+        return $"EARLIER IN THIS CONVERSATION ({skipped} older messages are not shown):\n" +
+               $"The customer originally wrote: \"{Shorten(first.Text, 300)}\"";
+    }
+
+    private LlmChatRequest BuildLlmRequest(List<LlmChatMessage> messages)
+    {
+        return new LlmChatRequest
+        {
             Messages = messages,
-            Stream = stream,
-            Options = new Dictionary<string, object> { ["temperature"] = _options.Temperature },
-            Tools = new List<OllamaToolDefinition>
+            Temperature = _options.Temperature,
+            MaxOutputTokens = _options.MaxResponseTokens > 0 ? _options.MaxResponseTokens : null,
+            Tools = new List<LlmToolDefinition>
             {
                 new()
                 {
-                    Function = new OllamaFunctionDefinition
+                    Name = HandoffToolName,
+                    Description = "Escalate the conversation to a live human support specialist.",
+                    Parameters = new
                     {
-                        Name = "handoff_to_human",
-                        Description = "Escalate the conversation to a live human support specialist.",
-                        Parameters = new
+                        type = "object",
+                        properties = new
                         {
-                            type = "object",
-                            properties = new
+                            reason = new { type = "string", description = "Why a human is needed." },
+                            category = new
                             {
-                                reason = new { type = "string", description = "Why a human is needed." },
-                                category = new
-                                {
-                                    type = "string",
-                                    description = "One of: Order status, Payment & checkout, Key delivery / activation, Refund request, Game / product question, Account & security, Technical issue / bug, Other."
-                                },
-                                urgency = new { type = "string", @enum = new[] { "low", "normal", "high" } },
-                                summary = new { type = "string", description = "A short summary of the customer's issue for the specialist." }
+                                type = "string",
+                                description = "One of: Order status, Payment & checkout, Key delivery / activation, Refund request, Game / product question, Account & security, Technical issue / bug, Other."
                             },
-                            required = new[] { "reason" }
-                        }
+                            urgency = new { type = "string", @enum = new[] { "low", "normal", "high" } },
+                            summary = new { type = "string", description = "A short summary of the customer's issue for the specialist." }
+                        },
+                        required = new[] { "reason" }
                     }
                 }
             }
@@ -807,38 +1209,56 @@ public class SupportChatService : ISupportChatService
 
     // ---- Escalation heuristics -------------------------------------------------
 
-    private (bool ShouldEscalate, string Reason, string? Category, ChatPriority Priority) EvaluatePreEscalation(string userText)
+    private (bool ShouldEscalate, string Reason, string? Category, ChatPriority Priority, EscalationSource Source) EvaluatePreEscalation(string userText)
     {
-        var lower = userText.ToLowerInvariant();
-
-        foreach (var (keyword, category) in HighRiskSignals)
+        foreach (var signal in HighRiskSignals)
         {
-            if (lower.Contains(keyword, StringComparison.Ordinal))
+            if (signal.Matches(userText))
             {
-                return (true, $"High-risk signal detected: '{keyword}'.", category, ChatPriority.High);
+                return (true, $"High-risk signal detected: '{signal.Keyword}'.", signal.Category, ChatPriority.High, EscalationSource.HighRisk);
             }
         }
 
-        if (HumanRequestSignals.Any(signal => lower.Contains(signal, StringComparison.Ordinal)))
+        if (HumanRequestSignals.Any(signal => signal.Matches(userText)))
         {
-            return (true, "Customer explicitly asked for a human specialist.", InferCategory(userText), ChatPriority.Normal);
+            return (true, "Customer explicitly asked for a human specialist.", InferCategory(userText), ChatPriority.Normal, EscalationSource.CustomerRequest);
         }
 
-        return (false, string.Empty, null, ChatPriority.Normal);
+        return (false, string.Empty, null, ChatPriority.Normal, EscalationSource.AssistantDecision);
     }
 
     private static string? InferCategory(string userText)
     {
-        var lower = userText.ToLowerInvariant();
-        foreach (var (keywords, category) in CategoryRules)
+        foreach (var (signals, category) in CategoryRules)
         {
-            if (keywords.Any(k => lower.Contains(k, StringComparison.Ordinal)))
+            if (signals.Any(signal => signal.Matches(userText)))
             {
                 return category;
             }
         }
 
         return null;
+    }
+
+    // A keyword anchored to a word boundary, so it can no longer fire from inside another word.
+    private sealed record EscalationSignal(string Keyword, Regex Pattern, string? Category)
+    {
+        public bool Matches(string text) => Pattern.IsMatch(text);
+    }
+
+    /// <summary>Matches the keyword as a whole word: "суд" no longer fires on "судя по всему".</summary>
+    private static EscalationSignal Word(string keyword, string? category = null) =>
+        new(keyword, BuildSignalPattern(keyword, wholeWord: true), category);
+
+    /// <summary>Matches the keyword as the start of a word, for stems with many endings (взлом → взломали).</summary>
+    private static EscalationSignal Stem(string keyword, string? category = null) =>
+        new(keyword, BuildSignalPattern(keyword, wholeWord: false), category);
+
+    private static Regex BuildSignalPattern(string keyword, bool wholeWord)
+    {
+        var escaped = Regex.Escape(keyword);
+        var pattern = wholeWord ? $@"\b{escaped}\b" : $@"\b{escaped}";
+        return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     }
 
     private static ChatPriority MapUrgency(string? urgency, bool highRisk)
@@ -869,6 +1289,83 @@ public class SupportChatService : ISupportChatService
     }
 
     // ---- Localization helpers --------------------------------------------------
+
+    /// <summary>
+    /// Занимает очередь хода в сессии. Клиент теперь не даёт отправить второе сообщение, пока
+    /// пишется ответ, но запрос может прийти и мимо виджета — этот замок последний.
+    /// </summary>
+    private async Task<IDisposable> EnterTurnAsync(string sessionId, CancellationToken cancellationToken)
+    {
+        var turn = await _sessionGate.TryEnterAsync(sessionId, cancellationToken);
+        if (turn == null)
+        {
+            throw new SupportChatRequestException(
+                "The previous reply is still being written. Please wait a moment and try again.",
+                StatusCodes.Status429TooManyRequests);
+        }
+
+        return turn;
+    }
+
+    /// <summary>
+    /// Язык ответа идёт за клиентом, а не за локалью сайта: на английской витрине регулярно пишут
+    /// по-русски. Решение запоминаем в сессии — его же берут заготовки и служебные фразы.
+    /// </summary>
+    private async Task ApplyDetectedLanguageAsync(ChatSession session, string text)
+    {
+        var detected = DetectLanguage(text, session.Language);
+        if (detected == null || string.Equals(detected, session.Language, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        session.Language = detected;
+        await _sessions.UpdateOneAsync(
+            s => s.Id == session.Id,
+            Builders<ChatSession>.Update.Set(s => s.Language, detected));
+    }
+
+    // Ниже этого числа букв сигнала нет: «ок», «TKT-19» и смайлы языка не выдают.
+    private const int LanguageDetectionMinLetters = 4;
+
+    private static string? DetectLanguage(string text, string? current)
+    {
+        var cyrillic = 0;
+        var latin = 0;
+        var ukrainianOnly = false;
+
+        foreach (var symbol in text)
+        {
+            // Кириллический блок Unicode целиком: Ѐ—ӿ.
+            if (symbol is >= 'Ѐ' and <= 'ӿ')
+            {
+                cyrillic++;
+                // Букв, которых нет в русском алфавите, достаточно, чтобы не отвечать украинцу по-русски.
+                if (symbol is 'і' or 'І' or 'ї' or 'Ї' or 'є' or 'Є' or 'ґ' or 'Ґ')
+                {
+                    ukrainianOnly = true;
+                }
+            }
+            else if (symbol is >= 'a' and <= 'z' or >= 'A' and <= 'Z')
+            {
+                latin++;
+            }
+        }
+
+        if (cyrillic + latin < LanguageDetectionMinLetters)
+        {
+            return null;
+        }
+
+        if (cyrillic > latin)
+        {
+            return ukrainianOnly ? "uk" : "ru";
+        }
+
+        // Латиница поверх кириллической локали — клиент перешёл на английский. На польской или
+        // английской локали латиница не говорит ничего нового, поэтому язык сессии не трогаем.
+        return current is "ru" or "uk" ? "en" : null;
+    }
 
     private static string? NormalizeLocale(string? locale)
     {
@@ -901,18 +1398,48 @@ public class SupportChatService : ISupportChatService
         "I want to make sure I help with the right details. Could you share your order ID or account email, and a bit more about the issue?",
         "Хочу помочь точно по вашему случаю. Подскажите, пожалуйста, номер заказа или email аккаунта и пару слов о проблеме.");
 
-    private static string BuildHandoffMessage(string? language, bool needsContact)
+    /// <summary>
+    /// «Скоро подключится» одинаково означает пять минут и следующее утро, поэтому в текст
+    /// подставляется реальный срок: типичное ожидание в рабочее время и час открытия — вне его.
+    /// </summary>
+    private static string BuildHandoffMessage(string? language, bool needsContact, SupportAvailabilityState availability)
     {
-        if (IsRussian(language))
+        var russian = IsRussian(language);
+        var opening = russian ? "Подключаю специалиста Tale Shop." : "I'm connecting you with a Tale Shop specialist.";
+
+        string timing;
+        if (availability.Configured && !availability.IsOpen)
         {
-            return needsContact
-                ? "Подключаю специалиста Tale Shop. Оставьте, пожалуйста, email или номер заказа — так мы быстрее разберёмся. Сотрудник скоро присоединится к чату."
-                : "Подключаю специалиста Tale Shop — сотрудник скоро присоединится к чату и продолжит с вами.";
+            var opensAt = availability.OpensAt?.ToString("HH:mm");
+            timing = russian
+                ? opensAt == null
+                    ? " Сейчас нерабочее время — ответим, как только вернёмся."
+                    : $" Сейчас нерабочее время — специалист ответит после {opensAt}."
+                : opensAt == null
+                    ? " We're outside working hours right now — we'll reply as soon as we're back."
+                    : $" We're outside working hours right now — a specialist will reply after {opensAt}.";
+        }
+        else if (availability.ExpectedWaitMinutes > 0)
+        {
+            timing = russian
+                ? $" Обычно специалист отвечает в течение {availability.ExpectedWaitMinutes} минут."
+                : $" A specialist usually replies within {availability.ExpectedWaitMinutes} minutes.";
+        }
+        else
+        {
+            timing = russian
+                ? " Сотрудник скоро присоединится к чату."
+                : " A human will join this chat shortly.";
         }
 
-        return needsContact
-            ? "I'm connecting you with a Tale Shop specialist. Please share your email or order ID so we can look into it faster — a human will join this chat shortly."
-            : "I'm connecting you with a Tale Shop specialist — a human will join this chat shortly to continue with you.";
+        // Вне рабочего времени контакты нужны сильнее всего: иначе ответить будет некуда.
+        var contact = needsContact
+            ? russian
+                ? " Оставьте email или номер заказа — так мы точно сможем вам ответить."
+                : " Leave your email or order ID so we can definitely reach you."
+            : string.Empty;
+
+        return opening + timing + contact;
     }
 
     // ---- Mapping & validation --------------------------------------------------
@@ -996,9 +1523,20 @@ public class SupportChatService : ISupportChatService
                 Confidence = message.Metadata?.Confidence,
                 EscalationReason = message.Metadata?.EscalationReason,
                 ToolCall = message.Metadata?.ToolCall,
-                Handoff = message.Metadata?.Handoff ?? false
+                Handoff = message.Metadata?.Handoff ?? false,
+                Feedback = FormatFeedback(message.Metadata?.Feedback)
             }
         };
+    }
+
+    // Закрытый диалог недоступен клиенту ни на чтение, ни на запись: по 409 виджет
+    // предложит начать новый. Оператора это не касается — см. GetSessionForAdminAsync.
+    private static void EnsureSessionOpen(ChatSession session)
+    {
+        if (session.Status == ChatSessionStatus.Closed)
+        {
+            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict);
+        }
     }
 
     private void ValidateText(string text)
@@ -1075,9 +1613,12 @@ public class SupportChatService : ISupportChatService
             m => m.SessionId == session.Id && m.Role == ChatMessageRole.User);
         if (userMessages >= _options.MaxMessagesPerSession)
         {
+            // 410, а не 429: диалог не «слишком часто пишет», он исчерпан и продолжать его нельзя.
+            // Отдельный код нужен виджету — по нему он молча заводит новый диалог. С 429 это
+            // не отличить от «предыдущий ответ ещё пишется», и клиент упирался бы в тупик.
             throw new SupportChatRequestException(
-                "This chat has reached its message limit. Please start a new chat or contact support.",
-                StatusCodes.Status429TooManyRequests);
+                "This conversation has reached its length limit and was closed. Start a new one to continue.",
+                StatusCodes.Status410Gone);
         }
     }
 

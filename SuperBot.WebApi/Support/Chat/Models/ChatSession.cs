@@ -45,6 +45,29 @@ public class ChatSession
 
     // AI-generated conversation summary captured at escalation time for the specialist.
     public string? Summary { get; set; }
+
+    // Статус со временем меняется (needs_agent → assigned → closed), поэтому «дошло ли до человека»
+    // фиксируем отдельным флагом — по нему считается доля диалогов, закрытых без оператора.
+    public bool WasEscalated { get; set; }
+
+    // Кто инициировал передачу человеку. Разбирать для этого текст EscalationReason ненадёжно.
+    [BsonRepresentation(BsonType.String)]
+    public EscalationSource? EscalationSource { get; set; }
+}
+
+public enum EscalationSource
+{
+    /// <summary>Сработало слово из списка высокого риска: взлом, чарджбэк, угроза судом.</summary>
+    HighRisk,
+
+    /// <summary>Клиент написал словами, что хочет человека.</summary>
+    CustomerRequest,
+
+    /// <summary>Клиент нажал кнопку передачи специалисту — осознанное действие, а не оборот речи.</summary>
+    CustomerButton,
+
+    /// <summary>Модель решила, что не справляется, и вызвала handoff_to_human.</summary>
+    AssistantDecision
 }
 
 public enum ChatSessionStatus

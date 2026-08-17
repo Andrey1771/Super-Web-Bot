@@ -2,8 +2,21 @@
   position: fixed;
   bottom: max(16px, env(safe-area-inset-bottom));
   right: 16px;
-  z-index: 50;
+  /* Шапка сайта лежит на 1000 и перекрывала окно чата. Поднимаем виджет над ней, но ниже
+     модальных окон аккаунта (1200): всплывающий поверх диалога чат — это уже перебор. */
+  z-index: 1100;
   font-family: "Inter", "Segoe UI", sans-serif;
+
+  /* Нейтральные цвета берём из токенов сайта: когда на сайте появится тёмная тема,
+     виджет поедет за ней сам. Фирменный фиолетовый остаётся локальным. */
+  --chat-surface: var(--color-surface, #ffffff);
+  --chat-body: #fbfaff;
+  --chat-text: var(--color-text, #2b2b33);
+  --chat-muted: var(--color-muted, #6b6b82);
+  --chat-border: var(--color-border, #e5e7eb);
+  --chat-accent: #6d3bff;
+  --chat-accent-soft: #ece3ff;
+  --chat-accent-wash: #f3efff;
 }
 
 /* Компактная круглая иконка: не перекрывает CTA страниц. */
@@ -25,14 +38,22 @@
 }
 
 .support-chat__launcher svg {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
 }
 
 .support-chat__launcher .support-chat__badge {
   position: absolute;
   top: -4px;
   right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(28, 18, 66, 0.3);
+  animation: support-chat-badge-pop 0.28s ease-out;
 }
 
 .support-chat__launcher:hover {
@@ -40,27 +61,131 @@
   box-shadow: 0 16px 30px rgba(28, 18, 66, 0.24);
 }
 
+/* Ответ пришёл, а чат свёрнут: кнопка пульсирует кольцом, пока её не откроют. Анимируем
+   только тень — transform занят наведением, и они бы перебивали друг друга. */
+.support-chat__launcher--attention {
+  animation: support-chat-launcher-ring 2s ease-out infinite;
+}
+
+@keyframes support-chat-launcher-ring {
+  0% {
+    box-shadow: 0 12px 24px rgba(28, 18, 66, 0.2), 0 0 0 0 rgba(109, 59, 255, 0.55);
+  }
+  70% {
+    box-shadow: 0 12px 24px rgba(28, 18, 66, 0.2), 0 0 0 16px rgba(109, 59, 255, 0);
+  }
+  100% {
+    box-shadow: 0 12px 24px rgba(28, 18, 66, 0.2), 0 0 0 0 rgba(109, 59, 255, 0);
+  }
+}
+
+@keyframes support-chat-badge-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .support-chat__launcher--attention,
+  .support-chat__launcher .support-chat__badge {
+    animation: none;
+  }
+}
+
 .support-chat__badge {
   background: #ff5c8d;
   color: #fff;
   font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
   border-radius: 999px;
   padding: 2px 8px;
 }
 
 .support-chat__window {
+  position: relative;
   width: 360px;
-  max-height: 560px;
-  background: #fff;
+  /* Высота задана, а не выведена из содержимого: пустой чат схлопывался до приветствия,
+     а потом дёргался с каждым сообщением. Теперь окно одного размера, растёт лента внутри. */
+  height: min(560px, calc(100vh - 32px));
+  max-height: min(560px, calc(100vh - 32px));
+  background: var(--chat-surface);
   border-radius: var(--radius-lg);
-  box-shadow: 0 24px 48px rgba(30, 22, 70, 0.2);
-  border: 1px solid rgba(109, 59, 255, 0.15);
+  /* Границу окна держит тень, а не рамка: сплошная светлая линия поверх цветной шапки
+     читалась как белая обводка вокруг всего чата. */
+  box-shadow: 0 18px 40px rgba(30, 22, 70, 0.22), 0 2px 8px rgba(30, 22, 70, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+/* Ручка размера в левом верхнем углу: окно прижато к правому нижнему, поэтому растёт
+   в сторону тяги, а его угол остаётся на месте. Лежит поверх шапки и перехватывает
+   нажатие раньше неё — перетаскивание окна отсюда не начинается. */
+.support-chat__resize {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+/* Угол — обе стороны сразу. */
+.support-chat__resize--both {
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+}
+
+/* Грани начинаются там, где заканчивается угол, чтобы зоны не перекрывались. */
+.support-chat__resize--x {
+  top: 22px;
+  left: 0;
+  width: 6px;
+  height: calc(100% - 22px);
+  cursor: ew-resize;
+}
+
+.support-chat__resize--y {
+  top: 0;
+  left: 22px;
+  width: calc(100% - 22px);
+  height: 6px;
+  cursor: ns-resize;
+}
+
+/* Значка у ручки нет намеренно: уголок в шапке читался как посторонний элемент.
+   Зона осталась прежней, о ней сообщает курсор — как у краёв любого окна. */
+
+/* Телефон: во весь экран, включая область под клавиатурой (dvh учитывает её появление). */
+.support-chat__window--fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  border: none;
+}
+
+/* Во весь экран скруглять нечего — иначе углы шапки и подвала торчали бы поверх краёв. */
+.support-chat__window--fullscreen .support-chat__header,
+.support-chat__window--fullscreen .support-chat__footer {
+  border-radius: 0;
+}
+
+/* Свои радиусы у шапки и подвала. Обрезки по overflow:hidden не хватает: на скруглениях
+   остаётся волосяная светлая линия — фон окна проступает из-под прямоугольного ребёнка,
+   и на тёмной странице она читается как белая кайма. */
 .support-chat__header {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: 16px;
   background: linear-gradient(120deg, #6d3bff, #8b67ff);
   color: #fff;
@@ -135,31 +260,83 @@
   100% { box-shadow: 0 0 0 0 rgba(255, 214, 107, 0); }
 }
 
+.support-chat__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Размер кнопки задаём коробкой, а не глифом: «⟳», «⤢», «—» и «×» имеют разную ширину,
+   и без этого четыре кнопки в шапке выглядели разнокалиберными. */
 .support-chat__header-actions button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
+  border-radius: 10px;
   color: #fff;
-  font-size: 18px;
-  margin-left: 8px;
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.support-chat__header-actions button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.support-chat__header-actions button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.support-chat__header-actions button:active {
+  transform: scale(0.92);
+}
+
+.support-chat__header-actions button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
 }
 
 .support-chat__body {
   flex: 1;
-  background: #fbfaff;
+  display: flex;
+  flex-direction: column;
+  background: var(--chat-body);
   padding: 16px;
   overflow-y: auto;
+  /* Системная полоса со стрелками съедает 17px ширины окна и выглядит чужеродно. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(109, 59, 255, 0.35) transparent;
 }
 
-.support-chat__welcome h4 {
-  font-size: 18px;
-  margin-bottom: 8px;
+.support-chat__body::-webkit-scrollbar {
+  width: 8px;
 }
 
-.support-chat__welcome p {
-  font-size: 14px;
-  color: #4a4a68;
-  margin-bottom: 12px;
+.support-chat__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.support-chat__body::-webkit-scrollbar-thumb {
+  background: rgba(109, 59, 255, 0.28);
+  border-radius: 999px;
+}
+
+.support-chat__body::-webkit-scrollbar-thumb:hover {
+  background: rgba(109, 59, 255, 0.45);
+}
+
+/* Продолжение первой реплики бота: отступ такой же, как между сообщениями в ленте,
+   а слева — ширина колонки аватара, чтобы подсказки стояли ровно под пузырём бота. */
+.support-chat__starters {
+  margin-top: 12px;
+  margin-left: 36px;
 }
 
 .support-chat__lead {
@@ -229,6 +406,14 @@
   font-weight: 600;
 }
 
+/* Разговор растёт снизу вверх: приветствие и первые реплики стоят над полем ввода, а пустота
+   уходит под шапку. Иначе в окне фиксированной высоты содержимое висело посередине.
+   Именно margin-top, а не justify-content: flex-end — при переполнении тот отрезает верх
+   прокручиваемой области, и до первых сообщений было бы не добраться. */
+.support-chat__messages {
+  margin-top: auto;
+}
+
 .support-chat__messages {
   display: flex;
   flex-direction: column;
@@ -237,46 +422,144 @@
 
 .support-chat__message {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
+  max-width: 100%;
 }
 
+/* Продолжение группы прижимается к предыдущей реплике — она уже подписана. */
+.support-chat__message--continued {
+  margin-top: -8px;
+}
+
+/* Ширину реплики ограничиваем здесь, а не на самом пузыре: у пузыря процент считался
+   от этого блока, а тот сам ужимается по содержимому — для короткого сообщения он получался
+   шириной строки со временем, и «Привет» не влезал в 85 % от неё. */
+.support-chat__message-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: min(85%, 460px);
+}
+
+.support-chat__message--user .support-chat__message-body {
+  align-items: flex-end;
+}
+
+/* Разделитель дат: разговор, продолжившийся назавтра, не должен читаться одной лентой. */
+.support-chat__day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  color: var(--chat-muted);
+  font-size: 11px;
+}
+
+.support-chat__day::before,
+.support-chat__day::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--chat-border);
+}
+
+/* Строка тянется во всю ширину ленты, а содержимое прижимается вправо: при align-self:flex-end
+   строка ужималась по содержимому, и проценты внутри неё считать было не от чего.
+   Обратное направление ставит аватар клиента справа от его реплики; justify-content при этом
+   не нужен — в row-reverse начало оси и есть правый край. */
 .support-chat__message--user {
-  justify-content: flex-end;
-  align-self: flex-end;
+  flex-direction: row-reverse;
 }
 
+/* Кружок с иконкой: цвет подсказывает, кто пишет, ещё до чтения подписи. */
 .support-chat__avatar {
-  width: 32px;
-  height: 32px;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: #ede6ff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
 }
 
+.support-chat__avatar svg {
+  width: 17px;
+  height: 17px;
+}
+
+.support-chat__avatar--ai {
+  background: var(--chat-accent-soft);
+  color: var(--chat-accent);
+}
+
+.support-chat__avatar--agent {
+  background: #e4f7f2;
+  color: #1f5248;
+}
+
+.support-chat__avatar--user {
+  background: #ebebf2;
+  color: #7c7c92;
+  overflow: hidden;
+}
+
+/* Аватар вошедшего клиента: картинка профиля, а если её нет — инициалы. */
+.support-chat__avatar-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.support-chat__avatar-initials {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #5b5b70;
+}
+
+/* У продолжения группы аватар не рисуем, но место под него держим. */
+.support-chat__avatar--hidden {
+  visibility: hidden;
+}
+
+/* Подпись автора осталась в двух случаях (первый ответ бота и реплики специалиста),
+   поэтому она больше не колонка с аватаром, а просто строка над пузырём. */
 .support-chat__author {
   font-size: 11px;
   color: #6b6b82;
   margin-bottom: 4px;
 }
 
-.support-chat__author--user {
-  text-align: right;
-}
-
 .support-chat__bubble {
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  max-width: 240px;
+  max-width: 100%;
+  width: fit-content;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.45;
+  /* Не anywhere: тот разрешает разрыв ещё и при подсчёте минимальной ширины, из-за чего
+     короткое слово рвалось на середине. break-word рвёт только то, что реально не влезло. */
+  overflow-wrap: break-word;
+}
+
+/* Глобальное правило сайта (index.css) даёт любому <p> отступ снизу 16px и приглушённый цвет.
+   Реплика клиента — это как раз голый <p>, отсюда пустая полоса под словом и серый текст вместо
+   цвета пузыря. У ответов бота отступ гасился разметкой маркдауна, а цвет — нет.
+   Правило стоит выше .support-chat__markdown p, чтобы там сохранился зазор между абзацами. */
+.support-chat__bubble p {
+  margin: 0;
+  color: inherit;
+}
+
+/* Внутри группы верхний угол не срезаем: срез отмечает начало реплики. */
+.support-chat__bubble--continued {
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
 }
 
 .support-chat__bubble--assistant {
-  background: #ece3ff;
+  background: var(--chat-accent-soft);
   color: #2c1d62;
   border-top-left-radius: 4px;
 }
@@ -332,8 +615,8 @@
 
 .support-chat__timestamp {
   font-size: 10px;
-  color: #9b9bb2;
-  margin-top: 4px;
+  color: var(--chat-muted);
+  opacity: 0.85;
 }
 
 .support-chat__typing {
@@ -419,30 +702,85 @@
   font-weight: 600;
 }
 
+/* Отступ разделён между подвалом и полем так, чтобы текст в поле начинался там же, где
+   реплики в переписке (16px от края окна), а подсветка фокуса выступала за него на 8px. */
 .support-chat__footer {
   border-top: 1px solid rgba(109, 59, 255, 0.1);
-  padding: 12px 16px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: 12px 8px;
   background: #fff;
 }
 
+/* Поле и кнопка живут на одной плоскости: ни рамки у поля, ни заливки у кнопки. Границу
+   между перепиской и вводом держит одна линия сверху у подвала — больше разделителей не нужно. */
 .support-chat__composer {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 8px;
+  align-items: end;
+  gap: 4px;
+  border-radius: var(--radius-md);
+  transition: background-color 0.18s ease;
+}
+
+/* Рамки нет, поэтому фокус показываем подсветкой всей строки — иначе непонятно, куда печатать. */
+.support-chat__composer:focus-within {
+  background: #f6f3ff;
 }
 
 .support-chat__input {
-  border: 1px solid rgba(109, 59, 255, 0.2);
-  border-radius: var(--radius-md);
-  padding: 8px 10px;
+  min-height: 44px;
+  max-height: 120px;
+  border: none;
+  background: transparent;
+  padding: 12px 8px;
   font-size: 14px;
+  line-height: 1.45;
+  color: inherit;
   resize: none;
 }
 
-.support-chat__note {
-  font-size: 11px;
-  color: #8b8ba1;
-  margin-top: 6px;
+.support-chat__input:focus {
+  outline: none;
+}
+
+.support-chat__input:disabled {
+  color: #9a97ad;
+}
+
+.support-chat__send {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--chat-accent);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+/* Залитая фигура весит больше контурной, поэтому на два пикселя мельче обводных иконок шапки. */
+.support-chat__send svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Отклик остался, но тихий: подложка под иконкой вместо свечения залитой кнопки. */
+.support-chat__send:not(:disabled):hover {
+  background: var(--chat-accent-soft);
+}
+
+.support-chat__send:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+.support-chat__send:disabled {
+  color: #bfbccd;
+  cursor: default;
 }
 
 .support-chat__error {
@@ -464,6 +802,161 @@
   gap: 6px;
 }
 
+/* Время и оценка ответа в одной строке под пузырём. */
+.support-chat__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.support-chat__rate {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.support-chat__rate-button {
+  border: none;
+  background: transparent;
+  padding: 1px 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.support-chat__rate-button:hover,
+.support-chat__rate-button:focus-visible {
+  opacity: 1;
+  background: #f3efff;
+}
+
+.support-chat__rate-button.is-active {
+  opacity: 1;
+  background: #ece4ff;
+}
+
+/* Выход к человеку: ссылка появляется только после первого ответа ассистента. */
+.support-chat__escape {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.support-chat__escape-link {
+  background: none;
+  border: none;
+  color: #6b6b82;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.support-chat__escape-link:hover {
+  color: #5a2cff;
+}
+
+.support-chat__escape-panel {
+  width: 100%;
+  padding: 12px 14px;
+  background: #f6f5fa;
+  border: 1px solid #e2dcf0;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.support-chat__escape-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c1d62;
+}
+
+.support-chat__escape-hint {
+  font-size: 12px;
+  color: #4a4266;
+}
+
+.support-chat__escape-note {
+  width: 100%;
+  border: 1px solid rgba(109, 59, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.support-chat__escape-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.support-chat__escape-actions .btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Диалог завершён специалистом: переписка остаётся, но продолжить можно только новым чатом. */
+.support-chat__closed {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #f6f5fa;
+  border: 1px solid #e2dcf0;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #4a4266;
+}
+
+/* Кнопка возврата к последнему сообщению — sticky, поэтому висит над лентой без абсолютных координат. */
+.support-chat__scroll-down {
+  position: sticky;
+  bottom: 4px;
+  /* Тело чата — flex-колонка, а элемент с заданной высотой в ней ужимается по остатку места:
+     круглая кнопка превращалась в овал. Запрещаем сжатие явно. */
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(109, 59, 255, 0.2);
+  background: #fff;
+  color: #6d3bff;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(30, 22, 70, 0.16);
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.support-chat__scroll-down svg {
+  width: 16px;
+  height: 16px;
+}
+
+.support-chat__scroll-down:hover {
+  background: var(--chat-accent-soft);
+}
+
+.support-chat__scroll-down:active {
+  transform: scale(0.92);
+}
+
+.support-chat__scroll-down:hover {
+  background: #f3efff;
+}
+
 @media (max-width: 768px) {
   .support-chat {
     right: 12px;
@@ -475,9 +968,11 @@
   }
 }
 
-@media (max-width: 480px) {
-  .support-chat__window {
-    width: calc(100vw - 24px);
+@media (max-width: 560px) {
+  /* Контейнер не трогаем: в нём же живёт кнопка-лаунчер, когда чат закрыт.
+     Полноэкранное окно позиционируется от вьюпорта самостоятельно. */
+  .support-chat__message-body {
+    max-width: 88%;
   }
 }
 

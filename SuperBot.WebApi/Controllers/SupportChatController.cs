@@ -11,6 +11,10 @@ namespace SuperBot.WebApi.Controllers;
 [Route("api/support/chat")]
 public class SupportChatController : ControllerBase
 {
+    // SSE пишем в поток вручную, мимо MVC — значит и camelCase нужно задать самим,
+    // иначе фронт получает Text/Id вместо text/id и падает на разборе ответа.
+    private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly ISupportChatService _chatService;
     private readonly ILogger _streamLogger;
     private readonly ILogger _pollLogger;
@@ -104,6 +108,49 @@ public class SupportChatController : ControllerBase
         }
     }
 
+    /// <summary>Явная просьба клиента передать диалог специалисту (кнопка в чате).</summary>
+    [HttpPost("sessions/{sessionId}/handoff")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AddChatMessageResponse>> RequestHandoff(
+        [FromRoute] string sessionId,
+        [FromBody] RequestHandoffRequest request)
+    {
+        try
+        {
+            var userContext = User.Identity?.IsAuthenticated == true
+                ? SupportUserContext.FromClaims(User)
+                : null;
+            var result = await _chatService.RequestHandoffAsync(sessionId, userContext, request);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
+    /// <summary>
+    /// Оценка ответа бота. Доступна анонимно, как и сам чат: клиент оценивает свой же диалог,
+    /// а идентификатор сессии у него уже есть.
+    /// </summary>
+    [HttpPost("sessions/{sessionId}/messages/{messageId}/feedback")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ChatMessageDto>> SetMessageFeedback(
+        [FromRoute] string sessionId,
+        [FromRoute] string messageId,
+        [FromBody] ChatMessageFeedbackRequest request)
+    {
+        try
+        {
+            var result = await _chatService.SetMessageFeedbackAsync(sessionId, messageId, request.Feedback);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
     [HttpPost("sessions/{sessionId}/contact")]
     [AllowAnonymous]
     public async Task<ActionResult<ChatSessionDto>> UpdateContact(
@@ -143,20 +190,22 @@ public class SupportChatController : ControllerBase
                 GetClientIp(),
                 async chunk =>
                 {
-                    var payload = JsonSerializer.Serialize(new { text = chunk });
+                    var payload = JsonSerializer.Serialize(new { text = chunk }, StreamJsonOptions);
                     await Response.WriteAsync($"data: {payload}\n\n", cancellationToken);
                     await Response.Body.FlushAsync(cancellationToken);
                 },
                 cancellationToken);
 
-            var donePayload = JsonSerializer.Serialize(new { message });
+            var donePayload = JsonSerializer.Serialize(new { message }, StreamJsonOptions);
             await Response.WriteAsync($"event: done\ndata: {donePayload}\n\n", cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
             _streamLogger.LogInformation("Support chat stream finished. SessionId={SessionId}", sessionId);
         }
         catch (SupportChatRequestException ex)
         {
-            var errorPayload = JsonSerializer.Serialize(new { error = ex.Message });
+            // Код кладём в событие: поток уже отдаёт 200, и HTTP-статуса у этой ошибки нет.
+            // Без него виджет не отличит «диалог исчерпан» от обычного сбоя.
+            var errorPayload = JsonSerializer.Serialize(new { error = ex.Message, status = ex.StatusCode }, StreamJsonOptions);
             await Response.WriteAsync($"event: error\ndata: {errorPayload}\n\n", cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
             _streamLogger.LogWarning("Support chat stream failed. SessionId={SessionId} Error={Error}", sessionId, ex.Message);

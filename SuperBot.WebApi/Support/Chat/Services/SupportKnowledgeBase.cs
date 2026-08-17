@@ -11,11 +11,11 @@ namespace SuperBot.WebApi.Support.Chat.Services;
 /// </summary>
 public interface ISupportKnowledgeBase
 {
-    /// <summary>Returns the most relevant articles for a free-text query, best match first.</summary>
-    IReadOnlyList<KnowledgeArticle> Search(string query, int limit);
-
-    /// <summary>Renders the retrieved articles as a compact context block for the system prompt.</summary>
-    string BuildContextBlock(string query, int limit);
+    /// <summary>
+    /// Собирает блок с самыми подходящими статьями для подмешивания в запрос модели.
+    /// <paramref name="maxArticleChars"/> ограничивает длину статьи; 0 — не обрезать.
+    /// </summary>
+    Task<string> BuildContextBlockAsync(string query, int limit, int maxArticleChars = 0);
 }
 
 public record KnowledgeArticle(
@@ -35,7 +35,8 @@ public class SupportKnowledgeBase : ISupportKnowledgeBase
         "want", "get", "have", "me", "your", "we", "will", "at", "be", "was"
     };
 
-    private static readonly IReadOnlyList<KnowledgeArticle> Articles = new List<KnowledgeArticle>
+    /// <summary>Исходные данные для первичного переноса в базу. В рантайме не используются.</summary>
+    internal static readonly IReadOnlyList<KnowledgeArticle> SeedArticles = new List<KnowledgeArticle>
     {
         new(
             Id: "about",
@@ -146,51 +147,69 @@ public class SupportKnowledgeBase : ISupportKnowledgeBase
                 "collect their email address and hand off to a specialist."),
     };
 
-    public IReadOnlyList<KnowledgeArticle> Search(string query, int limit)
+    private readonly ISupportKnowledgeStore _store;
+
+    public SupportKnowledgeBase(ISupportKnowledgeStore store)
+    {
+        _store = store;
+    }
+
+    public async Task<string> BuildContextBlockAsync(string query, int limit, int maxArticleChars = 0)
     {
         if (string.IsNullOrWhiteSpace(query) || limit <= 0)
         {
-            return Array.Empty<KnowledgeArticle>();
+            return string.Empty;
         }
 
         var terms = Tokenize(query);
         if (terms.Count == 0)
         {
-            return Array.Empty<KnowledgeArticle>();
+            return string.Empty;
         }
 
-        var scored = Articles
+        var articles = await _store.GetActiveAsync();
+        var matched = articles
             .Select(article => (article, score: Score(article, terms)))
-            .Where(x => x.score > 0)
-            .OrderByDescending(x => x.score)
+            .Where(item => item.score > 0)
+            .OrderByDescending(item => item.score)
             .Take(limit)
-            .Select(x => x.article)
+            .Select(item => item.article)
             .ToList();
 
-        return scored;
-    }
-
-    public string BuildContextBlock(string query, int limit)
-    {
-        var articles = Search(query, limit);
-        if (articles.Count == 0)
+        if (matched.Count == 0)
         {
             return string.Empty;
         }
 
         var builder = new System.Text.StringBuilder();
         builder.AppendLine("KNOWLEDGE BASE (Tale Shop policies — treat as the single source of truth):");
-        foreach (var article in articles)
+        foreach (var article in matched)
         {
             builder.AppendLine($"### {article.Title} [{article.Category}]");
-            builder.AppendLine(article.Content);
+            builder.AppendLine(Trim(article.Content, maxArticleChars));
             builder.AppendLine();
         }
 
         return builder.ToString().TrimEnd();
     }
 
-    private static double Score(KnowledgeArticle article, IReadOnlyCollection<string> terms)
+    /// <summary>
+    /// Обрезает статью по границе строки: этот блок уходит в каждый запрос и оплачивается
+    /// целиком, а обрывать инструкцию посреди предложения — хуже, чем не дослать её вовсе.
+    /// </summary>
+    private static string Trim(string content, int maxChars)
+    {
+        if (maxChars <= 0 || content.Length <= maxChars)
+        {
+            return content;
+        }
+
+        var cut = content[..maxChars];
+        var boundary = cut.LastIndexOfAny(new[] { '\n', '.' });
+        return boundary > maxChars / 2 ? cut[..(boundary + 1)] : cut;
+    }
+
+    private static double Score(SuperBot.WebApi.Support.Chat.Models.SupportKnowledgeArticle article, IReadOnlyCollection<string> terms)
     {
         double score = 0;
         var keywordSet = new HashSet<string>(article.Keywords, StringComparer.OrdinalIgnoreCase);

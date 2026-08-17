@@ -20,6 +20,8 @@ import BlogCommentsPage from "./blog/BlogCommentsPage";
 import AnalyticsOverviewPage from "./analytics/AnalyticsOverviewPage";
 import AnalyticsSettingsPage from "./analytics/AnalyticsSettingsPage";
 import SupportLiveChatPage from "./support/SupportLiveChatPage";
+import SupportChatStatsPage from "./support/SupportChatStatsPage";
+import SupportKnowledgePage from "./support/SupportKnowledgePage";
 import SupportTicketsPage from "./SupportTicketsPage";
 import PromoCodesPage from "./PromoCodesPage";
 import PaymentIssuesPage from "./PaymentIssuesPage";
@@ -62,6 +64,8 @@ export default function AdminApp() {
                 <Route path="analytics" element={<AnalyticsOverviewPage />} />
                 <Route path="analytics/settings" element={<AnalyticsSettingsPage />} />
                 <Route path="support/live-chat" element={<SupportLiveChatPage />} />
+                <Route path="support/chat-stats" element={<SupportChatStatsPage />} />
+                <Route path="support/knowledge" element={<SupportKnowledgePage />} />
                 <Route path="support/tickets" element={<SupportTicketsPage />} />
                 <Route path="support/recovery" element={<AccountRecoveryAdminPage />} />
                 <Route path="profile" element={<ProfilePage />} />

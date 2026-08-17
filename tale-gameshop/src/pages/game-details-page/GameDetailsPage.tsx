@@ -93,17 +93,6 @@ const GameMediaGallery = ({
   title: string;
   onMediaPlay?: (item: MediaItem) => void;
 }) => {
-  if (media.length === 0) {
-    return (
-      <div className="game-media-gallery">
-        <div className="game-media-main card">
-          <div className="game-media-image">
-            <div className="media-placeholder">No media available</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
   const [selectedId, setSelectedId] = useState(media[0]?.id ?? '');
   const [isPlaying, setIsPlaying] = useState(false);
   const thumbnailRef = useRef<HTMLDivElement | null>(null);
@@ -144,6 +133,20 @@ const GameMediaGallery = ({
     if (!node) return;
     node.scrollBy({ left: amount, behavior: 'smooth' });
   };
+
+  // Заглушка для игры без медиа стоит после хуков, а не до них: раньше при появлении
+  // первого скриншота у уже показанной галереи менялось число хуков и React падал.
+  if (media.length === 0) {
+    return (
+      <div className="game-media-gallery">
+        <div className="game-media-main card">
+          <div className="game-media-image">
+            <div className="media-placeholder">No media available</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="game-media-gallery">

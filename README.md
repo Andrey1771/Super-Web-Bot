@@ -58,30 +58,106 @@ choco install ffmpeg -y
 PS: You need to configure users in Keycloak and import the realm-export from "keycloak settings (temp)"
 In the future, you must create a user with the tale-shop-app role "admin" in the "TaleShop" (realm) to enable editing product cards, adding new products, and configuring the bot and website.
 
-## Support Chat + Ollama (local LLM)
+## Support Chat (AI replies)
 
-The storefront support widget uses a local Ollama model for AI replies. Configure these settings in `SuperBot.WebApi/appsettings.json` or via environment variables:
+The storefront support widget answers with either a local Ollama model or the DeepSeek API.
+The choice is `SupportChat:Provider`; Ollama stays the fallback in both cases, so the chat keeps
+answering when the external API is down, unconfigured, or the daily budget is spent.
 
 ```json
 SupportChat: {
+  "Provider": "ollama",
   "OllamaBaseUrl": "http://localhost:11434",
-  "OllamaModel": "gemma3",
+  "OllamaModel": "qwen2.5:7b",
   "StreamingEnabled": true
 }
 ```
 
-### Quick start
+### Local model (default)
 1. Install and start Ollama locally:
    ```bash
    ollama serve
    ```
 2. Pull the model configured above:
    ```bash
-   ollama pull gemma3
+   ollama pull qwen2.5:7b
    ```
 3. Run the Web API (Docker or local). The chat widget will call the API at `/api/support/chat/...`.
 
-If Ollama is unavailable, the assistant gracefully falls back and offers a human handoff. You can also disable streaming by setting `SupportChat:StreamingEnabled` to `false`.
+### DeepSeek
+Set the provider and the credentials — in Docker via `.env`, locally via user-secrets or
+`appsettings.Development.json`:
+
+```bash
+SUPPORT_CHAT_PROVIDER=deepseek
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=<model id from DeepSeek's current price list>
+SUPPORT_CHAT_DAILY_BUDGET_USD=5      # 0 = no limit
+```
+
+The model id is deliberately not defaulted: DeepSeek's model list changes, and a reasoning model
+is the wrong choice here — its thinking tokens are billed as output and slow a streamed reply
+down for no benefit. The startup log states which provider is active and warns when the chosen
+model looks like a reasoning one.
+
+Spend is tracked per day from the provider's reported token usage, priced by
+`InputPricePerMillionUsd` / `CachedInputPricePerMillionUsd` / `OutputPricePerMillionUsd` — keep
+those in sync with the current price list. When `DailyBudgetUsd` is reached, the chat switches to
+the local model until the next UTC day. The counter lives in process memory, so it resets on
+restart and is per-instance, same as the chat's other limiters.
+
+### Instant answers
+
+The most common questions — where the key is, how to activate it, refunds, a declined card,
+account recovery — are answered from pre-written bilingual text without calling a model at all:
+instant and free. A question is only matched when every required word group hits and the question
+is short (`InstantAnswerMaxWords` / `InstantAnswerMaxChars`); anything longer carries specifics a
+template cannot address and goes to the model. The same template is never repeated twice in one
+conversation — if it did not help the first time, the model takes over. Set
+`InstantAnswersEnabled` to `false` to route everything to the model.
+
+Instant replies are counted separately on the admin stats screen, so the share of traffic they
+absorb is visible next to what the rest costs.
+
+### Editing what the chat knows
+
+Both the grounding articles and the instant answers live in MongoDB
+(`SupportKnowledgeArticles`) and are edited from **Admin → Support → Knowledge**. On the first
+start after this change the topics are copied out of the code into the database, so nothing
+changes behaviourally; the lists in `SupportKnowledgeBase` and `SupportInstantAnswers` remain only
+as that seed. Edits apply without a deploy — the store caches for two minutes and drops the cache
+on every save.
+
+One topic is one row: the English text the model answers from, the search words that find it, and
+optionally a ready reply with its trigger word groups. That is the pair that used to live in two
+separate hardcoded lists and could drift apart.
+
+The customer-facing docs under `/support` still come from `src/content/support/docs.ts`. They are
+a different shape — routed pages with sections, callouts and actions — and moving them into the
+same store is its own piece of work rather than a side effect of this one.
+
+### Handing over to a human
+
+The chat does not open with a "talk to a human" button. The welcome screen offers topics; a
+quiet "this didn't help" link appears only once the assistant has actually answered, and opens a
+small panel with the honest wait ("a specialist usually replies within 15 minutes — I can answer
+right now") plus a box for what is going wrong. What the customer types there goes into the
+conversation as their own message, so the agent opens a case that already has a description
+instead of "hello, what happened?".
+
+Set `BusinessHoursEnabled` with `BusinessHoursTimeZone` (IANA id), `BusinessHoursStart`/`End`,
+`BusinessDays` (1–7, Mon–Sun) and `ExpectedWaitMinutes` to promise a real time. Outside working
+hours the handoff says when a specialist will reply and asks for contact details instead of
+leaving someone waiting on a chat nobody is watching. Left disabled, the chat only mentions the
+typical wait and never invents an opening time.
+
+Typing "оператор" still escalates instantly, and so does a high-risk word like a break-in or a
+chargeback — hiding the button was never the point. The escalation source is recorded separately
+for the button and for typed words, so the stats screen shows which one people actually use.
+
+`SupportChat:MaxResponseTokens` caps reply length (output tokens cost more than input), and
+`SupportChat:StreamingEnabled` set to `false` turns streaming off. If no model can be reached at
+all, the assistant apologises and offers a human handoff.
 
 ## Account avatar uploads
 

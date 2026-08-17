@@ -36,6 +36,32 @@ public class ChatMessageMetadata
 
     // Marks the AI message that hands the conversation over to a human, so the UI can render a banner.
     public bool Handoff { get; set; }
+
+    // Расход и цена этого ответа. Заполняются только когда отвечал платный провайдер:
+    // у локальной модели токены есть, а стоимости нет.
+    public int? InputTokens { get; set; }
+
+    public int? CachedInputTokens { get; set; }
+
+    public int? OutputTokens { get; set; }
+
+    public double? CostUsd { get; set; }
+
+    // Ответ выдан из заготовки, без обращения к модели. Тема нужна, чтобы не повторять
+    // тот же шаблон второй раз в одном диалоге.
+    public bool Instant { get; set; }
+
+    public string? InstantTopic { get; set; }
+
+    // Оценка ответа клиентом. Единственный дешёвый способ понять, какие темы бот тянет плохо.
+    [BsonRepresentation(BsonType.String)]
+    public ChatMessageFeedback? Feedback { get; set; }
+}
+
+public enum ChatMessageFeedback
+{
+    Helpful,
+    NotHelpful
 }
 
 public enum ChatMessageRole

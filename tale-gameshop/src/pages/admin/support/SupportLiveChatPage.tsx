@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
 import {
@@ -14,8 +15,13 @@ import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
 
 const statusFilters = ["ai", "needs_agent", "assigned", "closed", "open"];
 
+// Открытый диалог опрашивается чаще (2.5 с) — там важна каждая реплика. Список обновляем
+// реже: он нужен, чтобы заметить новое обращение, а не чтобы читать переписку.
+const LIST_REFRESH_MS = 10000;
+
 const SupportLiveChatPage: React.FC = () => {
   const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sessions, setSessions] = useState<ChatSessionListResponse["items"]>([]);
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -25,19 +31,25 @@ const SupportLiveChatPage: React.FC = () => {
   const [priority, setPriority] = useState("normal");
   const [tagDraft, setTagDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     setPageTitle("Support / Live Chat");
     setHeaderActions([]);
   }, [setHeaderActions, setPageTitle]);
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
+  // silent — для фонового обновления: индикатор загрузки при нём не мигает.
+  const fetchSessions = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const response = await listChatSessions({ status: filter, q: query, page: 1, pageSize: 50 });
       setSessions(response.items);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [filter, query]);
 
@@ -46,11 +58,34 @@ const SupportLiveChatPage: React.FC = () => {
     setSelectedSession(detail.session);
     setMessages(detail.messages);
     setPriority(detail.session.priority);
+    setLoadError(null);
   }, []);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  // Новое обращение попадает в список само: раньше специалист мог сидеть на этой странице
+  // и не увидеть его, пока не нажмёт Refresh.
+  useEffect(() => {
+    const interval = window.setInterval(() => fetchSessions(true), LIST_REFRESH_MS);
+    return () => window.clearInterval(interval);
+  }, [fetchSessions]);
+
+  // Ссылка из уведомления об эскалации ведёт сюда с ?session=<id> — открываем этот диалог
+  // сразу, не заставляя искать его в списке. Дальше параметр не нужен: выбор ведёт состояние.
+  useEffect(() => {
+    const requested = searchParams.get("session");
+    if (!requested) {
+      return;
+    }
+    fetchSessionDetail(requested)
+      .catch(() => setLoadError(`Session ${requested} was not found.`))
+      .finally(() => {
+        searchParams.delete("session");
+        setSearchParams(searchParams, { replace: true });
+      });
+  }, [fetchSessionDetail, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!selectedSession) {
@@ -112,15 +147,17 @@ const SupportLiveChatPage: React.FC = () => {
     await fetchSessions();
   };
 
-  const sessionMeta = useMemo(() => {
+  // Почему диалог оказался у специалиста: причина, категория и стенограмма, которые ушли
+  // в уведомление. Раньше это было только в письме, а на рабочем экране их не было.
+  const handoffContext = useMemo(() => {
     if (!selectedSession) {
       return null;
     }
-    return {
-      status: selectedSession.status,
-      priority: selectedSession.priority,
-      tags: selectedSession.tags,
-    };
+    const { escalationReason, category, summary } = selectedSession;
+    if (!escalationReason && !category && !summary) {
+      return null;
+    }
+    return { escalationReason, category, summary };
   }, [selectedSession]);
 
   return (
@@ -147,7 +184,7 @@ const SupportLiveChatPage: React.FC = () => {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <button className="btn btn-outline" type="button" onClick={fetchSessions} disabled={loading}>
+            <button className="btn btn-outline" type="button" onClick={() => fetchSessions()} disabled={loading}>
               Refresh
             </button>
           </div>
@@ -200,9 +237,27 @@ const SupportLiveChatPage: React.FC = () => {
               </div>
 
               <div className="support-live-chat__meta-row">
-                <span>Status: {sessionMeta?.status}</span>
-                <span>Tags: {sessionMeta?.tags?.join(", ") || "—"}</span>
+                <span>Status: {selectedSession.status}</span>
+                <span>Language: {selectedSession.language ?? "—"}</span>
+                <span>Order: {selectedSession.orderId ?? "—"}</span>
+                <span>Tags: {selectedSession.tags?.join(", ") || "—"}</span>
               </div>
+
+              {handoffContext && (
+                <div className="support-live-chat__handoff">
+                  <div className="support-live-chat__handoff-head">
+                    <strong>Why this reached a specialist</strong>
+                    {handoffContext.category && <span className="tag">{handoffContext.category}</span>}
+                  </div>
+                  {handoffContext.escalationReason && <p>{handoffContext.escalationReason}</p>}
+                  {handoffContext.summary && (
+                    <details open>
+                      <summary>Conversation summary (as sent in the alert)</summary>
+                      <pre>{handoffContext.summary}</pre>
+                    </details>
+                  )}
+                </div>
+              )}
 
               <div className="support-live-chat__messages">
                 {messages.map((message) => (
@@ -238,7 +293,9 @@ const SupportLiveChatPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="support-live-chat__empty">Select a session to view the conversation.</div>
+            <div className="support-live-chat__empty">
+              {loadError ?? "Select a session to view the conversation."}
+            </div>
           )}
         </Card>
       </div>

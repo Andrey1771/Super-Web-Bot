@@ -79,6 +79,7 @@ namespace SuperBot.WebApi.Services
                 "SupportTicketCounters",
                 "SupportChatSessions",
                 "SupportChatMessages",
+                "SupportKnowledgeArticles",
 
                 // Telegram-бот: привязка аккаунтов, состояние диалогов, исходящие события
                 "TelegramLinks",
@@ -423,6 +424,27 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_support_chat_messages_session_created" }
             );
             await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageSessionIndex);
+
+            // Сводка в админке считается по окну дат, а не по одной сессии — ей нужен свой индекс.
+            var chatSessionCreatedIndex = new CreateIndexModel<Support.Chat.Models.ChatSession>(
+                Builders<Support.Chat.Models.ChatSession>.IndexKeys.Descending(session => session.CreatedAt),
+                new CreateIndexOptions { Name = "ix_support_chat_sessions_created" }
+            );
+            await chatSessionsCollection.Indexes.CreateOneAsync(chatSessionCreatedIndex);
+
+            var chatMessageCreatedIndex = new CreateIndexModel<Support.Chat.Models.ChatMessage>(
+                Builders<Support.Chat.Models.ChatMessage>.IndexKeys.Descending(message => message.CreatedAt),
+                new CreateIndexOptions { Name = "ix_support_chat_messages_created" }
+            );
+            await chatMessagesCollection.Indexes.CreateOneAsync(chatMessageCreatedIndex);
+
+            // Темы поддержки: slug — стабильный ключ, по нему не должно быть дублей.
+            var knowledgeCollection = _database.GetCollection<Support.Chat.Models.SupportKnowledgeArticle>("SupportKnowledgeArticles");
+            var knowledgeSlugIndex = new CreateIndexModel<Support.Chat.Models.SupportKnowledgeArticle>(
+                Builders<Support.Chat.Models.SupportKnowledgeArticle>.IndexKeys.Ascending(article => article.Slug),
+                new CreateIndexOptions { Name = "ix_support_knowledge_slug_unique", Unique = true }
+            );
+            await knowledgeCollection.Indexes.CreateOneAsync(knowledgeSlugIndex);
 
             var ordersCollection = _database.GetCollection<SuperBot.Infrastructure.Data.OrderDb>("Orders");
             var ordersPaymentIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(

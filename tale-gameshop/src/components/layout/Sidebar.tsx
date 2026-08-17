@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useKeycloak } from "@react-keycloak/web";
+import { listChatSessions } from "../../api/supportChatApi";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -13,6 +14,46 @@ type NavItem = {
   icon: React.ReactNode;
   disabled?: boolean;
   roles?: string[];
+  badge?: number;
+};
+
+const PENDING_CHATS_POLL_MS = 30000;
+
+/**
+ * Сколько диалогов ждёт человека. Пока счётчика не было, о новом обращении узнавали только
+ * из Telegram или почты: в самой админке ничто не менялось, на какой бы странице ты ни сидел.
+ */
+const usePendingChatCount = (enabled: boolean) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) {
+      setCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      try {
+        // pageSize=1: нужен только total, сами диалоги здесь не показываем.
+        const response = await listChatSessions({ status: "needs_agent", page: 1, pageSize: 1 });
+        if (!cancelled) {
+          setCount(response.total ?? 0);
+        }
+      } catch {
+        // Счётчик — подсказка, а не функциональность: молчим, чтобы не сыпать в консоль каждые полминуты.
+      }
+    };
+
+    load();
+    const interval = window.setInterval(load, PENDING_CHATS_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [enabled]);
+
+  return count;
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
@@ -31,7 +72,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     return required.some((role) => roles.includes(role));
   };
 
-  const groups = useMemo(
+  // Эндпоинт списка диалогов закрыт теми же ролями, что и сам пункт меню, — без них не опрашиваем.
+  const pendingChats = usePendingChatCount(hasRoles(["admin", "support"]));
+
+  // Тип задан явно: по литералам выводился союз, в котором необязательные поля пункта
+  // (disabled, badge) есть не у всех веток, и обращение к ним не проходило проверку.
+  const groups = useMemo<Array<{ title: string; items: NavItem[] }>>(
     () => [
       {
         title: "Dashboard",
@@ -136,6 +182,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             to: "/admin/support/live-chat",
             icon: "💬",
             roles: ["admin", "support"],
+            badge: pendingChats,
+          },
+          {
+            label: "Chat stats",
+            to: "/admin/support/chat-stats",
+            icon: "📈",
+            roles: ["admin", "support"],
+          },
+          {
+            label: "Knowledge",
+            to: "/admin/support/knowledge",
+            icon: "📚",
+            roles: ["admin", "support"],
           },
           {
             label: "Account recovery",
@@ -235,7 +294,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         ],
       },
     ],
-    []
+    [pendingChats]
   );
 
   return (
@@ -296,9 +355,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     }`
                   }
                   onClick={onClose}
+                  title={item.badge ? `${item.label} — ${item.badge} waiting` : undefined}
                 >
                   <span>{item.icon}</span>
                   <span className="admin-sidebar__link-label">{item.label}</span>
+                  {Boolean(item.badge) && (
+                    <span className="admin-sidebar__badge" aria-label={`${item.badge} waiting`}>
+                      {item.badge! > 99 ? "99+" : item.badge}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}

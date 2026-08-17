@@ -2,7 +2,10 @@ import fs from "fs";
 import path from "path";
 
 const rootDir = path.resolve(process.cwd(), "src");
-const markerPattern = /(<<<<<<<|=======|>>>>>>>)/;
+// Настоящий маркер конфликта занимает строку целиком: «<<<<<<< ветка», ровно семь «=»,
+// «||||||| base» или «>>>>>>> ветка». Поиск по подстроке ловил баннеры-комментарии
+// вида /* ======== */ и ронял сборку на файлах без единого конфликта.
+const markerPattern = /^(?:<{7}(?:\s.*)?|={7}|\|{7}(?:\s.*)?|>{7}(?:\s.*)?)$/;
 const allowedExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".css", ".json", ".md"]);
 
 const violations = [];
@@ -27,15 +30,10 @@ const walk = (dir) => {
     }
 
     const content = fs.readFileSync(fullPath, "utf8");
-    if (!markerPattern.test(content)) {
-      continue;
-    }
-
     const relativePath = path.relative(process.cwd(), fullPath);
-    const lines = content.split(/\r?\n/);
 
-    lines.forEach((line, index) => {
-      if (markerPattern.test(line)) {
+    content.split(/\r?\n/).forEach((line, index) => {
+      if (markerPattern.test(line.trimEnd())) {
         violations.push(`${relativePath}:${index + 1}: ${line.trim()}`);
       }
     });

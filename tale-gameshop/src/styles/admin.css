@@ -107,6 +107,24 @@
   display: none;
 }
 
+/* Сколько обращений ждёт ответа. В свёрнутом меню подписи скрыты, но значок остаётся —
+   это единственный признак, что кто-то ждёт человека. */
+.admin-sidebar__badge {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.admin-sidebar.collapsed .admin-sidebar__badge {
+  margin-left: auto;
+}
+
 .admin-layout__content {
   flex: 1;
   display: flex;

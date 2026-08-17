@@ -2,6 +2,37 @@ namespace SuperBot.WebApi.Support.Chat;
 
 public class SupportChatOptions
 {
+    // --- Провайдер модели ------------------------------------------------------
+    // "ollama" — локальная модель, "deepseek" — внешний API. Выбор не жёсткий: если внешний
+    // провайдер не настроен, недоступен или выбран дневной бюджет, ответы идёт давать Ollama.
+    public string Provider { get; set; } = "ollama";
+
+    // Сколько секунд не трогать внешний API после сбоя, чтобы не ждать таймаут на каждом запросе.
+    public int ProviderCooldownSeconds { get; set; } = 60;
+
+    // Потолок длины ответа. Выход дороже входа, а хороший ответ поддержки — 3–5 предложений.
+    public int MaxResponseTokens { get; set; } = 400;
+
+    // --- DeepSeek (OpenAI-совместимый API) -------------------------------------
+    public string DeepSeekBaseUrl { get; set; } = "https://api.deepseek.com/v1";
+
+    // Ключ приходит из env/user-secrets. Пусто — провайдер считается ненастроенным.
+    public string? DeepSeekApiKey { get; set; }
+
+    // Имя модели задаётся явно: список моделей у провайдера меняется, а reasoning-версию брать
+    // не нужно — её «размышления» оплачиваются как ответ и для поддержки бесполезны.
+    public string DeepSeekModel { get; set; } = string.Empty;
+
+    // --- Дневной бюджет --------------------------------------------------------
+    // 0 — без ограничения. Цены за миллион токенов, сверяться с прайсом провайдера.
+    public decimal DailyBudgetUsd { get; set; } = 0m;
+
+    public decimal InputPricePerMillionUsd { get; set; } = 0.14m;
+
+    public decimal CachedInputPricePerMillionUsd { get; set; } = 0.0028m;
+
+    public decimal OutputPricePerMillionUsd { get; set; } = 0.28m;
+
     public string OllamaBaseUrl { get; set; } = "http://localhost:11434";
 
     // qwen2.5 has strong tool-calling + multilingual (RU/EN) support and does not emit reasoning
@@ -15,7 +46,13 @@ public class SupportChatOptions
 
     public int RateLimitPerMinute { get; set; } = 12;
 
-    public int HistoryLimit { get; set; } = 30;
+    // Потолок числа сообщений диалога в запросе.
+    public int HistoryLimit { get; set; } = 24;
+
+    // Обрезаем историю не каждый ход, а ступенями по столько сообщений. Начало запроса при этом
+    // остаётся байт-в-байт прежним несколько ходов подряд — только так работает кэш промпта
+    // у внешнего провайдера (попадание в кэш дешевле промаха в десятки раз).
+    public int HistoryTrimStepMessages { get; set; } = 8;
 
     public int LlmTimeoutSeconds { get; set; } = 45;
 
@@ -23,7 +60,37 @@ public class SupportChatOptions
     public double Temperature { get; set; } = 0.3;
 
     // How many knowledge-base articles to inject as grounding context per turn.
-    public int KnowledgeArticles { get; set; } = 3;
+    public int KnowledgeArticles { get; set; } = 2;
+
+    // Потолок длины одной статьи базы знаний в запросе. 0 — не обрезать.
+    public int KnowledgeArticleMaxChars { get; set; } = 700;
+
+    // --- Готовые ответы без обращения к модели ---------------------------------
+    // Частые вопросы закрываются заранее написанным текстом: мгновенно и бесплатно.
+    public bool InstantAnswersEnabled { get; set; } = true;
+
+    // Пороги «простоты» вопроса: длинный вопрос почти всегда со своими деталями,
+    // и шаблон на него не отвечает — такие уходят модели.
+    public int InstantAnswerMaxWords { get; set; } = 10;
+
+    public int InstantAnswerMaxChars { get; set; } = 160;
+
+    // --- Часы работы поддержки -------------------------------------------------
+    // Выключено — обещаем только типичное ожидание, без «ответим утром».
+    public bool BusinessHoursEnabled { get; set; } = false;
+
+    // IANA-идентификатор, например "Europe/Moscow". Неизвестный — считаем по UTC.
+    public string BusinessHoursTimeZone { get; set; } = "UTC";
+
+    public int BusinessHoursStart { get; set; } = 10;
+
+    public int BusinessHoursEnd { get; set; } = 19;
+
+    // Дни недели числами 1–7 (пн–вс). Пустой список — работаем всю неделю.
+    public int[] BusinessDays { get; set; } = { 1, 2, 3, 4, 5 };
+
+    // Типичное время ответа специалиста в рабочие часы. 0 — не называть срок.
+    public int ExpectedWaitMinutes { get; set; } = 15;
 
     // Email address that receives a notification when a chat is escalated to a human.
     // Falls back to the SMTP FromAddress channel; empty disables the email notification.

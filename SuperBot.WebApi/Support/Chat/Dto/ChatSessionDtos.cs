@@ -121,6 +121,117 @@ public class ChatMessageMetadataDto
     public string? ToolCall { get; set; }
 
     public bool Handoff { get; set; }
+
+    /// <summary>"helpful" | "not_helpful" | null — оценка ответа клиентом.</summary>
+    public string? Feedback { get; set; }
+}
+
+/// <summary>Тема поддержки в админке: материал для модели плюс необязательный готовый ответ.</summary>
+public class SupportKnowledgeArticleDto
+{
+    public string? Id { get; set; }
+
+    public string? Slug { get; set; }
+
+    public string Title { get; set; } = string.Empty;
+
+    public string? Category { get; set; }
+
+    public List<string>? Keywords { get; set; }
+
+    public string Content { get; set; } = string.Empty;
+
+    public bool Enabled { get; set; } = true;
+
+    public int SortOrder { get; set; }
+
+    public bool InstantEnabled { get; set; }
+
+    /// <summary>Группы слов-триггеров: тема опознана, когда сработала альтернатива в каждой.</summary>
+    public List<List<string>>? InstantTriggers { get; set; }
+
+    public string? InstantTextRu { get; set; }
+
+    public string? InstantTextEn { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
+    public string? UpdatedBy { get; set; }
+}
+
+/// <summary>Явная просьба передать диалог специалисту: с описанием проблемы и контактами.</summary>
+public class RequestHandoffRequest
+{
+    public string? Note { get; set; }
+
+    public string? Email { get; set; }
+
+    public string? OrderId { get; set; }
+}
+
+public class ChatMessageFeedbackRequest
+{
+    /// <summary>"helpful", "not_helpful" или пусто, чтобы снять оценку.</summary>
+    public string? Feedback { get; set; }
+}
+
+/// <summary>Сводка по чату поддержки для админки: сколько забрал бот, за что платим, что не понравилось.</summary>
+public class SupportChatStatsDto
+{
+    public int Days { get; set; }
+
+    public DateTime From { get; set; }
+
+    public int Sessions { get; set; }
+
+    public int EscalatedSessions { get; set; }
+
+    /// <summary>Доля диалогов, закрытых без оператора.</summary>
+    public double DeflectionRate { get; set; }
+
+    public List<StatCountDto> EscalationsBySource { get; set; } = new();
+
+    public List<StatCountDto> TopCategories { get; set; } = new();
+
+    public int AiReplies { get; set; }
+
+    /// <summary>Ответов, выданных из заготовок — без обращения к модели и бесплатно.</summary>
+    public int InstantReplies { get; set; }
+
+    /// <summary>Ответов, за которые платили внешнему провайдеру.</summary>
+    public int BilledReplies { get; set; }
+
+    public double TotalCostUsd { get; set; }
+
+    public double CostPerSessionUsd { get; set; }
+
+    public int FeedbackHelpful { get; set; }
+
+    public int FeedbackNotHelpful { get; set; }
+
+    public double SpentTodayUsd { get; set; }
+
+    public decimal DailyBudgetUsd { get; set; }
+
+    public List<DailyStatDto> Daily { get; set; } = new();
+}
+
+public class StatCountDto
+{
+    public string Label { get; set; } = string.Empty;
+
+    public int Count { get; set; }
+}
+
+public class DailyStatDto
+{
+    public DateTime Date { get; set; }
+
+    public int Sessions { get; set; }
+
+    public int Escalated { get; set; }
+
+    public double CostUsd { get; set; }
 }
 
 public class UpdateChatContactRequest
@@ -144,6 +255,16 @@ public class AddChatMessageResponse
 
 public class ChatConfigDto
 {
+    /// <summary>Часы работы заданы — виджету есть что обещать по срокам.</summary>
+    public bool BusinessHoursConfigured { get; set; }
+
+    public bool SupportIsOpen { get; set; }
+
+    public int ExpectedWaitMinutes { get; set; }
+
+    /// <summary>Время открытия «HH:mm» в часовом поясе поддержки, когда сейчас закрыто.</summary>
+    public string? OpensAt { get; set; }
+
     public bool StreamingEnabled { get; set; }
 
     // Public Turnstile site key for the frontend to render the widget; null/empty = disabled.
