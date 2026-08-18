@@ -3,6 +3,8 @@ import {Link} from 'react-router-dom';
 import {Product} from '../../../reducers/cart-reducer';
 import './order-summary-card.css';
 import SafeGameImage from '../../../components/common/SafeGameImage';
+import {useSitePreferences} from '../../../context/site-preferences';
+import {formatMoney} from '../../../utils/format-money';
 
 type CheckoutTotals = {
     subtotal: number;
@@ -29,8 +31,11 @@ type OrderSummaryCardProps = {
     onRemovePromo: () => void;
 };
 
-const formatPrice = (value: number) => `$${value.toFixed(2)}`;
 const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({items, imageBaseUrl, totals, promo, onPromoCodeChange, onApplyPromo, onRemovePromo}) => {
+    // Итог в сводке обязан совпадать с суммой, которую сервер отдаст в PaymentIntent.
+    const {currency} = useSitePreferences();
+    const formatPrice = (value: number) => formatMoney(value, currency);
+
     return (
         <div className="card order-summary-card" data-testid="order-summary-card">
             <div className="order-summary-header"><div><h2>Order summary</h2><p>Check your items before completing payment.</p></div><span className="badge">Secure checkout</span></div>

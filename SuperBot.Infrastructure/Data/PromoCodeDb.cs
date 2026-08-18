@@ -14,6 +14,11 @@ public class PromoCodeDb
     [BsonRepresentation(BsonType.String)]
     public PromoCodeType Type { get; set; }
     public decimal Value { get; set; }
+
+    /// <summary>Валюта абсолютных сумм. Пусто у промокодов до мультивалютности — читается как USD.</summary>
+    [BsonIgnoreIfNull]
+    public string? Currency { get; set; }
+
     public decimal? MinOrderAmount { get; set; }
     public decimal? MaxDiscountAmount { get; set; }
     public bool FirstOrderOnly { get; set; }

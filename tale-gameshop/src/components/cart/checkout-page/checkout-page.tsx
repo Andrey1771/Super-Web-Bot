@@ -10,6 +10,7 @@ import {IUrlService} from '../../../iterfaces/i-url-service';
 import {IApiClient} from '../../../iterfaces/i-api-client';
 import type {IKeycloakAuthService} from '../../../iterfaces/i-keycloak-auth-service';
 import IDENTIFIERS from '../../../constants/identifiers';
+import {useSitePreferences} from '../../../context/site-preferences';
 import OrderSummaryCard from '../../../features/checkout/components/OrderSummaryCard';
 import StripePaymentCard from '../../../features/checkout/components/StripePaymentCard';
 import {calculateCheckoutTotals} from '../../../features/checkout/utils/checkout-totals';
@@ -76,16 +77,31 @@ const CheckoutPage: React.FC = () => {
     const [requiresEmailVerification, setRequiresEmailVerification] = useState(true);
     const [paymentInitError, setPaymentInitError] = useState('');
     const hasTrackedCheckout = useRef(false);
+    const {currency} = useSitePreferences();
     const [cryptoEnabled, setCryptoEnabled] = useState(false);
+    /** Почему криптой заплатить нельзя именно сейчас — текст приходит с сервера. */
+    const [cryptoUnavailableReason, setCryptoUnavailableReason] = useState('');
     const [cryptoBusy, setCryptoBusy] = useState(false);
     const [cryptoError, setCryptoError] = useState('');
 
-    // Крипто-опция (BTCPay, testnet demo) показывается только если бэкенд сконфигурирован.
+    // Способы оплаты спрашиваем у сервера вместе с валютой: рельс может быть настроен,
+    // но не принимать выбранную валюту — крипто-инвойс, например, выставляется только
+    // в базовой. Раньше здесь стоял флаг «крипта включена», ничего не знавший о валюте.
     useEffect(() => {
-        apiClient.api.get('/api/payments/crypto/config')
-            .then(({data}) => setCryptoEnabled(Boolean(data?.enabled)))
-            .catch(() => setCryptoEnabled(false));
-    }, [apiClient.api]);
+        apiClient.api.get(`/api/storefront/payment-methods?currency=${encodeURIComponent(currency)}`)
+            .then(({data}) => {
+                const methods: Array<{ method: string; available: boolean; reason?: string }> = data?.methods ?? [];
+                const crypto = methods.find((item) => item.method === 'crypto');
+                setCryptoEnabled(Boolean(crypto?.available));
+                setCryptoUnavailableReason(crypto && !crypto.available ? crypto.reason ?? '' : '');
+            })
+            .catch(() => {
+                // Сервер не ответил — прячем всё, кроме карт: предложить способ, который
+                // не сработает, хуже, чем не предложить его вовсе.
+                setCryptoEnabled(false);
+                setCryptoUnavailableReason('');
+            });
+    }, [apiClient.api, currency]);
 
     const handleCryptoPay = async () => {
         setCryptoBusy(true);
@@ -94,6 +110,8 @@ const CheckoutPage: React.FC = () => {
             // Как и в Stripe-чекауте: никаких сумм, сервер считает цену сам.
             const {data} = await apiClient.api.post('/api/payments/crypto/invoice', {
                 promoCode: promoCode || undefined,
+                // Валюта, а не суммы: цены сервер всё равно возьмёт из каталога.
+                currency,
                 items: state.items.map((item) => ({
                     gameId: item.gameId,
                     quantity: item.quantity,
@@ -112,7 +130,9 @@ const CheckoutPage: React.FC = () => {
     useEffect(() => {
         if (!hasTrackedCheckout.current && totals.total > 0 && state.items.length > 0) {
             analyticsClient.trackEcommerce('begin_checkout', {
-                currency: 'USD',
+                // Валюта покупателя, а не зашитый доллар: иначе аналитика показывала бы
+                // выручку в USD по суммам, посчитанным в другой валюте.
+                currency,
                 value: totals.total,
                 items: state.items.map((item) => ({ item_id: item.gameId, item_name: item.name, price: item.price, quantity: item.quantity }))
             });
@@ -143,6 +163,8 @@ const CheckoutPage: React.FC = () => {
                 const {data} = await apiClient.api.post('/api/payments/create-payment-intent', {
                     promoCode: promoCode || undefined,
                     email: isAuthenticated ? undefined : guestEmail,
+                    // Валюта покупателя: суммы сервер посчитает сам по каталогу в ней же.
+                    currency,
                     items: state.items.map((item) => ({
                         gameId: item.gameId,
                         quantity: item.quantity,
@@ -303,6 +325,12 @@ const CheckoutPage: React.FC = () => {
                                     </div>
                                 )}
                             </StripePaymentCard>
+
+                            {!cryptoEnabled && cryptoUnavailableReason && (
+                                // Рельс есть, но не для этой валюты. Молча прятать нельзя:
+                                // покупатель, приходивший за криптой, решит, что она пропала.
+                                <p className="checkout-crypto-card__hint">{cryptoUnavailableReason}</p>
+                            )}
 
                             {cryptoEnabled && (
                                 <div className="checkout-crypto-card">

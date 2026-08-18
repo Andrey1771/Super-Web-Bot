@@ -47,6 +47,12 @@ builder.Services.AddAutoMapper(typeof(GameProfile)); // сканирует вс�
 
 // --- Репозитории, нужные боту ---
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
+// Курсы валют: цена в звёздах считается от долларов, поэтому сумму в другой валюте
+// сперва надо привести к ним. Настройки те же, что у сайта — секция Storefront.
+builder.Services.Configure<SuperBot.Core.Payments.StorefrontCurrencyOptions>(builder.Configuration.GetSection("Storefront"));
+builder.Services.Configure<SuperBot.Core.Payments.FxOptions>(builder.Configuration.GetSection("Storefront:Fx"));
+builder.Services.AddScoped<SuperBot.Core.Interfaces.IRepositories.IFxRateRepository, SuperBot.Infrastructure.Repositories.FxRateMongoDbRepository>();
+builder.Services.AddSingleton<SuperBot.Infrastructure.Services.IFxRateService, SuperBot.Infrastructure.Services.FxRateService>();
 builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();

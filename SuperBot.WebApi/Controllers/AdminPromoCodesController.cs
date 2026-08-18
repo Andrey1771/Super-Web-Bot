@@ -125,6 +125,9 @@ public class AdminPromoCodesController : ControllerBase
             Code = request.Code.Trim().ToUpperInvariant(),
             Type = ParseType(request.Type),
             Value = request.Value,
+            Currency = string.IsNullOrWhiteSpace(request.Currency)
+                ? null
+                : request.Currency.Trim().ToUpperInvariant(),
             MinOrderAmount = request.MinOrderAmount,
             MaxDiscountAmount = request.MaxDiscountAmount,
             FirstOrderOnly = request.FirstOrderOnly,
@@ -151,6 +154,7 @@ public class AdminPromoCodesController : ControllerBase
             code = promo.Code,
             type = promo.Type == PromoCodeType.Percentage ? "percentage" : "fixed",
             value = promo.Value,
+            currency = promo.Currency,
             minOrderAmount = promo.MinOrderAmount,
             maxDiscountAmount = promo.MaxDiscountAmount,
             firstOrderOnly = promo.FirstOrderOnly,
@@ -171,6 +175,14 @@ public class UpsertPromoCodeRequest
     public string Code { get; set; } = string.Empty;
     public string Type { get; set; } = "percentage";
     public decimal Value { get; set; }
+
+    /// <summary>
+    /// Валюта абсолютных сумм промокода. Пусто — базовая валюта каталога, как у всех
+    /// промокодов до мультивалютности. В корзине с другой валютой такой промокод
+    /// не применяется: «минус 10» в евро — это другая скидка.
+    /// </summary>
+    public string? Currency { get; set; }
+
     public decimal? MinOrderAmount { get; set; }
     public decimal? MaxDiscountAmount { get; set; }
     public bool FirstOrderOnly { get; set; }

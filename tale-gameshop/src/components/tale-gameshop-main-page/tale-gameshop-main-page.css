@@ -43,8 +43,10 @@
 /* Hero */
 .main-page .hero {
   position: relative;
-  /* Clear the fixed multi-tier header (height published as --app-header-height), plus breathing room. */
-  padding: calc(var(--app-header-height, 150px) + 40px) 0 96px;
+  /* Clear the fixed multi-tier header (height published as --app-header-height), plus breathing room.
+     Запасное значение — высота шапки без верхней планки, которую убрали: до первого замера
+     из JS резервировалось на 40px больше нужного, и контент заметно подпрыгивал. */
+  padding: calc(var(--app-header-height, 108px) + 40px) 0 96px;
   /* Тёмно-фиолетовая сцена (по макету витрины) вместо прежнего сине-чёрного градиента. */
   background: radial-gradient(circle at 78% 10%, color-mix(in srgb, var(--color-primary) 25%, transparent), transparent 55%), linear-gradient(135deg, #120c22 0%, #1b1233 60%, #120c22 100%);
   color: #f3f4fb;
@@ -1741,9 +1743,11 @@
 
 /* Latest news: карточки новостной витрины (обложка сверху, «N hours ago», заголовок,
    выдержка, просмотры) — блог сайта подаётся как раздел «News». */
+/* Новости — последняя секция страницы, поэтому нижний отступ здесь: это воздух перед
+   подвалом. Раньше он стоял у подписки, потому что последней была она. */
 .main-page .news-strip-section {
   background: var(--color-bg);
-  padding: 56px 0 0;
+  padding: 56px 0 96px;
 }
 
 .main-page .news-grid {
@@ -2082,8 +2086,10 @@
 }
 
 /* Newsletter — последняя секция перед футером, поэтому несёт и нижний отступ страницы. */
+/* Подписка теперь в середине страницы: снизу отступ не нужен — следующая секция
+   отбивает себя сверху сама, как и все остальные. */
 .main-page .newsletter-section {
-  padding: 60px 0 96px;
+  padding: 60px 0 0;
 }
 
 .main-page .newsletter-card {

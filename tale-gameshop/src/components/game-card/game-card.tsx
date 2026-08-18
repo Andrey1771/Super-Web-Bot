@@ -7,6 +7,8 @@ import {IUrlService} from "../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../constants/identifiers";
 import { analyticsClient } from "../../utils/analytics-client";
 import SafeGameImage from "../common/SafeGameImage";
+import { useSitePreferences } from "../../context/site-preferences";
+import { formatMoney } from "../../utils/format-money";
 
 interface GameCardProps {
     game: Game;
@@ -14,6 +16,10 @@ interface GameCardProps {
 
 const GameCard: React.FC<GameCardProps> = ({ game }) => {
     const { dispatch } = useCart();
+    const { currency: preferredCurrency } = useSitePreferences();
+    // Валюта самой позиции важнее настроек: сервер уже посчитал цену в какой-то валюте
+    // и прислал её вместе с ценой. Настройки — только запасной вариант для старых ответов.
+    const currency = game.currency ?? preferredCurrency;
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
     const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
@@ -87,12 +93,12 @@ const GameCard: React.FC<GameCardProps> = ({ game }) => {
                 <div className="muted mb-4">
                     {hasActiveDiscount ? (
                         <>
-                            <span className="line-through mr-2">${regularPrice.toFixed(2)}</span>
-                            <span className="font-semibold">${finalPrice.toFixed(2)}</span>
+                            <span className="line-through mr-2">{formatMoney(regularPrice, currency)}</span>
+                            <span className="font-semibold">{formatMoney(finalPrice, currency)}</span>
                             <span className="ml-2">-{Number(game.discountPercent).toFixed(0)}%</span>
                         </>
                     ) : (
-                        <span>${finalPrice.toFixed(2)}</span>
+                        <span>{formatMoney(finalPrice, currency)}</span>
                     )}
                 </div>
                 <button

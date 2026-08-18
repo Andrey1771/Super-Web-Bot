@@ -57,6 +57,34 @@
   font-size: 12px;
 }
 
+/* Имя и код обращения в одну строку. Код — единственное, чем строки гостей отличаются
+   друг от друга, поэтому он стоит рядом с именем, а не прячется в подпись. */
+.support-live-chat__who {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Длинный адрес почты — один неразрывный кусок текста: без принудительного переноса он
+   распирал строку списка и выдавливал статус за её правый край. */
+.support-live-chat__who strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.support-live-chat__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #6d3bff;
+  background: #f3efff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
 .support-live-chat__detail {
   display: flex;
   flex-direction: column;
@@ -81,6 +109,33 @@
   gap: 16px;
   font-size: 13px;
   color: #5f5f75;
+  /* Строка выросла с четырёх полей до шести и в узкой колонке перестала помещаться. */
+  flex-wrap: wrap;
+}
+
+.support-live-chat__presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Присутствие клиента. Зелёный — читает переписку прямо сейчас, жёлтый — страница открыта,
+   но чат свёрнут, серый — ушёл или не отмечался ни разу. */
+.support-live-chat__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c9c9d6;
+  flex-shrink: 0;
+}
+
+.support-live-chat__dot--viewing {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.support-live-chat__dot--online {
+  background: #f5b53f;
 }
 
 /* Контекст передачи: причина, категория и стенограмма из уведомления — перед перепиской,
@@ -135,6 +190,15 @@
   gap: 12px;
   max-height: 420px;
   overflow-y: auto;
+}
+
+/* Подпись на время подгрузки предыдущей страницы. flex-shrink: 0 — лента выложена колонкой
+   флексом, и без него строка сплющилась бы в полоску. */
+.support-live-chat__history-loading {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #7b7b91;
 }
 
 .support-live-chat__bubble {

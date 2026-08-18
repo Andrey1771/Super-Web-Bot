@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Payments;
 using SuperBot.Infrastructure.Services;
 using Xunit;
 
@@ -18,12 +20,23 @@ namespace SuperBot.Tests
         private static CheckoutPricingService Build(
             IEnumerable<Game>? games = null,
             IEnumerable<GameDiscount>? discounts = null,
-            PromoValidationResult? promo = null)
+            PromoValidationResult? promo = null,
+            StorefrontCurrencyOptions? currencies = null,
+            FxOptions? fx = null)
         {
+            var currencyOptions = currencies ?? new StorefrontCurrencyOptions();
+            var fxOptions = fx ?? new FxOptions();
+
             return new CheckoutPricingService(
                 new FakeGameRepository(games ?? new[] { Game(60m) }),
                 new FakeGameDiscountRepository(discounts ?? Array.Empty<GameDiscount>()),
                 new FakePromoCodeService(promo),
+                Options.Create(currencyOptions),
+                new FxRateService(
+                    Options.Create(currencyOptions),
+                    Options.Create(fxOptions),
+                    NullLogger<FxRateService>.Instance),
+                Options.Create(fxOptions),
                 NullLogger<CheckoutPricingService>.Instance);
         }
 
@@ -36,11 +49,16 @@ namespace SuperBot.Tests
             ImagePath = "cover.png"
         };
 
-        private static CheckoutPricingRequest Cart(int quantity = 1, string gameId = GameId, string? promo = null) => new()
+        private static CheckoutPricingRequest Cart(
+            int quantity = 1,
+            string gameId = GameId,
+            string? promo = null,
+            string? currency = null) => new()
         {
             Items = new List<CheckoutPricingItem> { new() { GameId = gameId, Quantity = quantity } },
             PromoCode = promo,
-            UserName = "user-1"
+            UserName = "user-1",
+            Currency = currency
         };
 
         [Fact]
@@ -236,6 +254,87 @@ namespace SuperBot.Tests
             Assert.True(result.Success);
         }
 
+        // ---------- мультивалютность ----------
+
+        private static StorefrontCurrencyOptions Currencies(params string[] supported) =>
+            new() { BaseCurrency = "USD", SupportedCurrencies = supported.ToList() };
+
+        private static Game GameWithPrices(decimal basePrice, Dictionary<string, decimal> prices)
+        {
+            var game = Game(basePrice);
+            game.Currency = "USD";
+            game.Prices = prices;
+            return game;
+        }
+
+        [Fact]
+        public async Task Uses_price_from_the_price_list_for_the_requested_currency()
+        {
+            var game = GameWithPrices(59.99m, new Dictionary<string, decimal> { ["EUR"] = 54.99m });
+
+            var result = await Build(new[] { game }, currencies: Currencies("EUR"))
+                .PriceAsync(Cart(currency: "EUR"));
+
+            Assert.True(result.Success);
+            Assert.Equal("EUR", result.Currency);
+            // Ручная цена, а не пересчёт базовой: 54.99 назначена прайс-листом.
+            Assert.Equal(54.99m, result.Total);
+            Assert.Equal(5499, result.AmountMinorUnits);
+        }
+
+        [Fact]
+        public async Task Rejects_checkout_when_game_has_no_price_in_the_requested_currency()
+        {
+            // Валюта витриной поддержана, но у конкретной игры цены в ней нет.
+            // Отказ — единственный честный исход: подставить базовую значило бы списать
+            // 59.99 евро вместо долларов.
+            var game = GameWithPrices(59.99m, new Dictionary<string, decimal>());
+
+            var result = await Build(new[] { game }, currencies: Currencies("EUR"))
+                .PriceAsync(Cart(currency: "EUR"));
+
+            Assert.False(result.Success);
+            Assert.Contains("EUR", result.Error);
+        }
+
+        [Fact]
+        public async Task Unsupported_currency_falls_back_to_base_rather_than_failing()
+        {
+            // Кривой ?currency= в запросе не должен ломать оплату — считаем в базовой.
+            var result = await Build(new[] { Game(59.99m) }, currencies: Currencies())
+                .PriceAsync(Cart(currency: "ZZZ"));
+
+            Assert.True(result.Success);
+            Assert.Equal("USD", result.Currency);
+        }
+
+        [Fact]
+        public async Task Requested_currency_reaches_the_promo_service()
+        {
+            // Промокод на фиксированную сумму обязан знать валюту корзины, иначе «минус 10»
+            // применится к любой валюте как своё.
+            var promoService = new FakePromoCodeService(new PromoValidationResult { Valid = false, Message = "no" });
+            var game = GameWithPrices(59.99m, new Dictionary<string, decimal> { ["EUR"] = 54.99m });
+
+            var currencyOptions = Currencies("EUR");
+            var fxOptions = new FxOptions();
+            var service = new CheckoutPricingService(
+                new FakeGameRepository(new[] { game }),
+                new FakeGameDiscountRepository(Array.Empty<GameDiscount>()),
+                promoService,
+                Options.Create(currencyOptions),
+                new FxRateService(
+                    Options.Create(currencyOptions),
+                    Options.Create(fxOptions),
+                    NullLogger<FxRateService>.Instance),
+                Options.Create(fxOptions),
+                NullLogger<CheckoutPricingService>.Instance);
+
+            await service.PriceAsync(Cart(promo: "save10", currency: "EUR"));
+
+            Assert.Equal("EUR", promoService.LastRequest?.Currency);
+        }
+
         private sealed class FakeGameRepository : IGameRepository
         {
             private readonly List<Game> _games;
@@ -280,8 +379,14 @@ namespace SuperBot.Tests
             private readonly PromoValidationResult? _result;
             public FakePromoCodeService(PromoValidationResult? result) => _result = result;
 
-            public Task<PromoValidationResult> ValidateAsync(PromoValidationRequest request) =>
-                Task.FromResult(_result ?? new PromoValidationResult { Valid = false, Message = "not configured" });
+            /// <summary>Последний запрос — чтобы проверить, что валюта корзины доехала до промокода.</summary>
+            public PromoValidationRequest? LastRequest { get; private set; }
+
+            public Task<PromoValidationResult> ValidateAsync(PromoValidationRequest request)
+            {
+                LastRequest = request;
+                return Task.FromResult(_result ?? new PromoValidationResult { Valid = false, Message = "not configured" });
+            }
 
             public Task RecordUsageAsync(PromoApplyRequest request) => Task.CompletedTask;
         }

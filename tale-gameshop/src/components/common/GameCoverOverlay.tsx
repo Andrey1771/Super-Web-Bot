@@ -5,6 +5,8 @@ import { faDesktop } from '@fortawesome/free-solid-svg-icons';
 import { faApple, faLinux, faPlaystation, faXbox } from '@fortawesome/free-brands-svg-icons';
 import { Game } from '../../models/game';
 import { finalPriceOf, discountPercentOf, hasVisibleDiscount } from '../../utils/game-pricing';
+import { useSitePreferences } from '../../context/site-preferences';
+import { formatMoney } from '../../utils/format-money';
 import './game-cover-overlay.css';
 
 // Ярлык платформы → иконка. Незнакомый ярлык просто не рисуется:
@@ -37,6 +39,7 @@ export interface GameCoverOverlayProps {
 const GameCoverOverlay: React.FC<GameCoverOverlayProps> = ({ game, chip, discountCorner = 'right' }) => {
     const discounted = hasVisibleDiscount(game);
     const platforms = (game.platforms ?? []).filter((platform) => platformIcons[platform]);
+    const { currency } = useSitePreferences();
 
     return (
         <>
@@ -52,8 +55,8 @@ const GameCoverOverlay: React.FC<GameCoverOverlayProps> = ({ game, chip, discoun
                     ))}
                 </span>
                 <span className="gco-price-group">
-                    {discounted && <span className="gco-price-old">${Number(game.price).toFixed(2)}</span>}
-                    <span className="gco-price">${finalPriceOf(game).toFixed(2)}</span>
+                    {discounted && <span className="gco-price-old">{formatMoney(Number(game.price), currency)}</span>}
+                    <span className="gco-price">{formatMoney(finalPriceOf(game), currency)}</span>
                 </span>
             </span>
         </>

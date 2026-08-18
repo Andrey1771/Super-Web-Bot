@@ -60,6 +60,12 @@ const CatalogCtaCard: React.FC = () => (
     </Link>
 );
 
+/**
+ * Порог бейджа «выгодно»: и условие показа, и сама подпись. Число трактуется в валюте
+ * покупателя — каталог уже приходит в ней, и «Under €20» так же осмысленно, как «Under $20».
+ */
+const BUDGET_BADGE_MAX_PRICE = 20;
+
 export default function DealsPage() {
     const [games, setGames] = useState<Game[]>([]);
     const [loading, setLoading] = useState(true);
@@ -321,8 +327,12 @@ export default function DealsPage() {
                                                     src={game.imagePath}
                                                     baseUrl={services.urlService.apiBaseUrl}
                                                 />
-                                                {price <= 20 && (
-                                                    <span className="deal-badge deal-badge-soft">Under $20</span>
+                                                {price <= BUDGET_BADGE_MAX_PRICE && (
+                                                    // Порог и подпись — одно число: раньше в подписи стоял
+                                                    // зашитый «$20», и при другой валюте бейдж врал.
+                                                    <span className="deal-badge deal-badge-soft">
+                                                        Under {formatMoney(BUDGET_BADGE_MAX_PRICE, currency, { compact: true })}
+                                                    </span>
                                                 )}
                                             </div>
                                             <div className="deal-body">

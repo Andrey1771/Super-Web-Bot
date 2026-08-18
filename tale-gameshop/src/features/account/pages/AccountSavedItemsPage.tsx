@@ -17,6 +17,8 @@ import { Product } from '../../../reducers/cart-reducer';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useViewedGames } from '../../../hooks/use-viewed-games';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import { useSitePreferences } from '../../../context/site-preferences';
+import { formatMoney } from '../../../utils/format-money';
 import SafeGameImage from '../../../components/common/SafeGameImage';
 import { slugify } from '../../../utils/slugify';
 import './account-saved-items-page.css';
@@ -24,6 +26,7 @@ import './account-saved-items-page.css';
 const PAGE_SIZE = 6;
 
 const AccountSavedItemsPage: React.FC = () => {
+    const { currency } = useSitePreferences();
     const [viewMode, setViewMode] = useState<'comfortable' | 'compact'>('comfortable');
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOrder, setSortOrder] = useState<'all' | 'price' | 'newest'>('all');
@@ -95,7 +98,7 @@ const AccountSavedItemsPage: React.FC = () => {
     const visibleLabel =
         totalFiltered === 0 ? 'Showing 0 of 0' : `Showing ${showingFrom}-${showingTo} of ${totalFiltered}`;
 
-    const formatPrice = (price: number) => (Number.isFinite(price) ? `$${price.toFixed(2)}` : '$0');
+    const formatPrice = (price: number) => formatMoney(Number.isFinite(price) ? price : 0, currency);
 
     const formatDate = (releaseDate: string) => {
         const date = new Date(releaseDate);
@@ -369,7 +372,7 @@ const AccountSavedItemsPage: React.FC = () => {
                             <div className="saved-horizontal-body">
                                 <strong>{item.game.title}</strong>
                                 <span className="saved-horizontal-price">
-                                    ${Number(item.game.price).toFixed(2)}
+                                    {formatMoney(Number(item.game.price), currency)}
                                 </span>
                             </div>
                             <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>
@@ -406,7 +409,7 @@ const AccountSavedItemsPage: React.FC = () => {
                                     {new Date(item.lastViewedAt).toLocaleDateString()}
                                 </span>
                                 <span className="saved-horizontal-price">
-                                    ${Number(item.game.price).toFixed(2)}
+                                    {formatMoney(Number(item.game.price), currency)}
                                 </span>
                             </div>
                             <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>

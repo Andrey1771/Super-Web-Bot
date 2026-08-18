@@ -3,7 +3,13 @@ import { configureStore } from '@reduxjs/toolkit';
 export interface Form { //TODO
     id: string,
     name: string,
+    /** Цена в базовой валюте каталога. Валюту хранит сама игра, форма её не меняет. */
     price: number,
+    /**
+     * Ручные цены в остальных валютах: код → сумма. Пустое поле = в этой валюте не продаём,
+     * и на витрине в ней игра просто не появится (см. CatalogPricing на сервере).
+     */
+    prices: Record<string, number>,
     description: string,
     title: string,
     gameType: number,
@@ -16,6 +22,7 @@ const initialState = {  form: {
         id: '',
         name: '',
         price: 0,
+        prices: {},
         description: '',
         title: '',
         gameType: 0,

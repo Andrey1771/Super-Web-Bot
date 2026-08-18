@@ -43,6 +43,9 @@ namespace SuperBot.WebApi.Controllers
         private readonly ICatalogSnapshotService _catalogSnapshot;
         private readonly IMemoryCache _memoryCache;
         private readonly IMapper _mapper;
+        private readonly SuperBot.Core.Payments.StorefrontCurrencyOptions _currencies;
+        private readonly SuperBot.Infrastructure.Services.IFxRateService _fxRates;
+        private readonly SuperBot.Core.Payments.FxOptions _fx;
 
         public GameController(
             IGameRepository gameRepository,
@@ -52,8 +55,14 @@ namespace SuperBot.WebApi.Controllers
             IOrderRepository orderRepository,
             ICatalogSnapshotService catalogSnapshot,
             IMemoryCache memoryCache,
-            IMapper mapper)
+            IMapper mapper,
+            Microsoft.Extensions.Options.IOptions<SuperBot.Core.Payments.StorefrontCurrencyOptions> currencies,
+            SuperBot.Infrastructure.Services.IFxRateService fxRates,
+            Microsoft.Extensions.Options.IOptions<SuperBot.Core.Payments.FxOptions> fx)
         {
+            _currencies = currencies.Value;
+            _fxRates = fxRates;
+            _fx = fx.Value;
             _gameRepository = gameRepository;
             _gameDiscountRepository = gameDiscountRepository;
             _gameDetailsRepository = gameDetailsRepository;
@@ -139,10 +148,21 @@ namespace SuperBot.WebApi.Controllers
         /// сразу весь набор. Сетка каталога ходит в постраничный <see cref="GetCatalog"/>.
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetAllGames()
+        public async Task<IActionResult> GetAllGames([FromQuery] string? currency = null)
+        {
+            var catalog = await GetCatalogInCurrencyAsync(currency);
+            return Ok(catalog.Select(ToCardDto));
+        }
+
+        /// <summary>
+        /// Каталог, приведённый к валюте покупателя. Валюту берём только из списка витрины:
+        /// произвольный ?currency= в адресе не должен показывать цены в валюте, в которой их
+        /// никто не назначал.
+        /// </summary>
+        private async Task<IReadOnlyList<CatalogItem>> GetCatalogInCurrencyAsync(string? requested)
         {
             var catalog = await _catalogSnapshot.GetAsync();
-            return Ok(catalog.Select(ToCardDto));
+            return CatalogPricing.InCurrency(catalog, _currencies.Resolve(requested), _fxRates.Current(), _fx);
         }
 
         /// <summary>
@@ -163,9 +183,12 @@ namespace SuperBot.WebApi.Controllers
             [FromQuery] bool comingSoon = false,
             [FromQuery] string sort = CatalogQuery.DefaultSort,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = CatalogQuery.DefaultPageSize)
+            [FromQuery] int pageSize = CatalogQuery.DefaultPageSize,
+            [FromQuery] string? currency = null)
         {
-            var catalog = await _catalogSnapshot.GetAsync();
+            // Каталог уже в валюте покупателя, поэтому minPrice/maxPrice сравниваются с ценами
+            // этой же валюты — фильтр «до 20» означает 20 евро в евро, а не 20 долларов.
+            var catalog = await GetCatalogInCurrencyAsync(currency);
             var chart = await GetWeeklyChartAsync();
             var popularityRank = chart
                 .Select((entry, index) => (entry.GameId, index))
@@ -246,6 +269,9 @@ namespace SuperBot.WebApi.Controllers
             isComingSoon = item.IsComingSoon,
             price = item.Price,
             finalPrice = item.FinalPrice,
+            // Валюта едет вместе с ценой: витрина форматирует ровно то, что ей дали,
+            // и разойтись с расчётом уже не может.
+            currency = item.Currency,
             discountPercent = item.DiscountPercent,
             discountActive = item.DiscountActive,
             // Когда скидка закончится (UTC) — витрина рисует обратный отсчёт «deal ends in…».
@@ -261,11 +287,21 @@ namespace SuperBot.WebApi.Controllers
         };
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetGameById(string id)
+        public async Task<IActionResult> GetGameById(string id, [FromQuery] string? currency = null)
         {
             var game = await _gameRepository.GetByIdAsync(id);
             if (game == null)
             {
+                return NotFound();
+            }
+
+            // Карточка товара обязана отвечать в той же валюте, что каталог и чекаут: сюда
+            // ходит корзина, чтобы обновить цены после смены валюты.
+            var requestedCurrency = _currencies.Resolve(currency);
+            var priceInCurrency = SuperBot.Core.Payments.GamePricing.TryGetPrice(game, requestedCurrency, _fxRates.Current(), _fx);
+            if (priceInCurrency is null)
+            {
+                // В этой валюте товар не продаётся — как и в каталоге, молчим о нём.
                 return NotFound();
             }
 
@@ -275,7 +311,8 @@ namespace SuperBot.WebApi.Controllers
             var isComingSoon = GameRelease.IsUpcoming(game.ReleaseDate, DateTime.UtcNow);
             var discountActive = !isComingSoon && discount is not null && discount.IsActiveAt(DateTime.UtcNow);
             var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
-            var finalPrice = CalculateFinalPrice(game.Price, discountPercent);
+            // Скидка — процент, она валютно-нейтральна, но применяется к цене этой валюты.
+            var finalPrice = CalculateFinalPrice(priceInCurrency.Value, discountPercent);
             var genres = details?.Genres?.Where(item => !string.IsNullOrWhiteSpace(item)).ToArray()
                 ?? Array.Empty<string>();
             var resolvedImagePath = game.ImagePath;
@@ -307,8 +344,9 @@ namespace SuperBot.WebApi.Controllers
                 coverMediaId = game.CoverMediaId,
                 releaseDate = game.ReleaseDate,
                 isComingSoon,
-                price = game.Price,
+                price = priceInCurrency.Value,
                 finalPrice,
+                currency = requestedCurrency,
                 discountPercent,
                 discountActive,
                 genres = genres.Length > 0 ? genres : new[] { GameTypeMapper.DescriptionsCategories[game.GameType] },

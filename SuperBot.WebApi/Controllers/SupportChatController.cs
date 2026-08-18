@@ -56,11 +56,12 @@ public class SupportChatController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<ChatSessionDetailDto>> GetSession(
         [FromRoute] string sessionId,
-        [FromQuery] int messageLimit = 50)
+        [FromQuery] int messageLimit = 50,
+        [FromQuery] bool viewing = false)
     {
         try
         {
-            var result = await _chatService.GetSessionAsync(sessionId, messageLimit);
+            var result = await _chatService.GetSessionAsync(sessionId, messageLimit, viewing);
             return Ok(result);
         }
         catch (SupportChatRequestException ex)
@@ -73,12 +74,24 @@ public class SupportChatController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<ChatMessageDto>>> GetMessages(
         [FromRoute] string sessionId,
-        [FromQuery] DateTime? after)
+        [FromQuery] DateTime? after,
+        // Курсор прокрутки вверх: страница сообщений старше указанного момента. Взаимно
+        // исключается с after — тот отдаёт всё новое и предназначен для опроса.
+        [FromQuery] DateTime? before,
+        [FromQuery] int limit = 50,
+        // Открыто ли сейчас окно чата у клиента. Приходит с обычным опросом за сообщениями —
+        // по нему специалист видит, читает ли клиент переписку прямо сейчас.
+        [FromQuery] bool viewing = false)
     {
         try
         {
+            if (before.HasValue)
+            {
+                return Ok(await _chatService.GetOlderMessagesAsync(sessionId, before.Value, limit));
+            }
+
             _pollLogger.LogInformation("Support chat poll started. SessionId={SessionId} After={After}", sessionId, after);
-            var result = await _chatService.GetMessagesAsync(sessionId, after);
+            var result = await _chatService.GetMessagesAsync(sessionId, after, viewing);
             _pollLogger.LogInformation("Support chat poll finished. SessionId={SessionId} Count={Count}", sessionId, result.Count);
             return Ok(result);
         }

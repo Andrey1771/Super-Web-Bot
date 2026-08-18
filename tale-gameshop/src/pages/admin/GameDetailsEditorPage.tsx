@@ -432,10 +432,9 @@ const GameDetailsEditorPage: React.FC = () => {
             Base price
             <input className="input" type="number" value={details.basePrice} onChange={(event) => updateDetails({ basePrice: Number(event.target.value) })} />
           </label>
-          <label>
-            Currency
-            <input className="input" value={details.currency} onChange={(event) => updateDetails({ currency: event.target.value })} />
-          </label>
+          {/* Поля валюты здесь больше нет. Это был свободный текстовый инпут, ни на что не
+              влиявший: вписав «EUR», админ показал бы €59.99 при списании $59.99. Валюта
+              теперь живёт у самой игры (Game.Currency + прайс-лист) и правится в каталоге. */}
           <label>
             Current final price
             <input className="input" type="number" value={details.finalPrice} onChange={(event) => updateDetails({ finalPrice: Number(event.target.value) })} />

@@ -15,10 +15,23 @@ namespace SuperBot.WebApi.Services
         public string StoreId { get; set; } = string.Empty;
         public string WebhookSecret { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Рельс включён. По умолчанию **выключен**: крипта осталась в коде как рабочая
+        /// демо-интеграция, но магазином не предлагается. Раньше единственным выключателем
+        /// было отсутствие ключей — то есть «выключено» и «не настроено» выглядели одинаково,
+        /// и вернуть рельс означало вспомнить, что именно там было настроено.
+        /// Ставится в true вместе с ключами, когда рельс действительно понадобится.
+        /// </summary>
+        public bool Enabled { get; set; }
+
+        /// <summary>Ключи заданы — с BTCPay технически можно разговаривать.</summary>
         public bool IsConfigured =>
             !string.IsNullOrWhiteSpace(BaseUrl) &&
             !string.IsNullOrWhiteSpace(ApiKey) &&
             !string.IsNullOrWhiteSpace(StoreId);
+
+        /// <summary>Рельс доступен покупателю: и включён, и настроен.</summary>
+        public bool IsAvailable => Enabled && IsConfigured;
     }
 
     public sealed record BtcPayInvoice(string Id, string CheckoutLink, string Status);

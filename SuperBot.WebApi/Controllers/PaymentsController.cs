@@ -85,7 +85,8 @@ namespace SuperBot.WebApi.Controllers
                     .Select(item => new CheckoutPricingItem { GameId = item.GameId, Quantity = item.Quantity })
                     .ToList(),
                 PromoCode = request.PromoCode,
-                UserName = userId
+                UserName = userId,
+                Currency = request.Currency
             });
 
             if (!pricing.Success)
@@ -479,6 +480,12 @@ namespace SuperBot.WebApi.Controllers
     {
         public string? PromoCode { get; set; }
         public List<CreatePaymentIntentItemRequest> Items { get; set; } = new();
+
+        /// <summary>
+        /// Валюта, выбранная покупателем. Не сумма, а только валюта: цены всё равно берутся
+        /// из каталога. Неподдерживаемое значение молча станет базовой валютой.
+        /// </summary>
+        public string? Currency { get; set; }
 
         /// <summary>Email гостя (без логина): туда уходят чек, письмо подтверждения и ключи.</summary>
         public string? Email { get; set; }

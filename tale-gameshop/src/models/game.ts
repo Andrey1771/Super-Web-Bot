@@ -3,7 +3,15 @@ export interface Game {
     slug?: string;
     name: string;
     description: string;
+    /** Базовая цена, выражена в `currency`. Форматировать только через formatMoney. */
     price: number;
+    /**
+     * Валюта базовой цены. Пусто у записей до мультивалютности — это USD.
+     * Фронт валюту не выбирает и не конвертирует: показывает ту, что пришла с сервера.
+     */
+    currency?: string;
+    /** Ручные цены в других валютах: код → сумма. Базовой валюты здесь нет, она в price. */
+    prices?: Record<string, number>;
     finalPrice?: number;
     discountPercent?: number;
     discountActive?: boolean;

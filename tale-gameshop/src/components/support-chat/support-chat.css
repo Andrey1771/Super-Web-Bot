@@ -220,6 +220,30 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  /* Окно тянется от 300px, а строка «Подключаю специалиста…» с кодом в неё не влезает —
+     переносим, иначе код выдавливает кнопки шапки. */
+  flex-wrap: wrap;
+}
+
+/* Подпись на время подгрузки предыдущей страницы переписки. flex-shrink: 0 — тело окна
+   выложено колонкой флексом, и без него строка сплющилась бы в полоску. */
+.support-chat__history-loading {
+  flex-shrink: 0;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-muted, #7b7b91);
+}
+
+/* Код обращения: клиент называет его, если пишет нам другим каналом, а специалист видит
+   тот же код у себя в списке. Моноширинный — чтобы читался посимвольно. */
+.support-chat__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.04em;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: help;
 }
 
 .support-chat__status-dot {

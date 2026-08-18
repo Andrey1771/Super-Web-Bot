@@ -20,6 +20,10 @@ type Dict = {
   statusQueue: string;
   statusAssigned: (name?: string) => string;
   statusClosed: string;
+  /** Подсказка к коду обращения: зачем клиенту эти шесть символов. */
+  sessionCodeHint: string;
+  /** Подпись над лентой, пока подгружается предыдущая страница переписки. */
+  loadingHistory: string;
   close: string;
   newChat: string;
   closedNotice: string;
@@ -81,6 +85,8 @@ const en: Dict = {
   statusQueue: "Connecting you to a specialist…",
   statusAssigned: (name) => `${name || "Specialist"} is with you`,
   statusClosed: "Chat closed",
+  sessionCodeHint: "Your ticket code — mention it if you write to us elsewhere",
+  loadingHistory: "Loading earlier messages…",
   close: "Close chat",
   newChat: "New chat",
   closedNotice: "This conversation was closed by our specialist. Start a new one if you still need help.",
@@ -153,6 +159,8 @@ const ru: Dict = {
   statusQueue: "Подключаем специалиста…",
   statusAssigned: (name) => `${name || "Специалист"} на связи`,
   statusClosed: "Чат закрыт",
+  sessionCodeHint: "Код обращения — назовите его, если будете писать нам другим способом",
+  loadingHistory: "Загружаю предыдущие сообщения…",
   close: "Закрыть чат",
   newChat: "Новый диалог",
   closedNotice: "Специалист завершил этот диалог. Если остались вопросы — начните новый.",

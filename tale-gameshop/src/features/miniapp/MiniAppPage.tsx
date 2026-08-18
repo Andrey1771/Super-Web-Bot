@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SafeGameImage from '../../components/common/SafeGameImage';
+import { useSitePreferences } from '../../context/site-preferences';
+import { formatMoney } from '../../utils/format-money';
 import './miniapp-page.css';
 
 // --- Минимальный контракт Telegram WebApp SDK (грузится динамически, только на этой странице) ---
@@ -49,6 +51,8 @@ type MiniAppGame = {
     discountActive?: boolean;
     discountPercent?: number;
     genres?: string[];
+    /** Валюта цены. Не доллары — звёздами такую игру не продать, сервер откажет. */
+    currency?: string;
     /** Статус релиза считает сервер; невышедшие показываем, но не продаём (бэкенд всё равно откажет). */
     isComingSoon?: boolean;
     releaseDate?: string;
@@ -120,9 +124,22 @@ const applyTheme = (webApp: TelegramWebApp) => {
 };
 
 const priceOf = (game: MiniAppGame): number => Number(game.finalPrice ?? game.price ?? 0);
-const money = (value: number): string => `$${value.toFixed(2)}`;
-// USD→Stars по той же формуле, что на бэкенде (StarPrice.FromUsd): max(1, round(usd*rate)) на позицию.
-const starsOfUsd = (usd: number, rate: number): number => Math.max(1, Math.round(usd * rate));
+// Валюта витрины, а не символ в шаблоне: мини-апп показывает ту же цену, что и сайт.
+const money = (value: number, currency: string): string => formatMoney(value, currency);
+/**
+ * USD→Stars по той же формуле, что на сервере (`StarPrice.FromUsd`): max(1, round(usd × ставка))
+ * на позицию. Это ПРЕДПРОСМОТР — итоговую сумму инвойса считает сервер, и расходиться они
+ * не должны, поэтому формула повторена дословно и правится только вместе с серверной.
+ *
+ * Ставка привязана к доллару, поэтому цена не в долларах здесь не считается: сервер в таком
+ * случае откажет в оплате звёздами, и показывать цифру, которой не будет в инвойсе, нельзя.
+ */
+const starsOfUsd = (amount: number, rate: number, currency?: string): number | null => {
+    if (currency && currency.toUpperCase() !== 'USD') {
+        return null;
+    }
+    return Math.max(1, Math.round(amount * rate));
+};
 
 const readStoredCart = (): CartLine[] => {
     try {
@@ -136,6 +153,7 @@ const readStoredCart = (): CartLine[] => {
 };
 
 const MiniAppPage: React.FC = () => {
+    const { currency } = useSitePreferences();
     const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
     const [games, setGames] = useState<MiniAppGame[]>([]);
     const [loading, setLoading] = useState(true);
@@ -209,7 +227,7 @@ const MiniAppPage: React.FC = () => {
     const cartTotal = useMemo(() => cart.reduce((sum, line) => sum + priceOf(line.game) * line.qty, 0), [cart]);
     // Звёзды считаем по позициям (как бэкенд), а не от итоговой суммы — чтобы цифра совпала с инвойсом.
     const cartStars = useMemo(
-        () => cart.reduce((sum, line) => sum + starsOfUsd(priceOf(line.game), starsPerUsd) * line.qty, 0),
+        () => cart.reduce((sum, line) => sum + (starsOfUsd(priceOf(line.game), starsPerUsd, line.game.currency) ?? 0) * line.qty, 0),
         [cart, starsPerUsd]);
     const qtyInCart = useCallback((id: string) => cart.find((line) => line.game.id === id)?.qty ?? 0, [cart]);
 
@@ -332,13 +350,13 @@ const MiniAppPage: React.FC = () => {
             }
         } else if (cartCount > 0) {
             mainActionRef.current = goCart;
-            main.setText(`Корзина · ${cartCount} · ${money(cartTotal)}`);
+            main.setText(`Корзина · ${cartCount} · ${money(cartTotal, currency)}`);
             main.hideProgress();
             main.show();
         } else {
             main.hide();
         }
-    }, [webApp, view, cart, cartCount, cartTotal, cartStars, checkingOut, checkout, goCart, goCatalog]);
+    }, [webApp, view, cart, cartCount, cartTotal, cartStars, checkingOut, checkout, goCart, goCatalog, currency]);
 
     const filteredGames = useMemo(() => {
         const query = search.trim().toLowerCase();
@@ -420,10 +438,10 @@ const MiniAppPage: React.FC = () => {
                                 <div className="miniapp__body">
                                     <h3 title={game.title} onClick={() => openProduct(game)}>{game.title || game.name}</h3>
                                     <div className="miniapp__price">
-                                        <span className="miniapp__pricestars">⭐ {starsOfUsd(priceOf(game), starsPerUsd)}</span>
+                                        <span className="miniapp__pricestars">⭐ {starsOfUsd(priceOf(game), starsPerUsd, game.currency) ?? "—"}</span>
                                         <span className="miniapp__priceusd">
-                                            {money(priceOf(game))}
-                                            {discounted ? <s>{money(game.price)}</s> : null}
+                                            {money(priceOf(game), currency)}
+                                            {discounted ? <s>{money(game.price, currency)}</s> : null}
                                         </span>
                                     </div>
                                     {game.isComingSoon ? (
@@ -466,10 +484,10 @@ const MiniAppPage: React.FC = () => {
                 <h2>{selected.title || selected.name}</h2>
                 {genreOf(selected) ? <span className="miniapp__genre">{genreOf(selected)}</span> : null}
                 <div className="miniapp__productprice">
-                    <span>⭐ {starsOfUsd(priceOf(selected), starsPerUsd)}</span>
-                    <span className="miniapp__productusd">{money(priceOf(selected))}</span>
+                    <span>⭐ {starsOfUsd(priceOf(selected), starsPerUsd, selected.currency) ?? "—"}</span>
+                    <span className="miniapp__productusd">{money(priceOf(selected), currency)}</span>
                     {selected.discountActive && selected.finalPrice != null && selected.finalPrice < selected.price ? (
-                        <span className="miniapp__strike">{money(selected.price)}</span>
+                        <span className="miniapp__strike">{money(selected.price, currency)}</span>
                     ) : null}
                 </div>
                 {selected.description ? (
@@ -507,7 +525,7 @@ const MiniAppPage: React.FC = () => {
                                         <SafeGameImage src={g.imagePath} gameTitle={g.title} baseUrl={window.location.origin} />
                                     </div>
                                     <span className="miniapp__similartitle">{g.title || g.name}</span>
-                                    <span className="miniapp__similarprice">⭐ {starsOfUsd(priceOf(g), starsPerUsd)}</span>
+                                    <span className="miniapp__similarprice">⭐ {starsOfUsd(priceOf(g), starsPerUsd, g.currency) ?? "—"}</span>
                                 </button>
                             ))}
                         </div>
@@ -544,8 +562,8 @@ const MiniAppPage: React.FC = () => {
                                 <div className="miniapp__cartinfo">
                                     <h4>{line.game.title || line.game.name}</h4>
                                     <div className="miniapp__price">
-                                        <span className="miniapp__pricestars">⭐ {starsOfUsd(priceOf(line.game), starsPerUsd) * line.qty}</span>
-                                        <span className="miniapp__priceusd">{money(priceOf(line.game) * line.qty)}</span>
+                                        <span className="miniapp__pricestars">⭐ {(starsOfUsd(priceOf(line.game), starsPerUsd, line.game.currency) ?? 0) * line.qty}</span>
+                                        <span className="miniapp__priceusd">{money(priceOf(line.game) * line.qty, currency)}</span>
                                     </div>
                                 </div>
                                 <div className="miniapp__cartactions">
@@ -562,7 +580,7 @@ const MiniAppPage: React.FC = () => {
 
                     <div className="miniapp__total">
                         <span>Итого</span>
-                        <span className="miniapp__totalvalue">⭐ {cartStars}<small>{money(cartTotal)}</small></span>
+                        <span className="miniapp__totalvalue">⭐ {cartStars}<small>{money(cartTotal, currency)}</small></span>
                     </div>
 
                     {/* В Telegram платит нативная MainButton (внизу) — второй кнопки не даём.
@@ -587,7 +605,7 @@ const MiniAppPage: React.FC = () => {
                                             <SafeGameImage src={g.imagePath} gameTitle={g.title} baseUrl={window.location.origin} />
                                         </div>
                                         <span className="miniapp__similartitle">{g.title || g.name}</span>
-                                        <span className="miniapp__similaradd"><span>+</span> ⭐ {starsOfUsd(priceOf(g), starsPerUsd)}</span>
+                                        <span className="miniapp__similaradd"><span>+</span> ⭐ {starsOfUsd(priceOf(g), starsPerUsd, g.currency) ?? "—"}</span>
                                     </button>
                                 ))}
                             </div>

@@ -39,6 +39,12 @@ public class PromoCodeService : IPromoCodeService
             return Invalid(request.CartSubtotal, "Promo code has expired or is not active yet.");
         }
 
+        // Проверяем до сумм: сравнивать порог заказа с корзиной в другой валюте бессмысленно.
+        if (!promoCode.AppliesToCurrency(request.Currency))
+        {
+            return Invalid(request.CartSubtotal, "Promo code doesn't apply to this currency.");
+        }
+
         if (promoCode.MinOrderAmount.HasValue && request.CartSubtotal < promoCode.MinOrderAmount.Value)
         {
             return Invalid(request.CartSubtotal, "Minimum order amount is not reached.");

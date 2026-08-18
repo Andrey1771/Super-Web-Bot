@@ -46,6 +46,13 @@ public class ChatSession
     // AI-generated conversation summary captured at escalation time for the specialist.
     public string? Summary { get; set; }
 
+    // Когда виджет клиента последний раз опрашивал сервер, и было ли при этом открыто окно
+    // чата. По этой паре специалист видит, читает ли клиент ответ прямо сейчас или ушёл:
+    // писать «сейчас вернусь» в пустоту — самая обидная трата его времени.
+    public DateTime? LastSeenAt { get; set; }
+
+    public bool LastSeenViewing { get; set; }
+
     // Статус со временем меняется (needs_agent → assigned → closed), поэтому «дошло ли до человека»
     // фиксируем отдельным флагом — по нему считается доля диалогов, закрытых без оператора.
     public bool WasEscalated { get; set; }

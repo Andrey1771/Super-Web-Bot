@@ -8,6 +8,7 @@ import {
   fetchChatConfig,
   getChatMessages,
   getChatSession,
+  getOlderChatMessages,
   sendChatMessage,
   requestHandoff,
   sendMessageFeedback,
@@ -34,6 +35,31 @@ const isLocalId = (id: string) => id.startsWith("local-") || id.startsWith("stre
 // поэтому строгий курсор «строго новее последнего» насовсем терял отставшие реплики.
 // Повторно пришедшее сообщение отсеется по id в mergeMessages.
 const POLL_OVERLAP_MS = 60 * 1000;
+
+// Размер страницы истории. Должен совпадать с messageLimit, с которым загружается сессия:
+// по нему же решается, есть ли что подгружать дальше — ответ короче страницы означает,
+// что переписка кончилась.
+const HISTORY_PAGE = 50;
+
+// Самая ранняя реплика, подтверждённая сервером, — от неё отсчитывается следующая страница.
+// Порядок в состоянии произвольный (отставшие ответы дописываются в конец), поэтому берём
+// минимум по времени, а не первый элемент.
+const oldestServerMoment = (list: ChatMessage[]): string | undefined => {
+  let oldest: string | undefined;
+  for (const message of list) {
+    if (isLocalId(message.id)) {
+      continue;
+    }
+    const moment = new Date(message.createdAt).getTime();
+    if (Number.isNaN(moment)) {
+      continue;
+    }
+    if (!oldest || moment < new Date(oldest).getTime()) {
+      oldest = message.createdAt;
+    }
+  }
+  return oldest;
+};
 
 // Курсор опроса берём только по подтверждённым сервером сообщениям: часы браузера и сервера
 // расходятся, и время оптимистичной заглушки может «перепрыгнуть» ответ специалиста.
@@ -112,6 +138,20 @@ const ChatWidget: React.FC = () => {
   // Специалист закрыл диалог: переписку оставляем на экране, но писать в неё уже нельзя.
   const [isClosed, setIsClosed] = useState(false);
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem(MUTED_KEY) === "1");
+
+  // Прокрутка вверх подгружает предыдущие страницы переписки. Флаги держим и в ref: загрузку
+  // запускает обработчик прокрутки, а он видит состояние на момент последней отрисовки —
+  // без ref одно движение колеса успевало отправить несколько одинаковых запросов.
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const hasMoreHistoryRef = useRef(false);
+  const loadingHistoryRef = useRef(false);
+  useEffect(() => {
+    hasMoreHistoryRef.current = hasMoreHistory;
+  }, [hasMoreHistory]);
+  useEffect(() => {
+    loadingHistoryRef.current = loadingHistory;
+  }, [loadingHistory]);
 
   const lang = useMemo(detectSupportLang, []);
   const dict = useMemo(() => getSupportDict(lang), [lang]);
@@ -252,6 +292,7 @@ const ChatWidget: React.FC = () => {
     setIsClosed(false);
     setError(null);
     setIsTyping(false);
+    setHasMoreHistory(false);
   }, []);
 
   // 409 — диалог закрыт специалистом: переписку показываем, писать не даём.
@@ -288,6 +329,9 @@ const ChatWidget: React.FC = () => {
         const safeMessages = Array.isArray(data.messages) ? data.messages : [];
         setMessages(safeMessages);
         persistMessages(safeMessages);
+        // Сервер отдал ровно страницу — значит, за ней может быть ещё. Точный ответ даст
+        // первая же подгрузка, лишний запрос тут дешевле лишнего поля в протоколе.
+        setHasMoreHistory(safeMessages.length >= HISTORY_PAGE);
       } catch (err) {
         if (!handleSessionGone(err)) {
           console.error(err);
@@ -296,6 +340,46 @@ const ChatWidget: React.FC = () => {
     },
     [handleSessionGone]
   );
+
+  /**
+   * Следующая страница переписки вверх. Дописываем В НАЧАЛО списка: курсор опроса берётся
+   * с конца массива, и старые реплики, приписанные в хвост, увели бы его назад — опрос стал
+   * бы тянуть всю переписку заново на каждом тике.
+   */
+  const loadOlderMessages = useCallback(async () => {
+    if (!sessionId || loadingHistoryRef.current || !hasMoreHistoryRef.current) {
+      return;
+    }
+
+    const before = oldestServerMoment(messagesRef.current);
+    if (!before) {
+      setHasMoreHistory(false);
+      return;
+    }
+
+    loadingHistoryRef.current = true;
+    setLoadingHistory(true);
+    try {
+      const older = await getOlderChatMessages(sessionId, before, HISTORY_PAGE);
+      if (older.length < HISTORY_PAGE) {
+        setHasMoreHistory(false);
+      }
+      if (older.length > 0) {
+        setMessages((prev) => {
+          const known = new Set(prev.map((message) => message.id));
+          const fresh = older.filter((message) => !known.has(message.id));
+          return fresh.length > 0 ? [...fresh, ...prev] : prev;
+        });
+      }
+    } catch (err) {
+      // Ошибку подгрузки не показываем и в handleSessionGone не отдаём: переписка на экране
+      // цела, а принять её за «сессии больше нет» значило бы начать новый диалог на ровном месте.
+      console.error(err);
+    } finally {
+      loadingHistoryRef.current = false;
+      setLoadingHistory(false);
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     fetchChatConfig()
@@ -354,7 +438,10 @@ const ChatWidget: React.FC = () => {
     const interval = window.setInterval(async () => {
       try {
         const after = pollCursor(messagesRef.current);
-        const incoming = await getChatMessages(sessionId, after);
+        // Тот же признак, по которому решается, шуметь ли уведомлением: окно открыто и
+        // вкладка активна — значит, клиент действительно смотрит переписку.
+        const viewing = isOpenRef.current && !document.hidden;
+        const incoming = await getChatMessages(sessionId, after, viewing);
         // Из-за перекрытия курсора в ответе почти всегда есть уже показанные сообщения:
         // непрочитанными считаем только те, которых на экране ещё не было.
         const known = new Set(messagesRef.current.map((message) => message.id));
@@ -670,6 +757,9 @@ const ChatWidget: React.FC = () => {
         onFeedback={handleFeedback}
         onHandoff={handleHandoff}
         waitHint={waitHint}
+        hasMoreHistory={hasMoreHistory}
+        loadingHistory={loadingHistory}
+        onLoadOlder={loadOlderMessages}
       />
     </div>
   );

@@ -11,6 +11,12 @@ public class PromoValidationRequest
     public string Code { get; set; } = string.Empty;
     public decimal CartSubtotal { get; set; }
     public string? UserName { get; set; }
+
+    /// <summary>
+    /// Валюта корзины. Нужна промокодам с абсолютными суммами: без неё «минус 10» применилось бы
+    /// к любой валюте как своё. Пусто — проверка валюты не выполняется (старые вызывающие).
+    /// </summary>
+    public string? Currency { get; set; }
 }
 
 public class PromoApplyRequest
