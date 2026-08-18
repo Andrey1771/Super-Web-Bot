@@ -3,6 +3,7 @@ import { DataGrid, Column, Paging } from "devextreme-react/data-grid";
 import Card from "../ui/Card";
 import EmptyState from "../ui/EmptyState";
 import type { Order } from "../../types/orders";
+import { formatOrderMoney } from "../../utils/format-money";
 
 type OrdersTableProps = {
   items: Order[];
@@ -114,7 +115,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
           minWidth={140}
           cellRender={(cellData: { data: Order }) => (
             <span>
-              {cellData.data.totalAmount.toFixed(2)} {cellData.data.currency}
+              {formatOrderMoney(cellData.data.totalAmount, cellData.data.currency)}
             </span>
           )}
         />

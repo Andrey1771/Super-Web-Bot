@@ -175,7 +175,8 @@
     display: grid;
     gap: var(--space-16);
     position: sticky;
-    top: calc(var(--app-header-height, 150px) + 16px);
+    /* Запасное значение — высота шапки без убранной верхней планки. */
+    top: calc(var(--app-header-height, 108px) + 16px);
 }
 
 .faq-help-card {

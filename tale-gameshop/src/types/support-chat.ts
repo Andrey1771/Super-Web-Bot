@@ -49,6 +49,15 @@ export type ChatSession = {
   summary?: string;
   escalationReason?: string;
   orderId?: string;
+  /**
+   * Где сейчас клиент: смотрит переписку, просто держит страницу открытой, ушёл или ни разу
+   * не отмечался. Считается на сервере — часы у браузера специалиста свои, и на клиентском
+   * сравнении «онлайн» мигал бы от одного расхождения часов.
+   */
+  presence?: "viewing" | "online" | "away" | "unknown";
+  lastSeenAt?: string;
+  /** Время последней реплики самого клиента — в отличие от lastMessageAt, куда попадает и ответ ИИ. */
+  lastCustomerMessageAt?: string;
 };
 
 export type ChatSessionDetail = {

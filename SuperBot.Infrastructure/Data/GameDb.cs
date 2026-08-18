@@ -22,6 +22,16 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("price")]
         public decimal Price { get; set; }
 
+        /// <summary>Валюта базовой цены. Пусто у записей до мультивалютности — читается как USD.</summary>
+        [BsonElement("currency")]
+        [BsonIgnoreIfNull]
+        public string? Currency { get; set; }
+
+        /// <summary>Ручные цены в других валютах. Базовой валюты здесь нет — она в price.</summary>
+        [BsonElement("prices")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, decimal>? Prices { get; set; }
+
         [BsonElement("description")]
         public string Description { get; set; }
 

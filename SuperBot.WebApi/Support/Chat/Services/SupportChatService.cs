@@ -16,9 +16,10 @@ namespace SuperBot.WebApi.Support.Chat.Services;
 public interface ISupportChatService
 {
     Task<CreateChatSessionResponse> CreateSessionAsync(SupportUserContext? user, CreateChatSessionRequest request, string? clientIp);
-    Task<ChatSessionDetailDto> GetSessionAsync(string sessionId, int messageLimit);
+    Task<ChatSessionDetailDto> GetSessionAsync(string sessionId, int messageLimit, bool viewing = false);
     Task<AddChatMessageResponse> AddUserMessageAsync(string sessionId, SupportUserContext? user, string text, string? clientIp);
-    Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(string sessionId, DateTime? after);
+    Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(string sessionId, DateTime? after, bool viewing = false);
+    Task<IReadOnlyList<ChatMessageDto>> GetOlderMessagesAsync(string sessionId, DateTime before, int limit);
     Task<ChatConfigDto> GetConfigAsync();
     Task<ChatSessionDto> UpdateContactAsync(string sessionId, UpdateChatContactRequest request);
     Task<ChatSessionListResponse> ListSessionsAsync(string? status, string? query, int page, int pageSize);
@@ -220,10 +221,11 @@ public class SupportChatService : ISupportChatService
         };
     }
 
-    public async Task<ChatSessionDetailDto> GetSessionAsync(string sessionId, int messageLimit)
+    public async Task<ChatSessionDetailDto> GetSessionAsync(string sessionId, int messageLimit, bool viewing = false)
     {
         var session = await GetSessionEntityAsync(sessionId);
         EnsureSessionOpen(session);
+        await TouchPresenceAsync(session, viewing);
         return await BuildSessionDetailAsync(session, messageLimit);
     }
 
@@ -241,9 +243,26 @@ public class SupportChatService : ISupportChatService
         if (!string.IsNullOrWhiteSpace(query))
         {
             var regex = new BsonRegularExpression(query, "i");
-            filter &= Builders<ChatSession>.Filter.Or(
+            var alternatives = new List<FilterDefinition<ChatSession>>
+            {
                 Builders<ChatSession>.Filter.Regex(s => s.Email, regex),
-                Builders<ChatSession>.Filter.Regex(s => s.UserId, regex));
+                Builders<ChatSession>.Filter.Regex(s => s.UserId, regex)
+            };
+
+            // Код обращения специалист видит в списке — значит, по нему должен работать и
+            // поиск: клиент называет именно код. Идентификатор хранится как ObjectId, и
+            // регулярное выражение к нему неприменимо, поэтому сравниваем со строковым
+            // представлением через $expr.
+            if (SupportSessionCode.TryParseFragment(query, out var fragment))
+            {
+                alternatives.Add(new BsonDocument("$expr", new BsonDocument("$regexMatch", new BsonDocument
+                {
+                    { "input", new BsonDocument("$toString", "$_id") },
+                    { "regex", fragment + "$" }
+                })));
+            }
+
+            filter &= Builders<ChatSession>.Filter.Or(alternatives);
         }
 
         var total = await _sessions.CountDocumentsAsync(filter);
@@ -289,7 +308,12 @@ public class SupportChatService : ISupportChatService
     public async Task<ChatSessionDetailDto> GetSessionForAdminAsync(string sessionId, int messageLimit)
     {
         var session = await GetSessionEntityAsync(sessionId);
-        return await BuildSessionDetailAsync(session, messageLimit);
+        var detail = await BuildSessionDetailAsync(session, messageLimit);
+
+        // Считаем только для специалиста: клиенту время его собственной последней реплики
+        // не нужно, а лишний запрос на каждый опрос виджета — тем более.
+        detail.Session.LastCustomerMessageAt = await GetLastCustomerMessageAtAsync(session.Id);
+        return detail;
     }
 
     private async Task<ChatSessionDetailDto> BuildSessionDetailAsync(ChatSession session, int messageLimit)
@@ -302,19 +326,51 @@ public class SupportChatService : ISupportChatService
         };
     }
 
-    public async Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(string sessionId, DateTime? after)
+    public async Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(string sessionId, DateTime? after, bool viewing = false)
     {
         var session = await GetSessionEntityAsync(sessionId);
         EnsureSessionOpen(session);
+        await TouchPresenceAsync(session, viewing);
         var filter = Builders<ChatMessage>.Filter.Eq(m => m.SessionId, session.Id);
         if (after.HasValue)
         {
-            filter &= Builders<ChatMessage>.Filter.Gt(m => m.CreatedAt, after.Value);
+            filter &= Builders<ChatMessage>.Filter.Gt(m => m.CreatedAt, ToUtc(after.Value));
         }
 
         var items = await _messages.Find(filter).SortBy(m => m.CreatedAt).ToListAsync();
         return items.Select(MapMessage).ToList();
     }
+
+    /// <summary>
+    /// Страница переписки старше указанного момента — для прокрутки вверх. Отдаётся в
+    /// хронологическом порядке, как и остальная история.
+    /// </summary>
+    public async Task<IReadOnlyList<ChatMessageDto>> GetOlderMessagesAsync(string sessionId, DateTime before, int limit)
+    {
+        var session = await GetSessionEntityAsync(sessionId);
+
+        // EnsureSessionOpen здесь намеренно нет: закрытый диалог остаётся на экране у клиента,
+        // и листать его вверх он должен так же. Иначе прокрутка отдавала бы 410, а виджет
+        // принимал бы этот ответ за «сессии больше нет» и начинал новый разговор.
+        var safeLimit = Math.Clamp(limit, 1, 100);
+
+        var older = await _messages
+            .Find(m => m.SessionId == session.Id && m.CreatedAt < ToUtc(before))
+            .SortByDescending(m => m.CreatedAt)
+            .Limit(safeLimit)
+            .ToListAsync();
+
+        older.Reverse();
+        return older.Select(MapMessage).ToList();
+    }
+
+    /// <summary>
+    /// Время из строки запроса приходит с учётом часового пояса приложения, а в базе всё
+    /// хранится в UTC. На сервере с поясом, отличным от UTC, курсор без этого приведения
+    /// промахивался бы ровно на смещение пояса.
+    /// </summary>
+    private static DateTime ToUtc(DateTime value) =>
+        value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
 
     public async Task<ChatSessionDto> UpdateContactAsync(string sessionId, UpdateChatContactRequest request)
     {
@@ -1474,14 +1530,67 @@ public class SupportChatService : ISupportChatService
         return session;
     }
 
+    /// <summary>
+    /// Отмечает, что виджет клиента только что был на связи. Вызывается из обычных запросов
+    /// за сообщениями — отдельного «пинга» для присутствия нет.
+    /// </summary>
+    private async Task TouchPresenceAsync(ChatSession session, bool viewing)
+    {
+        var now = DateTime.UtcNow;
+        var stale = session.LastSeenAt is null || now - session.LastSeenAt.Value >= SupportPresence.WriteInterval;
+
+        // Смену состояния (свернул окно, вернулся на вкладку) записываем сразу: её специалист
+        // должен увидеть в тот же момент. Всё остальное — не чаще, чем раз в WriteInterval.
+        if (!stale && session.LastSeenViewing == viewing)
+        {
+            return;
+        }
+
+        session.LastSeenAt = now;
+        session.LastSeenViewing = viewing;
+
+        await _sessions.UpdateOneAsync(
+            Builders<ChatSession>.Filter.Eq(s => s.Id, session.Id),
+            Builders<ChatSession>.Update
+                .Set(s => s.LastSeenAt, now)
+                .Set(s => s.LastSeenViewing, viewing));
+    }
+
+    /// <summary>
+    /// Время последней реплики самого клиента. Отдельным запросом, а не из загруженной
+    /// переписки: она обрезана лимитом, и в длинном диалоге ответ был бы неверным.
+    /// </summary>
+    private async Task<DateTime?> GetLastCustomerMessageAtAsync(string sessionId)
+    {
+        var last = await _messages
+            .Find(m => m.SessionId == sessionId && m.Role == ChatMessageRole.User)
+            .SortByDescending(m => m.CreatedAt)
+            .Limit(1)
+            .FirstOrDefaultAsync();
+
+        return last?.CreatedAt;
+    }
+
+    /// <summary>
+    /// Хвост переписки — последние <paramref name="messageLimit"/> сообщений в хронологическом
+    /// порядке.
+    ///
+    /// Сортировка идёт по убыванию, и только потом список разворачивается. Обратный порядок
+    /// (отсортировать по возрастанию и обрезать) отдавал бы НАЧАЛО диалога: в переписке
+    /// длиннее лимита специалист видел первые сто реплик, а свежие — те, ради которых он
+    /// диалог и открыл, — не показывались вовсе.
+    /// </summary>
     private async Task<List<ChatMessage>> GetMessagesInternalAsync(string sessionId, int messageLimit)
     {
         var limit = Math.Clamp(messageLimit, 1, 100);
-        return await _messages
+        var newestFirst = await _messages
             .Find(m => m.SessionId == sessionId)
-            .SortBy(m => m.CreatedAt)
+            .SortByDescending(m => m.CreatedAt)
             .Limit(limit)
             .ToListAsync();
+
+        newestFirst.Reverse();
+        return newestFirst;
     }
 
     private ChatSessionDto MapSession(ChatSession session)
@@ -1503,7 +1612,10 @@ public class SupportChatService : ISupportChatService
             Language = session.Language,
             Summary = session.Summary,
             EscalationReason = session.EscalationReason,
-            OrderId = session.OrderId
+            OrderId = session.OrderId,
+            LastSeenAt = session.LastSeenAt,
+            Presence = SupportPresence.Format(
+                SupportPresence.Resolve(session.LastSeenAt, session.LastSeenViewing, DateTime.UtcNow))
         };
     }
 

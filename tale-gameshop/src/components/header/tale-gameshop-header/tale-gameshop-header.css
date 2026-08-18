@@ -1,10 +1,9 @@
 @import '../../../styles/tokens.css';
 
 /* =========================================================================
-   Site header — fixed, three tiers:
-   1) announcement bar (dismissible)
-   2) primary bar: brand · search · tools · account
-   3) nav bar: category links + Store mega-menu
+   Site header — fixed, two tiers:
+   1) primary bar: brand · search · tools · account
+   2) nav bar: category links + Store mega-menu
    ========================================================================= */
 
 .site-header {
@@ -23,10 +22,9 @@
 }
 
 /* ---------- Компакт-режим (скролл вниз) ----------
-   Складываются announcement и ряд навигации, остаётся одна строка с лого/поиском/корзиной.
+   Складывается ряд навигации, остаётся одна строка с лого/поиском/корзиной.
    Контент страницы не двигается: --app-header-height публикуется по ПОЛНОЙ шапке
    (см. tale-gameshop-header.tsx), анимируется только сама шапка поверх страницы. */
-.site-header.is-collapsed .announcement-bar,
 .site-header.is-collapsed .header-nav-bar {
     max-height: 0;
     opacity: 0;
@@ -53,78 +51,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .announcement-bar,
     .header-nav-bar,
     .header-nav-inner,
-    .site-header.is-collapsed .announcement-bar,
     .site-header.is-collapsed .header-nav-bar,
     .site-header.is-collapsed .header-nav-inner {
         transition-duration: 1ms;
         transition-delay: 0s;
     }
-}
-
-/* ---------- Announcement bar ---------- */
-.announcement-bar {
-    background: linear-gradient(90deg, #6b3ff2 0%, #8b5cf6 50%, #a855f7 100%);
-    color: #ffffff;
-    /* Участвует в компакт-режиме (см. .is-collapsed ниже): складывается по max-height. */
-    overflow: hidden;
-    max-height: 44px;
-    transition: max-height 0.36s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.3s ease;
-}
-
-.announcement-inner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    min-height: 30px;
-    padding-block: 3px;
-}
-
-.announcement-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin: 0;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-}
-
-.announcement-text svg {
-    opacity: 0.9;
-}
-
-.announcement-dot {
-    opacity: 0.7;
-}
-
-.announcement-close {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.85);
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.announcement-close:hover {
-    background: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
 }
 
 /* ---------- Primary bar ---------- */
@@ -1196,9 +1129,5 @@
 @media (max-width: 480px) {
     .brand-name {
         font-size: 18px;
-    }
-
-    .announcement-text {
-        font-size: 12px;
     }
 }

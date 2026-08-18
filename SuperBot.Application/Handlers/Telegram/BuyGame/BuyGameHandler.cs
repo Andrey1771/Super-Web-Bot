@@ -59,16 +59,24 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
             {
                 var title = string.IsNullOrWhiteSpace(game.Title) ? game.Name : game.Title;
                 var siteUrl = $"{_urlService.MainUrl?.TrimEnd('/')}/cart?add={game.Id}";
-                var stars = StarPrice.FromUsd(game.Price, starsPerUsd);
+                // Курсов у бот-обработчика нет, поэтому в звёздах продаём только то, что заведено
+                // в долларах. Игру в другой валюте показываем без кнопки звёзд, а не по долларовой
+                // ставке от евро — это была бы скидка на пустом месте.
+                var stars = StarPrice.FromAmount(game.Price, game.Currency, rates: null, starsPerUsd);
 
-                var keyboard = new InlineKeyboardMarkup(new[]
+                // Кнопка «купить на сайте» есть всегда, кнопка звёзд — только когда цену
+                // в звёздах удалось посчитать.
+                var buttons = new List<InlineKeyboardButton>
                 {
-                    new[]
-                    {
-                        InlineKeyboardButton.WithUrl($"🛒 ${game.Price:0.00}", siteUrl),
-                        InlineKeyboardButton.WithCallbackData($"⭐ {stars}", $"stars:{game.Id}")
-                    }
-                });
+                    InlineKeyboardButton.WithUrl($"🛒 {FormatPrice(game)}", siteUrl)
+                };
+
+                if (stars is not null)
+                {
+                    buttons.Add(InlineKeyboardButton.WithCallbackData($"⭐ {stars}", $"stars:{game.Id}"));
+                }
+
+                var keyboard = new InlineKeyboardMarkup(new[] { buttons.ToArray() });
 
                 await SendGameCardAsync(chatId, game, BuildCaption(game, title), keyboard, cancellationToken);
             }
@@ -141,6 +149,13 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
                 .FirstOrDefault(name => name.EndsWith("game-cover-fallback.png", StringComparison.OrdinalIgnoreCase));
             return resourceName == null ? null : assembly.GetManifestResourceStream(resourceName);
         }
+
+        /// <summary>
+        /// Цена с кодом валюты игры. Знак доллара здесь был зашит в шаблон — ровно тот же дефект,
+        /// что чинили на витрине: игра в евро подписывалась долларом.
+        /// </summary>
+        private static string FormatPrice(Core.Entities.Game game) =>
+            $"{game.Price:0.00} {Core.Payments.GamePricing.BaseCurrency(game)}";
 
         private static string BuildCaption(Core.Entities.Game game, string? title)
         {

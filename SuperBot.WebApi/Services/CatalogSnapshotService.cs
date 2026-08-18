@@ -24,6 +24,10 @@ public sealed record CatalogItem(
     bool IsComingSoon,
     decimal Price,
     decimal FinalPrice,
+    /// <summary>Валюта, в которой выражены Price и FinalPrice этой позиции.</summary>
+    string Currency,
+    /// <summary>Ручные цены в других валютах — сырьё для приведения витрины к валюте покупателя.</summary>
+    IReadOnlyDictionary<string, decimal> Prices,
     decimal? DiscountPercent,
     bool DiscountActive,
     DateTime? DiscountEndsAt,
@@ -192,6 +196,8 @@ public sealed class CatalogSnapshotService : ICatalogSnapshotService
                 IsComingSoon: isComingSoon,
                 Price: game.Price,
                 FinalPrice: PriceCalculator.FinalPrice(game.Price, discountPercent),
+                Currency: SuperBot.Core.Payments.GamePricing.BaseCurrency(game),
+                Prices: game.Prices ?? new Dictionary<string, decimal>(),
                 DiscountPercent: discountPercent,
                 DiscountActive: discountActive,
                 DiscountEndsAt: discountActive ? discount!.EndDate : null,

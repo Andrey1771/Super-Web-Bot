@@ -77,7 +77,10 @@ public class AdminGameDetailsController : ControllerBase
 
         details.BasePrice = request.BasePrice;
         details.DiscountPercent = request.DiscountPercent;
-        details.Currency = request.Currency;
+        // Валюта описания больше не принимается: единственный её источник — сама игра
+        // (Game.Currency и прайс-лист). Раньше это поле позволяло подписать цену любой
+        // валютой, никак не связанной с расчётом. Существующие значения не трогаем —
+        // их всё равно никто не читает.
         details.KeyType = request.KeyType;
         details.IsActive = request.IsActive;
         details.IsNew = request.IsNew;

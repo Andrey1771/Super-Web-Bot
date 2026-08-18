@@ -69,10 +69,30 @@ export const updateChatContact = async (
 
 export const getChatMessages = async (
   sessionId: string,
-  after?: string
+  after?: string,
+  /**
+   * Открыто ли окно чата на активной вкладке. Едет вместе с обычным опросом за сообщениями:
+   * специалисту в админке по этому признаку видно, читает ли клиент ответ прямо сейчас.
+   */
+  viewing = false
 ): Promise<ChatMessage[]> => {
   const response = await apiClient().get(`/api/support/chat/sessions/${sessionId}/messages`, {
-    params: after ? { after } : {},
+    params: { ...(after ? { after } : {}), viewing },
+  });
+  return ensureArray<ChatMessage>(response.data);
+};
+
+/**
+ * Страница переписки старше указанного момента — для прокрутки вверх. Пустой ответ или
+ * ответ короче запрошенного размера означает, что история кончилась.
+ */
+export const getOlderChatMessages = async (
+  sessionId: string,
+  before: string,
+  limit: number
+): Promise<ChatMessage[]> => {
+  const response = await apiClient().get(`/api/support/chat/sessions/${sessionId}/messages`, {
+    params: { before, limit },
   });
   return ensureArray<ChatMessage>(response.data);
 };
@@ -186,6 +206,18 @@ export const listChatSessions = async (params: {
 export const getChatSessionAdmin = async (sessionId: string): Promise<ChatSessionDetail> => {
   const response = await apiClient().get(`/api/support/admin/chat/sessions/${sessionId}`);
   return response.data;
+};
+
+/** Страница переписки старше указанного момента — прокрутка вверх в панели специалиста. */
+export const getOlderChatMessagesAdmin = async (
+  sessionId: string,
+  before: string,
+  limit: number
+): Promise<ChatMessage[]> => {
+  const response = await apiClient().get(`/api/support/admin/chat/sessions/${sessionId}/messages`, {
+    params: { before, limit },
+  });
+  return ensureArray<ChatMessage>(response.data);
 };
 
 export const assignChatSession = async (sessionId: string) => {

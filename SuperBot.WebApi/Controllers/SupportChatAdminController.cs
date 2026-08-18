@@ -53,6 +53,27 @@ public class SupportChatAdminController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Страница переписки старше указанного момента — прокрутка вверх в панели специалиста.
+    /// Тот же источник, что и у виджета клиента: диалог один, различается только доступ.
+    /// </summary>
+    [HttpGet("sessions/{sessionId}/messages")]
+    public async Task<ActionResult<IReadOnlyList<ChatMessageDto>>> GetOlderMessages(
+        [FromRoute] string sessionId,
+        [FromQuery] DateTime before,
+        [FromQuery] int limit = 100)
+    {
+        try
+        {
+            var result = await _chatService.GetOlderMessagesAsync(sessionId, before, limit);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return Problem(ex.Message, statusCode: ex.StatusCode);
+        }
+    }
+
     [HttpPost("sessions/{sessionId}/assign")]
     public async Task<ActionResult<ChatSessionDto>> AssignSession([FromRoute] string sessionId)
     {

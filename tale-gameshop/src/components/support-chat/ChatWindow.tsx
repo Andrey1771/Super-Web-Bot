@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import MessageList from "./MessageList";
 import Composer from "./Composer";
 import QuickReplies from "./QuickReplies";
@@ -6,6 +6,7 @@ import TurnstileWidget from "./TurnstileWidget";
 import type { ChatFeedback, ChatMessage, ChatSession, ViewerProfile } from "../../types/support-chat";
 import { getSupportDict, type SupportLang } from "./i18n";
 import { createGreeting } from "./greeting";
+import { formatSessionCode } from "../../utils/support-session-code";
 import { ArrowDownIcon, CloseIcon, SoundOffIcon, SoundOnIcon } from "./icons";
 
 type ContactForm = {
@@ -43,6 +44,10 @@ type ChatWindowProps = {
   onFeedback: (messageId: string, feedback: ChatFeedback | null) => void;
   onHandoff: (note: string) => void;
   waitHint: string;
+  /** Есть ли что подгружать вверх; пока false — прокрутка к верху ничего не запускает. */
+  hasMoreHistory: boolean;
+  loadingHistory: boolean;
+  onLoadOlder: () => void;
 };
 
 type WindowSize = { width: number; height: number };
@@ -57,6 +62,10 @@ const MIN_WINDOW = { width: 300, height: 380 };
 const MAX_WINDOW = { width: 560, height: 760 };
 const VIEWPORT_MARGIN = 32;
 const SIZE_KEY = "tale_support_chat_size";
+
+// На каком расстоянии от верха ленты запрашивается следующая страница переписки. С запасом
+// в экран: страница должна успеть приехать до того, как человек упрётся в начало списка.
+const HISTORY_TRIGGER_PX = 120;
 
 const clamp = (value: number, min: number, max: number) => Math.round(Math.min(Math.max(value, min), max));
 
@@ -136,6 +145,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onFeedback,
   onHandoff,
   waitHint,
+  hasMoreHistory,
+  loadingHistory,
+  onLoadOlder,
 }) => {
   const t = getSupportDict(lang);
   const compact = useCompactViewport();
@@ -274,12 +286,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     body.scrollTo({ top: body.scrollHeight, behavior: smooth ? "smooth" : "auto" });
   };
 
+  // Расстояние от низа ленты на момент запроса следующей страницы. К низу привязываемся,
+  // а не к верху: дописанные сверху реплики сдвигают всё содержимое вниз ровно на свою
+  // высоту, и без этой поправки человека выбрасывало бы в начало переписки.
+  const historyAnchorRef = useRef<{ fromBottom: number; firstId?: string } | null>(null);
+
   const handleBodyScroll = () => {
     const body = bodyRef.current;
     if (!body) {
       return;
     }
     setAtBottom(body.scrollHeight - body.scrollTop - body.clientHeight < 48);
+
+    if (body.scrollTop < HISTORY_TRIGGER_PX && hasMoreHistory && !loadingHistory) {
+      historyAnchorRef.current = {
+        fromBottom: body.scrollHeight - body.scrollTop,
+        firstId: messages[0]?.id
+      };
+      onLoadOlder();
+    }
   };
 
   useEffect(() => {
@@ -288,6 +313,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       scrollToBottom(false);
     }
   }, [isOpen]);
+
+  // useLayoutEffect, а не useEffect: позицию возвращаем до отрисовки кадра, иначе лента
+  // успевает мигнуть прыжком.
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    const anchor = historyAnchorRef.current;
+    if (!body || !anchor) {
+      return;
+    }
+
+    // Страница пришла — в начале списка теперь другая реплика. Сверяемся именно по ней:
+    // пока ждём ответ, в ленту может добавиться новое сообщение снизу, и поправлять
+    // прокрутку на него нельзя — человек стоит на своём месте в переписке.
+    if (messages[0]?.id !== anchor.firstId) {
+      body.scrollTop = body.scrollHeight - anchor.fromBottom;
+      historyAnchorRef.current = null;
+      return;
+    }
+
+    if (!loadingHistory) {
+      // Ответ пришёл пустым: история кончилась, держать якорь больше не за чем.
+      historyAnchorRef.current = null;
+    }
+  }, [messages, loadingHistory]);
 
   useEffect(() => {
     if (atBottom) {
@@ -327,6 +376,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   // «ИИ-ассистент · онлайн» под заголовком висело всегда и ничего не сообщало. Строку показываем
   // только когда состояние сменилось: подключаем специалиста, специалист на связи, диалог закрыт.
   const showStatus = statusModifier !== "online";
+
+  // Код обращения показываем в те же моменты, что и статус, — то есть когда в разговоре
+  // появляется человек. Пока отвечает ассистент, называть код некому и незачем.
+  const code = formatSessionCode(session?.id);
 
   const hasAssistantReply = messages.some((message) => message.role === "assistant" && (message.text ?? "").trim().length > 0);
   const canAskForHuman = hasAssistantReply && !isQueue && !isAssigned && !isClosed;
@@ -386,6 +439,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <div className={`support-chat__status support-chat__status--${statusModifier}`}>
               <span className="support-chat__status-dot" aria-hidden="true" />
               {statusLabel}
+              {code && (
+                <span className="support-chat__code" title={t.sessionCodeHint}>
+                  {code}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -414,6 +472,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       <div className="support-chat__body" ref={bodyRef} onScroll={handleBodyScroll}>
+        {loadingHistory && (
+          <div className="support-chat__history-loading" role="status">
+            {t.loadingHistory}
+          </div>
+        )}
         <MessageList
           messages={[greeting, ...messages]}
           isTyping={isTyping}

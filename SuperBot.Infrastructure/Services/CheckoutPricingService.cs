@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Payments;
 using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Services
@@ -17,9 +19,13 @@ namespace SuperBot.Infrastructure.Services
         /// <summary>Для лимитов промокода «на пользователя».</summary>
         public string? UserName { get; set; }
 
-        // Валюты здесь намеренно НЕТ: цены в каталоге — просто числа без валюты,
-        // конвертации не существует. Позволить клиенту выбрать валюту означало бы
-        // списать «60» в рупиях вместо 60 долларов. Валюту задаёт только сервер.
+        /// <summary>
+        /// Валюта, в которой покупатель хочет платить. Выбирать её клиенту теперь можно,
+        /// но только из списка витрины: неизвестная валюта молча становится базовой
+        /// (см. <see cref="StorefrontCurrencyOptions.Resolve"/>), а сумма всё равно берётся
+        /// из каталога — клиентским числам по-прежнему не верим.
+        /// </summary>
+        public string? Currency { get; set; }
     }
 
     public class CheckoutPricingItem
@@ -75,13 +81,12 @@ namespace SuperBot.Infrastructure.Services
     public class CheckoutPricingService : ICheckoutPricingService
     {
         /// <summary>
-        /// Валюта, в которой ведётся каталог и происходит списание. Задаётся сервером и только им.
-        /// Цены в каталоге — числа без валюты, конвертации нет, поэтому смена валюты означала бы
-        /// списание того же числа в другой (более дешёвой) валюте.
-        /// Прежде чем добавлять мультивалютность: нужны курсы, хранение валюты у товара и учёт
-        /// валют без копеек (JPY и т.п.), где допущение «умножить на 100» неверно.
+        /// Валюта каталога по умолчанию, когда конфигурация ничего не задала. Раньше это была
+        /// единственная валюта расчёта и константа; теперь валюту выбирает покупатель из списка
+        /// <see cref="StorefrontCurrencyOptions"/>, а цена берётся из прайс-листа игры.
+        /// Осталась только как значение по умолчанию — того же смысла, что и до мультивалютности.
         /// </summary>
-        public const string SettlementCurrency = "USD";
+        public const string SettlementCurrency = GamePricing.LegacyCurrency;
 
         /// <summary>Максимум позиций в одном заказе — защита от раздувания запроса.</summary>
         private const int MaxLineItems = 50;
@@ -91,17 +96,26 @@ namespace SuperBot.Infrastructure.Services
         private readonly IGameRepository _gameRepository;
         private readonly IGameDiscountRepository _gameDiscountRepository;
         private readonly IPromoCodeService _promoCodeService;
+        private readonly StorefrontCurrencyOptions _currencies;
+        private readonly IFxRateService _fxRates;
+        private readonly FxOptions _fx;
         private readonly ILogger<CheckoutPricingService> _logger;
 
         public CheckoutPricingService(
             IGameRepository gameRepository,
             IGameDiscountRepository gameDiscountRepository,
             IPromoCodeService promoCodeService,
+            IOptions<StorefrontCurrencyOptions> currencies,
+            IFxRateService fxRates,
+            IOptions<FxOptions> fx,
             ILogger<CheckoutPricingService> logger)
         {
             _gameRepository = gameRepository;
             _gameDiscountRepository = gameDiscountRepository;
             _promoCodeService = promoCodeService;
+            _currencies = currencies.Value;
+            _fxRates = fxRates;
+            _fx = fx.Value;
             _logger = logger;
         }
 
@@ -153,7 +167,9 @@ namespace SuperBot.Infrastructure.Services
                 .Where(discount => !string.IsNullOrWhiteSpace(discount.GameId))
                 .ToDictionary(discount => discount.GameId!, StringComparer.OrdinalIgnoreCase);
 
-            var currency = SettlementCurrency;
+            // Валюта одна на весь заказ и берётся из списка витрины: смешивать в одном
+            // платеже позиции в разных валютах нельзя — провайдер списывает одной суммой.
+            var currency = _currencies.Resolve(request.Currency);
             var utcNow = DateTime.UtcNow;
             var lineItems = new List<CheckoutLineItem>();
 
@@ -177,7 +193,18 @@ namespace SuperBot.Infrastructure.Services
                 var discountActive = discount is not null && discount.IsActiveAt(utcNow);
                 var discountPercent = discountActive ? discount!.DiscountPercent : (decimal?)null;
 
-                var unitPrice = game.Price;
+                // Цена берётся из прайс-листа игры. Нет цены в этой валюте — отказ, а не пересчёт
+                // и не молчаливый откат к базовой: списать 59.99 в валюте, где это другие деньги,
+                // хуже, чем честно сказать «в этой валюте не продаём».
+                var price = GamePricing.TryGetPrice(game, currency, _fxRates.Current(), _fx);
+                if (price is null)
+                {
+                    _logger.LogWarning(
+                        "Нет цены для игры {GameId} в валюте {Currency} — чекаут отклонён.", gameId, currency);
+                    return CheckoutPricingResult.Fail($"“{title}” isn't available in {currency}.");
+                }
+
+                var unitPrice = price.Value;
                 var finalUnitPrice = CalculateFinalPrice(unitPrice, discountPercent);
                 if (finalUnitPrice < 0)
                 {
@@ -215,7 +242,10 @@ namespace SuperBot.Infrastructure.Services
                 {
                     Code = request.PromoCode.Trim(),
                     CartSubtotal = afterItemDiscounts,
-                    UserName = request.UserName
+                    UserName = request.UserName,
+                    // Промокод на фиксированную сумму — это сумма в конкретной валюте.
+                    // Без валюты в запросе «минус 10» в евро дало бы совсем не ту скидку.
+                    Currency = currency
                 });
 
                 promoMessage = validation.Message;
@@ -234,10 +264,11 @@ namespace SuperBot.Infrastructure.Services
                 total = 0m;
             }
 
-            total = Math.Round(total, 2, MidpointRounding.AwayFromZero);
+            // Точность округления берём у валюты, а не из константы: у JPY и XTR дробной части нет.
+            total = CurrencyMinorUnits.Round(total, currency);
 
             // Центы считаем один раз и здесь же — дальше сумма никем не пересчитывается.
-            var amountMinorUnits = (long)Math.Round(total * 100m, MidpointRounding.AwayFromZero);
+            var amountMinorUnits = CurrencyMinorUnits.ToMinor(total, currency);
             if (amountMinorUnits <= 0)
             {
                 return CheckoutPricingResult.Fail("Order total must be greater than zero.");

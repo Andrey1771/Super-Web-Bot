@@ -82,6 +82,14 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
+// Валюты витрины: базовая и список доступных покупателю. Включать валюту здесь можно только
+// когда прайс-листы под неё заполнены — иначе чекаут откажет на первой же корзине.
+builder.Services.Configure<SuperBot.Core.Payments.FxOptions>(builder.Configuration.GetSection("Storefront:Fx"));
+builder.Services.AddSingleton<SuperBot.Infrastructure.Services.IFxRateService, SuperBot.Infrastructure.Services.FxRateService>();
+// Суточный импорт курсов. Адрес источника пуст — импорта нет, курсы правит человек через админку.
+builder.Services.AddHttpClient<SuperBot.Infrastructure.Services.IFxRateImportService, SuperBot.Infrastructure.Services.FxRateImportService>();
+builder.Services.Configure<SuperBot.Core.Payments.StorefrontCurrencyOptions>(
+    builder.Configuration.GetSection("Storefront"));
 
 builder.Services.AddControllers();
 builder.Services.Configure<SupportOptions>(builder.Configuration.GetSection("Support"));
@@ -116,6 +124,8 @@ builder.Services.AddScoped<MongoDbInitializer>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepository>();
+// Курсы валют: история снимков, по которой потом разбирают спорные заказы.
+builder.Services.AddScoped<IFxRateRepository, FxRateMongoDbRepository>();
 builder.Services.AddScoped<IGameDetailsRepository, GameDetailsMongoDbRepository>();
 builder.Services.AddScoped<IMediaAssetRepository, MediaAssetMongoDbRepository>();
 builder.Services.AddScoped<IImageMetadataReader, ImageMetadataReader>();
@@ -477,6 +487,13 @@ if (hangfireEnabled)
 
     // «Карта удачи» создаёт по одноразовому промокоду на каждый розыгрыш — без уборки
     // они копятся в админ-списке промокодов навсегда.
+    // Курсы валют: раз в сутки. Гард на скачок и запись в историю живут в самой книге курсов,
+    // поэтому задача только приносит числа.
+    recurringJobManager.AddOrUpdate<SuperBot.Infrastructure.Services.IFxRateImportService>(
+        "import-fx-rates",
+        service => service.RunAsync(),
+        Cron.Daily);
+
     recurringJobManager.AddOrUpdate<ITarotMaintenanceService>(
         "purge-expired-tarot-codes",
         service => service.PurgeExpiredCodesAsync(),

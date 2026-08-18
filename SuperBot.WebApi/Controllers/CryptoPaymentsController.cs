@@ -54,15 +54,17 @@ namespace SuperBot.WebApi.Controllers
 
         /// <summary>Фронт по этому флагу решает, показывать ли крипто-опцию на checkout.</summary>
         [HttpGet("config")]
-        public IActionResult GetConfig() => Ok(new { enabled = _options.IsConfigured, demo = true });
+        public IActionResult GetConfig() => Ok(new { enabled = _options.IsAvailable, demo = true });
 
         [Authorize]
         [HttpPost("invoice")]
         public async Task<IActionResult> CreateInvoice([FromBody] CryptoInvoiceRequest request, CancellationToken ct)
         {
-            if (!_options.IsConfigured)
+            if (!_options.IsAvailable)
             {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Crypto payments are not configured.");
+                // Выключенный рельс отвечает так же, как ненастроенный: снаружи разницы нет,
+                // а знать, что интеграция существует, но выключена, покупателю незачем.
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Crypto payments are not available.");
             }
 
             var userId = User.GetUserKey();
@@ -79,7 +81,8 @@ namespace SuperBot.WebApi.Controllers
                     .Select(item => new CheckoutPricingItem { GameId = item.GameId, Quantity = item.Quantity })
                     .ToList(),
                 PromoCode = request?.PromoCode,
-                UserName = userId
+                UserName = userId,
+                Currency = request?.Currency
             });
 
             if (!pricing.Success)
@@ -305,6 +308,9 @@ namespace SuperBot.WebApi.Controllers
         {
             public string? PromoCode { get; set; }
             public List<CryptoInvoiceItemRequest> Items { get; set; } = new();
+
+            /// <summary>Валюта, выбранная покупателем; суммы всё равно считает сервер по каталогу.</summary>
+            public string? Currency { get; set; }
         }
 
         public class CryptoInvoiceItemRequest

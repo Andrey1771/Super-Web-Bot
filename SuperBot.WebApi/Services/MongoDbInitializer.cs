@@ -6,11 +6,16 @@ namespace SuperBot.WebApi.Services
     {
         private readonly IMongoDatabase _database;
         private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<MongoDbInitializer> _logger;
 
-        public MongoDbInitializer(IMongoDatabase database, IWebHostEnvironment environment)
+        public MongoDbInitializer(
+            IMongoDatabase database,
+            IWebHostEnvironment environment,
+            ILogger<MongoDbInitializer> logger)
         {
             _database = database;
             _environment = environment;
+            _logger = logger;
         }
 
         // Метод для инициализации коллекций
@@ -25,6 +30,8 @@ namespace SuperBot.WebApi.Services
                 "Games",
                 "GameDetails",
                 "GameDiscounts",
+                // Курсы валют: коллекция только на добавление, актуальным считается последний снимок.
+                "FxRates",
                 "GameKeys",
                 "GameReviews",
                 "GameReviewHelpfulVotes",
@@ -510,6 +517,17 @@ namespace SuperBot.WebApi.Services
 
             await EnsureCatalogAndLookupIndexesAsync();
             await EnsureRetentionIndexesAsync();
+            await BackfillGameCurrencyAsync();
+
+            // Последний курс по валюте ищется постоянно (на старте процесса и при импорте),
+            // а история читается редко — индекс покрывает оба случая.
+            var fxRates = _database.GetCollection<SuperBot.Infrastructure.Data.FxRateDb>("FxRates");
+            await fxRates.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.FxRateDb>(
+                Builders<SuperBot.Infrastructure.Data.FxRateDb>.IndexKeys
+                    .Ascending(rate => rate.From)
+                    .Ascending(rate => rate.To)
+                    .Descending(rate => rate.CapturedAtUtc),
+                new CreateIndexOptions { Name = "ix_fx_rates_pair_captured" }));
 
             var paymentStateCollection = _database.GetCollection<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>("PaymentFinalizationStates");
             var paymentStateIntentIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>(
@@ -571,6 +589,34 @@ namespace SuperBot.WebApi.Services
         /// ВАЖНО: TTL стирает данные безвозвратно, поэтому сроки выбраны с запасом,
         /// а коллекции, нужные для разбора инцидентов и отчётности, сюда не входят.
         /// </summary>
+        /// <summary>
+        /// Проставляет валюту играм, заведённым до мультивалютности. Каталог фактически вёлся
+        /// в долларах (рубли в админке были багом форматтера), поэтому USD — не выбор, а фиксация
+        /// того, что уже есть. Записи с валютой не трогаем: миграция идемпотентна и переживает
+        /// перезапуски. Цены не пересчитываются — меняется только подпись к ним.
+        /// </summary>
+        private async Task BackfillGameCurrencyAsync()
+        {
+            var games = _database.GetCollection<SuperBot.Infrastructure.Data.GameDb>("Games");
+
+            var withoutCurrency = Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.Or(
+                Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.Exists(game => game.Currency, false),
+                Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.In(game => game.Currency, new[] { null, string.Empty }));
+
+            var result = await games.UpdateManyAsync(
+                withoutCurrency,
+                Builders<SuperBot.Infrastructure.Data.GameDb>.Update.Set(
+                    game => game.Currency, SuperBot.Core.Payments.GamePricing.LegacyCurrency));
+
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation(
+                    "Мультивалютность: валюта {Currency} проставлена {Count} играм без валюты.",
+                    SuperBot.Core.Payments.GamePricing.LegacyCurrency,
+                    result.ModifiedCount);
+            }
+        }
+
         private async Task EnsureRetentionIndexesAsync()
         {
             // События просмотра игр — самая быстрорастущая коллекция (запись на каждый просмотр).

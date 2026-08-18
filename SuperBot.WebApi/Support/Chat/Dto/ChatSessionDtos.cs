@@ -52,6 +52,16 @@ public class ChatSessionDto
     public string? EscalationReason { get; set; }
 
     public string? OrderId { get; set; }
+
+    // Присутствие считается на сервере, а не в браузере специалиста: часы у них расходятся,
+    // и «онлайн» мигал бы от одного этого расхождения.
+    public string Presence { get; set; } = "unknown";
+
+    public DateTime? LastSeenAt { get; set; }
+
+    // Время последней реплики самого клиента — не путать с LastMessageAt, куда попадает и
+    // ответ ассистента. Специалисту нужно именно «когда человек писал в последний раз».
+    public DateTime? LastCustomerMessageAt { get; set; }
 }
 
 public class ChatSessionDetailDto

@@ -2,6 +2,7 @@ import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import type { Game } from "../models/game";
+import { currentCurrency } from "../context/site-preferences";
 
 const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 
@@ -72,6 +73,22 @@ export const EMPTY_CATALOG_PAGE: CatalogPage = {
  * что понимает эндпоинт, поэтому ссылку на отфильтрованный каталог можно просто скопировать.
  */
 export const getCatalogPage = async (params: URLSearchParams): Promise<CatalogPage> => {
-  const response = await apiClient().get(`/api/game/catalog?${params.toString()}`);
+  const response = await apiClient().get(`/api/game/catalog?${withCurrency(params).toString()}`);
   return response.data ?? EMPTY_CATALOG_PAGE;
+};
+
+/**
+ * Валюта покупателя добавляется к запросу здесь, а не в каждом вызывающем: сервер вернёт
+ * цены уже в ней, и витрина покажет ровно то, что посчитал сервер. Валюта из адресной строки
+ * (её кладёт сам пользователь) имеет приоритет — иначе ссылкой на каталог в евро нельзя было бы
+ * поделиться. Неподдерживаемое значение сервер приведёт к базовой валюте сам.
+ */
+const withCurrency = (params: URLSearchParams): URLSearchParams => {
+  if (params.has("currency")) {
+    return params;
+  }
+
+  const next = new URLSearchParams(params);
+  next.set("currency", currentCurrency());
+  return next;
 };

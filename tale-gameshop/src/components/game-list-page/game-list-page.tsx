@@ -18,6 +18,8 @@ import { faDesktop, faGamepad } from '@fortawesome/free-solid-svg-icons';
 import { faApple, faLinux, faPlaystation, faXbox } from '@fortawesome/free-brands-svg-icons';
 import SafeGameImage from '../common/SafeGameImage';
 import GameCoverOverlay from '../common/GameCoverOverlay';
+import { useSitePreferences } from '../../context/site-preferences';
+import { formatMoney } from '../../utils/format-money';
 import PageMeta from '../common/PageMeta';
 import Breadcrumbs, { type Crumb } from '../common/Breadcrumbs';
 import PriceRangeFilter from './PriceRangeFilter';
@@ -148,6 +150,7 @@ const StarRow: React.FC<{ rating: number; className: string }> = ({ rating, clas
 };
 
 const TaleGameshopGameList: React.FC = () => {
+    const { currency } = useSitePreferences();
     // Страница каталога целиком приходит с сервера: и товар, и счётчики фильтров.
     const [catalog, setCatalog] = useState<CatalogPage>(EMPTY_CATALOG_PAGE);
     const [isLoading, setIsLoading] = useState(true);
@@ -676,7 +679,7 @@ const TaleGameshopGameList: React.FC = () => {
         if (priceNarrowed) {
             chips.push({
                 key: 'price',
-                label: `$${minPriceFilter} – $${maxPriceFilter}`,
+                label: `${formatMoney(Number(minPriceFilter), currency, {compact: true})} – ${formatMoney(Number(maxPriceFilter), currency, {compact: true})}`,
                 remove: () =>
                     updateParams((params) => {
                         params.delete('filterMinPrice');

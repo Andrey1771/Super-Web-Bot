@@ -20,12 +20,10 @@ import type { IKeycloakAuthService } from "../../../iterfaces/i-keycloak-auth-se
 import IDENTIFIERS from "../../../constants/identifiers";
 import CartIcon from "../../cart/cart-icon/cart-icon";
 import HeaderSearch from "../header-search/header-search";
-import { useSitePreferences } from "../../../context/site-preferences";
+import { useSitePreferences, formatMoney } from "../../../context/site-preferences";
 
-const ANNOUNCEMENT_KEY = "taleshop_announcement_dismissed_v1";
-
-// Компакт-режим шапки: скролл вниз складывает announcement и ряд навигации, остаётся одна
-// строка (лого/поиск/корзина). Разворот — скролл вверх, наведение мыши или фокус клавиатуры.
+// Компакт-режим шапки: скролл вниз складывает ряд навигации, остаётся одна строка
+// (лого/поиск/корзина). Разворот — скролл вверх, наведение мыши или фокус клавиатуры.
 const COLLAPSE_AFTER_PX = 120; // сколько нужно уехать вниз, чтобы шапка сжалась
 const EXPAND_NEAR_TOP_PX = 80; // выше этой точки шапка всегда полная
 const SCROLL_DELTA_PX = 8; // гистерезис: реагируем на осмысленный сдвиг, а не дрожание
@@ -55,10 +53,22 @@ const storeGenres = [
     { label: "Sports", to: "/games?filterCategory=Sports" },
 ];
 
-const storeDiscover = [
+/** Порог подборки «недорого»: и ссылка с фильтром, и подпись под ней. */
+const BUDGET_PICKS_MAX_PRICE = 20;
+
+/**
+ * Список строится функцией, а не константой: в подписи стоит сумма, а её нельзя написать
+ * буквами — валюта у каждого покупателя своя. Раньше здесь был зашитый «$20», и при выборе
+ * другой валюты пункт меню обещал одно, а каталог показывал другое.
+ */
+const buildStoreDiscover = (currency: string) => [
     { label: "All games", to: "/games", desc: "Browse the full catalog" },
     { label: "Deals", to: "/deals", desc: "Discounts live right now" },
-    { label: "Budget picks", to: "/games?filterMaxPrice=20", desc: "Great games under $20" },
+    {
+        label: "Budget picks",
+        to: `/games?filterMaxPrice=${BUDGET_PICKS_MAX_PRICE}`,
+        desc: `Great games under ${formatMoney(BUDGET_PICKS_MAX_PRICE, currency, { compact: true })}`,
+    },
 ];
 
 // Small reusable popover used for the language and currency switchers.
@@ -120,13 +130,12 @@ const PrefMenu: React.FC<PrefMenuProps> = ({ id, triggerLabel, ariaLabel, align 
 export default function TaleGameshopHeader() {
     const { keycloak } = useKeycloak();
     const location = useLocation();
-    const { lang, currency, setLang, setCurrency, languages, currencies } = useSitePreferences();
+    const { lang, currency, setLang, setCurrency, languages, currencies, canSwitchCurrency } = useSitePreferences();
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isDrawerAccountOpen, setIsDrawerAccountOpen] = useState(false);
     const [isDrawerStoreOpen, setIsDrawerStoreOpen] = useState(false);
     const [isAccountOpen, setIsAccountOpen] = useState(false);
-    const [showAnnouncement, setShowAnnouncement] = useState(true);
     // isCondensed — вердикт скролла; isPointerExpanded — временный разворот мышью/фокусом.
     const [isCondensed, setIsCondensed] = useState(false);
     const [isPointerExpanded, setIsPointerExpanded] = useState(false);
@@ -144,13 +153,8 @@ export default function TaleGameshopHeader() {
     const isCollapsedRef = useRef(isCollapsed);
     isCollapsedRef.current = isCollapsed;
 
-    // Remember the announcement-bar dismissal across visits.
-    useEffect(() => {
-        setShowAnnouncement(localStorage.getItem(ANNOUNCEMENT_KEY) !== "1");
-    }, []);
-
     // Publish the real rendered header height as a CSS variable so page spacers and the hero
-    // can offset content correctly regardless of whether the announcement bar is shown.
+    // can offset content correctly.
     // В компакт-режиме высоту НЕ переопубликовываем: контент отступает от полной шапки,
     // иначе каждое складывание/разворачивание дёргало бы всю страницу.
     useLayoutEffect(() => {
@@ -189,7 +193,9 @@ export default function TaleGameshopHeader() {
             observer.disconnect();
             window.removeEventListener("resize", onResize);
         };
-    }, [showAnnouncement]);
+        // Пустые зависимости: высота шапки больше ни от какого состояния не зависит, а её
+        // изменения ловит ResizeObserver. Раньше здесь стоял флаг показа верхней планки.
+    }, []);
 
     // Shadow-on-scroll + компакт-режим: вниз — складываемся, вверх или у верха — разворачиваемся.
     useEffect(() => {
@@ -334,33 +340,6 @@ export default function TaleGameshopHeader() {
             onFocus={() => scheduleHover(true, 0)}
             onBlur={() => scheduleHover(false, 0)}
         >
-            {showAnnouncement && (
-                <div className="announcement-bar">
-                    <div className="container announcement-inner">
-                        <p className="announcement-text">
-                            <FontAwesomeIcon icon={faBolt} />
-                            <span>Instant delivery</span>
-                            <span className="announcement-dot" aria-hidden="true">·</span>
-                            <FontAwesomeIcon icon={faLock} />
-                            <span>Secure checkout</span>
-                            <span className="announcement-dot" aria-hidden="true">·</span>
-                            <span>Support in EN / RU</span>
-                        </p>
-                        <button
-                            type="button"
-                            className="announcement-close"
-                            aria-label="Dismiss announcement"
-                            onClick={() => {
-                                setShowAnnouncement(false);
-                                localStorage.setItem(ANNOUNCEMENT_KEY, "1");
-                            }}
-                        >
-                            <FontAwesomeIcon icon={faTimes} />
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {/* Primary bar: brand · search · tools · account */}
             <div className="header-primary">
                 <div className="container header-primary-inner">
@@ -410,35 +389,39 @@ export default function TaleGameshopHeader() {
                                 }
                             </PrefMenu>
 
-                            <PrefMenu
-                                id="currency-menu"
-                                ariaLabel="Change currency"
-                                triggerLabel={
-                                    <span className="pref-trigger-label">
-                                        <span className="pref-currency-symbol">{currentCurrency.symbol}</span>
-                                        {currentCurrency.code}
-                                    </span>
-                                }
-                            >
-                                {(close) =>
-                                    currencies.map((option) => (
-                                        <button
-                                            key={option.code}
-                                            type="button"
-                                            role="menuitemradio"
-                                            aria-checked={option.code === currency}
-                                            className={`pref-option ${option.code === currency ? "is-active" : ""}`}
-                                            onClick={() => {
-                                                setCurrency(option.code);
-                                                close();
-                                            }}
-                                        >
-                                            <span className="pref-option-badge">{option.symbol}</span>
-                                            {option.code} · {option.label}
-                                        </button>
-                                    ))
-                                }
-                            </PrefMenu>
+                            {/* Выбирать не из чего, пока сервер отдаёт одну валюту — меню скрыто,
+                                чтобы не обещать выбор, которого нет. */}
+                            {canSwitchCurrency && (
+                                <PrefMenu
+                                    id="currency-menu"
+                                    ariaLabel="Change currency"
+                                    triggerLabel={
+                                        <span className="pref-trigger-label">
+                                            <span className="pref-currency-symbol">{currentCurrency.symbol}</span>
+                                            {currentCurrency.code}
+                                        </span>
+                                    }
+                                >
+                                    {(close) =>
+                                        currencies.map((option) => (
+                                            <button
+                                                key={option.code}
+                                                type="button"
+                                                role="menuitemradio"
+                                                aria-checked={option.code === currency}
+                                                className={`pref-option ${option.code === currency ? "is-active" : ""}`}
+                                                onClick={() => {
+                                                    setCurrency(option.code);
+                                                    close();
+                                                }}
+                                            >
+                                                <span className="pref-option-badge">{option.symbol}</span>
+                                                {option.code} · {option.label}
+                                            </button>
+                                        ))
+                                    }
+                                </PrefMenu>
+                            )}
                         </div>
 
                         <div className="header-cart">
@@ -539,7 +522,7 @@ export default function TaleGameshopHeader() {
                                     <div className="mega-col">
                                         <div className="mega-heading">Discover</div>
                                         <div className="mega-discover">
-                                            {storeDiscover.map((item) => (
+                                            {buildStoreDiscover(currency).map((item) => (
                                                 <Link key={item.label} to={item.to} className="mega-discover-item">
                                                     <span className="mega-discover-label">{item.label}</span>
                                                     <span className="mega-discover-desc">{item.desc}</span>
@@ -650,21 +633,23 @@ export default function TaleGameshopHeader() {
                             ))}
                         </div>
                     </div>
-                    <div className="drawer-pref-group" role="group" aria-label="Currency">
-                        <span className="drawer-pref-caption">Currency</span>
-                        <div className="drawer-pref-options">
-                            {currencies.map((option) => (
-                                <button
-                                    key={option.code}
-                                    type="button"
-                                    className={`drawer-pref-chip ${option.code === currency ? "is-active" : ""}`}
-                                    onClick={() => setCurrency(option.code)}
-                                >
-                                    {option.code}
-                                </button>
-                            ))}
+                    {canSwitchCurrency && (
+                        <div className="drawer-pref-group" role="group" aria-label="Currency">
+                            <span className="drawer-pref-caption">Currency</span>
+                            <div className="drawer-pref-options">
+                                {currencies.map((option) => (
+                                    <button
+                                        key={option.code}
+                                        type="button"
+                                        className={`drawer-pref-chip ${option.code === currency ? "is-active" : ""}`}
+                                        onClick={() => setCurrency(option.code)}
+                                    >
+                                        {option.code}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <div className="drawer-actions">

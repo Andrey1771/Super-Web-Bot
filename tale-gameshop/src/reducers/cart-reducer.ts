@@ -13,6 +13,13 @@ export interface Product {
 
 export interface CartState {
     items: Product[];
+    /**
+     * Валюта, в которой лежат цены позиций. Нужна, чтобы заметить смену валюты:
+     * цены в корзине сохраняются локально, и без этой отметки евро легли бы поверх
+     * долларов, а покупатель увидел бы сумму, которой не существует.
+     * Пусто у корзин, сохранённых до мультивалютности.
+     */
+    currency?: string;
 }
 
 export type CartAction =
@@ -21,6 +28,8 @@ export type CartAction =
     | { type: 'INCREASE_QUANTITY'; payload: string }
     | { type: 'DECREASE_QUANTITY'; payload: string }
     | { type: 'SET_CART'; payload: Product[] }
+    /** Валюта сменилась: цены позиций устарели и должны приехать заново с сервера. */
+    | { type: 'SET_CURRENCY'; payload: string }
     | { type: 'CLEAR_CART' };
 
 export const initialState: CartState = {
@@ -95,6 +104,21 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
 
             case 'SET_CART':
                 return { ...state, items: action.payload };
+
+            case 'SET_CURRENCY': {
+                if (state.currency === action.payload) {
+                    return state;
+                }
+
+                // Цены позиций выражены в прежней валюте — обнуляем их, а не пересчитываем:
+                // курса на фронте нет и быть не должно, актуальные цены придут с сервера
+                // (корзина перезапрашивает товары, а итог всё равно считает чекаут).
+                return {
+                    ...state,
+                    currency: action.payload,
+                    items: state.items.map((item) => ({ ...item, price: 0 })),
+                };
+            }
 
             case 'CLEAR_CART':
                 return { ...state, items: [] };

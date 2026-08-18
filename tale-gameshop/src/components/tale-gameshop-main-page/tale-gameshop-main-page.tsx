@@ -59,6 +59,8 @@ import type {
 import { subscribeNewsletter } from "../../api/newsletterApi";
 import { getWeeklyChart, type WeeklyChartEntry } from "../../api/catalogApi";
 import { hasVisibleDiscount } from "../../utils/game-pricing";
+import { useSitePreferences } from "../../context/site-preferences";
+import { formatMoney } from "../../utils/format-money";
 import PageMeta from "../common/PageMeta";
 import {
     rememberNewsletterSubscription,
@@ -314,6 +316,7 @@ const timeAgo = (iso?: string): string | null => {
 };
 
 export default function TaleGameshopMainPage() {
+    const { currency } = useSitePreferences();
     const [games, setGames] = useState < Game[] > ([]);
     const [blogPosts, setBlogPosts] = useState < BlogListItem[] > ([]);
     // Серверный агрегат продаж за неделю: [{ gameId, sold }] — порядок полки «Popular this week».
@@ -684,7 +687,7 @@ export default function TaleGameshopMainPage() {
                                                 </span>
                                                 <span className="mood-game-title">{game.title}</span>
                                                 <span className="mood-game-price">
-                                                    ${Number(game.finalPrice ?? game.price).toFixed(2)}
+                                                    {formatMoney(Number(game.finalPrice ?? game.price), currency)}
                                                 </span>
                                             </Link>
                                         ))}
@@ -724,67 +727,13 @@ export default function TaleGameshopMainPage() {
             />
 
             <GameShelf
-                eyebrow={`Under $${budgetShelfMaxPrice}`}
+                eyebrow={`Under ${formatMoney(budgetShelfMaxPrice, currency, {compact: true})}`}
                 title="Big fun, small price"
-                subtitle={`Every pick on this shelf is $${budgetShelfMaxPrice} or less.`}
+                subtitle={`Every pick on this shelf is ${formatMoney(budgetShelfMaxPrice, currency, {compact: true})} or less.`}
                 games={budgetGames}
                 baseUrl={urlService.apiBaseUrl}
                 viewAllTo={`/games?filterMaxPrice=${budgetShelfMaxPrice}`}
             />
-
-            {/* Latest news (наш блог = раздел «News»): карточки в стиле новостной витрины.
-                Секция видна всегда; пока постов нет — оформленная заглушка. */}
-            <section className="news-strip-section reveal">
-                <div className="container">
-                    <div className="shelf-head">
-                        <div className="section-heading">
-                            <div className="heading-eyebrow">News</div>
-                            <h2>Latest news</h2>
-                        </div>
-                        <div className="shelf-head-side">
-                            <Link className="shelf-view-all" to="/news">
-                                View all →
-                            </Link>
-                        </div>
-                    </div>
-                    {latestNews.length === 0 ? (
-                        <div className="shelf-empty">
-                            <span className="shelf-empty-icon" aria-hidden="true">
-                                <FontAwesomeIcon icon={faNewspaper} />
-                            </span>
-                            <strong>The newsroom is warming up</strong>
-                            <p className="muted">Game news, guides and weekly picks will land here soon.</p>
-                        </div>
-                    ) : (
-                        <div className="news-grid">
-                            {latestNews.map((post) => (
-                                <Link className="news-card lift" key={post.id} to={`/news/${post.slug}`}>
-                                    {/* Та же обложка, что в ленте и статье: настоящая картинка
-                                        поста или детерминированная заглушка по рубрике — вместо
-                                        прежнего стокового фото с Unsplash на всех карточках. */}
-                                    <div className="news-cover" aria-hidden="true">
-                                        <PostCoverArt post={post} />
-                                    </div>
-                                    <div className="news-body">
-                                        <span className="news-meta muted">
-                                            <FontAwesomeIcon icon={faClock} />
-                                            {timeAgo(post.publishedAt) ?? "Recently"}
-                                        </span>
-                                        <div className="news-title">{post.title}</div>
-                                        <p className="news-excerpt muted">{post.excerpt}</p>
-                                        {typeof post.viewsCount === "number" && post.viewsCount > 0 && (
-                                            <span className="news-views muted">
-                                                <FontAwesomeIcon icon={faEye} />
-                                                {post.viewsCount}
-                                            </span>
-                                        )}
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </section>
 
             <section className="newsletter-section reveal">
                 <div className="container">
@@ -845,6 +794,60 @@ export default function TaleGameshopMainPage() {
                             </form>
                         )}
                     </div>
+                </div>
+            </section>
+
+            {/* Latest news (наш блог = раздел «News»): карточки в стиле новостной витрины.
+                Секция видна всегда; пока постов нет — оформленная заглушка. */}
+            <section className="news-strip-section reveal">
+                <div className="container">
+                    <div className="shelf-head">
+                        <div className="section-heading">
+                            <div className="heading-eyebrow">News</div>
+                            <h2>Latest news</h2>
+                        </div>
+                        <div className="shelf-head-side">
+                            <Link className="shelf-view-all" to="/news">
+                                View all →
+                            </Link>
+                        </div>
+                    </div>
+                    {latestNews.length === 0 ? (
+                        <div className="shelf-empty">
+                            <span className="shelf-empty-icon" aria-hidden="true">
+                                <FontAwesomeIcon icon={faNewspaper} />
+                            </span>
+                            <strong>The newsroom is warming up</strong>
+                            <p className="muted">Game news, guides and weekly picks will land here soon.</p>
+                        </div>
+                    ) : (
+                        <div className="news-grid">
+                            {latestNews.map((post) => (
+                                <Link className="news-card lift" key={post.id} to={`/news/${post.slug}`}>
+                                    {/* Та же обложка, что в ленте и статье: настоящая картинка
+                                        поста или детерминированная заглушка по рубрике — вместо
+                                        прежнего стокового фото с Unsplash на всех карточках. */}
+                                    <div className="news-cover" aria-hidden="true">
+                                        <PostCoverArt post={post} />
+                                    </div>
+                                    <div className="news-body">
+                                        <span className="news-meta muted">
+                                            <FontAwesomeIcon icon={faClock} />
+                                            {timeAgo(post.publishedAt) ?? "Recently"}
+                                        </span>
+                                        <div className="news-title">{post.title}</div>
+                                        <p className="news-excerpt muted">{post.excerpt}</p>
+                                        {typeof post.viewsCount === "number" && post.viewsCount > 0 && (
+                                            <span className="news-views muted">
+                                                <FontAwesomeIcon icon={faEye} />
+                                                {post.viewsCount}
+                                            </span>
+                                        )}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </section>
 

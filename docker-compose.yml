@@ -63,6 +63,9 @@ services:
       - BotPayments__StarsPerUsd=${STARS_PER_USD:-50}
       # BTCPay Server (крипто-оплата, testnet DEMO). Все пустые = фича выключена.
       # Свой инстанс: https://docs.btcpayserver.org/Docker/ (testnet), API-ключ с правами btcpay.store.cancreateinvoice.
+      # Крипто-рельс выключен по решению: код и интеграция остались на месте, магазин их
+      # не предлагает. Включается сюда же — BTCPAY_ENABLED=true вместе с ключами ниже.
+      - BtcPay__Enabled=${BTCPAY_ENABLED:-false}
       - BtcPay__BaseUrl=${BTCPAY_URL}
       - BtcPay__ApiKey=${BTCPAY_API_KEY}
       - BtcPay__StoreId=${BTCPAY_STORE_ID}

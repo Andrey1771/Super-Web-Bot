@@ -11,6 +11,8 @@ import SafeGameImage from "../common/SafeGameImage";
 import { gameHref } from "./GameShelf";
 import { padCountdown, useCountdown } from "./DealsCountdown";
 import { analyticsClient } from "../../utils/analytics-client";
+import { useSitePreferences } from "../../context/site-preferences";
+import { formatMoney } from "../../utils/format-money";
 
 // Состояние «карты удачи» текущего пользователя (GET /api/tarot/state).
 type TarotState = {
@@ -60,6 +62,7 @@ export default function DealOfWeekBanner({
     baseUrl: string;
 }) {
     const countdown = useCountdown(game.discountEndsAt);
+    const { currency } = useSitePreferences();
 
     const services = useMemo(
         () => ({
@@ -473,7 +476,7 @@ export default function DealOfWeekBanner({
                                                     <span className="t-caption-spark" aria-hidden="true">✦ ✦ ✦</span>
                                                     <span className="t-caption-title">{game.title}</span>
                                                     <span className="t-caption-price">
-                                                        <s>${Number(game.price).toFixed(2)}</s> <b>${finalPrice.toFixed(2)}</b>
+                                                        <s>{formatMoney(Number(game.price), currency)}</s> <b>{formatMoney(finalPrice, currency)}</b>
                                                     </span>
                                                     <span className="t-hero-cta">
                                                         Grab the deal
@@ -513,7 +516,7 @@ export default function DealOfWeekBanner({
                                                         <span className="t-caption-spark" aria-hidden="true">✦</span>
                                                         <span className="t-caption-title">{sideGame.title}</span>
                                                         <span className="t-caption-price">
-                                                            <b>${Number(sideGame.finalPrice ?? sideGame.price).toFixed(2)}</b>
+                                                            <b>{formatMoney(Number(sideGame.finalPrice ?? sideGame.price), currency)}</b>
                                                         </span>
                                                     </span>
                                                 </span>

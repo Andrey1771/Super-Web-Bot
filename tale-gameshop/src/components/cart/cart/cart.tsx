@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {useCart} from '../../../context/cart-context';
 import {Link, useSearchParams} from "react-router-dom";
 import container from "../../../inversify.config";
@@ -19,6 +19,8 @@ import {
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {Product} from "../../../reducers/cart-reducer";
 import SafeGameImage from "../../common/SafeGameImage";
+import {useSitePreferences} from "../../../context/site-preferences";
+import {formatMoney} from "../../../utils/format-money";
 import './cart.css';
 
 type CartItemRowProps = {
@@ -34,12 +36,15 @@ type OrderSummaryProps = {
     total: number;
 };
 
-const formatPrice = (value: number) => `$${value.toFixed(2)}`;
+// Валюта приходит из настроек сайта, а не из символа в шаблоне: корзина обязана
+// показывать ту же валюту, в которой сервер посчитает чекаут.
+const formatPrice = (value: number, currency: string) => formatMoney(value, currency);
 
 const PAYMENT_BADGES = ['Visa', 'Mastercard', 'PayPal', 'Apple Pay', 'Google Pay'];
 
 const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, onRemove, imageBaseUrl}) => {
     const itemTotal = item.price * item.quantity;
+    const {currency} = useSitePreferences();
 
     return (
         <div className="cart-item">
@@ -52,7 +57,7 @@ const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, 
                         <h3 className="cart-item-name">{item.name}</h3>
                         <p className="cart-item-meta">Platform: Steam · Region: Global · Edition: Standard</p>
                     </div>
-                    <div className="cart-item-price">{formatPrice(itemTotal)}</div>
+                    <div className="cart-item-price">{formatPrice(itemTotal, currency)}</div>
                 </div>
                 <div className="cart-chips">
                     <span className="cart-chip"><FontAwesomeIcon icon={faBolt}/>Instant delivery</span>
@@ -74,29 +79,33 @@ const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, 
     );
 };
 
-const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, total}) => (
-    <div className="card cart-summary">
-        <div className="cart-summary-head">
-            <h2>Order summary</h2>
-            <span className="badge">Secure checkout</span>
+const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, total}) => {
+    const {currency} = useSitePreferences();
+
+    return (
+        <div className="card cart-summary">
+            <div className="cart-summary-head">
+                <h2>Order summary</h2>
+                <span className="badge">Secure checkout</span>
+            </div>
+            <div className="cart-summary-lines">
+                <div className="cart-summary-line"><span>Subtotal</span><strong>{formatPrice(subtotal, currency)}</strong></div>
+                <div className="cart-summary-line cart-summary-line-muted"><span>Taxes &amp; promo</span><span>Calculated at checkout</span></div>
+            </div>
+            <div className="cart-summary-total">
+                <span>Total</span>
+                <span className="cart-summary-amount">{formatPrice(total, currency)}</span>
+            </div>
+            <div className="cart-summary-actions">
+                <Link to="/checkout" className="btn btn-primary">Checkout</Link>
+                <Link to="/" className="btn btn-outline">Continue shopping</Link>
+            </div>
+            <div className="cart-pay-badges">
+                {PAYMENT_BADGES.map((label) => <span key={label} className="cart-pay-badge">{label}</span>)}
+            </div>
         </div>
-        <div className="cart-summary-lines">
-            <div className="cart-summary-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div>
-            <div className="cart-summary-line cart-summary-line-muted"><span>Taxes &amp; promo</span><span>Calculated at checkout</span></div>
-        </div>
-        <div className="cart-summary-total">
-            <span>Total</span>
-            <span className="cart-summary-amount">{formatPrice(total)}</span>
-        </div>
-        <div className="cart-summary-actions">
-            <Link to="/checkout" className="btn btn-primary">Checkout</Link>
-            <Link to="/" className="btn btn-outline">Continue shopping</Link>
-        </div>
-        <div className="cart-pay-badges">
-            {PAYMENT_BADGES.map((label) => <span key={label} className="cart-pay-badge">{label}</span>)}
-        </div>
-    </div>
-);
+    );
+};
 
 const TrustStrip: React.FC = () => (
     <div className="card cart-trust">
@@ -124,6 +133,7 @@ const RecommendedRow: React.FC = () => {
         reload: reloadRecommendations
     } = useRecommendations(4);
     const {dispatch} = useCart();
+    const {currency} = useSitePreferences();
 
     // Добавление в корзину — тот же контракт, что в GameCard: цена с учётом активной скидки.
     const handleAddRecommended = (game: RecommendationItem['game']) => {
@@ -176,7 +186,7 @@ const RecommendedRow: React.FC = () => {
                             <h3 className="rec-card-title">{item.game.title}</h3>
                             <p className="rec-card-tag">Steam</p>
                             <div className="rec-card-foot">
-                                <span className="rec-card-price">{formatPrice(Number(item.game.price))}</span>
+                                <span className="rec-card-price">{formatPrice(Number(item.game.price), currency)}</span>
                                 <button type="button" className="btn btn-outline" onClick={() => handleAddRecommended(item.game)}>
                                     <FontAwesomeIcon icon={faCartPlus}/>
                                     Add
@@ -194,6 +204,55 @@ const Cart: React.FC = () => {
     const {state, dispatch} = useCart();
     const [searchParams, setSearchParams] = useSearchParams();
     const seededRef = useRef<Set<string>>(new Set());
+    const {currency} = useSitePreferences();
+    /** Показываем уведомление один раз после смены валюты — до ухода со страницы корзины. */
+    const [currencyChanged, setCurrencyChanged] = useState(false);
+
+    // Валюта сменилась — цены в корзине выражены в прежней и больше ничего не значат.
+    // Помечаем корзину новой валютой (позиции обнулятся) и перезапрашиваем товары:
+    // пересчитывать на фронте нечем и не нужно, цену в каждой валюте назначает каталог.
+    useEffect(() => {
+        if (state.currency === currency) {
+            return;
+        }
+
+        dispatch({type: 'SET_CURRENCY', payload: currency});
+        // Позволяем дозагрузить цены заново тем же путём, что и deep-link из бота.
+        seededRef.current.clear();
+        // Про пустую корзину сообщать нечего — пересчитывать в ней нечего.
+        setCurrencyChanged(state.items.length > 0 && Boolean(state.currency));
+    }, [currency, dispatch, state.currency, state.items.length]);
+
+    // Позиции с обнулённой ценой (после смены валюты) добираем из каталога — уже в новой валюте.
+    useEffect(() => {
+        const stale = state.items.filter((item) => item.price === 0 && !seededRef.current.has(item.gameId));
+        if (stale.length === 0) {
+            return;
+        }
+
+        stale.forEach((item) => seededRef.current.add(item.gameId));
+
+        (async () => {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+            for (const item of stale) {
+                try {
+                    const {data} = await apiClient.api.get(`/api/game/${item.gameId}?currency=${encodeURIComponent(currency)}`);
+                    if (data?.id) {
+                        dispatch({
+                            type: 'SET_CART',
+                            payload: state.items.map((current) =>
+                                current.gameId === item.gameId
+                                    ? {...current, price: Number(data.finalPrice ?? data.price ?? 0)}
+                                    : current
+                            ),
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh cart price after currency change', error);
+                }
+            }
+        })();
+    }, [currency, dispatch, state.items]);
 
     const subtotal = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
     const total = subtotal;
@@ -248,6 +307,14 @@ const Cart: React.FC = () => {
                 </div>
                 <span className="badge">{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
             </div>
+
+            {currencyChanged && (
+                // Молчаливый пересчёт — худший вариант: покупатель видит другую сумму
+                // и не понимает, подорожало ли, поэтому говорим прямо.
+                <div className="card cart-notice">
+                    Prices were updated to {currency}.
+                </div>
+            )}
 
             {state.items.length === 0 ? (
                 <div className="card cart-empty">

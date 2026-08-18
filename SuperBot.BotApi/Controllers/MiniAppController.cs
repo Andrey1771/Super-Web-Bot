@@ -24,6 +24,9 @@ namespace SuperBot.BotApi.Controllers
         TelegramInitDataValidator _initDataValidator,
         IOptions<BotConfiguration> _botConfig,
         IConfiguration _configuration,
+        // Курсы нужны, чтобы посчитать звёзды для игры не в долларах: ставка «звёзд за доллар»
+        // одна на весь бот, поэтому сумму сперва приводим к долларам.
+        SuperBot.Infrastructure.Services.IFxRateService _fxRates,
         ILogger<MiniAppController> _logger) : ControllerBase
     {
         private static readonly TimeSpan InitDataMaxAge = TimeSpan.FromHours(24);
@@ -62,8 +65,13 @@ namespace SuperBot.BotApi.Controllers
 
             var title = string.IsNullOrWhiteSpace(game.Title) ? game.Name : game.Title;
             var starsPerUsd = _configuration.GetValue<int?>("BotPayments:StarsPerUsd") ?? StarPrice.DefaultStarsPerUsd;
-            var stars = StarPrice.FromUsd(game.Price, starsPerUsd);
-            var prices = new[] { new LabeledPrice(title, stars) };
+            var stars = StarPrice.FromAmount(game.Price, game.Currency, _fxRates.Current(), starsPerUsd);
+            if (stars is null)
+            {
+                return BadRequest("This game can't be paid with Stars.");
+            }
+
+            var prices = new[] { new LabeledPrice(title, stars.Value) };
 
             try
             {
@@ -136,8 +144,14 @@ namespace SuperBot.BotApi.Controllers
 
                 var quantity = Math.Clamp(line.Quantity, 1, 10);
                 var title = string.IsNullOrWhiteSpace(game.Title) ? game.Name : game.Title;
-                var unitStars = StarPrice.FromUsd(game.Price, starsPerUsd);
-                var lineStars = unitStars * quantity;
+                var unitStars = StarPrice.FromAmount(game.Price, game.Currency, _fxRates.Current(), starsPerUsd);
+                if (unitStars is null)
+                {
+                    // Цену в звёздах посчитать нечем — отказываем, а не берём число из другой валюты.
+                    return BadRequest($"Game can't be paid with Stars: {line.GameId}.");
+                }
+
+                var lineStars = unitStars.Value * quantity;
                 totalStars += lineStars;
 
                 prices.Add(new LabeledPrice(quantity > 1 ? $"{title} ×{quantity}" : title, lineStars));

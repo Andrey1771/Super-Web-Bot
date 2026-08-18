@@ -1,12 +1,20 @@
 import { useSyncExternalStore } from "react";
+import { formatMoney, FALLBACK_CURRENCY } from "../utils/format-money";
 
 // Site-wide language + currency preferences, kept in ONE place so the header, footer and
 // support chat all read/write the same source. Language drives <html lang> (the single
-// signal the whole i18n / chat pipeline follows); currency is a display preference used by
-// formatMoney(). Persisted to localStorage and synced across tabs via the `storage` event.
+// signal the whole i18n / chat pipeline follows).
+//
+// Валюта: список доступных валют приходит С СЕРВЕРА (/api/storefront/currency) и совпадает
+// с валютой, в которой сервер считает чекаут. Раньше здесь лежал захардкоженный список
+// USD/EUR/UAH/PLN с выдуманными курсами ("rate: 0.92"), и переключатель показывал цену,
+// которую никто не собирался списывать: витрина рисовала ₴, а Stripe брал доллары.
+// Пока в каталоге одна цена без валюты, сервер отдаёт ровно одну валюту, и переключатель
+// прячется. Появятся прайс-листы и курсы — список расширится на сервере, и переключатель
+// оживёт сам, без правок фронта.
 
 export type LangCode = "en" | "ru" | "uk" | "pl";
-export type CurrencyCode = "USD" | "EUR" | "UAH" | "PLN";
+export type CurrencyCode = string;
 
 export interface LanguageOption {
   code: LangCode;
@@ -18,8 +26,6 @@ export interface CurrencyOption {
   code: CurrencyCode;
   label: string;
   symbol: string;
-  /** Indicative rate vs USD. Placeholder — wire to a real FX source before production. */
-  rate: number;
 }
 
 export const LANGUAGES: LanguageOption[] = [
@@ -29,12 +35,22 @@ export const LANGUAGES: LanguageOption[] = [
   { code: "pl", label: "Polski", short: "PL" },
 ];
 
-export const CURRENCIES: CurrencyOption[] = [
-  { code: "USD", label: "US Dollar", symbol: "$", rate: 1 },
-  { code: "EUR", label: "Euro", symbol: "€", rate: 0.92 },
-  { code: "UAH", label: "Hryvnia", symbol: "₴", rate: 41 },
-  { code: "PLN", label: "Złoty", symbol: "zł", rate: 4.0 },
-];
+/** Витринные подписи валют. Что из этого реально доступно — решает сервер. */
+const CURRENCY_META: Record<string, { label: string; symbol: string }> = {
+  USD: { label: "US Dollar", symbol: "$" },
+  EUR: { label: "Euro", symbol: "€" },
+  RUB: { label: "Russian Ruble", symbol: "₽" },
+  UAH: { label: "Hryvnia", symbol: "₴" },
+  PLN: { label: "Złoty", symbol: "zł" },
+  KZT: { label: "Tenge", symbol: "₸" },
+  GBP: { label: "Pound Sterling", symbol: "£" },
+  JPY: { label: "Japanese Yen", symbol: "¥" },
+};
+
+function currencyOption(code: string): CurrencyOption {
+  const meta = CURRENCY_META[code];
+  return { code, label: meta?.label ?? code, symbol: meta?.symbol ?? code };
+}
 
 const LANG_KEY = "site_lang";
 const CURRENCY_KEY = "site_currency";
@@ -48,18 +64,95 @@ function readLang(): LangCode {
   return match ? match.code : "en";
 }
 
-function readCurrency(): CurrencyCode {
-  if (!isBrowser) return "USD";
-  const stored = window.localStorage.getItem(CURRENCY_KEY);
-  const match = CURRENCIES.find((c) => c.code === stored);
-  return match ? match.code : "USD";
+function readStoredCurrency(): string | null {
+  if (!isBrowser) return null;
+  try {
+    return window.localStorage.getItem(CURRENCY_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// Что сервер разрешил показывать. До ответа — только базовая валюта: показать лишнее
+// и списать другое хуже, чем на секунду показать меньше вариантов.
+let supportedCodes: string[] = [FALLBACK_CURRENCY];
+// Валюта каталога и расчёта. Админка показывает цены товара именно в ней —
+// её вводит контент-менеджер, и она не зависит от того, что выбрал покупатель.
+let baseCode: string = FALLBACK_CURRENCY;
+
+/**
+ * Валюта из адреса: `?currency=EUR`. Ссылка сильнее прошлого выбора — иначе поделиться
+ * каталогом в евро было бы нельзя, получатель увидел бы цены в своей валюте.
+ * Выбор из ссылки сразу сохраняется, чтобы он пережил переход на соседнюю страницу.
+ */
+function readCurrencyFromUrl(): string | null {
+  if (!isBrowser) return null;
+  try {
+    const requested = new URLSearchParams(window.location.search).get("currency");
+    return requested ? requested.trim().toUpperCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Валюта страны по часовому поясу браузера. Нужна только при первом визите: выбора ещё нет,
+ * и показать европейцу цены в евро (если магазин их ведёт) лучше, чем доллары по умолчанию.
+ * Часовой пояс, а не язык: язык интерфейса и страна покупки — разные вещи, английский
+ * стоит у половины мира.
+ */
+const TIMEZONE_CURRENCY: Array<{ prefix: string; currency: string }> = [
+  { prefix: "Europe/Moscow", currency: "RUB" },
+  { prefix: "Europe/", currency: "EUR" },
+];
+
+function guessCurrencyByRegion(): string | null {
+  if (!isBrowser) return null;
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+    // Порядок важен: Europe/Moscow должен сработать раньше общего Europe/.
+    const match = TIMEZONE_CURRENCY.find((rule) => timeZone.startsWith(rule.prefix));
+    return match ? match.currency : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Выбранная валюта, приведённая к списку разрешённых. Порядок источников: адрес → сохранённый
+ * выбор → страна → базовая. Пользователь мог сохранить UAH, пока переключатель ещё врал, —
+ * такой выбор молча возвращаем к базовой валюте.
+ */
+function resolveCurrency(): string {
+  const fromUrl = readCurrencyFromUrl();
+  if (fromUrl && supportedCodes.includes(fromUrl)) {
+    return fromUrl;
+  }
+
+  const stored = readStoredCurrency();
+  if (stored && supportedCodes.includes(stored)) {
+    return stored;
+  }
+
+  // Гео-догадка только когда своего выбора ещё не было: переехавшему покупателю
+  // не должно внезапно менять валюту в следующей поездке.
+  if (!stored) {
+    const guessed = guessCurrencyByRegion();
+    if (guessed && supportedCodes.includes(guessed)) {
+      return guessed;
+    }
+  }
+
+  return supportedCodes[0];
 }
 
 // Cached snapshot — useSyncExternalStore requires getSnapshot to return a stable reference
 // until something actually changes, otherwise React re-renders in a loop.
-let snapshot: { lang: LangCode; currency: CurrencyCode } = {
+let snapshot: { lang: LangCode; currency: string; baseCurrency: string; currencies: CurrencyOption[] } = {
   lang: readLang(),
-  currency: readCurrency(),
+  currency: resolveCurrency(),
+  baseCurrency: baseCode,
+  currencies: supportedCodes.map(currencyOption),
 };
 
 // Apply the saved language to the document as soon as this module loads, so the whole app
@@ -71,11 +164,79 @@ if (isBrowser) {
 const listeners = new Set<() => void>();
 
 function refresh() {
-  const next = { lang: readLang(), currency: readCurrency() };
-  if (next.lang !== snapshot.lang || next.currency !== snapshot.currency) {
-    snapshot = next;
+  const nextLang = readLang();
+  const nextCurrency = resolveCurrency();
+  const currenciesChanged =
+    snapshot.currencies.length !== supportedCodes.length ||
+    snapshot.currencies.some((option, index) => option.code !== supportedCodes[index]);
+
+  if (
+    nextLang !== snapshot.lang ||
+    nextCurrency !== snapshot.currency ||
+    baseCode !== snapshot.baseCurrency ||
+    currenciesChanged
+  ) {
+    snapshot = {
+      lang: nextLang,
+      currency: nextCurrency,
+      baseCurrency: baseCode,
+      currencies: currenciesChanged ? supportedCodes.map(currencyOption) : snapshot.currencies,
+    };
     listeners.forEach((listener) => listener());
   }
+}
+
+function apiBaseUrl(): string {
+  return window.__APP_CONFIG__?.apiBaseUrl ?? "http://localhost:7002";
+}
+
+/**
+ * Забирает у сервера валюту витрины. Ошибку глотаем намеренно: базовая валюта уже стоит
+ * по умолчанию, и сеть не должна мешать показать каталог.
+ */
+async function loadStorefrontCurrency(): Promise<void> {
+  try {
+    const response = await fetch(`${apiBaseUrl()}/api/storefront/currency`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return;
+
+    const payload = await response.json();
+    const codes: unknown = payload?.supportedCurrencies;
+    if (!Array.isArray(codes) || codes.length === 0) return;
+
+    const normalized = codes
+      .filter((code): code is string => typeof code === "string" && code.trim().length > 0)
+      .map((code) => code.trim().toUpperCase());
+    if (normalized.length === 0) return;
+
+    supportedCodes = normalized;
+
+    const base = payload?.baseCurrency;
+    baseCode = typeof base === "string" && base.trim()
+      ? base.trim().toUpperCase()
+      : normalized[0];
+
+    // Валюту из ссылки запоминаем: список валют приходит уже после первого рендера,
+    // и до него проверить, разрешена ли она, было нечем. Иначе выбор жил бы ровно
+    // до перехода на соседнюю страницу.
+    const fromUrl = readCurrencyFromUrl();
+    if (fromUrl && supportedCodes.includes(fromUrl) && readStoredCurrency() !== fromUrl) {
+      try {
+        window.localStorage.setItem(CURRENCY_KEY, fromUrl);
+      } catch {
+        /* приватный режим — валюта проживёт до конца сессии */
+      }
+    }
+
+    refresh();
+  } catch {
+    /* оффлайн или CORS — остаёмся на базовой валюте */
+  }
+}
+
+if (isBrowser) {
+  void loadStorefrontCurrency();
 }
 
 function subscribe(callback: () => void): () => void {
@@ -113,6 +274,10 @@ export function setLang(lang: LangCode) {
 }
 
 export function setCurrency(currency: CurrencyCode) {
+  // Выбрать валюту, которой нет в списке сервера, нельзя: именно так на витрине
+  // появлялись цены, не совпадающие с суммой списания.
+  if (!supportedCodes.includes(currency)) return;
+
   if (isBrowser) {
     try {
       window.localStorage.setItem(CURRENCY_KEY, currency);
@@ -123,19 +288,17 @@ export function setCurrency(currency: CurrencyCode) {
   refresh();
 }
 
-/** Format a USD base amount in the user's selected currency (indicative rates). */
-export function formatMoney(usdAmount: number, currency: CurrencyCode): string {
-  const option = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
-  const converted = usdAmount * option.rate;
-  const rounded = converted >= 100 ? Math.round(converted) : Number(converted.toFixed(2));
-  // Фиксированная локаль: остальной сайт пишет цены как "$32.00", а локаль ОС пользователя
-  // давала "$32,00" — смесь символа и разделителя из разных миров.
-  const body = rounded.toLocaleString("en-US", {
-    minimumFractionDigits: converted >= 100 ? 0 : 2,
-    maximumFractionDigits: 2,
-  });
-  // Symbols like "zł" read better as a suffix; single-glyph symbols stay as a prefix.
-  return option.symbol.length > 1 ? `${body} ${option.symbol}` : `${option.symbol}${body}`;
+// Форматтер живёт в utils/format-money и НЕ конвертирует валюты. Ре-экспорт оставлен,
+// чтобы существующие импорты из этого модуля продолжали работать.
+export { formatMoney };
+
+/**
+ * Выбранная валюта вне React — для слоя API, который хуками пользоваться не может.
+ * Каталог обязан запрашиваться в той же валюте, в которой витрина будет показывать цены:
+ * сервер вернёт суммы уже в ней, и разойтись с показом станет физически нечему.
+ */
+export function currentCurrency(): string {
+  return snapshot.currency;
 }
 
 export function useSitePreferences() {
@@ -143,9 +306,13 @@ export function useSitePreferences() {
   return {
     lang: state.lang,
     currency: state.currency,
+    /** Валюта каталога — для админских экранов, где цена товара не зависит от покупателя. */
+    baseCurrency: state.baseCurrency,
     setLang,
     setCurrency,
     languages: LANGUAGES,
-    currencies: CURRENCIES,
+    currencies: state.currencies,
+    /** Переключатель показываем только когда есть из чего выбирать. */
+    canSwitchCurrency: state.currencies.length > 1,
   };
 }

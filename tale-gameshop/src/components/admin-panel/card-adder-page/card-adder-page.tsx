@@ -8,6 +8,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { Form } from "../../../store";
 import GameTypeDropdown from "../game-type-dropdown/game-type-dropdown";
 import PageHeader from "../../layout/PageHeader";
+import { useSitePreferences } from "../../../context/site-preferences";
+import { formatMoney } from "../../../utils/format-money";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
 import Card from "../../ui/Card";
 import Drawer from "../../ui/Drawer";
@@ -27,6 +29,8 @@ type GameItem = {
   id: string;
   name?: string;
   price?: number;
+  /** Ручные цены по валютам; в базовой валюте цена лежит в price. */
+  prices?: Record<string, number>;
   description?: string;
   title?: string;
   gameType?: number;
@@ -44,6 +48,7 @@ const emptyForm: Form = {
   id: "",
   name: "",
   price: 0,
+  prices: {},
   description: "",
   title: "",
   gameType: 0,
@@ -53,6 +58,12 @@ const emptyForm: Form = {
 };
 
 const CardAdderPage: React.FC = () => {
+  const { baseCurrency, currencies } = useSitePreferences();
+  // Валюты сверх базовой: цена в базовой живёт в отдельном поле, дублировать её в таблице
+  // означало бы держать одно число в двух местах.
+  const extraCurrencies = currencies
+    .map((option) => option.code)
+    .filter((code) => code !== baseCurrency);
   const [items, setItems] = useState<GameItem[]>([]);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [selectedGame, setSelectedGame] = useState<GameItem | null>(null);
@@ -217,10 +228,10 @@ const CardAdderPage: React.FC = () => {
 
   const isFormValid = Object.keys(validationErrors).length === 0;
 
-  const formatPrice = (price: number | undefined) => {
-    const value = typeof price === "number" ? price : 0;
-    return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" }).format(value);
-  };
+  // Была зашита RUB, при том что сервер считает чекаут в валюте каталога:
+  // менеджер вводил цену и видел «1 999 ₽», а покупателю выставлялось $1999.
+  const formatPrice = (price: number | undefined) =>
+    formatMoney(typeof price === "number" ? price : 0, baseCurrency);
 
   const getLegacyFileName = (path: string) => {
     if (!path) {
@@ -300,6 +311,7 @@ const CardAdderPage: React.FC = () => {
         id: item.id || "",
         name: item.name || "",
         price: item.price || 0,
+        prices: item.prices ?? {},
         description: item.description || "",
         title: item.title || "",
         gameType: item.gameType || 0,
@@ -371,6 +383,23 @@ const CardAdderPage: React.FC = () => {
         [name]: name === "price" || name === "gameType" ? Number(value) : value,
       },
     });
+  };
+
+  /**
+   * Цена в дополнительной валюте. Пустое поле убирает валюту из прайс-листа целиком —
+   * это «не продаём», а не «ноль»: ноль сделал бы игру бесплатной, а не скрыл её.
+   */
+  const handlePriceInCurrencyChange = (code: string, value: string) => {
+    const prices = { ...(form.prices ?? {}) };
+    const trimmed = value.trim();
+
+    if (trimmed === "" || Number.isNaN(Number(trimmed))) {
+      delete prices[code];
+    } else {
+      prices[code] = Number(trimmed);
+    }
+
+    dispatch({ type: "SET_GAME_TYPE_FORM", payload: { ...form, prices } });
   };
 
   const buildPayload = (payload: Form) => {
@@ -843,7 +872,7 @@ const CardAdderPage: React.FC = () => {
 
           <Card>
             <h3>Action settings</h3>
-            <label className="text-sm font-semibold">Price</label>
+            <label className="text-sm font-semibold">Price, {baseCurrency}</label>
             <input
               type="number"
               name="price"
@@ -852,6 +881,29 @@ const CardAdderPage: React.FC = () => {
               className="w-full p-2 border rounded"
             />
             {validationErrors.price && <small className="text-red-500">{validationErrors.price}</small>}
+
+            {extraCurrencies.length > 0 && (
+              <div className="mt-4">
+                <label className="text-sm font-semibold">Prices in other currencies</label>
+                {/* Пустое поле — не ноль и не «посчитать по курсу»: в этой валюте игра просто
+                    не продаётся и на витрине в ней не появится. Курсы придут Этапом 4. */}
+                <p className="text-xs text-gray-500 mb-2">
+                  Leave empty if the game isn't sold in that currency — it won't be listed there.
+                </p>
+                {extraCurrencies.map((code) => (
+                  <div key={code} className="flex items-center gap-2 mb-2">
+                    <span className="w-12 text-sm font-semibold">{code}</span>
+                    <input
+                      type="number"
+                      value={form.prices?.[code] ?? ""}
+                      onChange={(event) => handlePriceInCurrencyChange(code, event.target.value)}
+                      placeholder="not sold"
+                      className="flex-1 p-2 border rounded"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             <label className="text-sm font-semibold">Game type</label>
             <GameTypeDropdown />
           </Card>
