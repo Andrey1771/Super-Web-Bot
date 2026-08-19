@@ -71,6 +71,8 @@ export interface Edition {
   title: string;
   description: string;
   price: number;
+  /** Ручные цены издания по валютам (админка). На витрине не используются — цена приходит в editionPricing. */
+  prices?: Record<string, number> | null;
   discountPercent?: number;
   includedItems?: string[];
   isDefault?: boolean;
@@ -97,6 +99,8 @@ export interface Review {
   helpfulCount: number;
   images?: { url: string; thumbUrl: string }[];
   recommend?: boolean;
+  /** Ответ магазина под отзывом — оставляет модератор в админке. */
+  shopReply?: { text: string; author?: string; createdAt: string } | null;
 }
 
 export interface QAItem {
@@ -112,6 +116,8 @@ export interface QAAnswer {
   userName: string;
   text: string;
   createdAt: string;
+  /** Ответ от имени магазина — показывается первым и с пометкой. */
+  isOfficial?: boolean;
 }
 
 export interface GameCardItem {
@@ -227,7 +233,10 @@ export interface GameDetailsResponse {
   game: GameDetails;
   /** Статус релиза считает сервер по Game.ReleaseDate — клиент даты не сравнивает. */
   isComingSoon?: boolean;
-  pricing: Pricing;
+  /** null — в запрошенной валюте игру не продаём: цены нет ни в прайс-листе, ни по курсу. */
+  pricing: Pricing | null;
+  /** Цены изданий в запрошенной валюте по коду издания; null — издание в ней не продаётся. */
+  editionPricing?: Record<string, Pricing | null>;
   ratingSummary: RatingSummaryResponse;
   heroBadges: string[];
   recommendations: GameRecommendationsResponse;

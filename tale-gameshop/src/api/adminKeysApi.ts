@@ -42,6 +42,10 @@ export interface GameKeyListItem {
   status: 'Pool' | 'Delivered' | 'Voided';
   ownerEmail?: string | null;
   issuedAt?: string | null;
+  /** Кто залил ключ в пул; пусто у ключей, залитых до появления поля. */
+  addedBy?: string | null;
+  /** Кто выдал вручную; пусто — автоматическая выдача при оплате. */
+  issuedBy?: string | null;
 }
 
 export interface GameKeyPage {
@@ -72,6 +76,8 @@ export interface KeyOverviewRow {
   awaiting: number;
   outOfStock: boolean;
   low: boolean;
+  /** Порог «мало» для этой строки: свой у игры или общий. */
+  lowThreshold?: number;
 }
 
 export interface KeyOverview {
@@ -114,4 +120,36 @@ export const editKey = async (
   body: { key?: string; keyType?: string }
 ): Promise<void> => {
   await api().put(`/api/admin/keys/inventory/${gameId}/keys/${keyId}`, body);
+};
+
+/** Отчёт импорта: одинаковой формы для предпросмотра (dryRun) и реальной записи. */
+export interface KeyImportReport {
+  dryRun: boolean;
+  lines: number;
+  parsed: number;
+  invalid: number;
+  invalidSamples: string[];
+  types?: Array<{ keyType: string; count: number }>;
+  wouldAdd: number;
+  duplicates: number;
+  previouslyVoided: number;
+  added: number;
+  backfilledOrders: number;
+}
+
+/**
+ * Импорт ключей из текста файла: по ключу в строке или CSV «key,type». dryRun=true — только
+ * отчёт «добавится / дублей / невалидных», ничего не пишется.
+ */
+export const importKeys = async (
+  gameId: string,
+  content: string,
+  keyType: string,
+  dryRun: boolean
+): Promise<KeyImportReport> =>
+  (await api().post(`/api/admin/keys/inventory/${gameId}/import`, { content, keyType, dryRun })).data;
+
+/** Порог «мало ключей» для игры; null — общий порог. */
+export const setLowStockThreshold = async (gameId: string, lowStockThreshold: number | null): Promise<void> => {
+  await api().put(`/api/admin/keys/inventory/${gameId}/threshold`, { lowStockThreshold });
 };

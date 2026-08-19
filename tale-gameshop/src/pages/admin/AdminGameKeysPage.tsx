@@ -1,3 +1,4 @@
+import PageHeader, { GAMES_TABS } from "../../components/layout/PageHeader";
 import React, { useEffect, useState } from "react";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
@@ -27,6 +28,7 @@ const AdminGameKeysPage: React.FC = () => {
 
   return (
     <div className="admin-grid">
+      <PageHeader title="Game keys" description="Key pool per game: stock, import, manual grants." breadcrumbs={["Games", "Keys"]} tabs={GAMES_TABS} />
       <KeyStockOverview onSelectGame={setSelectedGameId} />
 
       <div className="admin-card">

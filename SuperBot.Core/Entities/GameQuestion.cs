@@ -20,6 +20,8 @@ namespace SuperBot.Core.Entities
         public string UserId { get; set; }
         public string UserName { get; set; }
         public string Text { get; set; }
+        /// <summary>Ответ от имени магазина — на витрине помечается «Official».</summary>
+        public bool IsOfficial { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

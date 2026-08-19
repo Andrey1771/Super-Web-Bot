@@ -15,23 +15,32 @@ public class GamesDetailsController : ControllerBase
     private readonly IGameReviewRepository _gameReviewRepository;
     private readonly IWishlistRepository _wishlistRepository;
     private readonly IOrderRepository _orderRepository;
+    private readonly SuperBot.Core.Payments.StorefrontCurrencyOptions _currencies;
+    private readonly SuperBot.Infrastructure.Services.IFxRateService _fxRates;
+    private readonly SuperBot.Core.Payments.FxOptions _fx;
 
     public GamesDetailsController(
         IGameRepository gameRepository,
         IGameDetailsRepository gameDetailsRepository,
         IGameReviewRepository gameReviewRepository,
         IWishlistRepository wishlistRepository,
-        IOrderRepository orderRepository)
+        IOrderRepository orderRepository,
+        Microsoft.Extensions.Options.IOptions<SuperBot.Core.Payments.StorefrontCurrencyOptions> currencies,
+        SuperBot.Infrastructure.Services.IFxRateService fxRates,
+        Microsoft.Extensions.Options.IOptionsSnapshot<SuperBot.Core.Payments.FxOptions> fx)
     {
         _gameRepository = gameRepository;
         _gameDetailsRepository = gameDetailsRepository;
         _gameReviewRepository = gameReviewRepository;
         _wishlistRepository = wishlistRepository;
         _orderRepository = orderRepository;
+        _currencies = currencies.Value;
+        _fxRates = fxRates;
+        _fx = fx.Value;
     }
 
     [HttpGet("{slug}")]
-    public async Task<IActionResult> GetGameBySlug(string slug)
+    public async Task<IActionResult> GetGameBySlug(string slug, [FromQuery] string? currency = null)
     {
         if (string.IsNullOrWhiteSpace(slug))
         {
@@ -58,7 +67,6 @@ public class GamesDetailsController : ControllerBase
             await _gameDetailsRepository.UpsertAsync(details);
         }
 
-        var pricing = BuildPricing(details);
         var summary = await _gameReviewRepository.GetSummaryAsync(details.GameId);
         details.RatingAvg = summary.Average;
         details.ReviewsCount = summary.Count;
@@ -68,6 +76,17 @@ public class GamesDetailsController : ControllerBase
         var linkedGame = string.IsNullOrWhiteSpace(details.GameId)
             ? null
             : await _gameRepository.GetByIdAsync(details.GameId);
+
+        // Цена — в валюте покупателя, тем же путём, что и каталог: ручная цена из прайс-листа
+        // игры, иначе пересчёт по курсу с наценкой и округлением. Раньше карточка отдавала
+        // базовую цену, а фронт подставлял к ней символ выбранной валюты — $30 превращались в €30.
+        var resolvedCurrency = _currencies.Resolve(currency);
+        var pricing = BuildPricing(details, linkedGame, resolvedCurrency);
+
+        // Цены изданий — в той же валюте и по тем же правилам (ручная → курс → нет). Отдаём
+        // отдельной картой по коду издания: сама сущность details уходит как есть, и у её изданий
+        // Price — в базовой валюте, им на фронте пользоваться нельзя.
+        var editionPricing = BuildEditionPricing(details, linkedGame, resolvedCurrency);
         var isComingSoon = linkedGame != null &&
             SuperBot.Core.Services.GameRelease.IsUpcoming(linkedGame.ReleaseDate, DateTime.UtcNow);
 
@@ -84,6 +103,7 @@ public class GamesDetailsController : ControllerBase
             game = details,
             isComingSoon,
             pricing,
+            editionPricing,
             ratingSummary = new
             {
                 avg = summary.Average,
@@ -152,18 +172,69 @@ public class GamesDetailsController : ControllerBase
         };
     }
 
-    private static object BuildPricing(GameDetails details)
+    private Dictionary<string, object?> BuildEditionPricing(GameDetails details, Game? linkedGame, string currency)
+    {
+        var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var edition in details.Editions ?? new List<GameEdition>())
+        {
+            if (string.IsNullOrWhiteSpace(edition.Code))
+            {
+                continue;
+            }
+            decimal? basePrice = linkedGame is not null
+                ? SuperBot.Core.Payments.GamePricing.TryGetEditionPrice(edition, linkedGame, currency, _fxRates.Current(), _fx)
+                : (string.Equals(details.Currency ?? "USD", currency, StringComparison.OrdinalIgnoreCase) ? edition.Price : null);
+            if (basePrice is null)
+            {
+                result[edition.Code] = null;
+                continue;
+            }
+            var discount = edition.DiscountPercent ?? 0;
+            var final = SuperBot.Core.Services.PriceCalculator.FinalPrice(basePrice.Value, edition.DiscountPercent);
+            result[edition.Code] = new
+            {
+                price = final,
+                oldPrice = discount > 0 ? basePrice : (decimal?)null,
+                discountPercent = discount > 0 ? discount : (decimal?)null,
+                currency
+            };
+        }
+        return result;
+    }
+
+    private object? BuildPricing(GameDetails details, Game? linkedGame, string currency)
     {
         var discount = details.DiscountPercent ?? 0;
-        var finalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(details.BasePrice, details.DiscountPercent);
+
+        // Базовая цена в запрошенной валюте. Без связанной игры (деталь-сирота) остаётся старое
+        // поведение — цена детали в её собственной валюте, и только если валюта совпала.
+        decimal? basePrice;
+        if (linkedGame is not null)
+        {
+            basePrice = SuperBot.Core.Payments.GamePricing.TryGetPrice(linkedGame, currency, _fxRates.Current(), _fx);
+        }
+        else
+        {
+            basePrice = string.Equals(details.Currency ?? "USD", currency, StringComparison.OrdinalIgnoreCase) ? details.BasePrice : null;
+        }
+
+        if (basePrice is null)
+        {
+            // В этой валюте игру не продаём — честный null вместо цены с подменённым символом.
+            // Фронт покажет «недоступно в EUR» и список валют, где цена есть.
+            details.FinalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(details.BasePrice, details.DiscountPercent);
+            return null;
+        }
+
+        var finalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(basePrice.Value, details.DiscountPercent);
         details.FinalPrice = finalPrice;
 
         return new
         {
             price = finalPrice,
-            oldPrice = discount > 0 ? details.BasePrice : (decimal?)null,
+            oldPrice = discount > 0 ? basePrice : (decimal?)null,
             discountPercent = discount > 0 ? discount : (decimal?)null,
-            currency = details.Currency ?? "USD"
+            currency
         };
     }
 

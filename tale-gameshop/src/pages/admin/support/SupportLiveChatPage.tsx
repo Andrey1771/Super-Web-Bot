@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
 import {
@@ -110,8 +110,9 @@ const SupportLiveChatPage: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSessionListResponse["items"]>([]);
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [filter, setFilter] = useState("needs_agent");
-  const [query, setQuery] = useState("");
+  // Пришли по ссылке с ?q= (из карточки клиента) — показываем все его диалоги, а не только очередь.
+  const [filter, setFilter] = useState(() => (searchParams.get("q") ? "" : "needs_agent"));
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [messageDraft, setMessageDraft] = useState("");
   const [priority, setPriority] = useState("normal");
   const [tagDraft, setTagDraft] = useState("");
@@ -351,6 +352,7 @@ const SupportLiveChatPage: React.FC = () => {
         <Card>
           <div className="support-live-chat__filters">
             <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+              <option value="">ALL STATUSES</option>
               {statusFilters.map((status) => (
                 <option key={status} value={status}>
                   {status.replace("_", " ").toUpperCase()}
@@ -404,6 +406,13 @@ const SupportLiveChatPage: React.FC = () => {
                   <div className="support-live-chat__who">
                     <strong>{selectedSession.email ?? selectedSession.userId ?? "Guest"}</strong>
                     <span className="support-live-chat__code">{formatSessionCode(selectedSession.id)}</span>
+                    {selectedSession.email && (
+                      // Карточка клиента: заказы, ключи, прошлые обращения — то, что специалист
+                      // ищет по второму сообщению клиента.
+                      <Link className="support-live-chat__customer-link" to={`/admin/customers?email=${encodeURIComponent(selectedSession.email)}`}>
+                        Open customer →
+                      </Link>
+                    )}
                   </div>
                   {/* Полный идентификатор оставлен рядом: код — для разговора с клиентом,
                       ссылки и обращения в поддержку самой админки идут по нему. */}

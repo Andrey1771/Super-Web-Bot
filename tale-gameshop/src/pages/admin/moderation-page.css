@@ -1,0 +1,154 @@
+/* Модерация: вкладки, список карточек, действия в строку. */
+
+.moderation__tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.moderation__tab {
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.moderation__tab--active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.moderation__badge {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.moderation__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.moderation__filter {
+  width: auto;
+}
+
+.moderation__muted {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.moderation__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.moderation__item {
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+/* Ожидающие — жёлтая полоса: это очередь на решение; скрытые — серая, чтобы отличать от живых. */
+.moderation__item--pending {
+  border-left-color: #f5b53f;
+}
+
+.moderation__item--hidden {
+  border-left-color: #94a3b8;
+  opacity: 0.85;
+}
+
+.moderation__item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.moderation__game {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.moderation__flags {
+  display: flex;
+  gap: 6px;
+}
+
+.moderation__pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.moderation__pill--warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.moderation__text {
+  margin: 8px 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.moderation__reply {
+  margin: 4px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-border);
+  font-size: 13px;
+  color: #334155;
+}
+
+.moderation__reply--official {
+  border-left-color: var(--color-primary);
+}
+
+.moderation__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.moderation__reply-input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.moderation__danger {
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.moderation__pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}

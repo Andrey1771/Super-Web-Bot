@@ -396,6 +396,9 @@ namespace SuperBot.Infrastructure.Repositories
             {
                 "PAID" => Builders<OrderDb>.Filter.Or(paymentFilter, Builders<OrderDb>.Filter.Eq(order => order.IsPaid, true)),
                 "UNPAID" => Builders<OrderDb>.Filter.Or(paymentFilter, Builders<OrderDb>.Filter.Eq(order => order.IsPaid, false)),
+                // Раздел Refunds в админке: всё, где деньги ушли обратно или оспариваются, одним фильтром.
+                "REFUNDS" => Builders<OrderDb>.Filter.In(order => order.PaymentStatus,
+                    new[] { "REFUNDED", "PARTIALLY_REFUNDED", "REFUND_PENDING", "DISPUTED" }),
                 _ => paymentFilter
             };
         }
@@ -451,6 +454,9 @@ namespace SuperBot.Infrastructure.Repositories
                 "createdat:asc" => Builders<OrderDb>.Sort.Ascending(order => order.OrderDate),
                 "total:desc" => Builders<OrderDb>.Sort.Descending(order => order.TotalAmount),
                 "total:asc" => Builders<OrderDb>.Sort.Ascending(order => order.TotalAmount),
+                // Возвраты и споры смотрят по времени последнего изменения: возврат мог прийти
+                // через месяц после покупки, и по дате заказа он утонул бы в списке.
+                "updatedat:desc" => Builders<OrderDb>.Sort.Descending(order => order.UpdatedAt),
                 _ => Builders<OrderDb>.Sort.Descending(order => order.OrderDate)
             };
 

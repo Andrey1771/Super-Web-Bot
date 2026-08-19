@@ -230,6 +230,10 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("price")]
         public decimal Price { get; set; }
 
+        [BsonElement("prices")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, decimal>? Prices { get; set; }
+
         [BsonElement("discountPercent")]
         public decimal? DiscountPercent { get; set; }
 

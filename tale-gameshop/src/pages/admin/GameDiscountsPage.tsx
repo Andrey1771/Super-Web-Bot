@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import PageHeader from "../../components/layout/PageHeader";
+import PageHeader, { GAMES_TABS } from "../../components/layout/PageHeader";
 import Card from "../../components/ui/Card";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../components/layout/AdminHeaderContext";
@@ -292,7 +291,7 @@ const GameDiscountsPage: React.FC = () => {
 
   return (
     <div className="admin-grid">
-      <PageHeader title="Game discounts" description="Manage per-game discounts separately from promo codes." breadcrumbs={["Game discounts", "Admin"]} />
+      <PageHeader title="Prices & discounts" description="Per-game discounts and the deal of the week. Promo codes live on their own tab." breadcrumbs={["Games", "Prices & discounts"]} tabs={GAMES_TABS} />
 
       <Card>
         <h3>Deal of the week — homepage banner</h3>
@@ -441,10 +440,6 @@ const GameDiscountsPage: React.FC = () => {
       </Card>
 
       <Card>
-        <div className="flex gap-2 mb-4">
-          <Link className="btn btn-outline" to="/admin/promo-codes">Promo Codes</Link>
-          <Link className="btn btn-primary" to="/admin/game-discounts">Game Discounts</Link>
-        </div>
         <div className="admin-grid admin-grid--4">
           <input className="input" placeholder="Search by title" value={search} onChange={(event) => setSearch(event.target.value)} />
           <select className="input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | GameDiscountStatus)}>

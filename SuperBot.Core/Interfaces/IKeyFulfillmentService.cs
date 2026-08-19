@@ -7,7 +7,8 @@ namespace SuperBot.Core.Interfaces
     /// </summary>
     public interface IKeyFulfillmentService
     {
-        Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null);
+        /// <param name="issuedBy">Почта сотрудника при ручной выдаче; null — автоматическая выдача при оплате.</param>
+        Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null, string issuedBy = null);
 
         /// <summary>
         /// Выдаёт ключи по позициям оплаченного заказа, проставляет честный статус
@@ -15,7 +16,7 @@ namespace SuperBot.Core.Interfaces
         /// Возвращает РЕАЛЬНО выданные в этом вызове ключи — вызывающий решает,
         /// как их доставить (email, страница), не залезая в маскированный снапшот.
         /// </summary>
-        Task<IReadOnlyList<DeliveredKeyNotification>> FulfillOrderAsync(Order order);
+        Task<IReadOnlyList<DeliveredKeyNotification>> FulfillOrderAsync(Order order, string issuedBy = null);
 
         /// <summary>
         /// Довыдача после пополнения пула: находит оплаченные заказы с этой игрой,

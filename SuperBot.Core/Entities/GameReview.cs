@@ -27,6 +27,20 @@ namespace SuperBot.Core.Entities
         public DateTime? UpdatedAt { get; set; }
         public int HelpfulCount { get; set; }
         public ReviewStatus Status { get; set; } = ReviewStatus.Published;
+
+        /// <summary>Сколько раз пожаловались. Жалоба переводит отзыв в Pending до решения модератора.</summary>
+        public int ReportCount { get; set; }
+        public DateTime? LastReportedAt { get; set; }
+
+        /// <summary>Ответ магазина под отзывом — виден на витрине.</summary>
+        public ReviewReply? ShopReply { get; set; }
+    }
+
+    public class ReviewReply
+    {
+        public string Text { get; set; } = string.Empty;
+        public string Author { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
     }
 
     public class ReviewImage

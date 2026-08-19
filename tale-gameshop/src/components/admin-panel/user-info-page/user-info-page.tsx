@@ -88,16 +88,20 @@ const UserInfoPage: React.FC = () => {
         }
     };
 
-    const handleShowColumns = () => {
+    // useCallback обязателен: эти две функции сидят в зависимостях эффекта, который ставит кнопки в
+    // шапку. Пересоздаваясь на каждом рендере, они запускали эффект → setHeaderActions → перерисовку
+    // лейаута → перерисовку страницы → снова эффект. Бесконечный цикл: вкладка «лагала», а потом
+    // навигация переставала коммититься — URL менялся, контент нет.
+    const handleShowColumns = useCallback(() => {
         const instance = gridRef.current?.instance;
         if (instance?.showColumnChooser) {
             instance.showColumnChooser();
         } else {
             addToast("Column chooser unavailable", "error");
         }
-    };
+    }, [addToast]);
 
-    const exportCsv = () => {
+    const exportCsv = useCallback(() => {
         const headers = [
             "User ID",
             "Username",
@@ -145,7 +149,7 @@ const UserInfoPage: React.FC = () => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         addToast("Export started", "success");
-    };
+    }, [addToast, filteredData]);
 
     useEffect(() => {
         setPageTitle("Login History");

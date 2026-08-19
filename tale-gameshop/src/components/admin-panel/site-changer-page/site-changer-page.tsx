@@ -3,7 +3,7 @@ import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
 import type { IUrlService } from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
-import PageHeader from "../../layout/PageHeader";
+import PageHeader, { GAMES_TABS } from "../../layout/PageHeader";
 import Card from "../../ui/Card";
 import Drawer from "../../ui/Drawer";
 import EmptyState from "../../ui/EmptyState";
@@ -437,7 +437,8 @@ const SiteChangerPage: React.FC = () => {
       <PageHeader
         title="Media manager"
         description="Upload, review, and clean up assets used across the storefront."
-        breadcrumbs={["System", "Media"]}
+        breadcrumbs={["Games", "Media"]}
+        tabs={GAMES_TABS}
       />
 
       <Card>

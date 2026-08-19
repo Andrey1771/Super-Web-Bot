@@ -30,7 +30,7 @@ public class SupportNotificationService : ISupportNotificationService
     public SupportNotificationService(
         IBotEventPublisher botEvents,
         IOptions<RecoveryOptions> mailOptions,
-        IOptions<SupportChatOptions> chatOptions,
+        IOptionsSnapshot<SupportChatOptions> chatOptions,
         ILogger<SupportNotificationService> logger)
     {
         _botEvents = botEvents;

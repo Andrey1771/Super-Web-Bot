@@ -9,6 +9,7 @@ import {
   GameDetailsResponse,
   GameSystemRequirements,
   MediaItem,
+  Pricing,
   QAItem,
   QuickInfoTile,
   RatingBreakdownItem,
@@ -544,10 +545,13 @@ const SystemRequirementsCard = ({ requirements }: { requirements: GameSystemRequ
 
 const EditionSelector = ({
   editions,
+  pricing,
   selectedId,
   onSelect
 }: {
   editions: Edition[];
+  /** Цены изданий в валюте витрины — считает сервер (ручная → курс). null — в этой валюте не продаётся. */
+  pricing: Record<string, Pricing | null>;
   selectedId: string;
   onSelect: (id: string) => void;
 }) => {
@@ -557,28 +561,34 @@ const EditionSelector = ({
     <div className="card" id="dlc-editions">
       <h2>Edition</h2>
       <div className="edition-list">
-        {editions.map((edition) => (
-          <label key={edition.code} className={`edition-item ${selectedId === edition.code ? 'is-active' : ''}`}>
-            <input
-              type="radio"
-              name="edition"
-              checked={selectedId === edition.code}
-              onChange={() => onSelect(edition.code)}
-            />
-            <div>
-              <p className="edition-name">{edition.title}</p>
-              <p className="edition-description">{edition.description}</p>
-            </div>
-            <div className="edition-pricing">
-              <span className="edition-price">{formatPrice(edition.price, siteCurrency)}</span>
-              {edition.discountPercent && (
-                <span className="edition-old">
-                  {formatPrice(edition.price / (1 - edition.discountPercent / 100), siteCurrency)}
-                </span>
-              )}
-            </div>
-          </label>
-        ))}
+        {editions.map((edition) => {
+          const p = pricing[edition.code] ?? null;
+          return (
+            <label key={edition.code} className={`edition-item ${selectedId === edition.code ? 'is-active' : ''} ${p ? '' : 'is-unavailable'}`}>
+              <input
+                type="radio"
+                name="edition"
+                checked={selectedId === edition.code}
+                disabled={!p}
+                onChange={() => onSelect(edition.code)}
+              />
+              <div>
+                <p className="edition-name">{edition.title}</p>
+                <p className="edition-description">{edition.description}</p>
+              </div>
+              <div className="edition-pricing">
+                {p ? (
+                  <>
+                    <span className="edition-price">{formatPrice(p.price, p.currency)}</span>
+                    {p.oldPrice != null && <span className="edition-old">{formatPrice(p.oldPrice, p.currency)}</span>}
+                  </>
+                ) : (
+                  <span className="edition-price edition-price--na">Not in {siteCurrency}</span>
+                )}
+              </div>
+            </label>
+          );
+        })}
       </div>
     </div>
   );
@@ -702,6 +712,12 @@ const ReviewCard = ({
       </button>
       {review.images?.[0]?.url && (
         <img className="review-shot" src={review.images[0].url} alt="Review screenshot" loading="lazy" />
+      )}
+      {review.shopReply?.text && (
+        <div className="review-shop-reply">
+          <p className="review-shop-reply__label">Tale Shop replied</p>
+          <p className="review-shop-reply__text">{review.shopReply.text}</p>
+        </div>
       )}
       <div className="review-actions">
         <button type="button" className="btn btn-ghost" onClick={() => onHelpful(review.id)} disabled={!canInteract}>
@@ -839,7 +855,18 @@ const QASection = ({
         {items.map((item) => (
           <div key={item.id} className="qa-item">
             <p className="qa-question">{item.question}</p>
-            <p className="qa-answer">{item.answer ?? item.answers?.[0]?.text ?? "Awaiting response."}</p>
+            {/* Официальный ответ магазина — первым и с пометкой; иначе первый ответ покупателя. */}
+            {(() => {
+              const official = item.answers?.find((a) => a.isOfficial);
+              const shown = official ?? item.answers?.[0];
+              const text = item.answer ?? shown?.text ?? "Awaiting response.";
+              return (
+                <p className="qa-answer">
+                  {official && <span className="qa-official">Official</span>}
+                  {text}
+                </p>
+              );
+            })()}
             <span className="qa-date">{item.createdAt}</span>
           </div>
         ))}
@@ -928,7 +955,7 @@ const GameDetailsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         setNotFound(false);
-        const response = await gameDetailsService.getGameDetails(slug ?? '');
+        const response = await gameDetailsService.getGameDetails(slug ?? '', siteCurrency);
         if (isMounted) {
           setData(response);
           if (response.game.editions?.length > 0) {
@@ -955,7 +982,7 @@ const GameDetailsPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [gameDetailsService, slug, reloadKey]);
+  }, [gameDetailsService, slug, reloadKey, siteCurrency]);
 
   useEffect(() => {
     if (!data?.game?.gameId) {
@@ -999,18 +1026,15 @@ const GameDetailsPage: React.FC = () => {
   }, [data?.game?.gameId, gameDetailsService]);
 
   const selectedEdition = data?.game.editions?.find((edition) => edition.code === selectedEditionId);
-  // Валюту берём у витрины, а не из свободного текстового поля GameDetails: списание
-  // всё равно пройдёт в валюте расчёта сервера, и показать другую — значит соврать.
+  // Цена и валюта — из ответа сервера, который считал её для выбранной валюты (карточка
+  // грузится заново при смене валюты, см. эффект выше). Раньше сюда подставлялся код валюты
+  // витрины к цене в USD — и $30 превращались в «€30» одной буквой.
+  // Издания пока хранят цену только в базовой валюте, поэтому для них показываем валюту сервера.
+  // Цена выбранного издания — тоже из ответа сервера (editionPricing), по тем же правилам:
+  // ручная цена издания в валюте → курс от базовой цены издания → нет.
   const displayPricing = selectedEdition
-    ? {
-        price: selectedEdition.price,
-        oldPrice: selectedEdition.discountPercent ? selectedEdition.price / (1 - selectedEdition.discountPercent / 100) : undefined,
-        currency: siteCurrency,
-        discountPercent: selectedEdition.discountPercent
-      }
-    : data?.pricing
-      ? { ...data.pricing, currency: siteCurrency }
-      : undefined;
+    ? (data?.editionPricing?.[selectedEdition.code] ?? undefined)
+    : data?.pricing ?? undefined;
   const isAuthenticated = Boolean(keycloakService.keycloak?.authenticated);
 
   const renderPlatformIcon = (platform: string) => {
@@ -1064,18 +1088,33 @@ const GameDetailsPage: React.FC = () => {
               boxShadow: '0 12px 30px rgba(84, 58, 193, 0.08)'
             }}
           >
-            <div style={{ fontSize: 40 }}>😕</div>
-            <h2 style={{ margin: '12px 0 8px' }}>Something went wrong</h2>
-            <p style={{ color: '#6c6393', marginBottom: 20 }}>
-              {error ?? 'Failed to load game details. Please try again later.'}
-            </p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setReloadKey((prev) => prev + 1)}
-            >
-              Try again
-            </button>
+            {/* Данные есть, цены в выбранной валюте нет — это не сбой, а «в EUR не продаём»:
+                у игры нет ни ручной цены в этой валюте, ни курса. Показать цену в другой валюте
+                с чужим символом нельзя — её нечем списать. */}
+            {!error && data && !displayPricing ? (
+              <>
+                <div style={{ fontSize: 40 }}>💱</div>
+                <h2 style={{ margin: '12px 0 8px' }}>Not available in {siteCurrency}</h2>
+                <p style={{ color: '#6c6393', marginBottom: 20 }}>
+                  {data.game.title} isn’t priced in {siteCurrency} yet. Switch the currency in the header to see the price.
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 40 }}>😕</div>
+                <h2 style={{ margin: '12px 0 8px' }}>Something went wrong</h2>
+                <p style={{ color: '#6c6393', marginBottom: 20 }}>
+                  {error ?? 'Failed to load game details. Please try again later.'}
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setReloadKey((prev) => prev + 1)}
+                >
+                  Try again
+                </button>
+              </>
+            )}
           </div>
         </div>
       </main>
@@ -1353,6 +1392,7 @@ const GameDetailsPage: React.FC = () => {
             <aside className="details-sidebar">
               <EditionSelector
                 editions={data.game.editions}
+                pricing={data.editionPricing ?? {}}
                 selectedId={selectedEditionId}
                 onSelect={setSelectedEditionId}
               />

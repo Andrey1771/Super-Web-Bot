@@ -200,6 +200,28 @@ namespace SuperBot.WebApi.Services
             response.EnsureSuccessStatusCode();
         }
 
+        /// <summary>Включить или выключить учётку. Выключенная не может войти, но данные и заказы остаются.</summary>
+        public async Task SetEnabledAsync(string userId, bool enabled)
+        {
+            using var request = await CreateAdminRequestAsync(HttpMethod.Put, $"{AdminUsersPath}/{userId}");
+            request.Content = JsonContent.Create(new { enabled });
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Поиск клиентов по подстроке (почта, имя, логин). Keycloak ищет по всем этим полям сам;
+        /// лимит нужен, чтобы пустая строка не тянула весь realm.
+        /// </summary>
+        public async Task<List<KeycloakUser>> SearchUsersAsync(string query, int max = 20)
+        {
+            var url = $"{AdminUsersPath}?search={Uri.EscapeDataString(query)}&max={max}&briefRepresentation=true";
+            using var request = await CreateAdminRequestAsync(HttpMethod.Get, url);
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOptions) ?? new List<KeycloakUser>();
+        }
+
         public async Task<bool> ValidatePasswordAsync(string username, string password)
         {
             if (string.IsNullOrWhiteSpace(PublicClientId))
@@ -241,6 +263,8 @@ namespace SuperBot.WebApi.Services
         public string Email { get; set; } = string.Empty;
         public bool EmailVerified { get; set; }
         public string Username { get; set; } = string.Empty;
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
         public bool Enabled { get; set; }
         public long? CreatedTimestamp { get; set; }
     }

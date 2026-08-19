@@ -9,6 +9,8 @@ import type { AdminGameDiscount, GameDetails, MediaItem } from "../../types/game
 import MediaPickerModal from "../../components/admin-panel/media-library/MediaPickerModal";
 import { useToast } from "../../components/ui/ToastProvider";
 import CollapsibleCard from "../../components/admin/CollapsibleCard";
+import PageHeader, { GAMES_TABS } from "../../components/layout/PageHeader";
+import { useSitePreferences } from "../../context/site-preferences";
 
 const emptyDetails = (gameId: string, slug: string, title: string): GameDetails => ({
   gameId,
@@ -55,6 +57,9 @@ const emptyDetails = (gameId: string, slug: string, title: string): GameDetails 
 });
 
 const GameDetailsEditorPage: React.FC = () => {
+  // Валюты витрины сверх базовой — для прайс-листов изданий. Базовая цена издания живёт в price.
+  const { baseCurrency, currencies } = useSitePreferences();
+  const extraCurrencies = currencies.map((c) => c.code).filter((code) => code !== baseCurrency);
   const gameService = useMemo(() => container.get<IGameService>(IDENTIFIERS.IGameService), []);
   const adminService = useMemo(() => container.get<IAdminGameDetailsService>(IDENTIFIERS.IAdminGameDetailsService), []);
   const { addToast } = useToast();
@@ -268,16 +273,19 @@ const GameDetailsEditorPage: React.FC = () => {
 
   if (!details) {
     return (
-      <div className="admin-card">
-        <p>{loading ? "Loading..." : "Select a game"}</p>
+      <div className="admin-grid">
+        <PageHeader title="Game details" description="Extended card: descriptions, media, editions, requirements." breadcrumbs={["Games", "Details"]} tabs={GAMES_TABS} />
+        <div className="admin-card">
+          <p>{loading ? "Loading..." : "Select a game"}</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="admin-grid">
+      <PageHeader title="Game details" description="Extended card: descriptions, media, editions, requirements." breadcrumbs={["Games", "Details"]} tabs={GAMES_TABS} />
       <div className="admin-card">
-        <h2>Game details editor</h2>
         <div className="admin-grid admin-grid--2">
           <label>
             Game
@@ -526,10 +534,40 @@ const GameDetailsEditorPage: React.FC = () => {
 
       <CollapsibleCard title="Editions">
         {details.editions.map((edition, index) => (
-          <div key={edition.code} className="admin-grid admin-grid--3">
-            <input className="input" value={edition.title} onChange={(event) => updateEdition(index, { title: event.target.value })} />
-            <input className="input" value={edition.description} onChange={(event) => updateEdition(index, { description: event.target.value })} />
-            <input className="input" type="number" value={edition.price} onChange={(event) => updateEdition(index, { price: Number(event.target.value) })} />
+          <div key={edition.code} style={{ marginBottom: 12 }}>
+            <div className="admin-grid admin-grid--3">
+              <label className="text-sm">Title<input className="input" value={edition.title} onChange={(event) => updateEdition(index, { title: event.target.value })} /></label>
+              <label className="text-sm">Description<input className="input" value={edition.description} onChange={(event) => updateEdition(index, { description: event.target.value })} /></label>
+              <label className="text-sm">Price ({baseCurrency})<input className="input" type="number" value={edition.price} onChange={(event) => updateEdition(index, { price: Number(event.target.value) })} /></label>
+            </div>
+            {/* Прайс-лист издания по валютам — как у игры: пусто = по курсу от базовой цены издания;
+                число = ручная цена, важнее курса. Нет ни того ни другого — издание в валюте не продаётся. */}
+            {extraCurrencies.length > 0 && (
+              <div className="flex gap-3 flex-wrap" style={{ marginTop: 6 }}>
+                {extraCurrencies.map((code) => (
+                  <label key={code} className="text-xs text-gray-500" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {code}
+                    <input
+                      className="input"
+                      type="number"
+                      step="any"
+                      style={{ width: 110 }}
+                      placeholder="by rate"
+                      value={edition.prices?.[code] ?? ""}
+                      onChange={(event) => {
+                        const next = { ...(edition.prices ?? {}) };
+                        if (event.target.value.trim() === "") {
+                          delete next[code];
+                        } else {
+                          next[code] = Number(event.target.value);
+                        }
+                        updateEdition(index, { prices: Object.keys(next).length ? next : null });
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         ))}
         <button className="btn btn-outline" onClick={addEdition}>Add edition</button>

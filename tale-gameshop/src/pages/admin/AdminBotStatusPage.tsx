@@ -49,6 +49,10 @@ const AdminBotStatusPage: React.FC = () => {
   const [broadcastSegment, setBroadcastSegment] = useState<"linked" | "all">("linked");
   const [broadcastSending, setBroadcastSending] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
+  // Чем именно кончился запрос статуса, когда он не удался. «Сервис не ответил» и «сервис
+  // ответил ошибкой» — разные проблемы с разными действиями, и одна общая надпись
+  // «Could not reach the backend» их смешивала: при пустом BOT_TOKEN бэкенд был жив.
+  const [loadFailure, setLoadFailure] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -56,9 +60,20 @@ const AdminBotStatusPage: React.FC = () => {
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get<BotStatus>("/api/admin/bot/status");
       setStatus(response.data);
-    } catch (error) {
+      setLoadFailure(null);
+    } catch (error: any) {
       console.error("Failed to load bot status", error);
       setStatus(null);
+      const httpStatus: number | undefined = error?.response?.status;
+      const body = error?.response?.data;
+      const bodyText = typeof body === "string" ? body : body?.title || body?.detail || body?.error;
+      setLoadFailure(
+        httpStatus === undefined
+          ? "The bot service did not respond. Check that the bot container is running (docker compose ps)."
+          : httpStatus === 401 || httpStatus === 403
+            ? "You are signed in, but this account is not allowed to see bot status (admin role required)."
+            : `The bot service answered ${httpStatus}${bodyText ? `: ${bodyText}` : ""}. Check the bot container logs.`
+      );
       addToast("Failed to load bot status.", "error");
     } finally {
       setLoading(false);
@@ -143,7 +158,7 @@ const AdminBotStatusPage: React.FC = () => {
       {!loading && !status && (
         <EmptyState
           title="Status unavailable"
-          description="Could not reach the backend for bot status."
+          description={loadFailure ?? "Could not load bot status."}
           action={
             <button className="btn btn-primary" onClick={loadStatus}>
               Retry

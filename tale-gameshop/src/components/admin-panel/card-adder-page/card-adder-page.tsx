@@ -7,7 +7,7 @@ import IDENTIFIERS from "../../../constants/identifiers";
 import { useDispatch, useSelector } from "react-redux";
 import { Form } from "../../../store";
 import GameTypeDropdown from "../game-type-dropdown/game-type-dropdown";
-import PageHeader from "../../layout/PageHeader";
+import PageHeader, { GAMES_TABS } from "../../layout/PageHeader";
 import { useSitePreferences } from "../../../context/site-preferences";
 import { formatMoney } from "../../../utils/format-money";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
@@ -632,6 +632,7 @@ const CardAdderPage: React.FC = () => {
         title="Catalog editor"
         description="Create, update, and organize game cards using a structured master–detail layout."
         breadcrumbs={["Games", "Catalog"]}
+        tabs={GAMES_TABS}
       />
 
       <div className="admin-grid admin-grid--2">

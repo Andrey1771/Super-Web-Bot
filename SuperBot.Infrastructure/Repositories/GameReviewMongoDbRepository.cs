@@ -231,7 +231,10 @@ namespace SuperBot.Infrastructure.Repositories
                 CreatedAt = db.CreatedAt,
                 UpdatedAt = db.UpdatedAt,
                 HelpfulCount = db.HelpfulCount,
-                Status = Enum.TryParse<ReviewStatus>(db.Status, out var status) ? status : ReviewStatus.Published
+                Status = Enum.TryParse<ReviewStatus>(db.Status, out var status) ? status : ReviewStatus.Published,
+                ReportCount = db.ReportCount,
+                LastReportedAt = db.LastReportedAt,
+                ShopReply = db.ShopReply is null ? null : new ReviewReply { Text = db.ShopReply.Text, Author = db.ShopReply.Author, CreatedAt = db.ShopReply.CreatedAt }
             };
         }
 
@@ -253,7 +256,10 @@ namespace SuperBot.Infrastructure.Repositories
                 CreatedAt = review.CreatedAt,
                 UpdatedAt = review.UpdatedAt,
                 HelpfulCount = review.HelpfulCount,
-                Status = review.Status.ToString()
+                Status = review.Status.ToString(),
+                ReportCount = review.ReportCount,
+                LastReportedAt = review.LastReportedAt,
+                ShopReply = review.ShopReply is null ? null : new ReviewReplyDb { Text = review.ShopReply.Text, Author = review.ShopReply.Author, CreatedAt = review.ShopReply.CreatedAt }
             };
         }
     }

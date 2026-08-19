@@ -1,0 +1,122 @@
+/* Валюты и курсы. */
+
+.fx__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+}
+
+.fx__facts > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fx__fact-label {
+  font-size: 12px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fx__fact-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.fx__fact-sub {
+  font-size: 12px;
+  color: var(--color-muted);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx__muted {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin: 12px 0 0;
+}
+
+.fx__table-wrap {
+  overflow-x: auto;
+}
+
+.fx__table td,
+.fx__table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 13px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.fx__num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Курс старше суток — жёлтым: импорт суточный, значит что-то не приехало. */
+.fx__stale {
+  color: #b45309;
+}
+
+.fx__pill {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.fx__input {
+  width: 120px;
+}
+
+.fx__actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Отказ гарда — строкой под валютой, с кнопкой «всё равно»: причина должна остаться на экране. */
+.fx__reject td {
+  background: #fffbeb;
+  color: #92400e;
+  white-space: normal;
+}
+
+.fx__reject td > span {
+  margin-right: 12px;
+}
+
+.fx__force {
+  border-color: #f5b53f;
+  color: #92400e;
+}
+
+.fx__history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fx__history {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.fx__history li {
+  display: flex;
+  gap: 16px;
+}
+
+.fx__history .fx__muted {
+  margin: 0;
+}

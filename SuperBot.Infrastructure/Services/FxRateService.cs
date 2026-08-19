@@ -16,7 +16,9 @@ namespace SuperBot.Infrastructure.Services
         /// прежний курс остаётся в силе. Принятые сохраняются новым снимком. Возвращает решения
         /// по каждой валюте — для алерта.
         /// </summary>
-        Task<IReadOnlyList<FxRateBook.RateUpdate>> OfferAsync(IEnumerable<FxRate> incoming);
+        /// <param name="bypassGuard">Снять гард на скачок. Только для ручного ввода в админке: человек видит
+        /// процент изменения и подтверждает его сознательно; для автоматического импорта гард всегда включён.</param>
+        Task<IReadOnlyList<FxRateBook.RateUpdate>> OfferAsync(IEnumerable<FxRate> incoming, bool bypassGuard = false);
     }
 
     /// <summary>
@@ -33,7 +35,9 @@ namespace SuperBot.Infrastructure.Services
     public class FxRateService : IFxRateService
     {
         private readonly StorefrontCurrencyOptions _currencies;
-        private readonly FxOptions _fx;
+        // Монитор: наценку и гард владелец меняет из админки; сервис — синглтон, снимок бы застыл на старте.
+        private readonly IOptionsMonitor<FxOptions> _fxMonitor;
+        private FxOptions _fx => _fxMonitor.CurrentValue;
         private readonly IServiceScopeFactory? _scopeFactory;
         private readonly ILogger<FxRateService> _logger;
         private readonly object _gate = new();
@@ -42,14 +46,14 @@ namespace SuperBot.Infrastructure.Services
 
         public FxRateService(
             IOptions<StorefrontCurrencyOptions> currencies,
-            IOptions<FxOptions> fx,
+            IOptionsMonitor<FxOptions> fx,
             ILogger<FxRateService> logger,
             // Репозиторий живёт в области запроса, а сервис — синглтон: берём его через фабрику
             // областей. Без хранилища (в тестах) сервис работает на курсах из конфигурации.
             IServiceScopeFactory? scopeFactory = null)
         {
             _currencies = currencies.Value;
-            _fx = fx.Value;
+            _fxMonitor = fx;
             _logger = logger;
             _scopeFactory = scopeFactory;
             _book = BuildFromConfiguration();
@@ -65,10 +69,11 @@ namespace SuperBot.Infrastructure.Services
             }
         }
 
-        public async Task<IReadOnlyList<FxRateBook.RateUpdate>> OfferAsync(IEnumerable<FxRate> incoming)
+        public async Task<IReadOnlyList<FxRateBook.RateUpdate>> OfferAsync(IEnumerable<FxRate> incoming, bool bypassGuard = false)
         {
             EnsureLoadedFromStorage();
 
+            var maxChange = bypassGuard ? decimal.MaxValue : _fx.MaxChangePercent;
             var results = new List<FxRateBook.RateUpdate>();
             var accepted = new List<FxRate>();
 
@@ -76,7 +81,7 @@ namespace SuperBot.Infrastructure.Services
             {
                 foreach (var rate in incoming)
                 {
-                    var result = _book.Offer(rate, _fx.MaxChangePercent);
+                    var result = _book.Offer(rate, maxChange);
                     results.Add(result);
 
                     if (result.Accepted)

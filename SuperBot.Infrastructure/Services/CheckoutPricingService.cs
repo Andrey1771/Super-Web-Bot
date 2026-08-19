@@ -107,7 +107,7 @@ namespace SuperBot.Infrastructure.Services
             IPromoCodeService promoCodeService,
             IOptions<StorefrontCurrencyOptions> currencies,
             IFxRateService fxRates,
-            IOptions<FxOptions> fx,
+            IOptionsSnapshot<FxOptions> fx,
             ILogger<CheckoutPricingService> logger)
         {
             _gameRepository = gameRepository;

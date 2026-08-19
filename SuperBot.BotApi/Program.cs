@@ -63,8 +63,15 @@ builder.Services.AddScoped<ITelegramLinkRepository, TelegramLinkMongoDbRepositor
 // --- Бот-логика и Telegram ---
 var botConfigSection = builder.Configuration.GetSection("BotConfiguration");
 builder.Services.Configure<BotConfiguration>(botConfigSection);
+// Токен проверяется здесь, один раз и до старта. Раньше конструктор TelegramBotClient падал
+// внутри DI при первом запросе — сервис поднимался «здоровым» и валился только когда кто-то
+// открывал раздел Bot в админке, причём 500-й ошибкой без текста причины.
+var botToken = botConfigSection.Get<BotConfiguration>()?.BotToken;
+var botTokenUsable = SuperBot.BotApi.Services.BotTokenGuard.IsValid(botToken, out var botTokenProblem);
 builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<ITelegramBotClient>(
-    httpClient => new TelegramBotClient(botConfigSection.Get<BotConfiguration>()!.BotToken, httpClient));
+    httpClient => botTokenUsable
+        ? new TelegramBotClient(botToken!, httpClient)
+        : new SuperBot.BotApi.Services.UnconfiguredTelegramBotClient(botTokenProblem));
 builder.Services.ConfigureTelegramBotMvc();
 
 builder.Services.AddSingleton<IResourceService, MongoResourceService>();
@@ -98,6 +105,12 @@ builder.Services.AddTransient<IClaimsTransformation, KeycloakClaimsTransformatio
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+if (!botTokenUsable)
+{
+    // Одна строка уровня Error, чтобы её было видно в `docker compose logs` без grep.
+    app.Logger.LogError("{Problem}", botTokenProblem);
+}
 
 app.UseForwardedHeaders();
 app.UseAuthentication();

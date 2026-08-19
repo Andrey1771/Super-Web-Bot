@@ -1,12 +1,21 @@
-import type { Order, OrderItem } from "../types/orders";
+import type { Order, OrderEvent, OrderItem } from "../types/orders";
 
 type ApiOrderItemDto = {
   gameId?: string;
   title?: string;
   price?: number;
   qty?: number;
-  keyDeliveryStatus?: "NOT_SENT" | "SENT" | "FAILED";
-  keyValue?: string;
+  keysDelivered?: number;
+  keysNeeded?: number;
+  keyMasks?: string[];
+  keyDeliveryStatus?: string;
+};
+
+type ApiOrderEventDto = {
+  type?: string;
+  message?: string;
+  actor?: string;
+  createdAt?: string;
 };
 
 type ApiOrderDto = {
@@ -22,63 +31,52 @@ type ApiOrderDto = {
   items?: ApiOrderItemDto[];
   createdAt?: string;
   updatedAt?: string;
+  paidAt?: string;
   payment?: {
     provider?: string;
     transactionId?: string;
     method?: string;
   };
-  delivery?: {
-    type?: "KEY" | "ACCOUNT_TOPUP" | "OTHER";
-    details?: string;
-  };
+  requiresDeliveryVerification?: boolean;
   notes?: string;
+  promoCode?: string;
+  events?: ApiOrderEventDto[];
 };
 
+const ORDER_STATUSES: Order["status"][] = [
+  "PENDING", "AWAITING_PAYMENT", "PAID", "PROCESSING", "AWAITING_KEYS",
+  "DELIVERED", "CANCELLED", "REFUNDED", "REFUND_PENDING", "FAILED",
+];
+
+// Незнакомый статус раньше молча превращался в PENDING — и AWAITING_KEYS (клиент заплатил,
+// ключа нет) выглядел в списке как «ещё не оплачен». Теперь неизвестное остаётся видимым.
 const normalizeStatus = (value?: string): Order["status"] => {
-  const normalized = (value ?? "PENDING").toUpperCase();
-  if (
-    normalized === "PENDING" ||
-    normalized === "PAID" ||
-    normalized === "PROCESSING" ||
-    normalized === "DELIVERED" ||
-    normalized === "CANCELLED" ||
-    normalized === "REFUNDED" ||
-    normalized === "FAILED"
-  ) {
-    return normalized;
-  }
-  return "PENDING";
+  const normalized = (value ?? "PENDING").toUpperCase() as Order["status"];
+  return ORDER_STATUSES.includes(normalized) ? normalized : (normalized as Order["status"]);
 };
 
-const normalizePaymentStatus = (value?: string): Order["paymentStatus"] => {
-  if (!value) {
-    return undefined;
-  }
-  const normalized = value.toUpperCase();
-  if (normalized === "UNPAID" || normalized === "PAID" || normalized === "REFUNDED" || normalized === "FAILED") {
-    return normalized;
-  }
-  return undefined;
-};
+const normalizePaymentStatus = (value?: string): Order["paymentStatus"] =>
+  value ? (value.toUpperCase() as Order["paymentStatus"]) : undefined;
 
-const normalizeFulfillmentStatus = (value?: string): Order["fulfillmentStatus"] => {
-  if (!value) {
-    return undefined;
-  }
-  const normalized = value.toUpperCase();
-  if (normalized === "NOT_STARTED" || normalized === "IN_PROGRESS" || normalized === "DELIVERED" || normalized === "CANCELLED") {
-    return normalized;
-  }
-  return undefined;
-};
+const normalizeFulfillmentStatus = (value?: string): Order["fulfillmentStatus"] =>
+  value ? (value.toUpperCase() as Order["fulfillmentStatus"]) : undefined;
 
 const mapItem = (item?: ApiOrderItemDto): OrderItem => ({
   gameId: item?.gameId ?? "",
   title: item?.title ?? "Unknown",
   price: item?.price ?? 0,
   qty: item?.qty ?? 1,
-  keyDeliveryStatus: item?.keyDeliveryStatus,
-  keyValue: item?.keyValue,
+  keysDelivered: item?.keysDelivered ?? 0,
+  keysNeeded: item?.keysNeeded ?? item?.qty ?? 1,
+  keyMasks: item?.keyMasks ?? [],
+  keyDeliveryStatus: (item?.keyDeliveryStatus as OrderItem["keyDeliveryStatus"]) ?? undefined,
+});
+
+const mapEvent = (event: ApiOrderEventDto): OrderEvent => ({
+  type: event.type ?? "",
+  message: event.message,
+  actor: event.actor,
+  createdAt: event.createdAt ?? "",
 });
 
 export const mapOrderDto = (dto: ApiOrderDto): Order => ({
@@ -94,9 +92,12 @@ export const mapOrderDto = (dto: ApiOrderDto): Order => ({
   items: (dto.items ?? []).map(mapItem),
   createdAt: dto.createdAt ?? "",
   updatedAt: dto.updatedAt ?? dto.createdAt ?? "",
+  paidAt: dto.paidAt,
   payment: dto.payment,
-  delivery: dto.delivery,
+  requiresDeliveryVerification: dto.requiresDeliveryVerification,
   notes: dto.notes,
+  promoCode: dto.promoCode,
+  events: (dto.events ?? []).map(mapEvent),
 });
 
 export const mapOrderListResponse = (response: { items?: ApiOrderDto[]; total?: number }) => ({

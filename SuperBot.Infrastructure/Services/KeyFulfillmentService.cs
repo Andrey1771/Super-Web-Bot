@@ -33,7 +33,7 @@ namespace SuperBot.Infrastructure.Services
             _logger = logger;
         }
 
-        public async Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null)
+        public async Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null, string issuedBy = null)
         {
             if (string.IsNullOrWhiteSpace(gameId) || string.IsNullOrWhiteSpace(userId))
             {
@@ -41,10 +41,10 @@ namespace SuperBot.Infrastructure.Services
             }
 
             // Выдаём ключ из пула инвентаря. Пул пуст → нет в наличии (null).
-            return await _gameKeyRepository.TryDispensePoolKeyAsync(gameId, userId);
+            return await _gameKeyRepository.TryDispensePoolKeyAsync(gameId, userId, issuedBy);
         }
 
-        public async Task<IReadOnlyList<DeliveredKeyNotification>> FulfillOrderAsync(Order order)
+        public async Task<IReadOnlyList<DeliveredKeyNotification>> FulfillOrderAsync(Order order, string issuedBy = null)
         {
             if (order == null || string.IsNullOrWhiteSpace(order.UserId))
             {
@@ -60,12 +60,23 @@ namespace SuperBot.Infrastructure.Services
                 return Array.Empty<DeliveredKeyNotification>();
             }
 
-            var newlyDelivered = await DispenseOutstandingAsync(order);
+            var wasAwaiting = string.Equals(order.Status, OrderStatusAwaitingKeys, StringComparison.OrdinalIgnoreCase);
+
+            var newlyDelivered = await DispenseOutstandingAsync(order, issuedBy);
             RecomputeOrderStatus(order);
             order.UpdatedAt = DateTime.UtcNow;
 
             await _orderRepository.UpdateOrderAsync(order);
             await NotifyAsync(order, newlyDelivered);
+
+            // Клиент заплатил, а ключа нет — об этом надо знать сейчас, а не когда кто-то откроет
+            // вкладку Game keys. Шлём один раз, при переходе в ожидание; повторные проходы
+            // (бэкфилл, ручная попытка выдачи) молчат.
+            if (!order.IsFulfilled && !wasAwaiting)
+            {
+                await NotifyStockShortageAsync(order);
+            }
+
             return newlyDelivered;
         }
 
@@ -107,7 +118,7 @@ namespace SuperBot.Infrastructure.Services
         /// Довыдаёт ключи по каждой позиции до нужного количества, пишет их в снапшот доставки (masked)
         /// и возвращает реально выданные в этом вызове ключи (для уведомления).
         /// </summary>
-        private async Task<List<DeliveredKeyNotification>> DispenseOutstandingAsync(Order order)
+        private async Task<List<DeliveredKeyNotification>> DispenseOutstandingAsync(Order order, string issuedBy = null)
         {
             var items = NormalizeItems(order);
             var newlyDelivered = new List<DeliveredKeyNotification>();
@@ -125,7 +136,7 @@ namespace SuperBot.Infrastructure.Services
 
                 for (var i = alreadyDelivered; i < needed; i++)
                 {
-                    var key = await DispenseAsync(item.GameId, order.UserId);
+                    var key = await DispenseAsync(item.GameId, order.UserId, null, issuedBy);
                     if (key == null || string.IsNullOrWhiteSpace(key.Key))
                     {
                         break; // пул пуст — оставляем позицию ждущей
@@ -172,6 +183,35 @@ namespace SuperBot.Infrastructure.Services
             };
             order.Events ??= new List<OrderEvent>();
             order.Events.Add(new OrderEvent { Type = "fulfillment", Message = eventMessage, CreatedAt = DateTime.UtcNow });
+        }
+
+        /// <summary>
+        /// Алерт специалистам: оплаченный заказ ждёт ключей. Идёт тем же каналом, что эскалация
+        /// чата (событие в outbox → бот шлёт в Telegram), поэтому доходит туда, где сотрудники
+        /// уже читают срочное. Сбой публикации выдачу не ломает — это уведомление, не транзакция.
+        /// </summary>
+        private async Task NotifyStockShortageAsync(Order order)
+        {
+            try
+            {
+                var missing = NormalizeItems(order)
+                    .Where(item => (item.Delivery?.Keys.Count ?? 0) < Math.Max(1, item.Quantity))
+                    .Select(item => $"{ResolveTitle(item, order)} × {Math.Max(1, item.Quantity) - (item.Delivery?.Keys.Count ?? 0)}")
+                    .ToList();
+
+                var text =
+                    "🔑 Paid order is waiting for keys\n\n" +
+                    $"Order: {order.OrderNumber ?? order.Id.ToString()}\n" +
+                    $"Customer: {order.UserId}\n" +
+                    $"Missing: {string.Join("; ", missing)}\n\n" +
+                    "Add keys in Admin → Game keys; the order is delivered automatically once the pool is refilled.";
+
+                await _botEventPublisher.PublishAsync(BotEventTypes.SupportEscalation, new SupportEscalationEvent(text));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Stock shortage alert failed for order {OrderId}.", order.Id);
+            }
         }
 
         private async Task NotifyAsync(Order order, List<DeliveredKeyNotification> newlyDelivered)

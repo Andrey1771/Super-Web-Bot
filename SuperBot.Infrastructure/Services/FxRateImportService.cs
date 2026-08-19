@@ -37,7 +37,7 @@ namespace SuperBot.Infrastructure.Services
             HttpClient http,
             IFxRateService rates,
             IOptions<StorefrontCurrencyOptions> currencies,
-            IOptions<FxOptions> fx,
+            IOptionsSnapshot<FxOptions> fx,
             ILogger<FxRateImportService> logger)
         {
             _http = http;

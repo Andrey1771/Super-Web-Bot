@@ -18,6 +18,18 @@ services:
       - ASPNETCORE_URLS=http://+:7002
       # Имя переменной должно совпадать с конфигом, который реально читает код: ConnectionStrings:MongoDb
       - ConnectionStrings__MongoDb=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+      # Валюты витрины. Базовая — USD; каждая валюта из списка появляется в переключателе в шапке,
+      # а стартовая угадывается по региону браузера. Курс — стартовый (ManualRates), дальше его
+      # правит админка (Currencies & FX) или суточный импорт, если задан Storefront__Fx__Source__Url.
+      - Storefront__BaseCurrency=USD
+      - Storefront__SupportedCurrencies__0=USD
+      - Storefront__SupportedCurrencies__1=EUR
+      - Storefront__Fx__ManualRates__EUR=0.92
+      - Storefront__Fx__Rounding__EUR=NinetyNine
+      # Суточный импорт курсов (Hangfire) + кнопка «Import now» в Currencies & FX. Бесплатный
+      # источник без ключа; {base} подставляется базовой валютой. Скачок больше MaxChangePercent
+      # гард отклонит и оставит прежний курс — см. FxRateService.
+      - Storefront__Fx__Source__Url=https://open.er-api.com/v6/latest/{base}
       # Keycloak: issuer (внешний, как видит браузер) и адрес метаданных (внутренний, как видит бэкенд)
       - Keycloak__Uri=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}
       - Keycloak__Realm=TaleShop

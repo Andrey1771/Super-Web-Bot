@@ -1,0 +1,156 @@
+/* Прайс-лист: матрица игра × валюта с правкой в ячейке. */
+
+.prices__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 36px;
+  align-items: flex-end;
+}
+
+.prices__facts > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.prices__fact-label {
+  font-size: 12px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.prices__fact-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.prices__muted {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.prices__warn {
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.prices__link {
+  color: var(--color-primary);
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.prices__toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.prices__search {
+  max-width: 320px;
+}
+
+.prices__check {
+  font-size: 13px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.prices__table-wrap {
+  overflow-x: auto;
+}
+
+.prices__table th,
+.prices__table td {
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 13px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.prices__col {
+  min-width: 130px;
+}
+
+.prices__pill {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.prices__title {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+/* Ячейка — кнопка на всю ширину: цена крупно, источник мелко. Цвет левой полосы — источник:
+   ручная — акцентная, по курсу — без полосы, «не продаётся» — красная. */
+.prices__value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.prices__value:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.prices__amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.prices__source {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.prices__cell--manual .prices__value {
+  border-left: 3px solid var(--color-primary);
+}
+
+.prices__cell--manual .prices__source {
+  color: var(--color-primary);
+}
+
+.prices__cell--none .prices__amount {
+  color: #b91c1c;
+}
+
+.prices__cell--none .prices__value {
+  border-left: 3px solid #fca5a5;
+}
+
+.prices__cell--base .prices__value {
+  border-left: 3px solid #94a3b8;
+}
+
+.prices__input {
+  width: 120px;
+  padding: 4px 8px;
+}

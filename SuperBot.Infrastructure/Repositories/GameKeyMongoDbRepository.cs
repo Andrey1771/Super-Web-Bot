@@ -48,7 +48,7 @@ namespace SuperBot.Infrastructure.Repositories
             await _gameKeys.InsertOneAsync(ToDb(gameKey));
         }
 
-        public async Task<AddPoolKeysResult> AddPoolKeysAsync(string gameId, string keyType, IEnumerable<string> keys)
+        public async Task<AddPoolKeysResult> AddPoolKeysAsync(string gameId, string keyType, IEnumerable<string> keys, string? addedBy = null)
         {
             var normalizedType = string.IsNullOrWhiteSpace(keyType) ? DefaultKeyType : keyType.Trim();
 
@@ -114,7 +114,8 @@ namespace SuperBot.Infrastructure.Repositories
                     KeyType = normalizedType,
                     IssuedAt = default,
                     IsActive = false,
-                    Voided = false
+                    Voided = false,
+                    AddedBy = string.IsNullOrWhiteSpace(addedBy) ? null : addedBy
                 }).ToList();
 
                 try
@@ -132,6 +133,48 @@ namespace SuperBot.Infrastructure.Repositories
             }
 
             return new AddPoolKeysResult(added, submitted.Count - added, previouslyVoided);
+        }
+
+        /// <summary>
+        /// Предпросмотр заливки: те же правила дедупа (внутри батча по хешу; активный дубль в базе —
+        /// пропуск; изъятый раньше — добавится с предупреждением), но без вставки. Нужен, чтобы
+        /// показать «добавится N, дублей M» до нажатия «Импортировать».
+        /// </summary>
+        public async Task<AddPoolKeysResult> PreviewPoolKeysAsync(string gameId, IEnumerable<string> keys)
+        {
+            var submitted = (keys ?? Enumerable.Empty<string>())
+                .Select(k => k?.Trim())
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .ToList();
+            if (submitted.Count == 0)
+            {
+                return new AddPoolKeysResult(0, 0, 0);
+            }
+
+            var seen = new HashSet<string>();
+            var hashes = new List<string>();
+            foreach (var key in submitted)
+            {
+                var hash = GameKeyHash.Compute(key!);
+                if (seen.Add(hash))
+                {
+                    hashes.Add(hash);
+                }
+            }
+
+            var existing = await _gameKeys
+                .Find(Builders<GameKeyDb>.Filter.And(
+                    Builders<GameKeyDb>.Filter.Eq(k => k.GameId, gameId),
+                    Builders<GameKeyDb>.Filter.In(k => k.KeyHash, hashes)))
+                .Project(k => new { k.KeyHash, k.Voided })
+                .ToListAsync();
+
+            var active = existing.Where(e => !e.Voided).Select(e => e.KeyHash).ToHashSet();
+            var voided = existing.Where(e => e.Voided).Select(e => e.KeyHash).ToHashSet();
+
+            var wouldAdd = hashes.Count(h => !active.Contains(h));
+            var previouslyVoided = hashes.Count(h => !active.Contains(h) && voided.Contains(h));
+            return new AddPoolKeysResult(wouldAdd, submitted.Count - wouldAdd, previouslyVoided);
         }
 
         public async Task<GameKeyPage> GetKeysPagedAsync(string gameId, string? query, string? status, int page, int pageSize)
@@ -191,7 +234,9 @@ namespace SuperBot.Infrastructure.Repositories
                     d.KeyType,
                     delivered ? "Delivered" : "Pool",
                     delivered ? d.UserId : null,
-                    d.IssuedAt == default ? null : d.IssuedAt);
+                    d.IssuedAt == default ? null : d.IssuedAt,
+                    d.AddedBy,
+                    d.IssuedBy);
             }).ToList();
 
             return new GameKeyPage(items, total);
@@ -275,7 +320,7 @@ namespace SuperBot.Infrastructure.Repositories
             return (int)await _gameKeys.CountDocumentsAsync(filter);
         }
 
-        public async Task<GameKey> TryDispensePoolKeyAsync(string gameId, string userId)
+        public async Task<GameKey> TryDispensePoolKeyAsync(string gameId, string userId, string? issuedBy = null)
         {
             // Изъятые (Voided) не выдаём — они «мусор»/история, а не живой пул.
             var filter = Builders<GameKeyDb>.Filter.And(
@@ -285,7 +330,8 @@ namespace SuperBot.Infrastructure.Repositories
             var update = Builders<GameKeyDb>.Update
                 .Set(k => k.UserId, userId)
                 .Set(k => k.IssuedAt, DateTime.UtcNow)
-                .Set(k => k.IsActive, true);
+                .Set(k => k.IsActive, true)
+                .Set(k => k.IssuedBy, string.IsNullOrWhiteSpace(issuedBy) ? null : issuedBy);
             var options = new FindOneAndUpdateOptions<GameKeyDb> { ReturnDocument = ReturnDocument.After };
             var updated = await _gameKeys.FindOneAndUpdateAsync(filter, update, options);
             return updated is null ? null : Map(updated);

@@ -13,8 +13,9 @@ export class GameDetailsService implements IGameDetailsService {
     this._apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
   }
 
-  async getGameDetails(slug: string): Promise<GameDetailsResponse> {
-    const response = await this._apiClient.api.get(`/api/games/${slug}`);
+  async getGameDetails(slug: string, currency?: string): Promise<GameDetailsResponse> {
+    // Валюта — та же, что у каталога: карточка должна показывать цену, по которой реально спишут.
+    const response = await this._apiClient.api.get(`/api/games/${slug}`, { params: currency ? { currency } : {} });
     return response.data;
   }
 

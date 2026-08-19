@@ -3,6 +3,10 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace SuperBot.Infrastructure.Data
 {
+    // IgnoreExtraElements на всех документах заказа: коллекция пережила несколько форм позиций
+    // (TitleSnapshot, Qty, UnitPriceSnapshot и т.д.), и неизвестное поле не должно валить чтение
+    // всей страницы заказов — а именно так и падал /api/account/orders на старых документах.
+    [BsonIgnoreExtraElements]
     public class OrderDb
     {
         [BsonId]
@@ -50,6 +54,7 @@ namespace SuperBot.Infrastructure.Data
         public List<OrderItemSnapshotDb> Items { get; set; } = new();
     }
 
+    [BsonIgnoreExtraElements]
     public class MoneyTotalsDb
     {
         public decimal Subtotal { get; set; }
@@ -58,13 +63,16 @@ namespace SuperBot.Infrastructure.Data
         public decimal Total { get; set; }
     }
 
+    [BsonIgnoreExtraElements]
     public class OrderEventDb
     {
         public string Type { get; set; } = string.Empty;
         public string? Message { get; set; }
+        public string? Actor { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
+    [BsonIgnoreExtraElements]
     public class OrderItemSnapshotDb
     {
         public string ItemId { get; set; } = string.Empty;
@@ -84,6 +92,7 @@ namespace SuperBot.Infrastructure.Data
         public DeliverySnapshotDb? Delivery { get; set; }
     }
 
+    [BsonIgnoreExtraElements]
     public class PricingSnapshotDb
     {
         public string PriceSource { get; set; } = "catalog";
@@ -93,6 +102,7 @@ namespace SuperBot.Infrastructure.Data
         public decimal? DiscountPercent { get; set; }
     }
 
+    [BsonIgnoreExtraElements]
     public class DeliverySnapshotDb
     {
         public string DeliveryType { get; set; } = "Key";
@@ -100,6 +110,7 @@ namespace SuperBot.Infrastructure.Data
         public DateTime? DeliveredAt { get; set; }
     }
 
+    [BsonIgnoreExtraElements]
     public class DeliveredKeyDb
     {
         public string? KeyMasked { get; set; }

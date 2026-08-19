@@ -1,4 +1,5 @@
-﻿using MongoDB.Driver;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace SuperBot.WebApi.Services
 {
@@ -518,6 +519,7 @@ namespace SuperBot.WebApi.Services
             await EnsureCatalogAndLookupIndexesAsync();
             await EnsureRetentionIndexesAsync();
             await BackfillGameCurrencyAsync();
+            await DropLegacyOrderItemFieldsAsync();
 
             // Последний курс по валюте ищется постоянно (на старте процесса и при импорте),
             // а история читается редко — индекс покрывает оба случая.
@@ -595,6 +597,63 @@ namespace SuperBot.WebApi.Services
         /// того, что уже есть. Записи с валютой не трогаем: миграция идемпотентна и переживает
         /// перезапуски. Цены не пересчитываются — меняется только подпись к ним.
         /// </summary>
+        /// <summary>
+        /// Старые заказы хранят каждое поле позиции дважды: актуальное имя и его legacy-дубль
+        /// (Title/TitleSnapshot, Quantity/Qty, UnitPrice/UnitPriceSnapshot …). Дубли давно не пишутся
+        /// и не читаются, а до появления [BsonIgnoreExtraElements] на OrderDb валили десериализацию
+        /// всей страницы заказов. Убираем их из документов, чтобы форма в базе совпадала с классом.
+        ///
+        /// Переносить нечего: в проверенной базе значения дублей совпадают с актуальными полями во всех
+        /// документах. Если где-то актуальное поле окажется пустым, а дубль — нет, вмешиваться вручную
+        /// безопаснее, чем угадывать: такие документы просто пересчитываются в лог.
+        /// </summary>
+        private async Task DropLegacyOrderItemFieldsAsync()
+        {
+            var orders = _database.GetCollection<BsonDocument>("Orders");
+
+            string[] legacyFields =
+            {
+                "TitleSnapshot", "CoverUrlSnapshot", "PlatformSnapshot", "RegionSnapshot", "Qty",
+                "UnitPriceSnapshot", "UnitPriceCurrency", "DiscountSnapshot", "FinalUnitPriceSnapshot",
+                "LineTotalSnapshot", "DeliveryType"
+            };
+
+            var hasLegacy = Builders<BsonDocument>.Filter.Or(
+                legacyFields.Select(field => Builders<BsonDocument>.Filter.Exists($"Items.{field}")));
+
+            // Документы, где актуальное поле пустое, а legacy-дубль нет: их не трогаем и называем в логе.
+            var actualEmptyButLegacyFilled = Builders<BsonDocument>.Filter.ElemMatch("Items",
+                Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.In("Title", new BsonValue[] { BsonNull.Value, "" }),
+                    Builders<BsonDocument>.Filter.Exists("TitleSnapshot"),
+                    Builders<BsonDocument>.Filter.Nin("TitleSnapshot", new BsonValue[] { BsonNull.Value, "" })));
+
+            var suspicious = await orders.Find(actualEmptyButLegacyFilled)
+                .Project(Builders<BsonDocument>.Projection.Include("OrderNumber"))
+                .ToListAsync();
+            if (suspicious.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Заказы: у {Count} документов актуальное поле позиции пустое, а legacy-дубль заполнен — " +
+                    "legacy-поля в них оставлены, разберитесь вручную: {Orders}",
+                    suspicious.Count,
+                    string.Join(", ", suspicious.Select(d => d.GetValue("OrderNumber", "?").ToString())));
+            }
+
+            // Позиции — массив: снимаем поле с каждого элемента через all-positional оператор $[].
+            var unset = Builders<BsonDocument>.Update.Combine(
+                legacyFields.Select(field => Builders<BsonDocument>.Update.Unset($"Items.$[].{field}")));
+
+            var result = await orders.UpdateManyAsync(
+                Builders<BsonDocument>.Filter.And(hasLegacy, Builders<BsonDocument>.Filter.Not(actualEmptyButLegacyFilled)),
+                unset);
+
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation("Заказы: legacy-дубли полей позиций убраны у {Count} документов.", result.ModifiedCount);
+            }
+        }
+
         private async Task BackfillGameCurrencyAsync()
         {
             var games = _database.GetCollection<SuperBot.Infrastructure.Data.GameDb>("Games");

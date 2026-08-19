@@ -19,15 +19,33 @@ public record SupportAvailabilityState(bool Configured, bool IsOpen, int Expecte
 
 public class SupportAvailability : ISupportAvailability
 {
-    private readonly SupportChatOptions _options;
+    // Монитор, а не снимок: часы работы и ожидание правятся из админки и должны применяться без рестарта.
+    private readonly IOptionsMonitor<SupportChatOptions> _monitor;
+    private SupportChatOptions _options => _monitor.CurrentValue;
     private readonly ILogger<SupportAvailability> _logger;
-    private readonly TimeZoneInfo _timeZone;
-
-    public SupportAvailability(IOptions<SupportChatOptions> options, ILogger<SupportAvailability> logger)
+    private readonly ILogger<SupportAvailability> _tzLogger;
+    private string? _tzId;
+    private TimeZoneInfo _tz = TimeZoneInfo.Utc;
+    // Пояс пересчитывается, когда его идентификатор в настройках изменился.
+    private TimeZoneInfo _timeZone
     {
-        _options = options.Value;
+        get
+        {
+            var id = _options.BusinessHoursTimeZone;
+            if (!string.Equals(id, _tzId, StringComparison.Ordinal))
+            {
+                _tz = ResolveTimeZone(id, _tzLogger);
+                _tzId = id;
+            }
+            return _tz;
+        }
+    }
+
+    public SupportAvailability(IOptionsMonitor<SupportChatOptions> options, ILogger<SupportAvailability> logger)
+    {
+        _monitor = options;
         _logger = logger;
-        _timeZone = ResolveTimeZone(_options.BusinessHoursTimeZone, logger);
+        _tzLogger = logger;
     }
 
     public SupportAvailabilityState GetState()

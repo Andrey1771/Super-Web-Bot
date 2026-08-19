@@ -23,6 +23,10 @@ namespace SuperBot.Infrastructure.Data
         public DateTime IssuedAt { get; set; }
 
         public bool IsActive { get; set; }
+        [BsonIgnoreIfNull]
+        public string? AddedBy { get; set; }
+        [BsonIgnoreIfNull]
+        public string? IssuedBy { get; set; }
 
         /// <summary>
         /// Мягкое удаление: ключ изъят из пула, но остаётся в истории (для предупреждений при повторной заливке).

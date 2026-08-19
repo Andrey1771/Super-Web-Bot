@@ -67,7 +67,9 @@ const Topbar: React.FC<TopbarProps> = ({ title, actions, onToggleSidebar }) => {
 
   return (
     <header className="admin-topbar">
-      <button className="btn btn-outline" onClick={onToggleSidebar}>
+      {/* Открыть выезжающее меню — только на узких экранах (см. .admin-topbar__menu в CSS):
+          на десктопе сайдбар всегда виден, и второй бургер рядом с первым только путал. */}
+      <button className="btn btn-outline admin-topbar__menu" onClick={onToggleSidebar} aria-label="Open menu">
         ☰
       </button>
       <div className="admin-topbar__title">{title}</div>
@@ -121,6 +123,7 @@ const Topbar: React.FC<TopbarProps> = ({ title, actions, onToggleSidebar }) => {
               <span className="admin-profile__name">{displayName}</span>
               <span className="admin-profile__role">{roleLabel}</span>
             </span>
+            <span className="admin-profile__chevron" aria-hidden="true">▾</span>
           </button>
           {profileOpen && (
             <div className="admin-menu__dropdown admin-menu__dropdown--right">

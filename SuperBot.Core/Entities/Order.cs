@@ -52,6 +52,8 @@ namespace SuperBot.Core.Entities
     {
         public string Type { get; set; } = string.Empty;
         public string? Message { get; set; }
+        /// <summary>Кто это сделал: почта специалиста для ручных действий, null — система (вебхук, воркер).</summary>
+        public string? Actor { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 

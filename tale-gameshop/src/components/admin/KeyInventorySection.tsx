@@ -7,8 +7,11 @@ import {
   voidKey,
   purgeKey,
   editKey,
+  importKeys,
+  setLowStockThreshold,
   KeyInventory,
   GameKeyListItem,
+  KeyImportReport,
 } from '../../api/adminKeysApi';
 
 const labelStyle: React.CSSProperties = { display: 'block', fontWeight: 600, margin: '12px 0 4px' };
@@ -24,6 +27,13 @@ const KeyInventorySection: React.FC<{ gameId: string }> = ({ gameId }) => {
   const [grantUser, setGrantUser] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Импорт из файла: содержимое → предпросмотр (dryRun) → запись. Отчёт хранится, чтобы
+  // кнопка «Import» видела, что предпросмотр был по этому же содержимому.
+  const [importText, setImportText] = useState('');
+  const [importPreview, setImportPreview] = useState<KeyImportReport | null>(null);
+  const [importFileName, setImportFileName] = useState<string | null>(null);
+  const [threshold, setThreshold] = useState<string>('');
 
   // Key list (Part B): search, status filter, pagination.
   const [items, setItems] = useState<GameKeyListItem[]>([]);
@@ -72,6 +82,74 @@ const KeyInventorySection: React.FC<{ gameId: string }> = ({ gameId }) => {
   const refreshAll = async () => {
     await reloadCounts();
     await loadKeys();
+  };
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    setImportText(await file.text());
+    setImportFileName(file.name);
+    setImportPreview(null);
+  };
+
+  const handleImportPreview = async () => {
+    if (!importText.trim()) {
+      setMessage('Choose a file or paste keys first.');
+      return;
+    }
+    setBusy(true);
+    try {
+      setImportPreview(await importKeys(gameId, importText, keyType, true));
+    } catch (e) {
+      console.error(e);
+      setMessage('Preview failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImportApply = async () => {
+    setBusy(true);
+    try {
+      const report = await importKeys(gameId, importText, keyType, false);
+      setImportPreview(report);
+      setMessage(
+        `Imported ${report.added} key(s)` +
+          (report.duplicates ? `, ${report.duplicates} duplicate(s) skipped` : '') +
+          (report.previouslyVoided ? `, ${report.previouslyVoided} previously voided re-added` : '') +
+          (report.backfilledOrders ? `; ${report.backfilledOrders} waiting order(s) delivered` : '') +
+          '.'
+      );
+      setImportText('');
+      setImportFileName(null);
+      await refreshAll();
+    } catch (e) {
+      console.error(e);
+      setMessage('Import failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleThresholdSave = async () => {
+    const value = threshold.trim() === '' ? null : Number(threshold);
+    if (value !== null && (!Number.isInteger(value) || value < 0)) {
+      setMessage('Threshold must be a whole number ≥ 0, or empty for the default.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await setLowStockThreshold(gameId, value);
+      setMessage(value === null ? 'Low-stock threshold reset to the default.' : `Low-stock threshold set to ${value}.`);
+    } catch (e) {
+      console.error(e);
+      setMessage('Could not save the threshold.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleAdd = async () => {
@@ -187,6 +265,56 @@ const KeyInventorySection: React.FC<{ gameId: string }> = ({ gameId }) => {
 
       <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
 
+      {/* Импорт из файла: сначала предпросмотр — сколько добавится, дублей, невалидных — потом
+          запись. Textarea выше остаётся для пары ключей руками; файл — для сотен от поставщика. */}
+      <label style={labelStyle}>Import from file (.txt / .csv — one key per line, or key,type)</label>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input type="file" accept=".txt,.csv,.tsv,text/plain,text/csv" onChange={handleImportFile} disabled={busy} />
+        {importFileName && <span style={{ fontSize: 13, color: '#6b7280' }}>{importFileName} · {importText.split('\n').filter((l) => l.trim()).length} lines</span>}
+        <button type="button" className="btn btn-outline" onClick={handleImportPreview} disabled={busy || !importText.trim()}>
+          Preview
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleImportApply}
+          disabled={busy || !importPreview || !importPreview.dryRun || importPreview.wouldAdd === 0}
+          title={!importPreview ? 'Preview first' : importPreview.wouldAdd === 0 ? 'Nothing new to add' : `Add ${importPreview.wouldAdd} key(s)`}
+        >
+          Import{importPreview?.dryRun && importPreview.wouldAdd > 0 ? ` ${importPreview.wouldAdd}` : ''}
+        </button>
+      </div>
+      {importPreview && (
+        <div style={{ marginTop: 8, padding: '8px 12px', background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13 }}>
+          <strong>{importPreview.dryRun ? 'Preview' : 'Result'}:</strong>{' '}
+          {importPreview.parsed} parsed · <span style={{ color: '#15803d' }}>{importPreview.dryRun ? importPreview.wouldAdd : importPreview.added} to add</span>
+          {importPreview.duplicates > 0 && <> · <span style={{ color: '#b45309' }}>{importPreview.duplicates} duplicate(s)</span></>}
+          {importPreview.previouslyVoided > 0 && <> · <span style={{ color: '#b45309' }}>{importPreview.previouslyVoided} previously voided</span></>}
+          {importPreview.invalid > 0 && (
+            <>
+              {' '}· <span style={{ color: '#b91c1c' }}>{importPreview.invalid} invalid</span>
+              {importPreview.invalidSamples.length > 0 && (
+                <span style={{ color: '#6b7280' }}> (e.g. {importPreview.invalidSamples.map((s) => `“${s}”`).join(', ')})</span>
+              )}
+            </>
+          )}
+          {importPreview.types && importPreview.types.length > 1 && (
+            <span style={{ color: '#6b7280' }}> · types: {importPreview.types.map((t) => `${t.keyType} ×${t.count}`).join(', ')}</span>
+          )}
+        </div>
+      )}
+
+      <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+
+      <label style={labelStyle}>Low-stock threshold for this game (empty = default)</label>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input className="input" style={{ width: 120 }} type="number" min={0} placeholder="default" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+        <button type="button" className="btn btn-outline" onClick={handleThresholdSave} disabled={busy}>Save</button>
+        <span style={{ fontSize: 13, color: '#6b7280' }}>Rows in Stock overview turn “Low stock” at or below this number.</span>
+      </div>
+
+      <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+
       <label style={labelStyle}>Grant a key to a user (email) — test/support</label>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
@@ -242,6 +370,7 @@ const KeyInventorySection: React.FC<{ gameId: string }> = ({ gameId }) => {
               <th style={headStyle}>Type</th>
               <th style={headStyle}>Status</th>
               <th style={headStyle}>Buyer</th>
+              <th style={headStyle} title="Who uploaded the key / who granted it by hand">By</th>
               <th style={headStyle}>Date</th>
               <th style={headStyle}>Actions</th>
             </tr>
@@ -249,7 +378,7 @@ const KeyInventorySection: React.FC<{ gameId: string }> = ({ gameId }) => {
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td style={cellStyle} colSpan={6}>Nothing found.</td>
+                <td style={cellStyle} colSpan={7}>Nothing found.</td>
               </tr>
             ) : (
               items.map((it) => {
@@ -270,6 +399,9 @@ const KeyInventorySection: React.FC<{ gameId: string }> = ({ gameId }) => {
                       </span>
                     </td>
                     <td style={cellStyle}>{it.ownerEmail || '—'}</td>
+                    <td style={{ ...cellStyle, fontSize: 12, color: '#6b7280' }} title={[it.addedBy && `added by ${it.addedBy}`, it.issuedBy && `granted by ${it.issuedBy}`].filter(Boolean).join(' · ')}>
+                      {it.issuedBy ? `✋ ${it.issuedBy}` : it.addedBy ? it.addedBy : '—'}
+                    </td>
                     <td style={cellStyle}>{it.issuedAt ? new Date(it.issuedAt).toLocaleString() : '—'}</td>
                     <td style={cellStyle}>
                       {it.status === 'Pool' && (

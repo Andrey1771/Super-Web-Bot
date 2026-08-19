@@ -39,7 +39,8 @@ namespace SuperBot.Infrastructure.Repositories
                 UserId = answer.UserId,
                 UserName = answer.UserName,
                 Text = answer.Text,
-                CreatedAt = answer.CreatedAt
+                CreatedAt = answer.CreatedAt,
+                IsOfficial = answer.IsOfficial
             };
 
             var update = Builders<GameQuestionDb>.Update.Push(item => item.Answers, dbAnswer);
@@ -67,7 +68,8 @@ namespace SuperBot.Infrastructure.Repositories
                     UserId = answer.UserId,
                     UserName = answer.UserName,
                     Text = answer.Text,
-                    CreatedAt = answer.CreatedAt
+                    CreatedAt = answer.CreatedAt,
+                IsOfficial = answer.IsOfficial
                 }).ToList() ?? new List<GameAnswer>()
             };
         }
@@ -88,7 +90,8 @@ namespace SuperBot.Infrastructure.Repositories
                     UserId = answer.UserId,
                     UserName = answer.UserName,
                     Text = answer.Text,
-                    CreatedAt = answer.CreatedAt
+                    CreatedAt = answer.CreatedAt,
+                IsOfficial = answer.IsOfficial
                 }).ToList() ?? new List<GameAnswerDb>()
             };
         }

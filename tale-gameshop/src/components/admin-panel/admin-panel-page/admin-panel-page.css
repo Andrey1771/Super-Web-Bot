@@ -1,0 +1,180 @@
+/* Дашборд: четыре плитки-числа сверху, ниже «требует внимания» и здоровье сервисов. */
+
+.admin-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Плитка — ссылка целиком: число само по себе ничего не решает, важен переход в раздел. */
+.dashboard__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-20) var(--space-24);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dashboard__tile:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(15, 23, 42, 0.08));
+  text-decoration: none;
+}
+
+/* Цвет левой полосы — состояние: красная там, где клиент уже ждёт (оплатил, ключа нет; сбой
+   оплаты), жёлтая — очередь поддержки. Нулевое значение полосу не красит. */
+.dashboard__tile--danger {
+  border-left-color: #dc2626;
+}
+
+.dashboard__tile--warn {
+  border-left-color: #f5b53f;
+}
+
+.dashboard__tile-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.dashboard__tile-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__tile-sub {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.dashboard__muted {
+  color: var(--color-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.dashboard__updated {
+  margin-top: var(--space-12);
+  font-size: 12px;
+}
+
+.dashboard__error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* «Требует внимания» — список ссылок с цветной точкой слева; каждая строка ведёт туда,
+   где проблему решают. */
+.dashboard__attention {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard__attention-item {
+  position: relative;
+  padding-left: 18px;
+  font-size: 14px;
+}
+
+.dashboard__attention-item::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f5b53f;
+}
+
+.dashboard__attention-item--danger::before {
+  background: #dc2626;
+}
+
+.dashboard__attention-item a {
+  color: inherit;
+}
+
+.dashboard__attention-item a:hover {
+  color: var(--color-primary);
+}
+
+/* Здоровье сервисов: точка, имя, деталь справа мелким. */
+.dashboard__health {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard__health-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.dashboard__health-name {
+  flex: 1;
+}
+
+.dashboard__health-detail {
+  font-size: 12px;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.dashboard__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #c9c9d6;
+}
+
+.dashboard__dot--ok {
+  background: #22c55e;
+}
+
+.dashboard__dot--warn {
+  background: #f5b53f;
+}
+
+.dashboard__dot--down {
+  background: #dc2626;
+}
+
+/* «Не настроено» — не ошибка: рельс может быть выключен намеренно. Серый, без тревоги. */
+.dashboard__dot--unconfigured {
+  background: #c9c9d6;
+}
+
+@media (max-width: 1200px) {
+  .admin-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-grid--4 {
+    grid-template-columns: 1fr;
+  }
+}

@@ -57,15 +57,20 @@ namespace SuperBot.WebApi.Controllers
         private readonly StorefrontCurrencyOptions _currencies;
         private readonly StripeSettings _stripe;
         private readonly BtcPayOptions _btcPay;
+        // Тумблеры рельсов из настроек сайта — снимок на запрос, чтобы выключенная в админке карта
+        // пропала из чекаута сразу.
+        private readonly SuperBot.WebApi.Services.SiteSettings.PaymentRailsOptions _rails;
 
         public StorefrontPaymentMethodsController(
             IOptions<StorefrontCurrencyOptions> currencies,
             IOptions<StripeSettings> stripe,
-            IOptions<BtcPayOptions> btcPay)
+            IOptions<BtcPayOptions> btcPay,
+            IOptionsSnapshot<SuperBot.WebApi.Services.SiteSettings.PaymentRailsOptions> rails)
         {
             _currencies = currencies.Value;
             _stripe = stripe.Value;
             _btcPay = btcPay.Value;
+            _rails = rails.Value;
         }
 
         [AllowAnonymous]
@@ -74,13 +79,14 @@ namespace SuperBot.WebApi.Controllers
         {
             var resolved = _currencies.Resolve(currency);
 
-            // Рельс без ключей не существует — предлагать его покупателю бессмысленно.
+            // Рельс без ключей не существует — предлагать его покупателю бессмысленно. Рельс с ключами,
+            // но выключенный владельцем в настройках сайта, — тоже.
             var enabled = new List<PaymentMethod>();
-            if (!string.IsNullOrWhiteSpace(_stripe.PublishableKey))
+            if (!string.IsNullOrWhiteSpace(_stripe.PublishableKey) && _rails.CardEnabled)
             {
                 enabled.Add(PaymentMethod.Card);
             }
-            if (_btcPay.IsAvailable)
+            if (_btcPay.IsAvailable && _rails.CryptoEnabled)
             {
                 enabled.Add(PaymentMethod.Crypto);
             }

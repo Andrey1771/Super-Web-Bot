@@ -16,7 +16,8 @@ namespace SuperBot.Core.Interfaces.IRepositories
     /// но не активированный ключ ещё «живой»; у пуловых показывается полностью (админу нужно сверять).
     /// </summary>
     public sealed record GameKeyListItem(
-        string Id, string Key, bool Masked, string KeyType, string Status, string? OwnerEmail, DateTime? IssuedAt);
+        string Id, string Key, bool Masked, string KeyType, string Status, string? OwnerEmail, DateTime? IssuedAt,
+        string? AddedBy = null, string? IssuedBy = null);
 
     /// <summary>Страница списка ключей: элементы + общий счётчик по фильтру (для пагинации).</summary>
     public sealed record GameKeyPage(IReadOnlyList<GameKeyListItem> Items, long Total);
@@ -37,7 +38,10 @@ namespace SuperBot.Core.Interfaces.IRepositories
 
         // Инвентарь (B): пул-ключ — это GameKey с пустым UserId (ещё не выдан).
         // Дубли (по хешу, в рамках игры) не добавляются повторно — см. AddPoolKeysResult.
-        Task<AddPoolKeysResult> AddPoolKeysAsync(string gameId, string keyType, IEnumerable<string> keys);
+        Task<AddPoolKeysResult> AddPoolKeysAsync(string gameId, string keyType, IEnumerable<string> keys, string? addedBy = null);
+
+        /// <summary>Тот же расчёт, что у AddPoolKeysAsync, но без вставки: сколько добавится, сколько дублей, сколько изъятых раньше.</summary>
+        Task<AddPoolKeysResult> PreviewPoolKeysAsync(string gameId, IEnumerable<string> keys);
 
         /// <summary>
         /// Список/поиск ключей игры с пагинацией. query — подстрока ключа ИЛИ email покупателя (регистронезависимо);
@@ -65,6 +69,6 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<int> CountAvailableByGameAsync(string gameId);
         Task<int> CountAssignedByGameAsync(string gameId);
         // Атомарно берёт один свободный ключ из пула игры и закрепляет за пользователем (null — пул пуст).
-        Task<GameKey> TryDispensePoolKeyAsync(string gameId, string userId);
+        Task<GameKey> TryDispensePoolKeyAsync(string gameId, string userId, string? issuedBy = null);
     }
 }

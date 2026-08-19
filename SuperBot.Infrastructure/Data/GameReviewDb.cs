@@ -52,6 +52,22 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("status")]
         public string Status { get; set; }
+        [BsonElement("reportCount")]
+        public int ReportCount { get; set; }
+        [BsonElement("lastReportedAt")]
+        public DateTime? LastReportedAt { get; set; }
+        [BsonElement("shopReply")]
+        public ReviewReplyDb? ShopReply { get; set; }
+    }
+
+    public class ReviewReplyDb
+    {
+        [BsonElement("text")]
+        public string Text { get; set; } = string.Empty;
+        [BsonElement("author")]
+        public string Author { get; set; } = string.Empty;
+        [BsonElement("createdAt")]
+        public DateTime CreatedAt { get; set; }
     }
 
     public class ReviewImageDb

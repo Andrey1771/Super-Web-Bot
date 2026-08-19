@@ -46,5 +46,7 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }
+        [BsonElement("isOfficial")]
+        public bool IsOfficial { get; set; }
     }
 }

@@ -228,7 +228,12 @@ public class GameReviewsController : ControllerBase
             return NotFound();
         }
 
+        // Жалоба снимает отзыв с витрины до решения модератора (Pending) и считается — по числу
+        // жалоб модератор понимает, «один обиделся» или «все жалуются». Раньше отзыв тоже уходил
+        // в Pending, но список таких отзывов никто не видел: жалобы уходили в никуда.
         review.Status = ReviewStatus.Pending;
+        review.ReportCount += 1;
+        review.LastReportedAt = DateTime.UtcNow;
         review.UpdatedAt = DateTime.UtcNow;
         await _gameReviewRepository.UpdateAsync(reviewId, review);
         return Ok();

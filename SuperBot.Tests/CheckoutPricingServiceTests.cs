@@ -34,9 +34,9 @@ namespace SuperBot.Tests
                 Options.Create(currencyOptions),
                 new FxRateService(
                     Options.Create(currencyOptions),
-                    Options.Create(fxOptions),
+                    TestOptions.Of(fxOptions),
                     NullLogger<FxRateService>.Instance),
-                Options.Create(fxOptions),
+                TestOptions.Of(fxOptions),
                 NullLogger<CheckoutPricingService>.Instance);
         }
 
@@ -325,9 +325,9 @@ namespace SuperBot.Tests
                 Options.Create(currencyOptions),
                 new FxRateService(
                     Options.Create(currencyOptions),
-                    Options.Create(fxOptions),
+                    TestOptions.Of(fxOptions),
                     NullLogger<FxRateService>.Instance),
-                Options.Create(fxOptions),
+                TestOptions.Of(fxOptions),
                 NullLogger<CheckoutPricingService>.Instance);
 
             await service.PriceAsync(Cart(promo: "save10", currency: "EUR"));

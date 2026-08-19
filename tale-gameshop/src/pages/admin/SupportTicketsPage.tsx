@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../components/ui/ToastProvider';
 import {
     AdminTicketDetails,
@@ -121,6 +122,17 @@ const SupportTicketsPage: React.FC = () => {
         setPendingFiles([]);
         loadDetails(ticketId);
     };
+
+    // Прямая ссылка ?ticket=<id> из карточки клиента открывает тикет сразу.
+    const [searchParams] = useSearchParams();
+    const deepLinkedTicket = searchParams.get('ticket');
+    useEffect(() => {
+        if (deepLinkedTicket && deepLinkedTicket !== selectedId) {
+            setSelectedId(deepLinkedTicket);
+            loadDetails(deepLinkedTicket);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [deepLinkedTicket]);
 
     const handleFilesChosen = (event: React.ChangeEvent<HTMLInputElement>) => {
         const chosen = Array.from(event.target.files ?? []);
@@ -374,6 +386,14 @@ const SupportTicketsPage: React.FC = () => {
                                     <p style={{ color: '#6b7280', margin: '4px 0 0' }}>
                                         {detailsTicket.userEmail || 'unknown user'} · {detailsTicket.category} ·{' '}
                                         <StatusPill status={detailsTicket.status} />
+                                        {detailsTicket.userEmail && (
+                                            <>
+                                                {' · '}
+                                                <Link to={`/admin/customers?email=${encodeURIComponent(detailsTicket.userEmail)}`}>
+                                                    Open customer →
+                                                </Link>
+                                            </>
+                                        )}
                                     </p>
                                 </div>
                                 <div className="flex gap-2">

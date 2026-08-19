@@ -124,6 +124,11 @@ namespace SuperBot.Core.Entities
         public string? Title { get; set; }
         public string? Description { get; set; }
         public decimal Price { get; set; }
+        /// <summary>
+        /// Ручные цены издания по валютам (код → цена). Как у игры: ручная цена важнее курса;
+        /// нет ни её, ни курса — в этой валюте издание не продаётся. Price — в базовой валюте игры.
+        /// </summary>
+        public Dictionary<string, decimal>? Prices { get; set; }
         public decimal? DiscountPercent { get; set; }
         public List<string> IncludedItems { get; set; } = new();
         public bool IsDefault { get; set; }

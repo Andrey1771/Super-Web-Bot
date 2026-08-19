@@ -91,6 +91,18 @@ builder.Services.AddHttpClient<SuperBot.Infrastructure.Services.IFxRateImportSer
 builder.Services.Configure<SuperBot.Core.Payments.StorefrontCurrencyOptions>(
     builder.Configuration.GetSection("Storefront"));
 
+// Настройки, которые владелец меняет из админки (часы поддержки, бюджет LLM, наценка курса, рельсы):
+// лежат в Mongo и накладываются поверх конфига через Options-конвейер; IOptionsMonitor видит
+// изменение сразу после сохранения. См. SiteSettingsStore.
+builder.Services.AddSingleton<SuperBot.WebApi.Services.SiteSettings.SiteSettingsStore>();
+builder.Services.Configure<SuperBot.WebApi.Services.SiteSettings.PaymentRailsOptions>(builder.Configuration.GetSection("PaymentRails"));
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IPostConfigureOptions<SuperBot.WebApi.Support.Chat.SupportChatOptions>, SuperBot.WebApi.Services.SiteSettings.SupportChatOptionsOverlay>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IOptionsChangeTokenSource<SuperBot.WebApi.Support.Chat.SupportChatOptions>, SuperBot.WebApi.Services.SiteSettings.SupportChatOptionsOverlay>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IPostConfigureOptions<SuperBot.Core.Payments.FxOptions>, SuperBot.WebApi.Services.SiteSettings.FxOptionsOverlay>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IOptionsChangeTokenSource<SuperBot.Core.Payments.FxOptions>, SuperBot.WebApi.Services.SiteSettings.FxOptionsOverlay>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IPostConfigureOptions<SuperBot.WebApi.Services.SiteSettings.PaymentRailsOptions>, SuperBot.WebApi.Services.SiteSettings.PaymentRailsOverlay>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IOptionsChangeTokenSource<SuperBot.WebApi.Services.SiteSettings.PaymentRailsOptions>, SuperBot.WebApi.Services.SiteSettings.PaymentRailsOverlay>();
+
 builder.Services.AddControllers();
 builder.Services.Configure<SupportOptions>(builder.Configuration.GetSection("Support"));
 builder.Services.Configure<SupportRoleOptions>(builder.Configuration.GetSection("Support:Roles"));
@@ -121,6 +133,9 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     return mongoClient.GetDatabase(mongoName);  //     
 });
 builder.Services.AddScoped<MongoDbInitializer>();
+builder.Services.AddScoped<AdminDashboardService>();
+builder.Services.AddScoped<AdminOrderActionsService>();
+builder.Services.AddScoped<AdminCustomerService>();
 
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
 builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepository>();
@@ -428,8 +443,40 @@ using (var scope = app.Services.CreateScope())
 {
     startupLogger.LogInformation("Initializing MongoDB collections and indexes...");
     var mongoDbInitializer = scope.ServiceProvider.GetRequiredService<MongoDbInitializer>();
-    await mongoDbInitializer.InitializeAsync(); //   
+    await mongoDbInitializer.InitializeAsync(); //
     startupLogger.LogInformation("MongoDB initialization completed.");
+
+    // Курсы валют при старте: суточная задача Hangfire срабатывает в полночь UTC, и после
+    // рестарта магазин мог бы до полуночи торговать по курсу из конфига. Тянем сразу, если
+    // источник задан и книга пуста или протухла (старше суток). В фоне: сеть до внешнего
+    // сервиса не должна задерживать старт, а при отказе остаётся прежний курс — гард в книге.
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            using var fxScope = app.Services.CreateScope();
+            var fxOptions = fxScope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<SuperBot.Core.Payments.FxOptions>>().CurrentValue;
+            if (string.IsNullOrWhiteSpace(fxOptions.Source?.Url))
+            {
+                return;
+            }
+            // Смотрим в базу, а не в книгу: курсы из ManualRates попадают в книгу с временем старта
+            // и всегда выглядят свежими, хотя это стартовая заглушка, а не снимок источника.
+            var currencies = fxScope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SuperBot.Core.Payments.StorefrontCurrencyOptions>>().Value;
+            var stored = await fxScope.ServiceProvider.GetRequiredService<IFxRateRepository>().GetLatestAsync(currencies.Base);
+            var stale = stored.Count == 0 || stored.Min(r => r.CapturedAtUtc) < DateTime.UtcNow.AddHours(-24);
+            if (!stale)
+            {
+                return;
+            }
+            app.Logger.LogInformation("Курсы валют: снимка в базе нет или он старше суток — запускаем импорт при старте.");
+            await fxScope.ServiceProvider.GetRequiredService<SuperBot.Infrastructure.Services.IFxRateImportService>().RunAsync();
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Курсы валют: стартовый импорт не удался — работаем по прежним курсам до следующего запуска задачи.");
+        }
+    });
 
     // Первый запуск после обновления: темы поддержки переезжают из кода в базу.
     var knowledgeStore = scope.ServiceProvider.GetRequiredService<SuperBot.WebApi.Support.Chat.Services.ISupportKnowledgeStore>();

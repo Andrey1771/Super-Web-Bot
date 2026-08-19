@@ -96,6 +96,57 @@ namespace SuperBot.Core.Payments
             return null;
         }
 
+        /// <summary>
+        /// Цена издания в валюте — по тем же правилам, что у игры: ручная цена из прайс-листа
+        /// издания, иначе пересчёт по курсу от базовой цены издания (в базовой валюте игры),
+        /// иначе null. Издание без прайс-листа в валюте, где у самой игры цена задана руками,
+        /// всё равно считается по курсу: это два разных товара, и цена одного не переносится на другой.
+        /// </summary>
+        public static decimal? TryGetEditionPrice(
+            GameEdition edition,
+            Game game,
+            string? currency,
+            FxRateBook? rates,
+            FxOptions? fx)
+        {
+            if (edition is null || game is null)
+            {
+                return null;
+            }
+
+            var baseCurrency = BaseCurrency(game);
+            var requested = string.IsNullOrWhiteSpace(currency) ? baseCurrency : currency.Trim().ToUpperInvariant();
+
+            if (string.Equals(requested, baseCurrency, StringComparison.OrdinalIgnoreCase))
+            {
+                return edition.Price;
+            }
+
+            if (edition.Prices is not null)
+            {
+                foreach (var (code, price) in edition.Prices)
+                {
+                    if (string.Equals(code?.Trim(), requested, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return price;
+                    }
+                }
+            }
+
+            if (rates is null || fx is null)
+            {
+                return null;
+            }
+
+            var rate = rates.For(requested);
+            if (rate is null || !string.Equals(rates.BaseCurrency, baseCurrency, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return FxConversion.Convert(edition.Price, rate, fx.MarkupPercent, fx.RuleFor(requested), requested);
+        }
+
         /// <summary>Валюты, в которых игру можно продать: базовая плюс все из прайс-листа.</summary>
         public static IReadOnlyCollection<string> AvailableCurrencies(Game game)
         {

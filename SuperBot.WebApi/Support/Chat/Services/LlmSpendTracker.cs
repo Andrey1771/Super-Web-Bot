@@ -22,7 +22,9 @@ public interface ILlmSpendTracker
 
 public class LlmSpendTracker : ILlmSpendTracker
 {
-    private readonly SupportChatOptions _options;
+    // Монитор: дневной бюджет правится из админки на лету.
+    private readonly IOptionsMonitor<SupportChatOptions> _monitor;
+    private SupportChatOptions _options => _monitor.CurrentValue;
     private readonly ILogger<LlmSpendTracker> _logger;
     private readonly object _gate = new();
 
@@ -30,9 +32,9 @@ public class LlmSpendTracker : ILlmSpendTracker
     private decimal _spentToday;
     private bool _limitReported;
 
-    public LlmSpendTracker(IOptions<SupportChatOptions> options, ILogger<LlmSpendTracker> logger)
+    public LlmSpendTracker(IOptionsMonitor<SupportChatOptions> options, ILogger<LlmSpendTracker> logger)
     {
-        _options = options.Value;
+        _monitor = options;
         _logger = logger;
     }
 

@@ -270,3 +270,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.support-live-chat__customer-link {
+  font-size: 12px;
+  color: #6d3bff;
+  white-space: nowrap;
+}

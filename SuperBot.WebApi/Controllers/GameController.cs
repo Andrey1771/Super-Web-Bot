@@ -58,7 +58,7 @@ namespace SuperBot.WebApi.Controllers
             IMapper mapper,
             Microsoft.Extensions.Options.IOptions<SuperBot.Core.Payments.StorefrontCurrencyOptions> currencies,
             SuperBot.Infrastructure.Services.IFxRateService fxRates,
-            Microsoft.Extensions.Options.IOptions<SuperBot.Core.Payments.FxOptions> fx)
+            Microsoft.Extensions.Options.IOptionsSnapshot<SuperBot.Core.Payments.FxOptions> fx)
         {
             _currencies = currencies.Value;
             _fxRates = fxRates;

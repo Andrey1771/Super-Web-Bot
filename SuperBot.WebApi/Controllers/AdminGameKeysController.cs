@@ -56,6 +56,8 @@ namespace SuperBot.WebApi.Controllers
                     var available = s?.Available ?? 0;
                     var delivered = s?.Delivered ?? 0;
                     var awaiting = owed.TryGetValue(g.Id!, out var owe) ? owe : 0;
+                    // Порог у игры в приоритете: у хита продаж «мало» — это пятьдесят, у нишевой — два.
+                    var threshold = g.LowStockThreshold ?? lowThreshold;
                     return new
                     {
                         gameId = g.Id,
@@ -65,7 +67,8 @@ namespace SuperBot.WebApi.Controllers
                         voided = s?.Voided ?? 0,
                         awaiting,
                         outOfStock = available == 0,
-                        low = available > 0 && available <= lowThreshold
+                        low = available > 0 && available <= threshold,
+                        lowThreshold = threshold
                     };
                 })
                 // Сначала где ЖДУТ ключа (клиент заплатил), затем пустые/продаваемые, «мало», по остатку.
@@ -142,7 +145,7 @@ namespace SuperBot.WebApi.Controllers
             }
 
             // Дубли/повторы (по хешу, в рамках игры) не заливаются повторно — вернём счётчики админке.
-            var addResult = await _gameKeyRepository.AddPoolKeysAsync(gameId, request.KeyType, request.Keys);
+            var addResult = await _gameKeyRepository.AddPoolKeysAsync(gameId, request.KeyType, request.Keys, Actor());
 
             // Довыдаём ключи по оплаченным заказам, ждавшим пополнения пула — только если реально что-то добавили.
             // (Гостей с неподтверждённой почтой выдача пропустит сама — гейт внутри.)
@@ -225,13 +228,196 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest(new { message = "Нужны gameId и userId." });
             }
 
-            var key = await _fulfillment.DispenseAsync(request.GameId, request.UserId, request.KeyType);
+            var key = await _fulfillment.DispenseAsync(request.GameId, request.UserId, request.KeyType, Actor());
             if (key == null)
             {
                 return Ok(new { granted = false, message = "Нет доступного ключа (пул пуст)." });
             }
 
             return Ok(new { granted = true, key = key.Key, keyType = key.KeyType });
+        }
+        // Импорт из файла/буфера с предпросмотром. Тело — текст как есть: по ключу в строке, либо
+        // CSV/TSV, где первая колонка — ключ, вторая (необязательно) — тип. Заголовок вроде
+        // «key,type» распознаётся и пропускается. dryRun=true — только отчёт, ничего не пишется.
+        [HttpPost("inventory/{gameId}/import")]
+        public async Task<IActionResult> Import(string gameId, [FromBody] ImportKeysRequest request)
+        {
+            if (request is null || string.IsNullOrWhiteSpace(request.Content))
+            {
+                return BadRequest(new { message = "Файл пуст." });
+            }
+
+            var parsed = KeyImportParser.Parse(request.Content, request.KeyType);
+            var byType = parsed.Keys.GroupBy(k => k.KeyType).ToList();
+
+            if (parsed.Keys.Count == 0 || request.DryRun)
+            {
+                var preview = parsed.Keys.Count == 0
+                    ? new SuperBot.Core.Interfaces.IRepositories.AddPoolKeysResult(0, 0, 0)
+                    : await _gameKeyRepository.PreviewPoolKeysAsync(gameId, parsed.Keys.Select(k => k.Key));
+                return Ok(ImportReport(true, parsed, byType, preview.Added, preview.SkippedDuplicates, preview.PreviouslyVoided, 0, 0));
+            }
+
+            var actor = Actor();
+            int added = 0, duplicates = 0, voided = 0;
+            foreach (var group in byType)
+            {
+                var result = await _gameKeyRepository.AddPoolKeysAsync(gameId, group.Key, group.Select(k => k.Key), actor);
+                added += result.Added;
+                duplicates += result.SkippedDuplicates;
+                voided += result.PreviouslyVoided;
+            }
+
+            var backfilled = added > 0 ? await BackfillAndMailAsync(gameId) : 0;
+            return Ok(ImportReport(false, parsed, byType, added, duplicates, voided, added, backfilled));
+        }
+
+        private static object ImportReport(bool dryRun, KeyImportParser.ParseResult parsed, IEnumerable<IGrouping<string, KeyImportParser.ParsedKey>> byType,
+            int wouldAdd, int duplicates, int previouslyVoided, int added, int backfilledOrders) => new
+        {
+            dryRun,
+            lines = parsed.TotalLines,
+            parsed = parsed.Keys.Count,
+            invalid = parsed.Invalid.Count,
+            invalidSamples = parsed.Invalid.Take(5),
+            types = byType.Select(g => new { keyType = g.Key, count = g.Count() }),
+            wouldAdd,
+            duplicates,
+            previouslyVoided,
+            added,
+            backfilledOrders
+        };
+
+        // Порог «мало ключей» для конкретной игры. null — вернуться к общему.
+        [HttpPut("inventory/{gameId}/threshold")]
+        public async Task<IActionResult> SetThreshold(string gameId, [FromBody] SetThresholdRequest request)
+        {
+            var game = await _games.GetByIdAsync(gameId);
+            if (game is null)
+            {
+                return NotFound();
+            }
+            if (request?.LowStockThreshold is < 0)
+            {
+                return BadRequest(new { message = "Порог не может быть отрицательным." });
+            }
+
+            game.LowStockThreshold = request?.LowStockThreshold;
+            await _games.UpdateAsync(gameId, game);
+            return Ok(new { gameId, lowStockThreshold = game.LowStockThreshold });
+        }
+
+        private string Actor() =>
+            User.FindFirst("email")?.Value
+            ?? User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? User.Identity?.Name
+            ?? "admin";
+
+        // Довыдача по заказам, ждавшим ключей, плюс письма покупателям — то же, что делает
+        // AddToInventory после заливки; вынесено, чтобы импорт вёл себя одинаково.
+        private async Task<int> BackfillAndMailAsync(string gameId)
+        {
+            var backfilled = await _fulfillment.BackfillGameAsync(gameId);
+            foreach (var delivery in backfilled)
+            {
+                if (!delivery.Order.UserId.Contains('@') || delivery.Keys.Count == 0)
+                {
+                    continue;
+                }
+                try
+                {
+                    await _deliveryMailer.SendGameKeysAsync(
+                        delivery.Order.UserId,
+                        delivery.Order.OrderNumber ?? delivery.Order.Id.ToString(),
+                        delivery.Keys,
+                        SuperBot.Core.Interfaces.KeyDeliveryReceipt.FromOrder(delivery.Order),
+                        SuperBot.Core.Interfaces.KeyDeliveryProgress.FromOrder(delivery.Order));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Backfill keys email failed for order {OrderId} ({Email}).", delivery.Order.Id, delivery.Order.UserId);
+                }
+            }
+            return backfilled.Count;
+        }
+    }
+
+    public class ImportKeysRequest
+    {
+        public string Content { get; set; } = string.Empty;
+        /// <summary>Тип по умолчанию для строк без второй колонки.</summary>
+        public string KeyType { get; set; } = "CD Key";
+        public bool DryRun { get; set; } = true;
+    }
+
+    public class SetThresholdRequest
+    {
+        public int? LowStockThreshold { get; set; }
+    }
+
+    /// <summary>
+    /// Разбор текста импорта ключей. Правила намеренно простые и предсказуемые: по ключу в
+    /// строке; разделители , ; или табуляция — первая колонка ключ, вторая тип; строки с # —
+    /// комментарии; заголовок вида «key» распознаётся по отсутствию цифр и слову key.
+    /// </summary>
+    public static class KeyImportParser
+    {
+        public sealed record ParsedKey(string Key, string KeyType);
+        public sealed record ParseResult(List<ParsedKey> Keys, List<string> Invalid, int TotalLines);
+
+        private static readonly char[] Separators = { ',', ';', '\t' };
+        private const int MinKeyLength = 5;
+
+        public static ParseResult Parse(string content, string defaultType)
+        {
+            var type = string.IsNullOrWhiteSpace(defaultType) ? "CD Key" : defaultType.Trim();
+            var keys = new List<ParsedKey>();
+            var invalid = new List<string>();
+            var lines = content.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            var total = 0;
+            var firstContentLine = Array.FindIndex(lines, l => l.Trim().TrimStart('﻿').Length > 0);
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var raw = lines[i].Trim().TrimStart('﻿');
+                if (raw.Length == 0 || raw.StartsWith('#'))
+                {
+                    continue;
+                }
+
+                string key, keyType = type;
+                var sep = raw.IndexOfAny(Separators);
+                if (sep >= 0)
+                {
+                    key = raw[..sep].Trim().Trim('"');
+                    var second = raw[(sep + 1)..].Split(Separators, 2)[0].Trim().Trim('"');
+                    if (second.Length > 0)
+                    {
+                        keyType = second;
+                    }
+                }
+                else
+                {
+                    key = raw.Trim('"');
+                }
+
+                // Заголовок CSV: первая непустая строка, в ключе слово «key» и нет цифр.
+                if (i == firstContentLine && key.Contains("key", StringComparison.OrdinalIgnoreCase) && !key.Any(char.IsDigit))
+                {
+                    continue;
+                }
+
+                total++;
+                if (key.Length < MinKeyLength || key.Any(char.IsWhiteSpace))
+                {
+                    invalid.Add(raw.Length > 60 ? raw[..60] + "…" : raw);
+                    continue;
+                }
+
+                keys.Add(new ParsedKey(key, keyType));
+            }
+
+            return new ParseResult(keys, invalid, total);
         }
     }
 

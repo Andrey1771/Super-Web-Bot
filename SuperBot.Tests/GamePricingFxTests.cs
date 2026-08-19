@@ -76,5 +76,37 @@ namespace SuperBot.Tests
 
             Assert.Equal(100m, GamePricing.TryGetPrice(Game(), "EUR", Rates(), upToHundred));
         }
+
+        // ---------- издания ----------
+
+        private static GameEdition Edition(decimal price = 79.99m, Dictionary<string, decimal>? prices = null) =>
+            new() { Code = "deluxe", Title = "Deluxe", Price = price, Prices = prices };
+
+        [Fact]
+        public void Edition_inBaseCurrency_isItsOwnPrice()
+        {
+            Assert.Equal(79.99m, GamePricing.TryGetEditionPrice(Edition(), Game(), "USD", Rates(), Fx()));
+        }
+
+        [Fact]
+        public void Edition_manualPrice_winsOverTheRate()
+        {
+            var edition = Edition(prices: new Dictionary<string, decimal> { ["EUR"] = 69.99m });
+            Assert.Equal(69.99m, GamePricing.TryGetEditionPrice(edition, Game(), "EUR", Rates(), Fx()));
+        }
+
+        [Fact]
+        public void Edition_withoutManualPrice_isConvertedFromItsOwnBasePrice_notTheGames()
+        {
+            // 79.99 × 0.90 = 71.99, +3% = 74.15, вверх до .99 → 74.99. Цена игры (59.99) не участвует.
+            var game = Game(prices: new Dictionary<string, decimal> { ["EUR"] = 49.99m });
+            Assert.Equal(74.99m, GamePricing.TryGetEditionPrice(Edition(), game, "EUR", Rates(), Fx()));
+        }
+
+        [Fact]
+        public void Edition_withoutRateAndManualPrice_isNotSold()
+        {
+            Assert.Null(GamePricing.TryGetEditionPrice(Edition(), Game(), "EUR", null, null));
+        }
     }
 }

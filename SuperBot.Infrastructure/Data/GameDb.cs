@@ -27,6 +27,10 @@ namespace SuperBot.Infrastructure.Data
         [BsonIgnoreIfNull]
         public string? Currency { get; set; }
 
+        [BsonElement("lowStockThreshold")]
+        [BsonIgnoreIfNull]
+        public int? LowStockThreshold { get; set; }
+
         /// <summary>Ручные цены в других валютах. Базовой валюты здесь нет — она в price.</summary>
         [BsonElement("prices")]
         [BsonIgnoreIfNull]

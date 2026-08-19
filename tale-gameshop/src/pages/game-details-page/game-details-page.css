@@ -1238,3 +1238,52 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Ответ магазина под отзывом: отдельным блоком, чтобы не сливался с текстом покупателя. */
+.review-shop-reply {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.review-shop-reply__label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.review-shop-reply__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Пометка официального ответа магазина в Q&A. */
+.qa-official {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--color-primary);
+  color: #fff;
+  vertical-align: middle;
+}
+
+/* Издание, которого нет в выбранной валюте: серое, радио заблокировано — выбрать нечего. */
+.edition-item.is-unavailable {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.edition-price--na {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+}

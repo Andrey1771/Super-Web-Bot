@@ -1,7 +1,7 @@
 import type { GameDetailsResponse, GameReviewFilters, GameReviewsResponse, GameQuestionsResponse, ReviewPayload } from "../types/game-details-service";
 
 export interface IGameDetailsService {
-  getGameDetails: (slug: string) => Promise<GameDetailsResponse>;
+  getGameDetails: (slug: string, currency?: string) => Promise<GameDetailsResponse>;
   getRecommendations: (slug: string, limit?: number) => Promise<{ items: GameDetailsResponse["recommendations"]["moreLikeThis"] } >;
   getReviews: (gameId: string, filters: GameReviewFilters) => Promise<GameReviewsResponse>;
   createReview: (gameId: string, payload: ReviewPayload) => Promise<void>;

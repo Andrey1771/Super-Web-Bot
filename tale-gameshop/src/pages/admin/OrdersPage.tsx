@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/layout/PageHeader";
 import OrdersFilters from "../../components/orders/OrdersFilters";
 import OrdersTable from "../../components/orders/OrdersTable";
@@ -7,7 +8,7 @@ import Card from "../../components/ui/Card";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IAdminOrdersService } from "../../iterfaces/i-admin-orders-service";
-import type { Order, OrderFilters, OrderStatus } from "../../types/orders";
+import type { Order, OrderAction, OrderFilters, OrderStatus } from "../../types/orders";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../components/layout/AdminHeaderContext";
 
@@ -19,24 +20,20 @@ const defaultFilters: OrderFilters = {
   dateTo: "",
 };
 
-const statusOptions: OrderStatus[] = [
-  "PENDING",
-  "PAID",
-  "PROCESSING",
-  "AWAITING_KEYS",
-  "DELIVERED",
-  "CANCELLED",
-  "REFUNDED",
-  "FAILED",
-];
-
 const OrdersPage: React.FC = () => {
   const ordersService = container.get<IAdminOrdersService>(IDENTIFIERS.IAdminOrdersService);
   const { addToast } = useToast();
   const { setHeaderActions, setPageTitle } = useAdminHeader();
 
-  const [filters, setFilters] = useState<OrderFilters>(defaultFilters);
-  const [appliedFilters, setAppliedFilters] = useState<OrderFilters>(defaultFilters);
+  // ?search= — прямая ссылка из карточки клиента и дашборда: фильтр применяется сразу.
+  const [searchParams] = useSearchParams();
+  const initialFilters = useMemo<OrderFilters>(
+    () => ({ ...defaultFilters, search: searchParams.get("search") ?? "" }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const [filters, setFilters] = useState<OrderFilters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<OrderFilters>(initialFilters);
   const [items, setItems] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -46,9 +43,6 @@ const OrdersPage: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
-  const [statusModalOpen, setStatusModalOpen] = useState(false);
-  const [statusDraft, setStatusDraft] = useState<OrderStatus>("PENDING");
-  const [statusNote, setStatusNote] = useState("");
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -62,8 +56,8 @@ const OrdersPage: React.FC = () => {
       });
       setItems(response.items);
       setTotal(response.total);
-    } catch (error) {
-      console.error("Failed to load orders", error);
+    } catch (err) {
+      console.error("Failed to load orders", err);
       setError("Unable to load orders. Check your permissions or try again.");
     } finally {
       setLoading(false);
@@ -92,49 +86,63 @@ const OrdersPage: React.FC = () => {
     try {
       const details = await ordersService.getOrderById(order.id);
       setSelectedOrder(details);
-    } catch (error) {
-      console.error("Failed to load order details", error);
+    } catch (err) {
+      console.error("Failed to load order details", err);
       setDetailsError("Failed to load order details.");
     } finally {
       setDetailsLoading(false);
     }
   };
 
-  const handleStatusChangeOpen = () => {
-    if (!selectedOrder) {
+  // Сервер отвечает заказом после действия — им и обновляем дровер и строку списка, второго
+  // запроса не нужно. 409 («из этого состояния нельзя») приходит как ok=false с причиной.
+  const applyResult = useCallback((updated: Order) => {
+    if (!updated.id) {
       return;
     }
-    setStatusDraft(selectedOrder.status);
-    setStatusNote(selectedOrder.notes ?? "");
-    setStatusModalOpen(true);
-  };
+    setSelectedOrder(updated);
+    setItems((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+  }, []);
 
-  const handleStatusConfirm = async () => {
-    if (!selectedOrder) {
-      return;
-    }
-    try {
-      const updated = await ordersService.updateStatus(selectedOrder.id, statusDraft, statusNote);
-      setSelectedOrder(updated);
-      await fetchOrders();
-      addToast("Order status updated.", "success");
-    } catch (error) {
-      console.error("Failed to update status", error);
-      addToast("Failed to update order status.", "error");
-    } finally {
-      setStatusModalOpen(false);
-    }
-  };
+  const handleAction = useCallback(
+    async (action: OrderAction, reason?: string) => {
+      if (!selectedOrder) {
+        throw new Error("No order selected");
+      }
+      const result = await ordersService.runAction(selectedOrder.id, action, reason);
+      applyResult(result.order);
+      return result;
+    },
+    [applyResult, ordersService, selectedOrder]
+  );
+
+  const handleForceStatus = useCallback(
+    async (status: OrderStatus, reason: string) => {
+      if (!selectedOrder) {
+        throw new Error("No order selected");
+      }
+      const result = await ordersService.forceStatus(selectedOrder.id, status, reason);
+      applyResult(result.order);
+      return result;
+    },
+    [applyResult, ordersService, selectedOrder]
+  );
 
   const handlePageChange = (nextPage: number, nextPageSize: number) => {
     setPage(nextPage);
     setPageSize(nextPageSize);
   };
 
-  const handleExport = useCallback(() => {
-    ordersService.exportCsv(items);
-    addToast("Export started.", "success");
-  }, [addToast, items, ordersService]);
+  // Экспорт — по применённому фильтру и по всем страницам; CSV собирает сервер.
+  const handleExport = useCallback(async () => {
+    try {
+      await ordersService.exportCsv(appliedFilters, "createdAt:desc");
+      addToast(total > 0 ? `Exporting ${total} order(s)…` : "Export started.", "success");
+    } catch (err) {
+      console.error("Export failed", err);
+      addToast("Export failed.", "error");
+    }
+  }, [addToast, appliedFilters, ordersService, total]);
 
   useEffect(() => {
     setPageTitle("Orders");
@@ -157,9 +165,7 @@ const OrdersPage: React.FC = () => {
     return () => setHeaderActions([]);
   }, [fetchOrders, handleExport, setHeaderActions, setPageTitle]);
 
-  const activeFilterCount = useMemo(() => {
-    return Object.values(appliedFilters).filter(Boolean).length;
-  }, [appliedFilters]);
+  const activeFilterCount = useMemo(() => Object.values(appliedFilters).filter(Boolean).length, [appliedFilters]);
 
   return (
     <div className="admin-grid">
@@ -179,7 +185,9 @@ const OrdersPage: React.FC = () => {
 
       {activeFilterCount > 0 && (
         <Card>
-          <p className="text-sm text-gray-500">Filters applied: {activeFilterCount}</p>
+          <p className="text-sm text-gray-500">
+            Filters applied: {activeFilterCount} · Export CSV downloads all {total} matching order(s)
+          </p>
         </Card>
       )}
 
@@ -201,44 +209,9 @@ const OrdersPage: React.FC = () => {
         isLoading={detailsLoading}
         error={detailsError}
         onClose={() => setSelectedOrder(null)}
-        onRequestStatusChange={handleStatusChangeOpen}
+        onAction={handleAction}
+        onForceStatus={handleForceStatus}
       />
-
-      {statusModalOpen && (
-        <div className="admin-modal" onClick={() => setStatusModalOpen(false)}>
-          <div className="admin-modal__card" onClick={(event) => event.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-2">Change status</h2>
-            <label className="text-sm font-semibold">Status</label>
-            <select
-              className="w-full p-2 border rounded mb-3"
-              value={statusDraft}
-              onChange={(event) => setStatusDraft(event.target.value as OrderStatus)}
-            >
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-            <label className="text-sm font-semibold">Internal note</label>
-            <textarea
-              className="w-full p-2 border rounded min-h-[100px]"
-              value={statusNote}
-              onChange={(event) => setStatusNote(event.target.value)}
-              placeholder="Optional note for the order."
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button className="btn btn-outline" onClick={() => setStatusModalOpen(false)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleStatusConfirm}>
-                Save status
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };

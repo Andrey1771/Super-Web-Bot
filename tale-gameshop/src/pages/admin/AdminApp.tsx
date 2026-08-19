@@ -25,6 +25,11 @@ import SupportKnowledgePage from "./support/SupportKnowledgePage";
 import SupportTicketsPage from "./SupportTicketsPage";
 import PromoCodesPage from "./PromoCodesPage";
 import PaymentIssuesPage from "./PaymentIssuesPage";
+import RefundsPage from "./RefundsPage";
+import CustomersPage from "./CustomersPage";
+import CurrenciesPage from "./CurrenciesPage";
+import ModerationPage from "./ModerationPage";
+import PricesPage from "./PricesPage";
 import AccountRecoveryAdminPage from "./AccountRecoveryAdminPage";
 import GameDiscountsPage from "./GameDiscountsPage";
 import AdminBotStatusPage from "./AdminBotStatusPage";
@@ -51,8 +56,11 @@ export default function AdminApp() {
                 <Route path="cardAdder" element={<CardAdderPage />} />
                 <Route path="orders" element={<OrdersPage />} />
                 <Route path="payments/issues" element={<PaymentIssuesPage />} />
+                <Route path="payments/refunds" element={<RefundsPage />} />
+                <Route path="payments/currencies" element={<CurrenciesPage />} />
                 <Route path="promo-codes" element={<PromoCodesPage />} />
                 <Route path="game-discounts" element={<GameDiscountsPage />} />
+                <Route path="games/prices" element={<PricesPage />} />
                 <Route path="newsletter" element={<NewsletterPage />} />
                 <Route path="blog" element={<BlogPostsPage />} />
                 <Route path="blog/comments" element={<BlogCommentsPage />} />
@@ -68,12 +76,14 @@ export default function AdminApp() {
                 <Route path="support/knowledge" element={<SupportKnowledgePage />} />
                 <Route path="support/tickets" element={<SupportTicketsPage />} />
                 <Route path="support/recovery" element={<AccountRecoveryAdminPage />} />
+                <Route path="support/moderation" element={<ModerationPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="data-tools" element={<DataToolsPage />} />
                 <Route path="games/details" element={<GameDetailsEditorPage />} />
                 <Route path="games/keys" element={<AdminGameKeysPage />} />
                 <Route path="userInfo" element={<UserInfoPage />} />
+                <Route path="customers" element={<CustomersPage />} />
                 <Route path="userStats" element={<UserStatsPage />} />
             </Route>
         </Routes>
