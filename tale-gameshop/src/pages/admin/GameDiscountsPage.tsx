@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { REMOTE_PAGING_AND_SORTING } from "../../hooks/use-grid-window";
-import "devextreme/dist/css/dx.light.css";
-import { DataGrid } from "devextreme-react";
-import { Column, Scrolling, Selection, Sorting } from "devextreme-react/data-grid";
-import CustomStore from "devextreme/data/custom_store";
+import { DataGrid } from "../../components/grid";
+import { Column, Scrolling, Selection, Sorting } from "../../components/grid";
+import { CustomStore } from "../../components/grid";
 import PageHeader, { GAMES_TABS } from "../../components/layout/PageHeader";
 import Card from "../../components/ui/Card";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -696,9 +695,8 @@ const SORT_FIELDS: Record<string, string> = {
           </div>
         )}
 
-        {/* Таблица DevExtreme с виртуальной прокруткой: в DOM живут только видимые строки,
-            а сами строки приезжают окнами с сервера (см. gridSource). Раньше здесь была своя
-            <table>, рисовавшая ВЕСЬ каталог разом. */}
+        {/* Строки приезжают окнами с сервера по мере прокрутки (см. gridSource): в DOM только
+            то, что уже докрутили. Раньше здесь была своя <table>, рисовавшая ВЕСЬ каталог разом. */}
         <DataGrid
           dataSource={gridSource}
           height={560}

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
-import { DataGrid } from "devextreme-react";
-import { Column } from "devextreme-react/data-grid";
+import { DataGrid } from "../../../components/grid";
+import { Column } from "../../../components/grid";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
 import EmptyState from "../../../components/ui/EmptyState";
@@ -121,13 +121,13 @@ const AnalyticsOverviewPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label className="text-xs text-gray-500">Source</label>
-            <select value={provider} onChange={(event) => setProvider(event.target.value as AnalyticsProvider)} className="p-2 border rounded">
+            <select value={provider} onChange={(event) => setProvider(event.target.value as AnalyticsProvider)} className="p-2 border rounded-sm">
               <option value="ga4">Google Analytics 4</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-gray-500">Range</label>
-            <select value={range} onChange={(event) => setRange(event.target.value)} className="p-2 border rounded">
+            <select value={range} onChange={(event) => setRange(event.target.value)} className="p-2 border rounded-sm">
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
             </select>

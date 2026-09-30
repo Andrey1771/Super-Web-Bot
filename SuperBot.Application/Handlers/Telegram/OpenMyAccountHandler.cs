@@ -1,4 +1,4 @@
-using MediatR;
+using SuperBot.Application.Messaging;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
 using Telegram.Bot;
@@ -16,7 +16,7 @@ namespace SuperBot.Application.Handlers.Telegram
         {
             await SendToChangeDialogStateAsync(request.ChatId);
 
-            return await _botClient.SendTextMessageAsync(
+            return await _botClient.SendMessage(
                 chatId: request.ChatId,
                 text: GetMenuText(request.Name, request.UserID),
                 parseMode: ParseMode.Html,

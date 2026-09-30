@@ -26,11 +26,11 @@ const DeliveryConfirmedPage: React.FC = () => {
                 <p className="text-gray-600 mb-4">{view.text}</p>
                 {order && <p className="text-gray-700 mb-6">{t('common.order', { id: order })}</p>}
                 <div className="flex gap-3 justify-center flex-wrap">
-                    <Link to="/games" className="px-6 py-3 bg-violet-600 text-white rounded-lg shadow hover:bg-violet-700">
+                    <Link to="/games" className="px-6 py-3 bg-violet-600 text-white rounded-lg shadow-sm hover:bg-violet-700">
                         {t('common.continueShopping')}
                     </Link>
                     {status === 'invalid' && (
-                        <Link to="/support" className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200">
+                        <Link to="/support" className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg shadow-sm hover:bg-gray-200">
                             {t('common.contactSupport')}
                         </Link>
                     )}

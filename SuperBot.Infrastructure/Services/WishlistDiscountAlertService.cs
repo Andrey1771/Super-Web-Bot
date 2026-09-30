@@ -67,7 +67,7 @@ namespace SuperBot.Infrastructure.Services
 
                     try
                     {
-                        await _bot.SendTextMessageAsync(link.ChatId, text, parseMode: ParseMode.Html, replyMarkup: keyboard);
+                        await _bot.SendMessage(link.ChatId, text, parseMode: ParseMode.Html, replyMarkup: keyboard);
                     }
                     catch (Exception sendError)
                     {

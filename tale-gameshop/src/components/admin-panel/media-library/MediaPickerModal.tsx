@@ -273,7 +273,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
         </div>
 
         {activeTab === "library" && (
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 stack-y-4">
             {filterType === "all" && (
               <div className="flex gap-2">
                 {(["all", "image", "video"] as const).map((tab) => (
@@ -305,7 +305,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
               <Card className="max-h-[360px] overflow-y-auto">
               {loading ? (
-                <div className="space-y-3">
+                <div className="stack-y-3">
                   <div className="skeleton h-10" />
                   <div className="skeleton h-10" />
                   <div className="skeleton h-10" />
@@ -338,13 +338,13 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                             setSelectionError(getSelectionError ? getSelectionError(item) : null);
                           }
                         }}
-                        className={`border rounded-lg p-2 text-left transition hover:shadow ${
+                        className={`border rounded-lg p-2 text-left transition hover:shadow-sm ${
                           (allowMultiple ? selectedIds.includes(item.id) : selectedId === item.id)
                             ? "border-indigo-500 ring-2 ring-indigo-200"
                             : "border-gray-200"
                         }`}
                       >
-                        <div className="h-28 w-full overflow-hidden rounded relative">
+                        <div className="h-28 w-full overflow-hidden rounded-sm relative">
                           {isVideo ? (
                             !showPreviewMissing ? (
                               <img
@@ -395,7 +395,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                             </span>
                           )}
                           {isVideo && formatDuration(item.durationSec) && (
-                            <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+                            <span className="absolute bottom-2 right-2 rounded-sm bg-black/60 px-2 py-0.5 text-xs text-white">
                               {formatDuration(item.durationSec)}
                             </span>
                           )}
@@ -425,8 +425,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             <Card>
               <h3 className="text-sm font-semibold">Preview</h3>
               {selectedAsset ? (
-                <div className="mt-3 space-y-3">
-                  <div className="h-[280px] md:h-[300px] max-h-[42vh] w-full overflow-hidden rounded border bg-gray-50">
+                <div className="mt-3 stack-y-3">
+                  <div className="h-[280px] md:h-[300px] max-h-[42vh] w-full overflow-hidden rounded-sm border bg-gray-50">
                     {selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video") ? (
                       <video
                         controls
@@ -522,7 +522,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
         )}
 
         {activeTab === "upload" && (
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 stack-y-4">
             <div className="border border-dashed rounded-lg p-6 text-center">
               <input
                 type="file"

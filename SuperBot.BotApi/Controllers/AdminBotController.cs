@@ -74,8 +74,8 @@ namespace SuperBot.BotApi.Controllers
 
             try
             {
-                var me = await _bot.GetMeAsync(ct);
-                var webhook = await _bot.GetWebhookInfoAsync(ct);
+                var me = await _bot.GetMe(ct);
+                var webhook = await _bot.GetWebhookInfo(ct);
 
                 return Ok(new
                 {
@@ -128,7 +128,7 @@ namespace SuperBot.BotApi.Controllers
             string? botUsername = null;
             try
             {
-                var me = await _bot.GetMeAsync(ct);
+                var me = await _bot.GetMe(ct);
                 botUsername = me.Username;
                 Add("Bot token", true, $"@{me.Username} (id {me.Id})");
             }
@@ -151,7 +151,7 @@ namespace SuperBot.BotApi.Controllers
             var registeredMatches = false;
             try
             {
-                var webhook = await _bot.GetWebhookInfoAsync(ct);
+                var webhook = await _bot.GetWebhookInfo(ct);
                 registeredMatches = !string.IsNullOrEmpty(webhook.Url)
                     && string.Equals(webhook.Url, configured, StringComparison.OrdinalIgnoreCase);
 
@@ -241,13 +241,13 @@ namespace SuperBot.BotApi.Controllers
 
             try
             {
-                await _bot.SetWebhookAsync(
+                await _bot.SetWebhook(
                     webhookUrl,
                     allowedUpdates: [],
                     secretToken: string.IsNullOrEmpty(_config.Value.SecretToken) ? null : _config.Value.SecretToken,
                     cancellationToken: ct);
 
-                var webhook = await _bot.GetWebhookInfoAsync(ct);
+                var webhook = await _bot.GetWebhookInfo(ct);
                 return Ok(new { message = $"Webhook set to {webhookUrl}", url = webhook.Url });
             }
             catch (ApiRequestException ex)
@@ -317,7 +317,7 @@ namespace SuperBot.BotApi.Controllers
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    await _bot.SendTextMessageAsync(chatId, message, parseMode: ParseMode.Html, cancellationToken: ct);
+                    await _bot.SendMessage(chatId, message, parseMode: ParseMode.Html, cancellationToken: ct);
                     sent++;
                 }
                 catch (Exception ex)
@@ -339,7 +339,7 @@ namespace SuperBot.BotApi.Controllers
         {
             try
             {
-                await _bot.DeleteWebhookAsync(cancellationToken: ct);
+                await _bot.DeleteWebhook(cancellationToken: ct);
                 return Ok(new { message = "Webhook removed" });
             }
             catch (Exception ex)

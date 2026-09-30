@@ -168,14 +168,14 @@ const SuccessPurchasePage: React.FC = () => {
                 {traceId && <p className="text-xs text-gray-500 mb-3">{t('success.reference', { id: traceId })}</p>}
                 {orderId && <p className="text-gray-700 mb-6">{t('common.order', { id: orderId })}</p>}
                 {pendingVerification && status === 'success' && (
-                    <div className="mb-4 rounded-lg bg-violet-50 border border-violet-200 p-4 text-sm text-gray-700 text-left space-y-2">
+                    <div className="mb-4 rounded-lg bg-violet-50 border border-violet-200 p-4 text-sm text-gray-700 text-left stack-y-2">
                         {buyerEmail && (
                             <p><Trans i18nKey="success.sentLink" values={{ email: buyerEmail }} components={{ b: <strong className="text-gray-900" /> }} /></p>
                         )}
                         <p><Trans i18nKey="success.arrives" components={{ b: <strong /> }} /></p>
                         <button
                             type="button"
-                            className="px-4 py-2 bg-white border border-violet-300 text-violet-700 rounded-lg shadow-sm hover:bg-violet-100 disabled:opacity-60"
+                            className="px-4 py-2 bg-white border border-violet-300 text-violet-700 rounded-lg shadow-xs hover:bg-violet-100 disabled:opacity-60"
                             onClick={handleResendVerification}
                             disabled={resendState === 'sending' || resendState === 'sent'}
                         >
@@ -193,16 +193,16 @@ const SuccessPurchasePage: React.FC = () => {
                     </div>
                 )}
                 <div className="flex gap-3 justify-center flex-wrap">
-                    <Link to="/account/orders" className="px-6 py-3 bg-violet-600 text-white rounded-lg shadow hover:bg-violet-700">
+                    <Link to="/account/orders" className="px-6 py-3 bg-violet-600 text-white rounded-lg shadow-sm hover:bg-violet-700">
                         {t('common.goToOrders')}
                     </Link>
-                    <Link to="/games" className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200">
+                    <Link to="/games" className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg shadow-sm hover:bg-gray-200">
                         {t('common.continueShopping')}
                     </Link>
                     {status === 'error' && (
                         <button
                             type="button"
-                            className="px-6 py-3 bg-amber-100 text-amber-800 rounded-lg shadow hover:bg-amber-200"
+                            className="px-6 py-3 bg-amber-100 text-amber-800 rounded-lg shadow-sm hover:bg-amber-200"
                             onClick={() => (cryptoInvoiceId ? window.location.reload() : finalizeOrder(true))}
                         >
                             {t('common.tryAgain')}

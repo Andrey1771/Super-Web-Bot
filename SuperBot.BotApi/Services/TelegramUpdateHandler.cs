@@ -1,4 +1,4 @@
-using MediatR;
+using SuperBot.Application.Messaging;
 using Microsoft.Extensions.Configuration;
 using SuperBot.Application.Commands.BuyGame;
 using SuperBot.Application.Commands.Telegram;
@@ -91,7 +91,7 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         if (callbackQuery.Data is null || callbackQuery.Message is null) return;
 
         // Гасим "часики" на кнопке сразу, до обработки.
-        await _bot.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
+        await _bot.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
 
         // Оплата Stars: отдельная ветка, не проходит через диалоговый роутер.
         if (callbackQuery.Data.StartsWith(StarsCallbackPrefix, StringComparison.Ordinal))
@@ -153,7 +153,7 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         // Невышедшая игра для покупателя в чате — то же «недоступна», отдельного сообщения не заводим.
         if (game == null || GameRelease.IsUpcoming(game.ReleaseDate, DateTime.UtcNow))
         {
-            await _bot.SendTextMessageAsync(chatId, _translationsService.Translation.StarsGameUnavailable, cancellationToken: cancellationToken);
+            await _bot.SendMessage(chatId, _translationsService.Translation.StarsGameUnavailable, cancellationToken: cancellationToken);
             return;
         }
 
@@ -167,7 +167,7 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         var photoUrl = GameCoverUrlResolver.IsUsablePhotoUrl(coverUrl) ? coverUrl : null;
 
         // Digital goods → валюта XTR, provider_token пустой. Payload = gameId (нужен на successful_payment).
-        await _bot.SendInvoiceAsync(
+        await _bot.SendInvoice(
             chatId,
             title: title,
             description: description,
@@ -186,12 +186,12 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         var game = string.IsNullOrWhiteSpace(query.InvoicePayload) ? null : await gameRepository.GetByIdAsync(query.InvoicePayload);
         if (game == null)
         {
-            await _bot.AnswerPreCheckoutQueryAsync(query.Id, errorMessage: _translationsService.Translation.StarsGameUnavailable, cancellationToken: cancellationToken);
+            await _bot.AnswerPreCheckoutQuery(query.Id, errorMessage: _translationsService.Translation.StarsGameUnavailable, cancellationToken: cancellationToken);
             return;
         }
 
         // Всё в порядке — подтверждаем платёж (в течение 10 секунд, иначе Telegram отменит).
-        await _bot.AnswerPreCheckoutQueryAsync(query.Id, errorMessage: null, cancellationToken: cancellationToken);
+        await _bot.AnswerPreCheckoutQuery(query.Id, errorMessage: null, cancellationToken: cancellationToken);
     }
 
     private async Task HandleSuccessfulPayment(Message msg, SuccessfulPayment payment, CancellationToken cancellationToken)
@@ -262,7 +262,7 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         var followUp = order.IsFulfilled
             ? _translationsService.Translation.StarsPaymentSuccess
             : _translationsService.Translation.StarsPaymentPending;
-        await _bot.SendTextMessageAsync(chatId, followUp, parseMode: ParseMode.Html, cancellationToken: cancellationToken);
+        await _bot.SendMessage(chatId, followUp, parseMode: ParseMode.Html, cancellationToken: cancellationToken);
     }
 
     // Оплата корзины: заказ создан заранее в MiniAppController. Помечаем оплаченным и выдаём все позиции.
@@ -274,7 +274,7 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         if (order == null)
         {
             _logger.LogError("Cart payment for unknown order {OrderId} (charge {Charge})", orderId, payment.TelegramPaymentChargeId);
-            await _bot.SendTextMessageAsync(chatId, _translationsService.Translation.StarsPaymentPending, parseMode: ParseMode.Html, cancellationToken: cancellationToken);
+            await _bot.SendMessage(chatId, _translationsService.Translation.StarsPaymentPending, parseMode: ParseMode.Html, cancellationToken: cancellationToken);
             return;
         }
 
@@ -293,7 +293,7 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
         var followUp = order.IsFulfilled
             ? _translationsService.Translation.StarsPaymentSuccess
             : _translationsService.Translation.StarsPaymentPending;
-        await _bot.SendTextMessageAsync(chatId, followUp, parseMode: ParseMode.Html, cancellationToken: cancellationToken);
+        await _bot.SendMessage(chatId, followUp, parseMode: ParseMode.Html, cancellationToken: cancellationToken);
     }
 
     private int StarsPerUsd() =>

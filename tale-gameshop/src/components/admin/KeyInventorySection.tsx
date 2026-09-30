@@ -23,7 +23,7 @@ const labelStyle: React.CSSProperties = { display: 'block', fontWeight: 600, mar
 const cellStyle: React.CSSProperties = { padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'left', verticalAlign: 'top' };
 const headStyle: React.CSSProperties = { ...cellStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: '#6b7280' };
 
-import { DataGrid, Column, Paging, Scrolling, Sorting, type DataGridRef } from 'devextreme-react/data-grid';
+import { DataGrid, Column, Paging, Scrolling, Sorting, type DataGridRef } from "../grid";
 import { GRID_PAGE_SIZE, gridStatusText, useGridWindow } from '../../hooks/use-grid-window';
 import { fetchWindow } from '../../utils/page-window';
 

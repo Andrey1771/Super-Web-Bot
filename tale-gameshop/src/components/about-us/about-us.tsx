@@ -217,10 +217,10 @@ export default function AboutUs() {
             <PageMeta title={t("about.title")} canonicalPath="/about" />
             <div className="container py-14 lg:py-20">
                 <div className="grid lg:grid-cols-2 gap-12 xl:gap-16 lg:items-center">
-                    <div className="space-y-8">
-                        <div className="space-y-4">
+                    <div className="stack-y-8">
+                        <div className="stack-y-4">
                             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-purple-600">{t("about.eyebrow")}</p>
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight">{t("about.title")}</h1>
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight md:leading-none">{t("about.title")}</h1>
                             <p className="text-lg text-slate-600 max-w-2xl">{t("about.lead")}</p>
                         </div>
 
@@ -235,7 +235,7 @@ export default function AboutUs() {
                                     <span className="about-pill-icon">
                                         <FontAwesomeIcon icon={feature.icon}/>
                                     </span>
-                                    <div className="space-y-1">
+                                    <div className="stack-y-1">
                                         <p className="text-sm font-semibold text-slate-900">{t("about.pills." + feature.key + ".title")}</p>
                                         <p className="text-sm text-slate-600 leading-relaxed">{t("about.pills." + feature.key + ".text")}</p>
                                     </div>
@@ -346,7 +346,7 @@ export default function AboutUs() {
                             </div>
                         </div>
 
-                        <ul className="space-y-2">
+                        <ul className="stack-y-2">
                             {ratingHighlights.map((item) => (
                                 <li key={item} className="flex items-start gap-3 text-sm text-slate-700">
                                     <span className="about-list-icon">
@@ -505,7 +505,7 @@ export default function AboutUs() {
                     <div className="grid md:grid-cols-2 gap-5 lg:gap-6">
                         {team.map((member) => (
                             <div key={member.name} className="about-team-card">
-                                <div className="space-y-2">
+                                <div className="stack-y-2">
                                     {member.badge && <span className="about-team-badge">{member.badge}</span>}
                                     <h3 className="text-xl font-bold text-slate-900">{member.name}</h3>
                                     {member.role && <p className="text-sm font-semibold text-purple-700">{member.role}</p>}
@@ -548,10 +548,10 @@ export default function AboutUs() {
                                 <div className="about-support-icon">
                                     <FontAwesomeIcon icon={card.icon}/>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="stack-y-2">
                                     <h3 className="text-xl font-bold text-slate-900">{t("about.cards." + card.key + ".title")}</h3>
                                     <p className="text-sm text-slate-600 leading-relaxed">{t("about.cards." + card.key + ".text")}</p>
-                                    <ul className="space-y-2">
+                                    <ul className="stack-y-2">
                                         {card.items.map((item, itemIndex) => (
                                             <li key={item.label} className="about-support-item">
                                                 <span className="about-support-dot">
@@ -570,7 +570,7 @@ export default function AboutUs() {
                 <div className="about-final-section">
                     <div className="about-final-cta">
                         <div className="about-final-content">
-                            <div className="space-y-3">
+                            <div className="stack-y-3">
                                 <h2 className="about-final-title">{t("about.finalTitle")}</h2>
                                 <p className="about-final-subtitle">{t("about.finalText")}</p>
                                 <p className="about-final-meta">{t("about.finalMeta")}</p>

@@ -34,7 +34,7 @@ const OrdersFilters: React.FC<OrdersFiltersProps> = ({ filters, onChange, onAppl
           <label className="text-sm font-semibold">Search</label>
           <input
             type="text"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             placeholder="Order #, email, user id, transaction id"
             value={filters.search}
             onChange={(event) => onChange({ ...filters, search: event.target.value })}
@@ -43,7 +43,7 @@ const OrdersFilters: React.FC<OrdersFiltersProps> = ({ filters, onChange, onAppl
         <div>
           <label className="text-sm font-semibold">Status</label>
           <select
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             value={filters.status}
             onChange={(event) => onChange({ ...filters, status: event.target.value as OrderFilters["status"] })}
           >
@@ -57,7 +57,7 @@ const OrdersFilters: React.FC<OrdersFiltersProps> = ({ filters, onChange, onAppl
         <div>
           <label className="text-sm font-semibold">Payment status</label>
           <select
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             value={filters.paymentStatus}
             onChange={(event) =>
               onChange({ ...filters, paymentStatus: event.target.value as OrderFilters["paymentStatus"] })
@@ -74,7 +74,7 @@ const OrdersFilters: React.FC<OrdersFiltersProps> = ({ filters, onChange, onAppl
           <label className="text-sm font-semibold">Date from</label>
           <input
             type="date"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             value={filters.dateFrom}
             onChange={(event) => onChange({ ...filters, dateFrom: event.target.value })}
           />
@@ -83,7 +83,7 @@ const OrdersFilters: React.FC<OrdersFiltersProps> = ({ filters, onChange, onAppl
           <label className="text-sm font-semibold">Date to</label>
           <input
             type="date"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             value={filters.dateTo}
             onChange={(event) => onChange({ ...filters, dateTo: event.target.value })}
           />

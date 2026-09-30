@@ -8,7 +8,7 @@ public class RecoveryOptions
     // Максимум заявок с одного IP в час (защита от перебора).
     public int MaxRequestsPerIpPerHour { get; set; } = 3;
 
-    // SMTP для писем о восстановлении (в dev — mailhog).
+    // SMTP для писем о восстановлении (в dev — mailpit).
     public string SmtpHost { get; set; } = "localhost";
     public int SmtpPort { get; set; } = 1025;
     public string FromAddress { get; set; } = "no-reply@taleshop.local";

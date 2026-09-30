@@ -4,18 +4,15 @@ import IDENTIFIERS from "../../../constants/identifiers";
 import { IApiClient } from "../../../iterfaces/i-api-client";
 import HighchartsReact from "highcharts-react-official";
 import Highcharts from "highcharts";
-import { DataGrid } from "devextreme-react";
-import { Column } from "devextreme-react/cjs/data-grid";
+import { DataGrid } from "../../grid";
+import { Column } from "../../grid";
 import PageHeader from "../../layout/PageHeader";
 import Card from "../../ui/Card";
 import EmptyState from "../../ui/EmptyState";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
 
-//TODO Вынести в отдельный файл и следить за тем, чтобы не было повторного вызова
-import Drilldown from 'highcharts/modules/drilldown';
-if (!Highcharts.Chart.prototype.addSeriesAsDrilldown) {
-    Drilldown(Highcharts);
-}
+// С Highcharts 12 модуль регистрируется сам при импорте, повторный импорт ничего не делает.
+import 'highcharts/modules/drilldown';
 
 interface GameEntry {
     gameId: string;
@@ -212,7 +209,7 @@ const UserStatsPage: React.FC = () => {
                                 <select
                                     value={groupBy}
                                     onChange={(event) => setGroupBy(event.target.value as typeof groupBy)}
-                                    className="w-full p-2 border rounded"
+                                    className="w-full p-2 border rounded-sm"
                                 >
                                     <option value="name">Group by category</option>
                                     <option value="gameId">Group by game ID</option>

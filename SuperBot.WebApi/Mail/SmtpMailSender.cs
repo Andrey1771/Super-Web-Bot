@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 namespace SuperBot.WebApi.Mail;
 
 /// <summary>
-/// Единая точка отправки писем. Сегодня — SMTP (в dev это MailHog, http://localhost:8025);
+/// Единая точка отправки писем. Сегодня — SMTP (в dev это Mailpit, http://localhost:8025);
 /// при переезде на ESP (Brevo/Resend/…) меняется только эта реализация, вызывающий код не трогаем.
 /// </summary>
 public interface IMailSender

@@ -5,6 +5,13 @@
 import '@testing-library/jest-dom';
 // Переводы: английский словарь инициализируется синхронно, тесты видят те же строки, что и витрина.
 import './i18n';
+import { TextDecoder, TextEncoder } from 'util';
+
+// react-router 7 берёт TextEncoder при загрузке модуля, а jsdom в Jest его не даёт. Node-версия
+// та же по поведению, что и браузерная.
+if (typeof globalThis.TextEncoder === 'undefined') {
+  Object.assign(globalThis, { TextEncoder, TextDecoder });
+}
 
 // jsdom не воспроизводит медиа: play()/pause()/load() у него «not implemented» и сыплют в консоль.
 // Подменяем их так, как ведёт себя браузер: play шлёт play и playing, pause — pause. Состояние
@@ -38,4 +45,14 @@ if (typeof window.PointerEvent === 'undefined') {
     }
   }
   (window as unknown as { PointerEvent: typeof PointerEventPolyfill }).PointerEvent = PointerEventPolyfill;
+}
+
+// В jsdom нет CSS.supports, а Highcharts 12.6+ зовёт его уже при импорте, выбирая способ
+// отрисовки. Отвечаем «не поддерживается» — библиотека берёт запасной путь, как в старом браузере.
+if (typeof window.CSS?.supports !== 'function') {
+  Object.defineProperty(window, 'CSS', {
+    configurable: true,
+    writable: true,
+    value: { ...(window.CSS ?? {}), supports: () => false }
+  });
 }

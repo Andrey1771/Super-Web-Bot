@@ -1450,7 +1450,7 @@ const GameDetailsEditorPage: React.FC = () => {
         </div>
         {details.cover?.url ? (
           <div className="mt-4 flex items-center gap-3">
-            <img src={details.cover.url} alt={details.cover.alt ?? "Cover"} className="h-24 w-20 rounded object-cover" />
+            <img src={details.cover.url} alt={details.cover.alt ?? "Cover"} className="h-24 w-20 rounded-sm object-cover" />
             <div>
               <p className="text-sm font-semibold">Cover image</p>
               <button className="btn btn-outline btn-small" onClick={() => updateDetails({ cover: undefined })}>
@@ -1467,7 +1467,7 @@ const GameDetailsEditorPage: React.FC = () => {
           ) : (
             details.gallery.map((item, index) => (
               <div key={item.id} className="border rounded-lg p-3 flex gap-3">
-                <div className="h-20 w-28 overflow-hidden rounded bg-gray-100">
+                <div className="h-20 w-28 overflow-hidden rounded-sm bg-gray-100">
                   {item.type === "video" ? (
                     item.thumbUrl ? (
                       <img src={item.thumbUrl} alt={item.title ?? "Video"} className="h-full w-full object-cover" />
@@ -1478,7 +1478,7 @@ const GameDetailsEditorPage: React.FC = () => {
                     <img src={item.url} alt={item.title ?? "Image"} className="h-full w-full object-cover" />
                   )}
                 </div>
-                <div className="flex-1 space-y-2">
+                <div className="flex-1 stack-y-2">
                   <div className="flex items-center justify-between">
                     <span className="gallery-item__head">
                       {/* Номер — позиция на странице игры, а не строка в этом списке. */}

@@ -5,7 +5,6 @@ import App from './app/tale-gameshop/App';
 import reportWebVitals from './reportWebVitals';
 import {BrowserRouter} from "react-router-dom";
 import ScrollToTop from "./components/common/ScrollToTop";
-import {Provider as InversifyProvider} from 'inversify-react';
 import container from './inversify.config';
 import {store} from './store';
 import {Provider as ReduxProvider} from 'react-redux';
@@ -87,22 +86,19 @@ if (isMiniApp) {
         <ReactKeycloakProvider authClient={keycloakService.keycloak} initOptions={keycloakService.initOptions}
                                onEvent={keycloakService.eventHandlers.bind(keycloakService)}>
             <ReduxProvider store={store}>
-                <InversifyProvider container={container}>
-                    <React.StrictMode>
-                        <AppErrorBoundary>
-                            <CartProvider>
-                                <WishlistProvider>
-                                    {/* future-флаги v7: снимают deprecation-варнинги в консоли
-                                        и заранее включают поведение следующей мажорной версии. */}
-                                    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                                        <ScrollToTop/>
-                                        <App/>
-                                    </BrowserRouter>
-                                </WishlistProvider>
-                            </CartProvider>
-                        </AppErrorBoundary>
-                    </React.StrictMode>
-                </InversifyProvider>
+                {/* Сервисы берутся прямо из контейнера (container.get): React-контекст для него не нужен. */}
+                <React.StrictMode>
+                    <AppErrorBoundary>
+                        <CartProvider>
+                            <WishlistProvider>
+                                <BrowserRouter>
+                                    <ScrollToTop/>
+                                    <App/>
+                                </BrowserRouter>
+                            </WishlistProvider>
+                        </CartProvider>
+                    </AppErrorBoundary>
+                </React.StrictMode>
             </ReduxProvider>
         </ReactKeycloakProvider>
     );

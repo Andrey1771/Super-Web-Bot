@@ -1,4 +1,4 @@
-using MediatR;
+using SuperBot.Application.Messaging;
 using SuperBot.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -39,7 +39,7 @@ namespace SuperBot.Application.Handlers.Telegram
                 await TryLinkAccountAsync(serviceScope.ServiceProvider, request, cancellationToken);
             }
 
-            await _botClient.SendTextMessageAsync(
+            await _botClient.SendMessage(
                 chatId: request.ChatId,
                 text: GetStartText(),
                 parseMode: ParseMode.Html,
@@ -68,7 +68,7 @@ namespace SuperBot.Application.Handlers.Telegram
 
             if (!string.IsNullOrWhiteSpace(message))
             {
-                await _botClient.SendTextMessageAsync(
+                await _botClient.SendMessage(
                     chatId: request.ChatId,
                     text: message,
                     parseMode: ParseMode.Html,

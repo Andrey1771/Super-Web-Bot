@@ -145,7 +145,7 @@ const AnalyticsSettingsPage: React.FC = () => {
           <div>
             <h3>Google Analytics 4</h3>
             <p className="muted text-sm">Measurement ID format: G-XXXXXXX</p>
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 stack-y-3">
               <label className="block text-sm">Measurement ID</label>
               <input
                 className="input w-full"
@@ -234,7 +234,7 @@ const AnalyticsSettingsPage: React.FC = () => {
           Its three parts go below. They only ever read analytics — nothing else in your Google account.
         </p>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 stack-y-3">
           <label className="block text-sm">Client ID</label>
           <input
             className="input w-full"
@@ -334,7 +334,7 @@ const AnalyticsSettingsPage: React.FC = () => {
                 — там их ищет тот, кто разворачивает сервер. */}
             <details className="mt-3">
               <summary className="text-sm text-slate-600 cursor-pointer">How to get these (about 15 minutes)</summary>
-              <ol className="list-decimal ml-5 mt-2 text-sm text-slate-600 space-y-1">
+              <ol className="list-decimal ml-5 mt-2 text-sm text-slate-600 stack-y-1">
                 <li>
                   Open <code>console.cloud.google.com</code> and create a project — any name. This is Google
                   Cloud, not Analytics.

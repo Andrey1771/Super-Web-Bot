@@ -1,7 +1,7 @@
 import React from 'react';
 import { dataCell } from './ModerationPage';
 
-jest.mock('devextreme-react/data-grid', () => ({ DataGrid: () => null, Column: () => null, Paging: () => null, Scrolling: () => null, Sorting: () => null }));
+jest.mock('../../components/grid', () => ({ DataGrid: () => null, Column: () => null, Paging: () => null, Scrolling: () => null, Sorting: () => null }));
 jest.mock('../../components/ui/ToastProvider', () => ({ useToast: () => ({ addToast: jest.fn() }) }));
 jest.mock('../../components/layout/AdminHeaderContext', () => ({ useAdminHeader: () => ({ setPageTitle: jest.fn() }) }));
 jest.mock('../../hooks/use-grid-window', () => ({ GRID_PAGE_SIZE: 20, REMOTE_PAGING: {}, gridStatusText: () => '', useGridWindow: () => ({}) }));

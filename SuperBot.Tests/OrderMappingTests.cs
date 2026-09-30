@@ -1,8 +1,7 @@
 using System;
-using AutoMapper;
 using SuperBot.Core.Entities;
 using SuperBot.Infrastructure.Data;
-using SuperBot.Infrastructure.Models;
+using SuperBot.Infrastructure.Mapping;
 using Xunit;
 
 namespace SuperBot.Tests;
@@ -17,12 +16,12 @@ namespace SuperBot.Tests;
 /// уже ПОСЛЕ списания денег: заказ не создавался, а человек видел «не удалось оформить».
 ///
 /// Поэтому проверяем не «карта объявлена», а что заказ со всеми заполненными вложенными
-/// объектами реально превращается в документ и обратно.
+/// объектами реально превращается в документ и обратно. Сейчас пары вложенных типов строит
+/// Mapperly при сборке, но проверка через тот же IMapper, что у репозиториев, осталась.
 /// </summary>
 public class OrderMappingTests
 {
-    private static IMapper CreateMapper() =>
-        new MapperConfiguration(config => config.AddProfile<OrderProfile>()).CreateMapper();
+    private static IMapper CreateMapper() => new ObjectMapper();
 
     private static Order OrderWithEverythingFilled() => new()
     {

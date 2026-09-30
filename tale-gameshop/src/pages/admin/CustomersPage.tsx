@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { REMOTE_PAGING } from "../../hooks/use-grid-window";
-import "devextreme/dist/css/dx.light.css";
-import { DataGrid } from "devextreme-react";
-import { Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
-import CustomStore from "devextreme/data/custom_store";
+import { DataGrid } from "../../components/grid";
+import { Column, Paging, Scrolling, Sorting } from "../../components/grid";
+import { CustomStore } from "../../components/grid";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useKeycloak } from "@react-keycloak/web";
 import PageHeader from "../../components/layout/PageHeader";

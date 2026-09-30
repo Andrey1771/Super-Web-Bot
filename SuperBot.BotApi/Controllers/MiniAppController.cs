@@ -77,7 +77,7 @@ namespace SuperBot.BotApi.Controllers
             {
                 // XTR + пустой provider_token = цифровой товар за Telegram Stars. payload = gameId
                 // (successful_payment ловит тот же вебхук, что и покупки из чата — общая выдача).
-                var invoiceLink = await _bot.CreateInvoiceLinkAsync(
+                var invoiceLink = await _bot.CreateInvoiceLink(
                     title: title,
                     description: string.Format(Description(), title),
                     payload: game.Id,
@@ -198,7 +198,7 @@ namespace SuperBot.BotApi.Controllers
                     ? orderItems[0].Title
                     : $"{orderItems.Count} товаров";
 
-                var invoiceLink = await _bot.CreateInvoiceLinkAsync(
+                var invoiceLink = await _bot.CreateInvoiceLink(
                     title: "Tale Shop",
                     description: $"Заказ: {itemsSummary}. Ключи придут в чат бота.",
                     payload: $"{CartPayloadPrefix}{orderId}",

@@ -13,7 +13,7 @@ import { formatMoney } from "../../../utils/format-money";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
 import Card from "../../ui/Card";
 import CoverFocusEditor from "../cover-focus/CoverFocusEditor";
-import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../../grid";
 import { GRID_PAGE_SIZE, REMOTE_PAGING, gridStatusText, useGridWindow } from "../../../hooks/use-grid-window";
 import { fetchWindow } from "../../../utils/page-window";
 import Drawer from "../../ui/Drawer";
@@ -1088,7 +1088,7 @@ const CardAdderPage: React.FC = () => {
         title={drawerTitle}
         onClose={handleDrawerClose}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="stack-y-4">
           {/* Вид выбирается при создании: от него зависят раздел витрины, поля карточки и налоговый код.
               Позже его можно сменить в редакторе карточки. */}
           {drawerMode === "create" && (
@@ -1114,7 +1114,7 @@ const CardAdderPage: React.FC = () => {
               {form.kind === "Software" && (
                 <>
                   <label className="text-sm font-semibold mt-3 block">Software category</label>
-                  <select name="softwareCategory" value={form.softwareCategory ?? ""} onChange={handleChange} className="w-full p-2 border rounded">
+                  <select name="softwareCategory" value={form.softwareCategory ?? ""} onChange={handleChange} className="w-full p-2 border rounded-sm">
                     <option value="">— pick a category —</option>
                     {softwareCategories.map((category) => (
                       <option key={category.tag} value={category.tag}>
@@ -1167,7 +1167,7 @@ const CardAdderPage: React.FC = () => {
               name="name"
               value={form.name}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded-sm"
               ref={nameInputRef}
             />
             {validationErrors.name && <small className="text-red-500">{validationErrors.name}</small>}
@@ -1177,7 +1177,7 @@ const CardAdderPage: React.FC = () => {
               name="title"
               value={form.title}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded-sm"
             />
             {validationErrors.title && <small className="text-red-500">{validationErrors.title}</small>}
           </Card>
@@ -1202,7 +1202,7 @@ const CardAdderPage: React.FC = () => {
                     event.stopPropagation();
                   }
                 }}
-                className="w-full p-2 border rounded min-h-[120px]"
+                className="w-full p-2 border rounded-sm min-h-[120px]"
               />
             </LocalizedField>
             <div className="flex justify-between text-xs text-gray-500">
@@ -1219,7 +1219,7 @@ const CardAdderPage: React.FC = () => {
               name="price"
               value={form.price}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded-sm"
             />
             {validationErrors.price && <small className="text-red-500">{validationErrors.price}</small>}
 
@@ -1239,7 +1239,7 @@ const CardAdderPage: React.FC = () => {
                       value={form.prices?.[code] ?? ""}
                       onChange={(event) => handlePriceInCurrencyChange(code, event.target.value)}
                       placeholder="not sold"
-                      className="flex-1 p-2 border rounded"
+                      className="flex-1 p-2 border rounded-sm"
                     />
                   </div>
                 ))}
@@ -1249,7 +1249,7 @@ const CardAdderPage: React.FC = () => {
             {form.kind !== "Software" && (
               <>
                 <label className="text-sm font-semibold">Genre</label>
-                <select name="genre" value={form.genre ?? ""} onChange={handleChange} className="w-full p-2 border rounded">
+                <select name="genre" value={form.genre ?? ""} onChange={handleChange} className="w-full p-2 border rounded-sm">
                   <option value="">— pick a genre —</option>
                   {/* Жанр, которого уже нет в списке, не теряем: иначе форма молча сменила бы его при сохранении. */}
                   {form.genre && !genres.some((genre) => genre.tag === form.genre) && (
@@ -1272,7 +1272,7 @@ const CardAdderPage: React.FC = () => {
             {/* DLC — отдельный товар с базовой игрой: в каталоге он не в общем списке, а в блоке
                 «DLC» базовой игры; на его странице — «требуется базовая игра». */}
             <label className="text-sm font-semibold">DLC of (base game)</label>
-            <select name="parentGameId" value={form.parentGameId ?? ""} onChange={handleChange} className="w-full p-2 border rounded">
+            <select name="parentGameId" value={form.parentGameId ?? ""} onChange={handleChange} className="w-full p-2 border rounded-sm">
               <option value="">— not a DLC —</option>
               {items
                 .filter((item) => item.id !== form.id && !item.parentGameId)
@@ -1293,15 +1293,15 @@ const CardAdderPage: React.FC = () => {
               name="releaseDate"
               value={form.releaseDate.split("T")[0]}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded-sm"
             />
           </Card>
 
           <Card>
             <h3>Media</h3>
             {form.coverMediaId && selectedMedia ? (
-              <div className="space-y-3">
-                <div className="h-36 w-full overflow-hidden rounded border">
+              <div className="stack-y-3">
+                <div className="h-36 w-full overflow-hidden rounded-sm border">
                   <img src={selectedMedia.url} alt={selectedMedia.filename} className="h-full w-full object-cover" />
                 </div>
                 <div className="flex items-center justify-between gap-2">
@@ -1326,8 +1326,8 @@ const CardAdderPage: React.FC = () => {
                 <CoverFocusEditor key={selectedMedia.url} imageUrl={selectedMedia.url} />
               </div>
             ) : form.imagePath ? (
-              <div className="space-y-3">
-                <div className="h-36 w-full overflow-hidden rounded border">
+              <div className="stack-y-3">
+                <div className="h-36 w-full overflow-hidden rounded-sm border">
                   <img src={getLegacyPreviewUrl(form.imagePath)} alt="Legacy cover" className="h-full w-full object-cover" />
                 </div>
                 <div className="flex items-center justify-between gap-2">
@@ -1351,8 +1351,8 @@ const CardAdderPage: React.FC = () => {
                 <CoverFocusEditor key={form.imagePath} imageUrl={getLegacyPreviewUrl(form.imagePath)} />
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="h-36 w-full rounded border border-dashed flex items-center justify-center text-sm text-gray-500">
+              <div className="stack-y-3">
+                <div className="h-36 w-full rounded-sm border border-dashed flex items-center justify-center text-sm text-gray-500">
                   No cover selected yet.
                 </div>
                 <button type="button" className="btn btn-primary" onClick={handleOpenMediaPicker}>
@@ -1383,7 +1383,7 @@ const CardAdderPage: React.FC = () => {
         onClose={() => setDetailsDrawerOpen(false)}
       >
         {selectedGame ? (
-          <div className="space-y-4">
+          <div className="stack-y-4">
             <div className="flex items-center justify-between">
               <h3>{selectedGame.name || "Unnamed"}</h3>
               <div className="flex gap-2">
@@ -1435,7 +1435,7 @@ const CardAdderPage: React.FC = () => {
               {selectedGame.coverMediaId ? (
                 selectedMedia ? (
                   <div className="flex items-center gap-3">
-                    <img src={selectedMedia.url} alt={selectedMedia.filename} className="h-12 w-12 rounded object-cover" />
+                    <img src={selectedMedia.url} alt={selectedMedia.filename} className="h-12 w-12 rounded-sm object-cover" />
                     <div>
                       <p className="text-sm font-semibold">{selectedMedia.filename}</p>
                       <p className="text-xs text-gray-500">Linked media</p>
@@ -1449,7 +1449,7 @@ const CardAdderPage: React.FC = () => {
                   <img
                     src={getLegacyPreviewUrl(selectedGame.imagePath)}
                     alt="Legacy"
-                    className="h-12 w-12 rounded object-cover"
+                    className="h-12 w-12 rounded-sm object-cover"
                   />
                   <div>
                     <p className="text-sm font-semibold">{getLegacyFileName(selectedGame.imagePath)}</p>

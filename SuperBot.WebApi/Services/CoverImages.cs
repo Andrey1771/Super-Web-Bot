@@ -1,13 +1,7 @@
 using System.Collections.Concurrent;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Formats.Webp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.WebApi.Services.Imaging;
 
 namespace SuperBot.WebApi.Services;
 
@@ -195,8 +189,7 @@ public class CoverImages : ICoverImages
 
     private static async Task RenderVariantAsync(string source, string target, int width, (int W, int H) frame, CoverImageMeta? meta, CancellationToken ct)
     {
-        using var image = await Image.LoadAsync<Rgba32>(source, ct);
-        image.Mutate(x => x.AutoOrient());
+        using var image = await RasterImage.LoadAsync(source, ct);
 
         // Самая большая область нужной пропорции, которая помещается в исходник, — потом она ужимается до запрошенной
         // ширины. Так рамка никогда не растягивает картинку: маленький исходник даёт вариант поменьше, а не мыло.
@@ -206,18 +199,12 @@ public class CoverImages : ICoverImages
         var targetWidth = Math.Max(1, (int)Math.Round(coverWidth * scale));
         var targetHeight = Math.Max(1, (int)Math.Round(coverHeight * scale));
 
-        image.Mutate(x => x.Resize(new ResizeOptions
-        {
-            Size = new Size(targetWidth, targetHeight),
-            Mode = ResizeMode.Crop,
-            // Точка фокуса: обрезка держит её в кадре, а не режет по центру.
-            CenterCoordinates = new PointF((float)(meta?.FocusX ?? 0.5), (float)(meta?.FocusY ?? 0.5)),
-            Sampler = KnownResamplers.Lanczos3
-        }));
+        // Точка фокуса: обрезка держит её в кадре, а не режет по центру.
+        using var variant = image.CropToFill(targetWidth, targetHeight, meta?.FocusX ?? 0.5, meta?.FocusY ?? 0.5);
 
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         var temp = target + $".{Guid.NewGuid():N}.tmp";
-        await image.SaveAsync(temp, new WebpEncoder { Quality = width <= 24 ? 40 : 80 }, ct);
+        await variant.SaveWebpAsync(temp, width <= 24 ? 40 : 80, ct);
         File.Move(temp, target, overwrite: true);
     }
 
@@ -229,19 +216,18 @@ public class CoverImages : ICoverImages
             return new CoverPreparation(true, null, null, 0, 0, Array.Empty<string>(), null);
         }
 
-        Image<Rgba32> image;
+        RasterImage image;
         try
         {
-            image = await Image.LoadAsync<Rgba32>(physicalPath, ct);
+            image = await RasterImage.LoadAsync(physicalPath, ct);
         }
-        catch (Exception ex) when (ex is UnknownImageFormatException or InvalidImageContentException)
+        catch (UnreadableImageException)
         {
             return CoverPreparation.Fail("COVER_UNREADABLE", "The file is not a readable image.");
         }
 
-        using (image)
+        try
         {
-            image.Mutate(x => x.AutoOrient());
             var longSide = Math.Max(image.Width, image.Height);
             if (longSide < MinLongSide)
             {
@@ -262,8 +248,11 @@ public class CoverImages : ICoverImages
 
             if (longSide > MasterMaxSide)
             {
-                image.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(MasterMaxSide, MasterMaxSide), Sampler = KnownResamplers.Lanczos3 }));
-                await image.SaveAsync(physicalPath, EncoderFor(physicalPath), ct);
+                // Хранится уже уменьшенный и развёрнутый по EXIF мастер: дальше все рамки режутся из него.
+                var master = image.FitWithin(MasterMaxSide);
+                image.Dispose();
+                image = master;
+                await image.SaveByExtensionAsync(physicalPath, ct);
             }
 
             var relative = NormalizeRelativePath(relativePath);
@@ -272,7 +261,7 @@ public class CoverImages : ICoverImages
                 Path = relative ?? relativePath,
                 Width = image.Width,
                 Height = image.Height,
-                DominantColor = DominantColor(image),
+                DominantColor = image.AverageColorHex(),
                 UpdatedAt = DateTime.UtcNow
             };
             if (relative != null)
@@ -281,21 +270,10 @@ public class CoverImages : ICoverImages
             }
             return new CoverPreparation(true, null, null, image.Width, image.Height, warnings, meta);
         }
-    }
-
-    private static IImageEncoder EncoderFor(string path) => Path.GetExtension(path).ToLowerInvariant() switch
-    {
-        ".png" => new PngEncoder(),
-        ".webp" => new WebpEncoder { Quality = 85 },
-        _ => new JpegEncoder { Quality = 88 }
-    };
-
-    /// <summary>Средний цвет картинки: ужимаем до одного пикселя усредняющим фильтром.</summary>
-    private static string DominantColor(Image<Rgba32> image)
-    {
-        using var pixel = image.Clone(x => x.Resize(new ResizeOptions { Size = new Size(1, 1), Mode = ResizeMode.Stretch, Sampler = KnownResamplers.Box }));
-        var color = pixel[0, 0];
-        return $"#{color.R:x2}{color.G:x2}{color.B:x2}";
+        finally
+        {
+            image.Dispose();
+        }
     }
 
     public async Task<CoverImageMeta?> GetMetaAsync(string relativePath, CancellationToken ct)
@@ -319,14 +297,13 @@ public class CoverImages : ICoverImages
         }
         try
         {
-            using var image = await Image.LoadAsync<Rgba32>(source, ct);
-            image.Mutate(x => x.AutoOrient());
+            using var image = await RasterImage.LoadAsync(source, ct);
             var meta = new CoverImageMeta
             {
                 Path = relative,
                 Width = image.Width,
                 Height = image.Height,
-                DominantColor = DominantColor(image),
+                DominantColor = image.AverageColorHex(),
                 UpdatedAt = DateTime.UtcNow
             };
             await _meta.UpsertAsync(meta, ct);

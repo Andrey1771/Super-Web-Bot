@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using SuperBot.Application.Messaging;
 using SuperBot.Application.Commands;
 using SuperBot.Application.Commands.BuyGame;
 using SuperBot.Application.Handlers.Telegram.Base;

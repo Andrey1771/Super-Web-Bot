@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { DataGrid } from "devextreme-react";
-import { Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import { DataGrid } from "../../../components/grid";
+import { Column, Paging, Scrolling, Sorting } from "../../../components/grid";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import PageHeader from "../../../components/layout/PageHeader";
@@ -428,7 +428,7 @@ const BlogPostsPage: React.FC = () => {
             />
           </div>
           <select
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             value={status}
             onChange={(event) => setStatus(event.target.value as BlogStatus | "")}
           >
@@ -439,7 +439,7 @@ const BlogPostsPage: React.FC = () => {
             ))}
           </select>
           <select
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             value={tag}
             onChange={(event) => setTag(event.target.value)}
           >
@@ -480,12 +480,12 @@ const BlogPostsPage: React.FC = () => {
             Count guest views in public blog counters
           </label>
           <div className="flex flex-wrap gap-3 text-sm text-slate-700">
-            <span className="px-2 py-1 rounded bg-slate-100">Public unique views: {viewSettings?.publicUniqueViews ?? 0}</span>
-            <span className="px-2 py-1 rounded bg-slate-100">Authenticated unique views: {viewSettings?.authenticatedUniqueViews ?? 0}</span>
-            <span className="px-2 py-1 rounded bg-slate-100">Guest unique views total: {viewSettings?.guestUniqueViewsTotal ?? 0}</span>
-            <span className="px-2 py-1 rounded bg-slate-100">Guest counted: {viewSettings?.guestUniqueViewsCounted ?? 0}</span>
-            <span className="px-2 py-1 rounded bg-slate-100">Guest excluded: {viewSettings?.guestUniqueViewsExcluded ?? 0}</span>
-            <span className="px-2 py-1 rounded bg-slate-100">Guest not counted by setting: {viewSettings?.guestUniqueViewsNotCountedBySetting ?? 0}</span>
+            <span className="px-2 py-1 rounded-sm bg-slate-100">Public unique views: {viewSettings?.publicUniqueViews ?? 0}</span>
+            <span className="px-2 py-1 rounded-sm bg-slate-100">Authenticated unique views: {viewSettings?.authenticatedUniqueViews ?? 0}</span>
+            <span className="px-2 py-1 rounded-sm bg-slate-100">Guest unique views total: {viewSettings?.guestUniqueViewsTotal ?? 0}</span>
+            <span className="px-2 py-1 rounded-sm bg-slate-100">Guest counted: {viewSettings?.guestUniqueViewsCounted ?? 0}</span>
+            <span className="px-2 py-1 rounded-sm bg-slate-100">Guest excluded: {viewSettings?.guestUniqueViewsExcluded ?? 0}</span>
+            <span className="px-2 py-1 rounded-sm bg-slate-100">Guest not counted by setting: {viewSettings?.guestUniqueViewsNotCountedBySetting ?? 0}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="btn btn-outline" disabled={viewSettingsBusy || !canExcludeGuestViews} onClick={handleExcludeGuestViews}>
@@ -527,13 +527,13 @@ const BlogPostsPage: React.FC = () => {
               )}
               <div className="relative">
                 <input
-                  className="p-2 border rounded min-w-[260px]"
+                  className="p-2 border rounded-sm min-w-[260px]"
                   placeholder="Open post analytics..."
                   value={postSearchTerm}
                   onChange={(event) => setPostSearchTerm(event.target.value)}
                 />
                 {postSearchTerm && (
-                  <div className="absolute z-10 mt-1 w-full max-h-56 overflow-auto bg-white border rounded shadow">
+                  <div className="absolute z-10 mt-1 w-full max-h-56 overflow-auto bg-white border rounded-sm shadow-sm">
                     {drillDownOptions.map((item) => (
                       <button
                         key={`drill-${item.id}`}
@@ -614,11 +614,11 @@ const BlogPostsPage: React.FC = () => {
                 {analyticsMode === "overview" && overviewAnalytics ? (
                   <div className="border rounded-xl p-3 bg-white">
                     <h4 className="text-sm font-semibold mb-2">Top posts</h4>
-                    <div className="text-xs space-y-1">
+                    <div className="text-xs stack-y-1">
                       {(overviewAnalytics.topPostsByViews ?? []).slice(0, 8).map((post) => (
                         <button
                           key={`top-view-${post.postId}`}
-                          className="flex justify-between w-full text-left hover:bg-slate-50 px-2 py-1 rounded"
+                          className="flex justify-between w-full text-left hover:bg-slate-50 px-2 py-1 rounded-sm"
                             onClick={() => {
                               adminBlogService.getOverviewBreakdown({ metric: "public_views" }).then(setBreakdown);
                               openAnalytics(post.postId);
@@ -639,7 +639,7 @@ const BlogPostsPage: React.FC = () => {
                     ? "Latest activity across all posts"
                     : `Latest activity for ${selectedPost?.title ?? "selected post"}`}
                 </h4>
-                <div className="max-h-56 overflow-auto border rounded">
+                <div className="max-h-56 overflow-auto border rounded-sm">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-50">
                       <tr>
@@ -654,13 +654,13 @@ const BlogPostsPage: React.FC = () => {
                         <tr key={`${item.timestamp}-inline-${index}`} className="border-t">
                           <td className="p-2">{new Date(item.timestamp).toLocaleString()}</td>
                           <td className="p-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] mr-1 ${item.actorType === "authenticated" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                            <span className={`px-2 py-0.5 rounded-sm text-[10px] mr-1 ${item.actorType === "authenticated" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
                               {item.actorType === "authenticated" ? "Auth" : "Guest"}
                             </span>
                             {item.actorDisplay}
                           </td>
                           <td className="p-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] bg-violet-100 text-violet-700">{item.eventType}</span>
+                            <span className="px-2 py-0.5 rounded-sm text-[10px] bg-violet-100 text-violet-700">{item.eventType}</span>
                           </td>
                           <td className="p-2">{item.reaction ? <span className="text-lg">{item.reaction}</span> : "—"}</td>
                         </tr>
@@ -677,7 +677,7 @@ const BlogPostsPage: React.FC = () => {
                     <button className="btn btn-outline" onClick={() => setBreakdown(null)}>Clear breakdown</button>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">{breakdown.title}</p>
-                  <div className="max-h-56 overflow-auto mt-2 border rounded">
+                  <div className="max-h-56 overflow-auto mt-2 border rounded-sm">
                     <table className="w-full text-xs">
                       <thead className="bg-slate-50">
                         <tr>

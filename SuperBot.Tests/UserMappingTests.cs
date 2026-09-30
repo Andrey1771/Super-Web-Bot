@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using AutoMapper;
 using SuperBot.Core.Entities;
 using SuperBot.Infrastructure.Data;
-using SuperBot.Infrastructure.Models;
+using SuperBot.Infrastructure.Mapping;
 using Xunit;
 
 namespace SuperBot.Tests;
@@ -19,8 +18,7 @@ namespace SuperBot.Tests;
 /// </summary>
 public class UserMappingTests
 {
-    private static IMapper CreateMapper() =>
-        new MapperConfiguration(config => config.AddProfile<UserProfile>()).CreateMapper();
+    private static IMapper CreateMapper() => new ObjectMapper();
 
     [Fact]
     public void Telegram_user_keeps_its_numeric_id()

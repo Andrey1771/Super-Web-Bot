@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using SuperBot.Application.Messaging;
 using SuperBot.Application.Commands.Telegram.Base;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
@@ -28,7 +28,7 @@ namespace SuperBot.Application.Handlers.Telegram.Base
             await botStateWriterService.SaveChatStateAsync(request.ChatId, state);
 
             var text = request.Text;
-            return text == "" ? await Task.FromResult<Message>(null) : await _botClient.SendTextMessageAsync(request.ChatId, text);
+            return text == "" ? await Task.FromResult<Message>(null) : await _botClient.SendMessage(request.ChatId, text);
         }
     }
 }

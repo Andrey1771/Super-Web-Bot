@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../../components/grid";
 import PageHeader from "../../components/layout/PageHeader";
 import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
@@ -28,9 +28,8 @@ import "./moderation-page.css";
  */
 
 /**
- * Общие настройки обеих очередей. Объявлены снаружи компонента: devextreme-react сравнивает
- * свойства по ссылке, и объект, собранный внутри, приезжал бы новым на каждый рендер — грид
- * счёл бы это сменой настроек и перечитал данные, а загрузка вызвала бы следующий рендер.
+ * Общие настройки обеих очередей. Объявлены снаружи компонента: они не меняются, и незачем
+ * собирать их заново на каждый рендер (прежний грид DevExtreme на этом уходил в перезагрузку).
  */
 const GRID_PROPS = {
   showBorders: true,
@@ -88,9 +87,9 @@ export const ReviewRevisions = ({ revisions, editedAt }: { revisions: ReviewRevi
 };
 
 /**
- * Отрисовщик ячейки только для настоящих строк. DevExtreme с виртуальной прокруткой и серверной
- * постраничностью рисует и строки-заглушки без данных (пока окно грузится или когда очередь
- * пуста) — cellRender приходит с пустым `data`, и обращение к полю роняло страницу целиком.
+ * Отрисовщик ячейки только для настоящих строк. Прежний грид (DevExtreme) рисовал и строки-заглушки
+ * без данных — cellRender приходил с пустым `data`, и обращение к полю роняло страницу целиком.
+ * Нынешняя таблица заглушек не рисует, но проверка дешёвая и страхует от пустых строк с сервера.
  */
 export const dataCell =
   <T extends { id: string }>(render: (row: T) => React.ReactNode) =>

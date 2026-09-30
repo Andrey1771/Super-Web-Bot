@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../../../components/grid";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
 import EmptyState from "../../../components/ui/EmptyState";
@@ -114,7 +114,7 @@ const BlogCommentsPage: React.FC = () => {
             показывает. */}
         <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
           <select
-            className="p-2 border rounded"
+            className="p-2 border rounded-sm"
             value={status}
             onChange={(event) => setStatus(event.target.value as AdminBlogCommentStatus | "")}
           >
@@ -180,14 +180,14 @@ const BlogCommentsPage: React.FC = () => {
                       <span
                         className={
                           cell.data.isGuest
-                            ? "px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700"
-                            : "px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-700"
+                            ? "px-2 py-0.5 rounded-sm text-[10px] bg-slate-100 text-slate-700"
+                            : "px-2 py-0.5 rounded-sm text-[10px] bg-emerald-100 text-emerald-700"
                         }
                       >
                         {cell.data.isGuest ? "Guest" : "User"}
                       </span>
                       {cell.data.authorBanned && (
-                        <span className="px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-700">Banned</span>
+                        <span className="px-2 py-0.5 rounded-sm text-[10px] bg-red-100 text-red-700">Banned</span>
                       )}
                     </div>
                   </div>
@@ -198,7 +198,7 @@ const BlogCommentsPage: React.FC = () => {
                 caption="Comment"
                 minWidth={280}
                 cellRender={(cell: { value: string }) => (
-                  <div className="whitespace-pre-wrap break-words line-clamp-3" title={cell.value}>
+                  <div className="whitespace-pre-wrap wrap-break-word line-clamp-3" title={cell.value}>
                     {cell.value}
                   </div>
                 )}

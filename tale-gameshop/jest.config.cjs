@@ -15,28 +15,17 @@ module.exports = {
 
     setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
 
-    // Пресеты те же, что у сборки (.babelrc), плюс декораторы: сервисы размечены
-    // @injectable/@inject для inversify, а webpack компилирует такие файлы ts-loader'ом, который
-    // декораторы понимает сам. Babel'ю это нужно объяснить — иначе тест не может импортировать
-    // ничего, что тянет за собой контейнер зависимостей.
+    // Тот же Babel, что у сборки (config/babel-options.cjs): пресеты, декораторы inversify и
+    // метаданные типов. Настройки переданы прямо, а не файлом .babelrc: иначе Babel не
+    // применил бы их к ESM-пакетам из node_modules, которые ниже тоже пропускаются через него.
     transform: {
-        '^.+\\.[jt]sx?$': ['babel-jest', {
-            babelrc: false,
-            configFile: false,
-            presets: ['@babel/preset-env', '@babel/preset-react', '@babel/preset-typescript'],
-            plugins: [
-                // Метаданные типов: по ним inversify понимает, что подставлять в конструктор.
-                'babel-plugin-transform-typescript-metadata',
-                ['@babel/plugin-proposal-decorators', { legacy: true }],
-                ['@babel/plugin-transform-class-properties', { loose: true }]
-            ]
-        }]
+        '^.+\\.[jt]sx?$': ['babel-jest', require('./config/babel-options.cjs')()]
     },
 
     // По умолчанию node_modules не трансформируются, но часть библиотек публикуется только в
     // ESM — их приходится пропускать через тот же Babel. Шаблон учитывает и обратные слэши:
     // на Windows пути приходят с ними.
-    transformIgnorePatterns: ['[/\\\\]node_modules[/\\\\](?!keycloak-js|@react-keycloak)'],
+    transformIgnorePatterns: ['[/\\\\]node_modules[/\\\\](?!keycloak-js|@react-keycloak|marked|inversify|@inversifyjs)'],
 
     moduleNameMapper: {
         // axios 1.x публикуется как ESM-пакет ("type": "module"), и Jest грузить его не умеет.

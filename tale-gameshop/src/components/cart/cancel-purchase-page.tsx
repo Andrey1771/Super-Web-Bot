@@ -9,7 +9,7 @@ const CancelPurchasePage: React.FC = () => {
             <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('success.canceledTitle')}</h2>
                 <p className="text-gray-600 mb-6">{t('success.canceledText')}</p>
-                <Link to="/checkout" className="px-6 py-3 bg-violet-600 text-white rounded-lg shadow hover:bg-violet-700">
+                <Link to="/checkout" className="px-6 py-3 bg-violet-600 text-white rounded-lg shadow-sm hover:bg-violet-700">
                     {t('success.backToCheckout')}
                 </Link>
             </div>

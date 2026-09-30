@@ -4,22 +4,37 @@
 //
 // Полный набор правил намеренно не подключаем: в проекте свои договорённости о стиле,
 // и разбирать тысячу замечаний заодно с этим никто не просил.
-import parser from "@typescript-eslint/parser";
+//
+// Код разбирает парсер Babel. Парсер @typescript-eslint держится за программный API компилятора
+// TypeScript, которого у TypeScript 7 нет; правилам ниже типы не нужны, достаточно синтаксиса.
+// Синтаксис включается плагинами парсера напрямую: пресеты Babel при разборе не применяются.
+// JSX — только в .tsx: в обычном .ts запись <T>value — это приведение типа, а не тег.
+import parser from "@babel/eslint-parser";
 import reactHooks from "eslint-plugin-react-hooks";
 import i18next from "eslint-plugin-i18next";
 
+const babelParser = (jsx) => ({
+  parser,
+  ecmaVersion: "latest",
+  sourceType: "module",
+  parserOptions: {
+    requireConfigFile: false,
+    babelOptions: {
+      babelrc: false,
+      configFile: false,
+      parserOpts: {
+        plugins: [["typescript", { dts: false }], ...(jsx ? ["jsx"] : []), "decorators-legacy"],
+      },
+    },
+  },
+});
+
 export default [
+  { files: ["src/**/*.ts"], ignores: ["src/**/*.test.ts"], languageOptions: babelParser(false) },
+  { files: ["src/**/*.tsx"], ignores: ["src/**/*.test.tsx"], languageOptions: babelParser(true) },
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/**/*.test.{ts,tsx}"],
-    languageOptions: {
-      parser,
-      ecmaVersion: "latest",
-      sourceType: "module",
-      parserOptions: {
-        ecmaFeatures: { jsx: true },
-      },
-    },
     plugins: {
       "react-hooks": reactHooks,
     },
@@ -40,6 +55,8 @@ export default [
       "src/**/*.test.{ts,tsx}",
       "src/components/admin/**",
       "src/components/admin-panel/**",
+      // Таблица админки (замена DevExtreme): служебные надписи в ней — английские, как вся админка.
+      "src/components/grid/**",
       "src/pages/admin/**",
       "src/components/orders/**",
       "src/components/layout/**",

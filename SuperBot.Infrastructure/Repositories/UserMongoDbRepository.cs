@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using SuperBot.Infrastructure.Mapping;
 using System.Collections.Generic;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;

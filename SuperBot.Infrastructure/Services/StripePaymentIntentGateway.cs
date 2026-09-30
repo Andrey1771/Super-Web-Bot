@@ -120,15 +120,22 @@ namespace SuperBot.Infrastructure.Services
 
         public async Task<PaymentIntentSnapshot?> UpdateAsync(string paymentIntentId, PaymentIntentDraft draft)
         {
-            var intent = await _service.UpdateAsync(paymentIntentId, new PaymentIntentUpdateOptions
+            var options = new PaymentIntentUpdateOptions
             {
                 Amount = draft.AmountMinorUnits,
                 Currency = draft.Currency,
                 Metadata = draft.Metadata,
-                ReceiptEmail = draft.ReceiptEmail,
                 // Покупателя у намерения не отбираем: null здесь значит «не менять», а не «отвязать».
                 Customer = draft.CustomerId
-            });
+            };
+            // С Stripe.net 51 явно присвоенный null у ReceiptEmail уходит как receipt_email= и стирает
+            // адрес для чека. Нет адреса в черновике — поле не трогаем, как было до обновления SDK.
+            if (!string.IsNullOrWhiteSpace(draft.ReceiptEmail))
+            {
+                options.ReceiptEmail = draft.ReceiptEmail;
+            }
+
+            var intent = await _service.UpdateAsync(paymentIntentId, options);
 
             return intent == null ? null : Map(intent);
         }

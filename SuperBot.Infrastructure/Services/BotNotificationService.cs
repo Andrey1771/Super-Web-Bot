@@ -41,7 +41,7 @@ namespace SuperBot.Infrastructure.Services
 
             try
             {
-                await _bot.SendTextMessageAsync(chatId.Value, message, parseMode: ParseMode.Html);
+                await _bot.SendMessage(chatId.Value, message, parseMode: ParseMode.Html);
             }
             catch (Exception ex)
             {

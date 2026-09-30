@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHeader, { GAMES_TABS } from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
-import { DataGrid, Column, Paging, Scrolling } from 'devextreme-react/data-grid';
+import { DataGrid, Column, Paging, Scrolling } from "../../components/grid";
 import { GRID_PAGE_SIZE } from '../../hooks/use-grid-window';
 import { useToast } from '../../components/ui/ToastProvider';
 import { useAdminHeader } from '../../components/layout/AdminHeaderContext';

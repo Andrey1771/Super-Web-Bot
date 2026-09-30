@@ -410,7 +410,7 @@ const BlogPostEditorPage: React.FC = () => {
         <LocalizedField label="Title" i18n={form.titleI18n} onI18nChange={(next) => handleChange("titleI18n", next)} placeholder={form.title}>
           <input
             type="text"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             value={form.title}
             onChange={(event) => {
               handleChange("title", event.target.value);
@@ -424,14 +424,14 @@ const BlogPostEditorPage: React.FC = () => {
         <label className="text-sm font-semibold">Slug</label>
         <input
           type="text"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded-sm"
           value={form.slug}
           onChange={(event) => handleChange("slug", event.target.value)}
         />
         <label className="text-sm font-semibold">Excerpt</label>
         <LocalizedField label="Excerpt" i18n={form.excerptI18n} onI18nChange={(next) => handleChange("excerptI18n", next)} multiline rows={4} placeholder={form.excerpt}>
           <textarea
-            className="w-full p-2 border rounded min-h-[120px]"
+            className="w-full p-2 border rounded-sm min-h-[120px]"
             value={form.excerpt}
             onChange={(event) => handleChange("excerpt", event.target.value)}
           />
@@ -449,7 +449,7 @@ const BlogPostEditorPage: React.FC = () => {
         >
           <input
             type="text"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             placeholder="rpg, updates, deals"
             value={tagsText}
             onChange={(event) => {
@@ -485,7 +485,7 @@ const BlogPostEditorPage: React.FC = () => {
           <div className="ml-auto flex items-center gap-2">
             <label className="text-xs text-gray-500">Editor mode</label>
             <select
-              className="p-2 border rounded"
+              className="p-2 border rounded-sm"
               value={contentMode}
               onChange={(event) => setContentMode(event.target.value as "markdown" | "html")}
             >
@@ -506,7 +506,7 @@ const BlogPostEditorPage: React.FC = () => {
               placeholder={contentMode === "markdown" ? "Translated markdown; empty — the English body is shown" : "Translated HTML; empty — the English body is shown"}
             >
               <textarea
-                className="w-full p-2 border rounded min-h-[260px]"
+                className="w-full p-2 border rounded-sm min-h-[260px]"
                 value={contentMode === "markdown" ? form.contentMarkdown : form.contentHtml}
                 onChange={(event) =>
                   contentMode === "markdown"
@@ -542,7 +542,7 @@ const BlogPostEditorPage: React.FC = () => {
         <h3>Publishing</h3>
         <label className="text-sm font-semibold">Status</label>
         <select
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded-sm"
           value={statusDraft}
           onChange={(event) => {
             const nextStatus = event.target.value as BlogStatus;
@@ -561,7 +561,7 @@ const BlogPostEditorPage: React.FC = () => {
             <label className="text-sm font-semibold">Scheduled at</label>
             <input
               type="datetime-local"
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded-sm"
               value={scheduledAt}
               onChange={(event) => handleScheduledAtChange(event.target.value)}
             />
@@ -572,7 +572,7 @@ const BlogPostEditorPage: React.FC = () => {
             <label className="text-sm font-semibold">Published at</label>
             <input
               type="datetime-local"
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded-sm"
               value={publishedAt}
               onChange={(event) => handlePublishedAtChange(event.target.value)}
             />
@@ -584,7 +584,7 @@ const BlogPostEditorPage: React.FC = () => {
           min={1}
           max={120}
           step={1}
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded-sm"
           value={form.readingTime ?? ""}
           onChange={(event) => {
             const value = event.target.value;
@@ -606,7 +606,7 @@ const BlogPostEditorPage: React.FC = () => {
         <label className="text-sm font-semibold">Change note</label>
         <input
           type="text"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded-sm"
           value={changeNote}
           onChange={(event) => handleChangeNote(event.target.value)}
         />
@@ -625,9 +625,9 @@ const BlogPostEditorPage: React.FC = () => {
           {versions.length === 0 ? (
             <EmptyState title="No versions yet" description="Save changes to create a new version." />
           ) : (
-            <div className="space-y-2">
+            <div className="stack-y-2">
               {versions.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between border rounded p-3">
+                <div key={entry.id} className="flex items-center justify-between border rounded-sm p-3">
                   <div>
                     <p className="font-semibold">Version {entry.versionNumber}</p>
                     <p className="text-xs text-gray-500">{entry.createdAt}</p>
@@ -658,7 +658,7 @@ const BlogPostEditorPage: React.FC = () => {
 
       <Drawer isOpen={versionDrawerOpen} title="Version details" onClose={() => setVersionDrawerOpen(false)}>
         {selectedVersion ? (
-          <div className="space-y-4">
+          <div className="stack-y-4">
             <Card>
               <p>
                 <strong>Version:</strong> {selectedVersion.versionNumber}

@@ -6,6 +6,7 @@ using MongoDB.Driver;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
+using SuperBot.Infrastructure.Mapping;
 using SuperBot.Infrastructure.ExternalServices;
 using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
@@ -396,15 +397,8 @@ builder.Services.AddHostedService<SuperBot.WebApi.Newsletter.NewsletterSendWorke
 
 
 
-builder.Services.AddAutoMapper(typeof(GameProfile));
-builder.Services.AddAutoMapper(typeof(GameDiscountProfile));
-builder.Services.AddAutoMapper(typeof(GameDetailsProfile));
-builder.Services.AddAutoMapper(typeof(CartGameProfile));
-builder.Services.AddAutoMapper(typeof(MediaAssetProfile));
-builder.Services.AddAutoMapper(typeof(BlogProfile));
-builder.Services.AddAutoMapper(typeof(AnalyticsSettingsProfile));
-builder.Services.AddAutoMapper(typeof(ImportJobProfile));
-builder.Services.AddAutoMapper(typeof(PromoCodeProfile));
+// Сущности ↔ документы Mongo: сгенерированный DbMapper (Mapperly) за прежним контрактом IMapper.
+builder.Services.AddDbMapper();
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<Ga4Client>();

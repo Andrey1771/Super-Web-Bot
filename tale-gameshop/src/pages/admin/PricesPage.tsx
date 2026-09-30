@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { DataGrid, Column, Paging, Scrolling, Sorting, type DataGridRef } from "devextreme-react/data-grid";
+import { DataGrid, Column, Paging, Scrolling, Sorting, type DataGridRef } from "../../components/grid";
 import PageHeader, { GAMES_TABS } from "../../components/layout/PageHeader";
 import Card from "../../components/ui/Card";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -263,8 +263,8 @@ const PricesPage: React.FC = () => {
             remoteOperations={REMOTE_PAGING}
             noDataText={query ? `Nothing found for "${query}".` : "No games yet."}
             onCellPrepared={(event) => {
-              // Полоска слева у ячейки — это источник цены. Класс вешаем на саму ячейку
-              // грида: разметку строк рисует DevExtreme, className в неё не передать.
+              // Полоска слева у ячейки — это источник цены. Класс вешаем на саму ячейку:
+              // разметку строк рисует таблица, className из cellRender до td не доходит.
               const currency = event.column?.caption;
               if (event.rowType === "data" && currency && currency !== "Game") {
                 const cell = (event.data as PriceRow).cells[currency];

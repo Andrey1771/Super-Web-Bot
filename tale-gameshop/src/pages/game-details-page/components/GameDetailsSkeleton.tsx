@@ -28,7 +28,7 @@ const GameDetailsSkeleton = () => (
             <div className="gd-skeleton gd-skeleton--badge" />
             <div className="gd-skeleton gd-skeleton--price" />
             <div className="gd-skeleton gd-skeleton--button" />
-            <div className="gd-skeleton gd-skeleton--button outline" />
+            <div className="gd-skeleton gd-skeleton--button outline-solid" />
             <div className="gd-skeleton gd-skeleton--line" />
             <div className="gd-skeleton gd-skeleton--line short" />
           </div>

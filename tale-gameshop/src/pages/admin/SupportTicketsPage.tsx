@@ -14,7 +14,7 @@ import {
     uploadAdminAttachments
 } from '../../api/adminSupportApi';
 import type { TicketStatus } from '../../types/support';
-import { DataGrid, Column, Paging, Scrolling, Sorting, type DataGridRef } from 'devextreme-react/data-grid';
+import { DataGrid, Column, Paging, Scrolling, Sorting, type DataGridRef } from "../../components/grid";
 import { GRID_PAGE_SIZE, gridStatusText, useGridWindow } from '../../hooks/use-grid-window';
 import { fetchWindow } from '../../utils/page-window';
 import { formatDateTimeOrDash as formatDate } from '../../i18n/format';
@@ -362,7 +362,7 @@ const SupportTicketsPage: React.FC = () => {
             {selectedId && (
                 <div className="admin-card">
                     {isDetailsLoading || !detailsTicket ? (
-                        <div className="space-y-3">
+                        <div className="stack-y-3">
                             <div className="skeleton h-10" />
                             <div className="skeleton h-20" />
                         </div>

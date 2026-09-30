@@ -1,5 +1,5 @@
-using SixLabors.ImageSharp;
 using SuperBot.Core.Entities;
+using SuperBot.WebApi.Services.Imaging;
 
 namespace SuperBot.WebApi.Services;
 
@@ -8,7 +8,9 @@ public class ImageMetadataReader : IImageMetadataReader
     private readonly string _webRoot;
     private static readonly HttpClient HttpClient = new()
     {
-        Timeout = TimeSpan.FromSeconds(10)
+        Timeout = TimeSpan.FromSeconds(10),
+        // Размер узнаём по скачанному файлу целиком: без предела чужой адрес мог бы подсунуть гигабайты.
+        MaxResponseContentBufferSize = 25 * 1024 * 1024
     };
 
     public ImageMetadataReader(IWebHostEnvironment env)
@@ -58,13 +60,8 @@ public class ImageMetadataReader : IImageMetadataReader
 
         try
         {
-            var info = await Image.IdentifyAsync(physicalPath, ct);
-            if (info == null || info.Width <= 0 || info.Height <= 0)
-            {
-                return null;
-            }
-
-            return (info.Width, info.Height);
+            ct.ThrowIfCancellationRequested();
+            return RasterImage.Identify(physicalPath);
         }
         catch
         {
@@ -98,14 +95,9 @@ public class ImageMetadataReader : IImageMetadataReader
     {
         try
         {
-            await using var stream = await HttpClient.GetStreamAsync(uri, ct);
-            var info = await Image.IdentifyAsync(stream, ct);
-            if (info == null || info.Width <= 0 || info.Height <= 0)
-            {
-                return null;
-            }
-
-            return (info.Width, info.Height);
+            // Сетевой поток не перематывается, а декодеру нужен произвольный доступ — берём файл целиком.
+            var bytes = await HttpClient.GetByteArrayAsync(uri, ct);
+            return RasterImage.Identify(bytes);
         }
         catch
         {

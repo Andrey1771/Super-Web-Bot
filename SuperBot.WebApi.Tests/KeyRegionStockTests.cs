@@ -125,13 +125,16 @@ public class KeyRegionStockTests
     [Fact]
     public async Task Usage_is_reported_per_day_and_turns_into_days_of_cover()
     {
+        // Свой регион, в который больше никто не продаёт: итоги по региону (темп, активные дни,
+        // запас) считаются по всем играм, и продажи соседних тестов в EU сдвигали бы их.
+        var latamOnly = new RegionPolicy { Mode = "Regions", Regions = new() { "LATAM" } };
         var gameId = await SeedGameAsync(priceTheEuOffer: false);
         using (var scope = _factory.Services.CreateScope())
         {
             var keys = scope.ServiceProvider.GetRequiredService<IGameKeyRepository>();
-            await keys.AddPoolKeysAsync(gameId, "Steam", new[] { "RS-USE-1", "RS-USE-2", "RS-USE-3" }, regionPolicy: EuOnly);
+            await keys.AddPoolKeysAsync(gameId, "Steam", new[] { "RS-USE-1", "RS-USE-2", "RS-USE-3" }, regionPolicy: latamOnly);
             // Один ключ уходит сегодня: расход появляется в последнем столбце графика.
-            await keys.TryDispensePoolKeyAsync(gameId, "buyer@example.com", null, null, null, null, RegionOffer.KeyOf(EuOnly));
+            await keys.TryDispensePoolKeyAsync(gameId, "buyer@example.com", null, null, null, null, RegionOffer.KeyOf(latamOnly));
         }
 
         var body = await Body(await AdminClient().GetAsync("/api/admin/keys/overview/by-region?days=30"));
@@ -140,21 +143,21 @@ public class KeyRegionStockTests
         Assert.Equal(30, days.Count);
         Assert.Equal(DateTime.UtcNow.ToString("yyyy-MM-dd"), days.Last());
 
-        var europe = RegionRow(body, RegionOffer.KeyOf(EuOnly));
-        var daily = europe.GetProperty("daily").EnumerateArray().Select(x => x.GetInt32()).ToList();
+        var latam = RegionRow(body, RegionOffer.KeyOf(latamOnly));
+        var daily = latam.GetProperty("daily").EnumerateArray().Select(x => x.GetInt32()).ToList();
         Assert.Equal(days.Count, daily.Count);
         // Сегодняшняя выдача видна в кривой, и она же поднимает средний расход выше нуля.
         Assert.True(daily.Last() >= 1);
-        Assert.True(europe.GetProperty("soldInWindow").GetInt32() >= 1);
-        Assert.True(europe.GetProperty("perDay").GetDouble() > 0);
+        Assert.True(latam.GetProperty("soldInWindow").GetInt32() >= 1);
+        Assert.True(latam.GetProperty("perDay").GetDouble() > 0);
         // «Хватит на N дней» — это остаток, делённый на средний расход, а не выдумка.
-        Assert.True(europe.GetProperty("daysLeft").GetInt32() > 0);
+        Assert.True(latam.GetProperty("daysLeft").GetInt32() > 0);
 
         // Темп считается с первой продажи, а не по всему окну: продали сегодня — активный день один,
         // и «1 ключ в день» не размазывается в 1/30. Иначе месяц простоя перед стартом продаж
         // делал бы любую игру «медленной» и обещал запас, которого нет.
-        Assert.Equal(1, europe.GetProperty("activeDays").GetInt32());
-        Assert.Equal(1, europe.GetProperty("perDay").GetDouble());
+        Assert.Equal(1, latam.GetProperty("activeDays").GetInt32());
+        Assert.Equal(1, latam.GetProperty("perDay").GetDouble());
     }
 
     [Fact]
@@ -258,5 +261,24 @@ public class KeyRegionStockTests
         var global = RegionRow(body, "global");
         var globalWaiting = global.GetProperty("needRestock").EnumerateArray().Select(row => row.GetProperty("gameId").GetString()).ToList();
         Assert.DoesNotContain(priced, globalWaiting);
+    }
+
+    [Fact]
+    public async Task Default_region_policy_is_saved_by_its_own_endpoint()
+    {
+        // Атрибут маршрута этого запроса однажды «уехал» на соседний метод цены варианта:
+        // PUT region-policy молча писал цену, а политика игры не менялась вовсе.
+        var gameId = await SeedGameAsync(priceTheEuOffer: true);
+
+        var response = await AdminClient().PutAsJsonAsync($"/api/admin/keys/inventory/{gameId}/region-policy", EuOnly);
+        response.EnsureSuccessStatusCode();
+
+        using var scope = _factory.Services.CreateScope();
+        var game = await scope.ServiceProvider.GetRequiredService<IGameRepository>().GetByIdAsync(gameId);
+        Assert.NotNull(game!.RegionPolicy);
+        Assert.Equal(new[] { "EU" }, game.RegionPolicy!.Regions);
+        // Цена EU-варианта, заданная при создании игры, осталась нетронутой.
+        Assert.Single(game.RegionPrices!);
+        Assert.Equal(15m, game.RegionPrices![0].Price);
     }
 }

@@ -20,7 +20,7 @@
   "eventsEnabled": true,
   "eventsExpiration": 604800,
   "smtpServer": {
-    "host": "mailhog",
+    "host": "mailpit",
     "port": "1025",
     "from": "no-reply@taleshop.local",
     "fromDisplayName": "Tale Shop",

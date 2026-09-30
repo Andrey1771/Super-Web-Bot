@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using SuperBot.Infrastructure.Mapping;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using System.Security.Cryptography;

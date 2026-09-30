@@ -209,7 +209,7 @@ const CustomerCashbackCard: React.FC<{ email: string }> = ({ email }) => {
             <p className="text-sm text-gray-600">
               {email} unsubscribed from cashback emails. Only turn them back on if the customer asked for it — say how they asked.
             </p>
-            <textarea className="w-full p-2 border rounded mt-3" rows={2} placeholder="Reason (required), e.g. customer asked in ticket #1234" value={resumeReason} onChange={(event) => setResumeReason(event.target.value)} />
+            <textarea className="w-full p-2 border rounded-sm mt-3" rows={2} placeholder="Reason (required), e.g. customer asked in ticket #1234" value={resumeReason} onChange={(event) => setResumeReason(event.target.value)} />
             <div className="flex gap-2 justify-end mt-4">
               <button type="button" className="btn btn-outline" onClick={() => setResuming(false)} disabled={busy}>Cancel</button>
               <button type="button" className="btn btn-primary" onClick={resume} disabled={busy || !resumeReason.trim()}>
@@ -235,7 +235,7 @@ const CustomerCashbackCard: React.FC<{ email: string }> = ({ email }) => {
               </select>
               <input className="input" inputMode="decimal" placeholder="Amount, USD" value={amount} onChange={(event) => setAmount(event.target.value)} aria-label="Amount in USD" />
             </div>
-            <textarea className="w-full p-2 border rounded mt-3" rows={3} placeholder="Reason (required), e.g. dispute won, goodwill for a delayed key" value={reason} onChange={(event) => setReason(event.target.value)} />
+            <textarea className="w-full p-2 border rounded-sm mt-3" rows={3} placeholder="Reason (required), e.g. dispute won, goodwill for a delayed key" value={reason} onChange={(event) => setReason(event.target.value)} />
             <div className="flex gap-2 justify-end mt-4">
               <button type="button" className="btn btn-outline" onClick={() => setAdjusting(false)} disabled={busy}>Cancel</button>
               <button type="button" className="btn btn-primary" onClick={submit} disabled={!canSubmit}>

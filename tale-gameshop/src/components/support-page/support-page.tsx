@@ -142,7 +142,7 @@ const SupportPage: React.FC = () => {
     const faqRef = useRef<HTMLDivElement | null>(null);
     const contactRef = useRef<HTMLDivElement | null>(null);
 
-    const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
+    const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
         if (ref.current) {
             ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }

@@ -200,11 +200,11 @@
 
 /* В ячейке грида места меньше, чем в карточке: кнопки и поле ответа переносятся по строкам,
    а поле не растягивает колонку. */
-.moderation .dx-datagrid .moderation__actions {
+.moderation .data-grid .moderation__actions {
   margin-top: 0;
   gap: 6px;
 }
 
-.moderation .dx-datagrid .moderation__text {
+.moderation .data-grid .moderation__text {
   margin: 2px 0;
 }

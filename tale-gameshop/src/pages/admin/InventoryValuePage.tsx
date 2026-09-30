@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import PageHeader from "../../components/layout/PageHeader";
-import { DataGrid, Column, Paging, Scrolling } from "devextreme-react/data-grid";
+import { DataGrid, Column, Paging, Scrolling } from "../../components/grid";
 import { GRID_PAGE_SIZE } from "../../hooks/use-grid-window";
 import { useAdminHeader } from "../../components/layout/AdminHeaderContext";
 import { getInventoryValueReport, type InventoryValueReport } from "../../api/adminReportsApi";

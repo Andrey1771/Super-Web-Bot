@@ -418,7 +418,7 @@ const SiteChangerPage: React.FC = () => {
 
     if (view === "list") {
       return (
-        <div className="space-y-3">
+        <div className="stack-y-3">
           {items.map((item) => {
             const isVideo = item.type === "video" || item.contentType?.startsWith("video");
             const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
@@ -429,7 +429,7 @@ const SiteChangerPage: React.FC = () => {
             <Card key={item.id} className="flex items-center gap-4 media-card media-card--row">
               {isVideo ? (
                 !showPreviewMissing ? (
-                  <div className="relative h-16 w-20 overflow-hidden rounded">
+                  <div className="relative h-16 w-20 overflow-hidden rounded-sm">
                     <img
                       src={resolvedThumbnail}
                       alt={item.filename}
@@ -443,7 +443,7 @@ const SiteChangerPage: React.FC = () => {
                     </span>
                   </div>
                 ) : (
-                  <div className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded bg-gray-100 text-[11px] text-gray-500">
+                  <div className="flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-sm bg-gray-100 text-[11px] text-gray-500">
                     <span>Preview missing</span>
                     <span
                       role="button"
@@ -470,7 +470,7 @@ const SiteChangerPage: React.FC = () => {
                 <img
                   src={resolvedThumbnail || resolvedUrl}
                   alt={item.filename}
-                  className="h-16 w-20 rounded object-cover"
+                  className="h-16 w-20 rounded-sm object-cover"
                   loading="lazy"
                   decoding="async"
                 />
@@ -506,9 +506,9 @@ const SiteChangerPage: React.FC = () => {
           const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id] || isPlaceholderThumbnailUrl(item.thumbnailUrl));
           const isGenerating = generatingPreviews[item.id];
           return (
-          <div key={item.id} className="media-card border rounded-lg p-3 bg-white shadow-sm">
+          <div key={item.id} className="media-card border rounded-lg p-3 bg-white shadow-xs">
             <button className="w-full" onClick={() => handleOpenDetails(item)}>
-              <div className="h-32 w-full overflow-hidden rounded">
+              <div className="h-32 w-full overflow-hidden rounded-sm">
                 {isVideo ? (
                   !showPreviewMissing ? (
                     <div className="relative h-full w-full">
@@ -524,7 +524,7 @@ const SiteChangerPage: React.FC = () => {
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">▶</span>
                       </span>
                       {formatDuration(item.durationSec) && (
-                        <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+                        <span className="absolute bottom-2 right-2 rounded-sm bg-black/60 px-2 py-0.5 text-xs text-white">
                           {formatDuration(item.durationSec)}
                         </span>
                       )}
@@ -658,8 +658,8 @@ const SiteChangerPage: React.FC = () => {
 
       <Drawer isOpen={drawerOpen} title="Media details" onClose={() => setDrawerOpen(false)}>
         {selectedAsset ? (
-          <div className="space-y-4">
-            <div className="h-48 w-full overflow-hidden rounded border">
+          <div className="stack-y-4">
+            <div className="h-48 w-full overflow-hidden rounded-sm border">
               {(selectedAsset.type === "video" || selectedAsset.contentType?.startsWith("video")) ? (
                 <video
                   controls
@@ -699,7 +699,7 @@ const SiteChangerPage: React.FC = () => {
             <Card>
               <h3>Link</h3>
               <div className="flex items-center gap-2">
-                <input type="text" readOnly value={selectedAsset.url} className="w-full p-2 border rounded" />
+                <input type="text" readOnly value={selectedAsset.url} className="w-full p-2 border rounded-sm" />
                 <button className="btn btn-outline" onClick={() => handleCopy(selectedAsset.url, "Link copied")}>Copy</button>
                 <button className="btn btn-outline" onClick={() => window.open(selectedAsset.url, "_blank", "noopener,noreferrer")}>Open</button>
               </div>
@@ -710,7 +710,7 @@ const SiteChangerPage: React.FC = () => {
               {usageLoading ? (
                 <p className="text-xs text-gray-500">Loading usage...</p>
               ) : usageCount > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm">
+                <ul className="mt-2 stack-y-1 text-sm">
                   {usage.map((game) => (
                     <li key={game.gameId}>{game.gameTitle}</li>
                   ))}

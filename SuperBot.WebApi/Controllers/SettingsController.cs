@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using SuperBot.Infrastructure.Mapping;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;

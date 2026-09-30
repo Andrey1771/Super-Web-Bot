@@ -1,5 +1,5 @@
 import React from "react";
-import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../grid";
 import Card from "../ui/Card";
 import EmptyState from "../ui/EmptyState";
 import { GRID_PAGE_SIZE, REMOTE_PAGING, gridStatusText, useGridWindow } from "../../hooks/use-grid-window";

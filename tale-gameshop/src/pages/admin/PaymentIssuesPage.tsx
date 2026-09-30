@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { REMOTE_PAGING } from "../../hooks/use-grid-window";
-import { DataGrid, Column, Paging, Scrolling, Sorting } from 'devextreme-react/data-grid';
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../../components/grid";
 import container from '../../inversify.config';
 import IDENTIFIERS from '../../constants/identifiers';
 import type { IApiClient } from '../../iterfaces/i-api-client';
@@ -76,7 +76,7 @@ const PaymentIssuesPage: React.FC = () => {
         <div className="flex items-center gap-3 mb-4">
           <label className="text-sm font-semibold">Status</label>
           <select
-            className="border rounded px-3 py-2"
+            className="border rounded-sm px-3 py-2"
             value={status}
             onChange={(event) => setStatus(event.target.value as 'Open' | 'Resolved' | 'all')}
           >

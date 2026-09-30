@@ -1,4 +1,4 @@
-using MediatR;
+using SuperBot.Application.Messaging;
 using Microsoft.Extensions.Configuration;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot.Types;
@@ -42,14 +42,14 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
 
             if (matches.Count == 0)
             {
-                return await _botClient.SendTextMessageAsync(chatId, _translationsService.Translation.NotFoundGameError, cancellationToken: cancellationToken);
+                return await _botClient.SendMessage(chatId, _translationsService.Translation.NotFoundGameError, cancellationToken: cancellationToken);
             }
 
             var starsPerUsd = _configuration.GetValue<int?>("BotPayments:StarsPerUsd") ?? StarPrice.DefaultStarsPerUsd;
 
             // Заголовок один раз, затем каждая игра — отдельной карточкой с обложкой.
             var header = string.Format(_translationsService.Translation.ChooseGameToBuy, query);
-            var headerMessage = await _botClient.SendTextMessageAsync(
+            var headerMessage = await _botClient.SendMessage(
                 chatId: chatId,
                 text: header,
                 parseMode: ParseMode.Html,
@@ -93,7 +93,7 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
             {
                 if (GameCoverUrlResolver.IsUsablePhotoUrl(coverUrl))
                 {
-                    await _botClient.SendPhotoAsync(chatId, InputFile.FromUri(coverUrl!),
+                    await _botClient.SendPhoto(chatId, InputFile.FromUri(coverUrl!),
                         caption: caption, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
                     return;
                 }
@@ -109,7 +109,7 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
                 }
                 catch
                 {
-                    await _botClient.SendTextMessageAsync(chatId, caption, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, caption, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
                 }
             }
         }
@@ -119,7 +119,7 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
             var cachedFileId = _fallbackCoverFileId;
             if (cachedFileId != null)
             {
-                await _botClient.SendPhotoAsync(chatId, InputFile.FromFileId(cachedFileId),
+                await _botClient.SendPhoto(chatId, InputFile.FromFileId(cachedFileId),
                     caption: caption, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
                 return;
             }
@@ -128,11 +128,11 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
             if (stream == null)
             {
                 // Дефолтной обложки в сборке нет — не падаем, отдаём текстом.
-                await _botClient.SendTextMessageAsync(chatId, caption, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
+                await _botClient.SendMessage(chatId, caption, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
                 return;
             }
 
-            var sent = await _botClient.SendPhotoAsync(chatId, InputFile.FromStream(stream, "game-cover.png"),
+            var sent = await _botClient.SendPhoto(chatId, InputFile.FromStream(stream, "game-cover.png"),
                 caption: caption, parseMode: ParseMode.Html, replyMarkup: keyboard, cancellationToken: cancellationToken);
 
             var fileId = sent.Photo?.OrderByDescending(photo => photo.Width).FirstOrDefault()?.FileId;

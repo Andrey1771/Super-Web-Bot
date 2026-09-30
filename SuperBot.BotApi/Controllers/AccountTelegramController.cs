@@ -81,7 +81,7 @@ namespace SuperBot.BotApi.Controllers
 
             try
             {
-                var me = await _bot.GetMeAsync();
+                var me = await _bot.GetMe();
                 if (!string.IsNullOrWhiteSpace(me.Username))
                 {
                     _cache.Set("bot:username", me.Username, TimeSpan.FromHours(6));

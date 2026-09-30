@@ -5,8 +5,19 @@ import path from 'path';
 
 const app = express();
 
-const cert = fs.readFileSync('./public/private.crt');
-const key = fs.readFileSync('./public/private.key');
+// Сертификаты лежат в certs/ (игнорируется git), а не в public/, откуда всё публикуется:
+// сначала доверенные mkcert (npm run cert:dev), иначе старый самоподписанный — как в webpack.config.js.
+const certPair = [
+    ['certs/localhost-key.pem', 'certs/localhost.pem'],
+    ['certs/private.key', 'certs/private.crt'],
+].find(([keyPath, certPath]) => fs.existsSync(keyPath) && fs.existsSync(certPath));
+
+if (!certPair) {
+    throw new Error('No TLS certificate in certs/. Run `npm run cert:dev` first.');
+}
+
+const key = fs.readFileSync(certPair[0]);
+const cert = fs.readFileSync(certPair[1]);
 
 const buildPath = path.resolve('dist');
 
@@ -23,7 +34,8 @@ app.use((req, res, next) => {
 
 app.use(express.static(buildPath));
 
-app.get('*', (req, res) => {
+// Express 5: «любой путь» записывается именованным шаблоном, голая «*» больше не принимается.
+app.get('/{*splat}', (req, res) => {
     res.sendFile(path.resolve(buildPath, 'index.html'));
 });
 

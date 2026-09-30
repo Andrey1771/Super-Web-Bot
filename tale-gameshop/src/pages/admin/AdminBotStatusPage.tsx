@@ -213,7 +213,7 @@ const AdminBotStatusPage: React.FC = () => {
 
       {loading && !status && (
         <Card>
-          <div className="space-y-3">
+          <div className="stack-y-3">
             <div className="skeleton h-10" />
             <div className="skeleton h-10" />
           </div>
@@ -265,7 +265,7 @@ const AdminBotStatusPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="text-sm text-slate-600 space-y-1">
+              <div className="text-sm text-slate-600 stack-y-1">
                 <p>
                   <span className="text-slate-400">Configured URL:</span>{" "}
                   {status.configuredWebhookUrl || "—"}
@@ -359,7 +359,7 @@ const AdminBotStatusPage: React.FC = () => {
               />
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <select
-                  className="p-2 border rounded"
+                  className="p-2 border rounded-sm"
                   value={broadcastSegment}
                   onChange={(event) => setBroadcastSegment(event.target.value as "linked" | "all")}
                 >

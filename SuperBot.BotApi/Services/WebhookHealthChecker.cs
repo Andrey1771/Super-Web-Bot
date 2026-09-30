@@ -34,7 +34,7 @@ public sealed class WebhookHealthChecker(
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TelegramTimeout);
 
-        var info = await bot.GetWebhookInfoAsync(timeout.Token);
+        var info = await bot.GetWebhookInfo(timeout.Token);
         var (reachability, detail) = await ProbeAsync(info.Url, ct);
 
         return WebhookHealth.Inspect(

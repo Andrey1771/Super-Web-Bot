@@ -1,5 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Requests.Abstractions;
+using Telegram.Bot.Types;
 
 namespace SuperBot.BotApi.Services;
 
@@ -62,26 +63,15 @@ public sealed class UnconfiguredTelegramBotClient(string reason) : ITelegramBotC
     public event AsyncEventHandler<Telegram.Bot.Args.ApiRequestEventArgs>? OnMakingApiRequest;
     public event AsyncEventHandler<Telegram.Bot.Args.ApiResponseEventArgs>? OnApiResponseReceived;
 
-    // В Telegram.Bot 22 у интерфейса по два имени на каждый вызов (новое и устаревшее-Async);
-    // реализуем оба, чтобы ни один потребитель не получил NotImplemented вместо понятной причины.
     public Task<TResponse> SendRequest<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default) =>
-        Task.FromException<TResponse>(Fail());
-
-    public Task<TResponse> MakeRequest<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default) =>
-        Task.FromException<TResponse>(Fail());
-
-    public Task<TResponse> MakeRequestAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default) =>
         Task.FromException<TResponse>(Fail());
 
     public Task<bool> TestApi(CancellationToken cancellationToken = default) =>
         Task.FromException<bool>(Fail());
 
-    public Task<bool> TestApiAsync(CancellationToken cancellationToken = default) =>
-        Task.FromException<bool>(Fail());
-
     public Task DownloadFile(string filePath, Stream destination, CancellationToken cancellationToken = default) =>
         Task.FromException(Fail());
 
-    public Task DownloadFileAsync(string filePath, Stream destination, CancellationToken cancellationToken = default) =>
+    public Task DownloadFile(TGFile file, Stream destination, CancellationToken cancellationToken = default) =>
         Task.FromException(Fail());
 }

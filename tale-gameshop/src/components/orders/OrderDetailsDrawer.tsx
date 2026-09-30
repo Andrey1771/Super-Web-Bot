@@ -226,7 +226,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({
     <>
       <Drawer isOpen={isOpen} title={order ? `Order ${order.number}` : "Order details"} onClose={onClose}>
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="stack-y-3">
             <div className="skeleton h-10" />
             <div className="skeleton h-20" />
             <div className="skeleton h-20" />
@@ -234,7 +234,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({
         ) : error ? (
           <div className="text-sm text-red-500">{error}</div>
         ) : order ? (
-          <div className="space-y-4">
+          <div className="stack-y-4">
             <div className="order-drawer__head">
               <div>
                 <p className="text-sm text-gray-500">Status</p>
@@ -360,7 +360,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({
 
             <Card>
               <h3>Items</h3>
-              <div className="space-y-3">
+              <div className="stack-y-3">
                 {order.items.map((item, index) => (
                   <div key={`${item.gameId}-${index}`} className="flex items-start justify-between gap-4">
                     <div>
@@ -466,7 +466,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({
                   Sets the status directly, without delivering keys or moving money. Use only when the record has drifted from
                   reality. The reason goes into the order history with your name.
                 </p>
-                <select className="w-full p-2 border rounded mt-3" value={forceStatus} onChange={(e) => setForceStatus(e.target.value as OrderStatus)}>
+                <select className="w-full p-2 border rounded-sm mt-3" value={forceStatus} onChange={(e) => setForceStatus(e.target.value as OrderStatus)}>
                   {FORCE_STATUSES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -508,7 +508,7 @@ const OrderDetailsDrawer: React.FC<OrderDetailsDrawerProps> = ({
               </>
             )}
             <textarea
-              className="w-full p-2 border rounded mt-3"
+              className="w-full p-2 border rounded-sm mt-3"
               rows={3}
               placeholder={pending.kind !== "action" || pending.needsReason ? "Reason (required)" : "Note (optional)"}
               value={reason}

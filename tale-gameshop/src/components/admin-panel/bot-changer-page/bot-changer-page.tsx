@@ -315,7 +315,7 @@ const BotChangerPage: React.FC = () => {
           </div>
 
           {loading && (
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 stack-y-3">
               <div className="skeleton h-10" />
               <div className="skeleton h-10" />
               <div className="skeleton h-10" />

@@ -5,6 +5,7 @@ using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
 using SuperBot.Application.Commands.Telegram;
+using SuperBot.Application.Messaging;
 using SuperBot.BotApi.Services;
 using SuperBot.BotApi.Types;
 using SuperBot.Common.Auth;
@@ -12,6 +13,7 @@ using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IBotStateService;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
+using SuperBot.Infrastructure.Mapping;
 using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
 using SuperBot.Infrastructure.Services;
@@ -44,7 +46,7 @@ builder.Services.AddSingleton<IMongoClient, MongoClient>(_ =>
 builder.Services.AddScoped<IMongoDatabase>(sp =>
     sp.GetRequiredService<IMongoClient>().GetDatabase(builder.Configuration.GetSection("ConnectionStrings:Name").Value));
 
-builder.Services.AddAutoMapper(typeof(GameProfile)); // сканирует все профили в Infrastructure.Models
+builder.Services.AddDbMapper();
 
 // --- Репозитории, нужные боту ---
 builder.Services.AddScoped<IGameRepository, GameMongoDbRepository>();
@@ -74,7 +76,8 @@ builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<IT
     httpClient => botTokenUsable
         ? new TelegramBotClient(botToken!, httpClient)
         : new SuperBot.BotApi.Services.UnconfiguredTelegramBotClient(botTokenProblem));
-builder.Services.ConfigureTelegramBotMvc();
+// Типы Telegram (Update и т.п.) в теле вебхука разбираются настройками JSON самой библиотеки.
+builder.Services.ConfigureTelegramBot<Microsoft.AspNetCore.Mvc.JsonOptions>(options => options.JsonSerializerOptions);
 
 builder.Services.AddSingleton<IResourceService, MongoResourceService>();
 builder.Services.AddSingleton<IUrlService, UrlProvider>();
@@ -86,7 +89,7 @@ builder.Services.AddSingleton<MongoBotStateService>();
 builder.Services.AddSingleton<IBotStateReaderService>(sp => sp.GetRequiredService<MongoBotStateService>());
 builder.Services.AddSingleton<IBotStateWriterService>(sp => sp.GetRequiredService<MongoBotStateService>());
 
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetMainMenuCommand).Assembly));
+builder.Services.AddMediator(typeof(GetMainMenuCommand).Assembly);
 
 builder.Services.AddSingleton<TelegramUpdateHandler>();
 builder.Services.AddSingleton<TelegramInitDataValidator>();

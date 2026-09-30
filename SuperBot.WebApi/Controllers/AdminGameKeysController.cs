@@ -865,8 +865,6 @@ namespace SuperBot.WebApi.Controllers
             return (new KeyBatchCost(unitCost.Value, code, cleanSupplier, Guid.NewGuid().ToString("N")), null);
         }
 
-        /// <summary>Политика активации игры по умолчанию (для ключей без своей). null — везде.</summary>
-        [HttpPut("inventory/{gameId}/region-policy")]
         /// <summary>
         /// Цена продажи регионального варианта. Пустая цена снимает её — вариант возвращается
         /// к цене игры. Регион задаётся политикой, как и при заливке партии: одинаково
@@ -929,6 +927,8 @@ namespace SuperBot.WebApi.Controllers
             StockChanged();
         }
 
+        /// <summary>Политика активации игры по умолчанию (для ключей без своей). null — везде.</summary>
+        [HttpPut("inventory/{gameId}/region-policy")]
         public async Task<IActionResult> SetRegionPolicy(string gameId, [FromBody] SuperBot.Core.Regions.RegionPolicy? policy)
         {
             var game = await _games.GetByIdAsync(gameId);

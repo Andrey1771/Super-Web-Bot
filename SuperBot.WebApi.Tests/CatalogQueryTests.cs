@@ -401,9 +401,13 @@ public class CatalogQueryTests
     {
         // Верхняя граница диапазона принадлежит последнему столбику; иначе самая дорогая
         // игра выпадала бы из распределения вовсе.
+        // Границы шкалы общие для всего каталога, а база у коллекции тестов одна: соседние тесты
+        // сеют и игры дороже 200. Поэтому «потолок» ставим выше того, что в каталоге уже есть,
+        // иначе проверка зависела бы от порядка запуска.
         var marker = NewMarker();
+        var catalogMax = (await GetCatalogAsync($"q={NewMarker()}")).GetProperty("priceRange").GetProperty("max").GetDecimal();
         await SeedGameAsync($"{marker} Floor", price: 1m);
-        await SeedGameAsync($"{marker} Ceiling", price: 200m);
+        await SeedGameAsync($"{marker} Ceiling", price: Math.Max(200m, catalogMax + 100m));
         RefreshCatalog();
 
         var page = await GetCatalogAsync($"q={marker}");

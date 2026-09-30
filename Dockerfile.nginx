@@ -1,5 +1,5 @@
 # Первый этап: сборка фронтенда
-FROM node:18-alpine as frontend
+FROM node:24-alpine AS frontend
 
 WORKDIR /app
 COPY ./tale-gameshop/package*.json ./

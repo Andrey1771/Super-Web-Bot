@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { render, waitFor } from "@testing-library/react";
-import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../components/grid";
 import { GRID_PAGE_SIZE, REMOTE_PAGING, useGridWindow } from "./use-grid-window";
 
 /**

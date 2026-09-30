@@ -122,7 +122,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                     {linked ? (
                       <Link
                         to={to}
-                        className="rounded text-inherit no-underline transition-colors hover:text-violet-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+                        className="rounded-sm text-inherit no-underline transition-colors hover:text-violet-600 hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
                       >
                         {crumb}
                       </Link>

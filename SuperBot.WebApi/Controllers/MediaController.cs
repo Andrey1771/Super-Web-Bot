@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Diagnostics;
 using SuperBot.WebApi.Services;
-using SixLabors.ImageSharp.Processing;
+using SuperBot.WebApi.Services.Imaging;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -484,7 +484,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            using var image = await SixLabors.ImageSharp.Image.LoadAsync(physicalPath, ct);
+            using var image = await RasterImage.LoadAsync(physicalPath, ct);
 
             // Картинку меньше миниатюры уменьшать незачем: копия вышла бы тяжелее оригинала.
             if (image.Width <= ImageThumbnailMaxSide && image.Height <= ImageThumbnailMaxSide)
@@ -492,19 +492,13 @@ public class MediaController : ControllerBase
                 return null;
             }
 
-            image.Mutate(context => context
-                .AutoOrient()
-                .Resize(new SixLabors.ImageSharp.Processing.ResizeOptions
-                {
-                    Mode = SixLabors.ImageSharp.Processing.ResizeMode.Max,
-                    Size = new SixLabors.ImageSharp.Size(ImageThumbnailMaxSide, ImageThumbnailMaxSide)
-                }));
+            using var thumbnail = image.FitWithin(ImageThumbnailMaxSide);
 
             var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.webp";
             var thumbPhysicalPath = Path.Combine(_imageThumbsFolder, thumbFileName);
             await using (var output = System.IO.File.Create(thumbPhysicalPath))
             {
-                await image.SaveAsync(output, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder { Quality = 80 }, ct);
+                await thumbnail.SaveWebpAsync(output, 80, ct);
             }
 
             return $"{Request.Scheme}://{Request.Host}/uploads/image-thumbs/{thumbFileName}";

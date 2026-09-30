@@ -191,7 +191,7 @@ const CurrenciesPage: React.FC = () => {
                         <td>{row.rounding}</td>
                         <td>
                           <input
-                            className="w-full p-1 border rounded fx__input"
+                            className="w-full p-1 border rounded-sm fx__input"
                             type="number"
                             step="any"
                             min={0}

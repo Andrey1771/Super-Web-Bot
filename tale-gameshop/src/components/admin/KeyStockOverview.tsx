@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { REMOTE_PAGING } from "../../hooks/use-grid-window";
-import { DataGrid, Column, Paging, Scrolling, Sorting } from 'devextreme-react/data-grid';
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../grid";
 import { getKeyOverview, getOwedKeys, KeyOverviewRow, KeyStockStatus, OwedLine } from '../../api/adminKeysApi';
 import { GRID_PAGE_SIZE, gridStatusText, useGridWindow } from '../../hooks/use-grid-window';
 import { fetchWindow } from '../../utils/page-window';

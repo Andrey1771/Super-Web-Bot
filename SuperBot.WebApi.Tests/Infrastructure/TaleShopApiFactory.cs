@@ -24,7 +24,6 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
 
     /// <summary>Папка загрузок тестового хоста: во временной директории, а не в wwwroot репозитория.</summary>
     public string UploadsRoot { get; } = Path.Combine(Path.GetTempPath(), $"taleshop-tests-uploads-{Guid.NewGuid():N}");
-    private int? _mongoPid;
 
     public CapturingMailSender Mail { get; } = new();
 
@@ -42,20 +41,13 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Запоминаем PID нашего mongod: graceful shutdown EphemeralMongo6 требует сборку
-        // MongoDB.Driver.Core, которой в драйвере 3.x больше нет, — гасим процесс сами (см. Dispose).
-        var mongodBefore = System.Diagnostics.Process.GetProcessesByName("mongod")
-            .Select(p => p.Id)
-            .ToHashSet();
-
+        // Та же major-версия, что в docker-compose. Бинарники mongod EphemeralMongo скачивает
+        // при первом прогоне в локальную папку данных пользователя и дальше берёт оттуда.
         _mongo = MongoRunner.Run(new MongoRunnerOptions
         {
+            Version = MongoVersion.V8,
             UseSingleNodeReplicaSet = false,
         });
-
-        _mongoPid = System.Diagnostics.Process.GetProcessesByName("mongod")
-            .Select(p => p.Id)
-            .FirstOrDefault(id => !mongodBefore.Contains(id));
 
         builder.UseEnvironment("Development");
 
@@ -167,29 +159,6 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
             return;
         }
 
-        try
-        {
-            _mongo?.Dispose();
-        }
-        catch
-        {
-            // EphemeralMongo6 не может послать shutdown-команду при MongoDB.Driver 3.x
-            // (FileNotFoundException на MongoDB.Driver.Core) — данные эфемерные, просто гасим процесс.
-        }
-        finally
-        {
-            if (_mongoPid is int pid)
-            {
-                try
-                {
-                    var process = System.Diagnostics.Process.GetProcessById(pid);
-                    process.Kill(entireProcessTree: true);
-                }
-                catch
-                {
-                    // Процесс уже завершён — это и есть желаемое состояние.
-                }
-            }
-        }
+        _mongo?.Dispose();
     }
 }

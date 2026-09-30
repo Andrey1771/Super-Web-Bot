@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { REMOTE_PAGING } from "../../../hooks/use-grid-window";
 
-import "devextreme/dist/css/dx.light.css";
-import { DataGrid } from "devextreme-react";
-import { Column, Paging, Scrolling, Sorting, type DataGridRef } from "devextreme-react/data-grid";
-import CustomStore from "devextreme/data/custom_store";
+import { DataGrid } from "../../grid";
+import { Column, Paging, Scrolling, Sorting, type DataGridRef } from "../../grid";
+import { CustomStore } from "../../grid";
 import container from "../../../inversify.config";
 import { IAdminService } from "../../../iterfaces/i-admin-service";
 import IDENTIFIERS from "../../../constants/identifiers";
@@ -16,9 +15,8 @@ import { useToast } from "../../ui/ToastProvider";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
 
 /**
- * Настройки грида — снаружи компонента. devextreme-react сравнивает свойства по ссылке:
- * объект, записанный прямо в разметке, создаётся заново на каждый рендер, грид считает это
- * сменой настроек и перечитывает данные, а загрузка вызывает следующий рендер.
+ * Настройки грида — снаружи компонента: они не меняются, и незачем собирать их заново на
+ * каждый рендер (прежний грид DevExtreme на этом уходил в бесконечную перезагрузку).
  */
 const COLUMN_CHOOSER = { enabled: true };
 const INFINITE_SCROLLING = { mode: "infinite" as const, showScrollbar: "always" as const };
@@ -275,19 +273,19 @@ const toRow = (item: any, index: number) => {
                         placeholder="User / Email"
                         value={userFilter}
                         onChange={(event) => setUserFilter(event.target.value)}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded-sm"
                     />
                     <input
                         type="text"
                         placeholder="Client ID"
                         value={clientIdFilter}
                         onChange={(event) => setClientIdFilter(event.target.value)}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded-sm"
                     />
                     <select
                         value={eventType}
                         onChange={(event) => setEventType(event.target.value)}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded-sm"
                     >
                         {/* «All events» — это то, что показано по умолчанию: Keycloak пишет не
                             только входы людей, но и выдачу токенов и вход сервисных клиентов. */}
@@ -304,13 +302,13 @@ const toRow = (item: any, index: number) => {
                         type="date"
                         value={startDate}
                         onChange={(event) => setStartDate(event.target.value)}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded-sm"
                     />
                     <input
                         type="date"
                         value={endDate}
                         onChange={(event) => setEndDate(event.target.value)}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded-sm"
                     />
                 </div>
 

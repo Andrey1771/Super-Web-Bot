@@ -61,8 +61,8 @@ services:
       - Keycloak__Admin__SecurityRedirectUri=${PUBLIC_URL:-http://localhost}/account/security
       # Внешний (браузерный) адрес account-консоли Keycloak для управления 2FA
       - Keycloak__Admin__AccountConsoleUrl=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}/realms/TaleShop/account
-      # Восстановление доступа: письма шлём через mailhog, ссылки в письмах — на внешний адрес сайта
-      - Recovery__SmtpHost=mailhog
+      # Восстановление доступа: письма шлём через mailpit, ссылки в письмах — на внешний адрес сайта
+      - Recovery__SmtpHost=mailpit
       - Recovery__SmtpPort=1025
       - Recovery__PublicBaseUrl=${PUBLIC_URL:-http://localhost}
       - Recovery__WaitingPeriodHours=72
@@ -202,7 +202,7 @@ services:
       # Ключи DataProtection: см. backend.
       - dp_keys_bot:/app/keys
   mongo1:
-    image: mongo:latest
+    image: mongo:8.2
     restart: always
     command: mongod --replSet rs0 --bind_ip_all
     volumes:
@@ -214,7 +214,7 @@ services:
       - app_network
 
   mongo2:
-    image: mongo:latest
+    image: mongo:8.2
     restart: always
     command: mongod --replSet rs0 --bind_ip_all
     volumes:
@@ -223,7 +223,7 @@ services:
       - app_network
 
   mongo3:
-    image: mongo:latest
+    image: mongo:8.2
     restart: always
     command: mongod --replSet rs0 --bind_ip_all
     volumes:
@@ -237,7 +237,7 @@ services:
   # Флаг ALLOW_DEMO_SEED сюда намеренно не прописан: без него сиды откажутся работать.
   # Подробности и принципы — в seeds/README.md.
   demo-seeder:
-    image: mongo:latest
+    image: mongo:8.2
     profiles:
       - demo
     depends_on:
@@ -250,7 +250,7 @@ services:
     entrypoint: ["bash", "/seeds/run-all.sh"]
 
   mongo-init:
-    image: mongo:latest
+    image: mongo:8.2
     depends_on:
       - mongo1
       - mongo2
@@ -265,7 +265,7 @@ services:
       "
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.2.5
+    image: quay.io/keycloak/keycloak:26.7.4
     restart: always
     # recovery-codes — preview-фича Keycloak: включает backup-коды (kc_action=CONFIGURE_RECOVERY_AUTHN_CODES).
     # Required action регистрируется при создании realm, поэтому после включения фичи контейнер надо
@@ -308,8 +308,9 @@ services:
 
   # Dev-ловушка писем: Keycloak отправляет письма (2FA-setup, верификация, сброс пароля) сюда.
   # Веб-интерфейс с письмами — http://localhost:8025. Реальная почта в проде настраивается отдельно.
-  mailhog:
-    image: mailhog/mailhog:latest
+  # Mailpit вместо заброшенного MailHog: те же порты (SMTP 1025, веб 8025), но живой проект.
+  mailpit:
+    image: axllent/mailpit:v1.31.3
     restart: always
     ports:
       - "127.0.0.1:8025:8025"

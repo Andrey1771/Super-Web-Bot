@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using SuperBot.Infrastructure.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Linq;

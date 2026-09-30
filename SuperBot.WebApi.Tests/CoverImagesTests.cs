@@ -3,10 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Tests.Infrastructure;
 using Xunit;
@@ -36,23 +33,16 @@ public class CoverImagesTests
     /// <summary>Картинка width×height: левая половина красная, правая синяя — по цвету видно, куда легла обрезка.</summary>
     private static byte[] Png(int width, int height)
     {
-        using var image = new Image<Rgba32>(width, height);
-        var red = new Rgba32(255, 0, 0);
-        var blue = new Rgba32(0, 0, 255);
-        image.ProcessPixelRows(accessor =>
+        using var bitmap = new SKBitmap(width, height);
+        using (var canvas = new SKCanvas(bitmap))
         {
-            for (var y = 0; y < accessor.Height; y++)
-            {
-                var row = accessor.GetRowSpan(y);
-                for (var x = 0; x < row.Length; x++)
-                {
-                    row[x] = x < width / 2 ? red : blue;
-                }
-            }
-        });
-        using var ms = new MemoryStream();
-        image.Save(ms, new PngEncoder());
-        return ms.ToArray();
+            canvas.Clear(SKColors.Blue);
+            using var red = new SKPaint { Color = SKColors.Red };
+            canvas.DrawRect(SKRect.Create(0, 0, width / 2, height), red);
+        }
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
     }
 
     /// <summary>Кладёт файл прямо в папку загрузок, как лежат старые обложки без метаданных.</summary>
@@ -64,11 +54,11 @@ public class CoverImagesTests
         return full;
     }
 
-    private static async Task<Image<Rgba32>> DecodeAsync(HttpResponseMessage response)
+    private static async Task<SKBitmap> DecodeAsync(HttpResponseMessage response)
     {
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/webp", response.Content.Headers.ContentType?.MediaType);
-        return Image.Load<Rgba32>(await response.Content.ReadAsByteArrayAsync());
+        return SKBitmap.Decode(await response.Content.ReadAsByteArrayAsync());
     }
 
     private static MultipartFormDataContent Upload(byte[] bytes, string fileName)
@@ -141,7 +131,7 @@ public class CoverImagesTests
         using (var centered = await DecodeAsync(await client.GetAsync($"/uploads/v/240/sq/{name}.webp")))
         {
             // Центр картинки — граница цветов: левая часть квадрата красная, правая синяя.
-            Assert.True(centered[10, 120].R > 200 && centered[230, 120].B > 200);
+            Assert.True(centered.GetPixel(10, 120).Red > 200 && centered.GetPixel(230, 120).Blue > 200);
         }
 
         var meta = await (await admin.GetAsync($"/api/images/meta?path=/uploads/{name}")).Content.ReadFromJsonAsync<JsonElement>();
@@ -154,7 +144,7 @@ public class CoverImagesTests
 
         using var left = await DecodeAsync(await client.GetAsync($"/uploads/v/240/sq/{name}.webp"));
         // Фокус у левого края — квадрат целиком красный.
-        Assert.True(left[10, 120].R > 200 && left[230, 120].R > 200 && left[230, 120].B < 60);
+        Assert.True(left.GetPixel(10, 120).Red > 200 && left.GetPixel(230, 120).Red > 200 && left.GetPixel(230, 120).Blue < 60);
     }
 
     [Fact]
@@ -203,7 +193,7 @@ public class CoverImagesTests
 
         var url = body.GetProperty("url").GetString()!;
         var relative = url[url.IndexOf("/uploads/", StringComparison.Ordinal)..];
-        using var master = Image.Load<Rgba32>(Path.Combine(_factory.UploadsRoot, relative["/uploads/".Length..]));
+        using var master = SKBitmap.Decode(Path.Combine(_factory.UploadsRoot, relative["/uploads/".Length..]));
         Assert.Equal(2400, master.Width);
 
         // Предупреждение о необычных пропорциях даёт сам сервис обложек (медиатека его не показывает).

@@ -12,7 +12,7 @@ interface NewSupportRequestModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmitted: (ticket: SupportTicket) => Promise<void> | void;
-    openerRef?: React.RefObject<HTMLElement>;
+    openerRef?: React.RefObject<HTMLElement | null>;
 }
 
 // Единый словарь категорий (общий с формой на /support).

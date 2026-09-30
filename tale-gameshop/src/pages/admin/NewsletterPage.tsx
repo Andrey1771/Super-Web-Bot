@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { REMOTE_PAGING } from "../../hooks/use-grid-window";
 import PageHeader from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
-import { DataGrid, Column, Paging, Scrolling, Sorting } from 'devextreme-react/data-grid';
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "../../components/grid";
 import { GRID_PAGE_SIZE, gridStatusText, useGridWindow } from '../../hooks/use-grid-window';
 import { fetchWindow } from '../../utils/page-window';
 import useDebouncedValue from '../../hooks/useDebouncedValue';
@@ -138,7 +138,7 @@ const NewsletterPage: React.FC = () => {
     setSendingTest(true);
     try {
       await adminSendTest(testEmail.trim(), subjectFor(previewLang).trim(), bodyFor(previewLang).trim(), previewLang);
-      addToast(`Test email (${previewLang.toUpperCase()}) sent to ${testEmail.trim()} (check MailHog in dev)`, 'success');
+      addToast(`Test email (${previewLang.toUpperCase()}) sent to ${testEmail.trim()} (check Mailpit in dev)`, 'success');
     } catch (error: any) {
       addToast(error?.response?.data?.error ?? 'Failed to send test email', 'error');
     } finally {
@@ -261,7 +261,7 @@ const NewsletterPage: React.FC = () => {
               <label className="flex items-center gap-2 text-xs text-gray-500">
                 Preview and test language:
                 <select
-                  className="h-8 rounded border border-gray-300 px-2"
+                  className="h-8 rounded-sm border border-gray-300 px-2"
                   value={previewLang}
                   onChange={(event) => setPreviewLang(event.target.value as 'en' | 'ru' | 'uk' | 'pl')}
                 >

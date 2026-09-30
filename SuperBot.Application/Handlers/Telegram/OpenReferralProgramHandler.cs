@@ -1,5 +1,4 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Routing;
+﻿using SuperBot.Application.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands.Telegram;
 using SuperBot.Application.Handlers.Telegram.Base;
@@ -29,7 +28,7 @@ namespace SuperBot.Application.Handlers.Telegram
             if (user == null)
             {
                 // Если пользователь не найден, можно отправить сообщение об ошибке
-                return await _botClient.SendTextMessageAsync(
+                return await _botClient.SendMessage(
                     chatId: request.ChatId,
                     text: _translationsService.Translation.UserNotFound,
                     cancellationToken: cancellationToken);
@@ -37,7 +36,7 @@ namespace SuperBot.Application.Handlers.Telegram
 
             var personalLink = GeneratePersonalLink(request.UserId);
 
-            return await _botClient.SendTextMessageAsync(
+            return await _botClient.SendMessage(
                 chatId: request.ChatId,
                 text: GetMenuText(user.CountOfInvited, user.Discount, user.QuantityBeforeIncrease, personalLink),
                 parseMode: ParseMode.Html,

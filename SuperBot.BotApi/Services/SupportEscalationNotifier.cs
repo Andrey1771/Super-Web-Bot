@@ -23,7 +23,7 @@ namespace SuperBot.BotApi.Services
             try
             {
                 // Plain text (без parse mode): транскрипт может содержать символы, ломающие Markdown.
-                await _bot.SendTextMessageAsync(_adminSettings.AdminChatId, text, cancellationToken: cancellationToken);
+                await _bot.SendMessage(_adminSettings.AdminChatId, text, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {

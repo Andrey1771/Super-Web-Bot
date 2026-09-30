@@ -25,7 +25,7 @@ import CookieBanner from "../analytics/CookieBanner";
 import AccountRecoveryPage, { AccountRecoveryCancelPage } from "../account-recovery/AccountRecoveryPage";
 
 // Вся админка — ОДНИМ lazy-модулем: AdminApp внутри статически импортирует все
-// админ-страницы и их роуты, поэтому весь граф (включая DevExtreme и Highcharts)
+// админ-страницы и их роуты, поэтому весь граф (включая таблицы и Highcharts)
 // уезжает в отдельный chunk.admin автоматически — забыть «обернуть страницу
 // в lazy» невозможно. Посетителю магазина чанк не выдаётся, браузер запросит его
 // только при заходе в /admin. Это про скорость и вес публичного бандла, не про

@@ -90,7 +90,7 @@ const StoreGameCard: React.FC<StoreGameCardProps> = ({
                 {showWishlist && (
                     <button
                         type="button"
-                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-sm transition pointer-events-auto ${
+                        className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-[#6f64a8] shadow-xs transition pointer-events-auto ${
                             wishlisted ? 'border-[#1f2937] text-[#1f2937]' : 'hover:text-[#6b3ff2]'
                         }`}
                         aria-label={wishlisted ? t('common.removeFromWishlist') : t('common.addToWishlist')}

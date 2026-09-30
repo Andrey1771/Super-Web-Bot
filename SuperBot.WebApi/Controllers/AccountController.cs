@@ -3,13 +3,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Webp;
-using SixLabors.ImageSharp.Processing;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using SuperBot.WebApi.Services.Imaging;
 using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
@@ -332,15 +330,10 @@ public class AccountController : ControllerBase
             try
             {
                 await using var stream = avatar.OpenReadStream();
-                using var image = await Image.LoadAsync(stream);
-                image.Mutate(x => x.AutoOrient().Resize(new ResizeOptions
-                {
-                    Mode = ResizeMode.Crop,
-                    Size = new Size(AvatarSize, AvatarSize),
-                    Position = AnchorPositionMode.Center
-                }));
+                using var image = await RasterImage.LoadAsync(stream);
+                using var square = image.CropToFill(AvatarSize, AvatarSize);
 
-                await image.SaveAsync(fullPath, new WebpEncoder { Quality = 80 });
+                await square.SaveWebpAsync(fullPath, 80);
             }
             catch
             {

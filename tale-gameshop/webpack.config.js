@@ -1,10 +1,10 @@
-import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import CopyWebpackPlugin from 'copy-webpack-plugin';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import createBabelOptions from './config/babel-options.cjs';
 
 const __filename = fileURLToPath(import.meta.url);
 // Получаем полный путь к `node_modules`
@@ -64,6 +64,8 @@ export default (env, { mode }) => {
         chunkFilename: (mode === 'production') ? 'chunk.[name].[contenthash].js' : 'chunk.[name].js',
         publicPath: '/',
         assetModuleFilename: 'images/[hash][ext][query]',
+        // Папка сборки очищается перед каждой сборкой (раньше это делал clean-webpack-plugin).
+        clean: true,
     },
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
@@ -71,23 +73,13 @@ export default (env, { mode }) => {
     module: {
         rules: [
             {
+                // TypeScript собирает Babel с теми же настройками, что и у тестов. Типы проверяет
+                // `npx tsc --noEmit` — сборка их не проверяла и раньше (ts-loader шёл transpileOnly).
                 test: /\.tsx?$/,
-                use: [
-                    {
-                        loader: 'babel-loader',
-                        options: {
-                            presets: [],
-                            plugins: [],
-                        },
-                    },
-                    {
-                        loader: 'ts-loader',
-                        options: {
-                            transpileOnly: true,
-                            experimentalWatchApi: true,
-                        },
-                    },
-                ],
+                use: {
+                    loader: 'babel-loader',
+                    options: { ...createBabelOptions({ development: mode !== 'production' }), cacheDirectory: mode !== 'production' },
+                },
                 exclude: /node_modules/,
             },
             {
@@ -121,21 +113,16 @@ export default (env, { mode }) => {
                 ],
             },
             {
-                test: /\.(png|jpe?g|gif|svg|ico|webp|jpg)$/i,
-                use: [
-                    {
-                        loader: 'file-loader',
-                        options: {
-                            regExp: /\/([a-z0-9]+)\/[a-z0-9]+\.png$/i,
-                            name: 'assets/images/[name].[contenthash].[ext]',
-                        },
-                    },
-                ],
+                // Встроенные asset-модули webpack 5 вместо file-loader: импорт картинки даёт её адрес.
+                test: /\.(png|jpe?g|gif|svg|ico|webp)$/i,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/images/[name].[contenthash][ext]',
+                },
             }
         ],
     },
     plugins: [
-        new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
             template: './public/index.html',
             favicon: './public/favicon.svg',
