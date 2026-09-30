@@ -1,9 +1,5 @@
-import container from "../inversify.config";
-import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
 import type { SupportKnowledgeArticle } from "../types/support-knowledge";
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { apiClient } from "./client";
 
 export const listKnowledgeArticles = async (): Promise<SupportKnowledgeArticle[]> => {
   const response = await apiClient().get("/api/support/admin/knowledge");

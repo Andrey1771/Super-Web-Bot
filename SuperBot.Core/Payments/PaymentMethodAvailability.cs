@@ -8,9 +8,7 @@ namespace SuperBot.Core.Payments
         /// <summary>Криптовалюта через BTCPay.</summary>
         Crypto,
         /// <summary>Telegram Stars (XTR) — только в боте и мини-приложении.</summary>
-        TelegramStars,
-        /// <summary>ЮKassa — карты и СБП в рублях.</summary>
-        YooKassa
+        TelegramStars
     }
 
     /// <summary>Способ оплаты и его пригодность для выбранной валюты.</summary>
@@ -24,16 +22,13 @@ namespace SuperBot.Core.Payments
     /// до чекаута и упирается в форму, которая не может принять его деньги.
     ///
     /// Знание о рельсах собрано в одном месте намеренно: раньше оно было размазано по контроллерам
-    /// (крипта — по флагу конфигурации, Stars — в обработчике бота, ЮKassa — в своём сервисе),
+    /// (крипта — по флагу конфигурации, Stars — в обработчике бота),
     /// и ответить на вопрос «чем платят за евро» было негде.
     /// </summary>
     public static class PaymentMethodAvailability
     {
         /// <summary>Валюта Telegram Stars.</summary>
         public const string StarsCurrency = "XTR";
-
-        /// <summary>Единственная валюта ЮKassa.</summary>
-        public const string YooKassaCurrency = "RUB";
 
         /// <summary>
         /// Что доступно в этой валюте.
@@ -54,7 +49,7 @@ namespace SuperBot.Core.Payments
             var normalized = (currency ?? string.Empty).Trim().ToUpperInvariant();
             var options = new List<PaymentMethodOption>();
 
-            foreach (var method in new[] { PaymentMethod.Card, PaymentMethod.Crypto, PaymentMethod.TelegramStars, PaymentMethod.YooKassa })
+            foreach (var method in new[] { PaymentMethod.Card, PaymentMethod.Crypto, PaymentMethod.TelegramStars })
             {
                 if (!enabled.Contains(method))
                 {
@@ -99,11 +94,6 @@ namespace SuperBot.Core.Payments
                     return string.Equals(currency, StarsCurrency, StringComparison.OrdinalIgnoreCase)
                         ? new PaymentMethodOption(method, true, null)
                         : new PaymentMethodOption(method, false, "Telegram Stars are available inside the bot.");
-
-                case PaymentMethod.YooKassa:
-                    return string.Equals(currency, YooKassaCurrency, StringComparison.OrdinalIgnoreCase)
-                        ? new PaymentMethodOption(method, true, null)
-                        : new PaymentMethodOption(method, false, $"This method accepts {YooKassaCurrency} only.");
 
                 default:
                     return new PaymentMethodOption(method, false, "Unknown payment method.");

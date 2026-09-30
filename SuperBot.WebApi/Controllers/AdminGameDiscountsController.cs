@@ -30,51 +30,56 @@ public class AdminGameDiscountsController : ControllerBase
         _catalogSnapshot = catalogSnapshot;
     }
 
+    /// <summary>
+    /// Страница списка скидок: окно строк, поиск и срез по статусу считаются на сервере.
+    ///
+    /// Раньше сюда уезжал ВЕСЬ каталог, а поиск, фильтр и сортировка выполнялись в браузере
+    /// по полученному массиву. На полусотне игр это незаметно, на тридцати тысячах — мегабайты
+    /// на каждое открытие экрана и перебор коллекции целиком.
+    ///
+    /// Статус скидки живёт в отдельной коллекции, поэтому порядок такой: сначала по ней
+    /// собираются идентификаторы нужного среза (она маленькая — по документу на игру СО
+    /// скидкой), затем страница игр берётся из каталога уже с этим ограничением.
+    /// </summary>
     [HttpGet("discounts")]
-    public async Task<IActionResult> GetDiscounts([FromQuery] string? search = null)
+    public async Task<IActionResult> GetDiscounts(
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string sortBy = "title",
+        [FromQuery] bool desc = false,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50)
     {
-        var games = await _gameRepository.GetAllAsync();
-        var gameIds = games
-            .Select(game => game.Id)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .ToList();
+        // Join, статус, итоговая цена, фильтр и сортировка — одним запросом в базе. Раньше
+        // сюда читались ВСЕ скидки, чтобы собрать список идентификаторов для фильтра по
+        // статусу, и сортировать можно было только по полям самой игры.
+        var (rows, total) = await _discountRepository.GetCatalogPageAsync(
+            search,
+            status,
+            sortBy,
+            desc,
+            skip,
+            take,
+            DateTime.UtcNow);
 
-        var discounts = await _discountRepository.GetByGameIdsAsync(gameIds!);
-        var now = DateTime.UtcNow;
-        var discountMap = discounts.ToDictionary(discount => discount.GameId, discount => discount);
+        var items = rows.Select(row => new
+        {
+            gameId = row.GameId,
+            title = row.Title,
+            imagePath = row.ImagePath,
+            basePrice = row.BasePrice,
+            discountType = row.DiscountPercent.HasValue ? "percentage" : (string?)null,
+            discountValue = row.DiscountPercent,
+            finalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(row.BasePrice, row.DiscountPercent),
+            discountPercent = row.DiscountPercent,
+            startDate = row.StartDate,
+            endDate = row.EndDate,
+            status = row.Status
+        }).ToList();
 
-        var result = games
-            .Where(game =>
-                string.IsNullOrWhiteSpace(search) ||
-                game.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                game.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
-            .Select(game =>
-            {
-                discountMap.TryGetValue(game.Id, out var discount);
-                var status = GetStatus(discount, now);
-                var discountPercent = discount?.DiscountPercent;
-                var finalPrice = SuperBot.Core.Services.PriceCalculator.FinalPrice(game.Price, discountPercent);
-
-                return new
-                {
-                    gameId = game.Id,
-                    title = game.Title,
-                    imagePath = game.ImagePath,
-                    basePrice = game.Price,
-                    discountType = discountPercent.HasValue ? "percentage" : (string?)null,
-                    discountValue = discountPercent,
-                    finalPrice,
-                    discountPercent,
-                    startDate = discount?.StartDate,
-                    endDate = discount?.EndDate,
-                    status
-                };
-            })
-            .OrderBy(item => item.title)
-            .ToList();
-
-        return Ok(result);
+        return Ok(new { items, total });
     }
+
 
     [HttpGet("{id}/discount")]
     public async Task<IActionResult> GetDiscount(string id)

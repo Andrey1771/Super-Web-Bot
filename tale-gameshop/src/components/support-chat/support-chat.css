@@ -133,31 +133,17 @@
   touch-action: none;
 }
 
-/* Угол — обе стороны сразу. */
-.support-chat__resize--both {
-  top: 0;
-  left: 0;
-  width: 22px;
-  height: 22px;
-  cursor: nwse-resize;
-}
+/* Углы — по обеим сторонам сразу; зоны углов больше, в них проще попасть. */
+.support-chat__resize--nw { top: 0; left: 0; width: 18px; height: 18px; cursor: nwse-resize; }
+.support-chat__resize--ne { top: 0; right: 0; width: 18px; height: 18px; cursor: nesw-resize; }
+.support-chat__resize--sw { bottom: 0; left: 0; width: 18px; height: 18px; cursor: nesw-resize; }
+.support-chat__resize--se { bottom: 0; right: 0; width: 18px; height: 18px; cursor: nwse-resize; }
 
-/* Грани начинаются там, где заканчивается угол, чтобы зоны не перекрывались. */
-.support-chat__resize--x {
-  top: 22px;
-  left: 0;
-  width: 6px;
-  height: calc(100% - 22px);
-  cursor: ew-resize;
-}
-
-.support-chat__resize--y {
-  top: 0;
-  left: 22px;
-  width: calc(100% - 22px);
-  height: 6px;
-  cursor: ns-resize;
-}
+/* Грани начинаются там, где заканчиваются углы, чтобы зоны не перекрывались. */
+.support-chat__resize--w { top: 18px; left: 0; width: 6px; height: calc(100% - 36px); cursor: ew-resize; }
+.support-chat__resize--e { top: 18px; right: 0; width: 6px; height: calc(100% - 36px); cursor: ew-resize; }
+.support-chat__resize--n { top: 0; left: 18px; width: calc(100% - 36px); height: 6px; cursor: ns-resize; }
+.support-chat__resize--s { bottom: 0; left: 18px; width: calc(100% - 36px); height: 6px; cursor: ns-resize; }
 
 /* Значка у ручки нет намеренно: уголок в шапке читался как посторонний элемент.
    Зона осталась прежней, о ней сообщает курсор — как у краёв любого окна. */

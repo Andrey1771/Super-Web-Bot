@@ -15,8 +15,8 @@ namespace SuperBot.BotApi.Services;
 public static class BotTokenGuard
 {
     public const string MissingTokenMessage =
-        "BOT_TOKEN не задан: раздел «Bot» в админке и вебхук Telegram работать не будут. " +
-        "Впишите токен в .env (BotConfiguration__BotToken) и перезапустите сервис.";
+        "BOT_TOKEN is not set: the Bot section in the admin panel and the Telegram webhook will not work. " +
+        "Add the token to .env (BotConfiguration__BotToken) and restart the service.";
 
     /// <summary>
     /// Токен из конфигурации годится для <see cref="TelegramBotClient"/>. Проверяем тем же
@@ -38,7 +38,7 @@ public static class BotTokenGuard
         }
         catch (ArgumentException ex)
         {
-            reason = $"BOT_TOKEN задан, но Telegram.Bot его отвергает ({ex.Message}). Раздел «Bot» в админке работать не будет.";
+            reason = $"BOT_TOKEN is set, but Telegram.Bot rejects it ({ex.Message}). The Bot section in the admin panel will not work.";
             return false;
         }
     }

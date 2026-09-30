@@ -1,3 +1,5 @@
+import PageMeta from "../common/PageMeta";
+import { useTranslation } from "react-i18next";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "./faq-page.css";
@@ -13,96 +15,26 @@ interface FaqCategory {
     items: FaqItem[];
 }
 
-const faqCategories: FaqCategory[] = [
-    {
-        id: "orders",
-        title: "Orders & delivery",
-        items: [
-            {
-                question: "How do I receive my game key?",
-                answer:
-                    "Keys are delivered instantly after a successful payment. You'll find them in your account under Keys, and we also email a copy to your registered address.",
-            },
-            {
-                question: "Is delivery really instant?",
-                answer:
-                    "For in-stock titles, yes — most orders reach your inbox within seconds. If a key needs manual review, we'll notify you and deliver as soon as it clears.",
-            },
-            {
-                question: "Where do I redeem my key?",
-                answer:
-                    "Each product page lists the platform (for example Steam). Redeem the key in that platform's client under 'Activate a Product' to add the game to your library.",
-            },
-        ],
-    },
-    {
-        id: "payments",
-        title: "Payments & pricing",
-        items: [
-            {
-                question: "Which payment methods do you accept?",
-                answer:
-                    "We accept major cards (Visa, Mastercard, American Express) and secure processors via Stripe. Your card details are handled by the payment provider and never stored on our servers.",
-            },
-            {
-                question: "Can I change the currency?",
-                answer:
-                    "Yes — use the currency switcher in the header. Displayed prices are indicative; your card is charged in the store's settlement currency shown at checkout.",
-            },
-            {
-                question: "Is checkout secure?",
-                answer:
-                    "Checkout runs over an encrypted connection through a trusted payment processor, with buyer-protection safeguards on every order.",
-            },
-        ],
-    },
-    {
-        id: "refunds",
-        title: "Refunds & issues",
-        items: [
-            {
-                question: "What is your refund policy?",
-                answer:
-                    "If a key doesn't work or you can't access your purchase, contact us and we'll make it right — a replacement key or a refund. Full details are on our Refund policy page.",
-            },
-            {
-                question: "My key won't activate — what should I do?",
-                answer:
-                    "First confirm you're redeeming it on the correct platform and region. If it still fails, reach out through support with your order ID and we'll resolve it quickly.",
-            },
-        ],
-    },
-    {
-        id: "account",
-        title: "Account & access",
-        items: [
-            {
-                question: "Do I need an account to buy?",
-                answer:
-                    "An account keeps your keys, orders and receipts in one place, and lets support verify your purchase faster. You can create one in seconds from the Sign up button.",
-            },
-            {
-                question: "I've lost access to my account.",
-                answer:
-                    "Use account recovery to regain access. If you're still stuck, contact support and we'll help verify your identity and restore your account.",
-            },
-            {
-                question: "Which languages does support cover?",
-                answer:
-                    "Our team and AI assistant help in English and Russian, and each product page lists the languages available for that game.",
-            },
-            {
-                question: "How do I manage the newsletter or unsubscribe?",
-                answer:
-                    "Every newsletter email has a one-click Unsubscribe link in the footer — no sign-in needed. If you have an account, you can also switch the deals newsletter on or off in Account → Settings → Notifications. Unsubscribing only stops marketing emails; order receipts and security emails still arrive.",
-            },
-        ],
-    },
-];
+/** Порядок разделов; вопросы и ответы — в словаре (help.faqPage.<id>) на языке сайта. */
+const FAQ_CATEGORY_IDS = ["orders", "payments", "refunds", "account"];
+
+type FaqCategoryText = { title: string; items: FaqItem[] };
 
 export default function FaqPage() {
+    const { t, i18n } = useTranslation();
     const [query, setQuery] = useState("");
     const [openKey, setOpenKey] = useState<string | null>("orders-0");
+
+    const faqCategories = useMemo<FaqCategory[]>(
+        () =>
+            FAQ_CATEGORY_IDS.map((id) => {
+                const text = t(`help.faqPage.${id}`, { returnObjects: true }) as FaqCategoryText;
+                return { id, title: text.title, items: text.items };
+            }),
+        // Язык сменился — словарь другой, список собираем заново.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [t, i18n.language]
+    );
 
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -120,7 +52,7 @@ export default function FaqPage() {
                 ),
             }))
             .filter((category) => category.items.length > 0);
-    }, [normalizedQuery]);
+    }, [faqCategories, normalizedQuery]);
 
     const openChat = () => {
         window.dispatchEvent(new Event("taleshop:open-support-chat"));
@@ -130,15 +62,14 @@ export default function FaqPage() {
 
     return (
         <div className="faq-page">
+            <PageMeta title={t("faq.title")} description={t("faq.subtitle")} canonicalPath="/faq" />
             <section className="faq-hero">
                 <i className="fx-texture" aria-hidden="true"></i>
                 <i className="fx-orb faq-orb" aria-hidden="true"></i>
                 <div className="container faq-hero-inner">
-                    <span className="faq-eyebrow">Help center</span>
-                    <h1>How can we help?</h1>
-                    <p className="faq-hero-subtext">
-                        Answers to the most common questions about orders, delivery, payments and your account.
-                    </p>
+                    <span className="faq-eyebrow">{t("faq.eyebrow")}</span>
+                    <h1>{t("faq.title")}</h1>
+                    <p className="faq-hero-subtext">{t("faq.subtitle")}</p>
                     <label className="faq-search">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                             <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -146,8 +77,8 @@ export default function FaqPage() {
                         </svg>
                         <input
                             type="search"
-                            placeholder="Search the help center…"
-                            aria-label="Search FAQ"
+                            placeholder={t("faq.searchPlaceholder")}
+                            aria-label={t("faq.search")}
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                         />
@@ -159,7 +90,7 @@ export default function FaqPage() {
                 <div className="faq-main">
                     {hasResults ? (
                         filtered.map((category) => (
-                            <div className="faq-category reveal" key={category.id}>
+                            <div className="faq-category" key={category.id}>
                                 <h2 className="faq-category-title">{category.title}</h2>
                                 <div className="faq-list">
                                     {category.items.map((item, index) => {
@@ -193,39 +124,37 @@ export default function FaqPage() {
                         ))
                     ) : (
                         <div className="faq-no-results">
-                            <h3>No matches for “{query}”</h3>
-                            <p className="muted">Try a different keyword, or reach out and we'll help directly.</p>
+                            <h3>{t("faq.noMatches", { query })}</h3>
+                            <p className="muted">{t("faq.tryOther")}</p>
                         </div>
                     )}
                 </div>
 
                 <aside className="faq-aside">
-                    <div className="faq-help-card lift reveal">
-                        <h3>Still need help?</h3>
-                        <p className="muted">
-                            Our AI assistant answers instantly and can hand you to a specialist when needed.
-                        </p>
+                    <div className="faq-help-card lift">
+                        <h3>{t("faq.stillNeed")}</h3>
+                        <p className="muted">{t("faq.aiText")}</p>
                         <button type="button" className="btn btn-primary" onClick={openChat}>
-                            Chat with support
+                            {t("faq.chat")}
                         </button>
                         <Link to="/support" className="btn btn-outline">
-                            Visit Support
+                            {t("faq.visitSupport")}
                         </Link>
                     </div>
-                    <div className="faq-links-card lift reveal" data-reveal-delay="1">
-                        <h4>Helpful pages</h4>
+                    <div className="faq-links-card lift">
+                        <h4>{t("faq.helpfulPages")}</h4>
                         <ul>
                             <li>
-                                <Link to="/support/docs/refund-policy">Refund policy</Link>
+                                <Link to="/support/docs/refund-policy">{t("faq.refundPolicy")}</Link>
                             </li>
                             <li>
-                                <Link to="/support/docs/activation-guide">Activation guide</Link>
+                                <Link to="/support/docs/activation-guide">{t("faq.activationGuide")}</Link>
                             </li>
                             <li>
-                                <Link to="/games">Browse the catalog</Link>
+                                <Link to="/games">{t("faq.browseCatalog")}</Link>
                             </li>
                             <li>
-                                <Link to="/deals">Current deals</Link>
+                                <Link to="/deals">{t("faq.currentDeals")}</Link>
                             </li>
                         </ul>
                     </div>

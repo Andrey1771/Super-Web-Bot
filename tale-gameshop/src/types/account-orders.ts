@@ -20,10 +20,25 @@ export type AccountOrderListItem = {
   legacyDetailsUnavailable: boolean;
 };
 
+export type AccountOrderCashback = {
+  /** Оплачено кэшбэком, в валюте заказа. */
+  applied: number;
+  /** Начислено за заказ, в валюте заказа; null — не начислялось. */
+  earned?: number | null;
+  percent?: number | null;
+  earnedStatus?: 'pending' | 'available' | 'spent' | 'expired' | 'reverted' | null;
+  unlocksAt?: string | null;
+};
+
 export type AccountOrderTotals = {
   subtotal: number;
   discountTotal: number;
   taxTotal: number;
+  /** Налог уже внутри subtotal и total (цены с налогом) — к итогу не прибавлять. */
+  taxIncluded?: boolean;
+  /** vat, gst, sales_tax… и ставка — для подписи «Incl. VAT 19%». */
+  taxType?: string | null;
+  taxRatePercent?: number | null;
   total: number;
 };
 
@@ -43,6 +58,14 @@ export type AccountOrderDetailItem = {
   lineTotal: number;
   deliveryType?: string | null;
   keys: string[];
+  /** Адрес страницы игры по каталогу сейчас. Пусто, если игры больше нет. */
+  slug?: string | null;
+  /** Товар всё ещё в каталоге. Нет — строка без ссылки и с пометкой «больше не продаётся». */
+  available?: boolean;
+  /** Сервер разрешает позвать оценить: заказ оплачен, ключ выдан, есть куда вести. */
+  canReview?: boolean;
+  /** Отзыв уже написан — ведём править, а не писать заново. */
+  hasReview?: boolean;
 };
 
 export type AccountOrderDetails = {
@@ -54,8 +77,21 @@ export type AccountOrderDetails = {
   currency: string;
   totals: AccountOrderTotals;
   paymentMethod?: string | null;
+  /** Кэшбэк по заказу; null — не оплачивался им и не начислялся. */
+  cashback?: AccountOrderCashback | null;
   legacyDetailsUnavailable: boolean;
   items: AccountOrderDetailItem[];
+};
+
+/** Полные ключи заказа по позициям — по явному «Show keys». */
+export type AccountOrderKeysResponse = {
+  items: Array<{ itemId: string; keys: string[] }>;
+};
+
+/** Письмо с ключами переслано: куда (адрес замаскирован) и сколько ключей. */
+export type ResendOrderKeysResponse = {
+  sentTo: string;
+  count: number;
 };
 
 export type FetchAccountOrdersParams = {

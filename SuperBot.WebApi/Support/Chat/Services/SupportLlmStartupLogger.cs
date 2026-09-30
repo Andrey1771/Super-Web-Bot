@@ -60,8 +60,8 @@ public class SupportLlmStartupLogger : IHostedService
         }
 
         _logger.LogInformation(
-            "Support chat provider: DeepSeek ({BaseUrl}, model {Model}, max {MaxTokens} output tokens, daily budget {Budget} USD).",
-            _options.DeepSeekBaseUrl, _options.DeepSeekModel, _options.MaxResponseTokens,
+            "Support chat provider: DeepSeek ({BaseUrl}, model {Model}, app tag {AppTag}, max {MaxTokens} output tokens, daily budget {Budget} USD).",
+            _options.DeepSeekBaseUrl, _options.DeepSeekModel, _options.AppTag, _options.MaxResponseTokens,
             _options.DailyBudgetUsd > 0 ? _options.DailyBudgetUsd.ToString() : "unlimited");
 
         // Reasoning-модель для поддержки — деньги на ветер: её размышления оплачиваются как ответ.

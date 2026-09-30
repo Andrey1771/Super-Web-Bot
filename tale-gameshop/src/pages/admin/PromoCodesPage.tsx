@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHeader, { GAMES_TABS } from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
+import { DataGrid, Column, Paging, Scrolling } from 'devextreme-react/data-grid';
+import { GRID_PAGE_SIZE } from '../../hooks/use-grid-window';
 import { useToast } from '../../components/ui/ToastProvider';
 import { useAdminHeader } from '../../components/layout/AdminHeaderContext';
 import container from '../../inversify.config';
@@ -28,7 +30,7 @@ const emptyPayload = (currency: string): PromoCodePayload => ({
 const PromoCodesPage: React.FC = () => {
   const service = container.get<IAdminPromoCodesService>(IDENTIFIERS.IAdminPromoCodesService);
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const [items, setItems] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState<string[]>([]);
@@ -61,9 +63,7 @@ const PromoCodesPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle('Promo codes');
-    setHeaderActions([]);
-    return () => setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const hasAbsolute = draft.type === 'fixed' || draft.minOrderAmount != null || draft.maxDiscountAmount != null;
 
@@ -134,7 +134,7 @@ const PromoCodesPage: React.FC = () => {
 
   return (
     <div className="admin-grid promo">
-      <PageHeader title="Promo codes" description="Checkout promo campaigns. Amounts are per currency." breadcrumbs={['Games', 'Promo codes']} tabs={GAMES_TABS} />
+      <PageHeader title="Promo codes" description="Checkout promo campaigns. Amounts are per currency." breadcrumbs={['Marketing', 'Promo codes']} tabs={GAMES_TABS} />
 
       <Card>
         <h3>{editingId ? 'Edit promo code' : 'New promo code'}</h3>
@@ -182,34 +182,108 @@ const PromoCodesPage: React.FC = () => {
             {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        {loading ? <p>Loading...</p> : visible.length === 0 ? <p className="promo__muted">No promo codes.</p> : (
-          <div className="promo__table-wrap">
-            <table className="admin-table promo__table">
-              <thead><tr><th>Code</th><th>Discount</th><th>Currency</th><th>Limits</th><th>Period</th><th>Status</th><th>Used</th><th /></tr></thead>
-              <tbody>
-                {visible.map((item) => (
-                  <tr key={item.id} className={item.isActive ? '' : 'promo__inactive'}>
-                    <td><strong>{item.code}</strong>{item.firstOrderOnly && <span className="promo__pill">1st order</span>}</td>
-                    <td>{describeValue(item)}</td>
-                    <td>{item.currency ?? <span className="promo__muted">any</span>}</td>
-                    <td className="promo__muted">
-                      {item.minOrderAmount != null ? `min ${formatMoney(item.minOrderAmount, item.currency ?? baseCurrency)}` : ''}
-                      {item.minOrderAmount != null && item.maxDiscountAmount != null ? ' · ' : ''}
-                      {item.maxDiscountAmount != null ? `cap ${formatMoney(item.maxDiscountAmount, item.currency ?? baseCurrency)}` : ''}
-                      {item.minOrderAmount == null && item.maxDiscountAmount == null ? '—' : ''}
-                    </td>
-                    <td>{item.startDate.slice(0, 10)} → {item.endDate.slice(0, 10)}</td>
-                    <td><span className={`promo__status ${item.isActive ? 'promo__status--on' : ''}`}>{item.isActive ? 'Active' : 'Inactive'}</span></td>
-                    <td>{item.usedCount}{item.usageLimit != null ? ` / ${item.usageLimit}` : ''}{item.usagePerUser != null ? <span className="promo__muted"> · {item.usagePerUser}/user</span> : null}</td>
-                    <td className="promo__actions">
-                      <button className="btn btn-outline" onClick={() => onEdit(item)}>Edit</button>
-                      <button className="btn btn-outline" onClick={() => onDelete(item)}>Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          /* Промокоды приходят одним списком — их немного, сервер не листает. Виртуальная
+             прокрутка нужна другому: держать в DOM только видимые строки, когда кодов
+             накопятся сотни. Сортировка тут честная — в браузере лежит весь список. */
+          <DataGrid
+            dataSource={visible}
+            keyExpr="id"
+            showBorders
+            showRowLines
+            height={520}
+            width="100%"
+            columnAutoWidth
+            allowColumnResizing
+            columnResizingMode="widget"
+            noDataText="No promo codes."
+            onRowPrepared={(event) => {
+              if (event.rowType === 'data' && !(event.data as PromoCode).isActive) {
+                event.rowElement.classList.add('promo__inactive');
+              }
+            }}
+          >
+            <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+            <Paging enabled pageSize={GRID_PAGE_SIZE} />
+
+            <Column
+              dataField="code"
+              caption="Code"
+              minWidth={160}
+              cellRender={(cell) => (
+                <span>
+                  <strong>{cell.data.code}</strong>
+                  {cell.data.firstOrderOnly && <span className="promo__pill">1st order</span>}
+                </span>
+              )}
+            />
+            <Column
+              caption="Discount"
+              minWidth={140}
+              allowSorting={false}
+              cellRender={(cell) => <span>{describeValue(cell.data)}</span>}
+            />
+            <Column
+              dataField="currency"
+              caption="Currency"
+              width={110}
+              cellRender={(cell) => <span>{cell.data.currency ?? <span className="promo__muted">any</span>}</span>}
+            />
+            <Column
+              caption="Limits"
+              minWidth={180}
+              allowSorting={false}
+              cellRender={(cell) => (
+                <span className="promo__muted">
+                  {cell.data.minOrderAmount != null ? `min ${formatMoney(cell.data.minOrderAmount, cell.data.currency ?? baseCurrency)}` : ''}
+                  {cell.data.minOrderAmount != null && cell.data.maxDiscountAmount != null ? ' · ' : ''}
+                  {cell.data.maxDiscountAmount != null ? `cap ${formatMoney(cell.data.maxDiscountAmount, cell.data.currency ?? baseCurrency)}` : ''}
+                  {cell.data.minOrderAmount == null && cell.data.maxDiscountAmount == null ? '—' : ''}
+                </span>
+              )}
+            />
+            <Column
+              caption="Period"
+              minWidth={180}
+              allowSorting={false}
+              cellRender={(cell) => <span>{cell.data.startDate.slice(0, 10)} → {cell.data.endDate.slice(0, 10)}</span>}
+            />
+            <Column
+              dataField="isActive"
+              caption="Status"
+              width={120}
+              cellRender={(cell) => (
+                <span className={`promo__status ${cell.data.isActive ? 'promo__status--on' : ''}`}>
+                  {cell.data.isActive ? 'Active' : 'Inactive'}
+                </span>
+              )}
+            />
+            <Column
+              dataField="usedCount"
+              caption="Used"
+              width={130}
+              cellRender={(cell) => (
+                <span>
+                  {cell.data.usedCount}
+                  {cell.data.usageLimit != null ? ` / ${cell.data.usageLimit}` : ''}
+                  {cell.data.usagePerUser != null ? <span className="promo__muted"> · {cell.data.usagePerUser}/user</span> : null}
+                </span>
+              )}
+            />
+            <Column
+              caption=""
+              width={180}
+              allowSorting={false}
+              cellRender={(cell) => (
+                <span className="promo__actions">
+                  <button className="btn btn-outline" onClick={() => onEdit(cell.data)}>Edit</button>
+                  <button className="btn btn-outline" onClick={() => onDelete(cell.data)}>Delete</button>
+                </span>
+              )}
+            />
+          </DataGrid>
         )}
       </Card>
     </div>

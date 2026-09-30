@@ -39,12 +39,35 @@ const StatusPill: React.FC<{ ok: boolean; okLabel: string; failLabel: string }> 
   </span>
 );
 
+/**
+ * Текст ошибки из ответа сервера. Раньше в тост шло тело ответа как есть: у 500 это
+ * пустая строка или объект, и человек получал пустое красное окно без единого слова.
+ */
+const errorText = (error: any, fallback: string): string => {
+  const data = error?.response?.data;
+  if (typeof data === "string" && data.trim()) {
+    return data;
+  }
+  if (data && typeof data === "object") {
+    const message = data.message ?? data.title ?? data.detail;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  const status = error?.response?.status;
+  return status ? `${fallback} (HTTP ${status})` : fallback;
+};
+
+type SelfTestCheck = { name: string; ok: boolean; detail: string };
+
 const AdminBotStatusPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const { addToast } = useToast();
   const [status, setStatus] = useState<BotStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [selfTest, setSelfTest] = useState<{ ok: boolean; checks: SelfTestCheck[] } | null>(null);
+  const [selfTesting, setSelfTesting] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastSegment, setBroadcastSegment] = useState<"linked" | "all">("linked");
   const [broadcastSending, setBroadcastSending] = useState(false);
@@ -82,9 +105,7 @@ const AdminBotStatusPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Bot status");
-    setHeaderActions([]);
-    return () => setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   useEffect(() => {
     loadStatus();
@@ -110,8 +131,7 @@ const AdminBotStatusPage: React.FC = () => {
       addToast(`Broadcast sent: ${result.sent}/${result.total}.`, "success");
     } catch (error: any) {
       console.error("Broadcast failed", error);
-      const message2 = error?.response?.data ?? "Broadcast failed.";
-      addToast(String(message2), "error");
+      addToast(errorText(error, "Broadcast failed."), "error");
     } finally {
       setBroadcastSending(false);
     }
@@ -126,12 +146,57 @@ const AdminBotStatusPage: React.FC = () => {
       await loadStatus();
     } catch (error: any) {
       console.error("Failed to apply webhook", error);
-      const message = error?.response?.data ?? "Failed to apply webhook.";
-      addToast(String(message), "error");
+      addToast(errorText(error, "Failed to apply webhook."), "error");
     } finally {
       setApplying(false);
     }
   };
+
+  /**
+   * Снять вебхук. Нужно при смене адреса или бота: у бота в Telegram вебхук ровно один,
+   * и пока он висит, обновления идут туда, а не в опрос. На сервере метод был давно,
+   * а нажать было нечем.
+   */
+  const handleRemoveWebhook = async () => {
+    if (!window.confirm("Remove the webhook? The bot will stop receiving messages until a new one is applied.")) {
+      return;
+    }
+
+    try {
+      setApplying(true);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      await apiClient.api.delete("/api/admin/bot/webhook");
+      addToast("Webhook removed — the bot receives no updates until a new one is applied.", "success");
+      await loadStatus();
+    } catch (error: any) {
+      console.error("Failed to remove webhook", error);
+      addToast(errorText(error, "Failed to remove webhook."), "error");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  /**
+   * Самопроверка: пять шагов от токена до настоящего запроса снаружи. «Connected» вверху
+   * страницы означает лишь «токен верный» — этого мало, чтобы бот слышал людей.
+   */
+  const handleSelfTest = async () => {
+    try {
+      setSelfTesting(true);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.get("/api/admin/bot/selftest");
+      setSelfTest(response.data as { ok: boolean; checks: SelfTestCheck[] });
+    } catch (error: any) {
+      console.error("Bot self-test failed", error);
+      addToast(errorText(error, "Self-test failed."), "error");
+    } finally {
+      setSelfTesting(false);
+    }
+  };
+
+  // Годится ли настроенный адрес для Telegram: только https и только не localhost.
+  const configured = status?.configuredWebhookUrl ?? "";
+  const isHttpsWebhook = configured.startsWith("https://") && !configured.includes("localhost");
 
   return (
     <div className="admin-grid">
@@ -231,15 +296,51 @@ const AdminBotStatusPage: React.FC = () => {
                 </p>
               </div>
 
+              {/* Telegram шлёт обновления только на публичный HTTPS-адрес. Пока настроен
+                  http:// или localhost, кнопка не сработает никогда — говорим об этом до
+                  нажатия, а не отказом Telegram после. */}
+              {!isHttpsWebhook && (
+                <p className="text-amber-700 text-sm">
+                  Telegram delivers updates only to a public <strong>https://</strong> address, so this
+                  webhook cannot be registered from a local machine. Expose the site through a tunnel
+                  (ngrok, cloudflared) and put that address into <code>BOT_WEBHOOK_URL</code>; on the
+                  server set <code>PUBLIC_URL</code> to your domain instead. Until a webhook is
+                  registered the bot receives nothing — this project has no polling mode.
+                </p>
+              )}
+
               <div className="flex gap-2 flex-wrap">
                 <button
                   className="btn btn-primary"
                   onClick={handleApplyWebhook}
-                  disabled={applying || !status.botOk}
+                  disabled={applying || !status.botOk || !isHttpsWebhook}
+                  title={isHttpsWebhook ? undefined : "Telegram requires a public https:// address"}
                 >
                   {applying ? "Applying..." : "Apply webhook"}
                 </button>
+                {Boolean(status.webhook?.url) && (
+                  <button
+                    className="btn btn-outline"
+                    onClick={handleRemoveWebhook}
+                    disabled={applying || !status.botOk}
+                  >
+                    Remove webhook
+                  </button>
+                )}
+                <button className="btn btn-outline" onClick={handleSelfTest} disabled={selfTesting}>
+                  {selfTesting ? "Checking…" : "Run self-test"}
+                </button>
               </div>
+
+              {selfTest && (
+                <ul className="bot-selftest">
+                  {selfTest.checks.map((check) => (
+                    <li key={check.name} className={check.ok ? "bot-selftest__ok" : "bot-selftest__fail"}>
+                      <strong>{check.ok ? "✓" : "✕"} {check.name}</strong> — {check.detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </Card>
 

@@ -1,9 +1,5 @@
-import container from '../../../inversify.config';
-import IDENTIFIERS from '../../../constants/identifiers';
-import type { IApiClient } from '../../../iterfaces/i-api-client';
 import type { CreateSupportTicketPayload, CreateSupportTicketResponse, SupportTicket, SupportTicketListResponse } from './types';
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { apiClient } from '../../../api/client';
 
 export const listSupportTickets = async (): Promise<SupportTicket[]> => {
     const response = await apiClient().get<SupportTicketListResponse>('/api/support/tickets');

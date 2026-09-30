@@ -3,6 +3,13 @@
 // ВАЖНО про имена полей: BlogPostDb хранит всё в camelCase, КРОМЕ двух флагов —
 // is_featured и is_blog_home_featured. Ошибка здесь даёт документы, которые
 // приложение прочитает частично и молча.
+// Защита от случайного запуска на боевой базе: сиды пишут выдуманные данные, а seed-discounts
+// стирает все скидки. Запуск только с явным ALLOW_DEMO_SEED=1 (см. seeds/README.md).
+if (process.env.ALLOW_DEMO_SEED !== "1") {
+  print("Отказ: демо-сиды запускаются только с ALLOW_DEMO_SEED=1. Это стенд, а не боевая база?");
+  quit(1);
+}
+
 const db = db.getSiblingDB('SteamShopDatabase');
 const now = Date.now();
 const day = 86400000;

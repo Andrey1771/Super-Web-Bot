@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Core.Services;
+using SuperBot.WebApi.Services.Storefront;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -16,48 +17,30 @@ namespace SuperBot.WebApi.Controllers
     public class DealOfWeekController : ControllerBase
     {
         /// <summary>Сколько обложек в «кулисах» баннера (по три с каждой стороны).</summary>
-        public const int MaxWingGames = 6;
+        public const int MaxWingGames = DealSpotlightService.MaxWingGames;
 
-        /// <summary>
-        /// Состав баннера одинаков для всех посетителей, поэтому кэш общий (ключ без пользователя).
-        /// TTL короткий: правку в админке админ ожидает увидеть почти сразу, а не через 10 минут.
-        /// При сохранении настроек кэш сбрасывается явно — см. Update.
-        /// </summary>
-        public const string SpotlightCacheKey = "deal-of-week:spotlight";
-        private static readonly TimeSpan SpotlightCacheTtl = TimeSpan.FromMinutes(2);
+        /// <summary>Ключ кэша состава баннера; сам расчёт живёт в DealSpotlightService.</summary>
+        public const string SpotlightCacheKey = DealSpotlightService.SpotlightCacheKey;
 
         private readonly IDealOfWeekSettingsRepository _settingsRepository;
         private readonly IGameRepository _gameRepository;
         private readonly IGameDiscountRepository _gameDiscountRepository;
         private readonly IMemoryCache _memoryCache;
+        private readonly IDealSpotlightService _spotlight;
 
         public DealOfWeekController(
             IDealOfWeekSettingsRepository settingsRepository,
             IGameRepository gameRepository,
             IGameDiscountRepository gameDiscountRepository,
-            IMemoryCache memoryCache)
+            IMemoryCache memoryCache,
+            IDealSpotlightService spotlight)
         {
             _settingsRepository = settingsRepository;
             _gameRepository = gameRepository;
             _gameDiscountRepository = gameDiscountRepository;
             _memoryCache = memoryCache;
+            _spotlight = spotlight;
         }
-
-        [HttpGet("api/deal-of-week")]
-        public async Task<IActionResult> GetPublic()
-        {
-            var spotlight = await _memoryCache.GetOrCreateAsync(SpotlightCacheKey, async entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = SpotlightCacheTtl;
-                var resolved = await ResolveAsync();
-                return new DealSpotlight(resolved.HeroGameId, resolved.WingGameIds);
-            }) ?? new DealSpotlight(null, new List<string>());
-
-            return Ok(new { heroGameId = spotlight.HeroGameId, wingGameIds = spotlight.WingGameIds });
-        }
-
-        /// <summary>Состав баннера для витрины. Именованный тип, а не анонимный: кладётся в кэш.</summary>
-        private sealed record DealSpotlight(string? HeroGameId, List<string> WingGameIds);
 
         [HttpGet("api/admin/deal-of-week")]
         [Authorize(Roles = "admin")]
@@ -103,62 +86,6 @@ namespace SuperBot.WebApi.Controllers
             return Ok(await BuildAdminResponseAsync(saved));
         }
 
-        /// <summary>
-        /// Итоговые id для витрины. Конфиг может «протухнуть» (скидка героя кончилась, игры
-        /// удалены) — тогда включаются фолбэки: герой = самая глубокая живая скидка,
-        /// кулисы = самые свежие вышедшие игры. Баннер не умирает от забытой настройки.
-        /// </summary>
-        private async Task<(string? HeroGameId, List<string> WingGameIds)> ResolveAsync()
-        {
-            var config = await _settingsRepository.GetAsync();
-            var games = await _gameRepository.GetAllAsync();
-            var utcNow = DateTime.UtcNow;
-
-            var gameById = games
-                .Where(game => !string.IsNullOrWhiteSpace(game.Id))
-                .ToDictionary(game => game.Id!, StringComparer.OrdinalIgnoreCase);
-            var discounts = await _gameDiscountRepository.GetByGameIdsAsync(gameById.Keys);
-            var discountByGameId = discounts
-                .Where(discount => !string.IsNullOrWhiteSpace(discount.GameId))
-                .ToDictionary(discount => discount.GameId!, discount => discount, StringComparer.OrdinalIgnoreCase);
-
-            bool hasLiveDeal(string gameId) =>
-                gameById.TryGetValue(gameId, out var game) &&
-                !GameRelease.IsUpcoming(game.ReleaseDate, utcNow) &&
-                discountByGameId.TryGetValue(gameId, out var discount) &&
-                discount.IsActiveAt(utcNow) &&
-                discount.DiscountPercent > 0;
-
-            var heroGameId = config?.HeroGameId != null && hasLiveDeal(config.HeroGameId)
-                ? gameById[config.HeroGameId].Id
-                : gameById.Keys
-                    .Where(hasLiveDeal)
-                    .OrderByDescending(id => discountByGameId[id].DiscountPercent)
-                    .FirstOrDefault();
-
-            var wingGameIds = (config?.WingGameIds ?? new List<string>())
-                .Where(id => gameById.ContainsKey(id))
-                .Where(id => !string.Equals(id, heroGameId, StringComparison.OrdinalIgnoreCase))
-                .Select(id => gameById[id].Id!)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(MaxWingGames)
-                .ToList();
-
-            if (wingGameIds.Count == 0)
-            {
-                wingGameIds = games
-                    .Where(game => !string.IsNullOrWhiteSpace(game.Id))
-                    .Where(game => !GameRelease.IsUpcoming(game.ReleaseDate, utcNow))
-                    .Where(game => !string.Equals(game.Id, heroGameId, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(game => game.ReleaseDate)
-                    .Take(MaxWingGames)
-                    .Select(game => game.Id!)
-                    .ToList();
-            }
-
-            return (heroGameId, wingGameIds);
-        }
-
         /// <summary>Конфиг + статус предложения героя — админка предупреждает, если скидки нет.</summary>
         private async Task<object> BuildAdminResponseAsync(DealOfWeekSettings? config)
         {
@@ -177,10 +104,33 @@ namespace SuperBot.WebApi.Controllers
                 }
             }
 
+            // Названия выбранных игр отдаём вместе с идентификаторами. Без них админка не могла
+            // бы показать, что именно выбрано, не выкачав каталог: искать название по id в
+            // списке «первых двухсот» получается ровно до тех пор, пока игр меньше двухсот.
+            var wingIds = config?.WingGameIds ?? new List<string>();
+            var needed = wingIds.ToList();
+            if (!string.IsNullOrWhiteSpace(config?.HeroGameId))
+            {
+                needed.Add(config!.HeroGameId!);
+            }
+
+            var titles = needed.Count == 0
+                ? new Dictionary<string, string>()
+                : (await _gameRepository.GetByIdsAsync(needed))
+                    .Where(game => !string.IsNullOrWhiteSpace(game.Id))
+                    .ToDictionary(
+                        game => game.Id!,
+                        game => string.IsNullOrWhiteSpace(game.Title) ? game.Name ?? game.Id! : game.Title,
+                        StringComparer.OrdinalIgnoreCase);
+
             return new
             {
                 heroGameId = config?.HeroGameId,
-                wingGameIds = config?.WingGameIds ?? new List<string>(),
+                heroTitle = config?.HeroGameId != null && titles.TryGetValue(config.HeroGameId, out var heroName) ? heroName : null,
+                wingGameIds = wingIds,
+                // Игра могла быть удалена из каталога после того, как её выбрали, — тогда
+                // названия нет, и лучше показать это прямо, чем прятать строку.
+                wings = wingIds.Select(id => new { gameId = id, title = titles.TryGetValue(id, out var name) ? name : null }).ToList(),
                 maxWingGames = MaxWingGames,
                 heroDealActive,
                 heroDealEndsAt,

@@ -18,13 +18,12 @@ type TokenProfile = {
 const ProfilePage: React.FC = () => {
   const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const { addToast } = useToast();
 
   React.useEffect(() => {
     setPageTitle("Profile");
-    setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const token = keycloakService.keycloak.tokenParsed as TokenProfile | undefined;
   const role = token?.realm_access?.roles?.includes("admin") ? "Admin" : "User";

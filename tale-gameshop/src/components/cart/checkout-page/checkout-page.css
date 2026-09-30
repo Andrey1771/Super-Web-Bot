@@ -126,3 +126,63 @@
     font-size: 13px;
     color: #b91c1c;
 }
+
+/* Плашка-заглушка Stripe: текст и кнопка повтора — в столбик, а не в строку. */
+.checkout-page-stripe-placeholder {
+    flex-direction: column;
+}
+
+.checkout-retry {
+    margin-top: 14px;
+    align-self: center;
+}
+
+/*
+ * Предупреждение о регионе — до оплаты и на видном месте.
+ *
+ * Сервер такой заказ отклонит сам, но отказ на последнем шаге ничего не объясняет. Здесь
+ * названы конкретные игры и сказано, что с ними делать.
+ */
+.checkout-region-warning {
+    display: flex;
+    gap: var(--space-12);
+    margin-bottom: var(--space-20);
+    padding: var(--space-16);
+    border: 1px solid #f0b7b7;
+    border-left-width: 4px;
+    border-radius: var(--radius-lg);
+    background: #fdf3f3;
+    color: #7c2626;
+}
+
+.checkout-region-warning-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #a03434;
+    color: #fff;
+    font-weight: 700;
+}
+
+.checkout-region-warning ul {
+    margin: var(--space-8) 0 0;
+    padding-left: var(--space-20);
+}
+
+.checkout-region-warning li {
+    font-weight: 600;
+}
+
+.checkout-region-warning p {
+    margin: var(--space-8) 0 0;
+    font-size: 14px;
+}
+
+.checkout-region-warning a {
+    color: inherit;
+    font-weight: 700;
+}

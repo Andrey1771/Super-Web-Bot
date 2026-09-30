@@ -9,13 +9,6 @@ export interface SupportTicket {
     updatedAt: string;
 }
 
-export interface SupportAttachment {
-    id?: string;
-    fileName: string;
-    size: number;
-    url?: string;
-}
-
 export interface CreateSupportTicketPayload {
     category: string;
     subject: string;

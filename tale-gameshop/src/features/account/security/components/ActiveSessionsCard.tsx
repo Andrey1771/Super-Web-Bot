@@ -1,3 +1,5 @@
+import {useTranslation} from 'react-i18next';
+import {formatDateTime} from '../../../../i18n/format';
 import React from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faDesktop, faChevronRight} from '@fortawesome/free-solid-svg-icons';
@@ -10,7 +12,7 @@ type ActiveSessionsCardProps = {
     onLogoutAll: () => void;
 };
 
-const formatTimestamp = (value: number) => new Date(value).toLocaleString();
+const formatTimestamp = (value: number) => formatDateTime(value);
 
 const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
     sessions,
@@ -18,13 +20,14 @@ const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
     onLogoutSession,
     onLogoutAll
 }) => {
+    const {t} = useTranslation();
     return (
         <div className="security-section" data-testid="security-sessions">
-            <h3>Active sessions</h3>
+            <h3>{t('account.security.sessions.title')}</h3>
             <div className="card security-sessions-card">
-                {isLoading && <div className="security-session-empty">Loading sessions...</div>}
+                {isLoading && <div className="security-session-empty">{t('account.security.sessions.loading')}</div>}
                 {!isLoading && sessions.length === 0 && (
-                    <div className="security-session-empty">No active sessions found.</div>
+                    <div className="security-session-empty">{t('account.security.sessions.none')}</div>
                 )}
                 {!isLoading && sessions.map((session) => (
                     <div key={session.id} className="security-session-row">
@@ -34,7 +37,7 @@ const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
                         <div className="security-session-details">
                             <strong>{session.device}</strong>
                             <span>
-                                {formatTimestamp(session.lastAccess)} · IP {session.ipAddress}
+                                {formatTimestamp(session.lastAccess)} · {t('account.security.sessions.ip')} {session.ipAddress}
                             </span>
                         </div>
                         <button
@@ -42,13 +45,13 @@ const ActiveSessionsCard: React.FC<ActiveSessionsCardProps> = ({
                             className="btn btn-outline security-secondary-btn"
                             onClick={() => onLogoutSession(session.id)}
                         >
-                            Log out
+                            {t('common.logOut')}
                             <FontAwesomeIcon icon={faChevronRight} />
                         </button>
                     </div>
                 ))}
                 <button type="button" className="btn btn-outline security-logout-all" onClick={onLogoutAll} disabled={isLoading}>
-                    Log out all sessions
+                    {t('account.security.sessions.logOutAll')}
                 </button>
             </div>
         </div>

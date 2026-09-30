@@ -72,13 +72,15 @@
 }
 
 .admin-sidebar__logo {
+  /* Знак не квадратный: ведём по высоте, ширина идёт за пропорцией. */
   height: 38px;
-  width: 38px;
+  width: auto;
   flex-shrink: 0;
   object-fit: contain;
-  /* Логотип нарисован чёрным — на тёмном фоне инвертируем в белый, без белой плашки. */
-  filter: invert(1);
-  opacity: 0.95;
+  /* Инверсии здесь нет намеренно. Прежний логотип был чёрной штриховой графикой и на
+     тёмной колонке без invert(1) не читался. Лягушка — цветная, и инверсия превратила бы
+     фиолетовый в жёлто-зелёный. На фоне #0f172a знак держится сам: светлый геймпад и
+     глаза дают контраст около 15:1, этого достаточно. */
 }
 
 .admin-sidebar__brand-text {
@@ -185,8 +187,10 @@
 }
 
 .admin-sidebar.collapsed .admin-sidebar__logo {
-  width: 34px;
-  height: 34px;
+  /* В свёрнутом состоянии подставлен квадратный вариант знака, поэтому ширина и высота
+     совпадают и полоса значков остаётся ровной. */
+  width: 44px;
+  height: 44px;
 }
 
 /* Свёрнуто: кнопка «развернуть» — маленький кружок в правом верхнем углу колонки, вне потока.
@@ -349,11 +353,6 @@
   flex-wrap: wrap;
 }
 
-.admin-topbar__title {
-  font-weight: 600;
-  font-size: 18px;
-}
-
 .admin-topbar__search {
   flex: 1;
   min-width: 220px;
@@ -398,6 +397,14 @@
 
 .admin-menu__dropdown--right {
   right: 0;
+}
+
+/* Открывать вправо. Нужно там, где сама кнопка стоит у ЛЕВОГО края: меню профиля в шапке
+   раскрывалось влево и уезжало под боковое меню — на узком экране оно выдвинуто поверх
+   содержимого, и половина пунктов оказывалась под ним. */
+.admin-menu__dropdown--left {
+  left: 0;
+  right: auto;
 }
 
 .admin-menu__item {
@@ -494,6 +501,14 @@
   min-width: 0;
 }
 
+/* Кнопки страницы — рядом с её заголовком, а не в шапке админки. */
+.admin-page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
 /* Вкладки раздела под заголовком: одна сущность, несколько страниц. Активная — с нижней
    чертой цвета акцента, остальные приглушены. */
 .admin-page-tabs {
@@ -532,13 +547,6 @@
   border-bottom-color: var(--color-primary);
 }
 
-.admin-page-header__breadcrumbs {
-  font-size: 13px;
-  color: var(--color-muted);
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
 
 .admin-page-header__title {
   margin-bottom: var(--space-8);
@@ -558,6 +566,11 @@
 
 .admin-grid {
   display: grid;
+  /* Колонка ограничена шириной страницы. Без minmax(0, …) она растягивается по самому
+     широкому содержимому: таблица с десятком колонок раздувала страницу целиком, и
+     горизонтальная полоса появлялась у всего документа, а поля фильтров над таблицей
+     уезжали за правый край экрана. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-16);
 }
 
@@ -653,6 +666,25 @@
   justify-content: flex-end;
   gap: var(--space-12);
   border-top: 1px solid var(--color-border);
+}
+
+/* Результат самопроверки бота: строка на каждый шаг, зелёная или красная. */
+.bot-selftest {
+  list-style: none;
+  margin: var(--space-12) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.bot-selftest__ok {
+  color: #15803d;
+}
+
+.bot-selftest__fail {
+  color: #b91c1c;
 }
 
 .admin-drawer {
@@ -971,27 +1003,77 @@
 
 /* Кнопка сохранения длинного редактора: плавающая справа, без белой панели,
    чтобы не перекрывать контент при прокрутке. */
+/* Внизу справа висит ровно одна кнопка — самое частое действие, сохранение.
+   До этого здесь стояла целая панель: статус, просмотр, публикация и сохранение на общей
+   белой подложке. Такой блок читался не как часть страницы, а как чужеродный островок,
+   наехавший на форму. Всё, кроме сохранения, переехало в шапку карточки, а подложка,
+   рамка и отступы больше не нужны: одной кнопке хватает собственной тени. */
 .admin-save-bar {
   position: sticky;
   bottom: 16px;
+  z-index: 5;
+  width: fit-content;
+  margin-left: auto;
   display: flex;
-  justify-content: flex-end;
-  pointer-events: none;
+  align-items: center;
+  gap: var(--space-8);
 }
 
 .admin-save-bar .btn {
-  pointer-events: auto;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 
-.skeleton {
+/* Блок публикации: состояние, пояснение, кнопка и список пробелов под ними.
+   Отдельная карточка, а не приписка к полям игры: у той карточки своя тема — какая это
+   игра и по какому адресу она лежит. */
+.publish-block {
+  display: grid;
+  gap: var(--space-16);
+  padding: var(--space-16) var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.publish-block__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+/* Пояснение занимает середину и отжимает кнопку вправо: плашка отвечает «в каком
+   состоянии», строка — «чем это оборачивается», кнопка — «как переключить». */
+.publish-block__note {
+  margin: 0 auto 0 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* Включённый просмотр видно по фирменному цвету: иначе «Hide preview» ничем не отличается
+   от соседней кнопки и непонятно, включён режим или нет. */
+.editor-preview-toggle.is-on {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #f5f3ff;
+}
+
+/* Приставка раздела обязательна: стили витрины и админки едут одним файлом, и общий
+   «.skeleton» витрины иначе побеждает просто потому, что стоит в сборке ниже. */
+.admin-layout .skeleton {
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
+  animation: admin-skeleton-shimmer 1.4s infinite;
   border-radius: var(--radius-sm);
 }
 
-@keyframes shimmer {
+/* Перелив витрины поверх админского скелетона не нужен: он рассчитан на её лавандовый фон
+   и на сером выглядит грязным пятном. */
+.admin-layout .skeleton::after {
+  content: none;
+}
+
+@keyframes admin-skeleton-shimmer {
   0% {
     background-position: 200% 0;
   }
@@ -1043,5 +1125,1531 @@
 
   .admin-layout__main {
     padding: var(--space-16);
+  }
+}
+
+/* ---- Полнота карточки игры ---- */
+
+.card-completeness {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.card-completeness--errors {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.card-completeness--ok {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.card-completeness__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.card-completeness__count {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.card-completeness__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.card-completeness__item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.card-completeness__pill {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.card-completeness__item--error .card-completeness__pill {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.card-completeness__item--info .card-completeness__pill {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.admin-gaps-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-gaps-pill--errors {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* ---- Политика активации (регионы) ---- */
+
+.region-policy {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  margin: 6px 0 10px;
+}
+
+.region-policy__row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.region-policy__radio {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.region-policy__regions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.region-policy__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.region-policy__chip.is-on {
+  border-color: var(--color-primary);
+  background: #f3efff;
+}
+
+.region-policy__chip input {
+  display: none;
+}
+
+.region-policy__excluded {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.regions-editor__row {
+  display: grid;
+  grid-template-columns: 90px 180px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* Строка редактора команды: имя, роль, ярлык, описание и кнопка удаления. */
+.team-editor__row {
+  display: grid;
+  /* Первая колонка — кружок фотографии: под 48px плюс крестик сброса. */
+  grid-template-columns: 64px 160px 150px 120px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 6px;
+}
+
+.team-editor__photo {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+/* Сам кружок — кнопка: нажатие открывает выбор файла и окно кадрирования, то же, что у
+   аватара в профиле. Пунктир, пока фотографии нет, — так видно, что место кликабельное
+   и пустое, а не просто буква. */
+.team-editor__avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 999px;
+  /* overflow: hidden тут не годится: круглой должна быть картинка, а карандаш сидит на
+     кромке кружка и срезался вместе с её углами. Картинку скругляем ей самой. */
+  border: 1px dashed #c7c2e0;
+  background: #f3f0ff;
+  color: #5b4b9e;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.team-editor__avatar:hover {
+  border-color: #6b3ff2;
+}
+
+/* Карандаш в углу: та же подсказка «это можно поменять», что у аватара в профиле. */
+.team-editor__avatar-edit {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #6b3ff2;
+  color: #ffffff;
+  font-size: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(24, 18, 46, 0.35);
+}
+
+.team-editor__avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+  display: block;
+}
+
+.team-editor__photo-clear {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.team-editor__photo-clear:hover {
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+/* На узкой админке пять колонок не помещаются — раскладываем поля в столбец. */
+@media (max-width: 1100px) {
+  .team-editor__row {
+    grid-template-columns: 1fr;
+  }
+
+  .team-editor__row > span {
+    display: none;
+  }
+}
+
+
+/* Глобальный .input задаёт height: 48px — для однострочных полей это верно, но для
+   textarea означает окно в две строки со скроллом, из-за чего атрибут rows не работал
+   вовсе. Списки жанров, тегов и фич правились через щёлку. Возвращаем textarea
+   нормальную высоту и возможность растянуть поле мышью. */
+textarea.input {
+  height: auto;
+  min-height: 96px;
+  padding: 10px var(--space-12);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* ---- Редактор описания игры: вставка картинок и превью ---- */
+
+/* Панель инструментов поля описания: слева, вплотную над полем. */
+.admin-md__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+
+/* Отдельного размера кнопок в проекте нет — уменьшаем точечно, чтобы служебные
+   кнопки не спорили по весу с основными действиями формы. */
+.admin-md__toolbar .btn {
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+/* Описание — самое длинное поле формы, ему нужна высота, а не две строки со скроллом.
+   Селектор с тегом обязателен: правило textarea.input выше задаёт min-height: 96px и по
+   специфичности (0,1,1) перебивает голый класс (0,1,0) независимо от порядка в файле.
+   Из-за этого поле описания схлопывалось до трёх строк со скроллом вместо заявленных 320px. */
+textarea.admin-md__area {
+  min-height: 320px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+/* Вертикальный ритм внутри раздела: между рядами полей, описанием и списками. */
+.admin-card__body {
+  margin-top: 14px;
+  display: grid;
+  gap: var(--space-16);
+}
+
+/* Мелкая кнопка для служебных действий внутри форм. В админке своего размера не было —
+   «Add recommended» и «Remove» рядом с полями выглядели бы как главные действия раздела. */
+.admin-layout .btn-small {
+  padding: 4px 10px;
+  font-size: 12px;
+  height: auto;
+}
+
+/* ---- Воронка ----
+   Полоса рисуется от первого шага: числа отвечают «сколько», форма — «где обрыв». Одними
+   цифрами в столбик провал между двумя шагами не виден. */
+.funnel {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.funnel__row {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.funnel__label {
+  font-weight: 600;
+}
+
+.funnel__lost {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.funnel__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.funnel__fill {
+  height: 32px;
+  background: #ddd6fe;
+}
+
+/* Последний шаг считается по другому источнику — заливка пунктиром, чтобы его не сравнивали
+   с остальными на глаз как равный. */
+.funnel__fill--unlinked {
+  background: repeating-linear-gradient(45deg, #ede9fe, #ede9fe 6px, #f5f3ff 6px, #f5f3ff 12px);
+}
+
+.funnel__value {
+  position: absolute;
+  left: var(--space-12);
+  font-weight: 700;
+}
+
+.funnel__share {
+  text-align: right;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .funnel__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .funnel__share {
+    text-align: left;
+  }
+}
+
+/* ---- Отчёт за период ---- */
+.report-range {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.report-range .admin-field {
+  gap: 4px;
+}
+
+.report-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* Плитки итогов. Прибыль — последняя и выделена: остальные три её слагаемые. */
+.report-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-16);
+}
+
+.report-tile {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-16) var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.report-tile__label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-muted);
+}
+
+.report-tile__value {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.report-tile__note {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.report-tile--total {
+  border-color: var(--color-primary);
+  background: #f5f3ff;
+}
+
+/* Неполная прибыль не притворяется итогом: рамка пунктиром, как у любого черновика. */
+.report-tile--total.is-partial {
+  border-style: dashed;
+  background: var(--color-surface);
+}
+
+/* Числа в отчёте выравниваются по правому краю: так разряды стоят под разрядами и суммы
+   можно сравнивать глазом, не читая каждую целиком. */
+.report-table__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Удалённая игра и возвращённые штуки — приглушённо: это уточнение к строке, а не её суть. */
+.report-table__gone {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* Маржа, посчитанная без известной себестоимости. Приглушена намеренно: без этого она
+   выглядит как отличный результат, хотя означает лишь отсутствие данных о расходах. */
+.report-table__unsure {
+  color: var(--color-muted);
+  border-bottom: 1px dashed var(--color-border);
+  cursor: help;
+}
+
+/* Дата и время: два поля в ряд, подпись сверху, часовой пояс снизу мелким. */
+.datetime-field {
+  gap: 4px;
+}
+
+/* Подпись над полем, которое собрано из нескольких контролов и потому не обёрнуто в label. */
+.field-label {
+  font-weight: 600;
+}
+
+.datetime-field__inputs {
+  display: flex;
+  gap: var(--space-8);
+}
+
+/* Дата шире времени: «дд.мм.гггг» с иконкой календаря не помещается в равную долю. */
+.datetime-field__inputs .input[type="date"] {
+  flex: 2 1 0;
+  min-width: 0;
+}
+
+.datetime-field__inputs .input[type="time"] {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.datetime-field__hint {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+/* Строка галереи: номер позиции на витрине, тип кадра и пометка трейлера. */
+.gallery-item__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.gallery-item__position {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.gallery-item__badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f5f3ff;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Пояснение вместо кнопки у картинки: почему трейлер здесь выбрать нельзя. */
+.gallery-item__note {
+  font-size: 11px;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Награда — строка: название, тип, год, значок и удаление. Название шире прочего, год
+   узкий: в нём четыре цифры. */
+.award-edit {
+  display: grid;
+  /* Год — список: четыре цифры плюс стрелка выпадашки, 92px под них было мало. */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) 110px auto auto;
+  gap: var(--space-12);
+  align-items: end;
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.award-edit:last-of-type {
+  border-bottom: none;
+}
+
+.award-edit__icon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 44px;
+}
+
+.award-edit__icon img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.award-edit__placeholder {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.award-edit__remove {
+  align-self: end;
+}
+
+/* На узком экране пять колонок не помещаются — строка разворачивается в столбец. */
+@media (max-width: 1100px) {
+  .award-edit {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .award-edit__remove {
+    justify-self: start;
+  }
+}
+
+/* Разработчик и издатель — две группы полей рядом. Рамка нужна, чтобы «Name» одного не
+   читался как продолжение другого: подписи у них одинаковые. */
+.studio {
+  margin: 0;
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-8);
+  align-content: start;
+}
+
+.studio__legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+/* ---- Системные требования ---- */
+.sysreq {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.sysreq__os {
+  margin: 0;
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.sysreq__legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.sysreq__columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.sysreq__column {
+  display: grid;
+  gap: var(--space-8);
+  align-content: start;
+}
+
+.sysreq__column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  min-height: 28px;
+}
+
+/* Приглашение добавить систему или рекомендуемые характеристики. Пунктир — чтобы блок
+   читался как пустое место, которое можно заполнить, а не как заполненный раздел. */
+.sysreq__add {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.sysreq__add--column {
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .sysreq__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.admin-md__hint {
+  margin-left: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.admin-md__hint code {
+  background: rgba(124, 58, 237, 0.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.admin-md__preview {
+  margin-top: 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.admin-md__preview-label {
+  padding: 6px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  background: rgba(124, 58, 237, 0.05);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.admin-md__preview-body {
+  padding: 16px;
+  /* Ширина близка к колонке описания на витрине, чтобы переносы и врезки
+     в превью ложились примерно так же, как увидит покупатель. */
+  max-width: 900px;
+}
+
+.admin-md__preview-body img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 16px auto;
+  border-radius: 12px;
+  border: 1px solid #ece8ff;
+}
+
+.admin-md__preview-body h1,
+.admin-md__preview-body h2,
+.admin-md__preview-body h3 {
+  font-size: 17px;
+  margin: 16px 0 8px;
+}
+
+.admin-md__preview-body p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.admin-md__preview-body ul,
+.admin-md__preview-body ol {
+  padding-left: 20px;
+  margin: 0 0 12px;
+}
+
+/* ---- Превью карточки игры ---- */
+
+.game-preview {
+  margin-top: 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.game-preview__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(124, 58, 237, 0.05);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.game-preview__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+/* Сцена фиксированной ширины 1280: ужимается transform-ом, поэтому медиазапросы витрины
+   продолжают считать ширину окна и показывают настоящую десктопную раскладку. */
+.game-preview__stage {
+  transform-origin: top left;
+}
+
+.game-preview__scale {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.game-preview__widths {
+  display: flex;
+  gap: 6px;
+}
+
+.game-preview__widths .btn {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.game-preview__widths .btn.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Обёртка обрезает уменьшенный кадр: сам iframe остаётся шириной 1280,
+   на экран он ужимается transform-ом, поэтому за пределы панели не вылезает. */
+.game-preview__box {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---- Раздельный вид редактора: форма + превью ---- */
+
+.editor-split {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+
+/* Включённое превью занимает место формы, а не делит с ней ширину.
+   Раньше это были две колонки, и карточка ужималась до 44% — в таком масштабе видно
+   расположение блоков, но не видно того, ради чего смотрят: как это прочитает покупатель.
+   Ширину карточка подбирает сама (scale = ширина_контейнера / 1280), так что во всю
+   колонку она показывается один к одному. */
+.editor-split.is-open .editor-split__form {
+  display: none;
+}
+
+.editor-split__form {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.editor-split__preview {
+  min-width: 0;
+}
+
+.game-preview--failed .game-preview__error {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.game-preview--failed code {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(185, 28, 28, 0.08);
+  color: #b91c1c;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Развёрнутое превью: карточка во всю страницу, в натуральном масштабе. */
+.game-preview-full {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: #f6f2fb;
+}
+
+.game-preview-full__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  flex: 0 0 auto;
+}
+
+/* Кадр сам прокручивает своё содержимое; здесь только центрируем его по ширине. */
+.game-preview-full__body {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  background: #e9e4f5;
+}
+
+.game-preview__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-preview__actions .btn {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.game-preview__actions .btn.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Выпадающий выбор размера картинки — той же высоты, что кнопки рядом. */
+/* Специфичнее, чем .input: у того width: 100%, и селект растягивался на всю строку. */
+.admin-md__toolbar .admin-md__size {
+  width: auto;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* Явный ярлык поля описания: раньше подпись была частью label-обёртки. */
+.admin-field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Кадр превью. max-width здесь НЕЛЬЗЯ: он ужимал сам iframe, а вместе с ним и вьюпорт
+   внутри — кадр шириной 1280 становился 560-пиксельным и витрина показывала мобильную
+   раскладку прямо в боковой панели. Вписывание делает transform: scale, обрезку — коробка. */
+.game-preview__frame {
+  border: 0;
+  display: block;
+  background: #f6f2fb;
+}
+
+/* Переключатель продвинутых секций: по ширине содержимого, чтобы не выглядеть
+   основным действием формы рядом с «Save all». */
+.admin-advanced-toggle {
+  align-self: flex-start;
+  width: auto;
+}
+
+/* Замечание-переход в панели полноты: выглядит как ссылка, а не как кнопка-блок. */
+.card-completeness__jump {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.card-completeness__jump:hover {
+  color: var(--color-primary);
+}
+
+/* ---- Поиск игры в редакторе (замена выпадающего списка) ---- */
+
+.game-switch {
+  position: relative;
+}
+
+/* Выдача поверх формы: она перекрывает поля под собой и не должна раздвигать раскладку. */
+.game-switch__results {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+}
+
+.game-switch__hit {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.game-switch__hit:hover {
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.game-switch__slug {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.game-switch__empty {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* Пояснение над списком при пустом вводе: видно только начало каталога. */
+.game-switch__note {
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ---- Рельс шагов редактора ---- */
+
+.editor-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 4px;
+}
+
+/* «All» без точки состояния: она относится к конкретному шагу, а здесь шагов сразу все.
+   Селектор удвоен намеренно: базовое правило .editor-steps__item ниже по файлу задаёт
+   border целиком и при равной специфичности перебило бы этот border-style. */
+.editor-steps__item.editor-steps__item--all {
+  border-style: dashed;
+}
+
+.editor-steps__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 999px;
+  background: var(--color-surface, #fff);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.editor-steps__item:hover {
+  border-color: #c7b8ff;
+}
+
+.editor-steps__item.is-active {
+  border-color: var(--color-primary);
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.editor-steps__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.editor-steps__label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Несохранённые правки на шаге. Цветом и скобками отличается от счётчика пробелов рядом:
+   пробелы — про сохранённую карточку и приходят с сервера, скобки — про то, что ещё не ушло. */
+.editor-steps__unsaved {
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Подсказка — что внутри шага: по названию «Discovery» это не очевидно. */
+.editor-steps__hint {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+/* Подсказка под поиском игры на пустой странице редактора. */
+.editor-pick__hint {
+  margin-top: var(--space-8);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* Точка состояния: красная — есть обязательный пробел, жёлтая — стоит добавить, зелёная — всё. */
+.editor-steps__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.editor-steps__dot--error { background: #b91c1c; }
+.editor-steps__dot--warning { background: #c2410c; }
+.editor-steps__dot--ok { background: #1b8a4a; }
+
+.editor-steps__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+/* ---- Массовые операции в каталоге ---- */
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.bulk-bar__count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.bulk-bar__percent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+/* Узкое числовое поле: .input тянется на 100%, а тут нужна пара цифр. */
+.bulk-bar__percent .input {
+  width: 72px;
+  height: 32px;
+}
+
+/* Поле даты в той же строке: ширину задаёт содержимое, а не 72px как у процента. */
+.bulk-bar__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.bulk-bar__field .input {
+  width: auto;
+  height: 32px;
+}
+
+.bulk-bar .btn {
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+/* Колонка флажков — по содержимому, чтобы не отъедать ширину у названия. */
+.admin-table__check {
+  width: 36px;
+  text-align: center;
+}
+
+/* ---- Состояние публикации ---- */
+
+.publish-state {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  /* «Draft — not visible in the store» длиннее кнопок рядом и без этого рвётся на две
+     строки, растягивая всю панель. */
+  white-space: nowrap;
+}
+
+.publish-state--draft {
+  background: #fff4e5;
+  color: #92400e;
+}
+
+.publish-state--live {
+  background: #e7f6ec;
+  color: #1b8a4a;
+}
+
+/* Ввод рекламных трат. Панель прячется за кнопкой: заносят траты редко, а места форма
+   занимает столько же, сколько сам отчёт. */
+.spend-panel {
+  display: grid;
+  gap: var(--space-16);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted, var(--color-surface));
+}
+
+.spend-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+/* Поля в одну строку, пока хватает ширины: одна трата — одна короткая запись. */
+.spend-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-8);
+}
+
+.spend-form__field {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.spend-form__field--narrow {
+  flex: 0 1 110px;
+}
+
+.spend-form .input {
+  width: 100%;
+}
+
+/* Выбор игр для баннера недели: две колонки одного устройства — подпись, выбранное, поиск,
+   результаты, счётчик. Высоты строк фиксированы, иначе колонки разъезжаются по вертикали:
+   слева под подписью стоит одна строка «Auto…», справа — плитки выбранного, и дальше всё
+   съезжает на разную высоту. */
+.deal-picker {
+  display: flex;
+  flex-direction: column;
+}
+
+.deal-picker__label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Строка «что сейчас выбрано». Минимальная высота держит поля ниже на одном уровне,
+   когда с одной стороны выбрано, а с другой ещё нет. */
+.deal-picker__current {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 36px;
+  margin: 8px 0;
+}
+
+.deal-picker__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.deal-picker__muted {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* Высота задана, а не ограничена сверху: с max-height короткий список слева и длинный
+   справа снова дали бы разную высоту колонок. */
+.deal-picker__results {
+  height: 170px;
+  overflow-y: auto;
+  margin-top: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.deal-picker__results--two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 2px 12px;
+  padding: 6px 8px;
+}
+
+.deal-picker__option {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.deal-picker__option:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.deal-picker__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.deal-picker__check span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Счётчик занимает строку всегда — даже пустой: иначе колонка без него становится короче. */
+.deal-picker__hint {
+  min-height: 18px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* Медиатека: карточка файла. content-visibility говорит браузеру не раскладывать и не рисовать
+   то, что сейчас за экраном, — при бесконечной прокрутке в списке накапливаются сотни плиток,
+   и без этого каждая новая порция замедляет прокрутку всей страницы. contain-intrinsic-size
+   задаёт браузеру ожидаемую высоту, чтобы полоса прокрутки не прыгала. */
+.media-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 280px;
+}
+
+.media-card--row {
+  contain-intrinsic-size: 96px;
+}
+
+/* Очередь загрузки в медиатеке: список файлов пачки с исходом у каждого. Высота ограничена —
+   выбрать могут и полсотни файлов, а окно не должно уезжать за экран. */
+.media-upload-queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.media-upload-queue__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.media-upload-queue__item:last-child {
+  border-bottom: 0;
+}
+
+/* Имя жмётся, статус — нет: понять, что именно случилось, важнее, чем прочитать имя целиком. */
+.media-upload-queue__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-upload-queue__status {
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+
+.media-upload-queue__status--done {
+  color: #15803d;
+}
+
+.media-upload-queue__status--error {
+  color: #b91c1c;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-upload-queue__remove {
+  flex-shrink: 0;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+/* Карточка события входа: подписи слева, значения справа. Раньше здесь печатался сырой
+   объект строки — все поля подряд одним столбцом, включая внутренние. */
+.login-details {
+  display: grid;
+  grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.login-details__label {
+  color: var(--color-muted);
+}
+
+/* Идентификаторы и адреса длинные: переносим по символам, иначе они распирают панель. */
+.login-details__value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.login-details__json {
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: #f8fafc;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- ПО: категории раздела, вид товара, лицензии ---- */
+
+.software-categories-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.software-categories-editor__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 70px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.software-categories-editor__row--head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted, #6b7280);
+}
+
+.software-categories-editor__count {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.software-categories-editor__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.software-categories-editor__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-kind-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-kind-pill.is-draft {
+  background: #f1f0f9;
+  color: #5a5286;
+}
+
+/* Переключатель «Game / Software» в форме товара. */
+.kind-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f1f0f9;
+  gap: 3px;
+}
+
+.kind-switch button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: #5a5286;
+  cursor: pointer;
+}
+
+.kind-switch button.is-active {
+  background: #fff;
+  color: #2b2350;
+  box-shadow: 0 1px 4px rgba(30, 20, 70, 0.14);
+}
+
+/* Строка лицензии: срок, устройства, подписка, подпись для витрины. */
+.license-edit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  align-items: end;
+  margin-top: 6px;
+}
+
+.license-edit__label {
+  font-size: 12px;
+  color: var(--color-muted, #6b7280);
+}
+
+.license-edit__label strong {
+  color: #166534;
+}
+
+/* Склад лицензии и вход в её ключи. Пустой склад — янтарным: карточку это не ломает, но купить лицензию нельзя. */
+.license-edit__keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-muted, #6b7280);
+}
+
+.license-edit__keys strong {
+  color: #2b2350;
+}
+
+.license-edit__keys.is-empty strong {
+  color: #b4520f;
+}
+
+.license-edit__keys.is-pending {
+  font-style: italic;
+}
+
+/* Копия товара — под выбором товара и адресом: действие над товаром целиком, а не над одной секцией. */
+.editor-duplicate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.editor-duplicate .editor-pick__hint {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .software-categories-editor__row {
+    grid-template-columns: 1fr 1fr;
   }
 }

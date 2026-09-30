@@ -20,8 +20,9 @@ export default (env, { mode }) => {
 
     const mkcertKeyPath = path.resolve(__dirname, 'certs/localhost-key.pem');
     const mkcertCertPath = path.resolve(__dirname, 'certs/localhost.pem');
-    const legacyKeyPath = path.resolve(__dirname, 'public/private.key');
-    const legacyCertPath = path.resolve(__dirname, 'public/private.crt');
+    // Старый самоподписанный сертификат — в certs/ (игнорируется git), а не в public/, откуда всё публикуется.
+    const legacyKeyPath = path.resolve(__dirname, 'certs/private.key');
+    const legacyCertPath = path.resolve(__dirname, 'certs/private.crt');
     const hasMkcert = fs.existsSync(mkcertKeyPath) && fs.existsSync(mkcertCertPath);
 
     if (!hasMkcert) {
@@ -99,6 +100,9 @@ export default (env, { mode }) => {
             },
             {
                 test: /\.json$/,
+                // Словари переводов (src/locales) — обычные JSON-модули: их читает i18next.
+                // Остальные .json по-прежнему уходят файлами в assets/resources.
+                exclude: /[\\/]src[\\/]locales[\\/]/,
                 type: 'asset/resource',
                 generator: {
                     filename: 'assets/resources/[name].[contenthash].json',
@@ -199,6 +203,7 @@ export default (env, { mode }) => {
                 type: 'http',
             },
     },
-    devtool: (mode === 'production') ? 'source-map' : 'eval-cheap-module-source-map',
+    // hidden-source-map: карты собираются для отладки, но бандл на них не ссылается, а nginx их не отдаёт.
+    devtool: (mode === 'production') ? 'hidden-source-map' : 'eval-cheap-module-source-map',
     });
 };

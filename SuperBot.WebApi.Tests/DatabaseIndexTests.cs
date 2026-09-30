@@ -238,6 +238,8 @@ public class DatabaseIndexTests
     [InlineData("BlogEvents", "ix_blog_events_ttl", 180)]
     [InlineData("BlogPostUniqueViews", "ix_blog_unique_views_ttl", 180)]
     [InlineData("TelegramLinkTokens", "ix_telegram_link_tokens_ttl", 1)]
+    [InlineData("PaymentFinalizationStates", "ix_payment_state_ttl_unfinished", 14)]
+    [InlineData("PaymentFinalizationStates", "ix_payment_state_ttl_succeeded", 90)]
     public async Task Retention_index_expires_after_expected_days(string collectionName, string indexName, int expectedDays)
     {
         var indexes = await GetIndexesAsync(collectionName);
@@ -250,6 +252,29 @@ public class DatabaseIndexTests
 
         var expectedSeconds = TimeSpan.FromDays(expectedDays).TotalSeconds;
         Assert.Equal(expectedSeconds, ttlIndex["expireAfterSeconds"].ToDouble());
+    }
+
+    /// <summary>
+    /// Сроки у состояний оплаты разведены по исходу: незавершённые попытки живут две недели,
+    /// успешные — три месяца, потому что на них держится защита от повторного создания заказа.
+    /// Проверяем именно условия отбора: TTL без них удалял бы и успешные записи через две недели.
+    /// </summary>
+    [Fact]
+    public async Task Payment_states_expire_by_outcome()
+    {
+        var indexes = await GetIndexesAsync("PaymentFinalizationStates");
+
+        var unfinished = indexes.Single(index =>
+            index.Contains("name") && index["name"].AsString == "ix_payment_state_ttl_unfinished");
+        var succeeded = indexes.Single(index =>
+            index.Contains("name") && index["name"].AsString == "ix_payment_state_ttl_succeeded");
+
+        var unfinishedStatuses = unfinished["partialFilterExpression"]["Status"]["$in"]
+            .AsBsonArray.Select(value => value.AsString).ToList();
+
+        Assert.Equal(new[] { "Created", "Processing", "Failed" }, unfinishedStatuses);
+        Assert.DoesNotContain("Succeeded", unfinishedStatuses);
+        Assert.Equal("Succeeded", succeeded["partialFilterExpression"]["Status"].AsString);
     }
 
     [Fact]

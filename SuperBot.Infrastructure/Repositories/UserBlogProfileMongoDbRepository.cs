@@ -57,11 +57,11 @@ namespace SuperBot.Infrastructure.Repositories
 
             if (!string.IsNullOrWhiteSpace(profile.UserId))
             {
-                await _profiles.ReplaceOneAsync(item => item.UserId == profile.UserId, db, new ReplaceOptions { IsUpsert = true });
+                await UpsertWithRetryAsync(item => item.UserId == profile.UserId, db);
             }
             else if (!string.IsNullOrWhiteSpace(profile.AnonId))
             {
-                await _profiles.ReplaceOneAsync(item => item.AnonId == profile.AnonId, db, new ReplaceOptions { IsUpsert = true });
+                await UpsertWithRetryAsync(item => item.AnonId == profile.AnonId, db);
             }
             else
             {
@@ -69,6 +69,31 @@ namespace SuperBot.Infrastructure.Repositories
             }
 
             return _mapper.Map<UserBlogProfile>(db);
+        }
+
+        /// <summary>
+        /// Upsert, переживающий гонку.
+        ///
+        /// Лента новостей отправляет показы всех видимых постов разом — четыре-шесть запросов
+        /// одновременно от одного посетителя. Все они не находят профиля, все пытаются его
+        /// вставить, и уникальный индекс отклоняет всех, кроме первого: три показа из четырёх
+        /// терялись с 500-й ошибкой.
+        ///
+        /// Повтор решает это без блокировок: к моменту второй попытки документ уже создан
+        /// соседним запросом, и ReplaceOne просто заменит его.
+        /// </summary>
+        private async Task UpsertWithRetryAsync(
+            System.Linq.Expressions.Expression<Func<UserBlogProfileDb, bool>> filter,
+            UserBlogProfileDb document)
+        {
+            try
+            {
+                await _profiles.ReplaceOneAsync(filter, document, new ReplaceOptions { IsUpsert = true });
+            }
+            catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                await _profiles.ReplaceOneAsync(filter, document, new ReplaceOptions { IsUpsert = true });
+            }
         }
 
         public async Task<UserBlogProfile> MergeAnonIntoUserAsync(string anonId, string userId)

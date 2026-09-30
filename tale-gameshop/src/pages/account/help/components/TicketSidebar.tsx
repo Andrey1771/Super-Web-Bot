@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import {Link} from 'react-router-dom';
 import type { TicketDetails } from '../../../../types/support';
@@ -12,6 +13,7 @@ interface TicketSidebarProps {
 }
 
 const TicketSidebar: React.FC<TicketSidebarProps> = ({ ticket, isWorking, onResolve, onReopen }) => {
+    const { t } = useTranslation();
     const isResolved = ticket.status === 'Resolved';
     const isClosed = ticket.status === 'Closed';
 
@@ -19,23 +21,23 @@ const TicketSidebar: React.FC<TicketSidebarProps> = ({ ticket, isWorking, onReso
         <aside className="ticket-sidebar">
             <div className="ticket-sidebar__card card">
                 <div className="ticket-sidebar__title">
-                    <h4>Request information</h4>
+                    <h4>{t('ticket.info')}</h4>
                 </div>
                 <div className="ticket-sidebar__row">
-                    <span>Category:</span>
+                    <span>{t('ticket.category')}</span>
                     <strong>{ticket.category}</strong>
                 </div>
                 <div className="ticket-sidebar__row">
-                    <span>Order:</span>
+                    <span>{t('ticket.order')}</span>
                     <strong>{ticket.order?.number ?? ticket.order?.id ?? '—'}</strong>
                 </div>
                 {ticket.order?.gameTitle && <span className="ticket-sidebar__sub">{ticket.order.gameTitle}</span>}
                 <div className="ticket-sidebar__row">
-                    <span>Email:</span>
+                    <span>{t('ticket.email')}</span>
                     <strong>{ticket.email}</strong>
                 </div>
                 <div className="ticket-sidebar__row">
-                    <span>Status:</span>
+                    <span>{t('ticket.status')}</span>
                     <StatusBadge status={ticket.status} />
                 </div>
             </div>
@@ -49,16 +51,16 @@ const TicketSidebar: React.FC<TicketSidebarProps> = ({ ticket, isWorking, onReso
                     onClick={isResolved ? onReopen : onResolve}
                     disabled={isWorking}
                 >
-                    {isResolved ? 'Reopen request' : 'Problem solved'}
+                    {isResolved ? t('ticket.reopenRequest') : t('ticket.problemSolved')}
                 </button>
             )}
 
             <div className="ticket-sidebar__links">
-                <h4>Helpful links</h4>
+                <h4>{t('ticket.helpfulLinks')}</h4>
                 <div className="ticket-sidebar__pill-list">
-                    <Link to="/support/refund-policy" className="ticket-sidebar__pill">Refund policy</Link>
-                    <Link to="/support/payment-methods" className="ticket-sidebar__pill">Payment methods</Link>
-                    <Link to="/support/key-delivery-guide" className="ticket-sidebar__pill">Key delivery guide</Link>
+                    <Link to="/support/refund-policy" className="ticket-sidebar__pill">{t('ticket.refundPolicy')}</Link>
+                    <Link to="/support/payment-methods" className="ticket-sidebar__pill">{t('ticket.paymentMethods')}</Link>
+                    <Link to="/support/key-delivery-guide" className="ticket-sidebar__pill">{t('ticket.keyDelivery')}</Link>
                 </div>
             </div>
         </aside>

@@ -13,12 +13,34 @@ public class AdminGameDetailsController : ControllerBase
 {
     private readonly IGameRepository _gameRepository;
     private readonly IGameDetailsRepository _gameDetailsRepository;
+    private readonly SuperBot.WebApi.Services.ICatalogSnapshotService _catalogSnapshot;
+    private readonly IGameKeyRepository _keys;
 
-    public AdminGameDetailsController(IGameRepository gameRepository, IGameDetailsRepository gameDetailsRepository)
+    public AdminGameDetailsController(
+        IGameRepository gameRepository,
+        IGameDetailsRepository gameDetailsRepository,
+        SuperBot.WebApi.Services.ICatalogSnapshotService catalogSnapshot,
+        IGameKeyRepository keys)
     {
         _gameRepository = gameRepository;
         _gameDetailsRepository = gameDetailsRepository;
+        _catalogSnapshot = catalogSnapshot;
+        _keys = keys;
     }
+
+    /// <summary>Остаток по лицензиям — только у ПО: у игр издания без ключей бывают законно (предзаказ).</summary>
+    private async Task<IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>>> SoftwareStockAsync(IEnumerable<Game> games)
+    {
+        var ids = games.Where(g => g.Kind == ProductKind.Software && !string.IsNullOrWhiteSpace(g.Id)).Select(g => g.Id!).ToList();
+        return ids.Count == 0
+            ? new Dictionary<string, IReadOnlyDictionary<string, int>>()
+            : await _keys.CountAvailableByEditionForGamesAsync(ids);
+    }
+
+    private static IReadOnlyDictionary<string, int>? StockOf(Game game, IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> stock) =>
+        game.Kind != ProductKind.Software
+            ? null
+            : stock.TryGetValue(game.Id ?? string.Empty, out var byEdition) ? byEdition : new Dictionary<string, int>();
 
     [HttpGet("{id}/details")]
     public async Task<IActionResult> GetGameDetails(string id)
@@ -31,6 +53,106 @@ public class AdminGameDetailsController : ControllerBase
 
         var details = await _gameDetailsRepository.GetByGameIdAsync(id) ?? new GameDetails { GameId = id };
         return Ok(details);
+    }
+
+    /// <summary>Полнота карточки одной игры: список пробелов для панели предупреждений в редакторе.</summary>
+    [HttpGet("{id}/completeness")]
+    public async Task<IActionResult> GetCompleteness(string id)
+    {
+        var game = await _gameRepository.GetByIdAsync(id);
+        if (game == null)
+        {
+            return NotFound();
+        }
+        var details = await _gameDetailsRepository.GetByGameIdAsync(id);
+        var stock = await SoftwareStockAsync(new[] { game });
+        var issues = SuperBot.WebApi.Services.GameCardCompleteness.Check(game, details, StockOf(game, stock));
+        return Ok(new { gameId = id, issues });
+    }
+
+    /// <summary>
+    /// Полнота карточек по всему каталогу — для списка игр в админке («3 пробела») и дашборда.
+    /// Только игры с пробелами; у каждой — счётчик по важности и сами пробелы.
+    /// </summary>
+    [HttpGet("completeness")]
+    public async Task<IActionResult> GetCompletenessOverview()
+    {
+        var games = (await _gameRepository.GetAllAsync()).Where(g => g is not null && !string.IsNullOrWhiteSpace(g.Id)).ToList();
+        var rows = new List<object>();
+        var stock = await SoftwareStockAsync(games);
+        // Карточки — одним запросом на весь список, а не по запросу на каждую игру.
+        var detailsByGameId = (await _gameDetailsRepository.GetByGameIdsAsync(games.Select(g => g.Id!)))
+            .Where(d => !string.IsNullOrWhiteSpace(d.GameId))
+            .GroupBy(d => d.GameId!)
+            .ToDictionary(g => g.Key, g => g.First());
+        foreach (var game in games)
+        {
+            detailsByGameId.TryGetValue(game.Id!, out var details);
+            var issues = SuperBot.WebApi.Services.GameCardCompleteness.Check(game, details, StockOf(game, stock));
+            if (issues.Count == 0)
+            {
+                continue;
+            }
+            rows.Add(new
+            {
+                gameId = game.Id,
+                title = string.IsNullOrWhiteSpace(game.Title) ? game.Name : game.Title,
+                errors = issues.Count(i => i.Severity == "error"),
+                warnings = issues.Count(i => i.Severity == "warning"),
+                infos = issues.Count(i => i.Severity == "info"),
+                issues
+            });
+        }
+        return Ok(new { total = games.Count, incomplete = rows.Count, items = rows });
+    }
+
+    /// <summary>
+    /// Копия товара черновиком — для похожих позиций (ещё один VPN, та же линейка лицензий). Копируются карточка,
+    /// лицензии с ценами, активация, системы и требования; ключи, отзывы и рейтинг — нет: это про конкретный товар.
+    /// Черновик — чтобы копия не появилась на витрине с чужим названием и описанием, пока её не поправили.
+    /// </summary>
+    [HttpPost("{id}/duplicate")]
+    public async Task<IActionResult> Duplicate(string id)
+    {
+        var source = await _gameRepository.GetByIdAsync(id);
+        if (source == null)
+        {
+            return NotFound();
+        }
+
+        // Глубокая копия через JSON: у товара вложенные списки (цены, лицензии, галерея), и общая ссылка
+        // на них между оригиналом и копией проявилась бы при первой же правке.
+        static T Clone<T>(T value) => System.Text.Json.JsonSerializer.Deserialize<T>(System.Text.Json.JsonSerializer.Serialize(value))!;
+
+        var title = $"{(string.IsNullOrWhiteSpace(source.Title) ? source.Name : source.Title)} (copy)";
+        var baseSlug = NormalizeSlug(string.IsNullOrWhiteSpace(source.Slug) ? title : $"{source.Slug}-copy");
+        var slug = baseSlug;
+        for (var attempt = 2; await _gameRepository.GetBySlugAsync(slug) != null; attempt++)
+        {
+            slug = $"{baseSlug}-{attempt}";
+        }
+
+        var copy = Clone(source);
+        copy.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+        copy.ExternalId = null;
+        copy.Slug = slug;
+        copy.Title = title;
+        copy.Name = $"{source.Name} (copy)";
+        await _gameRepository.CreateAsync(copy);
+
+        var sourceDetails = await _gameDetailsRepository.GetByGameIdAsync(id);
+        var details = sourceDetails is null ? new GameDetails() : Clone(sourceDetails);
+        details.Id = null;
+        details.GameId = copy.Id;
+        details.Slug = slug;
+        details.Title = title;
+        details.IsDraft = true;
+        details.RatingAvg = 0;
+        details.ReviewsCount = 0;
+        await _gameDetailsRepository.UpsertAsync(details);
+
+        _catalogSnapshot.Invalidate();
+        return Ok(new { id = copy.Id, slug, title });
     }
 
     [HttpPut("{id}/details")]
@@ -46,8 +168,14 @@ public class AdminGameDetailsController : ControllerBase
         var fallbackSlug = string.IsNullOrWhiteSpace(game.Slug) ? NormalizeSlug(game.Title ?? game.Name) : NormalizeSlug(game.Slug);
         payload.Slug = string.IsNullOrWhiteSpace(payload.Slug) ? fallbackSlug : NormalizeSlug(payload.Slug);
         payload.Title = string.IsNullOrWhiteSpace(payload.Title) ? game.Title ?? game.Name : payload.Title;
+        SuperBot.WebApi.Services.Storefront.GameDetailsLocalizer.NormalizeForSave(payload);
 
         await _gameDetailsRepository.UpsertAsync(payload);
+
+        // Снимок каталога кэшируется на две минуты, а публикация должна быть видна сразу:
+        // без сброса выложенная карточка не появлялась бы на витрине до истечения кэша,
+        // а снятая — продолжала бы показываться.
+        _catalogSnapshot.Invalidate();
         return Ok(payload);
     }
 
@@ -62,6 +190,7 @@ public class AdminGameDetailsController : ControllerBase
 
         details.Cover = request.Cover;
         details.Gallery = request.Gallery ?? new List<GameMediaItem>();
+        SuperBot.WebApi.Services.Storefront.GameDetailsLocalizer.NormalizeMedia(details.Gallery);
         await _gameDetailsRepository.UpsertAsync(details);
         return Ok(details);
     }
@@ -101,6 +230,7 @@ public class AdminGameDetailsController : ControllerBase
         }
 
         details.Editions = editions ?? new List<GameEdition>();
+        SuperBot.WebApi.Services.Storefront.GameDetailsLocalizer.NormalizeEditions(details.Editions);
         await _gameDetailsRepository.UpsertAsync(details);
         return Ok(details);
     }
@@ -129,6 +259,7 @@ public class AdminGameDetailsController : ControllerBase
         }
 
         details.SystemRequirements = requirements ?? new GameSystemRequirements();
+        SuperBot.WebApi.Services.Storefront.GameDetailsLocalizer.NormalizeRequirements(details.SystemRequirements);
         await _gameDetailsRepository.UpsertAsync(details);
         return Ok(details);
     }
@@ -143,6 +274,7 @@ public class AdminGameDetailsController : ControllerBase
         }
 
         details.Awards = awards ?? new List<GameAwardBadge>();
+        SuperBot.WebApi.Services.Storefront.GameDetailsLocalizer.NormalizeAwards(details.Awards);
         await _gameDetailsRepository.UpsertAsync(details);
         return Ok(details);
     }

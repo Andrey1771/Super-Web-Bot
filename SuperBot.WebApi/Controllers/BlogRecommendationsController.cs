@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Interfaces;
+using SuperBot.WebApi.Services;
+using SuperBot.WebApi.Services.Storefront;
 using System.Security.Claims;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -24,16 +27,17 @@ public class BlogRecommendationsController : ControllerBase
     [HttpGet("/api/blog/home-feed")]
     public async Task<IActionResult> GetHomeRecommendations([FromQuery] string anonId = "", [FromQuery] int limit = 6)
     {
-        var userId = GetCurrentUserId();
+        var userId = User.GetUserKey();
         var result = await _recommendationsService.GetHomeRecommendationsAsync(userId, anonId, limit);
+        var language = BuyerLanguage.Resolve(Request);
 
         return Ok(new BlogRecommendationsResponse
         {
-            HeroPost = BlogPostSummary.From(result.HeroPost),
-            LatestPosts = result.LatestPosts.Select(BlogPostSummary.From).ToList(),
-            PopularThisWeek = result.PopularThisWeek.Select(BlogPostSummary.From).ToList(),
-            EditorsPicks = result.EditorsPicks.Select(BlogPostSummary.From).ToList(),
-            ForYou = result.ForYou.Select(BlogPostSummary.From).ToList()
+            HeroPost = BlogPostSummary.From(result.HeroPost, language),
+            LatestPosts = result.LatestPosts.Select(post => BlogPostSummary.From(post, language)).ToList(),
+            PopularThisWeek = result.PopularThisWeek.Select(post => BlogPostSummary.From(post, language)).ToList(),
+            EditorsPicks = result.EditorsPicks.Select(post => BlogPostSummary.From(post, language)).ToList(),
+            ForYou = result.ForYou.Select(post => BlogPostSummary.From(post, language)).ToList()
         });
     }
 
@@ -41,25 +45,17 @@ public class BlogRecommendationsController : ControllerBase
     [HttpGet("history")]
     public async Task<IActionResult> GetHistory([FromQuery] int limit = 50)
     {
-        var userId = GetCurrentUserId();
+        var userId = User.GetUserKey();
         if (string.IsNullOrWhiteSpace(userId))
         {
             return Unauthorized();
         }
 
         var history = await _recommendationsService.GetReadingHistoryAsync(userId, limit);
-        return Ok(history.Select(BlogPostSummary.From).ToList());
+        var language = BuyerLanguage.Resolve(Request);
+        return Ok(history.Select(post => BlogPostSummary.From(post, language)).ToList());
     }
 
-    private string GetCurrentUserId()
-    {
-        return User?.FindFirst("email")?.Value
-               ?? User?.FindFirst(ClaimTypes.Email)?.Value
-               ?? User?.FindFirst("preferred_username")?.Value
-               ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? User?.FindFirst("sub")?.Value
-               ?? string.Empty;
-    }
 }
 
 public class BlogRecommendationsResponse
@@ -79,10 +75,12 @@ public class BlogPostSummary
     public string Excerpt { get; set; }
     public string CoverUrl { get; set; }
     public string[] Tags { get; set; }
+    /// <summary>Подписи тегов на языке покупателя по позициям; сами теги — значения фильтра.</summary>
+    public List<string> TagLabels { get; set; }
     public DateTime? PublishedAt { get; set; }
     public int? ReadingTime { get; set; }
 
-    public static BlogPostSummary From(SuperBot.Core.Entities.BlogPost post)
+    public static BlogPostSummary From(SuperBot.Core.Entities.BlogPost post, string? language = null)
     {
         if (post == null)
         {
@@ -93,10 +91,11 @@ public class BlogPostSummary
         {
             Id = post.Id,
             Slug = post.Slug,
-            Title = post.Title,
-            Excerpt = post.Excerpt,
+            Title = BlogLocalizer.Title(post, language),
+            Excerpt = BlogLocalizer.Excerpt(post, language),
             CoverUrl = post.CoverUrl,
             Tags = post.Tags ?? Array.Empty<string>(),
+            TagLabels = BlogLocalizer.TagLabels(post, language),
             PublishedAt = post.PublishedAt,
             ReadingTime = post.ReadingTime
         };

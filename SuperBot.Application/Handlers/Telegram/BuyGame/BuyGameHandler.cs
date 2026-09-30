@@ -163,8 +163,11 @@ namespace SuperBot.Application.Handlers.Telegram.BuyGame
             builder.Append("<b>").Append(WebUtility.HtmlEncode(title)).Append("</b>\n");
             builder.Append('$').Append(game.Price.ToString("0.00"));
 
-            if (Core.Entities.GameTypeMapper.DescriptionsCategories.TryGetValue(game.GameType, out var genre)
-                && !string.IsNullOrWhiteSpace(genre))
+            // Названий жанров из админки у бота под рукой нет: жанры по умолчанию дают название, свой жанр — читаемый код.
+            var genre = game.Kind == Core.Entities.ProductKind.Software
+                ? null
+                : Core.Entities.GameGenres.TitleOf(Core.Entities.GameGenres.Defaults, Core.Entities.GameGenres.TagOf(game));
+            if (!string.IsNullOrWhiteSpace(genre))
             {
                 builder.Append(" · ").Append(WebUtility.HtmlEncode(genre));
             }

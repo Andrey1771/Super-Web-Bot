@@ -28,14 +28,9 @@ export class AdminAnalyticsService implements IAdminAnalyticsService {
     return response.data as AnalyticsConnectionStatus;
   }
 
-  async testConnection(provider: AnalyticsProvider): Promise<{ status: AnalyticsConnectionStatus["ga4"] | AnalyticsConnectionStatus["yandex"] }>
-  {
-    const response = await this._apiClient.api.post(`/api/admin/analytics/test`, { provider });
-    return response.data as { status: AnalyticsConnectionStatus["ga4"] | AnalyticsConnectionStatus["yandex"] };
-  }
 
   async getOverview(provider: AnalyticsProvider, range: string): Promise<AnalyticsOverview> {
-    const endpoint = provider === "ga4" ? "ga4" : "yandex";
+    const endpoint = "ga4";
     const response = await this._apiClient.api.get(`/api/admin/analytics/${endpoint}/overview?range=${range}`);
     return response.data as AnalyticsOverview;
   }

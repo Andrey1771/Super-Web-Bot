@@ -4,6 +4,7 @@ import container from "../inversify.config";
 import type { IApiClient } from "../iterfaces/i-api-client";
 import type { IAdminGameDiscountsService } from "../iterfaces/i-admin-game-discounts-service";
 import type {
+  AdminGameDiscountPage,
   AdminGameDiscountRow,
   BulkUpsertGameDiscountPayload,
   UpsertGameDiscountPayload
@@ -17,11 +18,25 @@ export class AdminGameDiscountsService implements IAdminGameDiscountsService {
     this.apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
   }
 
-  async getAll(search?: string): Promise<AdminGameDiscountRow[]> {
+  async getPage(options: {
+    search?: string;
+    status?: string;
+    sortBy?: string;
+    desc?: boolean;
+    skip: number;
+    take: number;
+  }): Promise<AdminGameDiscountPage> {
     const response = await this.apiClient.api.get("/api/admin/games/discounts", {
-      params: search?.trim() ? { search: search.trim() } : undefined
+      params: {
+        search: options.search?.trim() || undefined,
+        status: options.status && options.status !== "all" ? options.status : undefined,
+        sortBy: options.sortBy || "title",
+        desc: options.desc ? true : undefined,
+        skip: options.skip,
+        take: options.take,
+      },
     });
-    return response.data ?? [];
+    return response.data as AdminGameDiscountPage;
   }
 
   async upsert(gameId: string, payload: UpsertGameDiscountPayload): Promise<void> {

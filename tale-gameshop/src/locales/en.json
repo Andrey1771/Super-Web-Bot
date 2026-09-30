@@ -1,0 +1,3019 @@
+{
+  "common": {
+    "brand": "Tale Shop",
+    "loading": "Loading…",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "back": "Back",
+    "retry": "Retry",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "account": "Account",
+    "search": "Search",
+    "nav": {
+      "home": "Home",
+      "store": "Store",
+      "software": "Software",
+      "deals": "Deals",
+      "news": "News",
+      "about": "About",
+      "support": "Support",
+      "faq": "Help / FAQ",
+      "cashback": "Cashback"
+    },
+    "viewAll": "View all",
+    "comingSoon": "Coming soon",
+    "software": "Software",
+    "from": "from",
+    "outOfStock": "Out of stock",
+    "leftInStock_one": "{{count}} left",
+    "leftInStock_other": "{{count}} left",
+    "reviewsCount_one": "{{count}} review",
+    "reviewsCount_other": "{{count}} reviews",
+    "addToWishlist": "Add to wishlist",
+    "removeFromWishlist": "Remove from wishlist",
+    "notForYourCountry": "Not for your country",
+    "notReleasedYet": "Not released yet — wishlist it to catch the launch",
+    "moreLicenses_one": "+{{count}} license",
+    "moreLicenses_other": "+{{count}} licenses",
+    "admin": "Admin",
+    "recently": "Recently",
+    "justNow": "Just now",
+    "hoursAgo_one": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "monthsAgo_one": "{{count}} month ago",
+    "monthsAgo_other": "{{count}} months ago",
+    "games": "Games",
+    "catalog": "Catalog",
+    "filters": "Filters",
+    "sort": "Sort",
+    "grid": "Grid",
+    "list": "List",
+    "clearAll": "Clear all",
+    "pages": "Pages",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "pageN": "Page {{page}}",
+    "breadcrumb": "Breadcrumb",
+    "sortOptions": "Sort options",
+    "showLess": "Show less",
+    "showAll": "Show all {{count}}",
+    "browseGames": "Browse games",
+    "copyCode": "Copy code",
+    "tryAgain": "Try again",
+    "readMore": "Read more",
+    "showMore": "Show more",
+    "edit": "Edit",
+    "add": "Add",
+    "inCart": "In cart",
+    "addToCart": "Add to cart",
+    "removeFromCart": "Remove from cart",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "sending": "Sending…",
+    "required": "(required)",
+    "optional": "(optional)",
+    "couldNotSave": "Could not save that. Please try again.",
+    "remove": "Remove",
+    "change": "change",
+    "or": "or",
+    "apply": "Apply",
+    "applying": "Applying...",
+    "email": "Email",
+    "contactSupport": "Contact support",
+    "goToOrders": "Go to Orders",
+    "pleaseWait": "Please wait...",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "discount": "Discount",
+    "cashback": "Cashback",
+    "taxes": "Taxes",
+    "tax": "Tax",
+    "includedInPrice": "Included in price",
+    "secureCheckout": "Secure checkout",
+    "continueShopping": "Continue shopping",
+    "processing": "Processing...",
+    "order": "Order #{{id}}",
+    "view": "View",
+    "open": "Open",
+    "manage": "Manage",
+    "copy": "Copy",
+    "copied": "Copied",
+    "pending": "Pending",
+    "unavailable": "Unavailable",
+    "newest": "Newest",
+    "oldest": "Oldest",
+    "all": "All",
+    "price": "Price",
+    "scrollLeft": "Scroll left",
+    "scrollRight": "Scroll right",
+    "showingZero": "Showing 0 of 0",
+    "showingRange": "Showing {{from}}-{{to}} of {{total}}",
+    "sortLabel": "Sort:",
+    "password": "Password",
+    "checking": "Checking…",
+    "confirm": "Confirm",
+    "submitting": "Submitting...",
+    "downloading": "Downloading...",
+    "preparing": "Preparing...",
+    "retrying": "Retrying…",
+    "justNowShort": "Just now",
+    "minAgo": "{{count}} min ago",
+    "today": "today",
+    "overYearAgo": "over a year ago",
+    "user": "User",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "working": "Working…",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "verified": "Verified",
+    "notVerified": "Not verified",
+    "logOut": "Log out",
+    "fit": "Fit",
+    "zoom": "Zoom",
+    "rotate": "Rotate",
+    "backToHome": "Back to home",
+    "backToSupport": "Back to Support",
+    "subscribe": "Subscribe",
+    "subscribing": "Subscribing…",
+    "details": "Details",
+    "clearFilters": "Clear filters",
+    "loadingDots": "Loading...",
+    "posts_one": "{{count}} post",
+    "posts_other": "{{count}} posts",
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results",
+    "draft": "Draft",
+    "minRead": "{{count}} min read",
+    "views": "Views",
+    "featured": "Featured",
+    "download": "Download",
+    "you": "You",
+    "backToTop": "Back to top",
+    "viewGame": "View game",
+    "timeline": "Timeline:",
+    "conversation": "Conversation",
+    "gameCover": "Game cover",
+    "blogCover": "Blog post cover",
+    "viewsCount_one": "{{count}} view",
+    "viewsCount_other": "{{count}} views"
+  },
+  "header": {
+    "brandHome": "Tale Shop — home",
+    "logoAlt": "Tale Shop logo",
+    "changeLanguage": "Change language",
+    "changeCurrency": "Change currency",
+    "changeCountry": "Change country",
+    "country": "Country",
+    "searchCountry": "Search country…",
+    "noSuchCountry": "No such country",
+    "toggleMenu": "Toggle menu",
+    "showStoreCategories": "Show store categories",
+    "storeCategories": "Store categories",
+    "browseByGenre": "Browse by genre",
+    "discover": "Discover",
+    "allGames": "All games",
+    "browseFullCatalog": "Browse the full catalog",
+    "budgetPicks": "Budget picks",
+    "budgetPicksDesc": "Great games under {{price}}",
+    "onSaleNow": "On sale now",
+    "gamesOnSale_one": "{{count}} game on sale",
+    "gamesOnSale_other": "{{count}} games on sale",
+    "noDealsNow": "No deals right now",
+    "dealsDescEmpty": "New discounts land regularly — we can ping you.",
+    "dealsDesc": "Price drops with instant key delivery.",
+    "getNotified": "Get notified →",
+    "shopDeals": "Shop deals →",
+    "buyerProtected": "Buyer-protected checkout",
+    "signedInAs": "Signed in as",
+    "myAccount": "My account",
+    "profile": "Profile",
+    "orders": "Orders",
+    "keys": "Keys",
+    "settings": "Settings",
+    "language": "Language",
+    "currency": "Currency"
+  },
+  "footer": {
+    "taglineGames": "Curated PC game keys — secure checkout, instant delivery.",
+    "taglineGamesSoftware": "Curated game and software keys — secure checkout, instant delivery.",
+    "socialMedia": "Social media",
+    "columns": "Footer",
+    "store": "Store",
+    "genres": "Genres",
+    "company": "Company",
+    "legal": "Legal",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "refunds": "Refunds",
+    "cashbackTerms": "Cashback terms",
+    "cookies": "Cookies",
+    "legalNotice": "Legal notice",
+    "cookieSettings": "Cookie settings",
+    "rights": "© {{year}} Tale Shop. All rights reserved.",
+    "disclaimerGames": "A digital marketplace for PC game keys. All trademarks and game titles are the property of their respective owners.",
+    "disclaimerGamesSoftware": "A digital marketplace for game and software keys. All trademarks, game and software titles are the property of their respective owners.",
+    "paymentMethods": "Accepted payment methods"
+  },
+  "search": {
+    "placeholder": "Search games and software…",
+    "label": "Search games and software",
+    "suggestions": "Game suggestions",
+    "seeAllResults": "See all results for “{{query}}”",
+    "searchCatalog": "Search the catalog for “{{query}}”"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "The page you are looking for doesn't exist or may have been moved.",
+    "goHome": "Go to Home",
+    "browseGames": "Browse games"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "text": "An unexpected error occurred. Reloading the page usually fixes it.",
+    "reload": "Reload page"
+  },
+  "session": {
+    "expired": "Your session has expired.",
+    "text": "Sign in again to keep your cart, wishlist and reviews in sync.",
+    "dismiss": "Dismiss"
+  },
+  "cookies": {
+    "settings": "Cookie settings",
+    "preferences": "Cookie preferences",
+    "intro": "Essential cookies keep the store working. Optional analytics cookies help us see how the store is used — only if you allow them.",
+    "accept": "Accept analytics",
+    "necessaryOnly": "Necessary only",
+    "whatWeStore": "What we store",
+    "policy": "Cookie policy",
+    "chooseIntro": "Choose what we may store on your device. You can change this at any time from the footer.",
+    "essentialTitle": "Essential functionality",
+    "essentialText": "Sign-in, cart and checkout. The store cannot work without them, so they are always on.",
+    "alwaysOn": "Always on",
+    "analyticsTitle": "Optional analytics cookies",
+    "analyticsText": "Anonymous usage statistics: which pages are opened and where people give up. Used to improve the store, never to identify you.",
+    "reject": "Reject",
+    "save": "Save preferences"
+  },
+  "home": {
+    "metaTitleGames": "Tale Shop — curated PC game keys",
+    "metaTitleGamesSoftware": "Tale Shop — curated game and software keys",
+    "metaDescGames": "Hand-picked PC game keys with secure checkout and instant delivery. Global keys, no region locks.",
+    "metaDescGamesSoftware": "Hand-picked PC game keys and genuine software licences with secure checkout and instant delivery.",
+    "h1": "Tale Shop — curated PC game keys with instant delivery",
+    "promos": {
+      "welcome": {
+        "eyebrow": "Welcome offer",
+        "title": "10% off your first order"
+      },
+      "cashback": {
+        "eyebrow": "Rewards",
+        "title": "Cashback on every order"
+      }
+    },
+    "categories": {
+      "pc": "PC Games",
+      "console": "Console Games",
+      "software": "Software"
+    },
+    "carousel": {
+      "featured": "Featured games",
+      "previous": "Previous game",
+      "next": "Next game",
+      "choose": "Choose game",
+      "open": "Open game {{title}}",
+      "show": "Show {{title}}"
+    },
+    "shelves": {
+      "allGames": "All {{count}} games",
+      "allDeals": "All {{count}} deals",
+      "allDealsPlain": "All deals",
+      "allUpcoming": "All {{count}} upcoming",
+      "allUpcomingPlain": "All upcoming",
+      "allUnder": "All {{count}} under {{price}}",
+      "allUnderPlain": "All under {{price}}",
+      "new": {
+        "eyebrow": "Fresh arrivals",
+        "title": "New on Tale Shop",
+        "subtitle": "The latest additions to the shelves."
+      },
+      "deals": {
+        "eyebrow": "Deals",
+        "title": "Best deals right now",
+        "subtitle": "Prices drop, keys stay instant — while the timer runs."
+      },
+      "editors": {
+        "eyebrow": "Editor's picks",
+        "title": "Hand-picked by the team",
+        "subtitle": "Curated highlights our editors vouch for."
+      },
+      "upcoming": {
+        "eyebrow": "On the horizon",
+        "title": "Upcoming games",
+        "subtitle": "Release dates locked — wishlist now, play on day one.",
+        "emptyTitle": "Announcements on the way",
+        "emptyText": "Fresh release dates land here the moment they're locked."
+      },
+      "weekly": {
+        "eyebrow": "Weekly chart",
+        "title": "Popular this week",
+        "subtitleSold": "The most bought games of the last 7 days.",
+        "subtitleMixed": "Bestsellers and picks worth a look this week."
+      },
+      "budget": {
+        "eyebrow": "Under {{price}}",
+        "title": "Big fun, small price",
+        "subtitle": "Every pick on this shelf is {{price}} or less."
+      }
+    },
+    "countdown": {
+      "endsIn": "Ends in",
+      "nearestExpires": "Nearest deal expires"
+    },
+    "reasons": {
+      "secure": {
+        "title": "Secure payments",
+        "text": "Protected checkout with trusted partners."
+      },
+      "instant": {
+        "title": "Instant delivery",
+        "text": "Your key moments after purchase."
+      },
+      "cashback": {
+        "title": "Cashback on every order",
+        "text": "Tale Coins back on each purchase."
+      },
+      "support": {
+        "title": "Friendly support",
+        "text": "Here to help with installs and access."
+      }
+    },
+    "mood": {
+      "eyebrow": "Tonight's pick",
+      "title": "What are you in the mood for?",
+      "text": "Tell us the vibe — we'll point you at the right shelf.",
+      "pick": "Pick a mood",
+      "browse": "Browse {{category}} games",
+      "adrenaline": {
+        "label": "Adrenaline rush",
+        "title": "Something loud and fast",
+        "text": "Explosive shooters and high-octane action — for nights when you want your pulse in your ears."
+      },
+      "story": {
+        "label": "Epic story night",
+        "title": "A tale to get lost in",
+        "text": "Sprawling RPGs with choices that matter. Start tonight, surface next weekend."
+      },
+      "brain": {
+        "label": "Galaxy-brain plays",
+        "title": "Outthink everything",
+        "text": "Build, command and conquer. Strategy picks for players who plan three turns ahead."
+      },
+      "chill": {
+        "label": "Cozy & chill",
+        "title": "Slow evening, warm game",
+        "text": "Gentle indies and calm puzzles to unwind with — no pressure, just vibes."
+      },
+      "squad": {
+        "label": "Squad night",
+        "title": "Better together",
+        "text": "Co-op picks for duos and full squads. Grab your friends and split the chaos."
+      }
+    },
+    "news": {
+      "eyebrow": "News",
+      "title": "Latest news",
+      "all": "All news",
+      "emptyTitle": "The newsroom is warming up",
+      "emptyText": "Game news, guides and weekly picks will land here soon."
+    }
+  },
+  "kind": {
+    "game": {
+      "platforms": "Platforms",
+      "developer": "Developer",
+      "developerAndPublisher": "Developer & publisher",
+      "credits": "Studio, languages & age rating",
+      "edition": "edition",
+      "editions": "Editions",
+      "addEdition": "Add edition",
+      "nounPlural": "games",
+      "unknownProduct": "Unknown game",
+      "noSimilar": "No similar games yet."
+    },
+    "software": {
+      "platforms": "Works on",
+      "developer": "Vendor",
+      "developerAndPublisher": "Vendor",
+      "credits": "Vendor & languages",
+      "edition": "license",
+      "editions": "Licenses",
+      "addEdition": "Add license",
+      "nounPlural": "software",
+      "unknownProduct": "Unknown product",
+      "noSimilar": "No similar software yet."
+    }
+  },
+  "software": {
+    "lifetime": "Lifetime",
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months",
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "subscription": "Subscription",
+    "subscriptionTerm": "Subscription · {{term}}",
+    "devices_one": "{{count}} device",
+    "devices_other": "{{count}} devices",
+    "devicesPlus": "{{value}}+ devices",
+    "activation": {
+      "VendorWebsite": "Vendor website",
+      "MicrosoftAccount": "Microsoft account",
+      "InApp": "In the app"
+    }
+  },
+  "catalog": {
+    "sort": {
+      "popular": "Most popular",
+      "discount": "Biggest discount",
+      "rating": "Top rated",
+      "reviews": "Most reviewed",
+      "new": "Newest",
+      "priceAsc": "Price: low to high",
+      "priceDesc": "Price: high to low",
+      "nameAsc": "Name: A–Z",
+      "nameDesc": "Name: Z–A"
+    },
+    "products_one": "{{count}} product",
+    "products_other": "{{count}} products",
+    "games_one": "{{count}} game",
+    "games_other": "{{count}} games",
+    "inStock": "In stock",
+    "onSale": "On sale",
+    "softwareCategory": "Category",
+    "softwareCategories": "Software categories",
+    "productType": "Product type",
+    "availability": "Availability",
+    "price": "Price",
+    "priceAndUp": "{{price}} and up",
+    "priceUnder": "Under {{price}}",
+    "licenseTerm": "License term",
+    "devices": "Devices",
+    "activatesOn": "Activates on",
+    "gameGenres": "Game genres",
+    "categories": "Categories",
+    "noPlatformData": "No platform data available.",
+    "resetFilters": "Reset filters",
+    "searchSoftware": "Search software",
+    "searchGames": "Search by game name",
+    "searchAll": "Search games and software",
+    "searchSoftwareAria": "Search software in the catalog",
+    "searchGamesAria": "Search games in the catalog",
+    "searchAllAria": "Search the catalog",
+    "viewMode": "View mode",
+    "chosenFilters": "Chosen filters:",
+    "removeFilter": "Remove filter {{label}}",
+    "loading": "Loading {{items}}…",
+    "showing": "Showing {{from}}–{{to}} of {{items}}",
+    "noMatch": "No {{items}} match these filters. Try removing one above.",
+    "noSoftwareYet": "No software here yet — new license keys are on the way.",
+    "empty": "The catalog is empty right now.",
+    "softwareOnly": "Software only",
+    "gamesOnly": "Games only",
+    "studioChip": "Studio: {{studio}}",
+    "resultsFor": "Results for",
+    "gamesBy": "Games by",
+    "tagged": "Tagged",
+    "categoryGames": "{{category}} games",
+    "minPrice": "Minimum price",
+    "maxPrice": "Maximum price",
+    "meta": {
+      "softwareCategoryTitle": "{{category}} software keys",
+      "softwareTitle": "Software license keys",
+      "gamesTitle": "All PC game keys",
+      "allTitle": "Catalog — game and software keys",
+      "softwareCategoryDesc": "Buy {{category}} license keys at Tale Shop — genuine keys, secure checkout and instant delivery.",
+      "softwareDesc": "Genuine license keys for operating systems, office suites, security and creative apps — delivered instantly.",
+      "gamesCategoryDesc": "Buy {{category}} PC game keys at Tale Shop — hand-picked titles, secure checkout and instant delivery.",
+      "gamesDesc": "Browse every PC game key at Tale Shop — hand-picked titles, secure checkout and instant delivery.",
+      "allDesc": "Browse PC game keys and genuine software licenses at Tale Shop — secure checkout and instant delivery."
+    },
+    "productsPlural": "products"
+  },
+  "dealWeek": {
+    "eyebrow": "Weekly spread · Deal of the week",
+    "titleIdle": "The deck is waiting",
+    "titleDealing": "The magic is working…",
+    "titleDone": "The cards are dealt",
+    "spellBreaks": "The spell breaks in",
+    "timeLeft": "Time left for this deal",
+    "day_one": "day",
+    "day_other": "days",
+    "hours": "hours",
+    "minutes": "minutes",
+    "seconds": "seconds",
+    "dealCards": "Deal the cards",
+    "deckHint": "A weekly deal and your personal lucky card hide in the deck.",
+    "drawLucky": "Draw your lucky card",
+    "shuffling": "Shuffling…",
+    "tapToDraw": "Tap to draw",
+    "arcanaFortune": "0 · The Fortune",
+    "arcanaDeal": "I · The Deal",
+    "arcanaHidden": "II · The Hidden Pick",
+    "luckyAwaits": "Your lucky card awaits",
+    "luckySignIn": "Sign in and draw a personal discount — a new card every day.",
+    "logInToDraw": "Log in to draw",
+    "sealed": "Sealed until your first purchase",
+    "sealedText": "Buy any game — and the deck starts dealing you a personal discount every day.",
+    "justForYou": "just for you",
+    "copied": "Copied — apply it at checkout!",
+    "meltsIn": "Melts away in {{time}}",
+    "expired": "Expired — draw again soon",
+    "resting": "The card is resting",
+    "nextDraw": "Next draw in {{time}}",
+    "comeBack": "Come back a bit later.",
+    "grabDeal": "Grab the deal",
+    "grabDealAria": "{{title}} — grab the deal",
+    "hoverToPeek": "Hover to peek",
+    "hurry": "Tap anywhere to hurry the magic ✦",
+    "dealtHint": "One weekly deal, one personal lucky card a day, one hidden pick. The shop deals — you choose.",
+    "wish1": "may a hidden gem find you ✦",
+    "wish2": "wish for it — the deck listens",
+    "wish3": "fortune favors the curious ✦",
+    "wish4": "tonight is a good night to play"
+  },
+  "product": {
+    "loadFailed": "Failed to load game details. Please try again later.",
+    "loadingGame": "Loading game",
+    "metaDesc": "Buy {{title}} — instant key delivery and secure checkout at Tale Shop.",
+    "gameKeys": "Game keys",
+    "sections": "Game sections",
+    "tabs": {
+      "overview": "Overview",
+      "reviews": "Reviews",
+      "sysreq": "System requirements"
+    },
+    "release": "Release",
+    "publisher": "Publisher",
+    "ageRating": "Age rating",
+    "languages": "Languages",
+    "language": "Language",
+    "moreLanguages": "+ {{count}} more",
+    "controller": "Controller",
+    "about": {
+      "game": "About this game",
+      "software": "About this software"
+    },
+    "keyFeatures": "Key features",
+    "awards": "Awards & nominations",
+    "rating": {
+      "none": "No reviews yet",
+      "veryPositive": "Very Positive",
+      "positive": "Positive",
+      "mixed": "Mixed",
+      "negative": "Negative"
+    },
+    "ratingAria": "Rating {{rating}} out of 5",
+    "topRated": "Top rated",
+    "otherPlatform": "Other platform",
+    "controllerSupport": {
+      "none": "No controller support",
+      "partial": "Partial controller support",
+      "full": "Full controller support"
+    },
+    "gameDetails": "Game details",
+    "interfaceSubtitles": "Interface & subtitles",
+    "audio": "Audio",
+    "dlc": "DLC & add-ons",
+    "notInCurrency": "Not in {{currency}}",
+    "notSoldSeparately": "Not sold separately yet",
+    "soon": "Soon",
+    "moreFrom": "More {{items}} from {{studio}}",
+    "modes": "Modes",
+    "cloudSaves": "Cloud saves",
+    "supported": "Supported",
+    "recommendations": "Recommendations",
+    "moreLikeThis": "More like this",
+    "allSoftware": "All software"
+  },
+  "sysreq": {
+    "os": "OS",
+    "cpu": "Processor",
+    "ram": "Memory",
+    "gpu": "Graphics",
+    "storage": "Storage",
+    "notes": "Notes",
+    "osAria": "Operating system",
+    "minimum": "Minimum",
+    "recommended": "Recommended"
+  },
+  "purchase": {
+    "endsSoon": "Ends in less than an hour",
+    "endsInHours": "Ends in {{hours}}h",
+    "endsInDays": "Ends in {{days}}d {{hours}}h",
+    "until": "Until {{date}}",
+    "stock": {
+      "inStock": "In stock",
+      "lowStock": "Selling fast"
+    },
+    "payWith": "Pay with",
+    "keyRegion": "Key region",
+    "notForCountry": "Not for {{country}}",
+    "notSoldIn": "Not sold in {{currency}}",
+    "switchCurrency": "Switch the currency in the header to see the price.",
+    "youGet": "You get",
+    "oneKey": "1 key · {{license}}",
+    "subscriptionSuffix": " · subscription",
+    "edition": "Edition",
+    "cantActivateIn": "This key can't be activated in",
+    "wrongCountry": "Wrong country? You can change it in the cart.",
+    "vpnNotice": "Your connection looks like it comes from <b>{{ip}}</b>, but the region is checked for <b>{{country}}</b>. If you use a VPN or proxy, pick the country where you'll actually activate the key — a key for the wrong region won't work.",
+    "releases": "Releases {{date}}",
+    "releaseTba": "Release date to be announced",
+    "notAvailableCountry": "Not available in your country",
+    "inYourWishlist": "In your wishlist",
+    "inWishlist": "In wishlist",
+    "wishlist": "Wishlist",
+    "requiresBase": "Requires the base game",
+    "activateOn": "Activate on",
+    "howToActivate": "How to activate",
+    "checkedFor": "Checked for",
+    "source": {
+      "user": "your choice",
+      "geo": "detected by IP",
+      "timezone": "guessed from your time zone"
+    },
+    "notYourCountry": ". Not your country? You can change it in the cart.",
+    "setCountry": "Set your country in the header — we'll check activation there and pick a key that works.",
+    "deliveredOnRelease": "Key is delivered on release day",
+    "instantDelivery": "Instant delivery — key appears in your account and email",
+    "refundPolicy": "Refund policy",
+    "refundNote": " — unrevealed keys are refundable",
+    "haveQuestion": "Have a question?",
+    "askSupport": "Ask support"
+  },
+  "licenses": {
+    "otherDevices": "other devices",
+    "otherTerm": "other term",
+    "perDeviceYear": "{{price}} per device per year",
+    "compare": "Compare licenses",
+    "anyDevice": "Any device",
+    "howActivation": "How activation works",
+    "steps": {
+      "copy": "Copy the key from your Tale Shop account or the delivery email.",
+      "msSignInBefore": "Sign in to your Microsoft account (",
+      "msSignInAfter": ") and choose to redeem a product key.",
+      "msEnter": "Enter the key — the license is added to your account and installs from there.",
+      "downloadBefore": "Download and install the app",
+      "downloadFrom": " from ",
+      "downloadAfter": ".",
+      "openApp": "Open the app and enter the key where it asks for a license or activation code.",
+      "goToBefore": "Go to ",
+      "goToAfter": " and sign in or create a free account.",
+      "enterLicenses": "Enter the key in the licenses section, then install the app and sign in on each device."
+    },
+    "subscriptionNote": "This is a subscription: it covers the stated term and doesn’t renew through Tale Shop.",
+    "checkRequirements": "Check the system requirements before buying — a revealed key can’t be returned.",
+    "activationHelp": "Activation help"
+  },
+  "reviews": {
+    "sort": {
+      "helpful": "Most helpful",
+      "newest": "Newest",
+      "highest": "Highest rated",
+      "lowest": "Lowest rated"
+    },
+    "listTitle": {
+      "helpful": "Top reviews",
+      "newest": "Newest reviews",
+      "highest": "Highest rated",
+      "lowest": "Lowest rated"
+    },
+    "ratings_one": "{{count}} rating",
+    "ratings_other": "{{count}} ratings",
+    "yourReview": "Your review",
+    "editedOn": "Edited on {{date}}",
+    "edited": "Edited {{date}}",
+    "hoursPlayed": "{{hours}}h played",
+    "refunded": "Refunded",
+    "refundedHint": "This customer refunded the purchase. The review stays and still counts.",
+    "report": "Report",
+    "reportThis": "Report this review",
+    "signInToReport": "Sign in to report",
+    "youFoundHelpful": "You found this helpful",
+    "wasHelpful": "Was this review helpful?",
+    "helpfulAria": "Helpful ({{count}})",
+    "takeVoteBack": "Take your vote back",
+    "markHelpful": "Mark as helpful",
+    "signInToVote": "Sign in to vote",
+    "yes": "Yes ·",
+    "reportedHidden": "Reported — hidden until a moderator checks it.",
+    "reportedSent": "Reported — our moderators will take a look.",
+    "signInToLeave": "Sign in to leave a review",
+    "customersOnly": "Reviews are open to customers who bought this game on Tale Shop.",
+    "saveFailed": "Could not save the review. Please try again.",
+    "editYour": "Edit your review",
+    "write": "Write a review",
+    "selectRating": "Select rating",
+    "stars_one": "{{count}} star",
+    "stars_other": "{{count}} stars",
+    "placeholder": "What worked, what didn't, how long you played…",
+    "submit": "Submit review",
+    "none": "No reviews",
+    "showingOne": "Showing review {{index}} of {{total}}",
+    "showingRange": "Showing {{from}}–{{to}} of {{total}}",
+    "changedMind": "Changed your mind? You can edit it any time.",
+    "reviewThis": "Review this game",
+    "boughtSignIn": "Bought it on Tale Shop? Sign in to share your experience.",
+    "signInToReview": "Sign in to review",
+    "shareThoughts": "Share your thoughts with other players.",
+    "customerReviews": "Customer reviews",
+    "filterByRating": "Filter by rating",
+    "allRatings": "All ratings",
+    "sortReviews": "Sort reviews",
+    "searchPlaceholder": "Search reviews…",
+    "search": "Search reviews",
+    "loading": "Loading reviews…",
+    "emptyFirst": "No reviews yet — be the first to share your experience.",
+    "noMatch": "No reviews match these filters.",
+    "pages": "Review pages"
+  },
+  "report": {
+    "reasons": {
+      "Spam": {
+        "label": "Spam or advertising",
+        "hint": "Links, promo codes, unrelated products."
+      },
+      "Abusive": {
+        "label": "Abusive or offensive",
+        "hint": "Insults, harassment, hate speech."
+      },
+      "OffTopic": {
+        "label": "Not about the game",
+        "hint": "About delivery, the store or something else."
+      },
+      "PersonalData": {
+        "label": "Personal information",
+        "hint": "Names, contacts, keys or other private data."
+      },
+      "Malware": {
+        "label": "Malicious links",
+        "hint": "Phishing, cheats, cracked copies."
+      },
+      "Other": {
+        "label": "Other",
+        "hint": "Tell us what is wrong below."
+      }
+    },
+    "sendFailed": "Could not send the report. Please try again.",
+    "subtitle": "Review by {{author}}. Reports go to our moderators; the review stays visible until they decide.",
+    "whatWrong": "What is wrong with it?",
+    "details": "Details",
+    "placeholder": "What should the moderator look at?",
+    "draftSaved": "Your reason and details are saved — they will be here after you sign in.",
+    "send": "Send report"
+  },
+  "media": {
+    "none": "No media available",
+    "trailer": "{{title}} trailer",
+    "playTrailer": "Play trailer",
+    "trailerPoster": "Game trailer poster",
+    "openFullscreen": "Open image fullscreen",
+    "theater": "Theater view",
+    "exitTheater": "Exit theater",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "previous": "Previous media",
+    "next": "Next media",
+    "videoNof": "Video {{index}} of {{count}}",
+    "screenshotNof": "Screenshot {{index}} of {{count}}",
+    "preview": "Game preview",
+    "scrollLeft": "Scroll thumbnails left",
+    "scrollRight": "Scroll thumbnails right",
+    "viewer": "{{title}} — media viewer",
+    "closeViewer": "Close viewer",
+    "video": "{{title}} video",
+    "screenshot": "Screenshot",
+    "openFullscreenTool": "Open fullscreen"
+  },
+  "video": {
+    "replay": "Replay",
+    "play": "Play",
+    "pause": "Pause",
+    "player": "{{title}} — video player",
+    "loading": "Loading video",
+    "seek": "Seek",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "volume": "Volume",
+    "failed": "Video failed to load."
+  },
+  "cart": {
+    "title": "Your cart",
+    "eyebrow": "Cart",
+    "subtitle": "Digital keys delivered instantly",
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items",
+    "edition": "Edition: {{edition}}",
+    "keyRegion": "Key region: {{region}}",
+    "notInCountry": "Does not activate in your country · {{reason}}",
+    "verifiedKey": "Verified key",
+    "saveForLater": "Save for later",
+    "decrease": "Decrease quantity",
+    "increase": "Increase quantity",
+    "orderSummary": "Order summary",
+    "promoCode": "Promo code",
+    "applyAtCheckout": "Apply at checkout",
+    "checkout": "Checkout",
+    "trust": {
+      "instantTitle": "Instant delivery",
+      "instantText": "Your key arrives by email within minutes.",
+      "secureTitle": "Secure payments",
+      "secureText": "Encrypted checkout powered by Stripe.",
+      "refundTitle": "Refund policy",
+      "refundText": "Full refunds available within {{days}} days."
+    },
+    "recommended": "Recommended for you",
+    "recommendedEmpty": "Add games to your wishlist or view a few games to get recommendations.",
+    "alreadyInCart": "Already in your cart",
+    "addToCartTitle": "Add {{title}} to cart",
+    "activatingIn": "Activating in",
+    "notSelected": "not selected",
+    "empty": "Your cart is empty",
+    "emptyText": "Add some games to unlock instant delivery and exclusive deals.",
+    "blocked_one": "One item in your cart does not activate in the selected country. Remove it or change the country above — checkout will refuse it otherwise.",
+    "blocked_other": "{{count}} items in your cart do not activate in the selected country. Remove them or change the country above — checkout will refuse them otherwise.",
+    "iconLabel": "Cart",
+    "iconLabelCount_one": "Cart, {{count}} item",
+    "iconLabelCount_other": "Cart, {{count}} items",
+    "keyDetails": "Key details",
+    "canActivate": "Can be activated in your country",
+    "cannotActivate": "Does not activate in your country",
+    "checkRegion": "Check the activation region",
+    "rowActivatesOn": "Activates on",
+    "rowEdition": "Edition",
+    "rowKeyRegion": "Key region",
+    "rowDelivery": "Delivery",
+    "rowRefunds": "Refunds",
+    "global": "Global",
+    "deliveryInstant": "Instant, right after payment",
+    "deliveryRestock": "After restock — we e-mail the key",
+    "refundsWithin": "Within {{days}} days"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "subtitle": "Review your order and complete payment securely.",
+    "blockedTitle": "These keys will not activate in your country",
+    "item": "Item",
+    "blockedTextBefore": "Remove them in the ",
+    "blockedCart": "cart",
+    "blockedTextAfter": ", or switch your country if you picked the wrong one — payment for these items will be declined.",
+    "guestTitle": "Where should we send your keys?",
+    "guestText": "No account needed — we'll email your keys and receipt. Create an account later with the same email to keep everything in one place.",
+    "guestCheck": "Double-check the address",
+    "guestCheckText": " — the confirmation link and your keys go exactly there.",
+    "preparing": "Preparing secure payment…",
+    "continueToPayment": "Continue to payment",
+    "signInHaveAccount": "Sign in — I have an account",
+    "keysSentAfterConfirm": "Keys will be sent to <b>{{email}}</b> after you confirm this address.",
+    "keysSentAfterPayment": "Keys will be sent to <b>{{email}}</b> right after payment.",
+    "changeEmail": "Change",
+    "stripeUnavailable": "Stripe is temporarily unavailable. Please try again later.",
+    "waitingTotal": "Payment details will appear once your order total is ready.",
+    "cryptoTitle": "Pay with Bitcoin",
+    "testnetDemo": "Testnet demo",
+    "cryptoHint": "Demo integration via self-hosted BTCPay Server. Uses test coins only — no real funds.",
+    "openingBtcpay": "Opening BTCPay…",
+    "payWithBitcoin": "₿ Pay with Bitcoin (testnet)",
+    "cryptoSignIn": "Please sign in to pay with crypto.",
+    "cryptoFailed": "Could not start crypto payment. Please try again.",
+    "paymentTimeout": "The payment service is not responding. Nothing has been charged — check your connection and try again.",
+    "paymentSignIn": "Please sign in to continue with payment.",
+    "paymentInitFailed": "Unable to initialize payment. Please try again.",
+    "promoInvalid": "Promo code is invalid.",
+    "promoApplied": "Promo code applied.",
+    "promoFailed": "Failed to apply promo code.",
+    "summaryText": "Check your items before completing payment.",
+    "cartEmpty": "Your cart is empty.",
+    "qty": "Qty {{count}} × {{price}}",
+    "promoPlaceholder": "Enter promo code",
+    "inclTax": "Incl. {{tax}}",
+    "backToCart": "← Back to cart",
+    "secureInstant": "Secure checkout — instant delivery",
+    "paymentMethod": "Payment method",
+    "stripeNote": "Payments are processed securely by Stripe.",
+    "agreeBefore": "By placing your order, you agree to our ",
+    "termsOfSale": "Terms of sale",
+    "refundPolicy": "Refund policy",
+    "and": " and ",
+    "regionalRestrictions": "Regional restrictions",
+    "consentMissing": "We could not load the delivery terms, so payment is unavailable right now. Please refresh the page.",
+    "consentSaveFailed": "We could not save your confirmation. Please try again.",
+    "orPayWithCard": "or pay with card",
+    "placeOrder": "Place Order",
+    "errorCode": "Code: {{code}}",
+    "genericDecline": "We could not process this payment. Please try again.",
+    "decline": {
+      "insufficient_funds": "Your card has insufficient funds. Try another card.",
+      "lost_card": "This card was reported lost. Please use another card.",
+      "stolen_card": "This card was reported stolen. Please use another card.",
+      "expired_card": "Your card has expired. Please use another card.",
+      "incorrect_cvc": "The security code (CVC) is incorrect.",
+      "incorrect_number": "The card number is incorrect.",
+      "card_velocity_exceeded": "Your card hit its usage limit. Try again later or use another card.",
+      "processing_error": "The bank could not process this card right now. Try again or use another card.",
+      "do_not_honor": "Your bank declined the payment. Contact your bank or use another card.",
+      "generic_decline": "Your bank declined the payment without a reason. Try another card.",
+      "authentication_required": "Your bank requires additional authentication. Please try again."
+    },
+    "taxSales": "Sales tax"
+  },
+  "cashback": {
+    "badge": "+{{amount}} cashback",
+    "atTier": "· {{percent}}% at {{tier}}",
+    "signInToEarn": "to earn",
+    "comesBack": "+{{amount}} comes back on this order",
+    "atYourLevel": "{{percent}}% at your {{tier}} level ·",
+    "howItWorks": "How cashback works",
+    "getBack": "Get +{{amount}} back with an account",
+    "fromFirstOrder": "{{percent}}% cashback from the first order",
+    "paying": "Paying {{amount}} with cashback",
+    "payWith": "Pay with cashback",
+    "stays": "{{amount}} stays on your balance",
+    "wholeBalance": "Your whole balance · switch off to keep it",
+    "available": "{{amount}} available on your balance",
+    "comesBackAfter": "Comes back after this order · {{percent}}%",
+    "ofAmount": " of {{amount}}",
+    "tiers": {
+      "rookie": "Rookie",
+      "veteran": "Veteran",
+      "elite": "Elite",
+      "legend": "Legend"
+    }
+  },
+  "success": {
+    "finalizing": "Finalizing your order...",
+    "waitingCrypto": "Waiting for the crypto payment to settle (testnet demo)...",
+    "cryptoSettled": "Crypto payment settled. Your order has been added to account orders.",
+    "stillSettling": "Payment is still settling. Check your orders in a few minutes or contact support.",
+    "noIntent": "Payment completed, but payment intent was not found in URL.",
+    "confirmEmail": "Payment received! One step left — confirm your email to get the keys.",
+    "done": "Payment successful. Your order has been added to account orders.",
+    "finalizeFailed": "We couldn't finalize your order. Your payment may still be pending. Please try again or contact support.",
+    "alreadyFinalized": "Payment successful. Your order has already been finalized.",
+    "issueTitle": "Order finalization issue",
+    "title": "Payment successful",
+    "reference": "Reference: {{id}}",
+    "sentLink": "We sent a confirmation link to <b>{{email}}</b>.",
+    "arrives": "It usually arrives <b>within 1–2 minutes</b>. Nothing after 10 minutes? Check your spam folder, then resend:",
+    "resent": "Email sent again ✓",
+    "resendFailed": "Failed — try again",
+    "resend": "Resend confirmation email",
+    "saveNumber": "<b>Save your order number</b> (shown above) — support will ask for it. Entered a wrong email? Contact support with the order number: we'll re-send the confirmation to the correct address or refund you — keys are never released until the email is confirmed.",
+    "autoRefund": "Orders left unconfirmed for 48 hours are cancelled and fully refunded automatically.",
+    "canceledTitle": "Payment canceled",
+    "canceledText": "Your payment was canceled. You can return to checkout and try again.",
+    "backToCheckout": "Back to checkout",
+    "delivery": {
+      "okTitle": "Email confirmed — keys sent!",
+      "okText": "Your game keys are on their way to your inbox. Keep that email safe and treat keys like cash.",
+      "pendingTitle": "Email confirmed",
+      "pendingText": "Your keys are temporarily out of stock. We will email them automatically as soon as they are available — no action needed.",
+      "refundedTitle": "This order was refunded",
+      "refundedText": "The email was not confirmed in time, so the payment was returned to your card (usually within 5–10 business days). No keys were issued. If you still want the game, just place the order again.",
+      "invalidTitle": "This link is invalid or has expired",
+      "invalidText": "Verification links are valid for 48 hours. If you believe this is a mistake, contact support with your order number."
+    }
+  },
+  "billing": {
+    "linkCard": "Link a bank card",
+    "linkSubtitle": "Add a card for quick payments and subscriptions.",
+    "verifyNote": "We will charge and immediately refund a small amount to verify the card.",
+    "cardNumber": "Card number",
+    "expiry": "MM/YY",
+    "cvc": "CVC/CVV",
+    "secure": "Your data is securely protected",
+    "linking": "Linking...",
+    "link": "Link card",
+    "setupFailed": "Unable to start card setup. Please try again.",
+    "numberMissing": "Card number is missing.",
+    "cardSetupFailed": "Card setup failed.",
+    "keyMissing": "Stripe publishable key is missing. Please configure window.__APP_CONFIG__.stripePublishableKey.",
+    "endingIn": "{{brand}} ending in {{last4}}",
+    "defaultSuffix": ", default",
+    "expires": "Expires {{expiry}}",
+    "defaultCard": "Default card",
+    "setDefault": "Set as default",
+    "removeCard": "Remove card",
+    "card": "Card",
+    "brandCard": "{{brand}} card",
+    "paymentCard": "Payment card"
+  },
+  "account": {
+    "nav": {
+      "purchases": "Purchases",
+      "overview": "Overview",
+      "orders": "Orders",
+      "keys": "Keys & activation",
+      "cashback": "Cashback",
+      "saved": "Saved items",
+      "account": "Account",
+      "settings": "Settings",
+      "billing": "Billing",
+      "security": "Security",
+      "support": "Support",
+      "help": "Help"
+    },
+    "sections": "Sections",
+    "closeSections": "Close sections",
+    "myAccount": "My account",
+    "avatarAlt": "{{name}} avatar",
+    "verifiedBuyer": "Verified buyer",
+    "replyNeeded": "Support replied — reply needed",
+    "signOut": "Sign out",
+    "recoveryRequested": "Account recovery was requested ({{id}}).",
+    "recoveryReset": " Two-factor authentication will be reset after {{date}}.",
+    "recoveryReview": " The request is being reviewed by support.",
+    "recoveryNotYou": "If this wasn’t you, cancel it now.",
+    "cancelling": "Cancelling…",
+    "cancelRequest": "Cancel request",
+    "overview": {
+      "title": "Account overview",
+      "subtitle": "Manage your purchases, keys, and account settings.",
+      "editProfile": "Edit profile",
+      "orders_one": "{{count}} order",
+      "orders_other": "{{count}} orders",
+      "activeKeys_one": "{{count}} active key",
+      "activeKeys_other": "{{count}} active keys",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "methods_one": "{{count}} method",
+      "methods_other": "{{count}} methods",
+      "cashbackAvailable": "Cashback available",
+      "pending": "+{{amount}} pending",
+      "unlocks": " · unlocks {{date}}",
+      "level": "Level",
+      "moreTo": "{{amount}} more to",
+      "back": "· {{percent}}% back",
+      "topLevel": "Top level — {{percent}}% back on everything",
+      "ordersText": "View your orders and invoices",
+      "keysText": "Reveal, copy and activate keys",
+      "savedText": "Wishlist for future purchases",
+      "billingText": "Payment methods and invoices",
+      "recentOrders": "Recent orders",
+      "orderId": "Order ID",
+      "game": "Game",
+      "date": "Date",
+      "amount": "Amount",
+      "invoice": "Invoice",
+      "loadingOrders": "Loading recent orders...",
+      "noRecentOrders": "No recent orders yet.",
+      "gamePurchase": "Game purchase",
+      "recentKeys": "Recent keys",
+      "loadingKeys": "Loading keys...",
+      "pleaseWait": "Please wait",
+      "noKeys": "No keys yet.",
+      "completePurchase": "Complete a purchase to receive keys.",
+      "key": "Key",
+      "viewKeys": "View keys",
+      "summariesFailed": "Some account summaries could not be loaded.",
+      "retryWishlist": "Retry wishlist",
+      "retryBilling": "Retry billing",
+      "recommendations": "Recommendations based on your wishlist"
+    },
+    "orders": {
+      "title": "Orders",
+      "titleCount": "Orders ({{count}})",
+      "loading": "Loading your orders...",
+      "loadFailed": "Unable to load orders right now.",
+      "none": "No orders yet",
+      "status": {
+        "completed": "Completed",
+        "refunded": "Refunded",
+        "failed": "Failed",
+        "pending": "Pending",
+        "awaitingKeys": "Awaiting keys",
+        "processing": "Processing"
+      },
+      "copyKey": "Copy key {{key}}",
+      "openItem": "Open {{title}}",
+      "noLongerSold": "No longer sold",
+      "keys": "Keys:",
+      "awaitingDelivery": "Awaiting key delivery — you’ll be notified once it’s in stock.",
+      "qty": "Qty: {{count}}",
+      "each": "{{price}} each",
+      "editReview": "Edit your review",
+      "leaveReview": "Leave a review",
+      "reviewHint": "Played it? A sentence helps the next buyer.",
+      "cbOnBalance": "on your balance",
+      "cbUsed": "already used",
+      "cbExpired": "expired",
+      "cbReverted": "taken back with the refund",
+      "cbUnlocks": "unlocks {{date}}",
+      "cbPending": "pending",
+      "summary": "Summary",
+      "paidWithCashback": "Paid with cashback",
+      "paidWith": "Paid with",
+      "cashbackEarned": "Cashback earned",
+      "sentKeys_one": "Sent {{count}} key to {{email}}.",
+      "sentKeys_other": "Sent {{count}} keys to {{email}}.",
+      "resendFailed": "Could not send the e-mail. Please try again.",
+      "orderItems": "Order items",
+      "yourKeys": "Your keys",
+      "hideKeys": "Hide keys",
+      "showKeys": "Show keys",
+      "resendEmail": "Resend to my email",
+      "preview_one": "{{count}} item • {{title}}",
+      "preview_other": "{{count}} items • {{title}}",
+      "detailsFailed": "Unable to load order details.",
+      "loadingDetails": "Loading order details...",
+      "legacy": "Legacy order (details unavailable).",
+      "searchPlaceholder": "Search in orders...",
+      "highestPrice": "Highest price",
+      "lowestPrice": "Lowest price",
+      "statusFilter": "Order status filter",
+      "loadingOne": "Loading order...",
+      "noneDot": "No orders yet."
+    },
+    "keys": {
+      "title": "Keys & activation",
+      "intro": "Here you can view your purchased keys and activation details.",
+      "readOur": "Read our ",
+      "activationGuide": "activation guide",
+      "or": "or ",
+      "activatingSoftware": "activating software",
+      "forHelp": "for help.",
+      "searchPlaceholder": "Search keys...",
+      "allTypes": "All types",
+      "clearFilters": "Clear filters",
+      "product": "Product",
+      "type": "Type",
+      "date": "Date",
+      "keyActivation": "Key / Activation",
+      "loading": "Loading keys...",
+      "loadFailed": "Unable to load keys",
+      "noMatch": "No keys match filters",
+      "none": "No keys yet",
+      "noMatchDot": "No keys match your filters.",
+      "noneDot": "No keys yet. Complete a purchase to receive activation keys.",
+      "activateOn": "Activate on ",
+      "howToActivate": "How to activate",
+      "goToActivation": "Go to activation",
+      "software": "Software",
+      "key": "Key"
+    },
+    "saved": {
+      "title": "Saved items ({{count}})",
+      "section": "Saved items",
+      "subtitle": "Items saved to your wishlist for future purchase.",
+      "searchPlaceholder": "Search in wishlist...",
+      "search": "Search in wishlist",
+      "viewMode": "View mode",
+      "sort": "Sort saved items",
+      "empty": "Your wishlist is empty for now.",
+      "noMatch": "No saved items match your search.",
+      "releaseTbd": "Release date TBD",
+      "notReleased": "Not released yet — it unlocks for purchase on release day",
+      "recentlyViewed": "Recently viewed",
+      "browseToSee": "Browse a few games to see them here."
+    },
+    "confirmPassword": {
+      "title": "Confirm your password",
+      "text": "For your security, enter your password to see the keys.",
+      "confirm": "Show keys",
+      "failed": "Could not check the password. Please try again."
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Manage your profile and preferences.",
+      "profile": "Profile",
+      "avatar": "Avatar",
+      "avatarHint": "PNG/JPG/WebP • up to 2 MB • square recommended",
+      "uploadPhoto": "Upload photo",
+      "displayName": "Display name",
+      "emailAddress": "Email address",
+      "changeEmailInSecurity": "Change email in Security",
+      "keepSecure": "Keep your profile secure with a fresh avatar.",
+      "notifications": "Notifications",
+      "newsletterNote": "The newsletter is linked to your account email — these toggles manage the same subscription as the forms on the site and the unsubscribe link in every email.",
+      "newsletter": "Newsletter — news, offers and shop updates",
+      "turnOnNewsletter": "Turn the newsletter on to choose which emails you get",
+      "priceDrops": "Price drops — the automatic roundup of new discounts",
+      "transactionalNote": "Transactional emails (account recovery, sign-in security) can't be disabled",
+      "securityAlerts": "Security alerts (account recovery, sign-in) — always on",
+      "savePreferences": "Save preferences",
+      "telegramLinked": "Keys are delivered to your chat as soon as they are issued. They stay in your account too.",
+      "telegramUnlinked": "Get purchased keys in a private chat with our bot. They stay in your account too.",
+      "linkedAccount": "Linked account",
+      "connectTelegram": "Connect Telegram",
+      "telegramUnavailable": "Telegram linking is unavailable right now — the bot is not configured on the server. Your keys stay available here in your account.",
+      "accountSecurity": "Account & security",
+      "securityPointer": "Password, two-factor authentication, active sessions and account deletion are managed in Security. Payment methods and profile privacy live in Billing.",
+      "openSecurity": "Open Security",
+      "billingPrivacy": "Billing & privacy",
+      "disconnectTitle": "Disconnect Telegram?",
+      "disconnectText": "Key deliveries to your Telegram chat will stop. You can reconnect anytime.",
+      "removeAvatarTitle": "Remove avatar?",
+      "removeAvatarText": "This will remove your current avatar and return to initials.",
+      "toast": {
+        "openingTelegram": "Opening Telegram — tap Start in the bot, then come back here.",
+        "telegramNotConfigured": "Telegram linking is unavailable: the bot is not configured on the server.",
+        "telegramStartFailed": "Could not start Telegram linking. Please try again.",
+        "telegramRefreshFailed": "Failed to refresh Telegram status.",
+        "telegramDisconnected": "Telegram disconnected.",
+        "telegramDisconnectFailed": "Failed to disconnect Telegram.",
+        "fileTooLarge": "File too large (max 2MB).",
+        "unsupportedFormat": "Unsupported format. Use PNG, JPG, or WebP.",
+        "profileUpdated": "Profile updated.",
+        "profileSaveFailed": "Profile save failed. Please try again.",
+        "prefsSaved": "Notification preferences saved.",
+        "newsletterFailed": "Failed to update the newsletter subscription. Please try again.",
+        "avatarRemoveLater": "Avatar will be removed after Save changes."
+      }
+    },
+    "avatar": {
+      "title": "Edit avatar",
+      "hint": "Zoom in to get room, then drag to choose the crop.",
+      "closeEditor": "Close avatar editor",
+      "cropAlt": "Crop avatar",
+      "backdrop": "Backdrop",
+      "backdropAria": "Avatar backdrop",
+      "customColour": "Custom colour",
+      "transparentHint": "Your picture has see-through areas — pick what fills them.",
+      "save": "Save avatar",
+      "discard": "Discard avatar changes?",
+      "backdrops": {
+        "lilac": "Lilac",
+        "violet": "Violet",
+        "ink": "Ink",
+        "mist": "Mist",
+        "mint": "Mint",
+        "peach": "Peach",
+        "rose": "Rose"
+      }
+    },
+    "security": {
+      "title": "Security",
+      "subtitle": "Manage password, email verification and 2FA.",
+      "unavailable": "Security settings unavailable",
+      "unavailableText": "We could not load two-factor authentication and email verification. Changing your password below still works.",
+      "checklist": {
+        "verifyEmail": "Verify your email",
+        "resendEmail": "Resend email",
+        "enable2fa": "Enable two-factor authentication",
+        "enable2faAction": "Enable 2FA",
+        "backupCodes": "Generate backup codes",
+        "backupCodesAction": "Generate codes",
+        "title": "Protect your account",
+        "progress": "{{done}} of {{total}} steps complete"
+      },
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago",
+      "monthsAgo_one": "{{count}} month ago",
+      "monthsAgo_other": "{{count}} months ago",
+      "toast": {
+        "loadFailed": "Unable to load security settings.",
+        "verificationSent": "Verification email sent.",
+        "resendFailed": "Unable to resend verification email.",
+        "emailUpdated": "Email updated. Please verify your new address.",
+        "emailFailed": "Unable to change email.",
+        "passwordUpdated": "Password updated.",
+        "passwordFailed": "Unable to update password.",
+        "resetSent": "Password reset email sent.",
+        "resetFailed": "Unable to send reset email.",
+        "twoFactorDisabledCodes": "Two-factor authentication disabled. Backup codes are no longer valid.",
+        "twoFactorDisabled": "Two-factor authentication disabled.",
+        "disableFailed": "Unable to disable 2FA.",
+        "sessionRevoked": "Session revoked.",
+        "sessionFailed": "Unable to revoke session.",
+        "allRevoked": "All sessions revoked.",
+        "allFailed": "Unable to revoke sessions.",
+        "reportDownloaded": "Security report downloaded.",
+        "reportFailed": "Unable to download security report.",
+        "accountDeleted": "Account deleted.",
+        "deleteFailed": "Unable to delete account."
+      },
+      "sessions": {
+        "title": "Active sessions",
+        "loading": "Loading sessions...",
+        "none": "No active sessions found.",
+        "ip": "IP",
+        "logOutAll": "Log out all sessions"
+      },
+      "danger": {
+        "title": "Danger zone",
+        "delete": "Delete account",
+        "downloadReport": "Download security report",
+        "text1": "Permanently delete your account and data. This action cannot be undone.",
+        "text2": "Proceed with caution and make sure you have downloaded your security report."
+      },
+      "email": {
+        "title": "Email verification",
+        "protected": "Purchases and recovery are protected.",
+        "changeEmail": "Change email",
+        "verifyHint": "Verify email to secure purchases and recovery.",
+        "sentResendIn": "Sent. Resend in {{time}}",
+        "resend": "Resend verification email"
+      },
+      "password": {
+        "title": "Password",
+        "forgot": "Forgot password? Reset",
+        "current": "Current password",
+        "new": "New password",
+        "confirm": "Confirm new password",
+        "update": "Update password",
+        "updatedAt": "Your password was updated {{when}}.",
+        "resetNote": "Resetting your password signs you out of active sessions.",
+        "errCurrent": "Enter your current password.",
+        "errLength": "Password must be at least 8 characters.",
+        "errMatch": "Passwords do not match."
+      },
+      "twoFactor": {
+        "title": "Two-Factor Authentication",
+        "reconfigure": "Re-configure",
+        "disable": "Disable 2FA",
+        "enable": "Enable 2FA",
+        "learn": "Learn how it works",
+        "codesNone": "Backup codes: not generated",
+        "codesGenerated": "Backup codes: generated",
+        "codesRemaining": "Backup codes: {{count}} remaining",
+        "codesOf": "Backup codes: {{count}} of {{total}} remaining",
+        "regenerate": "Regenerate",
+        "generate": "Generate",
+        "noCodesLeft": "No backup codes left. Generate a new set now — without them you can lose access to your account if your authenticator is unavailable.",
+        "fewCodesLeft_one": "Only {{count}} backup code left. Generate a new set soon.",
+        "fewCodesLeft_other": "Only {{count}} backup codes left. Generate a new set soon."
+      },
+      "changeEmail": {
+        "title": "Change email",
+        "newEmail": "New email",
+        "errEmail": "Enter a new email address.",
+        "errPassword": "Enter your password to confirm.",
+        "update": "Update email"
+      },
+      "deleteAccount": {
+        "title": "Delete account",
+        "text": "This will permanently delete your account and data. This action cannot be undone.",
+        "typeDelete": "Type DELETE to confirm",
+        "code": "2FA code (if enabled)",
+        "errType": "Type DELETE to confirm.",
+        "errPassword": "Enter your password.",
+        "confirm": "Delete permanently"
+      },
+      "enable2fa": {
+        "title": "Set up two-factor authentication",
+        "text": "We'll guide you through enabling 2FA in your Keycloak security settings.",
+        "fallback": "Follow the prompts to configure your authenticator app.",
+        "open": "Open setup"
+      },
+      "manage2fa": {
+        "title": "Manage two-factor authentication",
+        "text": "Update your authenticator app, regenerate backup codes, or disable 2FA from your account console.",
+        "open": "Open security settings"
+      }
+    },
+    "billing": {
+      "title": "Billing",
+      "subtitle": "Payment methods, invoices and billing details.",
+      "savedMethods": "Saved payment methods",
+      "noMethods": "No payment methods yet. Link a card here, or tick “Save” in the card form at checkout.",
+      "addMethod": "Add method",
+      "details": "Billing details",
+      "noDetails": "No billing details added yet.",
+      "invoices": "Invoices",
+      "order": "Order",
+      "id": "ID",
+      "date": "Date",
+      "amount": "Amount",
+      "invoice": "Invoice",
+      "noInvoices": "No invoices available yet.",
+      "downloadPdf": "Download PDF",
+      "privacy": "Privacy & data",
+      "hideOwned": "Hide owned games in profile",
+      "downloadData": "Download my data",
+      "editDetails": "Edit billing details",
+      "editDetailsText": "Update your billing address for invoices.",
+      "addressLine": "Address line",
+      "city": "City",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "phone": "Phone",
+      "toast": {
+        "profileLoadFailed": "Unable to load billing profile.",
+        "methodsLoadFailed": "Unable to load payment methods.",
+        "invoicesLoadFailed": "Unable to load invoices.",
+        "privacyFailed": "Unable to update privacy setting.",
+        "profileUpdated": "Billing profile updated.",
+        "profileSaveFailed": "Unable to save profile changes.",
+        "defaultUpdated": "Default payment method updated.",
+        "defaultFailed": "Unable to set default payment method.",
+        "methodRemoved": "Payment method removed.",
+        "removeFailed": "Unable to remove payment method.",
+        "invoiceFailed": "Unable to download invoice.",
+        "exportFailed": "Unable to download data export.",
+        "cardLinked": "Card linked successfully."
+      }
+    },
+    "help": {
+      "title": "Help",
+      "myRequests": "My support requests",
+      "newRequest": "New request",
+      "request": "Request",
+      "subject": "Subject",
+      "status": "Status",
+      "updated": "Updated",
+      "loading": "Loading support requests...",
+      "loadFailed": "Unable to load requests right now.",
+      "none": "No support requests yet.",
+      "faq": "FAQ",
+      "guides": "Guides & policies",
+      "stillNeed": "Still need help?",
+      "team": "Our team answers 24/7. Average response time: 2–4 hours.",
+      "openChat": "Open live chat",
+      "includeIds": "Please include order ID or Support ID when possible.",
+      "submitted": "Request submitted",
+      "statuses": {
+        "Open": "Open",
+        "WaitingForUser": "Reply needed",
+        "WaitingForSupport": "In review",
+        "Resolved": "Resolved",
+        "Closed": "Closed"
+      }
+    },
+    "support": {
+      "title": "Submit a new request",
+      "what": "What can we help you with?",
+      "selectIssue": "Select an issue...",
+      "subjectPlaceholder": "Enter a brief subject",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe your issue or question in detail...",
+      "attach": "Attach file",
+      "chooseFile": "Choose file",
+      "attachHint": "Attach screenshots, receipts, or other files.",
+      "teamNote": "Our team responds 24/7. Average response time: 2–4 hours.",
+      "quickActions": "Quick actions",
+      "quickNote": "Looking for answers? Browse guides or policies while we review your request.",
+      "submit": "Submit request",
+      "errCategory": "Please select an issue category.",
+      "errSubject": "Subject is required.",
+      "errDescription": "Description is required.",
+      "errFormat": "Unsupported file format. Please upload PNG, JPG, or PDF files.",
+      "errCount": "You can upload up to {{count}} files.",
+      "errSize": "Each file must be 10MB or smaller.",
+      "attachmentsFailed": "Ticket created, but attachments failed. You can add them in a follow-up.",
+      "failed": "Something went wrong. Please try again.",
+      "discardDraft": "Discard draft?"
+    },
+    "rewards": {
+      "title": "Cashback",
+      "subtitle": "A share of every paid order comes back to you as store credit.",
+      "filters": {
+        "all": "All",
+        "pending": "Pending",
+        "available": "Available",
+        "spent": "Used",
+        "reverted": "Refunded"
+      },
+      "statusPendingDate": "Pending · {{date}}",
+      "statusPending": "Pending",
+      "statusAvailable": "Available",
+      "statusUsedCheckout": "Used at checkout",
+      "statusUsed": "Used",
+      "statusExpired": "Expired",
+      "statusBackRefund": "Back from a refund",
+      "statusAdjustment": "Adjustment",
+      "statusTakenBack": "Taken back · refund",
+      "statusRefundedOrder": "Refunded with the order",
+      "available": "Available",
+      "readyToSpend": "Ready to spend on any order",
+      "landsHere": "Cashback lands here once it unlocks",
+      "spendOnGame": "Spend on a game",
+      "pending": "Pending",
+      "unlocksOn": "Unlocks on",
+      "afterRefundWindow": ", after the refund window",
+      "waitsHere": "Cashback waits here until the refund window closes",
+      "earnedAllTime": "Earned all time",
+      "alreadyUsed": "{{amount}} of it already used",
+      "nothingUsed": "Nothing used yet",
+      "yourLevel": "Your level",
+      "basedOnSpend": "Based on your total spend. Levels never go down.",
+      "howItWorks": "How cashback works",
+      "current": "Current",
+      "backOnEvery": "{{percent}}% back on every order",
+      "spent": "spent",
+      "nextAt": "{{name}} at {{amount}}",
+      "progressTo": "Progress to {{name}}",
+      "spendMore": "Spend",
+      "moreToReach": "more to reach",
+      "andBack": "and {{percent}}% back.",
+      "topReached": "Top level reached",
+      "highestTier": "{{name}} — the highest tier",
+      "topText": "The biggest share of every order is yours, on games and software, for good.",
+      "neverDown": "Levels never go down",
+      "backOnEveryShort": "back on every order",
+      "fromStart": "from the start",
+      "from": "from {{amount}}",
+      "youAreHere": "You are here",
+      "history": "History",
+      "historyText": "Cashback from each order, when it unlocked and where it was used.",
+      "nothingYet": "Nothing here yet",
+      "firstOrder": "Your first order will add the first line. Cashback is counted on what you actually pay, after discounts.",
+      "searchPlaceholder": "Search by game or order number",
+      "searchAria": "Search cashback history",
+      "statusFilter": "Cashback status filter",
+      "game": "Game",
+      "date": "Date",
+      "orderTotal": "Order total",
+      "rate": "Rate",
+      "cashback": "Cashback",
+      "status": "Status",
+      "noEntries": "No entries match this filter.",
+      "balanceAdjustment": "Balance adjustment",
+      "order": "Order"
+    }
+  },
+  "errors": {
+    "sessionExpired": "Your session has expired. Sign in to continue.",
+    "network": "Check your connection and try again.",
+    "loadKeys": "Unable to load keys.",
+    "loadOrders": "Unable to load orders.",
+    "loadPaymentMethods": "Unable to load payment methods.",
+    "loadRecommendations": "Unable to load recommendations.",
+    "loadViewed": "Unable to load recently viewed.",
+    "loadWishlist": "Unable to load wishlist.",
+    "streamStart": "Unable to start streaming.",
+    "streamError": "Streaming error."
+  },
+  "loader": {
+    "unavailable": "Sign-in service is unavailable",
+    "text": "We could not reach the authentication service. It may still be starting up."
+  },
+  "deals": {
+    "metaTitle": "Game deals & discounts",
+    "metaDesc": "Current discounts on PC game keys at Tale Shop — limited-time offers with instant delivery.",
+    "eyebrow": "Limited-time offers",
+    "title": "Deals & discounts",
+    "subtitle": "Hand-picked price drops on curated PC games — instant key delivery, secure checkout. Prices update as new offers go live.",
+    "gamesOnSale": "games on sale",
+    "biggestDiscount": "biggest discount",
+    "deliverySupport": "delivery & support",
+    "dealAlerts": "deal alerts",
+    "alertsText": "Get one email when fresh deals go live. No spam, unsubscribe anytime.",
+    "breakTitle": "Deals are taking a short break",
+    "breakSubscribed": "Discounts rotate regularly and new offers land often. We’ll write as soon as the next batch goes live — nothing else to do here.",
+    "breakText": "Discounts rotate regularly and new offers land often. Leave your email — we’ll send one message when fresh deals go live. No spam.",
+    "orBrowse": "Or browse the full catalog →",
+    "budgetPicks": "Budget picks in the meantime",
+    "underPrice": "Under {{price}}",
+    "onSaleNow": "On sale now",
+    "showing": "Showing {{shown}} of {{total}}",
+    "orderBy": "Order deals by",
+    "biggest": "Biggest discount",
+    "endingSoon": "Ending soon",
+    "endingSoonLoading": "Ending soon…",
+    "seeAll": "See all {{count}} deals",
+    "browseFull": "Browse the full catalog",
+    "endsIn": "Ends in",
+    "starDeal": "Star deal",
+    "youSave": "You save {{amount}}",
+    "offerEndsIn": "Offer ends in",
+    "platforms": "Platforms"
+  },
+  "faq": {
+    "eyebrow": "Help center",
+    "title": "How can we help?",
+    "subtitle": "Answers to the most common questions about orders, delivery, payments and your account.",
+    "searchPlaceholder": "Search the help center…",
+    "search": "Search FAQ",
+    "noMatches": "No matches for “{{query}}”",
+    "tryOther": "Try a different keyword, or reach out and we'll help directly.",
+    "stillNeed": "Still need help?",
+    "aiText": "Our AI assistant answers instantly and can hand you to a specialist when needed.",
+    "chat": "Chat with support",
+    "visitSupport": "Visit Support",
+    "helpfulPages": "Helpful pages",
+    "refundPolicy": "Refund policy",
+    "activationGuide": "Activation guide",
+    "browseCatalog": "Browse the catalog",
+    "currentDeals": "Current deals"
+  },
+  "support": {
+    "eyebrow": "Support & Help Center",
+    "title": "What do you need help with?",
+    "subtitle": "Search the answers or pick a topic below. If nothing fits, our team is one message away.",
+    "searchPlaceholder": "Search for help…",
+    "search": "Search support",
+    "allTopics": "All topics",
+    "talkToUs": "Talk to us",
+    "browseByTopic": "Browse by topic",
+    "allQuestions": "All questions",
+    "faqTitle": "Frequently asked questions",
+    "faqText": "Browse answers or refine with search and category filters.",
+    "noResults": "No results found",
+    "noResultsText": "Try another search term or reach out to our team for direct help.",
+    "contactTitle": "Contact support",
+    "contactText": "If the FAQ didn’t solve it, send us a message and we’ll take it from here.",
+    "requestCreated": "Request #{{id}} created",
+    "requestCreatedText": "Our team will reply soon. You can track the conversation and add details in your account.",
+    "track": "Track my request",
+    "sendAnother": "Send another",
+    "topic": "Topic",
+    "message": "Message",
+    "messagePlaceholder": "Tell us what happened",
+    "signInHint": "Sign in to send a request — we’ll bring you right back here.",
+    "sendRequest": "Send request",
+    "signInSend": "Sign in & send request",
+    "replyWithin": "We usually reply within 24 hours.",
+    "sendFailed": "Failed to send the request. Please try again.",
+    "stillNeed": "Still need help?",
+    "stillNeedText": "Didn’t find your answer? Our support team usually responds within a few hours.",
+    "goToFaq": "Go to FAQ",
+    "actions": {
+      "orders": {
+        "title": "Orders & Payments",
+        "text": "Checkout status, billing confirmations, and payment help."
+      },
+      "keys": {
+        "title": "Game keys & delivery",
+        "text": "Instant delivery, key activation, and resend options."
+      },
+      "refunds": {
+        "title": "Refunds & issues",
+        "text": "Refund eligibility and troubleshooting access issues."
+      },
+      "account": {
+        "title": "Account & security",
+        "text": "Profile access, security checks, and verification help."
+      }
+    },
+    "chips": {
+      "refund": "Refund",
+      "key": "Didn’t receive key",
+      "payment": "Payment failed",
+      "account": "Account issue"
+    },
+    "channels": {
+      "email": {
+        "title": "Email support",
+        "text": "We reply within 24 hours"
+      },
+      "chat": {
+        "title": "Live chat",
+        "text": "Usually answers in minutes"
+      },
+      "ticket": {
+        "title": "Support ticket",
+        "text": "Best for order issues"
+      },
+      "recovery": {
+        "title": "Account recovery",
+        "text": "Can’t sign in? Lost 2FA access"
+      }
+    },
+    "trust": {
+      "secure": "Secure payments",
+      "instant": "Instant delivery",
+      "verified": "Verified keys",
+      "friendly": "Friendly support"
+    },
+    "chipTerms": {
+      "refund": "refund",
+      "key": "key delivery",
+      "payment": "payment failed",
+      "account": "account"
+    },
+    "faq": {
+      "keyDelivery": {
+        "question": "How do I receive my game key?",
+        "answer": "Keys are delivered instantly by email and are always available in your account dashboard."
+      },
+      "deliverySpeed": {
+        "question": "Is delivery instant?",
+        "answer": "Yes. Most purchases are fulfilled within seconds, and we will notify you if anything delays delivery."
+      },
+      "paymentMethods": {
+        "question": "What payment methods do you support?",
+        "answer": "We accept major debit/credit cards and trusted local processors for secure checkout."
+      },
+      "paymentFailed": {
+        "question": "My payment failed. What should I do?",
+        "answer": "Double-check your card details, try another payment method, or contact your bank. If it still fails, reach out to support."
+      },
+      "refundRequest": {
+        "question": "Can I request a refund?",
+        "answer": "Refunds are possible for unused keys and accidental purchases. Submit a request within 14 days for review."
+      },
+      "issueKey": {
+        "question": "My key is not working. What should I check?",
+        "answer": "Make sure the region matches your account, double-check for typos, and confirm the key has not been redeemed before."
+      },
+      "accountSecurity": {
+        "question": "How do I secure my account?",
+        "answer": "Use a strong password, enable two-factor authentication, and avoid sharing your login details."
+      },
+      "emailChange": {
+        "question": "Can I change the email linked to my account?",
+        "answer": "Yes. Head to account settings to update your email. You may be asked to verify the change."
+      },
+      "languageSupport": {
+        "question": "Which languages does support speak?",
+        "answer": "Our support team helps in English, Russian, Ukrainian and Polish, and game language availability is listed on each product page."
+      },
+      "orderStatus": {
+        "question": "Where can I see my order status?",
+        "answer": "All orders and invoices are available in your account dashboard under “Orders & Payments.”"
+      }
+    }
+  },
+  "docs": {
+    "notFound": "Document not found",
+    "notFoundText": "Please return to Support to browse our guides and policies.",
+    "policy": "Policy",
+    "guide": "Guide",
+    "minRead": "{{count}} min read",
+    "draftTitle": "Draft — do not rely on this yet",
+    "draftBlanks": "This document is not finished: the details marked below are still missing, and the text has not been reviewed by a lawyer.",
+    "draftReview": "The details here are filled in, but the text has not been reviewed by a lawyer yet.",
+    "linkToSection": "Link to section {{index}}: {{title}}",
+    "moreGuides": "More guides & policies",
+    "notFoundNeed": "Didn’t find what you need?",
+    "replyText": "Our support team replies within a few hours — attach your order number to speed things up.",
+    "onThisPage": "On this page"
+  },
+  "newsletter": {
+    "notifyMe": "Notify me",
+    "emailForAlerts": "Email for deal alerts",
+    "onList": "✓ You're on the list — we'll email you when new deals arrive.",
+    "almostInbox": "✓ Almost there — check your inbox and confirm the subscription.",
+    "almostLink": "✓ Almost there — confirm the link we sent to your inbox.",
+    "saveFailed": "Couldn’t save your email right now — please try again in a minute.",
+    "confirming": "Confirming…",
+    "confirmingText": "One moment — we’re confirming your subscription.",
+    "confirmed": "Subscription confirmed",
+    "confirmedText": "You’re on the list. We’ll email you when fresh deals go live — and you can unsubscribe with one click from any email.",
+    "browseDeals": "Browse deals",
+    "linkUsed": "Link invalid or already used",
+    "linkUsedText": "This confirmation link doesn’t work anymore. If you already confirmed — you’re all set. Otherwise, subscribe again to get a fresh link.",
+    "subscribeOnDeals": "Subscribe on Deals",
+    "unsubscribing": "Unsubscribing…",
+    "unsubscribingText": "One moment — removing you from the list.",
+    "unsubscribed": "You’re unsubscribed",
+    "unsubscribedText": "No more emails from us. Changed your mind? You can re-subscribe on the Deals page any time — or manage it in your account settings if you have one.",
+    "resubscribe": "Re-subscribe on Deals",
+    "accountSettings": "Account settings",
+    "linkInvalid": "Link invalid",
+    "linkInvalidText": "This unsubscribe link doesn’t look right. If you keep receiving emails, contact support and we’ll remove you manually.",
+    "oneMoment": "One moment…",
+    "cashbackOffText": "Turning off cashback emails for your address.",
+    "cashbackOff": "No more cashback emails",
+    "cashbackOffDone": "We won’t email you when cashback becomes available or is about to expire. Your balance is not affected, and you can always check it and its expiry dates on your cashback page.",
+    "myCashback": "My cashback",
+    "cashbackLinkInvalid": "This link doesn’t look right. If you keep getting cashback emails, contact support and we’ll turn them off manually.",
+    "reviewOffText": "Turning off review requests for your address.",
+    "reviewOff": "We won’t ask again",
+    "reviewOffDone": "No more review requests. Order confirmations and your game keys still arrive as usual — this only turns off the “how was it?” emails. You can still leave a review any time from your orders.",
+    "myOrders": "My orders",
+    "reviewLinkInvalid": "This link doesn’t look right. If you keep getting review requests, contact support and we’ll turn them off manually."
+  },
+  "recovery": {
+    "errEmail": "Enter the email address linked to your account.",
+    "failed": "Something went wrong. Please try again in a minute.",
+    "received": "Request received",
+    "receivedText": "If the email you entered matches an account, we sent a confirmation message to it. Verification can take up to a few days because of a mandatory waiting period — we will keep you updated by email.",
+    "meanwhile": "Meanwhile, if you regain access to your authenticator or find a backup code, you can simply sign in — and cancel the request from Account → Security.",
+    "title": "Account recovery",
+    "introBefore": "Lost access to your authenticator and backup codes? Request a manual reset of two-factor authentication. First check the ",
+    "selfService": "self-service options",
+    "introAfter": " — they are faster.",
+    "accountEmail": "Account email *",
+    "contactEmail": "Contact email (if different)",
+    "contactPlaceholder": "Where we can reach you",
+    "orderNumbers": "Recent order numbers",
+    "orderPlaceholder": "e.g. TS-10023, TS-10057",
+    "cardLast4": "Card last 4 digits",
+    "proof": "Anything else that proves the account is yours",
+    "proofPlaceholder": "Approximate registration date, games you bought, payment amounts…",
+    "submit": "Submit recovery request",
+    "note": "We verify every request against order and payment history, notify the account email at each step, and apply a waiting period of up to 72 hours before anything is changed. We will never ask for your password or full card number.",
+    "cancelled": "Recovery request cancelled",
+    "cancelledText": "Nothing was changed on the account. If you believe someone is targeting your account, consider changing your password and reviewing active sessions.",
+    "backHome": "Back to Home",
+    "linkExpired": "Link is no longer valid",
+    "linkExpiredText": "The request may already be cancelled, completed, or the link has expired. If you still have concerns, contact support.",
+    "cancelTitle": "Cancel account recovery?",
+    "cancelText": "This will stop the pending two-factor authentication reset for your account.",
+    "cancelConfirm": "Yes, cancel the request"
+  },
+  "rewards": {
+    "metaTitle": "Cashback — Tale Shop",
+    "metaDesc": "Get a share of every order back as store credit. Starts at {{percent}}% and grows with what you spend.",
+    "eyebrow": "Rewards",
+    "heroBefore": "Part of every order ",
+    "heroAccent": "comes back",
+    "heroAfter": " to you.",
+    "heroText": "Cashback is store credit you earn by buying and spend on the next key. No coupons to hunt for, no minimum order, nothing to activate.",
+    "fromFirst": " from your first order",
+    "upTo": "up to ",
+    "asYouClimb": " as you climb",
+    "spendableOn": "spendable on ",
+    "anyGame": "any game",
+    "notDiscount": "Not a discount",
+    "moneyBack": "Money that comes back, not a price cut",
+    "moneyBackText1": "You pay the normal price. After the order, a share of what you paid lands on your balance as store credit — a dollar of cashback is a dollar off the next key.",
+    "moneyBackText2": "The share is counted on what you actually paid, after any discount or promo code, so sales and cashback stack instead of cancelling each other out.",
+    "exampleOrder": "Example order with cashback",
+    "digitalKey": "Digital key",
+    "price": "Price",
+    "discount": "Discount",
+    "youPay": "You pay",
+    "comesBack": "Comes back to you",
+    "backAt": "{{percent}}% back ·",
+    "level": "{{name}} level",
+    "pass": {
+      "eyebrow": "Cashback pass",
+      "title1": "Buy games.",
+      "title2": "Climb the pass.",
+      "title3": "Get more back.",
+      "text": "Every order moves you up. The higher you climb, the bigger the share of each purchase that comes back.",
+      "balance": "Your cashback balance",
+      "openHistory": "Open history",
+      "trackClimb": "Track your climb",
+      "startHere": "Start here",
+      "you": "You · {{amount}}",
+      "youAreHere": "You are here",
+      "yourLevel": "your level",
+      "toGo": "{{amount}} to go",
+      "fromFirstOrder": "from the first order",
+      "spent": "{{amount}} spent",
+      "ctaFirst": "Pick your first game",
+      "ctaFirstText": "your climb starts with it",
+      "ctaNext": "Pick your next game",
+      "ctaNextText": "every order brings {{name}} closer",
+      "ctaTopText": "{{percent}}% back on everything",
+      "nextStop": "Next stop",
+      "back": "{{name}} — {{percent}}% back",
+      "progress": "{{remaining}} to go · {{spent}} of {{threshold}}",
+      "unlocksAfter": "Unlocks after {{amount}} of orders",
+      "top": "Top of the pass",
+      "topText": "The biggest share on every order.",
+      "step1": "Buy a game",
+      "step1Text": "any paid order counts",
+      "step2": "Part of it comes back",
+      "step2Text": "{{range}} to your balance",
+      "step3": "Spend it on the next one",
+      "step3Text": "works with discounts"
+    },
+    "where": {
+      "label": "Where you'll see it",
+      "title": "Cashback shows up right where you shop",
+      "text": "No codes, no separate app — it's built into the cart, the checkout and your account.",
+      "inCart": "In your cart",
+      "total": "Total",
+      "comesBack": "+{{amount}} comes back on this order",
+      "cartText": "Every cart shows what the order will return before you pay.",
+      "atCheckout": "At checkout",
+      "orderTotal": "Order total",
+      "payWith": "Pay {{amount}} with cashback",
+      "youPay": "You pay",
+      "checkoutText": "Flip one switch to put your balance towards the order.",
+      "inAccount": "In your account",
+      "available": "Available",
+      "pending": "Pending",
+      "level": "Level",
+      "accountText": "See what's ready to spend, what's still pending and where it came from."
+    },
+    "faq": {
+      "label": "The fine print, in plain words",
+      "title": "Before you ask",
+      "text": "Short answers to what people ask most about cashback."
+    }
+  },
+  "blog": {
+    "title": "News & guides",
+    "subtitle": "weekly picks and updates from Tale Shop",
+    "showFilters": "Show search and filters",
+    "collapseFilters": "Collapse filters",
+    "searchArticles": "Search articles",
+    "searchPlaceholder": "Search articles...",
+    "sort": {
+      "newest": "Newest",
+      "popular": "Most popular",
+      "editors": "Editor's picks"
+    },
+    "sortPosts": "Sort posts",
+    "showingPosts": "Showing {{items}}",
+    "inTopics": "in {{topics}}",
+    "matching": "matching “{{query}}”",
+    "noPosts": "No posts found",
+    "noPostsText": "Try changing search text or selecting another topic.",
+    "loadingMore": "Loading more posts…",
+    "preparing": "The newsroom is preparing new stories",
+    "preparingText": "Check back soon for fresh posts and updates.",
+    "loadFailed": "Unable to load blog posts right now.",
+    "picksUnavailable": "Personalized picks are unavailable — showing the latest posts.",
+    "ctaTitle": "Looking for this week’s best prices?",
+    "ctaText": "One email per week. No spam. Unsubscribe anytime.",
+    "ctaOnList": "You’re on the list — the next digest is coming your way.",
+    "ctaAlmost": "Almost there — confirm the link we just emailed you.",
+    "ctaEmail": "Email for the weekly digest",
+    "ctaError": "Could not subscribe right now — try again in a minute.",
+    "postNotFound": "Post not found.",
+    "postLoadFailed": "Unable to load blog post.",
+    "shareSubject": "Check out this article: {{title}}",
+    "blogPost": "Blog post",
+    "linkCopied": "Link copied",
+    "copyFailed": "Could not copy link",
+    "news": "News",
+    "backToNews": "Back to news",
+    "notFoundTitle": "Post not found",
+    "notFoundText": "We couldn't locate this article. It may have been moved or removed.",
+    "postMeta": "Post metadata",
+    "share": "Share article",
+    "copyLink": "Copy link",
+    "shareOn": "Share on {{network}}",
+    "shareEmail": "Share via email",
+    "email": "Email",
+    "toc": "Table of contents",
+    "onThisPage": "On this page",
+    "bodySoon": "Article content is coming soon",
+    "bodySoonText": "This post has metadata, but the full article body is not available yet.",
+    "reactions": "Post reactions",
+    "react": "React",
+    "tags": "Post tags",
+    "adjacent": "Adjacent posts",
+    "related": "Related posts",
+    "relatedText": "More stories you might enjoy.",
+    "noRelated": "No related posts yet. Explore all the news for more articles.",
+    "browseAll": "Browse all posts",
+    "quickReactions": "Quick reactions",
+    "readArticle": "Read article",
+    "readMore": "Read more",
+    "viewAllTag": "View all {{tag}}",
+    "posts": "posts",
+    "comments": "Comments",
+    "tooFast": "You're commenting too fast — please wait a few minutes and try again.",
+    "commentingDisabled": "Commenting is disabled for your account.",
+    "commentFailed": "Could not post your comment. Please try again.",
+    "deleteComment": "Delete this comment by \"{{author}}\" permanently?",
+    "commentPlaceholder": "Type your comment here",
+    "commentText": "Comment text",
+    "charsLeft": "{{count}} characters left",
+    "posting": "Posting…",
+    "addComment": "Add comment",
+    "logInToDiscuss": "Log in to join the discussion — comments are posted under your profile name.",
+    "logInToComment": "Log in to comment",
+    "loadingComments": "Loading comments…",
+    "noComments": "No comments yet — be the first to share your thoughts.",
+    "deleteAdmin": "Delete comment (admin)",
+    "showMoreComments": "Show more comments ({{count}})",
+    "newerPost": "← Newer post:",
+    "olderPost": "Older post:",
+    "allTags": "All",
+    "reactionsCount_one": "{{count}} reaction",
+    "reactionsCount_other": "{{count}} reactions"
+  },
+  "about": {
+    "eyebrow": "ABOUT TALE SHOP",
+    "title": "About Us",
+    "lead": "We believe games should be easy to discover, simple to buy, and unforgettable to play. Tale Shop curates beloved titles, keeps checkout effortless, and supports every player long after purchase.",
+    "goToStore": "Go to Store",
+    "contactSupport": "Contact Support",
+    "pills": {
+      "secure": {
+        "title": "Secure checkout",
+        "text": "Encrypted payments to protect every transaction."
+      },
+      "instant": {
+        "title": "Instant delivery",
+        "text": "Digital keys sent right after purchase."
+      },
+      "curated": {
+        "title": "Curated picks",
+        "text": "Top titles selected by passionate gamers."
+      },
+      "support": {
+        "title": "Support 24/7",
+        "text": "Real people ready to help around the clock."
+      }
+    },
+    "highlights": {
+      "support": "Dedicated support with real-time help",
+      "prices": "Best prices on top-rated titles",
+      "delivery": "Instant digital deliveries worldwide"
+    },
+    "playerRatings": "Player ratings",
+    "ratedAria": "Rated {{value}} out of 5",
+    "basedOn": "Based on {{count}}",
+    "notEnough": "Not enough reviews yet",
+    "notEnoughText": "{{count}} so far. We show an average once there are {{min}} — below that a single opinion moves the score too far to mean anything.",
+    "noReviews": "No reviews yet",
+    "beFirstBefore": "Be the first — ",
+    "pickUpGame": "pick up a game",
+    "beFirstAfter": " and tell other players what you thought.",
+    "buyersOnly": "Buyers only",
+    "buyersOnlyText": "A review needs a paid order for that game.",
+    "distribution": "Rating distribution",
+    "guarantee": "Trusted store guarantee",
+    "guaranteeText": "Every order is protected from checkout to delivery.",
+    "medianReply": "Median first reply",
+    "delivery": "Delivery",
+    "keysByEmail": "Digital keys by email",
+    "recentReviews": "Recent reviews",
+    "recentTitle": "What players wrote lately",
+    "recentText": "Straight from the game pages — only someone with a paid order can leave a review, and we publish them as they are.",
+    "previousReviews": "Previous reviews",
+    "nextReviews": "Next reviews",
+    "reviewNof": "Review {{index}} of {{count}}",
+    "outOf5": "{{rating}} out of 5",
+    "purpose": "Our purpose",
+    "purposeTitle": "Games should be easy to find, safe to buy, and yours to keep.",
+    "purposeLead": "Tale Shop started with a simple frustration: buying PC games online meant sketchy resellers, hidden region locks, and support that vanished after checkout. So we built the store we wanted — curated, secure, and honest from the first click to long after the download finishes.",
+    "mission": "Mission",
+    "missionText": "Connect players with games they’ll love — minus the friction and the fine print. Every listing shows its activation region and refund terms before you pay, not after, and the key lands in your inbox the moment the payment clears.",
+    "vision": "Vision",
+    "visionText": "Become the digital game store players genuinely trust, everywhere we operate. Trust here is not a slogan: it is published policies, reviews we do not curate, and a support thread that stays open until your problem is actually solved.",
+    "promise": "Promise",
+    "promiseText": "If a key fails, we replace it or refund it — no forum archaeology, no proving you are not a fraudster. Account recovery and two-factor setup are written down in full, so you always know what happens next.",
+    "standFor": "What we stand for",
+    "principlesTitle": "Principles we don’t cut corners on.",
+    "principlesText": "Four commitments that shape every part of the store — each one you can check for yourself.",
+    "principles": {
+      "curation": {
+        "title": "Player-first curation",
+        "text": "We stock games worth your time — handpicked by people who play, not dumped in bulk.",
+        "link": "Browse the catalog"
+      },
+      "security": {
+        "title": "Security you can see",
+        "text": "Two-factor auth, backup codes, and an account-recovery process we publish in full.",
+        "link": "How recovery works"
+      },
+      "fair": {
+        "title": "Fair and upfront",
+        "text": "Refund rules and region details are shown before you buy — never sprung on you after.",
+        "link": "Refund policy"
+      },
+      "support": {
+        "title": "Support by real players",
+        "text": "Gamers answering chat and email in minutes, with no scripted runaround.",
+        "link": "Visit support"
+      }
+    },
+    "journey": "Our journey",
+    "journeyTitle": "How the store grew, year by year.",
+    "journeyText": "We keep improving how you discover, buy, and protect your games.",
+    "team": "Meet the team",
+    "teamTitle": "People who keep Tale Shop personal, secure, and responsive.",
+    "teamText": "Who you are actually dealing with when you buy here.",
+    "supportSection": "Support & transparency",
+    "supportTitle": "Help when you need it and policies that keep you protected.",
+    "supportText": "Straightforward support options and clear guidelines so you always know what to expect.",
+    "cards": {
+      "help": {
+        "title": "Support that actually helps",
+        "text": "Real people with gaming expertise, ready to resolve any issue.",
+        "link1": "Open the support center",
+        "link2": "Account recovery & 2FA"
+      },
+      "policies": {
+        "title": "Policies & safety",
+        "text": "Clear guidelines to keep your purchases safe and transparent.",
+        "link1": "Refund policy",
+        "link2": "Regional restrictions"
+      }
+    },
+    "finalTitle": "Ready to explore the Store?",
+    "finalText": "Browse the curated PC catalog and pick up your key in minutes.",
+    "finalMeta": "Instant email delivery • Secure checkout",
+    "seeDeals": "See this week’s deals",
+    "backToTop": "Back to top ↗",
+    "stats": {
+      "founded": "Founded",
+      "games": "Games in the catalog",
+      "genres": "Genres on the shelf",
+      "regions": "Activation regions",
+      "countries": "Countries served",
+      "keys": "Keys delivered",
+      "min": "{{count}} min",
+      "aboutHours": "about {{count}} h",
+      "aboutDay": "about a day",
+      "aboutDays": "about {{count}} days"
+    }
+  },
+  "chat": {
+    "open": "Open support chat",
+    "openUnread": "Open support chat, {{count}} new",
+    "newMessages": "{{count}} new message(s) from support",
+    "chatWith": "Chat with support"
+  },
+  "ticket": {
+    "details": "Ticket details",
+    "requestTitle": "Request #{{id}} — {{subject}}",
+    "requestDetails": "Request details",
+    "lastUpdated": "Last updated: {{when}}",
+    "loadFailed": "Failed to load ticket. Retry.",
+    "loading": "Loading ticket...",
+    "closed": "This request is closed.",
+    "resolved": "This request is resolved. Reopen it to reply.",
+    "reopenToReply": "Reopen the request to reply…",
+    "writeReply": "Write a reply…",
+    "attachFile": "Attach file",
+    "sendReply": "Send reply",
+    "uploading": "Uploading attachments...",
+    "filesReady": "{{count}} files ready to upload",
+    "noCardNumbers": "Please don’t share full card numbers.",
+    "problemSolved": "Problem solved",
+    "resolvedNeedMore": "This request is resolved. Need more help?",
+    "reopen": "Reopen",
+    "yourRequest": "your request.",
+    "closedBySupport": "This request is closed by support. Please create a new request if you need more help.",
+    "sendFailed": "Failed to send the reply. Please try again.",
+    "resolveFailed": "Failed to resolve the request. Please try again.",
+    "reopenFailed": "Failed to reopen the request. Please try again.",
+    "info": "Request information",
+    "category": "Category:",
+    "order": "Order:",
+    "email": "Email:",
+    "status": "Status:",
+    "reopenRequest": "Reopen request",
+    "helpfulLinks": "Helpful links",
+    "refundPolicy": "Refund policy",
+    "paymentMethods": "Payment methods",
+    "keyDelivery": "Key delivery guide"
+  },
+  "region": {
+    "global": "Global",
+    "worldwide": "Activates worldwide",
+    "activatesIn": "Activates in {{regions}}",
+    "locked": "Region-locked",
+    "varies": "Activation region depends on the key",
+    "variesBadge": "Varies by key",
+    "except": "Not in {{countries}}",
+    "badgeMore": "{{name}} +{{count}}",
+    "names": {
+      "EU": "Europe",
+      "NA": "North America",
+      "LATAM": "Latin America",
+      "CIS": "CIS",
+      "TR": "Türkiye",
+      "MENA": "Middle East & North Africa",
+      "ASIA": "Asia",
+      "OCEANIA": "Oceania",
+      "AFRICA": "Africa"
+    }
+  },
+  "api": {
+    "GUEST_EMAIL_REQUIRED": "Enter a valid email — we'll send your keys and receipt there.",
+    "CHECKOUT_PRICING_FAILED": "Could not price your cart.",
+    "FINALIZATION_ALREADY_PROCESSING": "Your payment is already being processed. Please wait a moment and refresh.",
+    "FINALIZATION_ATTEMPTS_EXCEEDED": "We couldn't finalize your order yet. Please contact support with the reference below.",
+    "ORDER_CREATE_FAILED": "We couldn't finalize your order. Please try again or contact support.",
+    "PAYMENT_INTENT_NOT_FOUND": "Payment not found.",
+    "PAYMENT_NOT_SUCCEEDED": "Payment is not successful yet.",
+    "PAYMENT_PROVIDER_UNAVAILABLE": "The payment provider is unreachable right now. Nothing was charged — please try again in a minute.",
+    "INTERNAL_ERROR": "Something went wrong. Please try again.",
+    "checkout": {
+      "cartEmpty": "Cart is empty.",
+      "tooManyItems": "Too many items in cart.",
+      "quantityRange": "Quantity must be between 1 and {{max}}.",
+      "itemsUnavailable": "Some items are no longer available.",
+      "editionUnavailable": "“{{title}}”: this edition is no longer available.",
+      "offerUnavailable": "“{{title}}”: this key region is no longer available.",
+      "notReleased": "“{{title}}” isn't released yet.",
+      "notInCountry": "“{{title}}” can't be activated in your country ({{country}}).",
+      "offerNotInCountry": "“{{title}}” ({{offer}}) can't be activated in your country ({{country}}).",
+      "currencyUnavailable": "“{{title}}” isn't available in {{currency}}.",
+      "invalidPrice": "Invalid price configuration.",
+      "totalZero": "Order total must be greater than zero."
+    },
+    "payment": {
+      "verificationCooldown": "Please wait a minute before requesting another email."
+    },
+    "promo": {
+      "required": "Enter a promo code.",
+      "notFound": "Promo code does not exist.",
+      "inactive": "Promo code has expired or is not active yet.",
+      "currency": "Promo code doesn't apply to this currency.",
+      "minOrder": "Minimum order amount is not reached.",
+      "authOnly": "Promo code is available only to signed-in customers.",
+      "firstOrderOnly": "Promo code is only available for the first order.",
+      "userLimit": "You have reached the usage limit for this promo code.",
+      "limit": "Promo code usage limit has been reached.",
+      "applied": "Promo code applied."
+    },
+    "order": {
+      "revealLocked": "Too many wrong passwords. Try again in {{minutes}} min.",
+      "wrongPassword_one": "Invalid password. {{count}} attempt left.",
+      "wrongPassword_other": "Invalid password. {{count}} attempts left.",
+      "noEmail": "This order has no e-mail on file.",
+      "noKeys": "No keys have been delivered on this order yet.",
+      "resendCooldown": "We have just sent that e-mail. Try again in {{minutes}} min."
+    },
+    "review": {
+      "textRequired": "Review text is required.",
+      "exists": "You have already reviewed this game.",
+      "purchaseOnly": "Only customers who bought this game can review it.",
+      "reportReason": "Pick a reason for the report.",
+      "reportTooLong": "Details are limited to {{max}} characters.",
+      "reportDetails": "Tell us what is wrong with the review.",
+      "reportOwn": "You cannot report your own review — edit or delete it instead.",
+      "alreadyReported": "You have already reported this review."
+    },
+    "ticket": {
+      "categoryRequired": "Choose a category.",
+      "subjectRequired": "Subject is required.",
+      "descriptionRequired": "Description is required.",
+      "messageRequired": "Message is required.",
+      "subjectTooLong": "Subject exceeds {{max}} characters.",
+      "descriptionTooLong": "Description exceeds {{max}} characters.",
+      "messageTooLong": "Message exceeds {{max}} characters.",
+      "messageIdRequired": "Message is not specified.",
+      "closedReply": "Ticket is closed. Reopen it to reply.",
+      "closedBySupport": "Ticket is closed by support. Please create a new request.",
+      "noFiles": "No files uploaded.",
+      "closedAttach": "Ticket is closed. Reopen it to add attachments.",
+      "messageNotFound": "Message not found.",
+      "attachOwnOnly": "You can only attach files to your own messages.",
+      "maxFiles": "Max {{max}} files per message.",
+      "fileType": "Unsupported file type.",
+      "fileSize": "File exceeds the {{max}} MB limit.",
+      "attachmentNotFound": "Attachment not found.",
+      "notFound": "Ticket not found.",
+      "accessDenied": "Access denied.",
+      "reopenLimit": "Too many reopen attempts. Please wait a few minutes.",
+      "createLimit": "Ticket creation limit reached. Please wait and try again."
+    },
+    "chat": {
+      "notHuman": "We couldn't verify that you're human. Please refresh and try again.",
+      "tooLong": "Message exceeds {{max}} characters.",
+      "messageNotFound": "Message not found.",
+      "onlyAssistantRated": "Only assistant replies can be rated.",
+      "unknownFeedback": "Unknown feedback value.",
+      "replyInProgress": "The previous reply is still being written. Please wait a moment and try again.",
+      "sessionNotFound": "Chat session not found.",
+      "closed": "This chat session is closed.",
+      "messageRequired": "Message is required.",
+      "rateLimit": "Message rate limit reached. Please wait a moment.",
+      "networkLimit": "Too many chats were started from your network. Please try again later.",
+      "tooFast": "You're sending messages too quickly. Please slow down and try again.",
+      "lengthLimit": "This conversation has reached its length limit and was closed. Start a new one to continue."
+    },
+    "RATE_LIMITED": "Too many attempts. Please try again in a minute."
+  },
+  "help": {
+    "categories": {
+      "orderStatus": "Order status",
+      "payment": "Payment & checkout",
+      "delivery": "Key delivery / activation",
+      "refund": "Refund request",
+      "product": "Game / product question",
+      "account": "Account & security",
+      "technical": "Technical issue / bug",
+      "other": "Other"
+    },
+    "docGroups": {
+      "activation": "Activation",
+      "orders": "Orders & payments",
+      "account": "Account & security",
+      "legal": "Legal",
+      "other": "Other"
+    },
+    "faq": {
+      "where-is-my-game-key": {
+        "question": "Where is my game key?",
+        "answer": "Keys are delivered instantly after successful payment. If your bank is reviewing the payment, delivery may take a bit longer. If it’s been over 30 minutes, refresh your Orders page and check the order status. Still missing? Contact support with your order number."
+      },
+      "how-do-refunds-work": {
+        "question": "How do refunds work?",
+        "answer": "Refund eligibility depends on the product and whether the key was revealed or activated. If a key wasn’t revealed, a refund is usually possible under our policy. If a key was revealed or used, refunds are typically not available. See Refund policy for details."
+      },
+      "payment-charged-order-missing": {
+        "question": "Payment was charged but order is missing",
+        "answer": "Some payments appear as “pending” or authorization before the order is created. Wait 10–30 minutes and refresh your Orders page. Also check you’re logged into the correct account/email. If it still doesn’t show up, contact support with the payment receipt/transaction ID."
+      },
+      "download-invoice": {
+        "question": "How to download an invoice?",
+        "answer": "Go to Account → Orders → select your order → Download invoice (PDF). If the invoice button isn’t available yet, the order may still be processing. If you need it urgently, contact support and we’ll help."
+      },
+      "activate-steam-key": {
+        "question": "How to activate a Steam key?",
+        "answer": "Open Steam → Games → Activate a Product on Steam… → enter your key → confirm. If you see a region or “invalid” error, check Regional restrictions or make sure you’re redeeming on the correct platform."
+      },
+      "secure-account": {
+        "question": "How to secure my account?",
+        "answer": "Use a strong, unique password and don’t reuse it elsewhere. Enable 2FA if available and never share your keys or password. If you suspect suspicious activity, change your password immediately and contact support."
+      }
+    },
+    "faqPage": {
+      "orders": {
+        "title": "Orders & delivery",
+        "items": [
+          {
+            "question": "How do I receive my game key?",
+            "answer": "Keys are delivered instantly after a successful payment. You'll find them in your account under Keys, and we also email a copy to your registered address."
+          },
+          {
+            "question": "Is delivery really instant?",
+            "answer": "For in-stock titles, yes — most orders reach your inbox within seconds. If a key needs manual review, we'll notify you and deliver as soon as it clears."
+          },
+          {
+            "question": "Where do I redeem my key?",
+            "answer": "Each product page lists the platform (for example Steam). Redeem the key in that platform's client under 'Activate a Product' to add the game to your library."
+          }
+        ]
+      },
+      "payments": {
+        "title": "Payments & pricing",
+        "items": [
+          {
+            "question": "Which payment methods do you accept?",
+            "answer": "We accept major cards (Visa, Mastercard, American Express) and secure processors via Stripe. Your card details are handled by the payment provider and never stored on our servers."
+          },
+          {
+            "question": "Can I change the currency?",
+            "answer": "Yes — use the currency switcher in the header. Displayed prices are indicative; your card is charged in the store's settlement currency shown at checkout."
+          },
+          {
+            "question": "Is checkout secure?",
+            "answer": "Checkout runs over an encrypted connection through a trusted payment processor, with buyer-protection safeguards on every order."
+          }
+        ]
+      },
+      "refunds": {
+        "title": "Refunds & issues",
+        "items": [
+          {
+            "question": "What is your refund policy?",
+            "answer": "If a key doesn't work or you can't access your purchase, contact us and we'll make it right — a replacement key or a refund. Full details are on our Refund policy page."
+          },
+          {
+            "question": "My key won't activate — what should I do?",
+            "answer": "First confirm you're redeeming it on the correct platform and region. If it still fails, reach out through support with your order ID and we'll resolve it quickly."
+          }
+        ]
+      },
+      "account": {
+        "title": "Account & access",
+        "items": [
+          {
+            "question": "Do I need an account to buy?",
+            "answer": "An account keeps your keys, orders and receipts in one place, and lets support verify your purchase faster. You can create one in seconds from the Sign up button."
+          },
+          {
+            "question": "I've lost access to my account.",
+            "answer": "Use account recovery to regain access. If you're still stuck, contact support and we'll help verify your identity and restore your account."
+          },
+          {
+            "question": "Which languages does support cover?",
+            "answer": "Our team and AI assistant help in English, Russian, Ukrainian and Polish, and each product page lists the languages available for that game."
+          },
+          {
+            "question": "How do I manage the newsletter or unsubscribe?",
+            "answer": "Every newsletter email has a one-click Unsubscribe link in the footer — no sign-in needed. If you have an account, you can also switch the deals newsletter on or off in Account → Settings → Notifications. Unsubscribing only stops marketing emails; order receipts and security emails still arrive."
+          }
+        ]
+      }
+    },
+    "cashbackFaq": {
+      "discount": {
+        "q": "Is it a discount?",
+        "a": "No. The order costs what it costs. A share of what you paid comes back as <b>store credit</b> and waits on your balance until you want it."
+      },
+      "howMuch": {
+        "q": "How much do I get?",
+        "aSingle": "<b>{{percent}}%</b> of what you paid, on every order.",
+        "aRange": "From <b>{{min}}%</b> to <b>{{max}}%</b> of what you paid, depending on your level. The level depends only on how much you have spent in total — everyone starts at {{start}}%."
+      },
+      "whenSpend": {
+        "q": "When can I spend it?",
+        "a_one": "Cashback is credited when the order is paid and the key is issued, and shows as <b>pending for {{count}} day</b> while the order can still be refunded. After that it is yours to spend on any order.",
+        "a_other": "Cashback is credited when the order is paid and the key is issued, and shows as <b>pending for {{count}} days</b> while the order can still be refunded. After that it is yours to spend on any order."
+      },
+      "returns": {
+        "q": "What if I return an order?",
+        "a": "The cashback earned on that order goes back with it. If you have already spent it, the balance can go to zero, but <b>never below</b>."
+      },
+      "expires": {
+        "q": "Does it expire?",
+        "aMonths_one": "Cashback is valid for <b>{{count}} month</b> from the day it was earned, and the oldest is always spent first, so nothing burns while you are using it.",
+        "aMonths_other": "Cashback is valid for <b>{{count}} months</b> from the day it was earned, and the oldest is always spent first, so nothing burns while you are using it.",
+        "aNever": "<b>No.</b> Cashback stays on your balance until you spend it."
+      },
+      "level": {
+        "q": "Can my level go down?",
+        "a": "<b>No.</b> Levels depend on your total spend, and that number only grows."
+      }
+    },
+    "cashbackTerms": {
+      "holdRule_one": "Cashback is credited when the order is paid and the key is issued, and is held for {{count}} day first.",
+      "holdRule_other": "Cashback is credited when the order is paid and the key is issued, and is held for {{count}} days first.",
+      "holdNow": "Cashback is credited when the order is paid and the key is issued, and can be spent right away.",
+      "expiryRule_one": "Cashback is valid for {{count}} month from the day it was earned.",
+      "expiryRule_other": "Cashback is valid for {{count}} months from the day it was earned.",
+      "noExpiry": "Cashback does not expire: it stays on your balance until you spend it.",
+      "emailsOff": "We do not send cashback emails at the moment; your balance and expiry dates are always shown in your account.",
+      "emailsReminder_one": "We email you when cashback becomes available and about {{count}} day before any unspent part expires. You can turn these emails off from a link in any of them; your balance is not affected.",
+      "emailsReminder_other": "We email you when cashback becomes available and about {{count}} days before any unspent part expires. You can turn these emails off from a link in any of them; your balance is not affected.",
+      "emailsOn": "We email you when cashback becomes available. You can turn these emails off from a link in any of them; your balance is not affected."
+    },
+    "docs": {
+      "activation-guide": {
+        "title": "Activation guide",
+        "shortDescription": "Step-by-step activation tips for popular platforms.",
+        "lastUpdated": "Last updated: March 4, 2025",
+        "intro": "Redeeming a key takes a couple of minutes. Find your platform below and follow the steps — and keep your order number handy in case anything goes wrong.",
+        "callout": {
+          "title": "Keep your key private",
+          "text": "Anyone who sees your key can activate it. Never share screenshots of a revealed key — not even with people claiming to be Tale Shop support."
+        },
+        "sections": [
+          {
+            "title": "Before you start",
+            "bullets": [
+              "Make sure the platform account you plan to redeem on is the right one.",
+              "Check the product page for platform and region details.",
+              "Keep your order number handy in case you need help.",
+              "Bought a software key (Windows, Office, antivirus, VPN)? Those activate with the vendor — see Activating software."
+            ]
+          },
+          {
+            "title": "Redeem on Steam",
+            "bullets": [
+              "Open Steam and go to Games → Activate a Product on Steam…",
+              "Enter your key exactly as shown and confirm the activation.",
+              "If you see a region warning, review Regional restrictions before retrying."
+            ]
+          },
+          {
+            "title": "Redeem on other platforms",
+            "bullets": [
+              "Visit the platform’s official redeem page (Epic, EA, Ubisoft, etc.).",
+              "Sign in and enter the key in the redeem or activation field.",
+              "Restart the launcher to see the game in your library."
+            ]
+          }
+        ]
+      },
+      "software-activation": {
+        "title": "Activating software",
+        "shortDescription": "How to redeem licence keys for operating systems, office suites, security and other apps.",
+        "lastUpdated": "Last updated: September 15, 2026",
+        "intro": "A software key is activated with the vendor, not on a game platform. The product page tells you where: the vendor’s website, your Microsoft account or the app itself. The same place is shown next to the key in your account and in the delivery email.",
+        "callout": {
+          "title": "Keep your key private",
+          "text": "Anyone who sees your key can activate it on their own devices. Never share a revealed key — not even with people claiming to be Tale Shop or vendor support."
+        },
+        "sections": [
+          {
+            "title": "Before you start",
+            "bullets": [
+              "Check the system requirements on the product page — a revealed key cannot be returned because the app does not run on your device.",
+              "Make sure you sign in to the account you want the licence on. Most vendors cannot move an activated licence to another account.",
+              "Keep your order number handy in case you need help."
+            ]
+          },
+          {
+            "title": "Activate on the vendor’s website",
+            "bullets": [
+              "Copy the key from Account → Keys or from the delivery email.",
+              "Open the vendor’s licence page — the link is on the product page — and sign in or create a free account.",
+              "Enter the key in the licences or subscriptions section.",
+              "Install the app and sign in with the same account on each device the licence covers."
+            ]
+          },
+          {
+            "title": "Activate with a Microsoft account",
+            "bullets": [
+              "Sign in to your Microsoft account in a browser.",
+              "Choose to redeem a code or product key and enter the key exactly as shown.",
+              "The product is added to your account; install it from there. Windows keys can also be entered in Settings → System → Activation."
+            ]
+          },
+          {
+            "title": "Activate inside the app",
+            "bullets": [
+              "Download the app from the vendor’s official website or the app store linked on the product page.",
+              "Open it and find the licence, registration or “Enter key” option.",
+              "Enter the key; the app confirms the licence and the term it covers."
+            ]
+          },
+          {
+            "title": "Term and devices",
+            "bullets": [
+              "The licence covers the term and number of devices shown on the product page, for example “1 year · 3 devices”.",
+              "When the term starts — on purchase or on activation — is decided by the vendor. If the product page does not say, activate soon after buying.",
+              "To add another device, sign in to the same vendor account on it. Removing a device in the vendor account usually frees its place.",
+              "Subscriptions bought here cover the stated term and are not renewed by Tale Shop. Renewing through the vendor is a separate purchase with them."
+            ]
+          },
+          {
+            "title": "If activation fails",
+            "bullets": [
+              "Check that you are in the right place — a vendor key does not work in the Microsoft Store, and the other way round.",
+              "Retype the key instead of pasting it if the vendor reports an invalid format.",
+              "Open the order in your account and request help. We verify the key and, if it is faulty, replace it or refund you."
+            ]
+          }
+        ]
+      },
+      "refund-policy": {
+        "title": "Refund policy",
+        "shortDescription": "Understand eligibility and how to request a refund.",
+        "lastUpdated": "Last updated: March 1, 2025",
+        "intro": "We keep refunds simple: unrevealed keys are usually covered, revealed keys are not — because we can no longer verify they haven’t been activated.",
+        "sections": [
+          {
+            "title": "Eligibility basics",
+            "bullets": [
+              "Unrevealed keys are generally eligible for refunds.",
+              "Revealed or activated keys are typically non-refundable.",
+              "Some products have additional publisher restrictions."
+            ]
+          },
+          {
+            "title": "How to request a refund",
+            "bullets": [
+              "Go to Account → Orders and open the order you want to refund.",
+              "Select Request refund and provide a short reason.",
+              "We will email you once the request is reviewed."
+            ]
+          },
+          {
+            "title": "Processing time",
+            "bullets": [
+              "Most refunds are reviewed within 24–48 hours.",
+              "Approved refunds are returned to the original payment method.",
+              "Bank processing can take 3–10 business days."
+            ]
+          }
+        ]
+      },
+      "payment-methods": {
+        "title": "Payment methods",
+        "shortDescription": "Supported cards, regions, and checkout tips.",
+        "lastUpdated": "Last updated: February 22, 2025",
+        "intro": "Everything about paying at Tale Shop: what we accept, how to avoid failed payments, and how your card data is protected.",
+        "sections": [
+          {
+            "title": "Supported options",
+            "bullets": [
+              "Major debit and credit cards (Visa, Mastercard, AMEX).",
+              "Select local payment options where available.",
+              "Bank transfers are available for selected regions."
+            ]
+          },
+          {
+            "title": "Checkout tips",
+            "bullets": [
+              "Match your billing address to your bank records.",
+              "Use a stable connection to avoid timeouts.",
+              "If a payment fails, wait a few minutes before retrying."
+            ]
+          },
+          {
+            "title": "Security",
+            "bullets": [
+              "Payments are encrypted and processed securely.",
+              "We never store full card numbers on our servers.",
+              "Enable 3D Secure or bank verification when prompted."
+            ]
+          }
+        ]
+      },
+      "regional-restrictions": {
+        "title": "Regional restrictions",
+        "shortDescription": "Know where a key can be activated and used.",
+        "lastUpdated": "Last updated: February 10, 2025",
+        "intro": "Publishers can lock keys to specific regions. A minute of checking before purchase saves a support ticket after.",
+        "sections": [
+          {
+            "title": "Why restrictions exist",
+            "bullets": [
+              "Publishers may limit keys to specific regions.",
+              "Pricing and licensing rules differ by country.",
+              "We display region details on every product page."
+            ]
+          },
+          {
+            "title": "How to check your region",
+            "bullets": [
+              "Compare the product region with your account country.",
+              "Check the platform store region before redeeming.",
+              "If unsure, contact support before revealing the key."
+            ]
+          },
+          {
+            "title": "If you see an error",
+            "bullets": [
+              "Do not keep retrying—errors can lock the key temporarily.",
+              "Take a screenshot of the error message for support.",
+              "We can verify the region and advise next steps."
+            ]
+          }
+        ]
+      },
+      "account-recovery": {
+        "title": "Account recovery & 2FA",
+        "shortDescription": "What to do if you lose access to your authenticator or backup codes.",
+        "lastUpdated": "Last updated: July 6, 2026",
+        "intro": "Lost your phone with the authenticator app? Ran out of backup codes? Don’t panic — go through the self-service options first, then request a manual recovery if nothing works.",
+        "callout": {
+          "title": "How we protect recovery",
+          "text": "Support will never disable two-factor authentication instantly. Every recovery request is identity-checked and deliberately delayed — this is exactly what stops attackers from stealing accounts by impersonating their owners."
+        },
+        "action": "Open recovery form",
+        "sections": [
+          {
+            "title": "Try these first",
+            "intro": "Most lockouts are solved in a minute without contacting support:",
+            "bullets": [
+              "Use a backup code: on the sign-in page enter your password, choose “Try another way” and pick “Recovery authentication codes”. Each code works once.",
+              "Still signed in on another device or browser? Open Account → Security there and re-configure two-factor authentication.",
+              "Replaced your phone? Restoring the authenticator app from its own backup (e.g. Google Authenticator account sync) usually brings your codes back."
+            ]
+          },
+          {
+            "title": "Request account recovery",
+            "intro": "If none of the above works, ask us to reset your second factor:",
+            "bullets": [
+              "Fill in the recovery form (button above) — it works without signing in.",
+              "Provide your account email, one or two recent order numbers and the last 4 digits of the card you paid with.",
+              "We verify ownership against your order and payment history, so expect follow-up questions.",
+              "Recovery includes a waiting period of up to 72 hours. We notify your account email at every step, and you can cancel the request from any active session.",
+              "Once verified, we reset your second factor. On the next sign-in you will set a new password and re-enable 2FA."
+            ]
+          },
+          {
+            "title": "What we will — and won’t — ask for",
+            "bullets": [
+              "We may ask for: your account email, recent order IDs, the last 4 digits and exact amounts of recent payments.",
+              "We will never ask for your password, a full card number, or codes from your authenticator app.",
+              "If anyone claiming to be Tale Shop asks for those, it is a scam — please report it to us."
+            ],
+            "callout": {
+              "text": "Recovery requests are only discussed via the email addresses involved in the request. We never process them in live chat or social media."
+            }
+          },
+          {
+            "title": "Avoid getting locked out again",
+            "bullets": [
+              "Generate a fresh set of backup codes and store them offline — print them or keep them in a password manager.",
+              "Keep a second trusted device signed in to your account.",
+              "Keep your account email verified and up to date — it is the channel we use to confirm recovery."
+            ]
+          }
+        ]
+      },
+      "terms-of-sale": {
+        "title": "Terms of sale",
+        "shortDescription": "What you buy, how it is delivered, and the rules around it.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "These terms describe what happens when you buy a game or software key from Tale Shop: what exactly you receive, when it is delivered, and what each side is responsible for.",
+        "sections": [
+          {
+            "title": "Who you are buying from",
+            "bullets": [
+              "Tale Shop is operated by {{entity}}, registered in {{registrationCountry}}, registration number {{registrationNumber}}.",
+              "Registered address: {{address}}.",
+              "For anything about an order, write to {{supportEmail}} — that address is monitored by our support team."
+            ]
+          },
+          {
+            "title": "What you are buying",
+            "intro": "This is the part people most often misunderstand, so it comes first.",
+            "bullets": [
+              "You buy a licence key, not a copy of the game itself. The key unlocks the game on the platform it belongs to.",
+              "The game is delivered and run by that platform — Steam, Epic Games or another store named on the product page. We are neither its publisher nor its operator.",
+              "When you redeem the key, the platform’s own agreement applies to your use of the game. We cannot change or override it.",
+              "For software, you buy a licence key for the term, number of devices and edition shown on the product page. The software is provided by its vendor, and the vendor’s licence agreement applies once you activate it.",
+              "A software subscription covers the term you paid for. It is not renewed automatically through Tale Shop."
+            ]
+          },
+          {
+            "title": "Where the key works",
+            "bullets": [
+              "Some keys are limited to a region. The product page shows whether this applies before you buy, based on the country you selected.",
+              "A key used outside its region will not activate. That is how the key was issued by the publisher — it is not a defect.",
+              "Choose your country correctly at checkout. If it is wrong, the key you receive may be unusable."
+            ],
+            "callout": {
+              "text": "How regions work, and how to tell whether a key suits you, is explained in Regional restrictions."
+            }
+          },
+          {
+            "title": "Prices, currency and taxes",
+            "bullets": [
+              "Prices are shown in the currency you select and already include the tax we are required to charge (such as VAT). Tax is never added on top: the checkout shows how much of the total it makes up, based on your country.",
+              "The price that applies to your order is the one shown at the moment you pay — later price changes do not affect a completed order.",
+              "Your bank or payment provider may add its own conversion fee. We do not receive it and cannot refund it."
+            ]
+          },
+          {
+            "title": "Delivery",
+            "bullets": [
+              "Keys are delivered electronically. Nothing is shipped physically.",
+              "After a successful payment the key appears in your account and is sent to the email address used for the order.",
+              "If you ordered as a guest with an unverified address, we hold the key until you confirm that address through the link we email you."
+            ]
+          },
+          {
+            "title": "Immediate delivery and your right to withdraw",
+            "intro": "Digital goods are handed over the moment you pay, and that changes what can be undone afterwards.",
+            "bullets": [
+              "Before paying you confirm that you want the key delivered immediately.",
+              "By confirming this you accept that once the key has been revealed to you, the purchase can no longer be withdrawn — the key cannot be taken back or resold.",
+              "Until a key is revealed, the rules in our Refund policy apply.",
+              "{{withdrawalWording}}"
+            ],
+            "callout": {
+              "text": "We record this confirmation with your order: the date, the exact wording you were shown, and its version."
+            }
+          },
+          {
+            "title": "If a key does not work",
+            "bullets": [
+              "Check the activation guide first (for software — Activating software) — most failures are a wrong platform or a mistyped character.",
+              "Open the order in your account and request help, or write to {{supportEmail}} with the order number.",
+              "We verify the key on our side. If it was already used, invalid, or issued for the wrong region, you get a replacement or a refund.",
+              "Requests are usually answered within 24–48 hours."
+            ]
+          },
+          {
+            "title": "Order checks",
+            "bullets": [
+              "We may review an order before releasing the key if the payment looks unusual.",
+              "We may ask you to confirm the email address or the payment used.",
+              "If we cannot complete a check, we cancel the order and return the money in full. We do not keep a fee for a cancelled order."
+            ]
+          },
+          {
+            "title": "Your account and fair use",
+            "bullets": [
+              "Keep your account credentials to yourself. Orders placed from your account are treated as yours.",
+              "Keys bought here are for your own use. Bulk buying for resale is not allowed without a written agreement with us.",
+              "Disputing a payment with your bank instead of contacting us first may suspend your account while we investigate. Talking to us is faster and usually solves it."
+            ]
+          },
+          {
+            "title": "What we are responsible for",
+            "bullets": [
+              "We are responsible for delivering a valid key for the product you bought, in the region stated on the product page.",
+              "We are not responsible for the game itself — its content, updates, servers, or a publisher removing it from a platform.",
+              "For software, we are not responsible for how the program works, its updates, or the vendor ending support. Check the system requirements before buying: a revealed key cannot be returned because the software does not suit your device.",
+              "We are not responsible for losses we could not reasonably foresee, or for a platform account being lost or banned by its operator.",
+              "{{liabilityLimits}}"
+            ]
+          },
+          {
+            "title": "Law and disputes",
+            "bullets": [
+              "These terms are governed by the law of {{governingLawCountry}}.",
+              "If something goes wrong, write to us first — {{supportEmail}}. Most disputes end there.",
+              "{{disputeForum}}"
+            ]
+          },
+          {
+            "title": "Changes to these terms",
+            "bullets": [
+              "We may update these terms; the version in force is the one published here.",
+              "The terms that apply to your order are the ones published when you placed it.",
+              "Material changes are announced on the site before they take effect."
+            ]
+          }
+        ]
+      },
+      "privacy-policy": {
+        "title": "Privacy policy",
+        "shortDescription": "What we collect, why, and what you can ask us to do with it.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "This policy describes the data Tale Shop actually handles: what we store, why we store it, who else sees it, and how you can have it removed.",
+        "sections": [
+          {
+            "title": "Who is responsible for your data",
+            "bullets": [
+              "The controller is {{entity}}, {{address}}.",
+              "Questions about your data go to {{privacyEmail}}.",
+              "{{dataProtectionOfficer}}"
+            ]
+          },
+          {
+            "title": "What we collect",
+            "intro": "Only what the shop needs to sell you a key and prove that it did.",
+            "bullets": [
+              "Your email address — it is where keys and receipts go, and it identifies your account.",
+              "Your orders: what you bought, when, in which currency, for which country, and the keys issued to you.",
+              "Your confirmation that keys should be delivered immediately, with the wording you were shown.",
+              "Technical data: IP address, browser and device details, and the pages you opened.",
+              "Support conversations and anything you send us in them."
+            ],
+            "callout": {
+              "text": "We never see or store your card number. Card details go straight to our payment provider; we only receive the result of the payment."
+            }
+          },
+          {
+            "title": "Why we are allowed to use it",
+            "bullets": [
+              "To perform the contract: without your email and order we cannot deliver a key or prove that we did.",
+              "To meet legal obligations: accounting and tax records must be kept for a fixed period.",
+              "For our legitimate interest in preventing fraud and keeping the shop working.",
+              "With your consent, for analytics — and only for that."
+            ]
+          },
+          {
+            "title": "Cookies and analytics",
+            "bullets": [
+              "Cookies needed to sign in and to keep your cart work without asking — the shop cannot function without them.",
+              "Google Analytics 4 is loaded only after you accept analytics cookies. Decline, and it is never loaded at all.",
+              "You can change that choice at any time through Cookie settings in the footer.",
+              "{{analyticsRetention}}"
+            ]
+          },
+          {
+            "title": "Who else processes your data",
+            "intro": "These companies act on our instructions and only for the purposes listed here.",
+            "bullets": [
+              "Payment provider — processes your payment and sends you a receipt: {{paymentProvider}}.",
+              "Sign-in provider — stores your account credentials: {{identityProvider}}.",
+              "Email provider — delivers keys, confirmations and newsletters: {{emailProvider}}.",
+              "Hosting provider — runs the shop and its database: {{hostingProvider}}.",
+              "{{dataTransfers}}"
+            ]
+          },
+          {
+            "title": "How long we keep it",
+            "bullets": [
+              "Orders and the keys issued for them: {{orderRetention}}.",
+              "Account data: while the account exists, and {{accountRetention}} after you delete it.",
+              "Support conversations: {{supportRetention}}.",
+              "Blog reading events are deleted automatically after 180 days."
+            ]
+          },
+          {
+            "title": "What you can ask us to do",
+            "bullets": [
+              "Get a copy of the data we hold about you.",
+              "Correct anything that is wrong.",
+              "Delete your account and the data that is not required for accounting.",
+              "Withdraw your consent to analytics — at any time, without giving a reason.",
+              "Complain to {{supervisoryAuthority}} if you think we handled your data badly."
+            ],
+            "callout": {
+              "text": "Write to {{privacyEmail}}. We answer within {{dataRequestDays}} days."
+            }
+          },
+          {
+            "title": "Changes to this policy",
+            "bullets": [
+              "The version in force is the one published here, with its date at the top.",
+              "Material changes are announced on the site before they take effect."
+            ]
+          }
+        ]
+      },
+      "cookie-policy": {
+        "title": "Cookie policy",
+        "shortDescription": "What we keep in your browser, and what you can switch off.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "Tale Shop keeps very little in your browser, and nothing at all for advertising. This page lists what is stored, why, and what happens when you decline.",
+        "sections": [
+          {
+            "title": "Cookies are not the only thing that counts",
+            "intro": "Most of what the shop keeps is not a cookie at all — it is browser storage, which never leaves your device and is not sent with every request. The rules treat both the same way, so both are listed here.",
+            "bullets": [
+              "On a first visit, before you sign in or accept anything, the shop sets no cookies whatsoever.",
+              "What it does store locally: your cart, the language, currency and country you picked, and an anonymous id used to keep your own reading and funnel events apart from other visitors’.",
+              "Cookies appear later: when you sign in, and — only if you allow it — when analytics starts."
+            ]
+          },
+          {
+            "title": "Strictly necessary — cannot be switched off",
+            "intro": "Without these the shop cannot do what you asked it to do.",
+            "bullets": [
+              "Sign-in session: set by our sign-in provider when you log in, and removed when you log out.",
+              "Cart: what you put in it, kept so it survives a page reload.",
+              "Your choices: language, currency and country, so the shop does not ask again on every page.",
+              "Your cookie choice itself: without storing it, the banner would ask you on every single page."
+            ]
+          },
+          {
+            "title": "Analytics — only if you allow it",
+            "bullets": [
+              "We use Google Analytics 4 to see which pages people use and where they get stuck.",
+              "It is not loaded at all until you accept analytics cookies. Decline, and the script is never fetched, so no analytics cookies are set.",
+              "You can change your mind at any time through Cookie settings in the footer. Withdrawing consent stops further collection.",
+              "We do not use cookies for advertising, and we do not sell what analytics collects."
+            ],
+            "callout": {
+              "text": "What analytics collects and how long it is kept is described in the Privacy policy."
+            }
+          },
+          {
+            "title": "How to control it",
+            "bullets": [
+              "Open Cookie settings in the footer to review or change your analytics choice.",
+              "Use your browser settings to delete what is already stored — the shop will treat you as a new visitor afterwards.",
+              "Signing out removes the sign-in session."
+            ]
+          }
+        ]
+      },
+      "cashback-terms": {
+        "title": "Cashback terms",
+        "shortDescription": "How cashback is earned, held, spent and taken back.",
+        "lastUpdated": "Last updated: September 14, 2026",
+        "intro": "Cashback is store credit, not money: it can be spent on orders at {{entity}} and cannot be withdrawn, transferred or exchanged for cash. These terms say exactly when it appears, when it can be used and when it goes away.",
+        "sections": [
+          {
+            "title": "How it is earned",
+            "bullets": [
+              "Cashback is earned by signed-in customers. Orders placed without an account (as a guest) do not earn it, even if an account is created with the same email later.",
+              "Every order paid by card on the website earns cashback at the percentage of your level at the time of the order. Orders paid with cryptocurrency or through the Telegram bot do not earn it for now.",
+              "The percentage is applied to the amount you actually paid, after discounts and promo codes. Our prices include tax, so tax is not deducted from that amount.",
+              "The part of an order paid with cashback earns nothing — cashback does not earn cashback.",
+              "Your level depends only on your total spend on eligible orders. Refunded orders do not count, and nothing else raises or lowers it."
+            ]
+          },
+          {
+            "title": "When you can spend it",
+            "intro": "{{cashbackHoldRule}}",
+            "bullets": [
+              "While held it shows as pending and cannot be spent.",
+              "The hold covers the window in which an order can still be refunded or charged back.",
+              "Once the hold passes, the amount becomes available and can be put towards any order paid by card on the website.",
+              "Cashback works together with discounts and promo codes. It can cover most of an order, but at least {{cashbackMinCardPayment}} (or the equivalent in the order currency) is always paid by card.",
+              "Your balance is kept in US dollars. In another currency it is shown and spent at the current exchange rate, so the amount you see can change slightly with the rate."
+            ]
+          },
+          {
+            "title": "When it is taken back",
+            "bullets": [
+              "If an order is refunded or reversed, the cashback earned on it is taken back, and cashback you used to pay for that order is returned to your balance.",
+              "A partial refund takes back a proportional part.",
+              "If the cashback has already been spent, the balance can fall to zero — never below, and we will not ask you to pay it back.",
+              "Cashback obtained through abuse of the programme may be cancelled along with the account."
+            ]
+          },
+          {
+            "title": "Expiry",
+            "bullets": [
+              "{{cashbackExpiryRule}}",
+              "Each amount expires on its own schedule; spending some does not reset the clock on the rest.",
+              "The oldest cashback is spent first, so nothing expires while newer credit is being used.",
+              "{{cashbackEmailsRule}}"
+            ]
+          },
+          {
+            "title": "Changes to the programme",
+            "bullets": [
+              "Percentages and thresholds may change; cashback already earned keeps the terms it was earned under.",
+              "If the programme is discontinued, you will have at least 30 days to spend the balance you have."
+            ],
+            "callout": {
+              "title": "Cashback is not money",
+              "text": "It is a discount on future orders at {{entity}}. It cannot be withdrawn, transferred to another account or exchanged for cash, and it is not a payment instrument."
+            }
+          }
+        ]
+      },
+      "legal-notice": {
+        "title": "Legal notice",
+        "shortDescription": "Who runs this shop and how to reach them.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "The details of the company behind Tale Shop, in one place — so you always know who you are dealing with and where to write.",
+        "sections": [
+          {
+            "title": "The seller",
+            "bullets": [
+              "{{entity}}, registered in {{registrationCountry}}.",
+              "Registration number: {{registrationNumber}}.",
+              "Registered address: {{address}}."
+            ]
+          },
+          {
+            "title": "How to reach us",
+            "bullets": [
+              "Orders and support: {{supportEmail}}.",
+              "Questions about personal data: {{privacyEmail}}.",
+              "Applicable law: {{governingLawCountry}}."
+            ]
+          },
+          {
+            "title": "What else to read",
+            "bullets": [
+              "Terms of sale — what you buy and under which rules.",
+              "Privacy policy — what we do with your data.",
+              "Cookie policy — what we keep in your browser.",
+              "Refund policy — when money comes back."
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

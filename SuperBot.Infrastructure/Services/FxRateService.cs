@@ -42,7 +42,22 @@ namespace SuperBot.Infrastructure.Services
         private readonly ILogger<FxRateService> _logger;
         private readonly object _gate = new();
         private FxRateBook _book;
-        private bool _loadedFromStorage;
+        private DateTime _loadedAtUtc = DateTime.MinValue;
+
+        /// <summary>
+        /// Как долго книга курсов живёт в памяти процесса, прежде чем перечитаться из базы.
+        ///
+        /// Раньше загрузка была ровно одна за жизнь процесса, и на одном инстансе это работало.
+        /// На двух — нет: суточный импорт запускается планировщиком на ОДНОМ инстансе, обновляет
+        /// свою память и базу, а остальные продолжают отдавать вчерашние курсы до перезапуска.
+        /// Это цены в каталоге: покупатель видел бы разную цену в зависимости от того, на какой
+        /// инстанс его отправил балансировщик.
+        ///
+        /// Минута выбрана как компромисс: курс меняется раз в сутки, значит расхождение между
+        /// инстансами ограничено минутой, а базу мы тревожим одним маленьким чтением в минуту
+        /// на инстанс — а не на каждую карточку товара.
+        /// </summary>
+        private TimeSpan RefreshInterval => TimeSpan.FromSeconds(Math.Max(0, _fx.MemoryRefreshSeconds));
 
         public FxRateService(
             IOptions<StorefrontCurrencyOptions> currencies,
@@ -61,7 +76,7 @@ namespace SuperBot.Infrastructure.Services
 
         public FxRateBook Current()
         {
-            EnsureLoadedFromStorage();
+            EnsureFresh();
 
             lock (_gate)
             {
@@ -71,7 +86,7 @@ namespace SuperBot.Infrastructure.Services
 
         public async Task<IReadOnlyList<FxRateBook.RateUpdate>> OfferAsync(IEnumerable<FxRate> incoming, bool bypassGuard = false)
         {
-            EnsureLoadedFromStorage();
+            EnsureFresh();
 
             var maxChange = bypassGuard ? decimal.MaxValue : _fx.MaxChangePercent;
             var results = new List<FxRateBook.RateUpdate>();
@@ -119,25 +134,31 @@ namespace SuperBot.Infrastructure.Services
         }
 
         /// <summary>
-        /// Подтягивает последние курсы из базы один раз за жизнь процесса. Ленивая загрузка,
-        /// а не работа в конструкторе: синглтон создаётся при старте приложения, когда база
-        /// может быть ещё недоступна, и падать из-за этого целиком неправильно.
+        /// Подтягивает последние курсы из базы, если прошло больше <see cref="RefreshInterval"/>.
+        ///
+        /// Ленивая загрузка, а не работа в конструкторе: синглтон создаётся при старте
+        /// приложения, когда база может быть ещё недоступна, и падать из-за этого целиком
+        /// неправильно. Повторное чтение — ради нескольких инстансов: импорт идёт на одном,
+        /// а торгуют по этим курсам все.
         /// </summary>
-        private void EnsureLoadedFromStorage()
+        private void EnsureFresh()
         {
-            if (_loadedFromStorage || _scopeFactory is null)
+            var interval = RefreshInterval;
+            if (_scopeFactory is null || (interval > TimeSpan.Zero && DateTime.UtcNow - _loadedAtUtc < interval))
             {
                 return;
             }
 
             lock (_gate)
             {
-                if (_loadedFromStorage)
+                if (interval > TimeSpan.Zero && DateTime.UtcNow - _loadedAtUtc < interval)
                 {
                     return;
                 }
 
-                _loadedFromStorage = true;
+                // Отметку ставим ДО чтения: если база недоступна, следующая попытка будет
+                // через минуту, а не на каждый запрос каталога.
+                _loadedAtUtc = DateTime.UtcNow;
 
                 try
                 {

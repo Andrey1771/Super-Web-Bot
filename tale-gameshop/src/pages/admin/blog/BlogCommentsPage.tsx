@@ -1,68 +1,56 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
 import PageHeader from "../../../components/layout/PageHeader";
 import Card from "../../../components/ui/Card";
 import EmptyState from "../../../components/ui/EmptyState";
 import { useToast } from "../../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
+import { GRID_PAGE_SIZE, REMOTE_PAGING, gridStatusText, useGridWindow } from "../../../hooks/use-grid-window";
+import { fetchWindow } from "../../../utils/page-window";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
 import type { AdminBlogComment, AdminBlogCommentStatus, IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
-
-const PAGE_SIZE_OPTIONS = [20, 50, 100];
-
-const formatDate = (value: string) => new Date(value).toLocaleString();
+import { formatDateTimeOrDash as formatDate } from "../../../i18n/format";
 
 /**
  * Модерация комментариев блога: общий список по всем постам (включая скрытые),
- * скрытие/возврат и безвозвратное удаление.
+ * скрытие/возврат, бан автора и безвозвратное удаление.
+ *
+ * Комментарии копятся без предела, поэтому список едет окнами по мере прокрутки, а не
+ * страницами с кнопками Previous/Next.
  */
 const BlogCommentsPage: React.FC = () => {
   const adminBlogService = container.get<IAdminBlogService>(IDENTIFIERS.IAdminBlogService);
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
 
-  const [items, setItems] = useState<AdminBlogComment[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [status, setStatus] = useState<AdminBlogCommentStatus | "">("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [busyId, setBusyId] = useState<string>("");
 
-  const fetchComments = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await adminBlogService.getComments({ page, pageSize, status });
-      setItems(response.items);
-      setTotal(response.total);
-    } catch (fetchError) {
-      console.error("Failed to load comments", fetchError);
-      setError("Unable to load comments.");
-    } finally {
-      setLoading(false);
-    }
-  }, [adminBlogService, page, pageSize, status]);
+  const loadComments = useCallback(
+    (skip: number, take: number) =>
+      fetchWindow(skip, take, GRID_PAGE_SIZE, (page, pageSize) =>
+        adminBlogService.getComments({ page, pageSize, status })
+      ),
+    [adminBlogService, status]
+  );
 
-  useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+  const { source, retry, loaded, total, error } = useGridWindow<AdminBlogComment>(loadComments, "id", reloadToken);
+  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
   useEffect(() => {
     setPageTitle("Blog comments");
-    setHeaderActions([]);
-    return () => setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const handleToggleStatus = async (comment: AdminBlogComment) => {
     const nextStatus: AdminBlogCommentStatus = comment.status === "Hidden" ? "Visible" : "Hidden";
     try {
       setBusyId(comment.id);
       await adminBlogService.setCommentStatus(comment.id, nextStatus);
-      setItems((prev) => prev.map((item) => (item.id === comment.id ? { ...item, status: nextStatus } : item)));
       addToast(nextStatus === "Hidden" ? "Comment hidden from the site." : "Comment is visible again.", "success");
+      reload();
     } catch {
       addToast("Failed to update comment status.", "error");
     } finally {
@@ -85,9 +73,8 @@ const BlogCommentsPage: React.FC = () => {
         await adminBlogService.banCommentAuthor(comment.id);
         addToast("Author banned from commenting.", "success");
       }
-      // Бан общий на автора: обновляем флаг у всех его строк, а знаем автора
-      // только по совпадению имени и признака аккаунта — надёжнее перечитать список.
-      await fetchComments();
+      // Бан общий на автора: флаг меняется у всех его строк сразу — перечитываем список.
+      reload();
     } catch {
       addToast("Failed to update the ban.", "error");
     } finally {
@@ -105,9 +92,8 @@ const BlogCommentsPage: React.FC = () => {
     try {
       setBusyId(comment.id);
       await adminBlogService.deleteComment(comment.id);
-      setItems((prev) => prev.filter((item) => item.id !== comment.id));
-      setTotal((prev) => Math.max(prev - 1, 0));
       addToast("Comment deleted.", "success");
+      reload();
     } catch {
       addToast("Failed to delete comment.", "error");
     } finally {
@@ -120,159 +106,167 @@ const BlogCommentsPage: React.FC = () => {
       <PageHeader
         title="Blog comments"
         description="Moderate reader comments: hide abusive ones or delete them permanently."
-        breadcrumbs={["Admin", "Blog", "Comments"]}
+        breadcrumbs={["Content", "Blog", "Comments"]}
       />
 
       <Card>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* Фильтр — часть списка, а не отдельный блок над ним: сам по себе он ничего не
+            показывает. */}
+        <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
           <select
             className="p-2 border rounded"
             value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as AdminBlogCommentStatus | "");
-              setPage(1);
-            }}
+            onChange={(event) => setStatus(event.target.value as AdminBlogCommentStatus | "")}
           >
             <option value="">All statuses</option>
             <option value="Visible">Visible</option>
             <option value="Hidden">Hidden</option>
           </select>
-          <button className="btn btn-outline" onClick={fetchComments}>
+          <button className="btn btn-outline" onClick={reload}>
             Refresh
           </button>
         </div>
-      </Card>
 
-      <Card>
-        {loading ? (
-          <div className="space-y-3">
-            <div className="skeleton h-10" />
-            <div className="skeleton h-10" />
-            <div className="skeleton h-10" />
-          </div>
-        ) : error ? (
+        {error ? (
           <EmptyState
             title="Unable to load comments"
             description={error}
             action={
-              <button className="btn btn-primary" onClick={fetchComments}>
+              <button className="btn btn-primary" onClick={retry}>
                 Retry
               </button>
             }
           />
-        ) : items.length === 0 ? (
-          <EmptyState
-            title="No comments found"
-            description={status ? "No comments with this status." : "Nobody has commented yet."}
-          />
         ) : (
           <>
-            <div className="overflow-auto border rounded">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="text-left p-2">Date</th>
-                    <th className="text-left p-2">Author</th>
-                    <th className="text-left p-2">Comment</th>
-                    <th className="text-left p-2">Post</th>
-                    <th className="text-left p-2">Status</th>
-                    <th className="text-left p-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((comment) => (
-                    <tr key={comment.id} className={`border-t align-top ${comment.status === "Hidden" ? "bg-amber-50/60" : ""}`}>
-                      <td className="p-2 whitespace-nowrap text-xs text-slate-500">{formatDate(comment.createdAt)}</td>
-                      <td className="p-2">
-                        <div className="font-medium">{comment.authorName}</div>
-                        <div className="flex gap-1 flex-wrap">
-                          <span className={`px-2 py-0.5 rounded text-[10px] ${comment.isGuest ? "bg-slate-100 text-slate-700" : "bg-emerald-100 text-emerald-700"}`}>
-                            {comment.isGuest ? "Guest" : "User"}
-                          </span>
-                          {comment.authorBanned && (
-                            <span className="px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-700">Banned</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-2 max-w-[420px]">
-                        <div className="whitespace-pre-wrap break-words">{comment.text}</div>
-                      </td>
-                      <td className="p-2 max-w-[220px]">
-                        {comment.postSlug ? (
-                          <Link className="text-violet-700 hover:underline" to={`/news/${comment.postSlug}`} target="_blank">
-                            {comment.postTitle}
-                          </Link>
-                        ) : (
-                          <span className="text-slate-500">{comment.postTitle}</span>
-                        )}
-                      </td>
-                      <td className="p-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${comment.status === "Hidden" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>
-                          {comment.status}
-                        </span>
-                      </td>
-                      <td className="p-2">
-                        <div className="flex gap-2">
-                          <button
-                            className="btn btn-outline admin-table-action"
-                            disabled={busyId === comment.id}
-                            onClick={() => handleToggleStatus(comment)}
-                          >
-                            {comment.status === "Hidden" ? "Show" : "Hide"}
-                          </button>
-                          {!comment.isGuest && (
-                            <button
-                              className="btn btn-outline admin-table-action"
-                              disabled={busyId === comment.id}
-                              title={comment.authorBanned ? "Allow this author to comment again" : "Forbid this author from commenting"}
-                              onClick={() => handleToggleBan(comment)}
-                            >
-                              {comment.authorBanned ? "Unban author" : "Ban author"}
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-outline admin-table-action text-red-600 border-red-200 hover:border-red-400"
-                            disabled={busyId === comment.id}
-                            onClick={() => handleDelete(comment)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataGrid
+              dataSource={source}
+              showBorders
+              showRowLines
+              height={620}
+              width="100%"
+              columnAutoWidth
+              allowColumnResizing
+              columnResizingMode="widget"
+              wordWrapEnabled
+              remoteOperations={REMOTE_PAGING}
+              noDataText={status ? "No comments with this status." : "Nobody has commented yet."}
+              onRowPrepared={(event) => {
+                // Скрытые комментарии подсвечиваем — модератору важно видеть их сразу.
+                if (event.rowType === "data" && (event.data as AdminBlogComment).status === "Hidden") {
+                  event.rowElement.style.backgroundColor = "rgb(255 251 235)";
+                }
+              }}
+            >
+              <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+              <Paging enabled pageSize={GRID_PAGE_SIZE} />
+              <Sorting mode="none" />
 
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-xs text-gray-500">
-                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total} comments
-              </p>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">Rows</label>
-                <select
-                  className="p-2 border rounded"
-                  value={pageSize}
-                  onChange={(event) => {
-                    setPageSize(Number(event.target.value));
-                    setPage(1);
-                  }}
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-                <button className="btn btn-outline" onClick={() => setPage((prev) => Math.max(prev - 1, 1))} disabled={page === 1}>
-                  Previous
-                </button>
-                <button className="btn btn-outline" onClick={() => setPage((prev) => prev + 1)} disabled={page * pageSize >= total}>
-                  Next
-                </button>
-              </div>
-            </div>
+              <Column
+                dataField="createdAt"
+                caption="Date"
+                width={160}
+                cellRender={(cell: { value: string }) => (
+                  <span className="text-xs text-slate-500 whitespace-nowrap">{formatDate(cell.value)}</span>
+                )}
+              />
+              <Column
+                caption="Author"
+                minWidth={160}
+                cellRender={(cell: { data: AdminBlogComment }) => (
+                  <div>
+                    <div className="font-medium">{cell.data.authorName}</div>
+                    <div className="flex gap-1 flex-wrap">
+                      <span
+                        className={
+                          cell.data.isGuest
+                            ? "px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700"
+                            : "px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-700"
+                        }
+                      >
+                        {cell.data.isGuest ? "Guest" : "User"}
+                      </span>
+                      {cell.data.authorBanned && (
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-700">Banned</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              />
+              <Column
+                dataField="text"
+                caption="Comment"
+                minWidth={280}
+                cellRender={(cell: { value: string }) => (
+                  <div className="whitespace-pre-wrap break-words line-clamp-3" title={cell.value}>
+                    {cell.value}
+                  </div>
+                )}
+              />
+              <Column
+                caption="Post"
+                minWidth={180}
+                cellRender={(cell: { data: AdminBlogComment }) =>
+                  cell.data.postSlug ? (
+                    <Link className="text-violet-700 hover:underline" to={`/news/${cell.data.postSlug}`} target="_blank">
+                      {cell.data.postTitle}
+                    </Link>
+                  ) : (
+                    <span className="text-slate-500">{cell.data.postTitle}</span>
+                  )
+                }
+              />
+              <Column
+                dataField="status"
+                caption="Status"
+                width={110}
+                cellRender={(cell: { value: AdminBlogCommentStatus }) => (
+                  <span
+                    className={
+                      cell.value === "Hidden"
+                        ? "px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800"
+                        : "px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700"
+                    }
+                  >
+                    {cell.value}
+                  </span>
+                )}
+              />
+              <Column
+                caption="Actions"
+                width={260}
+                cellRender={(cell: { data: AdminBlogComment }) => (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      className="btn btn-outline admin-table-action"
+                      disabled={busyId === cell.data.id}
+                      onClick={() => handleToggleStatus(cell.data)}
+                    >
+                      {cell.data.status === "Hidden" ? "Show" : "Hide"}
+                    </button>
+                    {!cell.data.isGuest && (
+                      <button
+                        className="btn btn-outline admin-table-action"
+                        disabled={busyId === cell.data.id}
+                        title={cell.data.authorBanned ? "Allow commenting again" : "Forbid this author from commenting"}
+                        onClick={() => handleToggleBan(cell.data)}
+                      >
+                        {cell.data.authorBanned ? "Unban author" : "Ban author"}
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-outline admin-table-action text-red-600 border-red-200 hover:border-red-400"
+                      disabled={busyId === cell.data.id}
+                      onClick={() => handleDelete(cell.data)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              />
+            </DataGrid>
+
+            <p className="mt-3 text-xs text-gray-500">{gridStatusText(loaded, total, "comment")}</p>
           </>
         )}
       </Card>

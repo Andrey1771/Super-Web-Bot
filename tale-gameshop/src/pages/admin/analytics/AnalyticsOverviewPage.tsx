@@ -15,7 +15,7 @@ import type { AnalyticsOverview, AnalyticsProvider, AnalyticsSettings } from "..
 
 const AnalyticsOverviewPage: React.FC = () => {
   const adminAnalyticsService = container.get<IAdminAnalyticsService>(IDENTIFIERS.IAdminAnalyticsService);
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const navigate = useNavigate();
 
   const [provider, setProvider] = useState<AnalyticsProvider>("ga4");
@@ -23,12 +23,14 @@ const AnalyticsOverviewPage: React.FC = () => {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [settings, setSettings] = useState<AnalyticsSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Код отказа приходит вместе с текстом: по нему выбирается заголовок и решается, ведёт ли
+  // кнопка «в настройки» хоть куда-нибудь. Для недостающего доступа OAuth — не ведёт: в форме
+  // настроек этих значений нет и быть не может, они живут в окружении сервера.
+  const [error, setError] = useState<{ code?: string; text: string } | null>(null);
 
   useEffect(() => {
     setPageTitle("Analytics overview");
-    setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -54,8 +56,14 @@ const AnalyticsOverviewPage: React.FC = () => {
       } catch (fetchError: any) {
         console.error(fetchError);
         setOverview(null);
-        const message = fetchError?.response?.data ?? "Unable to load analytics overview.";
-        setError(String(message));
+        // Сервер отвечает то строкой, то объектом с полем message. Без разбора обоих случаев
+        // на экран попадает "[object Object]" — то есть ровно ничего.
+        const data = fetchError?.response?.data;
+        const message =
+          typeof data === "string"
+            ? data
+            : data?.message ?? data?.title ?? "Unable to load analytics overview.";
+        setError({ code: typeof data === "string" ? undefined : data?.code, text: message });
       } finally {
         setLoading(false);
       }
@@ -92,7 +100,21 @@ const AnalyticsOverviewPage: React.FC = () => {
       <PageHeader
         title="Analytics overview"
         description="Track storefront performance and engagement trends."
-        breadcrumbs={["Analytics", "Overview"]}
+        breadcrumbs={["Reports", "Analytics"]}
+        primaryAction={
+          /* Здесь короткая сводка, у Google — всё остальное: география, устройства, источники,
+             сравнение периодов. Ссылка ведёт прямо в ваш ресурс, а не на общую страницу входа. */
+          settings?.gaPropertyId ? (
+            <a
+              className="btn btn-outline"
+              href={`https://analytics.google.com/analytics/web/#/p${settings.gaPropertyId}/reports/intelligenthome`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open in Google Analytics
+            </a>
+          ) : undefined
+        }
       />
 
       <Card>
@@ -101,7 +123,6 @@ const AnalyticsOverviewPage: React.FC = () => {
             <label className="text-xs text-gray-500">Source</label>
             <select value={provider} onChange={(event) => setProvider(event.target.value as AnalyticsProvider)} className="p-2 border rounded">
               <option value="ga4">Google Analytics 4</option>
-              <option value="yandex">Yandex Metrika</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -133,10 +154,20 @@ const AnalyticsOverviewPage: React.FC = () => {
         </div>
       ) : error ? (
         <EmptyState
-          title="Unable to load analytics"
-          description={error}
+          title={
+            error.code === "report_access_missing"
+              ? "Reports need a separate Google access"
+              : error.code === "report_access_expired"
+                ? "The Google token is no longer accepted"
+                : "Unable to load analytics"
+          }
+          description={error.text}
           action={
-            <button className="btn btn-primary" onClick={() => navigate("/admin/analytics/settings")}>Check settings</button>
+            <button className="btn btn-primary" onClick={() => navigate("/admin/analytics/settings")}>
+              {error.code === "report_access_missing" || error.code === "report_access_expired"
+                ? "Set up access"
+                : "Check settings"}
+            </button>
           }
         />
       ) : (

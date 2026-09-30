@@ -5,6 +5,8 @@ using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Linq;
+using SuperBot.Common.Auth;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -36,17 +38,17 @@ public class BlogEventsController : ControllerBase
             return BadRequest("Invalid event type.");
         }
 
-        var userId = GetCurrentUserId();
+        var userId = User.GetUserKey();
         var normalizedEventType = request.EventType?.Trim().ToUpperInvariant() ?? string.Empty;
 
         if (normalizedEventType is "POST_OPEN" or "POST_READ_COMPLETE")
         {
             var dedupeFrom = DateTime.UtcNow.AddHours(-12);
             var recent = await _blogRecommendationsService.GetEventsByPostAsync(request.PostId, dedupeFrom);
-            var actorKey = BuildActorKey(userId, request.AnonId, request.SessionId);
+            var actorKey = BlogActorKey.For(userId, request.AnonId, request.SessionId);
             var alreadyTracked = recent.Any(item =>
                 string.Equals(item.EventType, normalizedEventType, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
+                string.Equals(BlogActorKey.For(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
 
             if (alreadyTracked)
             {
@@ -88,7 +90,7 @@ public class BlogEventsController : ControllerBase
         }
 
         var fromUtc = DateTime.UtcNow.AddYears(-3);
-        var userId = GetCurrentUserId();
+        var userId = User.GetUserKey();
         var items = new List<object>();
         var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids);
 
@@ -129,8 +131,8 @@ public class BlogEventsController : ControllerBase
             return BadRequest("Unsupported reaction.");
         }
 
-        var userId = GetCurrentUserId();
-        var actorKey = BuildActorKey(userId, request.AnonId, request.SessionId);
+        var userId = User.GetUserKey();
+        var actorKey = BlogActorKey.For(userId, request.AnonId, request.SessionId);
         if (string.IsNullOrWhiteSpace(actorKey))
         {
             return BadRequest("Identity is required.");
@@ -168,26 +170,6 @@ public class BlogEventsController : ControllerBase
         });
     }
 
-    private static string BuildActorKey(string userId, string anonId, string sessionId)
-    {
-        if (!string.IsNullOrWhiteSpace(userId))
-        {
-            return $"u:{userId}";
-        }
-
-        if (!string.IsNullOrWhiteSpace(anonId))
-        {
-            return $"a:{anonId}";
-        }
-
-        if (!string.IsNullOrWhiteSpace(sessionId))
-        {
-            return $"s:{sessionId}";
-        }
-
-        return string.Empty;
-    }
-
     private static string GetReactionFromMeta(BlogEvent blogEvent)
     {
         if (blogEvent.Meta == null)
@@ -201,7 +183,7 @@ public class BlogEventsController : ControllerBase
     private static string GetCurrentReaction(IReadOnlyList<BlogEvent> events, string actorKey)
     {
         return events
-            .Where(item => string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal))
+            .Where(item => string.Equals(BlogActorKey.For(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal))
             .OrderByDescending(item => item.Timestamp)
             .Select(item =>
             {
@@ -218,7 +200,7 @@ public class BlogEventsController : ControllerBase
     {
         var reads = events
             .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
-            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
+            .Select(item => BlogActorKey.For(item.UserId, item.AnonId, item.SessionId))
             .Where(key => !string.IsNullOrWhiteSpace(key))
             .Distinct(StringComparer.Ordinal)
             .Count();
@@ -227,7 +209,7 @@ public class BlogEventsController : ControllerBase
             .Where(item =>
                 string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
+            .GroupBy(item => BlogActorKey.For(item.UserId, item.AnonId, item.SessionId))
             .Where(group => !string.IsNullOrWhiteSpace(group.Key))
             .Select(group => group.OrderByDescending(item => item.Timestamp).First())
             .ToList();
@@ -255,9 +237,9 @@ public class BlogEventsController : ControllerBase
             }
         }
 
-        var myKey = BuildActorKey(userId, anonId, string.Empty);
+        var myKey = BlogActorKey.For(userId, anonId, string.Empty);
         var myReaction = latestByActor
-            .Where(item => string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), myKey, StringComparison.Ordinal))
+            .Where(item => string.Equals(BlogActorKey.For(item.UserId, item.AnonId, item.SessionId), myKey, StringComparison.Ordinal))
             .Select(item => string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase) ? string.Empty : GetReactionFromMeta(item))
             .FirstOrDefault() ?? string.Empty;
 
@@ -271,15 +253,6 @@ public class BlogEventsController : ControllerBase
         };
     }
 
-    private string GetCurrentUserId()
-    {
-        return User?.FindFirst("email")?.Value
-               ?? User?.FindFirst(ClaimTypes.Email)?.Value
-               ?? User?.FindFirst("preferred_username")?.Value
-               ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? User?.FindFirst("sub")?.Value
-               ?? string.Empty;
-    }
 }
 
 public class BlogReactionRequest
@@ -326,10 +299,15 @@ public class BlogEventRequest
     public string EventType { get; set; }
     [JsonPropertyName("ts")]
     public DateTime? Timestamp { get; set; }
-    public string AnonId { get; set; }
-    public string SessionId { get; set; }
+    // Необязательные поля объявлены как nullable намеренно. В проекте включены nullable
+    // reference types, и ASP.NET считает НЕнулевое ссылочное свойство обязательным: тело без
+    // meta отклонялось валидацией с 400 «The Meta field is required» ещё до входа в метод.
+    // Клиент meta не отправляет никогда, поэтому все показы постов из ленты молча терялись —
+    // а статистика прочтений при этом выглядела просто скромной, а не сломанной.
+    public string? AnonId { get; set; }
+    public string? SessionId { get; set; }
     public int? DwellMs { get; set; }
     public double? ScrollDepth { get; set; }
-    public string Referrer { get; set; }
-    public Dictionary<string, string> Meta { get; set; }
+    public string? Referrer { get; set; }
+    public Dictionary<string, string>? Meta { get; set; }
 }

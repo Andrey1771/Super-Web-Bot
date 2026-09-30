@@ -1,10 +1,15 @@
 // src/context/CartContext.tsx
-import React, {createContext, useContext, useEffect, useReducer} from 'react';
-import {CartAction, initialState, CartState, cartReducer, Product} from '../reducers/cart-reducer';
+import React, {createContext, useContext, useEffect, useMemo, useReducer} from 'react';
+import {CartAction, initialState, CartState, cartReducer, cartLineKey, Product} from '../reducers/cart-reducer';
+import {analyticsClient} from "../utils/analytics-client";
+import {trackFunnelStep} from "../utils/funnel-tracking";
+import {gaItemVariant} from "../utils/item-list-tracking";
+import {useSitePreferences} from "../context/site-preferences";
 import container from "../inversify.config";
 import type {IApiClient} from "../iterfaces/i-api-client";
 import IDENTIFIERS from "../constants/identifiers";
 import {IKeycloakService} from "../iterfaces/i-keycloak-service";
+import {flyToCart} from "../components/cart/cart-flight";
 
 const CartContext = createContext<{
     state: CartState;
@@ -18,6 +23,7 @@ const CartContext = createContext<{
 });
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
+    const {currency: preferredCurrency} = useSitePreferences();
     const [state, dispatch] = useReducer(cartReducer, initialState, (initial) => {
         const storedCart = localStorage.getItem('cart');
         return storedCart ? JSON.parse(storedCart) : initial;
@@ -48,7 +54,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
         const mergedCart: Product[] = [...serverCart.cartGames];
 
         localCart.forEach((localItem) => {
-            const existingItem = mergedCart.find((item) => item.gameId === localItem.gameId);
+            // Сравниваем по ключу позиции, а не по игре: Standard и Deluxe, европейский и
+            // глобальный ключ — разные товары с разной ценой. По gameId они схлопывались в одну
+            // строку, и покупатель терял то, что выбрал, просто войдя в аккаунт.
+            const existingItem = mergedCart.find((item) => cartLineKey(item) === cartLineKey(localItem));
             if (existingItem) {
                 existingItem.quantity = localItem.quantity;
             } else {
@@ -83,7 +92,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
                     name: product.name,
                     price: product.price,
                     quantity: product.quantity,
-                    image: product.image
+                    image: product.image,
+                    editionCode: product.editionCode,
+                    editionTitle: product.editionTitle,
+                    offerKey: product.offerKey,
+                    offerTitle: product.offerTitle
                 }))]
             });
 
@@ -97,8 +110,66 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
         }
     };
 
+    /**
+     * Добавление в корзину считается здесь, а не на кнопках.
+     *
+     * Кнопок «в корзину» в магазине девять — каталог, карточка, страница игры, DLC, подборки,
+     * рекомендации, кабинет, избранное, — а событие раньше уходило только из трёх. Остальные
+     * шесть добавлений не видел ни Google, ни собственная воронка: корзина росла, а по отчётам
+     * в неё почти не клали. Считать в одном месте — единственный способ, чтобы следующая
+     * добавленная кнопка не создала ту же дыру заново.
+     */
+    const trackedDispatch = useMemo<React.Dispatch<CartAction>>(() => (action: CartAction) => {
+        if (action.type === 'REMOVE_FROM_CART') {
+            // Позицию ищем ДО удаления: после него о ней уже нечего рассказать. Удаление —
+            // самый прямой сигнал, что цена или состав не устроили, и терять его нельзя.
+            const removed = state.items.find((candidate) => cartLineKey(candidate) === action.payload);
+            if (removed) {
+                const quantity = removed.quantity > 0 ? removed.quantity : 1;
+                analyticsClient.trackEcommerce('remove_from_cart', {
+                    currency: state.currency ?? preferredCurrency,
+                    value: removed.price * quantity,
+                    items: [{
+                        item_id: removed.gameId,
+                        item_name: removed.name,
+                        price: removed.price,
+                        quantity,
+                        ...(removed.category ? { item_category: removed.category } : {}),
+                        ...(gaItemVariant(removed) ? { item_variant: gaItemVariant(removed) } : {}),
+                    }],
+                });
+            }
+        }
+
+        if (action.type === 'ADD_TO_CART') {
+            const item = action.payload;
+            // Валюта корзины, а не догадка: цены позиций посчитаны сервером именно в ней.
+            const currency = state.currency ?? preferredCurrency;
+            const quantity = item.quantity > 0 ? item.quantity : 1;
+
+            // Обложка летит к иконке корзины: от кнопки, которую нажали (она в фокусе), или от явно переданной карточки.
+            flyToCart({ origin: action.meta?.origin ?? document.activeElement, label: item.name });
+
+            trackFunnelStep("add_to_cart", item.gameId);
+            analyticsClient.trackEcommerce('add_to_cart', {
+                currency,
+                value: item.price * quantity,
+                items: [{
+                    item_id: item.gameId,
+                    item_name: item.name,
+                    price: item.price,
+                    quantity,
+                    ...(item.category ? { item_category: item.category } : {}),
+                    ...(gaItemVariant(item) ? { item_variant: gaItemVariant(item) } : {}),
+                }],
+            });
+        }
+
+        dispatch(action);
+    }, [dispatch, state.currency, state.items, preferredCurrency]);
+
     return (
-        <CartContext.Provider value={{state, dispatch, syncCartWithServer}}>
+        <CartContext.Provider value={{state, dispatch: trackedDispatch, syncCartWithServer}}>
             {children}
         </CartContext.Provider>
     );

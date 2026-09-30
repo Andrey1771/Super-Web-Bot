@@ -119,6 +119,10 @@
   margin: 0;
   padding: 0;
   display: grid;
+  /* Колонка — не шире карточки. Без minmax(0, …) сетка растягивалась по однострочной детали: длинный
+     текст ошибки (например, вебхука Telegram) раздувал список, а за ним и всю страницу — плитки уезжали
+     под боковое меню. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -126,20 +130,25 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   font-size: 14px;
 }
 
 .dashboard__health-name {
-  flex: 1;
+  flex: 1 0 auto;
 }
 
+/* Деталь обрезается многоточием; полный текст — во всплывающей подсказке строки (title). */
 .dashboard__health-detail {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 60%;
   font-size: 12px;
   color: var(--color-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 55%;
+  text-align: right;
 }
 
 .dashboard__dot {
@@ -160,6 +169,13 @@
 
 .dashboard__dot--down {
   background: #dc2626;
+}
+
+/* «Настроено, но не проверено» — полый кружок вместо залитого: обещания, что сервис
+   отвечает, здесь нет, и выглядеть как проверенный он не должен. */
+.dashboard__dot--configured {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px #22c55e;
 }
 
 /* «Не настроено» — не ошибка: рельс может быть выключен намеренно. Серый, без тревоги. */

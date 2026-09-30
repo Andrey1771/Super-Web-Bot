@@ -112,7 +112,8 @@ public class SupportKnowledgeAdminController : ControllerBase
             return "An instant answer needs at least one group of trigger words.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.InstantTextRu) && string.IsNullOrWhiteSpace(request.InstantTextEn))
+        if (string.IsNullOrWhiteSpace(request.InstantTextRu) && string.IsNullOrWhiteSpace(request.InstantTextEn)
+            && string.IsNullOrWhiteSpace(request.InstantTextUk) && string.IsNullOrWhiteSpace(request.InstantTextPl))
         {
             return "An instant answer needs text in at least one language.";
         }
@@ -146,6 +147,8 @@ public class SupportKnowledgeAdminController : ControllerBase
             .ToList();
         target.InstantTextRu = string.IsNullOrWhiteSpace(request.InstantTextRu) ? null : request.InstantTextRu.Trim();
         target.InstantTextEn = string.IsNullOrWhiteSpace(request.InstantTextEn) ? null : request.InstantTextEn.Trim();
+        target.InstantTextUk = string.IsNullOrWhiteSpace(request.InstantTextUk) ? null : request.InstantTextUk.Trim();
+        target.InstantTextPl = string.IsNullOrWhiteSpace(request.InstantTextPl) ? null : request.InstantTextPl.Trim();
         return target;
     }
 
@@ -163,6 +166,8 @@ public class SupportKnowledgeAdminController : ControllerBase
         InstantTriggers = article.InstantTriggers.Select(group => group.Terms).ToList(),
         InstantTextRu = article.InstantTextRu,
         InstantTextEn = article.InstantTextEn,
+        InstantTextUk = article.InstantTextUk,
+        InstantTextPl = article.InstantTextPl,
         UpdatedAt = article.UpdatedAt,
         UpdatedBy = article.UpdatedBy
     };

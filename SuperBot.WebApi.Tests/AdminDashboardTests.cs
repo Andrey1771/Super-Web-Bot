@@ -94,6 +94,39 @@ public class AdminDashboardTests
     }
 
     [Fact]
+    public async Task Disputes_waiting_for_evidence_are_listed_with_the_nearest_deadline_first()
+    {
+        var number = $"TS-DISP-{Guid.NewGuid():N}"[..16];
+        var answered = $"TS-DISP-{Guid.NewGuid():N}"[..16];
+        var due = DateTime.UtcNow.AddHours(30);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var orders = scope.ServiceProvider.GetRequiredService<IMongoDatabase>().GetCollection<BsonDocument>("Orders");
+            BsonDocument Disputed(string orderNumber, bool hasEvidence)
+            {
+                var doc = Order("DELIVERED", 20m, "USD", DateTime.UtcNow, paid: true);
+                doc["OrderNumber"] = orderNumber;
+                doc["PaymentStatus"] = "DISPUTED";
+                doc["Dispute"] = new BsonDocument
+                {
+                    { "Id", $"dp_{Guid.NewGuid():N}" }, { "Status", hasEvidence ? "under_review" : "needs_response" },
+                    { "AmountMinor", 2000L }, { "Currency", "USD" }, { "EvidenceDueBy", due }, { "HasEvidence", hasEvidence },
+                    { "OpenedAt", DateTime.UtcNow }
+                };
+                return doc;
+            }
+            await orders.InsertManyAsync(new[] { Disputed(number, hasEvidence: false), Disputed(answered, hasEvidence: true) });
+        }
+
+        var disputes = (await FetchAsync(Admin())).GetProperty("payments").GetProperty("disputesAwaitingEvidence").EnumerateArray().ToList();
+        var mine = Assert.Single(disputes, item => item.GetProperty("orderNumber").GetString() == number);
+        Assert.Equal(20m, mine.GetProperty("amount").GetDecimal());
+        Assert.NotEqual(JsonValueKind.Null, mine.GetProperty("evidenceDueBy").ValueKind);
+        // Доказательства уже отправлены — ждать нечего, в «Needs attention» спору не место.
+        Assert.DoesNotContain(disputes, item => item.GetProperty("orderNumber").GetString() == answered);
+    }
+
+    [Fact]
     public async Task Support_block_counts_escalated_chats()
     {
         var admin = Admin();
@@ -121,5 +154,73 @@ public class AdminDashboardTests
         var health = (await FetchAsync(Admin())).GetProperty("health").GetProperty("items");
         var mongo = health.EnumerateArray().Single(i => i.GetProperty("name").GetString() == "MongoDB");
         Assert.Equal("ok", mongo.GetProperty("state").GetString());
+    }
+
+    /// <summary>
+    /// Выключенные пробы не имеют права утешать. В тестовом хосте сеть отключена
+    /// (Dashboard:ExternalProbes=false), и всё, что проверяется наружу, обязано остаться в
+    /// «configured» — «настроено, но не проверено», — а не превратиться в зелёное «ok».
+    /// </summary>
+    [Theory]
+    [InlineData("Stripe")]
+    [InlineData("Mail (SMTP)")]
+    [InlineData("Keycloak")]
+    public async Task ProbesDisabled_doNotProduceAGreenLight(string name)
+    {
+        var health = (await FetchAsync(Admin())).GetProperty("health").GetProperty("items");
+        var item = health.EnumerateArray().Single(i => i.GetProperty("name").GetString() == name);
+
+        var state = item.GetProperty("state").GetString();
+        Assert.Contains(state, new[] { "configured", "unconfigured" });
+        Assert.NotEqual("ok", state);
+    }
+
+    [Fact]
+    public async Task SupportLlm_isAlsoProbedRatherThanAssumed()
+    {
+        var health = (await FetchAsync(Admin())).GetProperty("health").GetProperty("items");
+        var item = health.EnumerateArray()
+            .Single(i => (i.GetProperty("name").GetString() ?? string.Empty).StartsWith("Support LLM"));
+
+        Assert.NotEqual("ok", item.GetProperty("state").GetString());
+    }
+
+    /// <summary>
+    /// Почта попала в список только на первом этапе, а до этого её не проверял никто —
+    /// хотя без неё не уходят ключи, то есть товар, за который заплатили.
+    /// </summary>
+    [Fact]
+    public async Task Mail_isPartOfTheHealthBlock()
+    {
+        var health = (await FetchAsync(Admin())).GetProperty("health").GetProperty("items");
+        var names = health.EnumerateArray().Select(i => i.GetProperty("name").GetString()).ToList();
+
+        Assert.Contains("Mail (SMTP)", names);
+    }
+
+    /// <summary>
+    /// «Поднят ли контейнер» и «слышит ли бот людей» — два разных вопроса, и в сводке им
+    /// положены две разные строки. Пока строка была одна, мёртвый вебхук неделю выглядел
+    /// зелёным: бот-сервис при этом честно отвечал на запросы.
+    /// </summary>
+    [Fact]
+    public async Task BotServiceAndWebhook_areSeparateRows()
+    {
+        var health = (await FetchAsync(Admin())).GetProperty("health").GetProperty("items");
+        var names = health.EnumerateArray().Select(i => i.GetProperty("name").GetString()).ToList();
+
+        Assert.Contains("Bot service", names);
+        Assert.Contains("Telegram webhook", names);
+    }
+
+    [Fact]
+    public async Task WebhookRow_doesNotGoGreenWithoutAsking()
+    {
+        // Пробы в тестовом хосте выключены — значит про вебхук ничего не известно, и
+        // зелёного кружка он не заслуживает.
+        var health = (await FetchAsync(Admin())).GetProperty("health").GetProperty("items");
+        var item = health.EnumerateArray().Single(i => i.GetProperty("name").GetString() == "Telegram webhook");
+
+        Assert.NotEqual("ok", item.GetProperty("state").GetString());
     }
 }

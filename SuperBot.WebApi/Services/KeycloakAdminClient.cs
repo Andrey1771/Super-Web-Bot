@@ -6,6 +6,25 @@ using System.Text.Json.Serialization;
 
 namespace SuperBot.WebApi.Services
 {
+    /// <summary>
+    /// Служебный клиент Keycloak не настроен: не задан секрет, id клиента, адрес или realm.
+    ///
+    /// Отдельный тип нужен, чтобы отличать «мы не туда сходили» от «нам не сказали, куда идти».
+    /// С пустым секретом Keycloak отвечает 401, и наружу это выходило пятисоткой — по ней
+    /// невозможно догадаться, что дело в незаполненной переменной окружения.
+    /// </summary>
+    public class KeycloakAdminNotConfiguredException : InvalidOperationException
+    {
+        public KeycloakAdminNotConfiguredException(IReadOnlyList<string> missing)
+            : base("Keycloak admin client is not configured: " + string.Join(", ", missing) + ".")
+        {
+            Missing = missing;
+        }
+
+        /// <summary>Названия незаполненных настроек — в логи и в ответ, без значений.</summary>
+        public IReadOnlyList<string> Missing { get; }
+    }
+
     public class KeycloakAdminClient
     {
         private readonly HttpClient _httpClient;
@@ -24,15 +43,32 @@ namespace SuperBot.WebApi.Services
         private string Realm => _configuration["Keycloak:Admin:Realm"] ?? string.Empty;
         private string ClientId => _configuration["Keycloak:Admin:ClientId"] ?? string.Empty;
         private string ClientSecret => _configuration["Keycloak:Admin:ClientSecret"] ?? string.Empty;
-        private string PublicClientId => _configuration["Keycloak:Admin:PublicClientId"] ?? ClientId;
 
         private string AdminUsersPath => $"{BaseUrl}/admin/realms/{Realm}/users";
+
+        /// <summary>Чего не хватает, чтобы вообще идти в Keycloak. Пусто — значит всё на месте.</summary>
+        public IReadOnlyList<string> MissingConfiguration()
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(BaseUrl)) missing.Add("Keycloak:Admin:BaseUrl");
+            if (string.IsNullOrWhiteSpace(Realm)) missing.Add("Keycloak:Admin:Realm");
+            if (string.IsNullOrWhiteSpace(ClientId)) missing.Add("Keycloak:Admin:ClientId");
+            if (string.IsNullOrWhiteSpace(ClientSecret)) missing.Add("Keycloak:Admin:ClientSecret");
+            return missing;
+        }
 
         private async Task<string> GetAccessTokenAsync()
         {
             if (_accessToken != null && _tokenExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
             {
                 return _accessToken;
+            }
+
+            // Проверяем до запроса: с пустым секретом Keycloak ответит 401, и причина потеряется.
+            var missing = MissingConfiguration();
+            if (missing.Count > 0)
+            {
+                throw new KeycloakAdminNotConfiguredException(missing);
             }
 
             await _tokenLock.WaitAsync();
@@ -104,6 +140,53 @@ namespace SuperBot.WebApi.Services
             return await response.Content.ReadFromJsonAsync<List<KeycloakLoginEvent>>(JsonOptions) ?? new List<KeycloakLoginEvent>();
         }
 
+        /// <summary>
+        /// Журнал входов всего realm — для экрана «Login history».
+        ///
+        /// Ходим служебным аккаунтом, а не токеном того, кто открыл страницу: у обычного
+        /// администратора магазина нет ролей realm-management, и Keycloak отвечал ему 403.
+        /// Право смотреть журнал даёт наша собственная роль admin, её проверяет контроллер.
+        /// </summary>
+        public async Task<List<SuperBot.Core.Interfaces.LoginEventRepresentation>> GetLoginEventsAsync(
+            string? type = "LOGIN",
+            int first = 0,
+            int max = 100,
+            string? user = null,
+            string? client = null,
+            string? dateFrom = null,
+            string? dateTo = null)
+        {
+            // Окно и фильтры отдаём Keycloak: он умеет и то, и другое, а страница раньше
+            // забирала пять сотен событий разом и отбирала нужные уже в браузере.
+            var url = $"{BaseUrl}/admin/realms/{Realm}/events?first={first}&max={max}";
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                url += $"&type={Uri.EscapeDataString(type)}";
+            }
+            if (!string.IsNullOrWhiteSpace(user))
+            {
+                url += $"&user={Uri.EscapeDataString(user)}";
+            }
+            if (!string.IsNullOrWhiteSpace(client))
+            {
+                url += $"&client={Uri.EscapeDataString(client)}";
+            }
+            if (!string.IsNullOrWhiteSpace(dateFrom))
+            {
+                url += $"&dateFrom={Uri.EscapeDataString(dateFrom)}";
+            }
+            if (!string.IsNullOrWhiteSpace(dateTo))
+            {
+                url += $"&dateTo={Uri.EscapeDataString(dateTo)}";
+            }
+
+            using var request = await CreateAdminRequestAsync(HttpMethod.Get, url);
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<SuperBot.Core.Interfaces.LoginEventRepresentation>>(JsonOptions)
+                   ?? new List<SuperBot.Core.Interfaces.LoginEventRepresentation>();
+        }
+
         public async Task<List<KeycloakSession>> GetUserSessionsAsync(string userId)
         {
             using var request = await CreateAdminRequestAsync(HttpMethod.Get, $"{AdminUsersPath}/{userId}/sessions");
@@ -139,6 +222,45 @@ namespace SuperBot.WebApi.Services
             using var request = await CreateAdminRequestAsync(HttpMethod.Delete, $"{BaseUrl}/admin/realms/{Realm}/sessions/{sessionId}");
             using var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Язык пользователя в Keycloak (атрибут locale): на нём Keycloak шлёт свои письма (подтверждение почты,
+        /// настройка 2FA, сброс пароля) и открывает свои страницы. Вызывается перед каждым таким письмом с языком
+        /// сайта покупателя. Сбой не мешает действию — письмо уйдёт на языке realm по умолчанию.
+        /// </summary>
+        public async Task<bool> TrySetLocaleAsync(string userId, string? locale)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(locale))
+            {
+                return false;
+            }
+
+            try
+            {
+                var user = await GetUserAsync(userId);
+                if (user is null)
+                {
+                    return false;
+                }
+
+                // Атрибуты в PUT заменяют все разом — остальные (если есть) сохраняем.
+                var attributes = user.Attributes ?? new Dictionary<string, List<string>>();
+                if (attributes.TryGetValue("locale", out var current) && current.FirstOrDefault() == locale)
+                {
+                    return true;
+                }
+                attributes["locale"] = new List<string> { locale };
+
+                using var request = await CreateAdminRequestAsync(HttpMethod.Put, $"{AdminUsersPath}/{userId}");
+                request.Content = JsonContent.Create(new { attributes });
+                using var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public async Task SendVerifyEmailAsync(string userId)
@@ -201,6 +323,42 @@ namespace SuperBot.WebApi.Services
         }
 
         /// <summary>Включить или выключить учётку. Выключенная не может войти, но данные и заказы остаются.</summary>
+        /// <summary>Роли realm у пользователя — по ним видно, администратор он или покупатель.</summary>
+        public async Task<List<string>> GetRealmRolesAsync(string userId)
+        {
+            using var request = await CreateAdminRequestAsync(HttpMethod.Get, $"{AdminUsersPath}/{userId}/role-mappings/realm");
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            var roles = await response.Content.ReadFromJsonAsync<List<KeycloakRole>>(JsonOptions) ?? new List<KeycloakRole>();
+            return roles.Select(role => role.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToList();
+        }
+
+        /// <summary>
+        /// Кто ещё носит эту роль. Возвращает null, если Keycloak не дал ответа: на этот
+        /// эндпоинт служебному аккаунту нужны права сверх управления пользователями, и в
+        /// установках, где их не выдали, отличать «никого нет» от «не смогли посмотреть»
+        /// обязательно — иначе проверка «последний администратор» решит наоборот.
+        /// </summary>
+        public async Task<List<KeycloakUser>?> TryGetRealmRoleUsersAsync(string roleName, int max = 100)
+        {
+            try
+            {
+                using var request = await CreateAdminRequestAsync(
+                    HttpMethod.Get,
+                    $"{BaseUrl}/admin/realms/{Realm}/roles/{Uri.EscapeDataString(roleName)}/users?max={max}");
+                using var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+                return await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOptions);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         public async Task SetEnabledAsync(string userId, bool enabled)
         {
             using var request = await CreateAdminRequestAsync(HttpMethod.Put, $"{AdminUsersPath}/{userId}");
@@ -213,18 +371,47 @@ namespace SuperBot.WebApi.Services
         /// Поиск клиентов по подстроке (почта, имя, логин). Keycloak ищет по всем этим полям сам;
         /// лимит нужен, чтобы пустая строка не тянула весь realm.
         /// </summary>
-        public async Task<List<KeycloakUser>> SearchUsersAsync(string query, int max = 20)
+        /// <summary>
+        /// Страница списка учёток: first — сколько пропустить, enabled — только (раз)блокированные.
+        /// Нужен фильтрам «Blocked» и «No orders» на экране клиентов: поиск для них не годится,
+        /// там нет запроса — есть срез.
+        /// </summary>
+        public async Task<List<KeycloakUser>> ListUsersAsync(int first, int max, bool? enabled = null)
         {
-            var url = $"{AdminUsersPath}?search={Uri.EscapeDataString(query)}&max={max}&briefRepresentation=true";
+            var url = $"{AdminUsersPath}?first={first}&max={max}&briefRepresentation=true";
+            if (enabled.HasValue)
+            {
+                url += $"&enabled={(enabled.Value ? "true" : "false")}";
+            }
+
             using var request = await CreateAdminRequestAsync(HttpMethod.Get, url);
             using var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOptions) ?? new List<KeycloakUser>();
         }
 
+        public async Task<List<KeycloakUser>> SearchUsersAsync(string query, int max = 20)
+        {
+            // Звёздочки вокруг запроса — поиск по вхождению: по умолчанию Keycloak ищет только
+            // с начала поля, и «ova» не находил бы petrova@…, хотя по заказам такой человек
+            // находится. Разное поведение двух половин одного поиска путало бы сильнее всего.
+            var needle = string.IsNullOrWhiteSpace(query) ? query : $"*{query.Trim()}*";
+            var url = $"{AdminUsersPath}?search={Uri.EscapeDataString(needle)}&max={max}&briefRepresentation=true";
+            using var request = await CreateAdminRequestAsync(HttpMethod.Get, url);
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOptions) ?? new List<KeycloakUser>();
+        }
+
+        /// <summary>
+        /// Повторная проверка пароля (показ ключей, смена пароля, отключение 2FA). Идёт через закрытый
+        /// клиент с секретом: парольный грант у публичного клиента витрины выключен, иначе пароли можно
+        /// было бы перебирать прямо в token endpoint, минуя страницу входа. Неудачи считает защита
+        /// Keycloak от перебора — так же, как попытки на странице входа.
+        /// </summary>
         public async Task<bool> ValidatePasswordAsync(string username, string password)
         {
-            if (string.IsNullOrWhiteSpace(PublicClientId))
+            if (string.IsNullOrWhiteSpace(ClientId) || string.IsNullOrWhiteSpace(ClientSecret))
             {
                 return false;
             }
@@ -232,7 +419,8 @@ namespace SuperBot.WebApi.Services
             var content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "password",
-                ["client_id"] = PublicClientId,
+                ["client_id"] = ClientId,
+                ["client_secret"] = ClientSecret,
                 ["username"] = username,
                 ["password"] = password
             });
@@ -267,6 +455,13 @@ namespace SuperBot.WebApi.Services
         public string? LastName { get; set; }
         public bool Enabled { get; set; }
         public long? CreatedTimestamp { get; set; }
+        /// <summary>Атрибуты пользователя; locale — язык его писем и страниц Keycloak.</summary>
+        public Dictionary<string, List<string>>? Attributes { get; set; }
+    }
+
+    public sealed class KeycloakRole
+    {
+        public string Name { get; set; } = string.Empty;
     }
 
     public sealed class KeycloakLoginEvent

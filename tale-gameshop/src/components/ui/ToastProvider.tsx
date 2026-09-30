@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
 type ToastVariant = "success" | "error" | "info";
@@ -79,7 +80,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               <button
                 type="button"
                 className="admin-toast__close"
-                aria-label="Закрыть"
+                aria-label={i18n.t("common.close")}
                 onClick={() => removeToast(toast.id)}
               >
                 ×

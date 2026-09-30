@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchPaymentMethods } from '../api/billing-api';
 import container from '../inversify.config';
@@ -28,7 +29,7 @@ export const usePaymentMethodsSummary = () => {
             setCount(methods.length);
         } catch (err) {
             console.error('Failed to load payment methods summary:', err);
-            setError('Unable to load payment methods.');
+            setError(i18n.t('errors.loadPaymentMethods'));
             setCount(0);
         } finally {
             setIsLoading(false);

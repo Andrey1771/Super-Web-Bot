@@ -3,6 +3,13 @@
 // сид честно предназначен только для демо-стенда (см. seeds/README.md).
 // Детерминирован: выбор игр, проценты и сроки считаются от slug.
 
+// Защита от случайного запуска на боевой базе: сиды пишут выдуманные данные, а seed-discounts
+// стирает все скидки. Запуск только с явным ALLOW_DEMO_SEED=1 (см. seeds/README.md).
+if (process.env.ALLOW_DEMO_SEED !== "1") {
+  print("Отказ: демо-сиды запускаются только с ALLOW_DEMO_SEED=1. Это стенд, а не боевая база?");
+  quit(1);
+}
+
 const dbx = db.getSiblingDB("SteamShopDatabase");
 const now = new Date();
 

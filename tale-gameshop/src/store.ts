@@ -11,11 +11,21 @@ export interface Form { //TODO
      */
     prices: Record<string, number>,
     description: string,
+    /** Переводы описания (ru/uk/pl); description — английское. */
+    descriptionI18n?: Record<string, string>,
     title: string,
     gameType: number,
     imagePath: string,
     coverMediaId: string,
     releaseDate: string,
+    /** Для DLC — id базовой игры; пусто у обычной игры. */
+    parentGameId?: string,
+    /** Вид товара при создании: 0 — игра, 1 — ПО (числом — так сервер читает перечисление). */
+    kind?: "Game" | "Software",
+    /** Категория раздела /software (tag). Только у ПО. */
+    softwareCategory?: string,
+    /** Жанр игры — код из списка жанров (action, role-playing-games-rpgs). У ПО пусто. */
+    genre?: string,
 }
 
 const initialState = {  form: {

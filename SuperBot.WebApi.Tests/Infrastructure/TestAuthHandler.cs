@@ -19,6 +19,8 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
     public const string EmailHeader = "X-Test-Email";
     public const string SubHeader = "X-Test-Sub";
     public const string RolesHeader = "X-Test-Roles";
+    /// <summary>Отображаемое имя (клейм name / Identity.Name). По умолчанию — email; у настоящего токена это «Иван Петров».</summary>
+    public const string NameHeader = "X-Test-Name";
 
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -40,9 +42,10 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
         {
             new("email", email),
             new(ClaimTypes.Email, email),
-            new("sub", Request.Headers[SubHeader].FirstOrDefault() ?? $"test-user-{email}"),
+            // Только NameIdentifier, без голого «sub»: так делает JwtBearer с реальным токеном Keycloak
+            // (входящие клеймы маппятся). Иначе тесты не ловят контроллеры, ищущие «sub» напрямую.
             new(ClaimTypes.NameIdentifier, Request.Headers[SubHeader].FirstOrDefault() ?? $"test-user-{email}"),
-            new(ClaimTypes.Name, email),
+            new(ClaimTypes.Name, Request.Headers[NameHeader].FirstOrDefault() ?? email),
         };
 
         var roles = Request.Headers[RolesHeader].FirstOrDefault();

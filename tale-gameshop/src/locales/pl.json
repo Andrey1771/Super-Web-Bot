@@ -1,0 +1,3093 @@
+{
+  "common": {
+    "brand": "Tale Shop",
+    "loading": "Ładowanie…",
+    "close": "Zamknij",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "back": "Wstecz",
+    "retry": "Ponów",
+    "signIn": "Zaloguj się",
+    "signUp": "Zarejestruj się",
+    "signOut": "Wyloguj się",
+    "account": "Konto",
+    "search": "Szukaj",
+    "nav": {
+      "home": "Start",
+      "store": "Sklep",
+      "software": "Oprogramowanie",
+      "deals": "Promocje",
+      "news": "Aktualności",
+      "about": "O nas",
+      "support": "Pomoc",
+      "faq": "Pomoc / FAQ",
+      "cashback": "Cashback"
+    },
+    "viewAll": "Zobacz wszystkie",
+    "comingSoon": "Wkrótce",
+    "software": "Program",
+    "from": "od",
+    "outOfStock": "Brak w magazynie",
+    "leftInStock_one": "Został {{count}}",
+    "leftInStock_few": "Zostały {{count}}",
+    "leftInStock_many": "Zostało {{count}}",
+    "leftInStock_other": "Zostało {{count}}",
+    "reviewsCount_one": "{{count}} opinia",
+    "reviewsCount_few": "{{count}} opinie",
+    "reviewsCount_many": "{{count}} opinii",
+    "reviewsCount_other": "{{count}} opinii",
+    "addToWishlist": "Dodaj do listy życzeń",
+    "removeFromWishlist": "Usuń z listy życzeń",
+    "notForYourCountry": "Nie dla Twojego kraju",
+    "notReleasedYet": "Jeszcze nie wyszła — dodaj do listy życzeń, by nie przegapić premiery",
+    "moreLicenses_one": "+{{count}} licencja",
+    "moreLicenses_few": "+{{count}} licencje",
+    "moreLicenses_many": "+{{count}} licencji",
+    "moreLicenses_other": "+{{count}} licencji",
+    "admin": "Panel",
+    "recently": "Niedawno",
+    "justNow": "Przed chwilą",
+    "hoursAgo_one": "{{count}} godzinę temu",
+    "hoursAgo_few": "{{count}} godziny temu",
+    "hoursAgo_many": "{{count}} godzin temu",
+    "hoursAgo_other": "{{count}} godzin temu",
+    "daysAgo_one": "{{count}} dzień temu",
+    "daysAgo_few": "{{count}} dni temu",
+    "daysAgo_many": "{{count}} dni temu",
+    "daysAgo_other": "{{count}} dni temu",
+    "monthsAgo_one": "{{count}} miesiąc temu",
+    "monthsAgo_few": "{{count}} miesiące temu",
+    "monthsAgo_many": "{{count}} miesięcy temu",
+    "monthsAgo_other": "{{count}} miesięcy temu",
+    "games": "Gry",
+    "catalog": "Katalog",
+    "filters": "Filtry",
+    "sort": "Sortowanie",
+    "grid": "Kafelki",
+    "list": "Lista",
+    "clearAll": "Wyczyść wszystko",
+    "pages": "Strony",
+    "previousPage": "Poprzednia strona",
+    "nextPage": "Następna strona",
+    "pageN": "Strona {{page}}",
+    "breadcrumb": "Nawigacja",
+    "sortOptions": "Opcje sortowania",
+    "showLess": "Pokaż mniej",
+    "showAll": "Pokaż wszystkie ({{count}})",
+    "browseGames": "Przeglądaj gry",
+    "copyCode": "Kopiuj kod",
+    "tryAgain": "Spróbuj ponownie",
+    "readMore": "Czytaj dalej",
+    "showMore": "Pokaż więcej",
+    "edit": "Edytuj",
+    "add": "Dodaj",
+    "inCart": "W koszyku",
+    "addToCart": "Do koszyka",
+    "removeFromCart": "Usuń z koszyka",
+    "saving": "Zapisywanie…",
+    "saveChanges": "Zapisz zmiany",
+    "sending": "Wysyłanie…",
+    "required": "(wymagane)",
+    "optional": "(opcjonalne)",
+    "couldNotSave": "Nie udało się zapisać. Spróbuj ponownie.",
+    "remove": "Usuń",
+    "change": "zmień",
+    "or": "lub",
+    "apply": "Zastosuj",
+    "applying": "Stosowanie...",
+    "email": "E-mail",
+    "contactSupport": "Skontaktuj się z pomocą",
+    "goToOrders": "Przejdź do zamówień",
+    "pleaseWait": "Proszę czekać...",
+    "subtotal": "Suma częściowa",
+    "total": "Razem",
+    "discount": "Rabat",
+    "cashback": "Cashback",
+    "taxes": "Podatki",
+    "tax": "Podatek",
+    "includedInPrice": "Wliczone w cenę",
+    "secureCheckout": "Bezpieczna płatność",
+    "continueShopping": "Kontynuuj zakupy",
+    "processing": "Przetwarzanie...",
+    "order": "Zamówienie nr {{id}}",
+    "view": "Zobacz",
+    "open": "Otwórz",
+    "manage": "Zarządzaj",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "pending": "Oczekuje",
+    "unavailable": "Niedostępne",
+    "newest": "Najnowsze",
+    "oldest": "Najstarsze",
+    "all": "Wszystkie",
+    "price": "Cena",
+    "scrollLeft": "Przewiń w lewo",
+    "scrollRight": "Przewiń w prawo",
+    "showingZero": "Wyświetlono 0 z 0",
+    "showingRange": "Wyświetlono {{from}}-{{to}} z {{total}}",
+    "sortLabel": "Sortowanie:",
+    "password": "Hasło",
+    "checking": "Sprawdzanie…",
+    "confirm": "Potwierdź",
+    "submitting": "Wysyłanie...",
+    "downloading": "Pobieranie...",
+    "preparing": "Przygotowywanie...",
+    "retrying": "Ponawianie…",
+    "justNowShort": "Przed chwilą",
+    "minAgo": "{{count}} min temu",
+    "today": "dzisiaj",
+    "overYearAgo": "ponad rok temu",
+    "user": "Użytkownik",
+    "connected": "Połączono",
+    "notConnected": "Niepołączono",
+    "connect": "Połącz",
+    "disconnect": "Rozłącz",
+    "working": "Trwa…",
+    "enabled": "Włączone",
+    "disabled": "Wyłączone",
+    "verified": "Zweryfikowany",
+    "notVerified": "Niezweryfikowany",
+    "logOut": "Wyloguj",
+    "fit": "Dopasuj",
+    "zoom": "Powiększenie",
+    "rotate": "Obrót",
+    "backToHome": "Strona główna",
+    "backToSupport": "Wróć do pomocy",
+    "subscribe": "Subskrybuj",
+    "subscribing": "Zapisywanie…",
+    "details": "Szczegóły",
+    "clearFilters": "Wyczyść filtry",
+    "loadingDots": "Ładowanie...",
+    "posts_one": "{{count}} wpis",
+    "posts_few": "{{count}} wpisy",
+    "posts_many": "{{count}} wpisów",
+    "posts_other": "{{count}} wpisów",
+    "results_one": "{{count}} wynik",
+    "results_few": "{{count}} wyniki",
+    "results_many": "{{count}} wyników",
+    "results_other": "{{count}} wyników",
+    "draft": "Szkic",
+    "minRead": "{{count}} min czytania",
+    "views": "Wyświetlenia",
+    "featured": "Polecane",
+    "download": "Pobierz",
+    "you": "Ty",
+    "backToTop": "Do góry",
+    "viewGame": "Zobacz grę",
+    "timeline": "Oś czasu:",
+    "conversation": "Rozmowa",
+    "gameCover": "Okładka gry",
+    "blogCover": "Okładka wpisu",
+    "viewsCount_one": "{{count}} wyświetlenie",
+    "viewsCount_few": "{{count}} wyświetlenia",
+    "viewsCount_many": "{{count}} wyświetleń",
+    "viewsCount_other": "{{count}} wyświetleń"
+  },
+  "header": {
+    "brandHome": "Tale Shop — strona główna",
+    "logoAlt": "Logo Tale Shop",
+    "changeLanguage": "Zmień język",
+    "changeCurrency": "Zmień walutę",
+    "changeCountry": "Zmień kraj",
+    "country": "Kraj",
+    "searchCountry": "Szukaj kraju…",
+    "noSuchCountry": "Nie ma takiego kraju",
+    "toggleMenu": "Otwórz menu",
+    "showStoreCategories": "Pokaż działy sklepu",
+    "storeCategories": "Działy sklepu",
+    "browseByGenre": "Według gatunku",
+    "discover": "Odkrywaj",
+    "allGames": "Wszystkie gry",
+    "browseFullCatalog": "Przeglądaj cały katalog",
+    "budgetPicks": "Tanie gry",
+    "budgetPicksDesc": "Świetne gry poniżej {{price}}",
+    "onSaleNow": "Teraz w promocji",
+    "gamesOnSale_one": "{{count}} gra w promocji",
+    "gamesOnSale_few": "{{count}} gry w promocji",
+    "gamesOnSale_many": "{{count}} gier w promocji",
+    "gamesOnSale_other": "{{count}} gier w promocji",
+    "noDealsNow": "Brak promocji w tej chwili",
+    "dealsDescEmpty": "Nowe promocje pojawiają się regularnie — możemy dać Ci znać.",
+    "dealsDesc": "Obniżki cen i natychmiastowa dostawa klucza.",
+    "getNotified": "Powiadom mnie →",
+    "shopDeals": "Zobacz promocje →",
+    "buyerProtected": "Bezpieczne zakupy",
+    "signedInAs": "Zalogowano jako",
+    "myAccount": "Moje konto",
+    "profile": "Profil",
+    "orders": "Zamówienia",
+    "keys": "Klucze",
+    "settings": "Ustawienia",
+    "language": "Język",
+    "currency": "Waluta"
+  },
+  "footer": {
+    "taglineGames": "Wyselekcjonowane klucze do gier PC — bezpieczne płatności, natychmiastowa dostawa.",
+    "taglineGamesSoftware": "Wyselekcjonowane klucze do gier i programów — bezpieczne płatności, natychmiastowa dostawa.",
+    "socialMedia": "Media społecznościowe",
+    "columns": "Stopka",
+    "store": "Sklep",
+    "genres": "Gatunki",
+    "company": "Firma",
+    "legal": "Dokumenty",
+    "terms": "Regulamin",
+    "privacy": "Prywatność",
+    "refunds": "Zwroty",
+    "cashbackTerms": "Zasady cashbacku",
+    "cookies": "Pliki cookie",
+    "legalNotice": "Nota prawna",
+    "cookieSettings": "Ustawienia cookie",
+    "rights": "© {{year}} Tale Shop. Wszelkie prawa zastrzeżone.",
+    "disclaimerGames": "Cyfrowy sklep z kluczami do gier PC. Wszystkie znaki towarowe i tytuły gier należą do ich właścicieli.",
+    "disclaimerGamesSoftware": "Cyfrowy sklep z kluczami do gier i programów. Wszystkie znaki towarowe, tytuły gier i programów należą do ich właścicieli.",
+    "paymentMethods": "Akceptowane metody płatności"
+  },
+  "search": {
+    "placeholder": "Szukaj gier i programów…",
+    "label": "Szukaj gier i programów",
+    "suggestions": "Podpowiedzi",
+    "seeAllResults": "Wszystkie wyniki dla „{{query}}”",
+    "searchCatalog": "Szukaj „{{query}}” w katalogu"
+  },
+  "notFound": {
+    "title": "Nie znaleziono strony",
+    "text": "Taka strona nie istnieje lub została przeniesiona.",
+    "goHome": "Strona główna",
+    "browseGames": "Przeglądaj gry"
+  },
+  "errorBoundary": {
+    "title": "Coś poszło nie tak",
+    "text": "Wystąpił nieoczekiwany błąd. Zwykle pomaga odświeżenie strony.",
+    "reload": "Odśwież stronę"
+  },
+  "session": {
+    "expired": "Sesja wygasła.",
+    "text": "Zaloguj się ponownie, aby koszyk, lista życzeń i opinie były zsynchronizowane.",
+    "dismiss": "Zamknij"
+  },
+  "cookies": {
+    "settings": "Ustawienia cookie",
+    "preferences": "Ustawienia cookie",
+    "intro": "Niezbędne pliki cookie zapewniają działanie sklepu. Opcjonalne analityczne pomagają zrozumieć, jak sklep jest używany — tylko za Twoją zgodą.",
+    "accept": "Zezwól na analitykę",
+    "necessaryOnly": "Tylko niezbędne",
+    "whatWeStore": "Co przechowujemy",
+    "policy": "Polityka cookie",
+    "chooseIntro": "Wybierz, co możemy przechowywać na Twoim urządzeniu. Wybór zmienisz w dowolnej chwili w stopce.",
+    "essentialTitle": "Niezbędne funkcje",
+    "essentialText": "Logowanie, koszyk i płatność. Bez nich sklep nie działa, dlatego są zawsze włączone.",
+    "alwaysOn": "Zawsze włączone",
+    "analyticsTitle": "Opcjonalne pliki analityczne",
+    "analyticsText": "Anonimowe statystyki: które strony są otwierane i gdzie ludzie rezygnują. Służą ulepszaniu sklepu, nigdy identyfikacji.",
+    "reject": "Odrzuć",
+    "save": "Zapisz ustawienia"
+  },
+  "home": {
+    "metaTitleGames": "Tale Shop — wyselekcjonowane klucze do gier PC",
+    "metaTitleGamesSoftware": "Tale Shop — wyselekcjonowane klucze do gier i programów",
+    "metaDescGames": "Wyselekcjonowane klucze do gier PC z bezpieczną płatnością i natychmiastową dostawą. Klucze globalne, bez blokad regionalnych.",
+    "metaDescGamesSoftware": "Wyselekcjonowane klucze do gier PC i oryginalne licencje na programy z bezpieczną płatnością i natychmiastową dostawą.",
+    "h1": "Tale Shop — wyselekcjonowane klucze do gier PC z natychmiastową dostawą",
+    "promos": {
+      "welcome": {
+        "eyebrow": "Oferta powitalna",
+        "title": "10% zniżki na pierwsze zamówienie"
+      },
+      "cashback": {
+        "eyebrow": "Nagrody",
+        "title": "Cashback od każdego zamówienia"
+      }
+    },
+    "categories": {
+      "pc": "Gry na PC",
+      "console": "Gry na konsole",
+      "software": "Programy"
+    },
+    "carousel": {
+      "featured": "Polecane gry",
+      "previous": "Poprzednia gra",
+      "next": "Następna gra",
+      "choose": "Wybierz grę",
+      "open": "Otwórz grę {{title}}",
+      "show": "Pokaż {{title}}"
+    },
+    "shelves": {
+      "allGames": "Wszystkie gry ({{count}})",
+      "allDeals": "Wszystkie promocje ({{count}})",
+      "allDealsPlain": "Wszystkie promocje",
+      "allUpcoming": "Wszystkie nadchodzące ({{count}})",
+      "allUpcomingPlain": "Wszystkie nadchodzące",
+      "allUnder": "Wszystkie poniżej {{price}} ({{count}})",
+      "allUnderPlain": "Wszystkie poniżej {{price}}",
+      "new": {
+        "eyebrow": "Nowości",
+        "title": "Nowe w Tale Shop",
+        "subtitle": "Najnowsze pozycje na półkach."
+      },
+      "deals": {
+        "eyebrow": "Promocje",
+        "title": "Najlepsze promocje teraz",
+        "subtitle": "Ceny spadają, klucze są od ręki — dopóki tyka zegar."
+      },
+      "editors": {
+        "eyebrow": "Wybór redakcji",
+        "title": "Wybrane przez zespół",
+        "subtitle": "Pozycje, za które ręczą nasi redaktorzy."
+      },
+      "upcoming": {
+        "eyebrow": "Na horyzoncie",
+        "title": "Nadchodzące gry",
+        "subtitle": "Daty premier są znane — dodaj do listy życzeń i graj od pierwszego dnia.",
+        "emptyTitle": "Zapowiedzi w drodze",
+        "emptyText": "Nowe daty premier pojawią się tu, gdy tylko zostaną ogłoszone."
+      },
+      "weekly": {
+        "eyebrow": "Lista tygodnia",
+        "title": "Popularne w tym tygodniu",
+        "subtitleSold": "Najczęściej kupowane gry z ostatnich 7 dni.",
+        "subtitleMixed": "Bestsellery i pozycje warte uwagi w tym tygodniu."
+      },
+      "budget": {
+        "eyebrow": "Poniżej {{price}}",
+        "title": "Dużo zabawy, mała cena",
+        "subtitle": "Wszystko na tej półce kosztuje nie więcej niż {{price}}."
+      }
+    },
+    "countdown": {
+      "endsIn": "Koniec za",
+      "nearestExpires": "Najbliższa promocja wygasa"
+    },
+    "reasons": {
+      "secure": {
+        "title": "Bezpieczne płatności",
+        "text": "Chroniona kasa i zaufani partnerzy."
+      },
+      "instant": {
+        "title": "Natychmiastowa dostawa",
+        "text": "Klucz chwilę po zakupie."
+      },
+      "cashback": {
+        "title": "Cashback od każdego zamówienia",
+        "text": "Tale Coins wracają z każdego zakupu."
+      },
+      "support": {
+        "title": "Przyjazna pomoc",
+        "text": "Pomożemy z instalacją i dostępem."
+      }
+    },
+    "mood": {
+      "eyebrow": "Wybór na dziś",
+      "title": "Na co masz ochotę?",
+      "text": "Powiedz, jaki klimat — wskażemy odpowiednią półkę.",
+      "pick": "Wybierz nastrój",
+      "browse": "Przeglądaj gry: {{category}}",
+      "adrenaline": {
+        "label": "Zastrzyk adrenaliny",
+        "title": "Coś głośnego i szybkiego",
+        "text": "Wybuchowe strzelanki i akcja na pełnych obrotach — na wieczory, gdy chcesz słyszeć własny puls."
+      },
+      "story": {
+        "label": "Wieczór z wielką historią",
+        "title": "Opowieść, w której można się zatracić",
+        "text": "Rozległe RPG z wyborami, które mają znaczenie. Zacznij dziś, wynurz się w weekend."
+      },
+      "brain": {
+        "label": "Gry dla umysłu",
+        "title": "Przechytrz wszystkich",
+        "text": "Buduj, dowodź i podbijaj. Strategie dla graczy planujących trzy ruchy naprzód."
+      },
+      "chill": {
+        "label": "Przytulnie i spokojnie",
+        "title": "Powolny wieczór, ciepła gra",
+        "text": "Łagodne indie i spokojne łamigłówki na relaks — bez presji, sam klimat."
+      },
+      "squad": {
+        "label": "Wieczór ze znajomymi",
+        "title": "Razem raźniej",
+        "text": "Kooperacja dla dwóch osób i całych ekip. Zbierz znajomych i podzielcie się chaosem."
+      }
+    },
+    "news": {
+      "eyebrow": "Aktualności",
+      "title": "Najnowsze wiadomości",
+      "all": "Wszystkie aktualności",
+      "emptyTitle": "Redakcja się rozgrzewa",
+      "emptyText": "Wiadomości, poradniki i cotygodniowe polecane pojawią się tu wkrótce."
+    }
+  },
+  "kind": {
+    "game": {
+      "platforms": "Platformy",
+      "developer": "Deweloper",
+      "developerAndPublisher": "Deweloper i wydawca",
+      "credits": "Studio, języki i wiek",
+      "edition": "edycja",
+      "editions": "Edycje",
+      "addEdition": "Dodaj edycję",
+      "nounPlural": "gry",
+      "unknownProduct": "Nieznana gra",
+      "noSimilar": "Brak podobnych gier."
+    },
+    "software": {
+      "platforms": "Działa na",
+      "developer": "Producent",
+      "developerAndPublisher": "Producent",
+      "credits": "Producent i języki",
+      "edition": "licencja",
+      "editions": "Licencje",
+      "addEdition": "Dodaj licencję",
+      "nounPlural": "programy",
+      "unknownProduct": "Nieznany produkt",
+      "noSimilar": "Brak podobnych programów."
+    }
+  },
+  "software": {
+    "lifetime": "Bezterminowo",
+    "months_one": "{{count}} miesiąc",
+    "months_few": "{{count}} miesiące",
+    "months_many": "{{count}} miesięcy",
+    "months_other": "{{count}} miesięcy",
+    "years_one": "{{count}} rok",
+    "years_few": "{{count}} lata",
+    "years_many": "{{count}} lat",
+    "years_other": "{{count}} lat",
+    "subscription": "Subskrypcja",
+    "subscriptionTerm": "Subskrypcja · {{term}}",
+    "devices_one": "{{count}} urządzenie",
+    "devices_few": "{{count}} urządzenia",
+    "devices_many": "{{count}} urządzeń",
+    "devices_other": "{{count}} urządzeń",
+    "devicesPlus": "{{value}}+ urządzeń",
+    "activation": {
+      "VendorWebsite": "Strona producenta",
+      "MicrosoftAccount": "Konto Microsoft",
+      "InApp": "W aplikacji"
+    }
+  },
+  "catalog": {
+    "sort": {
+      "popular": "Najpopularniejsze",
+      "discount": "Największa zniżka",
+      "rating": "Najwyżej oceniane",
+      "reviews": "Najczęściej oceniane",
+      "new": "Najnowsze",
+      "priceAsc": "Cena: rosnąco",
+      "priceDesc": "Cena: malejąco",
+      "nameAsc": "Nazwa: A–Z",
+      "nameDesc": "Nazwa: Z–A"
+    },
+    "products_one": "{{count}} produkt",
+    "products_few": "{{count}} produkty",
+    "products_many": "{{count}} produktów",
+    "products_other": "{{count}} produktów",
+    "games_one": "{{count}} gra",
+    "games_few": "{{count}} gry",
+    "games_many": "{{count}} gier",
+    "games_other": "{{count}} gier",
+    "inStock": "Dostępne",
+    "onSale": "W promocji",
+    "softwareCategory": "Kategoria",
+    "softwareCategories": "Kategorie programów",
+    "productType": "Rodzaj produktu",
+    "availability": "Dostępność",
+    "price": "Cena",
+    "priceAndUp": "od {{price}}",
+    "priceUnder": "poniżej {{price}}",
+    "licenseTerm": "Okres licencji",
+    "devices": "Urządzenia",
+    "activatesOn": "Aktywacja",
+    "gameGenres": "Gatunki gier",
+    "categories": "Kategorie",
+    "noPlatformData": "Brak danych o platformach.",
+    "resetFilters": "Resetuj filtry",
+    "searchSoftware": "Szukaj programów",
+    "searchGames": "Szukaj po nazwie gry",
+    "searchAll": "Szukaj gier i programów",
+    "searchSoftwareAria": "Szukaj programów w katalogu",
+    "searchGamesAria": "Szukaj gier w katalogu",
+    "searchAllAria": "Szukaj w katalogu",
+    "viewMode": "Widok",
+    "chosenFilters": "Wybrane filtry:",
+    "removeFilter": "Usuń filtr {{label}}",
+    "loading": "Ładujemy {{items}}…",
+    "showing": "Wyświetlono {{from}}–{{to}} z {{items}}",
+    "noMatch": "Nic nie pasuje do tych filtrów. Spróbuj usunąć jeden z nich powyżej.",
+    "noSoftwareYet": "Nie ma tu jeszcze programów — nowe licencje są w drodze.",
+    "empty": "Katalog jest obecnie pusty.",
+    "softwareOnly": "Tylko programy",
+    "gamesOnly": "Tylko gry",
+    "studioChip": "Studio: {{studio}}",
+    "resultsFor": "Wyniki dla",
+    "gamesBy": "Gry studia",
+    "tagged": "Tag",
+    "categoryGames": "{{category}} — gry",
+    "minPrice": "Cena minimalna",
+    "maxPrice": "Cena maksymalna",
+    "meta": {
+      "softwareCategoryTitle": "{{category}} — klucze do programów",
+      "softwareTitle": "Klucze licencyjne do programów",
+      "gamesTitle": "Wszystkie klucze do gier PC",
+      "allTitle": "Katalog — klucze do gier i programów",
+      "softwareCategoryDesc": "Kup klucze licencyjne {{category}} w Tale Shop — oryginalne klucze, bezpieczna płatność i natychmiastowa dostawa.",
+      "softwareDesc": "Oryginalne klucze licencyjne do systemów operacyjnych, pakietów biurowych, programów antywirusowych i kreatywnych — dostarczane natychmiast.",
+      "gamesCategoryDesc": "Kup klucze do gier PC {{category}} w Tale Shop — wyselekcjonowane tytuły, bezpieczna płatność i natychmiastowa dostawa.",
+      "gamesDesc": "Wszystkie klucze do gier PC w Tale Shop — wyselekcjonowane tytuły, bezpieczna płatność i natychmiastowa dostawa.",
+      "allDesc": "Klucze do gier PC i oryginalne licencje na programy w Tale Shop — bezpieczna płatność i natychmiastowa dostawa."
+    },
+    "productsPlural": "produkty"
+  },
+  "dealWeek": {
+    "eyebrow": "Rozkład tygodnia · Promocja tygodnia",
+    "titleIdle": "Talia czeka",
+    "titleDealing": "Magia działa…",
+    "titleDone": "Karty rozdane",
+    "spellBreaks": "Czar pryska za",
+    "timeLeft": "Czas do końca promocji",
+    "day_one": "dzień",
+    "day_few": "dni",
+    "day_many": "dni",
+    "day_other": "dni",
+    "hours": "godzin",
+    "minutes": "minut",
+    "seconds": "sekund",
+    "dealCards": "Rozdaj karty",
+    "deckHint": "W talii kryją się promocja tygodnia i Twoja osobista karta szczęścia.",
+    "drawLucky": "Wylosuj kartę szczęścia",
+    "shuffling": "Tasujemy…",
+    "tapToDraw": "Kliknij, aby wylosować",
+    "arcanaFortune": "0 · Fortuna",
+    "arcanaDeal": "I · Promocja",
+    "arcanaHidden": "II · Ukryty wybór",
+    "luckyAwaits": "Twoja karta szczęścia czeka",
+    "luckySignIn": "Zaloguj się i wylosuj osobistą zniżkę — nowa karta każdego dnia.",
+    "logInToDraw": "Zaloguj się, by losować",
+    "sealed": "Zapieczętowana do pierwszego zakupu",
+    "sealedText": "Kup dowolną grę — a talia zacznie codziennie rozdawać Ci osobistą zniżkę.",
+    "justForYou": "tylko dla Ciebie",
+    "copied": "Skopiowano — użyj przy kasie!",
+    "meltsIn": "Zniknie za {{time}}",
+    "expired": "Wygasła — wkrótce wylosujesz ponownie",
+    "resting": "Karta odpoczywa",
+    "nextDraw": "Następne losowanie za {{time}}",
+    "comeBack": "Wróć nieco później.",
+    "grabDeal": "Skorzystaj z promocji",
+    "grabDealAria": "{{title}} — skorzystaj z promocji",
+    "hoverToPeek": "Najedź, aby podejrzeć",
+    "hurry": "Kliknij gdziekolwiek, aby przyspieszyć magię ✦",
+    "dealtHint": "Jedna promocja tygodnia, jedna osobista karta szczęścia dziennie, jeden ukryty wybór. Sklep rozdaje — Ty wybierasz.",
+    "wish1": "niech ukryta perełka Cię znajdzie ✦",
+    "wish2": "pomyśl życzenie — talia słucha",
+    "wish3": "szczęście sprzyja ciekawym ✦",
+    "wish4": "dziś dobry wieczór na granie"
+  },
+  "product": {
+    "loadFailed": "Nie udało się wczytać strony produktu. Spróbuj później.",
+    "loadingGame": "Wczytywanie gry",
+    "metaDesc": "Kup {{title}} — natychmiastowa dostawa klucza i bezpieczna płatność w Tale Shop.",
+    "gameKeys": "Klucze do gier",
+    "sections": "Sekcje strony",
+    "tabs": {
+      "overview": "Przegląd",
+      "reviews": "Opinie",
+      "sysreq": "Wymagania systemowe"
+    },
+    "release": "Premiera",
+    "publisher": "Wydawca",
+    "ageRating": "Wiek",
+    "languages": "Języki",
+    "language": "Język",
+    "moreLanguages": "+ {{count}} więcej",
+    "controller": "Kontroler",
+    "about": {
+      "game": "O grze",
+      "software": "O programie"
+    },
+    "keyFeatures": "Najważniejsze cechy",
+    "awards": "Nagrody i nominacje",
+    "rating": {
+      "none": "Brak opinii",
+      "veryPositive": "Bardzo pozytywne",
+      "positive": "Pozytywne",
+      "mixed": "Mieszane",
+      "negative": "Negatywne"
+    },
+    "ratingAria": "Ocena {{rating}} na 5",
+    "topRated": "Wysoko oceniana",
+    "otherPlatform": "Inna platforma",
+    "controllerSupport": {
+      "none": "Brak obsługi kontrolera",
+      "partial": "Częściowa obsługa kontrolera",
+      "full": "Pełna obsługa kontrolera"
+    },
+    "gameDetails": "Szczegóły gry",
+    "interfaceSubtitles": "Interfejs i napisy",
+    "audio": "Dźwięk",
+    "dlc": "DLC i dodatki",
+    "notInCurrency": "Brak w {{currency}}",
+    "notSoldSeparately": "Jeszcze nie w sprzedaży osobno",
+    "soon": "Wkrótce",
+    "moreFrom": "Więcej: {{items}} od {{studio}}",
+    "modes": "Tryby",
+    "cloudSaves": "Zapisy w chmurze",
+    "supported": "Obsługiwane",
+    "recommendations": "Polecane",
+    "moreLikeThis": "Podobne",
+    "allSoftware": "Wszystkie programy"
+  },
+  "sysreq": {
+    "os": "System",
+    "cpu": "Procesor",
+    "ram": "Pamięć",
+    "gpu": "Grafika",
+    "storage": "Miejsce na dysku",
+    "notes": "Uwagi",
+    "osAria": "System operacyjny",
+    "minimum": "Minimalne",
+    "recommended": "Zalecane"
+  },
+  "purchase": {
+    "endsSoon": "Kończy się za mniej niż godzinę",
+    "endsInHours": "Kończy się za {{hours}} godz.",
+    "endsInDays": "Kończy się za {{days}} d {{hours}} godz.",
+    "until": "Do {{date}}",
+    "stock": {
+      "inStock": "Dostępne",
+      "lowStock": "Szybko się sprzedaje"
+    },
+    "payWith": "Płatność",
+    "keyRegion": "Region klucza",
+    "notForCountry": "Nie dla kraju: {{country}}",
+    "notSoldIn": "Niedostępne w {{currency}}",
+    "switchCurrency": "Zmień walutę w nagłówku, aby zobaczyć cenę.",
+    "youGet": "Otrzymujesz",
+    "oneKey": "1 klucz · {{license}}",
+    "subscriptionSuffix": " · subskrypcja",
+    "edition": "Edycja",
+    "cantActivateIn": "Tego klucza nie można aktywować w kraju",
+    "wrongCountry": "Zły kraj? Możesz go zmienić w koszyku.",
+    "vpnNotice": "Wygląda na to, że łączysz się z <b>{{ip}}</b>, ale region jest sprawdzany dla <b>{{country}}</b>. Jeśli używasz VPN lub proxy, wybierz kraj, w którym faktycznie aktywujesz klucz — klucz na inny region nie zadziała.",
+    "releases": "Premiera {{date}}",
+    "releaseTba": "Data premiery zostanie ogłoszona",
+    "notAvailableCountry": "Niedostępne w Twoim kraju",
+    "inYourWishlist": "Na Twojej liście życzeń",
+    "inWishlist": "Na liście życzeń",
+    "wishlist": "Lista życzeń",
+    "requiresBase": "Wymaga gry podstawowej",
+    "activateOn": "Aktywacja:",
+    "howToActivate": "Jak aktywować",
+    "checkedFor": "Sprawdzono dla kraju:",
+    "source": {
+      "user": "Twój wybór",
+      "geo": "wykryto po IP",
+      "timezone": "odgadnięto ze strefy czasowej"
+    },
+    "notYourCountry": ". To nie Twój kraj? Możesz go zmienić w koszyku.",
+    "setCountry": "Ustaw kraj w nagłówku — sprawdzimy aktywację i dobierzemy działający klucz.",
+    "deliveredOnRelease": "Klucz zostanie dostarczony w dniu premiery",
+    "instantDelivery": "Natychmiastowa dostawa — klucz pojawi się na koncie i w e-mailu",
+    "refundPolicy": "Zasady zwrotów",
+    "refundNote": " — nieodkryte klucze podlegają zwrotowi",
+    "haveQuestion": "Masz pytanie?",
+    "askSupport": "Zapytaj pomoc"
+  },
+  "licenses": {
+    "otherDevices": "inna liczba urządzeń",
+    "otherTerm": "inny okres",
+    "perDeviceYear": "{{price}} za urządzenie rocznie",
+    "compare": "Porównaj licencje",
+    "anyDevice": "Dowolne urządzenie",
+    "howActivation": "Jak działa aktywacja",
+    "steps": {
+      "copy": "Skopiuj klucz z konta Tale Shop lub z e-maila z dostawą.",
+      "msSignInBefore": "Zaloguj się na konto Microsoft (",
+      "msSignInAfter": ") i wybierz realizację klucza produktu.",
+      "msEnter": "Wpisz klucz — licencja zostanie dodana do konta i stamtąd zainstalujesz program.",
+      "downloadBefore": "Pobierz i zainstaluj aplikację",
+      "downloadFrom": " z ",
+      "downloadAfter": ".",
+      "openApp": "Otwórz aplikację i wpisz klucz tam, gdzie prosi o licencję lub kod aktywacyjny.",
+      "goToBefore": "Przejdź na ",
+      "goToAfter": " i zaloguj się lub załóż bezpłatne konto.",
+      "enterLicenses": "Wpisz klucz w sekcji licencji, następnie zainstaluj aplikację i zaloguj się na każdym urządzeniu."
+    },
+    "subscriptionNote": "To subskrypcja: obejmuje podany okres i nie odnawia się przez Tale Shop.",
+    "checkRequirements": "Sprawdź wymagania systemowe przed zakupem — odkrytego klucza nie można zwrócić.",
+    "activationHelp": "Pomoc z aktywacją"
+  },
+  "reviews": {
+    "sort": {
+      "helpful": "Najbardziej pomocne",
+      "newest": "Najnowsze",
+      "highest": "Najwyżej oceniane",
+      "lowest": "Najniżej oceniane"
+    },
+    "listTitle": {
+      "helpful": "Najlepsze opinie",
+      "newest": "Najnowsze opinie",
+      "highest": "Najwyżej oceniane",
+      "lowest": "Najniżej oceniane"
+    },
+    "ratings_one": "{{count}} ocena",
+    "ratings_few": "{{count}} oceny",
+    "ratings_many": "{{count}} ocen",
+    "ratings_other": "{{count}} ocen",
+    "yourReview": "Twoja opinia",
+    "editedOn": "Edytowano {{date}}",
+    "edited": "Edytowano {{date}}",
+    "hoursPlayed": "{{hours}} godz. w grze",
+    "refunded": "Zwrot",
+    "refundedHint": "Klient zwrócił zakup. Opinia pozostaje i nadal się liczy.",
+    "report": "Zgłoś",
+    "reportThis": "Zgłoś tę opinię",
+    "signInToReport": "Zaloguj się, aby zgłosić",
+    "youFoundHelpful": "Uznano za pomocną",
+    "wasHelpful": "Czy ta opinia była pomocna?",
+    "helpfulAria": "Pomocna ({{count}})",
+    "takeVoteBack": "Cofnij głos",
+    "markHelpful": "Oznacz jako pomocną",
+    "signInToVote": "Zaloguj się, aby głosować",
+    "yes": "Tak ·",
+    "reportedHidden": "Zgłoszono — ukryta do sprawdzenia przez moderatora.",
+    "reportedSent": "Zgłoszono — moderatorzy się przyjrzą.",
+    "signInToLeave": "Zaloguj się, aby dodać opinię",
+    "customersOnly": "Opinie mogą dodawać klienci, którzy kupili tę grę w Tale Shop.",
+    "saveFailed": "Nie udało się zapisać opinii. Spróbuj ponownie.",
+    "editYour": "Edytuj opinię",
+    "write": "Napisz opinię",
+    "selectRating": "Wybierz ocenę",
+    "stars_one": "{{count}} gwiazdka",
+    "stars_few": "{{count}} gwiazdki",
+    "stars_many": "{{count}} gwiazdek",
+    "stars_other": "{{count}} gwiazdek",
+    "placeholder": "Co się sprawdziło, co nie, ile grałeś…",
+    "submit": "Wyślij opinię",
+    "none": "Brak opinii",
+    "showingOne": "Opinia {{index}} z {{total}}",
+    "showingRange": "Wyświetlono {{from}}–{{to}} z {{total}}",
+    "changedMind": "Zmieniłeś zdanie? Możesz edytować opinię w dowolnej chwili.",
+    "reviewThis": "Oceń tę grę",
+    "boughtSignIn": "Kupiłeś w Tale Shop? Zaloguj się i podziel się wrażeniami.",
+    "signInToReview": "Zaloguj się, aby ocenić",
+    "shareThoughts": "Podziel się opinią z innymi graczami.",
+    "customerReviews": "Opinie klientów",
+    "filterByRating": "Filtruj po ocenie",
+    "allRatings": "Wszystkie oceny",
+    "sortReviews": "Sortowanie opinii",
+    "searchPlaceholder": "Szukaj w opiniach…",
+    "search": "Szukaj w opiniach",
+    "loading": "Wczytywanie opinii…",
+    "emptyFirst": "Brak opinii — bądź pierwszy.",
+    "noMatch": "Brak opinii pasujących do filtrów.",
+    "pages": "Strony opinii"
+  },
+  "report": {
+    "reasons": {
+      "Spam": {
+        "label": "Spam lub reklama",
+        "hint": "Linki, kody promocyjne, niezwiązane produkty."
+      },
+      "Abusive": {
+        "label": "Obraźliwa",
+        "hint": "Wyzwiska, nękanie, mowa nienawiści."
+      },
+      "OffTopic": {
+        "label": "Nie o grze",
+        "hint": "O dostawie, sklepie lub czymś innym."
+      },
+      "PersonalData": {
+        "label": "Dane osobowe",
+        "hint": "Imiona, kontakty, klucze i inne prywatne dane."
+      },
+      "Malware": {
+        "label": "Złośliwe linki",
+        "hint": "Phishing, cheaty, pirackie kopie."
+      },
+      "Other": {
+        "label": "Inne",
+        "hint": "Opisz problem poniżej."
+      }
+    },
+    "sendFailed": "Nie udało się wysłać zgłoszenia. Spróbuj ponownie.",
+    "subtitle": "Opinia użytkownika {{author}}. Zgłoszenia trafiają do moderatorów; opinia pozostaje widoczna do ich decyzji.",
+    "whatWrong": "Co jest z nią nie tak?",
+    "details": "Szczegóły",
+    "placeholder": "Na co moderator ma zwrócić uwagę?",
+    "draftSaved": "Powód i szczegóły zapisane — będą tu po zalogowaniu.",
+    "send": "Wyślij zgłoszenie"
+  },
+  "media": {
+    "none": "Brak multimediów",
+    "trailer": "Zwiastun {{title}}",
+    "playTrailer": "Odtwórz zwiastun",
+    "trailerPoster": "Plakat zwiastuna",
+    "openFullscreen": "Otwórz na pełnym ekranie",
+    "theater": "Tryb kinowy",
+    "exitTheater": "Wyjdź z trybu kinowego",
+    "fullscreen": "Pełny ekran",
+    "exitFullscreen": "Wyjdź z pełnego ekranu",
+    "previous": "Poprzednie",
+    "next": "Następne",
+    "videoNof": "Wideo {{index}} z {{count}}",
+    "screenshotNof": "Zrzut ekranu {{index}} z {{count}}",
+    "preview": "Podgląd gry",
+    "scrollLeft": "Przewiń miniatury w lewo",
+    "scrollRight": "Przewiń miniatury w prawo",
+    "viewer": "{{title}} — przeglądarka multimediów",
+    "closeViewer": "Zamknij przeglądarkę",
+    "video": "Wideo {{title}}",
+    "screenshot": "Zrzut ekranu",
+    "openFullscreenTool": "Otwórz pełny ekran"
+  },
+  "video": {
+    "replay": "Powtórz",
+    "play": "Odtwórz",
+    "pause": "Pauza",
+    "player": "{{title}} — odtwarzacz wideo",
+    "loading": "Wczytywanie wideo",
+    "seek": "Przewijanie",
+    "mute": "Wycisz",
+    "unmute": "Włącz dźwięk",
+    "volume": "Głośność",
+    "failed": "Nie udało się wczytać wideo."
+  },
+  "cart": {
+    "title": "Twój koszyk",
+    "eyebrow": "Koszyk",
+    "subtitle": "Klucze cyfrowe dostarczane natychmiast",
+    "items_one": "{{count}} produkt",
+    "items_few": "{{count}} produkty",
+    "items_many": "{{count}} produktów",
+    "items_other": "{{count}} produktów",
+    "edition": "Edycja: {{edition}}",
+    "keyRegion": "Region klucza: {{region}}",
+    "notInCountry": "Nie aktywuje się w Twoim kraju · {{reason}}",
+    "verifiedKey": "Zweryfikowany klucz",
+    "saveForLater": "Zachowaj na później",
+    "decrease": "Zmniejsz ilość",
+    "increase": "Zwiększ ilość",
+    "orderSummary": "Podsumowanie zamówienia",
+    "promoCode": "Kod promocyjny",
+    "applyAtCheckout": "Zastosuj przy kasie",
+    "checkout": "Do kasy",
+    "trust": {
+      "instantTitle": "Natychmiastowa dostawa",
+      "instantText": "Klucz dotrze e-mailem w ciągu kilku minut.",
+      "secureTitle": "Bezpieczne płatności",
+      "secureText": "Szyfrowana płatność obsługiwana przez Stripe.",
+      "refundTitle": "Zasady zwrotów",
+      "refundText": "Pełny zwrot w ciągu {{days}} dni."
+    },
+    "recommended": "Polecane dla Ciebie",
+    "recommendedEmpty": "Dodaj gry do listy życzeń lub obejrzyj kilka gier, aby otrzymać rekomendacje.",
+    "alreadyInCart": "Już w koszyku",
+    "addToCartTitle": "Dodaj {{title}} do koszyka",
+    "activatingIn": "Aktywacja w kraju:",
+    "notSelected": "nie wybrano",
+    "empty": "Twój koszyk jest pusty",
+    "emptyText": "Dodaj gry, aby odblokować natychmiastową dostawę i wyjątkowe oferty.",
+    "blocked_one": "Jeden produkt w koszyku nie aktywuje się w wybranym kraju. Usuń go lub zmień kraj powyżej — inaczej kasa go odrzuci.",
+    "blocked_few": "{{count}} produkty w koszyku nie aktywują się w wybranym kraju. Usuń je lub zmień kraj powyżej — inaczej kasa je odrzuci.",
+    "blocked_many": "{{count}} produktów w koszyku nie aktywuje się w wybranym kraju. Usuń je lub zmień kraj powyżej — inaczej kasa je odrzuci.",
+    "blocked_other": "{{count}} produktów w koszyku nie aktywuje się w wybranym kraju. Usuń je lub zmień kraj powyżej — inaczej kasa je odrzuci.",
+    "iconLabel": "Koszyk",
+    "iconLabelCount_one": "Koszyk, {{count}} produkt",
+    "iconLabelCount_few": "Koszyk, {{count}} produkty",
+    "iconLabelCount_many": "Koszyk, {{count}} produktów",
+    "iconLabelCount_other": "Koszyk, {{count}} produktów",
+    "keyDetails": "Szczegóły klucza",
+    "canActivate": "Można aktywować w Twoim kraju",
+    "cannotActivate": "Nie aktywuje się w Twoim kraju",
+    "checkRegion": "Sprawdź region aktywacji",
+    "rowActivatesOn": "Aktywacja",
+    "rowEdition": "Edycja",
+    "rowKeyRegion": "Region klucza",
+    "rowDelivery": "Dostawa",
+    "rowRefunds": "Zwroty",
+    "global": "Globalny",
+    "deliveryInstant": "Natychmiast, zaraz po płatności",
+    "deliveryRestock": "Po uzupełnieniu zapasów — wyślemy klucz e-mailem",
+    "refundsWithin": "W ciągu {{days}} dni"
+  },
+  "checkout": {
+    "title": "Kasa",
+    "subtitle": "Sprawdź zamówienie i bezpiecznie dokończ płatność.",
+    "blockedTitle": "Te klucze nie aktywują się w Twoim kraju",
+    "item": "Produkt",
+    "blockedTextBefore": "Usuń je w ",
+    "blockedCart": "koszyku",
+    "blockedTextAfter": " lub zmień kraj, jeśli wybrałeś zły — płatność za te produkty zostanie odrzucona.",
+    "guestTitle": "Gdzie wysłać klucze?",
+    "guestText": "Konto nie jest potrzebne — klucze i paragon wyślemy e-mailem. Konto możesz założyć później z tym samym adresem, aby mieć wszystko w jednym miejscu.",
+    "guestCheck": "Sprawdź adres",
+    "guestCheckText": " — link potwierdzający i klucze trafią dokładnie tam.",
+    "preparing": "Przygotowujemy bezpieczną płatność…",
+    "continueToPayment": "Przejdź do płatności",
+    "signInHaveAccount": "Zaloguj się — mam konto",
+    "keysSentAfterConfirm": "Klucze wyślemy na <b>{{email}}</b> po potwierdzeniu adresu.",
+    "keysSentAfterPayment": "Klucze wyślemy na <b>{{email}}</b> zaraz po płatności.",
+    "changeEmail": "Zmień",
+    "stripeUnavailable": "Stripe jest chwilowo niedostępny. Spróbuj później.",
+    "waitingTotal": "Szczegóły płatności pojawią się, gdy suma zamówienia będzie gotowa.",
+    "cryptoTitle": "Zapłać bitcoinem",
+    "testnetDemo": "Demo testnet",
+    "cryptoHint": "Integracja demo przez własny BTCPay Server. Tylko monety testowe — bez prawdziwych środków.",
+    "openingBtcpay": "Otwieranie BTCPay…",
+    "payWithBitcoin": "₿ Zapłać bitcoinem (testnet)",
+    "cryptoSignIn": "Zaloguj się, aby zapłacić kryptowalutą.",
+    "cryptoFailed": "Nie udało się rozpocząć płatności krypto. Spróbuj ponownie.",
+    "paymentTimeout": "Usługa płatności nie odpowiada. Nic nie zostało pobrane — sprawdź połączenie i spróbuj ponownie.",
+    "paymentSignIn": "Zaloguj się, aby kontynuować płatność.",
+    "paymentInitFailed": "Nie udało się przygotować płatności. Spróbuj ponownie.",
+    "promoInvalid": "Kod promocyjny jest nieprawidłowy.",
+    "promoApplied": "Kod promocyjny zastosowany.",
+    "promoFailed": "Nie udało się zastosować kodu promocyjnego.",
+    "summaryText": "Sprawdź produkty przed dokończeniem płatności.",
+    "cartEmpty": "Twój koszyk jest pusty.",
+    "qty": "Ilość {{count}} × {{price}}",
+    "promoPlaceholder": "Wpisz kod promocyjny",
+    "inclTax": "W tym {{tax}}",
+    "backToCart": "← Wróć do koszyka",
+    "secureInstant": "Bezpieczna płatność — natychmiastowa dostawa",
+    "paymentMethod": "Metoda płatności",
+    "stripeNote": "Płatności bezpiecznie obsługuje Stripe.",
+    "agreeBefore": "Składając zamówienie, akceptujesz ",
+    "termsOfSale": "Warunki sprzedaży",
+    "refundPolicy": "Zasady zwrotów",
+    "and": " oraz ",
+    "regionalRestrictions": "Ograniczenia regionalne",
+    "consentMissing": "Nie udało się wczytać warunków dostawy, więc płatność jest teraz niedostępna. Odśwież stronę.",
+    "consentSaveFailed": "Nie udało się zapisać Twojego potwierdzenia. Spróbuj ponownie.",
+    "orPayWithCard": "lub zapłać kartą",
+    "placeOrder": "Złóż zamówienie",
+    "errorCode": "Kod: {{code}}",
+    "genericDecline": "Nie udało się przetworzyć płatności. Spróbuj ponownie.",
+    "decline": {
+      "insufficient_funds": "Na karcie brakuje środków. Spróbuj innej karty.",
+      "lost_card": "Karta została zgłoszona jako zgubiona. Użyj innej karty.",
+      "stolen_card": "Karta została zgłoszona jako skradziona. Użyj innej karty.",
+      "expired_card": "Karta straciła ważność. Użyj innej karty.",
+      "incorrect_cvc": "Kod zabezpieczający (CVC) jest nieprawidłowy.",
+      "incorrect_number": "Numer karty jest nieprawidłowy.",
+      "card_velocity_exceeded": "Karta osiągnęła limit użycia. Spróbuj później lub użyj innej karty.",
+      "processing_error": "Bank nie mógł teraz obsłużyć tej karty. Spróbuj ponownie lub użyj innej karty.",
+      "do_not_honor": "Bank odrzucił płatność. Skontaktuj się z bankiem lub użyj innej karty.",
+      "generic_decline": "Bank odrzucił płatność bez podania przyczyny. Spróbuj innej karty.",
+      "authentication_required": "Bank wymaga dodatkowego uwierzytelnienia. Spróbuj ponownie."
+    },
+    "taxSales": "Podatek od sprzedaży"
+  },
+  "cashback": {
+    "badge": "+{{amount}} cashback",
+    "atTier": "· {{percent}}% na poziomie {{tier}}",
+    "signInToEarn": "aby zbierać",
+    "comesBack": "+{{amount}} wróci z tego zamówienia",
+    "atYourLevel": "{{percent}}% na Twoim poziomie {{tier}} ·",
+    "howItWorks": "Jak działa cashback",
+    "getBack": "Odzyskaj +{{amount}} z kontem",
+    "fromFirstOrder": "{{percent}}% cashbacku od pierwszego zamówienia",
+    "paying": "Płacisz {{amount}} cashbackiem",
+    "payWith": "Zapłać cashbackiem",
+    "stays": "{{amount}} zostaje na Twoim saldzie",
+    "wholeBalance": "Całe Twoje saldo · wyłącz, aby je zachować",
+    "available": "{{amount}} dostępne na saldzie",
+    "comesBackAfter": "Wróci po tym zamówieniu · {{percent}}%",
+    "ofAmount": " od {{amount}}",
+    "tiers": {
+      "rookie": "Nowicjusz",
+      "veteran": "Weteran",
+      "elite": "Elita",
+      "legend": "Legenda"
+    }
+  },
+  "success": {
+    "finalizing": "Finalizujemy zamówienie...",
+    "waitingCrypto": "Czekamy na rozliczenie płatności krypto (demo testnet)...",
+    "cryptoSettled": "Płatność krypto rozliczona. Zamówienie dodano do Twojego konta.",
+    "stillSettling": "Płatność wciąż się rozlicza. Sprawdź zamówienia za kilka minut lub skontaktuj się z pomocą.",
+    "noIntent": "Płatność zakończona, ale w adresie nie znaleziono identyfikatora płatności.",
+    "confirmEmail": "Płatność otrzymana! Został jeden krok — potwierdź e-mail, aby otrzymać klucze.",
+    "done": "Płatność zakończona. Zamówienie dodano do Twojego konta.",
+    "finalizeFailed": "Nie udało się sfinalizować zamówienia. Płatność może być nadal w toku. Spróbuj ponownie lub skontaktuj się z pomocą.",
+    "alreadyFinalized": "Płatność zakończona. Zamówienie zostało już sfinalizowane.",
+    "issueTitle": "Problem z finalizacją zamówienia",
+    "title": "Płatność zakończona",
+    "reference": "Numer referencyjny: {{id}}",
+    "sentLink": "Wysłaliśmy link potwierdzający na <b>{{email}}</b>.",
+    "arrives": "Zwykle dociera <b>w ciągu 1–2 minut</b>. Nic po 10 minutach? Sprawdź folder spam, a potem wyślij ponownie:",
+    "resent": "E-mail wysłany ponownie ✓",
+    "resendFailed": "Nie udało się — spróbuj ponownie",
+    "resend": "Wyślij ponownie e-mail potwierdzający",
+    "saveNumber": "<b>Zapisz numer zamówienia</b> (pokazany wyżej) — pomoc o niego zapyta. Podałeś zły e-mail? Skontaktuj się z pomocą, podając numer zamówienia: wyślemy potwierdzenie na właściwy adres lub zwrócimy pieniądze — klucze nigdy nie są wydawane przed potwierdzeniem e-maila.",
+    "autoRefund": "Zamówienia niepotwierdzone przez 48 godzin są anulowane i automatycznie w pełni zwracane.",
+    "canceledTitle": "Płatność anulowana",
+    "canceledText": "Płatność została anulowana. Możesz wrócić do kasy i spróbować ponownie.",
+    "backToCheckout": "Wróć do kasy",
+    "delivery": {
+      "okTitle": "E-mail potwierdzony — klucze wysłane!",
+      "okText": "Klucze do gier są w drodze do Twojej skrzynki. Zachowaj ten e-mail i traktuj klucze jak gotówkę.",
+      "pendingTitle": "E-mail potwierdzony",
+      "pendingText": "Klucze są chwilowo niedostępne. Wyślemy je automatycznie, gdy tylko się pojawią — nie musisz nic robić.",
+      "refundedTitle": "To zamówienie zostało zwrócone",
+      "refundedText": "E-mail nie został potwierdzony na czas, więc płatność wróciła na kartę (zwykle w ciągu 5–10 dni roboczych). Klucze nie zostały wydane. Jeśli nadal chcesz grę, po prostu złóż zamówienie ponownie.",
+      "invalidTitle": "Ten link jest nieprawidłowy lub wygasł",
+      "invalidText": "Linki weryfikacyjne są ważne 48 godzin. Jeśli uważasz, że to pomyłka, skontaktuj się z pomocą, podając numer zamówienia."
+    }
+  },
+  "billing": {
+    "linkCard": "Podłącz kartę bankową",
+    "linkSubtitle": "Dodaj kartę do szybkich płatności i subskrypcji.",
+    "verifyNote": "Aby zweryfikować kartę, pobierzemy i natychmiast zwrócimy niewielką kwotę.",
+    "cardNumber": "Numer karty",
+    "expiry": "MM/RR",
+    "cvc": "CVC/CVV",
+    "secure": "Twoje dane są bezpiecznie chronione",
+    "linking": "Podłączanie...",
+    "link": "Podłącz kartę",
+    "setupFailed": "Nie udało się rozpocząć dodawania karty. Spróbuj ponownie.",
+    "numberMissing": "Brak numeru karty.",
+    "cardSetupFailed": "Nie udało się dodać karty.",
+    "keyMissing": "Brak klucza publicznego Stripe. Skonfiguruj window.__APP_CONFIG__.stripePublishableKey.",
+    "endingIn": "{{brand}} z końcówką {{last4}}",
+    "defaultSuffix": ", domyślna",
+    "expires": "Ważna do {{expiry}}",
+    "defaultCard": "Karta domyślna",
+    "setDefault": "Ustaw jako domyślną",
+    "removeCard": "Usuń kartę",
+    "card": "Karta",
+    "brandCard": "Karta {{brand}}",
+    "paymentCard": "Karta płatnicza"
+  },
+  "account": {
+    "nav": {
+      "purchases": "Zakupy",
+      "overview": "Przegląd",
+      "orders": "Zamówienia",
+      "keys": "Klucze i aktywacja",
+      "cashback": "Cashback",
+      "saved": "Zapisane",
+      "account": "Konto",
+      "settings": "Ustawienia",
+      "billing": "Płatności",
+      "security": "Bezpieczeństwo",
+      "support": "Pomoc",
+      "help": "Pomoc"
+    },
+    "sections": "Sekcje",
+    "closeSections": "Zamknij sekcje",
+    "myAccount": "Moje konto",
+    "avatarAlt": "Awatar {{name}}",
+    "verifiedBuyer": "Zweryfikowany kupujący",
+    "replyNeeded": "Pomoc odpowiedziała — potrzebna Twoja odpowiedź",
+    "signOut": "Wyloguj się",
+    "recoveryRequested": "Zgłoszono odzyskiwanie konta ({{id}}).",
+    "recoveryReset": " Uwierzytelnianie dwuskładnikowe zostanie zresetowane po {{date}}.",
+    "recoveryReview": " Zgłoszenie rozpatruje pomoc.",
+    "recoveryNotYou": "Jeśli to nie Ty, anuluj je teraz.",
+    "cancelling": "Anulowanie…",
+    "cancelRequest": "Anuluj zgłoszenie",
+    "overview": {
+      "title": "Przegląd konta",
+      "subtitle": "Zarządzaj zakupami, kluczami i ustawieniami konta.",
+      "editProfile": "Edytuj profil",
+      "orders_one": "{{count}} zamówienie",
+      "orders_few": "{{count}} zamówienia",
+      "orders_many": "{{count}} zamówień",
+      "orders_other": "{{count}} zamówień",
+      "activeKeys_one": "{{count}} aktywny klucz",
+      "activeKeys_few": "{{count}} aktywne klucze",
+      "activeKeys_many": "{{count}} aktywnych kluczy",
+      "activeKeys_other": "{{count}} aktywnych kluczy",
+      "items_one": "{{count}} produkt",
+      "items_few": "{{count}} produkty",
+      "items_many": "{{count}} produktów",
+      "items_other": "{{count}} produktów",
+      "methods_one": "{{count}} metoda",
+      "methods_few": "{{count}} metody",
+      "methods_many": "{{count}} metod",
+      "methods_other": "{{count}} metod",
+      "cashbackAvailable": "Dostępny cashback",
+      "pending": "+{{amount}} oczekuje",
+      "unlocks": " · odblokuje się {{date}}",
+      "level": "Poziom",
+      "moreTo": "jeszcze {{amount}} do",
+      "back": "· {{percent}}% zwrotu",
+      "topLevel": "Najwyższy poziom — {{percent}}% zwrotu ze wszystkiego",
+      "ordersText": "Zamówienia i faktury",
+      "keysText": "Odkryj, skopiuj i aktywuj klucze",
+      "savedText": "Lista życzeń na przyszłe zakupy",
+      "billingText": "Metody płatności i faktury",
+      "recentOrders": "Ostatnie zamówienia",
+      "orderId": "Nr zamówienia",
+      "game": "Gra",
+      "date": "Data",
+      "amount": "Kwota",
+      "invoice": "Faktura",
+      "loadingOrders": "Wczytywanie ostatnich zamówień...",
+      "noRecentOrders": "Brak zamówień.",
+      "gamePurchase": "Zakup gry",
+      "recentKeys": "Ostatnie klucze",
+      "loadingKeys": "Wczytywanie kluczy...",
+      "pleaseWait": "Proszę czekać",
+      "noKeys": "Brak kluczy.",
+      "completePurchase": "Dokonaj zakupu, aby otrzymać klucze.",
+      "key": "Klucz",
+      "viewKeys": "Zobacz klucze",
+      "summariesFailed": "Nie udało się wczytać części podsumowań konta.",
+      "retryWishlist": "Ponów listę życzeń",
+      "retryBilling": "Ponów płatności",
+      "recommendations": "Rekomendacje na podstawie listy życzeń"
+    },
+    "orders": {
+      "title": "Zamówienia",
+      "titleCount": "Zamówienia ({{count}})",
+      "loading": "Wczytywanie zamówień...",
+      "loadFailed": "Nie udało się wczytać zamówień.",
+      "none": "Brak zamówień",
+      "status": {
+        "completed": "Zrealizowane",
+        "refunded": "Zwrócone",
+        "failed": "Nieudane",
+        "pending": "Oczekuje",
+        "awaitingKeys": "Oczekuje na klucze",
+        "processing": "W trakcie"
+      },
+      "copyKey": "Kopiuj klucz {{key}}",
+      "openItem": "Otwórz {{title}}",
+      "noLongerSold": "Wycofane ze sprzedaży",
+      "keys": "Klucze:",
+      "awaitingDelivery": "Oczekiwanie na dostawę klucza — powiadomimy Cię, gdy będzie dostępny.",
+      "qty": "Ilość: {{count}}",
+      "each": "{{price}} za szt.",
+      "editReview": "Edytuj opinię",
+      "leaveReview": "Dodaj opinię",
+      "reviewHint": "Grałeś? Jedno zdanie pomoże następnemu kupującemu.",
+      "cbOnBalance": "na Twoim saldzie",
+      "cbUsed": "już wykorzystany",
+      "cbExpired": "wygasł",
+      "cbReverted": "odebrany przy zwrocie",
+      "cbUnlocks": "odblokuje się {{date}}",
+      "cbPending": "oczekuje",
+      "summary": "Podsumowanie",
+      "paidWithCashback": "Opłacone cashbackiem",
+      "paidWith": "Metoda płatności",
+      "cashbackEarned": "Naliczony cashback",
+      "sentKeys_one": "Wysłano {{count}} klucz na {{email}}.",
+      "sentKeys_few": "Wysłano {{count}} klucze na {{email}}.",
+      "sentKeys_many": "Wysłano {{count}} kluczy na {{email}}.",
+      "sentKeys_other": "Wysłano {{count}} kluczy na {{email}}.",
+      "resendFailed": "Nie udało się wysłać e-maila. Spróbuj ponownie.",
+      "orderItems": "Produkty w zamówieniu",
+      "yourKeys": "Twoje klucze",
+      "hideKeys": "Ukryj klucze",
+      "showKeys": "Pokaż klucze",
+      "resendEmail": "Wyślij ponownie na mój e-mail",
+      "preview_one": "{{count}} produkt • {{title}}",
+      "preview_few": "{{count}} produkty • {{title}}",
+      "preview_many": "{{count}} produktów • {{title}}",
+      "preview_other": "{{count}} produktów • {{title}}",
+      "detailsFailed": "Nie udało się wczytać szczegółów zamówienia.",
+      "loadingDetails": "Wczytywanie szczegółów zamówienia...",
+      "legacy": "Starsze zamówienie (szczegóły niedostępne).",
+      "searchPlaceholder": "Szukaj w zamówieniach...",
+      "highestPrice": "Najdroższe",
+      "lowestPrice": "Najtańsze",
+      "statusFilter": "Filtr statusu zamówienia",
+      "loadingOne": "Wczytywanie zamówienia...",
+      "noneDot": "Brak zamówień."
+    },
+    "keys": {
+      "title": "Klucze i aktywacja",
+      "intro": "Tutaj znajdziesz zakupione klucze i szczegóły aktywacji.",
+      "readOur": "Przeczytaj nasz ",
+      "activationGuide": "poradnik aktywacji",
+      "or": "lub ",
+      "activatingSoftware": "o aktywacji programów",
+      "forHelp": "jeśli potrzebujesz pomocy.",
+      "searchPlaceholder": "Szukaj kluczy...",
+      "allTypes": "Wszystkie typy",
+      "clearFilters": "Wyczyść filtry",
+      "product": "Produkt",
+      "type": "Typ",
+      "date": "Data",
+      "keyActivation": "Klucz / aktywacja",
+      "loading": "Wczytywanie kluczy...",
+      "loadFailed": "Nie udało się wczytać kluczy",
+      "noMatch": "Brak kluczy pasujących do filtrów",
+      "none": "Brak kluczy",
+      "noMatchDot": "Brak kluczy pasujących do filtrów.",
+      "noneDot": "Brak kluczy. Dokonaj zakupu, aby otrzymać klucze aktywacyjne.",
+      "activateOn": "Aktywacja: ",
+      "howToActivate": "Jak aktywować",
+      "goToActivation": "Przejdź do aktywacji",
+      "software": "Program",
+      "key": "Klucz"
+    },
+    "saved": {
+      "title": "Zapisane ({{count}})",
+      "section": "Zapisane",
+      "subtitle": "Produkty zapisane na liście życzeń na przyszłe zakupy.",
+      "searchPlaceholder": "Szukaj na liście życzeń...",
+      "search": "Szukaj na liście życzeń",
+      "viewMode": "Widok",
+      "sort": "Sortuj zapisane",
+      "empty": "Twoja lista życzeń jest na razie pusta.",
+      "noMatch": "Brak zapisanych produktów pasujących do wyszukiwania.",
+      "releaseTbd": "Data premiery nieznana",
+      "notReleased": "Jeszcze nie wyszła — zakup będzie możliwy w dniu premiery",
+      "recentlyViewed": "Ostatnio oglądane",
+      "browseToSee": "Obejrzyj kilka gier, a pojawią się tutaj."
+    },
+    "confirmPassword": {
+      "title": "Potwierdź hasło",
+      "text": "Ze względów bezpieczeństwa wpisz hasło, aby zobaczyć klucze.",
+      "confirm": "Pokaż klucze",
+      "failed": "Nie udało się sprawdzić hasła. Spróbuj ponownie."
+    },
+    "settings": {
+      "title": "Ustawienia",
+      "subtitle": "Zarządzaj profilem i preferencjami.",
+      "profile": "Profil",
+      "avatar": "Awatar",
+      "avatarHint": "PNG/JPG/WebP • do 2 MB • najlepiej kwadratowy",
+      "uploadPhoto": "Prześlij zdjęcie",
+      "displayName": "Wyświetlana nazwa",
+      "emailAddress": "Adres e-mail",
+      "changeEmailInSecurity": "Zmień e-mail w sekcji Bezpieczeństwo",
+      "keepSecure": "Odśwież awatar, aby profil wyglądał świeżo.",
+      "notifications": "Powiadomienia",
+      "newsletterNote": "Newsletter jest powiązany z e-mailem konta — te przełączniki zarządzają tą samą subskrypcją, co formularze na stronie i link wypisania w każdym e-mailu.",
+      "newsletter": "Newsletter — wiadomości, oferty i nowości sklepu",
+      "turnOnNewsletter": "Włącz newsletter, aby wybrać, jakie e-maile otrzymujesz",
+      "priceDrops": "Obniżki cen — automatyczne zestawienie nowych promocji",
+      "transactionalNote": "E-maili transakcyjnych (odzyskiwanie konta, bezpieczeństwo logowania) nie można wyłączyć",
+      "securityAlerts": "Alerty bezpieczeństwa (odzyskiwanie konta, logowanie) — zawsze włączone",
+      "savePreferences": "Zapisz ustawienia",
+      "telegramLinked": "Klucze trafiają do Twojego czatu od razu po wydaniu. Pozostają też na koncie.",
+      "telegramUnlinked": "Odbieraj zakupione klucze na prywatnym czacie z naszym botem. Pozostają też na koncie.",
+      "linkedAccount": "Połączone konto",
+      "connectTelegram": "Połącz Telegram",
+      "telegramUnavailable": "Łączenie z Telegramem jest teraz niedostępne — bot nie jest skonfigurowany na serwerze. Klucze pozostają dostępne tutaj, na koncie.",
+      "accountSecurity": "Konto i bezpieczeństwo",
+      "securityPointer": "Hasło, uwierzytelnianie dwuskładnikowe, aktywne sesje i usunięcie konta znajdziesz w sekcji Bezpieczeństwo. Metody płatności i prywatność profilu — w sekcji Płatności.",
+      "openSecurity": "Otwórz Bezpieczeństwo",
+      "billingPrivacy": "Płatności i prywatność",
+      "disconnectTitle": "Rozłączyć Telegram?",
+      "disconnectText": "Dostawa kluczy na czat Telegram zostanie wstrzymana. Możesz połączyć ponownie w dowolnej chwili.",
+      "removeAvatarTitle": "Usunąć awatar?",
+      "removeAvatarText": "Obecny awatar zostanie usunięty, a w jego miejsce pojawią się inicjały.",
+      "toast": {
+        "openingTelegram": "Otwieramy Telegram — kliknij Start w bocie i wróć tutaj.",
+        "telegramNotConfigured": "Łączenie z Telegramem jest niedostępne: bot nie jest skonfigurowany na serwerze.",
+        "telegramStartFailed": "Nie udało się rozpocząć łączenia z Telegramem. Spróbuj ponownie.",
+        "telegramRefreshFailed": "Nie udało się odświeżyć statusu Telegrama.",
+        "telegramDisconnected": "Telegram rozłączony.",
+        "telegramDisconnectFailed": "Nie udało się rozłączyć Telegrama.",
+        "fileTooLarge": "Plik jest za duży (maks. 2 MB).",
+        "unsupportedFormat": "Nieobsługiwany format. Użyj PNG, JPG lub WebP.",
+        "profileUpdated": "Profil zaktualizowany.",
+        "profileSaveFailed": "Nie udało się zapisać profilu. Spróbuj ponownie.",
+        "prefsSaved": "Ustawienia powiadomień zapisane.",
+        "newsletterFailed": "Nie udało się zaktualizować subskrypcji newslettera. Spróbuj ponownie.",
+        "avatarRemoveLater": "Awatar zostanie usunięty po zapisaniu zmian."
+      }
+    },
+    "avatar": {
+      "title": "Edytuj awatar",
+      "hint": "Powiększ, aby zyskać miejsce, a następnie przeciągnij, aby wybrać kadr.",
+      "closeEditor": "Zamknij edytor awatara",
+      "cropAlt": "Kadrowanie awatara",
+      "backdrop": "Tło",
+      "backdropAria": "Tło awatara",
+      "customColour": "Własny kolor",
+      "transparentHint": "Twój obraz ma przezroczyste obszary — wybierz, czym je wypełnić.",
+      "save": "Zapisz awatar",
+      "discard": "Odrzucić zmiany awatara?",
+      "backdrops": {
+        "lilac": "Liliowy",
+        "violet": "Fioletowy",
+        "ink": "Atramentowy",
+        "mist": "Mglisty",
+        "mint": "Miętowy",
+        "peach": "Brzoskwiniowy",
+        "rose": "Różany"
+      }
+    },
+    "security": {
+      "title": "Bezpieczeństwo",
+      "subtitle": "Zarządzaj hasłem, weryfikacją e-mail i 2FA.",
+      "unavailable": "Ustawienia bezpieczeństwa niedostępne",
+      "unavailableText": "Nie udało się wczytać uwierzytelniania dwuskładnikowego i weryfikacji e-mail. Zmiana hasła poniżej nadal działa.",
+      "checklist": {
+        "verifyEmail": "Zweryfikuj e-mail",
+        "resendEmail": "Wyślij ponownie",
+        "enable2fa": "Włącz uwierzytelnianie dwuskładnikowe",
+        "enable2faAction": "Włącz 2FA",
+        "backupCodes": "Wygeneruj kody zapasowe",
+        "backupCodesAction": "Wygeneruj kody",
+        "title": "Chroń swoje konto",
+        "progress": "Ukończono {{done}} z {{total}} kroków"
+      },
+      "daysAgo_one": "{{count}} dzień temu",
+      "daysAgo_few": "{{count}} dni temu",
+      "daysAgo_many": "{{count}} dni temu",
+      "daysAgo_other": "{{count}} dni temu",
+      "monthsAgo_one": "{{count}} miesiąc temu",
+      "monthsAgo_few": "{{count}} miesiące temu",
+      "monthsAgo_many": "{{count}} miesięcy temu",
+      "monthsAgo_other": "{{count}} miesięcy temu",
+      "toast": {
+        "loadFailed": "Nie udało się wczytać ustawień bezpieczeństwa.",
+        "verificationSent": "E-mail weryfikacyjny wysłany.",
+        "resendFailed": "Nie udało się ponownie wysłać e-maila weryfikacyjnego.",
+        "emailUpdated": "E-mail zaktualizowany. Zweryfikuj nowy adres.",
+        "emailFailed": "Nie udało się zmienić e-maila.",
+        "passwordUpdated": "Hasło zaktualizowane.",
+        "passwordFailed": "Nie udało się zaktualizować hasła.",
+        "resetSent": "E-mail do resetu hasła wysłany.",
+        "resetFailed": "Nie udało się wysłać e-maila do resetu.",
+        "twoFactorDisabledCodes": "Uwierzytelnianie dwuskładnikowe wyłączone. Kody zapasowe są już nieważne.",
+        "twoFactorDisabled": "Uwierzytelnianie dwuskładnikowe wyłączone.",
+        "disableFailed": "Nie udało się wyłączyć 2FA.",
+        "sessionRevoked": "Sesja zakończona.",
+        "sessionFailed": "Nie udało się zakończyć sesji.",
+        "allRevoked": "Wszystkie sesje zakończone.",
+        "allFailed": "Nie udało się zakończyć sesji.",
+        "reportDownloaded": "Raport bezpieczeństwa pobrany.",
+        "reportFailed": "Nie udało się pobrać raportu bezpieczeństwa.",
+        "accountDeleted": "Konto usunięte.",
+        "deleteFailed": "Nie udało się usunąć konta."
+      },
+      "sessions": {
+        "title": "Aktywne sesje",
+        "loading": "Wczytywanie sesji...",
+        "none": "Brak aktywnych sesji.",
+        "ip": "IP",
+        "logOutAll": "Wyloguj ze wszystkich sesji"
+      },
+      "danger": {
+        "title": "Strefa niebezpieczna",
+        "delete": "Usuń konto",
+        "downloadReport": "Pobierz raport bezpieczeństwa",
+        "text1": "Trwale usuwa Twoje konto i dane. Tej operacji nie można cofnąć.",
+        "text2": "Zachowaj ostrożność i upewnij się, że pobrałeś raport bezpieczeństwa."
+      },
+      "email": {
+        "title": "Weryfikacja e-mail",
+        "protected": "Zakupy i odzyskiwanie są chronione.",
+        "changeEmail": "Zmień e-mail",
+        "verifyHint": "Zweryfikuj e-mail, aby zabezpieczyć zakupy i odzyskiwanie.",
+        "sentResendIn": "Wysłano. Ponownie za {{time}}",
+        "resend": "Wyślij ponownie e-mail weryfikacyjny"
+      },
+      "password": {
+        "title": "Hasło",
+        "forgot": "Nie pamiętasz hasła? Zresetuj",
+        "current": "Obecne hasło",
+        "new": "Nowe hasło",
+        "confirm": "Potwierdź nowe hasło",
+        "update": "Zaktualizuj hasło",
+        "updatedAt": "Hasło zaktualizowano {{when}}.",
+        "resetNote": "Reset hasła wylogowuje z aktywnych sesji.",
+        "errCurrent": "Wpisz obecne hasło.",
+        "errLength": "Hasło musi mieć co najmniej 8 znaków.",
+        "errMatch": "Hasła nie są zgodne."
+      },
+      "twoFactor": {
+        "title": "Uwierzytelnianie dwuskładnikowe",
+        "reconfigure": "Skonfiguruj ponownie",
+        "disable": "Wyłącz 2FA",
+        "enable": "Włącz 2FA",
+        "learn": "Jak to działa",
+        "codesNone": "Kody zapasowe: nie wygenerowano",
+        "codesGenerated": "Kody zapasowe: wygenerowano",
+        "codesRemaining": "Kody zapasowe: pozostało {{count}}",
+        "codesOf": "Kody zapasowe: pozostało {{count}} z {{total}}",
+        "regenerate": "Wygeneruj ponownie",
+        "generate": "Wygeneruj",
+        "noCodesLeft": "Brak kodów zapasowych. Wygeneruj nowy zestaw teraz — bez nich możesz stracić dostęp do konta, gdy aplikacja uwierzytelniająca będzie niedostępna.",
+        "fewCodesLeft_one": "Został {{count}} kod zapasowy. Wkrótce wygeneruj nowy zestaw.",
+        "fewCodesLeft_few": "Zostały {{count}} kody zapasowe. Wkrótce wygeneruj nowy zestaw.",
+        "fewCodesLeft_many": "Zostało {{count}} kodów zapasowych. Wkrótce wygeneruj nowy zestaw.",
+        "fewCodesLeft_other": "Zostało {{count}} kodów zapasowych. Wkrótce wygeneruj nowy zestaw."
+      },
+      "changeEmail": {
+        "title": "Zmień e-mail",
+        "newEmail": "Nowy e-mail",
+        "errEmail": "Wpisz nowy adres e-mail.",
+        "errPassword": "Wpisz hasło, aby potwierdzić.",
+        "update": "Zaktualizuj e-mail"
+      },
+      "deleteAccount": {
+        "title": "Usuń konto",
+        "text": "Twoje konto i dane zostaną trwale usunięte. Tej operacji nie można cofnąć.",
+        "typeDelete": "Wpisz DELETE, aby potwierdzić",
+        "code": "Kod 2FA (jeśli włączone)",
+        "errType": "Wpisz DELETE, aby potwierdzić.",
+        "errPassword": "Wpisz hasło.",
+        "confirm": "Usuń trwale"
+      },
+      "enable2fa": {
+        "title": "Skonfiguruj uwierzytelnianie dwuskładnikowe",
+        "text": "Przeprowadzimy Cię przez włączanie 2FA w ustawieniach bezpieczeństwa Keycloak.",
+        "fallback": "Postępuj zgodnie z instrukcjami, aby skonfigurować aplikację uwierzytelniającą.",
+        "open": "Otwórz konfigurację"
+      },
+      "manage2fa": {
+        "title": "Zarządzaj uwierzytelnianiem dwuskładnikowym",
+        "text": "Zaktualizuj aplikację uwierzytelniającą, wygeneruj nowe kody zapasowe lub wyłącz 2FA w konsoli konta.",
+        "open": "Otwórz ustawienia bezpieczeństwa"
+      }
+    },
+    "billing": {
+      "title": "Płatności",
+      "subtitle": "Metody płatności, faktury i dane rozliczeniowe.",
+      "savedMethods": "Zapisane metody płatności",
+      "noMethods": "Brak metod płatności. Podłącz kartę tutaj lub zaznacz „Zapisz” w formularzu karty przy kasie.",
+      "addMethod": "Dodaj metodę",
+      "details": "Dane rozliczeniowe",
+      "noDetails": "Nie dodano jeszcze danych rozliczeniowych.",
+      "invoices": "Faktury",
+      "order": "Zamówienie",
+      "id": "ID",
+      "date": "Data",
+      "amount": "Kwota",
+      "invoice": "Faktura",
+      "noInvoices": "Brak faktur.",
+      "downloadPdf": "Pobierz PDF",
+      "privacy": "Prywatność i dane",
+      "hideOwned": "Ukryj posiadane gry w profilu",
+      "downloadData": "Pobierz moje dane",
+      "editDetails": "Edytuj dane rozliczeniowe",
+      "editDetailsText": "Zaktualizuj adres rozliczeniowy do faktur.",
+      "addressLine": "Adres",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "country": "Kraj",
+      "phone": "Telefon",
+      "toast": {
+        "profileLoadFailed": "Nie udało się wczytać profilu rozliczeniowego.",
+        "methodsLoadFailed": "Nie udało się wczytać metod płatności.",
+        "invoicesLoadFailed": "Nie udało się wczytać faktur.",
+        "privacyFailed": "Nie udało się zaktualizować ustawienia prywatności.",
+        "profileUpdated": "Profil rozliczeniowy zaktualizowany.",
+        "profileSaveFailed": "Nie udało się zapisać zmian profilu.",
+        "defaultUpdated": "Domyślna metoda płatności zaktualizowana.",
+        "defaultFailed": "Nie udało się ustawić domyślnej metody płatności.",
+        "methodRemoved": "Metoda płatności usunięta.",
+        "removeFailed": "Nie udało się usunąć metody płatności.",
+        "invoiceFailed": "Nie udało się pobrać faktury.",
+        "exportFailed": "Nie udało się pobrać eksportu danych.",
+        "cardLinked": "Karta została podłączona."
+      }
+    },
+    "help": {
+      "title": "Pomoc",
+      "myRequests": "Moje zgłoszenia",
+      "newRequest": "Nowe zgłoszenie",
+      "request": "Zgłoszenie",
+      "subject": "Temat",
+      "status": "Status",
+      "updated": "Zaktualizowano",
+      "loading": "Wczytywanie zgłoszeń...",
+      "loadFailed": "Nie udało się teraz wczytać zgłoszeń.",
+      "none": "Brak zgłoszeń.",
+      "faq": "FAQ",
+      "guides": "Poradniki i zasady",
+      "stillNeed": "Nadal potrzebujesz pomocy?",
+      "team": "Odpowiadamy całą dobę. Średni czas odpowiedzi: 2–4 godziny.",
+      "openChat": "Otwórz czat",
+      "includeIds": "W miarę możliwości podaj numer zamówienia lub zgłoszenia.",
+      "submitted": "Zgłoszenie wysłane",
+      "statuses": {
+        "Open": "Otwarte",
+        "WaitingForUser": "Potrzebna odpowiedź",
+        "WaitingForSupport": "W trakcie",
+        "Resolved": "Rozwiązane",
+        "Closed": "Zamknięte"
+      }
+    },
+    "support": {
+      "title": "Nowe zgłoszenie",
+      "what": "W czym możemy pomóc?",
+      "selectIssue": "Wybierz temat...",
+      "subjectPlaceholder": "Krótko opisz temat",
+      "description": "Opis",
+      "descriptionPlaceholder": "Opisz szczegółowo problem lub pytanie...",
+      "attach": "Załącz plik",
+      "chooseFile": "Wybierz plik",
+      "attachHint": "Załącz zrzuty ekranu, paragony lub inne pliki.",
+      "teamNote": "Odpowiadamy całą dobę. Średni czas odpowiedzi: 2–4 godziny.",
+      "quickActions": "Szybkie akcje",
+      "quickNote": "Szukasz odpowiedzi? Przejrzyj poradniki lub zasady, gdy rozpatrujemy zgłoszenie.",
+      "submit": "Wyślij zgłoszenie",
+      "errCategory": "Wybierz temat zgłoszenia.",
+      "errSubject": "Temat jest wymagany.",
+      "errDescription": "Opis jest wymagany.",
+      "errFormat": "Nieobsługiwany format pliku. Prześlij pliki PNG, JPG lub PDF.",
+      "errCount": "Możesz przesłać maksymalnie {{count}} plików.",
+      "errSize": "Każdy plik może mieć maksymalnie 10 MB.",
+      "attachmentsFailed": "Zgłoszenie utworzone, ale załączniki się nie wgrały. Możesz je dodać w odpowiedzi.",
+      "failed": "Coś poszło nie tak. Spróbuj ponownie.",
+      "discardDraft": "Odrzucić szkic?"
+    },
+    "rewards": {
+      "title": "Cashback",
+      "subtitle": "Część każdego opłaconego zamówienia wraca do Ciebie jako środki sklepowe.",
+      "filters": {
+        "all": "Wszystkie",
+        "pending": "Oczekujące",
+        "available": "Dostępne",
+        "spent": "Wykorzystane",
+        "reverted": "Zwrócone"
+      },
+      "statusPendingDate": "Oczekuje · {{date}}",
+      "statusPending": "Oczekuje",
+      "statusAvailable": "Dostępne",
+      "statusUsedCheckout": "Wykorzystane przy kasie",
+      "statusUsed": "Wykorzystane",
+      "statusExpired": "Wygasło",
+      "statusBackRefund": "Wróciło po zwrocie",
+      "statusAdjustment": "Korekta",
+      "statusTakenBack": "Odebrane · zwrot",
+      "statusRefundedOrder": "Zwrócone razem z zamówieniem",
+      "available": "Dostępne",
+      "readyToSpend": "Gotowe do wydania na dowolne zamówienie",
+      "landsHere": "Cashback pojawi się tutaj po odblokowaniu",
+      "spendOnGame": "Wydaj na grę",
+      "pending": "Oczekujące",
+      "unlocksOn": "Odblokuje się",
+      "afterRefundWindow": ", po okresie zwrotu",
+      "waitsHere": "Cashback czeka tutaj, aż zamknie się okres zwrotu",
+      "earnedAllTime": "Zarobione łącznie",
+      "alreadyUsed": "{{amount}} z tego już wykorzystano",
+      "nothingUsed": "Nic jeszcze nie wykorzystano",
+      "yourLevel": "Twój poziom",
+      "basedOnSpend": "Na podstawie łącznych wydatków. Poziomy nigdy nie spadają.",
+      "howItWorks": "Jak działa cashback",
+      "current": "Obecny",
+      "backOnEvery": "{{percent}}% zwrotu z każdego zamówienia",
+      "spent": "wydano",
+      "nextAt": "{{name}} od {{amount}}",
+      "progressTo": "Postęp do poziomu {{name}}",
+      "spendMore": "Wydaj jeszcze",
+      "moreToReach": "aby osiągnąć",
+      "andBack": "i {{percent}}% zwrotu.",
+      "topReached": "Najwyższy poziom osiągnięty",
+      "highestTier": "{{name}} — najwyższy poziom",
+      "topText": "Największa część każdego zamówienia jest Twoja, na gry i programy, na zawsze.",
+      "neverDown": "Poziomy nigdy nie spadają",
+      "backOnEveryShort": "zwrotu z każdego zamówienia",
+      "fromStart": "od początku",
+      "from": "od {{amount}}",
+      "youAreHere": "Jesteś tutaj",
+      "history": "Historia",
+      "historyText": "Cashback z każdego zamówienia: kiedy się odblokował i gdzie został wykorzystany.",
+      "nothingYet": "Na razie pusto",
+      "firstOrder": "Pierwsze zamówienie doda pierwszy wiersz. Cashback liczony jest od faktycznie zapłaconej kwoty, po rabatach.",
+      "searchPlaceholder": "Szukaj po grze lub numerze zamówienia",
+      "searchAria": "Szukaj w historii cashbacku",
+      "statusFilter": "Filtr statusu cashbacku",
+      "game": "Gra",
+      "date": "Data",
+      "orderTotal": "Suma zamówienia",
+      "rate": "Stawka",
+      "cashback": "Cashback",
+      "status": "Status",
+      "noEntries": "Brak wpisów pasujących do filtra.",
+      "balanceAdjustment": "Korekta salda",
+      "order": "Zamówienie"
+    }
+  },
+  "errors": {
+    "sessionExpired": "Sesja wygasła. Zaloguj się, aby kontynuować.",
+    "network": "Sprawdź połączenie i spróbuj ponownie.",
+    "loadKeys": "Nie udało się wczytać kluczy.",
+    "loadOrders": "Nie udało się wczytać zamówień.",
+    "loadPaymentMethods": "Nie udało się wczytać metod płatności.",
+    "loadRecommendations": "Nie udało się wczytać rekomendacji.",
+    "loadViewed": "Nie udało się wczytać ostatnio oglądanych.",
+    "loadWishlist": "Nie udało się wczytać listy życzeń.",
+    "streamStart": "Nie udało się rozpocząć strumieniowania.",
+    "streamError": "Błąd strumieniowania."
+  },
+  "loader": {
+    "unavailable": "Usługa logowania jest niedostępna",
+    "text": "Nie udało się połączyć z usługą uwierzytelniania. Być może wciąż się uruchamia."
+  },
+  "deals": {
+    "metaTitle": "Promocje i zniżki na gry",
+    "metaDesc": "Aktualne zniżki na klucze do gier PC w Tale Shop — oferty ograniczone czasowo z natychmiastową dostawą.",
+    "eyebrow": "Oferty ograniczone czasowo",
+    "title": "Promocje i zniżki",
+    "subtitle": "Wyselekcjonowane obniżki cen gier PC — natychmiastowa dostawa klucza, bezpieczna płatność. Ceny aktualizują się wraz z nowymi ofertami.",
+    "gamesOnSale": "gier w promocji",
+    "biggestDiscount": "największa zniżka",
+    "deliverySupport": "dostawa i pomoc",
+    "dealAlerts": "alerty promocji",
+    "alertsText": "Jeden e-mail, gdy pojawią się nowe promocje. Bez spamu, wypisz się w każdej chwili.",
+    "breakTitle": "Promocje robią krótką przerwę",
+    "breakSubscribed": "Zniżki regularnie się zmieniają, a nowe oferty pojawiają się często. Napiszemy, gdy tylko ruszy następna partia — nic więcej nie musisz robić.",
+    "breakText": "Zniżki regularnie się zmieniają, a nowe oferty pojawiają się często. Zostaw e-mail — wyślemy jedną wiadomość, gdy pojawią się świeże promocje. Bez spamu.",
+    "orBrowse": "Albo przejrzyj cały katalog →",
+    "budgetPicks": "Tymczasem tanie propozycje",
+    "underPrice": "Poniżej {{price}}",
+    "onSaleNow": "Teraz w promocji",
+    "showing": "Wyświetlono {{shown}} z {{total}}",
+    "orderBy": "Kolejność promocji",
+    "biggest": "Największa zniżka",
+    "endingSoon": "Wkrótce się kończą",
+    "endingSoonLoading": "Wkrótce się kończą…",
+    "seeAll": "Wszystkie promocje ({{count}})",
+    "browseFull": "Przeglądaj cały katalog",
+    "endsIn": "Koniec za",
+    "starDeal": "Gwiazda promocji",
+    "youSave": "Oszczędzasz {{amount}}",
+    "offerEndsIn": "Oferta kończy się za",
+    "platforms": "Platformy"
+  },
+  "faq": {
+    "eyebrow": "Centrum pomocy",
+    "title": "Jak możemy pomóc?",
+    "subtitle": "Odpowiedzi na najczęstsze pytania o zamówienia, dostawę, płatności i konto.",
+    "searchPlaceholder": "Szukaj w centrum pomocy…",
+    "search": "Szukaj w FAQ",
+    "noMatches": "Brak wyników dla „{{query}}”",
+    "tryOther": "Spróbuj innego słowa albo napisz do nas — pomożemy bezpośrednio.",
+    "stillNeed": "Nadal potrzebujesz pomocy?",
+    "aiText": "Nasz asystent AI odpowiada natychmiast i w razie potrzeby przekaże Cię specjaliście.",
+    "chat": "Czat z pomocą",
+    "visitSupport": "Przejdź do pomocy",
+    "helpfulPages": "Przydatne strony",
+    "refundPolicy": "Zasady zwrotów",
+    "activationGuide": "Poradnik aktywacji",
+    "browseCatalog": "Przeglądaj katalog",
+    "currentDeals": "Aktualne promocje"
+  },
+  "support": {
+    "eyebrow": "Pomoc i centrum wsparcia",
+    "title": "W czym potrzebujesz pomocy?",
+    "subtitle": "Przeszukaj odpowiedzi lub wybierz temat poniżej. Jeśli nic nie pasuje, nasz zespół jest o jedną wiadomość od Ciebie.",
+    "searchPlaceholder": "Szukaj pomocy…",
+    "search": "Szukaj w pomocy",
+    "allTopics": "Wszystkie tematy",
+    "talkToUs": "Porozmawiaj z nami",
+    "browseByTopic": "Według tematu",
+    "allQuestions": "Wszystkie pytania",
+    "faqTitle": "Najczęstsze pytania",
+    "faqText": "Przeglądaj odpowiedzi lub zawęź wyszukiwaniem i filtrem kategorii.",
+    "noResults": "Brak wyników",
+    "noResultsText": "Spróbuj innego zapytania lub napisz do naszego zespołu.",
+    "contactTitle": "Skontaktuj się z pomocą",
+    "contactText": "Jeśli FAQ nie pomogło, napisz do nas — resztą zajmiemy się my.",
+    "requestCreated": "Zgłoszenie nr {{id}} utworzone",
+    "requestCreatedText": "Zespół wkrótce odpowie. Rozmowę możesz śledzić i uzupełniać na swoim koncie.",
+    "track": "Śledź zgłoszenie",
+    "sendAnother": "Wyślij kolejne",
+    "topic": "Temat",
+    "message": "Wiadomość",
+    "messagePlaceholder": "Opisz, co się stało",
+    "signInHint": "Zaloguj się, aby wysłać zgłoszenie — wrócisz dokładnie tutaj.",
+    "sendRequest": "Wyślij zgłoszenie",
+    "signInSend": "Zaloguj się i wyślij",
+    "replyWithin": "Zwykle odpowiadamy w ciągu 24 godzin.",
+    "sendFailed": "Nie udało się wysłać zgłoszenia. Spróbuj ponownie.",
+    "stillNeed": "Nadal potrzebujesz pomocy?",
+    "stillNeedText": "Nie znalazłeś odpowiedzi? Pomoc zwykle odpowiada w ciągu kilku godzin.",
+    "goToFaq": "Przejdź do FAQ",
+    "actions": {
+      "orders": {
+        "title": "Zamówienia i płatności",
+        "text": "Status zamówienia, potwierdzenia płatności i pomoc z płatnościami."
+      },
+      "keys": {
+        "title": "Klucze i dostawa",
+        "text": "Natychmiastowa dostawa, aktywacja klucza i ponowne wysłanie."
+      },
+      "refunds": {
+        "title": "Zwroty i problemy",
+        "text": "Warunki zwrotu i rozwiązywanie problemów z dostępem."
+      },
+      "account": {
+        "title": "Konto i bezpieczeństwo",
+        "text": "Dostęp do profilu, kontrole bezpieczeństwa i weryfikacja."
+      }
+    },
+    "chips": {
+      "refund": "Zwrot",
+      "key": "Nie otrzymałem klucza",
+      "payment": "Płatność nieudana",
+      "account": "Problem z kontem"
+    },
+    "channels": {
+      "email": {
+        "title": "Pomoc e-mail",
+        "text": "Odpowiadamy w ciągu 24 godzin"
+      },
+      "chat": {
+        "title": "Czat na żywo",
+        "text": "Zwykle odpowiadamy w kilka minut"
+      },
+      "ticket": {
+        "title": "Zgłoszenie",
+        "text": "Najlepsze przy problemach z zamówieniem"
+      },
+      "recovery": {
+        "title": "Odzyskiwanie konta",
+        "text": "Nie możesz się zalogować? Utracony dostęp do 2FA"
+      }
+    },
+    "trust": {
+      "secure": "Bezpieczne płatności",
+      "instant": "Natychmiastowa dostawa",
+      "verified": "Zweryfikowane klucze",
+      "friendly": "Przyjazna pomoc"
+    },
+    "chipTerms": {
+      "refund": "zwrot",
+      "key": "klucz",
+      "payment": "płatność",
+      "account": "konto"
+    },
+    "faq": {
+      "keyDelivery": {
+        "question": "Jak otrzymam klucz do gry?",
+        "answer": "Klucze są dostarczane natychmiast e-mailem i zawsze dostępne na Twoim koncie."
+      },
+      "deliverySpeed": {
+        "question": "Czy dostawa jest natychmiastowa?",
+        "answer": "Tak. Większość zakupów jest realizowana w kilka sekund, a jeśli coś opóźni dostawę, powiadomimy Cię."
+      },
+      "paymentMethods": {
+        "question": "Jakie metody płatności obsługujecie?",
+        "answer": "Akceptujemy główne karty debetowe i kredytowe oraz zaufanych lokalnych operatorów płatności."
+      },
+      "paymentFailed": {
+        "question": "Płatność się nie powiodła. Co robić?",
+        "answer": "Sprawdź dane karty, spróbuj innej metody płatności lub skontaktuj się z bankiem. Jeśli nadal nie działa, napisz do pomocy."
+      },
+      "refundRequest": {
+        "question": "Czy mogę poprosić o zwrot?",
+        "answer": "Zwrot jest możliwy za nieużyte klucze i przypadkowe zakupy. Złóż prośbę w ciągu 14 dni, a ją rozpatrzymy."
+      },
+      "issueKey": {
+        "question": "Klucz nie działa. Co sprawdzić?",
+        "answer": "Upewnij się, że region zgadza się z Twoim kontem, sprawdź literówki i czy klucz nie został już wykorzystany."
+      },
+      "accountSecurity": {
+        "question": "Jak zabezpieczyć konto?",
+        "answer": "Używaj silnego hasła, włącz uwierzytelnianie dwuskładnikowe i nie udostępniaj nikomu danych logowania."
+      },
+      "emailChange": {
+        "question": "Czy mogę zmienić e-mail konta?",
+        "answer": "Tak. Zmień e-mail w ustawieniach konta. Możemy poprosić o potwierdzenie zmiany."
+      },
+      "languageSupport": {
+        "question": "W jakich językach działa pomoc?",
+        "answer": "Nasz zespół pomaga po angielsku, rosyjsku, ukraińsku i polsku, a języki gry są podane na stronie każdego produktu."
+      },
+      "orderStatus": {
+        "question": "Gdzie sprawdzić status zamówienia?",
+        "answer": "Wszystkie zamówienia i faktury są dostępne na Twoim koncie w sekcji „Zamówienia i płatności”."
+      }
+    }
+  },
+  "docs": {
+    "notFound": "Nie znaleziono dokumentu",
+    "notFoundText": "Wróć do pomocy, aby przejrzeć poradniki i zasady.",
+    "policy": "Zasady",
+    "guide": "Poradnik",
+    "minRead": "{{count}} min czytania",
+    "draftTitle": "Szkic — nie polegaj na nim jeszcze",
+    "draftBlanks": "Dokument nie jest ukończony: oznaczone poniżej dane wciąż brakują, a tekst nie został sprawdzony przez prawnika.",
+    "draftReview": "Dane są uzupełnione, ale tekst nie został jeszcze sprawdzony przez prawnika.",
+    "linkToSection": "Link do sekcji {{index}}: {{title}}",
+    "moreGuides": "Więcej poradników i zasad",
+    "notFoundNeed": "Nie znalazłeś tego, czego szukasz?",
+    "replyText": "Pomoc odpowiada w ciągu kilku godzin — podaj numer zamówienia, aby przyspieszyć odpowiedź.",
+    "onThisPage": "Na tej stronie"
+  },
+  "newsletter": {
+    "notifyMe": "Powiadom mnie",
+    "emailForAlerts": "E-mail do alertów promocji",
+    "onList": "✓ Jesteś na liście — napiszemy, gdy pojawią się nowe promocje.",
+    "almostInbox": "✓ Prawie gotowe — sprawdź skrzynkę i potwierdź subskrypcję.",
+    "almostLink": "✓ Prawie gotowe — potwierdź link, który wysłaliśmy na Twoją skrzynkę.",
+    "saveFailed": "Nie udało się teraz zapisać e-maila — spróbuj za minutę.",
+    "confirming": "Potwierdzanie…",
+    "confirmingText": "Chwileczkę — potwierdzamy Twoją subskrypcję.",
+    "confirmed": "Subskrypcja potwierdzona",
+    "confirmedText": "Jesteś na liście. Napiszemy, gdy pojawią się świeże promocje — wypisać się możesz jednym kliknięciem z każdego e-maila.",
+    "browseDeals": "Przeglądaj promocje",
+    "linkUsed": "Link nieprawidłowy lub już użyty",
+    "linkUsedText": "Ten link potwierdzający już nie działa. Jeśli już potwierdziłeś — wszystko w porządku. W przeciwnym razie zapisz się ponownie, aby otrzymać nowy link.",
+    "subscribeOnDeals": "Zapisz się na stronie promocji",
+    "unsubscribing": "Wypisywanie…",
+    "unsubscribingText": "Chwileczkę — usuwamy Cię z listy.",
+    "unsubscribed": "Wypisano",
+    "unsubscribedText": "Koniec e-maili od nas. Zmieniłeś zdanie? Możesz zapisać się ponownie na stronie promocji w dowolnej chwili — lub zarządzać tym w ustawieniach konta, jeśli je masz.",
+    "resubscribe": "Zapisz się ponownie",
+    "accountSettings": "Ustawienia konta",
+    "linkInvalid": "Nieprawidłowy link",
+    "linkInvalidText": "Ten link wypisania wygląda niepoprawnie. Jeśli nadal dostajesz e-maile, skontaktuj się z pomocą — usuniemy Cię ręcznie.",
+    "oneMoment": "Chwileczkę…",
+    "cashbackOffText": "Wyłączamy e-maile o cashbacku dla Twojego adresu.",
+    "cashbackOff": "Koniec e-maili o cashbacku",
+    "cashbackOffDone": "Nie będziemy pisać, gdy cashback stanie się dostępny lub wkrótce wygaśnie. Saldo nie ulega zmianie — zawsze możesz je sprawdzić wraz z terminami na stronie cashbacku.",
+    "myCashback": "Mój cashback",
+    "cashbackLinkInvalid": "Ten link wygląda niepoprawnie. Jeśli nadal dostajesz e-maile o cashbacku, skontaktuj się z pomocą — wyłączymy je ręcznie.",
+    "reviewOffText": "Wyłączamy prośby o opinie dla Twojego adresu.",
+    "reviewOff": "Nie zapytamy ponownie",
+    "reviewOffDone": "Koniec próśb o opinie. Potwierdzenia zamówień i klucze przychodzą jak zwykle — wyłączamy tylko e-maile „jak było?”. Opinię nadal możesz dodać z poziomu zamówień.",
+    "myOrders": "Moje zamówienia",
+    "reviewLinkInvalid": "Ten link wygląda niepoprawnie. Jeśli nadal dostajesz prośby o opinie, skontaktuj się z pomocą — wyłączymy je ręcznie."
+  },
+  "recovery": {
+    "errEmail": "Wpisz adres e-mail powiązany z kontem.",
+    "failed": "Coś poszło nie tak. Spróbuj ponownie za minutę.",
+    "received": "Zgłoszenie odebrane",
+    "receivedText": "Jeśli podany e-mail pasuje do konta, wysłaliśmy na niego potwierdzenie. Weryfikacja może potrwać do kilku dni ze względu na obowiązkowy okres oczekiwania — będziemy informować e-mailem.",
+    "meanwhile": "Jeśli w międzyczasie odzyskasz dostęp do aplikacji uwierzytelniającej lub znajdziesz kod zapasowy, po prostu się zaloguj — i anuluj zgłoszenie w sekcji Konto → Bezpieczeństwo.",
+    "title": "Odzyskiwanie konta",
+    "introBefore": "Utraciłeś dostęp do aplikacji uwierzytelniającej i kodów zapasowych? Poproś o ręczny reset uwierzytelniania dwuskładnikowego. Najpierw sprawdź ",
+    "selfService": "opcje samoobsługowe",
+    "introAfter": " — są szybsze.",
+    "accountEmail": "E-mail konta *",
+    "contactEmail": "E-mail kontaktowy (jeśli inny)",
+    "contactPlaceholder": "Gdzie możemy się z Tobą skontaktować",
+    "orderNumbers": "Numery ostatnich zamówień",
+    "orderPlaceholder": "np. TS-10023, TS-10057",
+    "cardLast4": "Ostatnie 4 cyfry karty",
+    "proof": "Cokolwiek innego, co potwierdza, że konto jest Twoje",
+    "proofPlaceholder": "Przybliżona data rejestracji, kupione gry, kwoty płatności…",
+    "submit": "Wyślij zgłoszenie odzyskiwania",
+    "note": "Każde zgłoszenie weryfikujemy z historią zamówień i płatności, powiadamiamy e-mail konta na każdym etapie i stosujemy okres oczekiwania do 72 godzin, zanim cokolwiek zmienimy. Nigdy nie poprosimy o hasło ani pełny numer karty.",
+    "cancelled": "Zgłoszenie odzyskiwania anulowane",
+    "cancelledText": "Nic na koncie nie zostało zmienione. Jeśli sądzisz, że ktoś próbuje przejąć Twoje konto, zmień hasło i sprawdź aktywne sesje.",
+    "backHome": "Strona główna",
+    "linkExpired": "Link jest już nieważny",
+    "linkExpiredText": "Zgłoszenie mogło zostać już anulowane lub zrealizowane, albo link wygasł. Jeśli nadal masz wątpliwości, skontaktuj się z pomocą.",
+    "cancelTitle": "Anulować odzyskiwanie konta?",
+    "cancelText": "Zatrzyma to oczekujący reset uwierzytelniania dwuskładnikowego dla Twojego konta.",
+    "cancelConfirm": "Tak, anuluj zgłoszenie"
+  },
+  "rewards": {
+    "metaTitle": "Cashback — Tale Shop",
+    "metaDesc": "Odzyskuj część każdego zamówienia jako środki sklepowe. Zaczyna się od {{percent}}% i rośnie wraz z wydatkami.",
+    "eyebrow": "Nagrody",
+    "heroBefore": "Część każdego zamówienia ",
+    "heroAccent": "wraca",
+    "heroAfter": " do Ciebie.",
+    "heroText": "Cashback to środki sklepowe, które zdobywasz kupując i wydajesz na kolejny klucz. Bez kuponów, bez minimalnej kwoty, bez aktywacji.",
+    "fromFirst": " od pierwszego zamówienia",
+    "upTo": "do ",
+    "asYouClimb": " w miarę awansu",
+    "spendableOn": "do wydania na ",
+    "anyGame": "dowolną grę",
+    "notDiscount": "To nie rabat",
+    "moneyBack": "Pieniądze wracają, a nie obniżamy ceny",
+    "moneyBackText1": "Płacisz normalną cenę. Po zamówieniu część zapłaconej kwoty trafia na saldo jako środki sklepowe — dolar cashbacku to dolar mniej za kolejny klucz.",
+    "moneyBackText2": "Udział liczony jest od faktycznie zapłaconej kwoty, po rabatach i kodach promocyjnych, więc wyprzedaże i cashback sumują się zamiast się znosić.",
+    "exampleOrder": "Przykładowe zamówienie z cashbackiem",
+    "digitalKey": "Klucz cyfrowy",
+    "price": "Cena",
+    "discount": "Rabat",
+    "youPay": "Płacisz",
+    "comesBack": "Wraca do Ciebie",
+    "backAt": "{{percent}}% zwrotu ·",
+    "level": "poziom {{name}}",
+    "pass": {
+      "eyebrow": "Przepustka cashback",
+      "title1": "Kupuj gry.",
+      "title2": "Wspinaj się po przepustce.",
+      "title3": "Odzyskuj więcej.",
+      "text": "Każde zamówienie przesuwa Cię wyżej. Im wyżej jesteś, tym większa część każdego zakupu wraca.",
+      "balance": "Twoje saldo cashbacku",
+      "openHistory": "Otwórz historię",
+      "trackClimb": "Śledź postęp",
+      "startHere": "Start tutaj",
+      "you": "Ty · {{amount}}",
+      "youAreHere": "Jesteś tutaj",
+      "yourLevel": "Twój poziom",
+      "toGo": "jeszcze {{amount}}",
+      "fromFirstOrder": "od pierwszego zamówienia",
+      "spent": "{{amount}} wydano",
+      "ctaFirst": "Wybierz pierwszą grę",
+      "ctaFirstText": "od niej zaczyna się Twoja wspinaczka",
+      "ctaNext": "Wybierz następną grę",
+      "ctaNextText": "każde zamówienie przybliża {{name}}",
+      "ctaTopText": "{{percent}}% zwrotu ze wszystkiego",
+      "nextStop": "Następny przystanek",
+      "back": "{{name}} — {{percent}}% zwrotu",
+      "progress": "jeszcze {{remaining}} · {{spent}} z {{threshold}}",
+      "unlocksAfter": "Odblokuje się po {{amount}} zamówień",
+      "top": "Szczyt przepustki",
+      "topText": "Największy udział z każdego zamówienia.",
+      "step1": "Kup grę",
+      "step1Text": "liczy się każde opłacone zamówienie",
+      "step2": "Część wraca",
+      "step2Text": "{{range}} na Twoje saldo",
+      "step3": "Wydaj na następną",
+      "step3Text": "działa z rabatami"
+    },
+    "where": {
+      "label": "Gdzie to zobaczysz",
+      "title": "Cashback pojawia się dokładnie tam, gdzie kupujesz",
+      "text": "Bez kodów i osobnej aplikacji — jest wbudowany w koszyk, kasę i Twoje konto.",
+      "inCart": "W koszyku",
+      "total": "Razem",
+      "comesBack": "+{{amount}} wraca z tego zamówienia",
+      "cartText": "Każdy koszyk pokazuje, ile wróci z zamówienia, jeszcze przed płatnością.",
+      "atCheckout": "Przy kasie",
+      "orderTotal": "Suma zamówienia",
+      "payWith": "Zapłać {{amount}} cashbackiem",
+      "youPay": "Płacisz",
+      "checkoutText": "Jeden przełącznik — i saldo idzie na poczet zamówienia.",
+      "inAccount": "Na koncie",
+      "available": "Dostępne",
+      "pending": "Oczekujące",
+      "level": "Poziom",
+      "accountText": "Zobacz, co możesz wydać, co jeszcze oczekuje i skąd pochodzi."
+    },
+    "faq": {
+      "label": "Drobny druk prostymi słowami",
+      "title": "Zanim zapytasz",
+      "text": "Krótkie odpowiedzi na najczęstsze pytania o cashback."
+    }
+  },
+  "blog": {
+    "title": "Aktualności i poradniki",
+    "subtitle": "cotygodniowe polecane i nowości Tale Shop",
+    "showFilters": "Pokaż wyszukiwanie i filtry",
+    "collapseFilters": "Zwiń filtry",
+    "searchArticles": "Szukaj artykułów",
+    "searchPlaceholder": "Szukaj artykułów...",
+    "sort": {
+      "newest": "Najnowsze",
+      "popular": "Najpopularniejsze",
+      "editors": "Wybór redakcji"
+    },
+    "sortPosts": "Sortowanie wpisów",
+    "showingPosts": "Wyświetlono: {{items}}",
+    "inTopics": "w tematach {{topics}}",
+    "matching": "dla „{{query}}”",
+    "noPosts": "Nie znaleziono wpisów",
+    "noPostsText": "Zmień tekst wyszukiwania lub wybierz inny temat.",
+    "loadingMore": "Wczytywanie kolejnych wpisów…",
+    "preparing": "Redakcja przygotowuje nowe historie",
+    "preparingText": "Wróć wkrótce po świeże wpisy i nowości.",
+    "loadFailed": "Nie udało się teraz wczytać wpisów.",
+    "picksUnavailable": "Spersonalizowane propozycje są niedostępne — pokazujemy najnowsze wpisy.",
+    "ctaTitle": "Szukasz najlepszych cen tygodnia?",
+    "ctaText": "Jeden e-mail tygodniowo. Bez spamu. Wypisz się w każdej chwili.",
+    "ctaOnList": "Jesteś na liście — następny przegląd już w drodze.",
+    "ctaAlmost": "Prawie gotowe — potwierdź link, który właśnie wysłaliśmy.",
+    "ctaEmail": "E-mail do cotygodniowego przeglądu",
+    "ctaError": "Nie udało się teraz zapisać — spróbuj za minutę.",
+    "postNotFound": "Nie znaleziono wpisu.",
+    "postLoadFailed": "Nie udało się wczytać wpisu.",
+    "shareSubject": "Zobacz ten artykuł: {{title}}",
+    "blogPost": "Wpis na blogu",
+    "linkCopied": "Link skopiowany",
+    "copyFailed": "Nie udało się skopiować linku",
+    "news": "Aktualności",
+    "backToNews": "Wróć do aktualności",
+    "notFoundTitle": "Nie znaleziono wpisu",
+    "notFoundText": "Nie udało się znaleźć tego artykułu. Mógł zostać przeniesiony lub usunięty.",
+    "postMeta": "Metadane wpisu",
+    "share": "Udostępnij artykuł",
+    "copyLink": "Kopiuj link",
+    "shareOn": "Udostępnij na {{network}}",
+    "shareEmail": "Wyślij e-mailem",
+    "email": "E-mail",
+    "toc": "Spis treści",
+    "onThisPage": "Na tej stronie",
+    "bodySoon": "Treść artykułu wkrótce",
+    "bodySoonText": "Wpis ma metadane, ale pełna treść nie jest jeszcze dostępna.",
+    "reactions": "Reakcje na wpis",
+    "react": "Reakcja",
+    "tags": "Tagi wpisu",
+    "adjacent": "Sąsiednie wpisy",
+    "related": "Powiązane wpisy",
+    "relatedText": "Więcej historii, które mogą Ci się spodobać.",
+    "noRelated": "Brak powiązanych wpisów. Zajrzyj do wszystkich aktualności.",
+    "browseAll": "Wszystkie wpisy",
+    "quickReactions": "Szybkie reakcje",
+    "readArticle": "Czytaj artykuł",
+    "readMore": "Czytaj dalej",
+    "viewAllTag": "Wszystkie: {{tag}}",
+    "posts": "wpisy",
+    "comments": "Komentarze",
+    "tooFast": "Komentujesz zbyt szybko — poczekaj kilka minut i spróbuj ponownie.",
+    "commentingDisabled": "Komentowanie jest wyłączone dla Twojego konta.",
+    "commentFailed": "Nie udało się opublikować komentarza. Spróbuj ponownie.",
+    "deleteComment": "Trwale usunąć ten komentarz użytkownika „{{author}}”?",
+    "commentPlaceholder": "Napisz komentarz",
+    "commentText": "Treść komentarza",
+    "charsLeft": "Pozostało znaków: {{count}}",
+    "posting": "Publikowanie…",
+    "addComment": "Dodaj komentarz",
+    "logInToDiscuss": "Zaloguj się, aby dołączyć do dyskusji — komentarze publikowane są pod nazwą profilu.",
+    "logInToComment": "Zaloguj się, aby komentować",
+    "loadingComments": "Wczytywanie komentarzy…",
+    "noComments": "Brak komentarzy — podziel się opinią jako pierwszy.",
+    "deleteAdmin": "Usuń komentarz (admin)",
+    "showMoreComments": "Pokaż więcej komentarzy ({{count}})",
+    "newerPost": "← Nowszy wpis:",
+    "olderPost": "Starszy wpis:",
+    "allTags": "Wszystkie",
+    "reactionsCount_one": "{{count}} reakcja",
+    "reactionsCount_few": "{{count}} reakcje",
+    "reactionsCount_many": "{{count}} reakcji",
+    "reactionsCount_other": "{{count}} reakcji"
+  },
+  "about": {
+    "eyebrow": "O TALE SHOP",
+    "title": "O nas",
+    "lead": "Wierzymy, że gry powinny być łatwe do odkrycia, proste w zakupie i niezapomniane w graniu. Tale Shop wybiera ukochane tytuły, dba o bezproblemową płatność i wspiera każdego gracza długo po zakupie.",
+    "goToStore": "Do sklepu",
+    "contactSupport": "Skontaktuj się z pomocą",
+    "pills": {
+      "secure": {
+        "title": "Bezpieczna płatność",
+        "text": "Szyfrowane płatności chronią każdą transakcję."
+      },
+      "instant": {
+        "title": "Natychmiastowa dostawa",
+        "text": "Klucze cyfrowe wysyłane zaraz po zakupie."
+      },
+      "curated": {
+        "title": "Wyselekcjonowane tytuły",
+        "text": "Najlepsze gry wybrane przez pasjonatów."
+      },
+      "support": {
+        "title": "Pomoc 24/7",
+        "text": "Prawdziwi ludzie gotowi pomóc przez całą dobę."
+      }
+    },
+    "highlights": {
+      "support": "Dedykowana pomoc w czasie rzeczywistym",
+      "prices": "Najlepsze ceny najwyżej ocenianych tytułów",
+      "delivery": "Natychmiastowa dostawa cyfrowa na całym świecie"
+    },
+    "playerRatings": "Oceny graczy",
+    "ratedAria": "Ocena {{value}} na 5",
+    "basedOn": "Na podstawie {{count}}",
+    "notEnough": "Za mało opinii",
+    "notEnoughText": "Na razie {{count}}. Średnią pokazujemy, gdy będzie ich {{min}} — poniżej tego jedna opinia zbyt mocno przesuwa wynik.",
+    "noReviews": "Brak opinii",
+    "beFirstBefore": "Bądź pierwszy — ",
+    "pickUpGame": "kup grę",
+    "beFirstAfter": " i powiedz innym graczom, co o niej myślisz.",
+    "buyersOnly": "Tylko kupujący",
+    "buyersOnlyText": "Opinia wymaga opłaconego zamówienia na tę grę.",
+    "distribution": "Rozkład ocen",
+    "guarantee": "Gwarancja zaufanego sklepu",
+    "guaranteeText": "Każde zamówienie jest chronione od płatności do dostawy.",
+    "medianReply": "Mediana pierwszej odpowiedzi",
+    "delivery": "Dostawa",
+    "keysByEmail": "Klucze cyfrowe e-mailem",
+    "recentReviews": "Ostatnie opinie",
+    "recentTitle": "Co ostatnio napisali gracze",
+    "recentText": "Prosto ze stron gier — opinię może dodać tylko osoba z opłaconym zamówieniem, a my publikujemy je bez zmian.",
+    "previousReviews": "Poprzednie opinie",
+    "nextReviews": "Następne opinie",
+    "reviewNof": "Opinia {{index}} z {{count}}",
+    "outOf5": "{{rating}} na 5",
+    "purpose": "Nasz cel",
+    "purposeTitle": "Gry powinny być łatwe do znalezienia, bezpieczne w zakupie i na zawsze Twoje.",
+    "purposeLead": "Tale Shop zaczął się od prostej frustracji: kupowanie gier PC online oznaczało podejrzanych resellerów, ukryte blokady regionalne i pomoc znikającą po płatności. Zbudowaliśmy więc sklep, jakiego sami chcieliśmy — wyselekcjonowany, bezpieczny i uczciwy od pierwszego kliknięcia do długo po pobraniu.",
+    "mission": "Misja",
+    "missionText": "Łączyć graczy z grami, które pokochają — bez tarcia i drobnego druku. Każda karta pokazuje region aktywacji i warunki zwrotu przed płatnością, a nie po, a klucz trafia na skrzynkę w chwili zaksięgowania płatności.",
+    "vision": "Wizja",
+    "visionText": "Stać się cyfrowym sklepem z grami, któremu gracze naprawdę ufają, wszędzie tam, gdzie działamy. Zaufanie to nie slogan: to opublikowane zasady, opinie, których nie selekcjonujemy, i wątek pomocy otwarty, dopóki problem nie zostanie rozwiązany.",
+    "promise": "Obietnica",
+    "promiseText": "Jeśli klucz nie działa, wymieniamy go lub zwracamy pieniądze — bez archeologii na forach i udowadniania, że nie jesteś oszustem. Odzyskiwanie konta i konfiguracja 2FA są opisane w całości, więc zawsze wiesz, co będzie dalej.",
+    "standFor": "Za czym stoimy",
+    "principlesTitle": "Zasady, na których nie oszczędzamy.",
+    "principlesText": "Cztery zobowiązania kształtujące każdą część sklepu — każde możesz sprawdzić samodzielnie.",
+    "principles": {
+      "curation": {
+        "title": "Selekcja z myślą o graczu",
+        "text": "Sprzedajemy gry warte Twojego czasu — wybrane przez ludzi, którzy grają, a nie wrzucone hurtem.",
+        "link": "Przeglądaj katalog"
+      },
+      "security": {
+        "title": "Bezpieczeństwo, które widać",
+        "text": "Uwierzytelnianie dwuskładnikowe, kody zapasowe i w pełni opublikowany proces odzyskiwania konta.",
+        "link": "Jak działa odzyskiwanie"
+      },
+      "fair": {
+        "title": "Uczciwie i z góry",
+        "text": "Zasady zwrotów i szczegóły regionów pokazujemy przed zakupem — nigdy jako niespodziankę po.",
+        "link": "Zasady zwrotów"
+      },
+      "support": {
+        "title": "Pomoc od prawdziwych graczy",
+        "text": "Gracze odpowiadają na czacie i e-mailem w kilka minut, bez skryptów.",
+        "link": "Przejdź do pomocy"
+      }
+    },
+    "journey": "Nasza droga",
+    "journeyTitle": "Jak sklep rósł rok po roku.",
+    "journeyText": "Wciąż ulepszamy to, jak odkrywasz, kupujesz i chronisz swoje gry.",
+    "team": "Poznaj zespół",
+    "teamTitle": "Ludzie, dzięki którym Tale Shop jest osobisty, bezpieczny i responsywny.",
+    "teamText": "Z kim naprawdę masz do czynienia, kupując tutaj.",
+    "supportSection": "Pomoc i przejrzystość",
+    "supportTitle": "Pomoc, gdy jej potrzebujesz, i zasady, które Cię chronią.",
+    "supportText": "Proste opcje pomocy i jasne wytyczne, abyś zawsze wiedział, czego się spodziewać.",
+    "cards": {
+      "help": {
+        "title": "Pomoc, która naprawdę pomaga",
+        "text": "Prawdziwi ludzie z doświadczeniem w grach, gotowi rozwiązać każdy problem.",
+        "link1": "Otwórz centrum pomocy",
+        "link2": "Odzyskiwanie konta i 2FA"
+      },
+      "policies": {
+        "title": "Zasady i bezpieczeństwo",
+        "text": "Jasne wytyczne, aby Twoje zakupy były bezpieczne i przejrzyste.",
+        "link1": "Zasady zwrotów",
+        "link2": "Ograniczenia regionalne"
+      }
+    },
+    "finalTitle": "Gotowy, by zajrzeć do sklepu?",
+    "finalText": "Przejrzyj wyselekcjonowany katalog gier PC i odbierz klucz w kilka minut.",
+    "finalMeta": "Natychmiastowa dostawa e-mailem • Bezpieczna płatność",
+    "seeDeals": "Promocje tego tygodnia",
+    "backToTop": "Do góry ↗",
+    "stats": {
+      "founded": "Założony",
+      "games": "Gier w katalogu",
+      "genres": "Gatunków na półce",
+      "regions": "Regionów aktywacji",
+      "countries": "Obsługiwanych krajów",
+      "keys": "Dostarczonych kluczy",
+      "min": "{{count}} min",
+      "aboutHours": "około {{count}} godz.",
+      "aboutDay": "około dnia",
+      "aboutDays": "około {{count}} dni"
+    }
+  },
+  "chat": {
+    "open": "Otwórz czat pomocy",
+    "openUnread": "Otwórz czat pomocy, nowych: {{count}}",
+    "newMessages": "Nowych wiadomości od pomocy: {{count}}",
+    "chatWith": "Czat z pomocą"
+  },
+  "ticket": {
+    "details": "Szczegóły zgłoszenia",
+    "requestTitle": "Zgłoszenie nr {{id}} — {{subject}}",
+    "requestDetails": "Szczegóły zgłoszenia",
+    "lastUpdated": "Zaktualizowano: {{when}}",
+    "loadFailed": "Nie udało się wczytać zgłoszenia. Ponów.",
+    "loading": "Wczytywanie zgłoszenia...",
+    "closed": "To zgłoszenie jest zamknięte.",
+    "resolved": "Zgłoszenie rozwiązane. Otwórz je ponownie, aby odpowiedzieć.",
+    "reopenToReply": "Otwórz zgłoszenie ponownie, aby odpowiedzieć…",
+    "writeReply": "Napisz odpowiedź…",
+    "attachFile": "Załącz plik",
+    "sendReply": "Wyślij odpowiedź",
+    "uploading": "Wgrywanie załączników...",
+    "filesReady": "Plików do wgrania: {{count}}",
+    "noCardNumbers": "Nie podawaj pełnych numerów kart.",
+    "problemSolved": "Problem rozwiązany",
+    "resolvedNeedMore": "Zgłoszenie rozwiązane. Potrzebujesz jeszcze pomocy?",
+    "reopen": "Otwórz ponownie",
+    "yourRequest": "swoje zgłoszenie.",
+    "closedBySupport": "Zgłoszenie zostało zamknięte przez pomoc. Jeśli potrzebujesz pomocy, utwórz nowe zgłoszenie.",
+    "sendFailed": "Nie udało się wysłać odpowiedzi. Spróbuj ponownie.",
+    "resolveFailed": "Nie udało się zamknąć zgłoszenia. Spróbuj ponownie.",
+    "reopenFailed": "Nie udało się ponownie otworzyć zgłoszenia. Spróbuj ponownie.",
+    "info": "Informacje o zgłoszeniu",
+    "category": "Kategoria:",
+    "order": "Zamówienie:",
+    "email": "E-mail:",
+    "status": "Status:",
+    "reopenRequest": "Otwórz zgłoszenie ponownie",
+    "helpfulLinks": "Przydatne linki",
+    "refundPolicy": "Zasady zwrotów",
+    "paymentMethods": "Metody płatności",
+    "keyDelivery": "Poradnik dostawy kluczy"
+  },
+  "region": {
+    "global": "Globalny",
+    "worldwide": "Aktywuje się na całym świecie",
+    "activatesIn": "Aktywuje się: {{regions}}",
+    "locked": "Blokada regionalna",
+    "varies": "Region aktywacji zależy od klucza",
+    "variesBadge": "Zależy od klucza",
+    "except": "Oprócz: {{countries}}",
+    "badgeMore": "{{name}} +{{count}}",
+    "names": {
+      "EU": "Europa",
+      "NA": "Ameryka Północna",
+      "LATAM": "Ameryka Łacińska",
+      "CIS": "WNP",
+      "TR": "Turcja",
+      "MENA": "Bliski Wschód i Afryka Północna",
+      "ASIA": "Azja",
+      "OCEANIA": "Oceania",
+      "AFRICA": "Afryka"
+    }
+  },
+  "api": {
+    "GUEST_EMAIL_REQUIRED": "Podaj prawidłowy e-mail — wyślemy tam klucze i paragon.",
+    "CHECKOUT_PRICING_FAILED": "Nie udało się wycenić koszyka.",
+    "FINALIZATION_ALREADY_PROCESSING": "Płatność jest już przetwarzana. Poczekaj chwilę i odśwież stronę.",
+    "FINALIZATION_ATTEMPTS_EXCEEDED": "Nie udało się jeszcze sfinalizować zamówienia. Skontaktuj się z pomocą, podając numer poniżej.",
+    "ORDER_CREATE_FAILED": "Nie udało się sfinalizować zamówienia. Spróbuj ponownie lub skontaktuj się z pomocą.",
+    "PAYMENT_INTENT_NOT_FOUND": "Nie znaleziono płatności.",
+    "PAYMENT_NOT_SUCCEEDED": "Płatność nie została jeszcze zakończona.",
+    "PAYMENT_PROVIDER_UNAVAILABLE": "Dostawca płatności jest teraz niedostępny. Nic nie pobrano — spróbuj za minutę.",
+    "INTERNAL_ERROR": "Coś poszło nie tak. Spróbuj ponownie.",
+    "checkout": {
+      "cartEmpty": "Koszyk jest pusty.",
+      "tooManyItems": "Za dużo produktów w koszyku.",
+      "quantityRange": "Ilość musi wynosić od 1 do {{max}}.",
+      "itemsUnavailable": "Niektóre produkty nie są już dostępne.",
+      "editionUnavailable": "„{{title}}”: ta edycja nie jest już dostępna.",
+      "offerUnavailable": "„{{title}}”: klucz dla tego regionu nie jest już dostępny.",
+      "notReleased": "„{{title}}” jeszcze nie miała premiery.",
+      "notInCountry": "„{{title}}” nie można aktywować w Twoim kraju ({{country}}).",
+      "offerNotInCountry": "„{{title}}” ({{offer}}) nie można aktywować w Twoim kraju ({{country}}).",
+      "currencyUnavailable": "„{{title}}” nie jest dostępna w walucie {{currency}}.",
+      "invalidPrice": "Nieprawidłowa konfiguracja ceny.",
+      "totalZero": "Kwota zamówienia musi być większa od zera."
+    },
+    "payment": {
+      "verificationCooldown": "Poczekaj minutę, zanim ponownie poprosisz o e-mail."
+    },
+    "promo": {
+      "required": "Wpisz kod promocyjny.",
+      "notFound": "Taki kod promocyjny nie istnieje.",
+      "inactive": "Kod promocyjny wygasł lub jeszcze nie działa.",
+      "currency": "Kod promocyjny nie dotyczy tej waluty.",
+      "minOrder": "Nie osiągnięto minimalnej kwoty zamówienia.",
+      "authOnly": "Kod promocyjny jest dostępny tylko dla zalogowanych klientów.",
+      "firstOrderOnly": "Kod promocyjny dotyczy tylko pierwszego zamówienia.",
+      "userLimit": "Wykorzystano limit użyć tego kodu promocyjnego.",
+      "limit": "Limit użyć kodu promocyjnego został wyczerpany.",
+      "applied": "Kod promocyjny zastosowany."
+    },
+    "order": {
+      "revealLocked": "Za dużo błędnych haseł. Spróbuj za {{minutes}} min.",
+      "wrongPassword_one": "Nieprawidłowe hasło. Została {{count}} próba.",
+      "wrongPassword_few": "Nieprawidłowe hasło. Zostały {{count}} próby.",
+      "wrongPassword_many": "Nieprawidłowe hasło. Zostało {{count}} prób.",
+      "wrongPassword_other": "Nieprawidłowe hasło. Zostało {{count}} prób.",
+      "noEmail": "To zamówienie nie ma adresu e-mail.",
+      "noKeys": "Do tego zamówienia nie dostarczono jeszcze kluczy.",
+      "resendCooldown": "Właśnie wysłaliśmy ten e-mail. Spróbuj za {{minutes}} min."
+    },
+    "review": {
+      "textRequired": "Napisz treść recenzji.",
+      "exists": "Już oceniłeś tę grę.",
+      "purchaseOnly": "Recenzję mogą dodać tylko klienci, którzy kupili tę grę.",
+      "reportReason": "Wybierz powód zgłoszenia.",
+      "reportTooLong": "Szczegóły — maksymalnie {{max}} znaków.",
+      "reportDetails": "Napisz, co jest nie tak z recenzją.",
+      "reportOwn": "Nie można zgłosić własnej recenzji — edytuj ją lub usuń.",
+      "alreadyReported": "Już zgłosiłeś tę recenzję."
+    },
+    "ticket": {
+      "categoryRequired": "Wybierz kategorię.",
+      "subjectRequired": "Podaj temat.",
+      "descriptionRequired": "Opisz problem.",
+      "messageRequired": "Napisz wiadomość.",
+      "subjectTooLong": "Temat przekracza {{max}} znaków.",
+      "descriptionTooLong": "Opis przekracza {{max}} znaków.",
+      "messageTooLong": "Wiadomość przekracza {{max}} znaków.",
+      "messageIdRequired": "Nie wskazano wiadomości.",
+      "closedReply": "Zgłoszenie jest zamknięte. Otwórz je ponownie, aby odpowiedzieć.",
+      "closedBySupport": "Zgłoszenie zamknięte przez pomoc. Utwórz nowe.",
+      "noFiles": "Nie przesłano plików.",
+      "closedAttach": "Zgłoszenie jest zamknięte. Otwórz je ponownie, aby dodać pliki.",
+      "messageNotFound": "Nie znaleziono wiadomości.",
+      "attachOwnOnly": "Pliki można dołączać tylko do własnych wiadomości.",
+      "maxFiles": "Maksymalnie {{max}} plików na wiadomość.",
+      "fileType": "Nieobsługiwany typ pliku.",
+      "fileSize": "Plik przekracza limit {{max}} MB.",
+      "attachmentNotFound": "Nie znaleziono załącznika.",
+      "notFound": "Nie znaleziono zgłoszenia.",
+      "accessDenied": "Brak dostępu.",
+      "reopenLimit": "Za dużo ponownych otwarć. Poczekaj kilka minut.",
+      "createLimit": "Wyczerpano limit nowych zgłoszeń. Poczekaj i spróbuj ponownie."
+    },
+    "chat": {
+      "notHuman": "Nie udało się potwierdzić, że jesteś człowiekiem. Odśwież stronę i spróbuj ponownie.",
+      "tooLong": "Wiadomość przekracza {{max}} znaków.",
+      "messageNotFound": "Nie znaleziono wiadomości.",
+      "onlyAssistantRated": "Oceniać można tylko odpowiedzi asystenta.",
+      "unknownFeedback": "Nieznana wartość oceny.",
+      "replyInProgress": "Poprzednia odpowiedź jest jeszcze pisana. Poczekaj chwilę i spróbuj ponownie.",
+      "sessionNotFound": "Nie znaleziono sesji czatu.",
+      "closed": "Ten czat jest zamknięty.",
+      "messageRequired": "Napisz wiadomość.",
+      "rateLimit": "Za dużo wiadomości. Poczekaj chwilę.",
+      "networkLimit": "Z Twojej sieci rozpoczęto za dużo czatów. Spróbuj później.",
+      "tooFast": "Wysyłasz wiadomości zbyt szybko. Trochę wolniej, proszę.",
+      "lengthLimit": "Rozmowa osiągnęła limit długości i została zamknięta. Zacznij nową, aby kontynuować."
+    },
+    "RATE_LIMITED": "Zbyt wiele prób. Spróbuj ponownie za minutę."
+  },
+  "help": {
+    "categories": {
+      "orderStatus": "Status zamówienia",
+      "payment": "Płatność i kasa",
+      "delivery": "Dostawa / aktywacja klucza",
+      "refund": "Prośba o zwrot",
+      "product": "Pytanie o grę / produkt",
+      "account": "Konto i bezpieczeństwo",
+      "technical": "Problem techniczny / błąd",
+      "other": "Inne"
+    },
+    "docGroups": {
+      "activation": "Aktywacja",
+      "orders": "Zamówienia i płatności",
+      "account": "Konto i bezpieczeństwo",
+      "legal": "Dokumenty prawne",
+      "other": "Inne"
+    },
+    "faq": {
+      "where-is-my-game-key": {
+        "question": "Gdzie jest mój klucz do gry?",
+        "answer": "Klucze są dostarczane natychmiast po udanej płatności. Jeśli bank weryfikuje płatność, dostawa może potrwać nieco dłużej. Minęło ponad 30 minut? Odśwież stronę zamówień i sprawdź status. Klucza nadal nie ma — napisz do pomocy, podając numer zamówienia."
+      },
+      "how-do-refunds-work": {
+        "question": "Jak działają zwroty?",
+        "answer": "Możliwość zwrotu zależy od produktu oraz od tego, czy klucz został odsłonięty lub aktywowany. Jeśli klucza nie odsłonięto, zwrot według naszych zasad jest zwykle możliwy. Jeśli klucz został odsłonięty lub użyty, zwroty zazwyczaj nie są dostępne. Szczegóły w Zasadach zwrotów."
+      },
+      "payment-charged-order-missing": {
+        "question": "Płatność pobrana, ale zamówienia nie ma",
+        "answer": "Niektóre płatności pojawiają się najpierw jako „oczekujące” lub autoryzacja, a zamówienie powstaje później. Poczekaj 10–30 minut i odśwież stronę zamówień. Sprawdź też, czy jesteś zalogowany na właściwe konto / e-mail. Jeśli zamówienie nadal się nie pojawia, napisz do pomocy, załączając potwierdzenie płatności lub numer transakcji."
+      },
+      "download-invoice": {
+        "question": "Jak pobrać fakturę?",
+        "answer": "Przejdź do Konto → Zamówienia → wybierz zamówienie → Pobierz fakturę (PDF). Jeśli przycisku jeszcze nie ma, zamówienie może być nadal przetwarzane. Jeśli potrzebujesz jej pilnie, napisz do pomocy, a pomożemy."
+      },
+      "activate-steam-key": {
+        "question": "Jak aktywować klucz Steam?",
+        "answer": "Otwórz Steam → Gry → Aktywuj produkt w Steam… → wpisz klucz → potwierdź. Jeśli widzisz błąd regionu lub „nieprawidłowy klucz”, sprawdź Ograniczenia regionalne lub upewnij się, że aktywujesz na właściwej platformie."
+      },
+      "secure-account": {
+        "question": "Jak zabezpieczyć konto?",
+        "answer": "Używaj silnego, unikalnego hasła i nie powtarzaj go w innych miejscach. Włącz 2FA, jeśli jest dostępne, i nigdy nie udostępniaj kluczy ani hasła. Jeśli podejrzewasz podejrzaną aktywność, natychmiast zmień hasło i napisz do pomocy."
+      }
+    },
+    "faqPage": {
+      "orders": {
+        "title": "Zamówienia i dostawa",
+        "items": [
+          {
+            "question": "Jak otrzymam klucz do gry?",
+            "answer": "Klucze są dostarczane natychmiast po udanej płatności. Znajdziesz je na swoim koncie w sekcji Klucze, a kopię wyślemy też na Twój adres e-mail."
+          },
+          {
+            "question": "Czy dostawa naprawdę jest natychmiastowa?",
+            "answer": "W przypadku tytułów dostępnych od ręki — tak, większość zamówień trafia na skrzynkę w kilka sekund. Jeśli klucz wymaga ręcznej weryfikacji, powiadomimy Cię i dostarczymy go zaraz po jej zakończeniu."
+          },
+          {
+            "question": "Gdzie aktywować klucz?",
+            "answer": "Na stronie każdego produktu podana jest platforma (na przykład Steam). Aktywuj klucz w kliencie tej platformy w sekcji „Aktywuj produkt”, aby dodać grę do biblioteki."
+          }
+        ]
+      },
+      "payments": {
+        "title": "Płatności i ceny",
+        "items": [
+          {
+            "question": "Jakie metody płatności akceptujecie?",
+            "answer": "Akceptujemy główne karty (Visa, Mastercard, American Express) przez bezpieczny procesing Stripe. Dane karty obsługuje dostawca płatności i nigdy nie są przechowywane na naszych serwerach."
+          },
+          {
+            "question": "Czy mogę zmienić walutę?",
+            "answer": "Tak — użyj przełącznika waluty w nagłówku. Wyświetlane ceny są orientacyjne; karta obciążana jest w walucie rozliczeniowej sklepu pokazanej przy kasie."
+          },
+          {
+            "question": "Czy płatność jest bezpieczna?",
+            "answer": "Kasa działa przez szyfrowane połączenie i zaufanego operatora płatności, z ochroną kupującego przy każdym zamówieniu."
+          }
+        ]
+      },
+      "refunds": {
+        "title": "Zwroty i problemy",
+        "items": [
+          {
+            "question": "Jakie są zasady zwrotów?",
+            "answer": "Jeśli klucz nie działa lub nie masz dostępu do zakupu, napisz do nas, a naprawimy to — wymienimy klucz lub zwrócimy pieniądze. Szczegóły na stronie Zasady zwrotów."
+          },
+          {
+            "question": "Klucz nie chce się aktywować — co robić?",
+            "answer": "Najpierw upewnij się, że aktywujesz go na właściwej platformie i w odpowiednim regionie. Jeśli nadal nie działa, napisz do pomocy z numerem zamówienia, a szybko to rozwiążemy."
+          }
+        ]
+      },
+      "account": {
+        "title": "Konto i dostęp",
+        "items": [
+          {
+            "question": "Czy potrzebuję konta, aby kupować?",
+            "answer": "Konto przechowuje klucze, zamówienia i paragony w jednym miejscu i pozwala pomocy szybciej zweryfikować zakup. Założysz je w kilka sekund przyciskiem Zarejestruj się."
+          },
+          {
+            "question": "Straciłem dostęp do konta.",
+            "answer": "Skorzystaj z odzyskiwania dostępu. Jeśli nadal masz problem, napisz do pomocy, a pomożemy potwierdzić tożsamość i przywrócić konto."
+          },
+          {
+            "question": "W jakich językach działa pomoc?",
+            "answer": "Nasz zespół i asystent AI pomagają po angielsku, rosyjsku, ukraińsku i polsku, a na stronie każdego produktu podane są języki dostępne w danej grze."
+          },
+          {
+            "question": "Jak zarządzać newsletterem lub się wypisać?",
+            "answer": "Każda wiadomość newslettera ma w stopce link „Wypisz się” — bez logowania. Jeśli masz konto, newsletter z ofertami możesz też włączyć lub wyłączyć w Konto → Ustawienia → Powiadomienia. Wypisanie zatrzymuje tylko wiadomości marketingowe; paragony za zamówienia i wiadomości dotyczące bezpieczeństwa nadal będą przychodzić."
+          }
+        ]
+      }
+    },
+    "cashbackFaq": {
+      "discount": {
+        "q": "Czy to zniżka?",
+        "a": "Nie. Zamówienie kosztuje tyle, ile kosztuje. Część zapłaconej kwoty wraca jako <b>kredyt sklepowy</b> i czeka na saldzie, aż zechcesz go użyć."
+      },
+      "howMuch": {
+        "q": "Ile dostanę?",
+        "aSingle": "<b>{{percent}}%</b> zapłaconej kwoty, przy każdym zamówieniu.",
+        "aRange": "Od <b>{{min}}%</b> do <b>{{max}}%</b> zapłaconej kwoty, zależnie od poziomu. Poziom zależy wyłącznie od łącznej sumy Twoich zakupów — każdy zaczyna od {{start}}%."
+      },
+      "whenSpend": {
+        "q": "Kiedy mogę go wydać?",
+        "a_one": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i widnieje jako <b>oczekujący przez {{count}} dzień</b>, dopóki zamówienie można jeszcze zwrócić. Potem jest Twój — wydaj go na dowolne zamówienie.",
+        "a_few": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i widnieje jako <b>oczekujący przez {{count}} dni</b>, dopóki zamówienie można jeszcze zwrócić. Potem jest Twój — wydaj go na dowolne zamówienie.",
+        "a_many": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i widnieje jako <b>oczekujący przez {{count}} dni</b>, dopóki zamówienie można jeszcze zwrócić. Potem jest Twój — wydaj go na dowolne zamówienie.",
+        "a_other": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i widnieje jako <b>oczekujący przez {{count}} dni</b>, dopóki zamówienie można jeszcze zwrócić. Potem jest Twój — wydaj go na dowolne zamówienie."
+      },
+      "returns": {
+        "q": "A jeśli zwrócę zamówienie?",
+        "a": "Cashback naliczony za to zamówienie odchodzi razem z nim. Jeśli już go wydałeś, saldo może spaść do zera, ale <b>nigdy poniżej</b>."
+      },
+      "expires": {
+        "q": "Czy wygasa?",
+        "aMonths_one": "Cashback jest ważny <b>{{count}} miesiąc</b> od dnia naliczenia, a najstarszy zawsze wydawany jest pierwszy, więc nic nie przepada, dopóki z niego korzystasz.",
+        "aMonths_few": "Cashback jest ważny <b>{{count}} miesiące</b> od dnia naliczenia, a najstarszy zawsze wydawany jest pierwszy, więc nic nie przepada, dopóki z niego korzystasz.",
+        "aMonths_many": "Cashback jest ważny <b>{{count}} miesięcy</b> od dnia naliczenia, a najstarszy zawsze wydawany jest pierwszy, więc nic nie przepada, dopóki z niego korzystasz.",
+        "aNever": "<b>Nie.</b> Cashback pozostaje na saldzie, dopóki go nie wydasz.",
+        "aMonths_other": "Cashback jest ważny <b>{{count}} miesięcy</b> od dnia naliczenia, a najstarszy zawsze wydawany jest pierwszy, więc nic nie przepada, dopóki z niego korzystasz."
+      },
+      "level": {
+        "q": "Czy mój poziom może spaść?",
+        "a": "<b>Nie.</b> Poziom zależy od łącznej sumy zakupów, a ta tylko rośnie."
+      }
+    },
+    "cashbackTerms": {
+      "holdRule_one": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i najpierw jest wstrzymany przez {{count}} dzień.",
+      "holdRule_few": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i najpierw jest wstrzymany przez {{count}} dni.",
+      "holdRule_many": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i najpierw jest wstrzymany przez {{count}} dni.",
+      "holdNow": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i można go wydać od razu.",
+      "expiryRule_one": "Cashback jest ważny {{count}} miesiąc od dnia naliczenia.",
+      "expiryRule_few": "Cashback jest ważny {{count}} miesiące od dnia naliczenia.",
+      "expiryRule_many": "Cashback jest ważny {{count}} miesięcy od dnia naliczenia.",
+      "noExpiry": "Cashback nie wygasa: pozostaje na saldzie, dopóki go nie wydasz.",
+      "emailsOff": "Obecnie nie wysyłamy wiadomości o cashbacku; saldo i terminy ważności są zawsze widoczne na Twoim koncie.",
+      "emailsReminder_one": "Piszemy, gdy cashback staje się dostępny, oraz około {{count}} dzień przed wygaśnięciem niewydanej części. Te wiadomości możesz wyłączyć linkiem w dowolnej z nich; nie wpływa to na saldo.",
+      "emailsReminder_few": "Piszemy, gdy cashback staje się dostępny, oraz około {{count}} dni przed wygaśnięciem niewydanej części. Te wiadomości możesz wyłączyć linkiem w dowolnej z nich; nie wpływa to na saldo.",
+      "emailsReminder_many": "Piszemy, gdy cashback staje się dostępny, oraz około {{count}} dni przed wygaśnięciem niewydanej części. Te wiadomości możesz wyłączyć linkiem w dowolnej z nich; nie wpływa to na saldo.",
+      "emailsOn": "Piszemy, gdy cashback staje się dostępny. Te wiadomości możesz wyłączyć linkiem w dowolnej z nich; nie wpływa to na saldo.",
+      "holdRule_other": "Cashback jest naliczany, gdy zamówienie jest opłacone i klucz wydany, i najpierw jest wstrzymany przez {{count}} dni.",
+      "expiryRule_other": "Cashback jest ważny {{count}} miesięcy od dnia naliczenia.",
+      "emailsReminder_other": "Piszemy, gdy cashback staje się dostępny, oraz około {{count}} dni przed wygaśnięciem niewydanej części. Te wiadomości możesz wyłączyć linkiem w dowolnej z nich; nie wpływa to na saldo."
+    },
+    "docs": {
+      "activation-guide": {
+        "title": "Przewodnik aktywacji",
+        "shortDescription": "Wskazówki krok po kroku dotyczące aktywacji na popularnych platformach.",
+        "lastUpdated": "Ostatnia aktualizacja: 4 marca 2025",
+        "intro": "Aktywacja klucza zajmuje kilka minut. Znajdź swoją platformę poniżej i wykonaj kroki — i miej pod ręką numer zamówienia na wypadek, gdyby coś poszło nie tak.",
+        "callout": {
+          "title": "Nie pokazuj klucza nikomu",
+          "text": "Każdy, kto zobaczy klucz, może go aktywować. Nigdy nie udostępniaj zrzutów ekranu odsłoniętego klucza — nawet osobom podającym się za pomoc Tale Shop."
+        },
+        "sections": [
+          {
+            "title": "Zanim zaczniesz",
+            "bullets": [
+              "Upewnij się, że konto platformy, na którym chcesz aktywować klucz, jest właściwe.",
+              "Sprawdź na stronie produktu platformę i region.",
+              "Miej pod ręką numer zamówienia na wypadek, gdybyś potrzebował pomocy.",
+              "Kupiłeś klucz do programu (Windows, Office, antywirus, VPN)? Takie klucze aktywuje się u producenta — zobacz Aktywacja programów."
+            ]
+          },
+          {
+            "title": "Aktywacja w Steam",
+            "bullets": [
+              "Otwórz Steam i przejdź do Gry → Aktywuj produkt w Steam…",
+              "Wpisz klucz dokładnie tak, jak jest pokazany, i potwierdź aktywację.",
+              "Jeśli widzisz ostrzeżenie o regionie, przeczytaj Ograniczenia regionalne, zanim spróbujesz ponownie."
+            ]
+          },
+          {
+            "title": "Aktywacja na innych platformach",
+            "bullets": [
+              "Wejdź na oficjalną stronę aktywacji platformy (Epic, EA, Ubisoft itd.).",
+              "Zaloguj się i wpisz klucz w polu aktywacji.",
+              "Uruchom ponownie launcher, aby zobaczyć grę w bibliotece."
+            ]
+          }
+        ]
+      },
+      "software-activation": {
+        "title": "Aktywacja programów",
+        "shortDescription": "Jak aktywować klucze licencyjne systemów operacyjnych, pakietów biurowych, programów zabezpieczających i innych aplikacji.",
+        "lastUpdated": "Ostatnia aktualizacja: 15 września 2026",
+        "intro": "Klucz do programu aktywuje się u producenta, a nie na platformie z grami. Gdzie dokładnie — mówi strona produktu: strona producenta, Twoje konto Microsoft lub sama aplikacja. To samo miejsce jest pokazane obok klucza na Twoim koncie i w wiadomości z dostawą.",
+        "callout": {
+          "title": "Nie pokazuj klucza nikomu",
+          "text": "Każdy, kto zobaczy klucz, może aktywować go na własnych urządzeniach. Nigdy nie udostępniaj odsłoniętego klucza — nawet osobom podającym się za pomoc Tale Shop lub producenta."
+        },
+        "sections": [
+          {
+            "title": "Zanim zaczniesz",
+            "bullets": [
+              "Sprawdź wymagania systemowe na stronie produktu — odsłoniętego klucza nie można zwrócić dlatego, że aplikacja nie działa na Twoim urządzeniu.",
+              "Zaloguj się na konto, na którym chcesz mieć licencję. Większość producentów nie przenosi aktywowanej licencji na inne konto.",
+              "Miej pod ręką numer zamówienia na wypadek, gdybyś potrzebował pomocy."
+            ]
+          },
+          {
+            "title": "Aktywacja na stronie producenta",
+            "bullets": [
+              "Skopiuj klucz z Konto → Klucze lub z wiadomości z dostawą.",
+              "Otwórz stronę licencji producenta — link jest na stronie produktu — i zaloguj się lub załóż bezpłatne konto.",
+              "Wpisz klucz w sekcji licencji lub subskrypcji.",
+              "Zainstaluj aplikację i zaloguj się tym samym kontem na każdym urządzeniu objętym licencją."
+            ]
+          },
+          {
+            "title": "Aktywacja na koncie Microsoft",
+            "bullets": [
+              "Zaloguj się na swoje konto Microsoft w przeglądarce.",
+              "Wybierz opcję wykorzystania kodu lub klucza produktu i wpisz klucz dokładnie tak, jak jest pokazany.",
+              "Produkt zostanie dodany do Twojego konta; zainstaluj go stamtąd. Klucze Windows można też wpisać w Ustawienia → System → Aktywacja."
+            ]
+          },
+          {
+            "title": "Aktywacja w aplikacji",
+            "bullets": [
+              "Pobierz aplikację z oficjalnej strony producenta lub ze sklepu z aplikacjami podanego na stronie produktu.",
+              "Otwórz ją i znajdź opcję licencji, rejestracji lub „Wpisz klucz”.",
+              "Wpisz klucz; aplikacja potwierdzi licencję i okres, który obejmuje."
+            ]
+          },
+          {
+            "title": "Okres i urządzenia",
+            "bullets": [
+              "Licencja obejmuje okres i liczbę urządzeń podane na stronie produktu, na przykład „1 rok · 3 urządzenia”.",
+              "Kiedy zaczyna się okres — od zakupu czy od aktywacji — decyduje producent. Jeśli strona produktu tego nie podaje, aktywuj wkrótce po zakupie.",
+              "Aby dodać kolejne urządzenie, zaloguj się na nim na to samo konto producenta. Usunięcie urządzenia na koncie producenta zwykle zwalnia miejsce.",
+              "Subskrypcje kupione tutaj obejmują podany okres i nie są odnawiane przez Tale Shop. Odnowienie u producenta to osobny zakup u niego."
+            ]
+          },
+          {
+            "title": "Jeśli aktywacja się nie powiedzie",
+            "bullets": [
+              "Sprawdź, czy jesteś we właściwym miejscu — klucz producenta nie działa w Microsoft Store i odwrotnie.",
+              "Wpisz klucz ręcznie zamiast wklejać, jeśli producent zgłasza nieprawidłowy format.",
+              "Otwórz zamówienie na swoim koncie i poproś o pomoc. Zweryfikujemy klucz i, jeśli jest wadliwy, wymienimy go lub zwrócimy pieniądze."
+            ]
+          }
+        ]
+      },
+      "refund-policy": {
+        "title": "Zasady zwrotów",
+        "shortDescription": "Kto może otrzymać zwrot i jak o niego poprosić.",
+        "lastUpdated": "Ostatnia aktualizacja: 1 marca 2025",
+        "intro": "Nasze zasady są proste: nieodsłonięte klucze zwykle podlegają zwrotowi, odsłonięte — nie, bo nie możemy już sprawdzić, czy nie zostały aktywowane.",
+        "sections": [
+          {
+            "title": "Podstawowe warunki",
+            "bullets": [
+              "Nieodsłonięte klucze zasadniczo podlegają zwrotowi.",
+              "Odsłonięte lub aktywowane klucze zazwyczaj nie podlegają zwrotowi.",
+              "Niektóre produkty mają dodatkowe ograniczenia wydawcy."
+            ]
+          },
+          {
+            "title": "Jak poprosić o zwrot",
+            "bullets": [
+              "Przejdź do Konto → Zamówienia i otwórz zamówienie, które chcesz zwrócić.",
+              "Wybierz „Poproś o zwrot” i krótko opisz powód.",
+              "Napiszemy do Ciebie, gdy rozpatrzymy prośbę."
+            ]
+          },
+          {
+            "title": "Czas realizacji",
+            "bullets": [
+              "Większość zwrotów jest rozpatrywana w ciągu 24–48 godzin.",
+              "Zatwierdzone zwroty trafiają na pierwotną metodę płatności.",
+              "Przetwarzanie w banku może potrwać 3–10 dni roboczych."
+            ]
+          }
+        ]
+      },
+      "payment-methods": {
+        "title": "Metody płatności",
+        "shortDescription": "Obsługiwane karty, regiony i wskazówki dotyczące kasy.",
+        "lastUpdated": "Ostatnia aktualizacja: 22 lutego 2025",
+        "intro": "Wszystko o płaceniu w Tale Shop: co akceptujemy, jak uniknąć nieudanych płatności i jak chronione są dane Twojej karty.",
+        "sections": [
+          {
+            "title": "Obsługiwane opcje",
+            "bullets": [
+              "Główne karty debetowe i kredytowe (Visa, Mastercard, AMEX).",
+              "Wybrane lokalne metody płatności, tam gdzie są dostępne.",
+              "Przelewy bankowe dostępne w wybranych regionach."
+            ]
+          },
+          {
+            "title": "Wskazówki przy kasie",
+            "bullets": [
+              "Podaj adres rozliczeniowy zgodny z danymi w banku.",
+              "Używaj stabilnego połączenia, aby uniknąć przekroczenia czasu.",
+              "Jeśli płatność się nie powiedzie, odczekaj kilka minut przed kolejną próbą."
+            ]
+          },
+          {
+            "title": "Bezpieczeństwo",
+            "bullets": [
+              "Płatności są szyfrowane i przetwarzane bezpiecznie.",
+              "Nigdy nie przechowujemy pełnych numerów kart na naszych serwerach.",
+              "Włącz 3D Secure lub weryfikację banku, gdy zostaniesz o to poproszony."
+            ]
+          }
+        ]
+      },
+      "regional-restrictions": {
+        "title": "Ograniczenia regionalne",
+        "shortDescription": "Gdzie klucz można aktywować i używać.",
+        "lastUpdated": "Ostatnia aktualizacja: 10 lutego 2025",
+        "intro": "Wydawcy mogą ograniczać klucze do określonych regionów. Minuta sprawdzenia przed zakupem oszczędza zgłoszenie do pomocy po nim.",
+        "sections": [
+          {
+            "title": "Skąd ograniczenia",
+            "bullets": [
+              "Wydawcy mogą ograniczać klucze do określonych regionów.",
+              "Ceny i zasady licencjonowania różnią się w zależności od kraju.",
+              "Informacje o regionie pokazujemy na stronie każdego produktu."
+            ]
+          },
+          {
+            "title": "Jak sprawdzić swój region",
+            "bullets": [
+              "Porównaj region produktu z krajem swojego konta.",
+              "Sprawdź region sklepu platformy przed aktywacją.",
+              "W razie wątpliwości napisz do pomocy, zanim odsłonisz klucz."
+            ]
+          },
+          {
+            "title": "Jeśli pojawi się błąd",
+            "bullets": [
+              "Nie próbuj w kółko — błędy mogą tymczasowo zablokować klucz.",
+              "Zrób zrzut ekranu komunikatu o błędzie dla pomocy.",
+              "Zweryfikujemy region i doradzimy kolejne kroki."
+            ]
+          }
+        ]
+      },
+      "account-recovery": {
+        "title": "Odzyskiwanie konta i 2FA",
+        "shortDescription": "Co zrobić, gdy stracisz dostęp do aplikacji uwierzytelniającej lub kodów zapasowych.",
+        "lastUpdated": "Ostatnia aktualizacja: 6 lipca 2026",
+        "intro": "Zgubiłeś telefon z aplikacją uwierzytelniającą? Skończyły się kody zapasowe? Bez paniki — najpierw wypróbuj opcje samoobsługowe, a jeśli nic nie zadziała, poproś o ręczne odzyskanie.",
+        "callout": {
+          "title": "Jak chronimy odzyskiwanie",
+          "text": "Pomoc nigdy nie wyłącza uwierzytelniania dwuskładnikowego natychmiast. Każde zgłoszenie przechodzi weryfikację tożsamości i jest celowo opóźniane — właśnie to powstrzymuje atakujących przed kradzieżą kont przez podszywanie się pod właścicieli."
+        },
+        "action": "Otwórz formularz odzyskiwania",
+        "sections": [
+          {
+            "title": "Najpierw spróbuj tego",
+            "intro": "Większość blokad rozwiązuje się w minutę bez kontaktu z pomocą:",
+            "bullets": [
+              "Użyj kodu zapasowego: na stronie logowania wpisz hasło, wybierz „Spróbuj inaczej” i „Kody odzyskiwania”. Każdy kod działa tylko raz.",
+              "Nadal jesteś zalogowany na innym urządzeniu lub w innej przeglądarce? Otwórz tam Konto → Bezpieczeństwo i skonfiguruj ponownie uwierzytelnianie dwuskładnikowe.",
+              "Zmieniłeś telefon? Przywrócenie aplikacji uwierzytelniającej z jej własnej kopii zapasowej (np. synchronizacja Google Authenticator) zwykle przywraca kody."
+            ]
+          },
+          {
+            "title": "Poproś o odzyskanie konta",
+            "intro": "Jeśli nic z powyższego nie działa, poproś nas o zresetowanie drugiego składnika:",
+            "bullets": [
+              "Wypełnij formularz odzyskiwania (przycisk powyżej) — działa bez logowania.",
+              "Podaj e-mail konta, jeden lub dwa niedawne numery zamówień i ostatnie 4 cyfry karty, którą płaciłeś.",
+              "Weryfikujemy własność na podstawie historii zamówień i płatności, więc spodziewaj się dodatkowych pytań.",
+              "Odzyskiwanie obejmuje okres oczekiwania do 72 godzin. Na każdym etapie powiadamiamy e-mail konta, a zgłoszenie możesz anulować z dowolnej aktywnej sesji.",
+              "Po weryfikacji resetujemy drugi składnik. Przy kolejnym logowaniu ustawisz nowe hasło i ponownie włączysz 2FA."
+            ]
+          },
+          {
+            "title": "O co poprosimy — a o co nie",
+            "bullets": [
+              "Możemy poprosić o: e-mail konta, niedawne numery zamówień, ostatnie 4 cyfry i dokładne kwoty niedawnych płatności.",
+              "Nigdy nie poprosimy o hasło, pełny numer karty ani kody z aplikacji uwierzytelniającej.",
+              "Jeśli ktoś podający się za Tale Shop o to prosi, to oszustwo — zgłoś nam to."
+            ],
+            "callout": {
+              "text": "Zgłoszenia odzyskiwania omawiamy wyłącznie przez adresy e-mail związane ze zgłoszeniem. Nigdy nie obsługujemy ich na czacie ani w mediach społecznościowych."
+            }
+          },
+          {
+            "title": "Jak uniknąć ponownej blokady",
+            "bullets": [
+              "Wygeneruj nowy zestaw kodów zapasowych i przechowuj go offline — wydrukuj lub zapisz w menedżerze haseł.",
+              "Miej drugie zaufane urządzenie zalogowane na konto.",
+              "Utrzymuj e-mail konta zweryfikowany i aktualny — to kanał, którym potwierdzamy odzyskiwanie."
+            ]
+          }
+        ]
+      },
+      "terms-of-sale": {
+        "title": "Warunki sprzedaży",
+        "shortDescription": "Co kupujesz, jak jest dostarczane i na jakich zasadach.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "Te warunki opisują, co dzieje się, gdy kupujesz klucz do gry lub programu w Tale Shop: co dokładnie otrzymujesz, kiedy jest dostarczane i za co odpowiada każda ze stron.",
+        "sections": [
+          {
+            "title": "Od kogo kupujesz",
+            "bullets": [
+              "Tale Shop prowadzi {{entity}}; kraj rejestracji: {{registrationCountry}}, numer rejestracyjny {{registrationNumber}}.",
+              "Adres siedziby: {{address}}.",
+              "W każdej sprawie dotyczącej zamówienia napisz na {{supportEmail}} — ten adres monitoruje nasz zespół pomocy."
+            ]
+          },
+          {
+            "title": "Co kupujesz",
+            "intro": "To jest część, którą ludzie najczęściej rozumieją źle, dlatego jest pierwsza.",
+            "bullets": [
+              "Kupujesz klucz licencyjny, a nie kopię samej gry. Klucz odblokowuje grę na platformie, do której należy.",
+              "Grę dostarcza i uruchamia ta platforma — Steam, Epic Games lub inny sklep podany na stronie produktu. Nie jesteśmy ani jej wydawcą, ani operatorem.",
+              "Gdy aktywujesz klucz, do korzystania z gry ma zastosowanie umowa samej platformy. Nie możemy jej zmienić ani uchylić.",
+              "W przypadku programów kupujesz klucz licencyjny na okres, liczbę urządzeń i edycję podane na stronie produktu. Program dostarcza jego producent, a po aktywacji obowiązuje jego umowa licencyjna.",
+              "Subskrypcja programu obejmuje opłacony okres. Nie jest odnawiana automatycznie przez Tale Shop."
+            ]
+          },
+          {
+            "title": "Gdzie działa klucz",
+            "bullets": [
+              "Niektóre klucze są ograniczone do regionu. Strona produktu pokazuje to przed zakupem, na podstawie wybranego przez Ciebie kraju.",
+              "Klucz użyty poza swoim regionem nie aktywuje się. Tak wydał go wydawca — to nie jest wada.",
+              "Wybierz kraj poprawnie przy kasie. Jeśli jest błędny, otrzymany klucz może być bezużyteczny."
+            ],
+            "callout": {
+              "text": "Jak działają regiony i jak sprawdzić, czy klucz Ci pasuje, wyjaśniono w Ograniczeniach regionalnych."
+            }
+          },
+          {
+            "title": "Ceny, waluta i podatki",
+            "bullets": [
+              "Ceny są pokazywane w wybranej walucie i zawierają już podatek, który musimy pobrać (np. VAT). Podatek nigdy nie jest doliczany dodatkowo: kasa pokazuje, jaką część sumy stanowi, na podstawie Twojego kraju.",
+              "Do zamówienia ma zastosowanie cena pokazana w momencie płatności — późniejsze zmiany cen nie wpływają na zrealizowane zamówienie.",
+              "Twój bank lub dostawca płatności może doliczyć własną opłatę za przewalutowanie. Nie otrzymujemy jej i nie możemy jej zwrócić."
+            ]
+          },
+          {
+            "title": "Dostawa",
+            "bullets": [
+              "Klucze dostarczamy elektronicznie. Nic nie jest wysyłane fizycznie.",
+              "Po udanej płatności klucz pojawia się na Twoim koncie i jest wysyłany na adres e-mail użyty w zamówieniu.",
+              "Jeśli zamawiałeś jako gość z niezweryfikowanym adresem, wstrzymujemy klucz, dopóki nie potwierdzisz adresu linkiem z wiadomości."
+            ]
+          },
+          {
+            "title": "Natychmiastowa dostawa i prawo odstąpienia",
+            "intro": "Towary cyfrowe są przekazywane w momencie płatności, a to zmienia, co można później cofnąć.",
+            "bullets": [
+              "Przed zapłatą potwierdzasz, że chcesz otrzymać klucz natychmiast.",
+              "Potwierdzając to, akceptujesz, że po odsłonięciu klucza nie można już odstąpić od zakupu — klucza nie da się odebrać ani odsprzedać.",
+              "Dopóki klucz nie zostanie odsłonięty, obowiązują nasze Zasady zwrotów.",
+              "{{withdrawalWording}}"
+            ],
+            "callout": {
+              "text": "Zapisujemy to potwierdzenie razem z zamówieniem: datę, dokładne brzmienie, które Ci pokazano, i jego wersję."
+            }
+          },
+          {
+            "title": "Jeśli klucz nie działa",
+            "bullets": [
+              "Najpierw sprawdź przewodnik aktywacji (dla programów — Aktywacja programów) — większość problemów to zła platforma lub literówka.",
+              "Otwórz zamówienie na koncie i poproś o pomoc albo napisz na {{supportEmail}}, podając numer zamówienia.",
+              "Weryfikujemy klucz po naszej stronie. Jeśli był już użyty, nieprawidłowy lub wydany na zły region, otrzymasz wymianę lub zwrot.",
+              "Na zgłoszenia zwykle odpowiadamy w ciągu 24–48 godzin."
+            ]
+          },
+          {
+            "title": "Weryfikacja zamówień",
+            "bullets": [
+              "Możemy sprawdzić zamówienie przed wydaniem klucza, jeśli płatność wygląda nietypowo.",
+              "Możemy poprosić o potwierdzenie adresu e-mail lub użytej płatności.",
+              "Jeśli nie możemy zakończyć weryfikacji, anulujemy zamówienie i zwracamy pełną kwotę. Nie pobieramy opłaty za anulowane zamówienie."
+            ]
+          },
+          {
+            "title": "Twoje konto i uczciwe korzystanie",
+            "bullets": [
+              "Zachowaj dane logowania dla siebie. Zamówienia złożone z Twojego konta traktujemy jako Twoje.",
+              "Klucze kupione tutaj są do użytku własnego. Hurtowe zakupy w celu odsprzedaży nie są dozwolone bez pisemnej umowy z nami.",
+              "Zakwestionowanie płatności w banku zamiast kontaktu z nami może zawiesić konto na czas wyjaśnień. Rozmowa z nami jest szybsza i zwykle rozwiązuje sprawę."
+            ]
+          },
+          {
+            "title": "Za co odpowiadamy",
+            "bullets": [
+              "Odpowiadamy za dostarczenie ważnego klucza do kupionego produktu, w regionie podanym na stronie produktu.",
+              "Nie odpowiadamy za samą grę — jej zawartość, aktualizacje, serwery ani usunięcie jej przez wydawcę z platformy.",
+              "W przypadku programów nie odpowiadamy za działanie programu, jego aktualizacje ani zakończenie wsparcia przez producenta. Sprawdź wymagania systemowe przed zakupem: odsłoniętego klucza nie można zwrócić dlatego, że program nie pasuje do Twojego urządzenia.",
+              "Nie odpowiadamy za straty, których nie mogliśmy rozsądnie przewidzieć, ani za utratę lub zablokowanie konta platformy przez jej operatora.",
+              "{{liabilityLimits}}"
+            ]
+          },
+          {
+            "title": "Prawo i spory",
+            "bullets": [
+              "Te warunki podlegają prawu kraju: {{governingLawCountry}}.",
+              "Jeśli coś pójdzie nie tak, najpierw napisz do nas — {{supportEmail}}. Większość sporów kończy się na tym etapie.",
+              "{{disputeForum}}"
+            ]
+          },
+          {
+            "title": "Zmiany tych warunków",
+            "bullets": [
+              "Możemy aktualizować te warunki; obowiązuje wersja opublikowana tutaj.",
+              "Do Twojego zamówienia mają zastosowanie warunki opublikowane w chwili jego złożenia.",
+              "O istotnych zmianach informujemy na stronie przed ich wejściem w życie."
+            ]
+          }
+        ]
+      },
+      "privacy-policy": {
+        "title": "Polityka prywatności",
+        "shortDescription": "Co zbieramy, po co i o co możesz nas poprosić.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "Ta polityka opisuje dane, którymi Tale Shop faktycznie operuje: co przechowujemy, dlaczego, kto jeszcze je widzi i jak możesz je usunąć.",
+        "sections": [
+          {
+            "title": "Kto odpowiada za Twoje dane",
+            "bullets": [
+              "Administratorem jest {{entity}}, {{address}}.",
+              "Pytania o Twoje dane kieruj na {{privacyEmail}}.",
+              "{{dataProtectionOfficer}}"
+            ]
+          },
+          {
+            "title": "Co zbieramy",
+            "intro": "Tylko to, czego sklep potrzebuje, aby sprzedać Ci klucz i udowodnić, że to zrobił.",
+            "bullets": [
+              "Twój adres e-mail — tam trafiają klucze i paragony, i to on identyfikuje konto.",
+              "Twoje zamówienia: co kupiłeś, kiedy, w jakiej walucie, dla jakiego kraju i jakie klucze Ci wydano.",
+              "Twoje potwierdzenie natychmiastowej dostawy kluczy wraz z brzmieniem, które Ci pokazano.",
+              "Dane techniczne: adres IP, informacje o przeglądarce i urządzeniu oraz otwierane strony.",
+              "Rozmowy z pomocą i wszystko, co w nich przesyłasz."
+            ],
+            "callout": {
+              "text": "Nigdy nie widzimy ani nie przechowujemy numeru Twojej karty. Dane karty trafiają bezpośrednio do dostawcy płatności; otrzymujemy tylko wynik płatności."
+            }
+          },
+          {
+            "title": "Na jakiej podstawie z nich korzystamy",
+            "bullets": [
+              "W celu wykonania umowy: bez e-maila i zamówienia nie możemy dostarczyć klucza ani udowodnić, że to zrobiliśmy.",
+              "W celu wypełnienia obowiązków prawnych: dokumentacja księgowa i podatkowa musi być przechowywana przez określony czas.",
+              "W naszym uzasadnionym interesie, aby zapobiegać oszustwom i utrzymać sklep w działaniu.",
+              "Za Twoją zgodą — do analityki, i tylko do niej."
+            ]
+          },
+          {
+            "title": "Cookies i analityka",
+            "bullets": [
+              "Cookies potrzebne do logowania i koszyka działają bez pytania — bez nich sklep nie może funkcjonować.",
+              "Google Analytics 4 ładuje się dopiero po zaakceptowaniu cookies analitycznych. Odmów, a nie załaduje się wcale.",
+              "Wybór możesz zmienić w dowolnej chwili w Ustawieniach cookies w stopce.",
+              "{{analyticsRetention}}"
+            ]
+          },
+          {
+            "title": "Kto jeszcze przetwarza Twoje dane",
+            "intro": "Te firmy działają na nasze polecenie i wyłącznie w celach wymienionych tutaj.",
+            "bullets": [
+              "Dostawca płatności — przetwarza płatność i wysyła paragon: {{paymentProvider}}.",
+              "Dostawca logowania — przechowuje dane uwierzytelniające konta: {{identityProvider}}.",
+              "Dostawca poczty — dostarcza klucze, potwierdzenia i newslettery: {{emailProvider}}.",
+              "Hosting — utrzymuje sklep i jego bazę danych: {{hostingProvider}}.",
+              "{{dataTransfers}}"
+            ]
+          },
+          {
+            "title": "Jak długo je przechowujemy",
+            "bullets": [
+              "Zamówienia i wydane do nich klucze: {{orderRetention}}.",
+              "Dane konta: dopóki konto istnieje, oraz {{accountRetention}} po jego usunięciu.",
+              "Rozmowy z pomocą: {{supportRetention}}.",
+              "Zdarzenia czytania bloga są usuwane automatycznie po 180 dniach."
+            ]
+          },
+          {
+            "title": "O co możesz nas poprosić",
+            "bullets": [
+              "Otrzymać kopię danych, które o Tobie przechowujemy.",
+              "Poprawić wszystko, co jest błędne.",
+              "Usunąć konto i dane, które nie są wymagane do celów księgowych.",
+              "Wycofać zgodę na analitykę — w dowolnej chwili, bez podawania powodu.",
+              "Złożyć skargę do {{supervisoryAuthority}}, jeśli uważasz, że źle obchodzimy się z Twoimi danymi."
+            ],
+            "callout": {
+              "text": "Napisz na {{privacyEmail}}. Odpowiadamy w ciągu {{dataRequestDays}} dni."
+            }
+          },
+          {
+            "title": "Zmiany tej polityki",
+            "bullets": [
+              "Obowiązuje wersja opublikowana tutaj, z datą na górze.",
+              "O istotnych zmianach informujemy na stronie przed ich wejściem w życie."
+            ]
+          }
+        ]
+      },
+      "cookie-policy": {
+        "title": "Polityka cookies",
+        "shortDescription": "Co przechowujemy w Twojej przeglądarce i co możesz wyłączyć.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "Tale Shop przechowuje w Twojej przeglądarce bardzo niewiele i nic do celów reklamowych. Ta strona wymienia, co jest przechowywane, dlaczego i co się dzieje, gdy odmówisz.",
+        "sections": [
+          {
+            "title": "Liczą się nie tylko cookies",
+            "intro": "Większość tego, co przechowuje sklep, to wcale nie cookies, lecz pamięć przeglądarki, która nigdy nie opuszcza urządzenia i nie jest wysyłana z każdym żądaniem. Przepisy traktują jedno i drugie tak samo, więc wymieniamy tu oba.",
+            "bullets": [
+              "Przy pierwszej wizycie, zanim się zalogujesz lub cokolwiek zaakceptujesz, sklep nie ustawia żadnych cookies.",
+              "Co przechowuje lokalnie: Twój koszyk, wybrany język, walutę i kraj oraz anonimowy identyfikator, który oddziela Twoje zdarzenia czytania i lejka od innych odwiedzających.",
+              "Cookies pojawiają się później: przy logowaniu i — tylko jeśli na to pozwolisz — po uruchomieniu analityki."
+            ]
+          },
+          {
+            "title": "Ściśle niezbędne — nie można wyłączyć",
+            "intro": "Bez nich sklep nie może zrobić tego, o co go poprosiłeś.",
+            "bullets": [
+              "Sesja logowania: ustawiana przez naszego dostawcę logowania przy zalogowaniu i usuwana przy wylogowaniu.",
+              "Koszyk: to, co do niego włożyłeś, zachowane, aby przetrwało odświeżenie strony.",
+              "Twoje wybory: język, waluta i kraj, aby sklep nie pytał ponownie na każdej stronie.",
+              "Sam Twój wybór dotyczący cookies: bez jego zapisania baner pytałby na każdej stronie."
+            ]
+          },
+          {
+            "title": "Analityka — tylko jeśli pozwolisz",
+            "bullets": [
+              "Używamy Google Analytics 4, aby widzieć, z których stron ludzie korzystają i gdzie utykają.",
+              "Nie ładuje się wcale, dopóki nie zaakceptujesz cookies analitycznych. Odmów, a skrypt nigdy nie zostanie pobrany, więc żadne cookies analityczne nie zostaną ustawione.",
+              "Możesz zmienić zdanie w dowolnej chwili w Ustawieniach cookies w stopce. Wycofanie zgody zatrzymuje dalsze zbieranie.",
+              "Nie używamy cookies do reklam i nie sprzedajemy tego, co zbiera analityka."
+            ],
+            "callout": {
+              "text": "Co zbiera analityka i jak długo jest to przechowywane, opisano w Polityce prywatności."
+            }
+          },
+          {
+            "title": "Jak tym zarządzać",
+            "bullets": [
+              "Otwórz Ustawienia cookies w stopce, aby przejrzeć lub zmienić wybór dotyczący analityki.",
+              "Użyj ustawień przeglądarki, aby usunąć to, co już zapisano — sklep potraktuje Cię potem jak nowego odwiedzającego.",
+              "Wylogowanie usuwa sesję logowania."
+            ]
+          }
+        ]
+      },
+      "cashback-terms": {
+        "title": "Warunki cashbacku",
+        "shortDescription": "Jak cashback jest naliczany, wstrzymywany, wydawany i odbierany.",
+        "lastUpdated": "Ostatnia aktualizacja: 14 września 2026",
+        "intro": "Cashback to kredyt sklepowy, nie pieniądze: można go wydać na zamówienia w {{entity}}, ale nie można go wypłacić, przekazać ani wymienić na gotówkę. Te warunki mówią dokładnie, kiedy się pojawia, kiedy można go użyć i kiedy znika.",
+        "sections": [
+          {
+            "title": "Jak jest naliczany",
+            "bullets": [
+              "Cashback otrzymują zalogowani klienci. Zamówienia bez konta (jako gość) go nie naliczają, nawet jeśli później powstanie konto z tym samym e-mailem.",
+              "Każde zamówienie opłacone kartą na stronie nalicza cashback według procentu Twojego poziomu w chwili zamówienia. Zamówienia opłacone kryptowalutą lub przez bota Telegram na razie go nie naliczają.",
+              "Procent stosuje się do kwoty faktycznie zapłaconej, po zniżkach i kodach promocyjnych. Nasze ceny zawierają podatek, więc podatek nie jest od tej kwoty odejmowany.",
+              "Część zamówienia opłacona cashbackiem nic nie nalicza — cashback nie nalicza cashbacku.",
+              "Twój poziom zależy wyłącznie od łącznych wydatków na kwalifikujące się zamówienia. Zwrócone zamówienia się nie liczą i nic innego go nie podnosi ani nie obniża."
+            ]
+          },
+          {
+            "title": "Kiedy możesz go wydać",
+            "intro": "{{cashbackHoldRule}}",
+            "bullets": [
+              "W czasie wstrzymania widnieje jako oczekujący i nie można go wydać.",
+              "Wstrzymanie obejmuje okno, w którym zamówienie można jeszcze zwrócić lub obciążyć zwrotnie.",
+              "Po zakończeniu wstrzymania kwota staje się dostępna i można ją przeznaczyć na dowolne zamówienie opłacane kartą na stronie.",
+              "Cashback łączy się ze zniżkami i kodami promocyjnymi. Może pokryć większość zamówienia, ale co najmniej {{cashbackMinCardPayment}} (lub równowartość w walucie zamówienia) zawsze płaci się kartą.",
+              "Saldo prowadzone jest w dolarach amerykańskich. W innej walucie jest pokazywane i wydawane po bieżącym kursie, więc widoczna kwota może się nieco zmieniać wraz z kursem."
+            ]
+          },
+          {
+            "title": "Kiedy jest odbierany",
+            "bullets": [
+              "Jeśli zamówienie zostanie zwrócone lub cofnięte, cashback naliczony za nie jest odbierany, a cashback użyty do zapłaty za to zamówienie wraca na saldo.",
+              "Częściowy zwrot odbiera proporcjonalną część.",
+              "Jeśli cashback został już wydany, saldo może spaść do zera — nigdy poniżej, i nie poprosimy o jego zwrot.",
+              "Cashback uzyskany przez nadużycie programu może zostać anulowany razem z kontem."
+            ]
+          },
+          {
+            "title": "Wygasanie",
+            "bullets": [
+              "{{cashbackExpiryRule}}",
+              "Każda kwota wygasa według własnego harmonogramu; wydanie części nie resetuje terminu reszty.",
+              "Najstarszy cashback wydawany jest pierwszy, więc nic nie wygasa, gdy używany jest nowszy kredyt.",
+              "{{cashbackEmailsRule}}"
+            ]
+          },
+          {
+            "title": "Zmiany programu",
+            "bullets": [
+              "Procenty i progi mogą się zmieniać; naliczony już cashback zachowuje warunki, na których został uzyskany.",
+              "Jeśli program zostanie zakończony, będziesz mieć co najmniej 30 dni na wydanie posiadanego salda."
+            ],
+            "callout": {
+              "title": "Cashback to nie pieniądze",
+              "text": "To zniżka na przyszłe zamówienia w {{entity}}. Nie można go wypłacić, przenieść na inne konto ani wymienić na gotówkę i nie jest instrumentem płatniczym."
+            }
+          }
+        ]
+      },
+      "legal-notice": {
+        "title": "Nota prawna",
+        "shortDescription": "Kto prowadzi ten sklep i jak się z nim skontaktować.",
+        "lastUpdated": "{{effectiveDate}}",
+        "intro": "Dane firmy stojącej za Tale Shop w jednym miejscu — abyś zawsze wiedział, z kim masz do czynienia i gdzie pisać.",
+        "sections": [
+          {
+            "title": "Sprzedawca",
+            "bullets": [
+              "{{entity}}; kraj rejestracji: {{registrationCountry}}.",
+              "Numer rejestracyjny: {{registrationNumber}}.",
+              "Adres siedziby: {{address}}."
+            ]
+          },
+          {
+            "title": "Jak się z nami skontaktować",
+            "bullets": [
+              "Zamówienia i pomoc: {{supportEmail}}.",
+              "Pytania o dane osobowe: {{privacyEmail}}.",
+              "Prawo właściwe: {{governingLawCountry}}."
+            ]
+          },
+          {
+            "title": "Co jeszcze przeczytać",
+            "bullets": [
+              "Warunki sprzedaży — co kupujesz i na jakich zasadach.",
+              "Polityka prywatności — co robimy z Twoimi danymi.",
+              "Polityka cookies — co przechowujemy w Twojej przeglądarce.",
+              "Zasady zwrotów — kiedy pieniądze wracają."
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,10 +1,15 @@
 export type BlogStatus = "DRAFT" | "PUBLISHED" | "SCHEDULED" | "ARCHIVED";
 
+/** Переводы поля админки: язык (ru/uk/pl) → текст; английское поле рядом — основное. */
+export type I18nText = Record<string, string>;
+
 export type BlogPost = {
   id: string;
   slug: string;
   title: string;
   excerpt: string;
+  titleI18n?: I18nText | null;
+  excerptI18n?: I18nText | null;
   coverAssetId?: string;
   coverUrl?: string;
   imageUrl?: string;
@@ -16,6 +21,10 @@ export type BlogPost = {
   authorId?: string;
   authorName?: string;
   tags: string[];
+  /** Переводы тегов по позициям (язык → список той же длины) — только в админке. */
+  tagsI18n?: Record<string, string[]> | null;
+  /** Подписи тегов на языке сайта по позициям — приходят с витринных маршрутов. */
+  tagLabels?: string[];
   topics?: string[];
   readingTime?: number;
   currentVersionId: string;
@@ -34,6 +43,10 @@ export type BlogPostVersion = {
   excerpt: string;
   contentHtml?: string;
   contentMarkdown?: string;
+  titleI18n?: I18nText | null;
+  excerptI18n?: I18nText | null;
+  contentMarkdownI18n?: I18nText | null;
+  contentHtmlI18n?: I18nText | null;
   coverAssetId?: string;
   createdAt: string;
   createdBy?: string;
@@ -48,6 +61,7 @@ export type BlogListItem = {
   coverUrl?: string;
   imageUrl?: string;
   tags: string[];
+  tagLabels?: string[];
   publishedAt?: string;
   readingTime?: number;
   viewsCount?: number;

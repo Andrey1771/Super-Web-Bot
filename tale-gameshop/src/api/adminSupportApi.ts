@@ -1,12 +1,8 @@
-import container from '../inversify.config';
-import IDENTIFIERS from '../constants/identifiers';
-import type { IApiClient } from '../iterfaces/i-api-client';
 import type { AuthorType, SupportMessage, TicketStatus } from '../types/support';
+import { apiClient } from './client';
 
 // Канал поддержки для агентов (/api/support/admin): всё, что отправлено отсюда, авторится как Support.
 // Доступ — политика SupportAgent (роли admin/support).
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 
 const statusFromApi = (status: string | number): TicketStatus => {
     if (typeof status === 'number') {

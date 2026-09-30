@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using SuperBot.WebApi.Newsletter;
+using SuperBot.Common.Auth;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -38,7 +40,7 @@ public partial class NewsletterController : ControllerBase
         }
 
         // Простой анти-спам: живому человеку хватает нескольких подписок с одного IP в час.
-        var cacheKey = $"newsletter-subscribe:{GetClientIp()}";
+        var cacheKey = $"newsletter-subscribe:{ClientAddress.ResolveOrUnknown(HttpContext)}";
         _cache.TryGetValue(cacheKey, out int attempts);
         if (attempts >= MaxRequestsPerIpPerHour)
         {
@@ -59,8 +61,9 @@ public partial class NewsletterController : ControllerBase
             locale = locale[..8];
         }
 
+        // Галочка «письма о скидках»: не пришла — считаем согласием, как и было до неё.
         var status = await _newsletter.SubscribeAsync(
-            email, source, locale, GetUserId(), GetUserEmail(), ct);
+            email, source, locale, request.DealAlerts ?? true, User.GetUserId(), GetUserEmail(), ct);
 
         // "pending" → фронт просит проверить почту; "confirmed" → подписка активна сразу.
         return Ok(new { status });
@@ -100,6 +103,8 @@ public partial class NewsletterController : ControllerBase
         {
             subscribed = subscriber?.Status == SubscriberStatus.Confirmed,
             status = subscriber?.Status,
+            // Подписки без явного выбора считаются согласными — так их и трактует рассылка.
+            dealAlerts = subscriber?.DealAlerts != false,
         });
     }
 
@@ -109,44 +114,24 @@ public partial class NewsletterController : ControllerBase
     public async Task<IActionResult> SetMy([FromBody] SetMyRequest request, CancellationToken ct)
     {
         var email = GetUserEmail();
-        var userId = GetUserId();
+        var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(userId))
         {
             return BadRequest(new { error = "Your account has no email address." });
         }
 
         var subscriber = await _newsletter.SetForAccountAsync(
-            email.Trim().ToLowerInvariant(), userId, request.Subscribed, ct);
+            email.Trim().ToLowerInvariant(), userId, request.Subscribed, request.DealAlerts, ct);
         return Ok(new
         {
             subscribed = subscriber.Status == SubscriberStatus.Confirmed,
             status = subscriber.Status,
+            dealAlerts = subscriber.DealAlerts != false,
         });
     }
 
     private string? GetUserEmail() =>
         User.FindFirstValue("email") ?? User.FindFirstValue(ClaimTypes.Email);
-
-    private string? GetUserId() =>
-        User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-    private string GetClientIp()
-    {
-        // За Cloudflare реальный адрес приходит в CF-Connecting-IP; дальше — обычная цепочка.
-        var cfIp = Request.Headers["CF-Connecting-IP"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(cfIp))
-        {
-            return cfIp.Trim();
-        }
-
-        var forwarded = Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(forwarded))
-        {
-            return forwarded.Split(',')[0].Trim();
-        }
-
-        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    }
 
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
     private static partial Regex EmailRegex();
@@ -156,6 +141,9 @@ public partial class NewsletterController : ControllerBase
         public string? Email { get; set; }
         public string? Source { get; set; }
         public string? Locale { get; set; }
+
+        /// <summary>Слать ли дайджест новых скидок. null — форма не спрашивала, значит да.</summary>
+        public bool? DealAlerts { get; set; }
     }
 
     public class TokenRequest
@@ -166,5 +154,8 @@ public partial class NewsletterController : ControllerBase
     public class SetMyRequest
     {
         public bool Subscribed { get; set; }
+
+        /// <summary>Письма о новых скидках. null — настройка не менялась, прежний выбор остаётся.</summary>
+        public bool? DealAlerts { get; set; }
     }
 }

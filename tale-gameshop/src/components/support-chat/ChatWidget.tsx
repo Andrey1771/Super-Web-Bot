@@ -1,4 +1,6 @@
+import { useSitePreferences } from "../../context/site-preferences";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { analyticsClient } from "../../utils/analytics-client";
 import ChatLauncherButton from "./ChatLauncherButton";
 import ChatWindow from "./ChatWindow";
 import "./support-chat.css";
@@ -153,7 +155,9 @@ const ChatWidget: React.FC = () => {
     loadingHistoryRef.current = loadingHistory;
   }, [loadingHistory]);
 
-  const lang = useMemo(detectSupportLang, []);
+  // Язык сайта из настроек: переключение в шапке сразу перерисовывает виджет.
+  const { lang: siteLang } = useSitePreferences();
+  const lang = useMemo(detectSupportLang, [siteLang]);
   const dict = useMemo(() => getSupportDict(lang), [lang]);
 
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -456,6 +460,25 @@ const ChatWidget: React.FC = () => {
             return next;
           });
           syncUnread(fresh);
+
+          /**
+           * Ответил специалист — значит, диалог уже у него, а не в очереди.
+           *
+           * Опрос возит только сообщения, состояние диалога в нём не приходит: клиент так и
+           * оставался с надписью «ждите специалиста» и «подключаю специалиста» в шапке, уже
+           * переписываясь с живым человеком. Статус ставим сразу по автору сообщения, а
+           * следом перечитываем диалог с сервера — чтобы имя специалиста и прочее были не
+           * догадкой, а тем, что записано у него.
+           */
+          const agentMessage = fresh.find((message) => message.role === "agent");
+          if (agentMessage) {
+            setSession((prev) =>
+              prev && prev.status !== "assigned" && prev.status !== "closed"
+                ? { ...prev, status: "assigned", assignedAgentName: agentMessage.authorName ?? prev.assignedAgentName }
+                : prev
+            );
+            void loadSession(sessionId);
+          }
         }
       } catch (err) {
         if (!handleSessionGone(err)) {
@@ -464,7 +487,7 @@ const ChatWidget: React.FC = () => {
       }
     }, 3000);
     return () => window.clearInterval(interval);
-  }, [handleSessionGone, isClosed, sessionId, syncUnread]);
+  }, [handleSessionGone, isClosed, loadSession, sessionId, syncUnread]);
 
   const ensureSession = useCallback(async () => {
     if (sessionId) {
@@ -674,6 +697,9 @@ const ChatWidget: React.FC = () => {
       setError(null);
       try {
         const sessionId = await ensureSession();
+        // Передача живому человеку — признание, что бот не справился. Самый ценный сигнал
+        // из чата: по нему видно, чего не хватает в справке и на самих страницах.
+        analyticsClient.trackEvent('support_chat_handoff', { page_path: window.location.pathname });
         const response = await requestHandoff(sessionId, {
           note: note || undefined,
           email: contactForm.email.trim() || undefined,
@@ -723,7 +749,14 @@ const ChatWidget: React.FC = () => {
   );
 
   const onToggle = () => {
-    setIsOpen((prev) => !prev);
+    setIsOpen((prev) => {
+      // Только открытие: закрытие виджета ни о чём не говорит. Страницу передаём, потому что
+      // всплеск обращений на одном экране означает, что там что-то непонятно.
+      if (!prev) {
+        analyticsClient.trackEvent('support_chat_opened', { page_path: window.location.pathname });
+      }
+      return !prev;
+    });
     setUnreadCount(0);
   };
 

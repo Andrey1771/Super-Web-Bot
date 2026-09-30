@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React from 'react';
 
 type DangerZoneCardProps = {
@@ -6,21 +7,22 @@ type DangerZoneCardProps = {
 };
 
 const DangerZoneCard: React.FC<DangerZoneCardProps> = ({onDelete, onDownloadReport}) => {
+    const {t} = useTranslation();
     return (
         <div className="security-section" data-testid="security-danger">
-            <h3>Danger zone</h3>
+            <h3>{t('account.security.danger.title')}</h3>
             <div className="card security-danger-card">
                 <div className="security-danger-actions">
                     <button type="button" className="btn btn-outline security-danger-btn" onClick={onDelete}>
-                        Delete account
+                        {t('account.security.danger.delete')}
                     </button>
                     <button type="button" className="btn btn-outline security-secondary-btn" onClick={onDownloadReport}>
-                        Download security report
+                        {t('account.security.danger.downloadReport')}
                     </button>
                 </div>
                 <div className="security-danger-text">
-                    <p>Permanently delete your account and data. This action cannot be undone.</p>
-                    <p>Proceed with caution and make sure you have downloaded your security report.</p>
+                    <p>{t('account.security.danger.text1')}</p>
+                    <p>{t('account.security.danger.text2')}</p>
                 </div>
             </div>
         </div>

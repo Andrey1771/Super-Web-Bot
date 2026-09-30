@@ -27,7 +27,11 @@ const Composer: React.FC<ComposerProps> = ({ value, onChange, onSend, disabled, 
     // scrollHeight не включает рамку, а высота при border-box — включает: без поправки
     // поле каждый раз оказывалось на пару пикселей ниже нужного и давало лишнюю прокрутку.
     const border = textarea.offsetHeight - textarea.clientHeight;
-    textarea.style.height = `${Math.min(textarea.scrollHeight + border, MAX_INPUT_HEIGHT)}px`;
+    const next = Math.min(textarea.scrollHeight + border, MAX_INPUT_HEIGHT);
+    textarea.style.height = `${next}px`;
+    // Полоса прокрутки нужна только когда поле упёрлось в предел высоты. Без этого браузер
+    // рисовал её и у пустого поля — рядом с кнопкой отправки маячил посторонний ползунок.
+    textarea.style.overflowY = next >= MAX_INPUT_HEIGHT ? "auto" : "hidden";
   }, [value]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {

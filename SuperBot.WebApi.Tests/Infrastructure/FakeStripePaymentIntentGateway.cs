@@ -21,6 +21,11 @@ public class FakeStripePaymentIntentGateway : IStripePaymentIntentGateway
     /// <summary>Намерения, по которым запрашивался возврат, — с ключами идемпотентности.</summary>
     public readonly ConcurrentDictionary<string, string> RefundedIntents = new();
 
+    /// <summary>Валюта выплат аккаунта. По умолчанию доллар; null — как будто Stripe не ответил.</summary>
+    public volatile string? SettlementCurrency = "USD";
+
+    public Task<string?> GetSettlementCurrencyAsync() => Task.FromResult(SettlementCurrency);
+
     public Task<PaymentIntentSnapshot?> GetAsync(string paymentIntentId)
     {
         _intents.TryGetValue(paymentIntentId, out var intent);
@@ -50,7 +55,8 @@ public class FakeStripePaymentIntentGateway : IStripePaymentIntentGateway
             Amount = draft.AmountMinorUnits,
             AmountReceived = 0,
             ClientSecret = $"{id}_secret_test",
-            Metadata = metadata
+            Metadata = metadata,
+            CustomerId = draft.CustomerId
         };
 
         _intents[id] = intent;
@@ -66,6 +72,7 @@ public class FakeStripePaymentIntentGateway : IStripePaymentIntentGateway
 
         intent.Amount = draft.AmountMinorUnits;
         intent.Currency = draft.Currency;
+        intent.CustomerId = draft.CustomerId ?? intent.CustomerId;
         foreach (var pair in draft.Metadata)
         {
             intent.Metadata[pair.Key] = pair.Value;
@@ -74,19 +81,38 @@ public class FakeStripePaymentIntentGateway : IStripePaymentIntentGateway
         return Task.FromResult<PaymentIntentSnapshot?>(intent);
     }
 
-    public Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey)
+    /// <summary>Все запросы возврата по порядку: ключ идемпотентности и сумма (null — весь остаток).</summary>
+    public readonly ConcurrentQueue<(string PaymentIntentId, string IdempotencyKey, long? AmountMinor)> Refunds = new();
+
+    /// <summary>true — Stripe отклоняет возвраты (как при заблокированном аккаунте); намерения при этом работают.</summary>
+    public volatile bool FailRefunds;
+
+    public Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey, long? amountMinorUnits = null)
     {
+        if (FailRefunds)
+        {
+            return Task.FromResult(false);
+        }
         RefundedIntents[paymentIntentId] = idempotencyKey;
+        Refunds.Enqueue((paymentIntentId, idempotencyKey, amountMinorUnits));
         return Task.FromResult(true);
     }
 
     /// <summary>Имитирует успешную оплату покупателем.</summary>
-    public void MarkSucceeded(string paymentIntentId)
+    public void MarkSucceeded(string paymentIntentId, string? billingCountry = null, string? cardCountry = null, string brand = "visa", string last4 = "4242", string? wallet = null)
     {
         if (_intents.TryGetValue(paymentIntentId, out var intent))
         {
             intent.Status = "succeeded";
             intent.AmountReceived = intent.Amount;
+            // Форма карты спрашивает страну сама — так она и доезжает до налога.
+            intent.BillingCountry = billingCountry;
+            intent.CardCountry = cardCountry;
+            // Как настоящий Stripe в latest_charge: чем заплатили.
+            intent.PaymentMethodType = "card";
+            intent.CardBrand = brand;
+            intent.CardLast4 = last4;
+            intent.CardWallet = wallet;
         }
     }
 }

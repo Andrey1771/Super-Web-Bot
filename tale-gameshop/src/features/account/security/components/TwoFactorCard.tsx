@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React from 'react';
 import {Link} from 'react-router-dom';
 
@@ -28,12 +29,13 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
     onDisable,
     onGenerateBackupCodes
 }) => {
+    const {t} = useTranslation();
     if (isPending) {
         return (
             <div className="card security-card" data-testid="security-2fa-card" aria-busy="true">
                 <div className="security-card-header">
-                    <h3>Two-Factor Authentication</h3>
-                    <span className="security-status-pill is-off">Loading</span>
+                    <h3>{t('account.security.twoFactor.title')}</h3>
+                    <span className="security-status-pill is-off">{t('common.loading')}</span>
                 </div>
                 <span className="security-skeleton-line" />
                 <span className="security-skeleton-line is-short" />
@@ -44,16 +46,16 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
     return (
         <div className="card security-card" data-testid="security-2fa-card">
             <div className="security-card-header">
-                <h3>Two-Factor Authentication</h3>
+                <h3>{t('account.security.twoFactor.title')}</h3>
                 <span className={`security-status-pill ${isEnabled ? 'is-on' : 'is-off'}`}>
-                    {isEnabled ? 'Enabled' : 'Disabled'}
+                    {isEnabled ? t('common.enabled') : t('common.disabled')}
                 </span>
             </div>
             <div className="security-card-actions">
                 {isEnabled ? (
                     <>
                         <button type="button" className="btn btn-primary security-action-btn" onClick={onPrimaryAction} disabled={isBusy}>
-                            Re-configure
+                            {t('account.security.twoFactor.reconfigure')}
                         </button>
                         <button
                             type="button"
@@ -61,16 +63,16 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
                             onClick={onDisable}
                             disabled={isBusy}
                         >
-                            Disable 2FA
+                            {t('account.security.twoFactor.disable')}
                         </button>
                     </>
                 ) : (
                     <button type="button" className="btn btn-primary security-action-btn" onClick={onPrimaryAction} disabled={isBusy}>
-                        Enable 2FA
+                        {t('account.security.twoFactor.enable')}
                     </button>
                 )}
                 <Link className="security-link" to="/support/docs/account-recovery">
-                    Learn how it works
+                    {t('account.security.twoFactor.learn')}
                 </Link>
             </div>
             {isEnabled && (
@@ -79,12 +81,12 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
                     <div className="security-backup-row">
                         <p className="security-muted">
                             {!backupCodesGenerated
-                                ? 'Backup codes: not generated'
+                                ? t('account.security.twoFactor.codesNone')
                                 : backupCodesRemaining == null
-                                    ? 'Backup codes: generated'
+                                    ? t('account.security.twoFactor.codesGenerated')
                                     : backupCodesTotal == null
-                                        ? `Backup codes: ${backupCodesRemaining} remaining`
-                                        : `Backup codes: ${backupCodesRemaining} of ${backupCodesTotal} remaining`}
+                                        ? t('account.security.twoFactor.codesRemaining', {count: backupCodesRemaining})
+                                        : t('account.security.twoFactor.codesOf', {count: backupCodesRemaining, total: backupCodesTotal})}
                         </p>
                         <button
                             type="button"
@@ -92,14 +94,14 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
                             onClick={onGenerateBackupCodes}
                             disabled={isBusy}
                         >
-                            {backupCodesGenerated ? 'Regenerate' : 'Generate'}
+                            {backupCodesGenerated ? t('account.security.twoFactor.regenerate') : t('account.security.twoFactor.generate')}
                         </button>
                     </div>
                     {backupCodesGenerated && backupCodesRemaining != null && backupCodesRemaining <= LOW_CODES_THRESHOLD && (
                         <p className="security-warning-text" role="alert">
                             {backupCodesRemaining === 0
-                                ? 'No backup codes left. Generate a new set now — without them you can lose access to your account if your authenticator is unavailable.'
-                                : `Only ${backupCodesRemaining} backup code${backupCodesRemaining === 1 ? '' : 's'} left. Generate a new set soon.`}
+                                ? t('account.security.twoFactor.noCodesLeft')
+                                : t('account.security.twoFactor.fewCodesLeft', {count: backupCodesRemaining})}
                         </p>
                     )}
                 </>

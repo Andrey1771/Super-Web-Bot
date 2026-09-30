@@ -1,8 +1,4 @@
-import container from "../inversify.config";
-import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { apiClient } from "./client";
 
 export interface TelegramLinkStatus {
   linked: boolean;

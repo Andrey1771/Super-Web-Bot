@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
 
 /**
@@ -12,15 +12,19 @@ import { useLocation, useNavigationType } from 'react-router-dom';
  * - обычный переход (PUSH/REPLACE) на другой путь — мгновенно к началу страницы;
  * - адрес с #якорем — не вмешиваемся: переходу к якорю виднее;
  * - «назад/вперёд» (POP) — не трогаем, чтобы не отбирать позицию у читателя;
- * - смена только query-параметров (фильтры каталога, ?tag= в ленте) скролл
- *   не сбрасывает — эффект следит лишь за pathname.
+ * - смена только query-параметров (фильтры каталога, ?tag= в ленте, ?page= у отзывов)
+ *   скролл не сбрасывает: сравниваем pathname с предыдущим. Раньше эффект зависел ещё и
+ *   от типа перехода, и смена страницы отзывов (PUSH после REPLACE вкладки) уносила к началу.
  */
 export default function ScrollToTop() {
     const { pathname, hash } = useLocation();
     const navigationType = useNavigationType();
+    const lastPathname = useRef<string | null>(null);
 
     useEffect(() => {
-        if (hash || navigationType === 'POP') {
+        const pathChanged = lastPathname.current !== pathname;
+        lastPathname.current = pathname;
+        if (!pathChanged || hash || navigationType === 'POP') {
             return;
         }
         window.scrollTo({ top: 0 });

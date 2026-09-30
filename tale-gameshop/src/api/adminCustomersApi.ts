@@ -1,8 +1,4 @@
-import container from "../inversify.config";
-import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { apiClient } from "./client";
 
 export type CustomerSearchHit = {
   email: string;
@@ -12,6 +8,17 @@ export type CustomerSearchHit = {
   /** account — есть учётка; guest — только заказы. */
   source: "account" | "guest";
   orderCount: number;
+  /** Дата последнего заказа. У найденных поиском может отсутствовать. */
+  lastOrderAt?: string | null;
+};
+
+/** Окно списка покупателей: строки и точка, с которой продолжать прокрутку. */
+export type CustomerBrowsePage = {
+  items: CustomerSearchHit[];
+  /** Почта последней строки. null — список кончился. */
+  nextCursor: string | null;
+  /** Всего строк в срезе. Приходит только с первым окном — дальше null. */
+  total: number | null;
 };
 
 export type CustomerOrder = {
@@ -55,6 +62,40 @@ export type CustomerActionResult = { ok: boolean; message: string };
 export const searchCustomers = async (query: string): Promise<CustomerSearchHit[]> => {
   const response = await apiClient().get("/api/admin/customers", { params: { q: query } });
   return Array.isArray(response.data) ? response.data : [];
+};
+
+/**
+ * Окно списка покупателей. Продолжение задаётся почтой последней строки, а не номером
+ * страницы: сервер по ней сразу попадает в нужное место индекса, и стоимость окна не
+ * растёт по мере прокрутки.
+ */
+/** Срез таблицы клиентов: все покупатели, недавние, с возвратами, заблокированные, без заказов. */
+export type CustomerBrowseFilter = "all" | "recent" | "refunded" | "blocked" | "no_orders";
+
+export const browseCustomers = async (
+  after: string | null,
+  limit = 50,
+  filter: CustomerBrowseFilter = "all",
+): Promise<CustomerBrowsePage> => {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  params.set("filter", filter);
+  if (after) {
+    params.set("after", after);
+  }
+  const response = await apiClient().get(`/api/admin/customers/browse?${params.toString()}`);
+  return response.data as CustomerBrowsePage;
+};
+
+/** Текущий срез таблицы файлом — сервер собирает его целиком, а не по окнам. */
+export const exportCustomersCsv = async (filter: CustomerBrowseFilter, query: string): Promise<Blob> => {
+  const params = new URLSearchParams();
+  params.set("filter", filter);
+  if (query.trim()) {
+    params.set("q", query.trim());
+  }
+  const response = await apiClient().get(`/api/admin/customers/export?${params.toString()}`, { responseType: "blob" });
+  return response.data as Blob;
 };
 
 export const getCustomer = async (email: string): Promise<CustomerCard> => {

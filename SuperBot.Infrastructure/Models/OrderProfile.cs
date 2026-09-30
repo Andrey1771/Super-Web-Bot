@@ -9,7 +9,16 @@ namespace SuperBot.Infrastructure.Models
         public OrderProfile()
         {
             CreateMap<MoneyTotals, MoneyTotalsDb>().ReverseMap();
+
+            // Первое касание посетителя. Без этой пары AutoMapper падал на попытке перенести
+            // Order.Attribution в OrderDb.Attribution: типы разные, готового преобразования нет.
+            // Ломалось это не всегда, а только когда браузер прислал метки перехода — то есть
+            // на живой покупке, уже после списания денег: заказ не создавался, а покупатель
+            // видел «не удалось оформить».
+            CreateMap<OrderAttribution, OrderAttributionDb>().ReverseMap();
             CreateMap<OrderEvent, OrderEventDb>().ReverseMap();
+            CreateMap<OrderTax, OrderTaxDb>().ReverseMap();
+            CreateMap<OrderDispute, OrderDisputeDb>().ReverseMap();
             CreateMap<PricingSnapshot, PricingSnapshotDb>().ReverseMap();
             CreateMap<DeliveredKey, DeliveredKeyDb>().ReverseMap();
             CreateMap<DeliverySnapshot, DeliverySnapshotDb>().ReverseMap();

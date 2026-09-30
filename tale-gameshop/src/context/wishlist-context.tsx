@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { analyticsClient } from '../utils/analytics-client';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import container from '../inversify.config';
 import IDENTIFIERS from '../constants/identifiers';
@@ -118,7 +120,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
         } catch (err) {
             console.error('Failed to load wishlist:', err);
-            setError('Unable to load wishlist.');
+            setError(i18n.t('errors.loadWishlist'));
             commit(new Set(guestIds));
         } finally {
             setIsLoading(false);
@@ -151,6 +153,14 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
             const userId = userIdRef.current;
             const wasWishlisted = idsRef.current.has(gameId);
+
+            // Отложенный спрос: по нему видно, чего ждут и на что имеет смысл дать скидку.
+            // Считается здесь по той же причине, что и корзина: переключателей «в избранное»
+            // на витрине много, и разметить каждый значит однажды забыть про новый.
+            analyticsClient.trackEcommerce(
+                wasWishlisted ? 'remove_from_wishlist' : 'add_to_wishlist',
+                { items: [{ item_id: gameId }] },
+            );
 
             // Оптимистично обновляем состояние сразу — UI откликается мгновенно везде.
             const next = new Set(idsRef.current);

@@ -31,6 +31,14 @@ public class NewsletterSubscriberDb
     /// <summary>Язык сайта на момент подписки — задел под локализованные письма.</summary>
     public string? Locale { get; set; }
 
+    /// <summary>
+    /// Хочет ли получать дайджест новых скидок. Тип с null не случаен: у подписок,
+    /// заведённых до появления настройки, поля в документе нет, и bool превратил бы их
+    /// в «не хочет» — то есть молча отписал бы всех уже подписанных от единственной
+    /// автоматической рассылки. null читается как «не спрашивали» = согласен.
+    /// </summary>
+    public bool? DealAlerts { get; set; }
+
     /// <summary>Одноразовый токен подтверждения; обнуляется после confirm.</summary>
     public string? ConfirmToken { get; set; }
 
@@ -68,6 +76,16 @@ public class NewsletterCampaignDb
 
     /// <summary>Plain-text тело; HTML-обёртка добавляется при отправке.</summary>
     public string BodyText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Переводы темы и текста (ru/uk/pl → текст) для ручных кампаний: подписчик получает письмо на языке
+    /// своей подписки (<see cref="NewsletterSubscriberDb.Locale"/>), без перевода — английское.
+    /// </summary>
+    [BsonIgnoreIfNull]
+    public Dictionary<string, string>? SubjectI18n { get; set; }
+
+    [BsonIgnoreIfNull]
+    public Dictionary<string, string>? BodyTextI18n { get; set; }
 
     public string Status { get; set; } = CampaignStatus.Queued;
 

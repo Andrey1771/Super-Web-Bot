@@ -1,5 +1,11 @@
 export type GameDiscountStatus = "no_discount" | "scheduled" | "active" | "expired";
 
+/** Окно строк и общее число подходящих: по нему таблица знает высоту прокрутки. */
+export type AdminGameDiscountPage = {
+  items: AdminGameDiscountRow[];
+  total: number;
+};
+
 export type AdminGameDiscountRow = {
   gameId: string;
   title: string;

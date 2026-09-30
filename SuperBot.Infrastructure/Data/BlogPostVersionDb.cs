@@ -27,6 +27,22 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("contentHtml")]
         public string ContentHtml { get; set; }
 
+        [BsonElement("titleI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? TitleI18n { get; set; }
+
+        [BsonElement("excerptI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? ExcerptI18n { get; set; }
+
+        [BsonElement("contentMarkdownI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? ContentMarkdownI18n { get; set; }
+
+        [BsonElement("contentHtmlI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? ContentHtmlI18n { get; set; }
+
         [BsonElement("coverAssetId")]
         public string CoverAssetId { get; set; }
 

@@ -18,22 +18,28 @@ namespace SuperBot.Infrastructure.Services
 
         private readonly IGameKeyRepository _gameKeyRepository;
         private readonly IOrderRepository _orderRepository;
+        private readonly IGameDetailsRepository _gameDetailsRepository;
         private readonly IBotEventPublisher _botEventPublisher;
         private readonly ILogger<KeyFulfillmentService> _logger;
+        private readonly IReadOnlyList<IOrderFulfillmentObserver> _fulfillmentObservers;
 
         public KeyFulfillmentService(
             IGameKeyRepository gameKeyRepository,
             IOrderRepository orderRepository,
+            IGameDetailsRepository gameDetailsRepository,
             IBotEventPublisher botEventPublisher,
-            ILogger<KeyFulfillmentService> logger)
+            ILogger<KeyFulfillmentService> logger,
+            IEnumerable<IOrderFulfillmentObserver> fulfillmentObservers)
         {
+            _fulfillmentObservers = fulfillmentObservers.ToList();
             _gameKeyRepository = gameKeyRepository;
             _orderRepository = orderRepository;
+            _gameDetailsRepository = gameDetailsRepository;
             _botEventPublisher = botEventPublisher;
             _logger = logger;
         }
 
-        public async Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null, string issuedBy = null)
+        public async Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null, string issuedBy = null, string editionCode = null, string buyerCountry = null, string orderId = null, string offerKey = null)
         {
             if (string.IsNullOrWhiteSpace(gameId) || string.IsNullOrWhiteSpace(userId))
             {
@@ -41,7 +47,7 @@ namespace SuperBot.Infrastructure.Services
             }
 
             // Выдаём ключ из пула инвентаря. Пул пуст → нет в наличии (null).
-            return await _gameKeyRepository.TryDispensePoolKeyAsync(gameId, userId, issuedBy);
+            return await _gameKeyRepository.TryDispensePoolKeyAsync(gameId, userId, issuedBy, editionCode, buyerCountry, orderId, offerKey);
         }
 
         public async Task<IReadOnlyList<DeliveredKeyNotification>> FulfillOrderAsync(Order order, string issuedBy = null)
@@ -60,7 +66,16 @@ namespace SuperBot.Infrastructure.Services
                 return Array.Empty<DeliveredKeyNotification>();
             }
 
+            // Возвращённый заказ ключей не получает: деньги уже у покупателя. Раньше полностью возвращённый, но
+            // не выданный заказ оставался IsPaid и добирался со склада — покупатель получал и возврат, и ключ.
+            if (OrderRefunds.Fraction(order) >= 1m)
+            {
+                _logger.LogInformation("Order {OrderId}: key delivery skipped — the order is refunded.", order.Id);
+                return Array.Empty<DeliveredKeyNotification>();
+            }
+
             var wasAwaiting = string.Equals(order.Status, OrderStatusAwaitingKeys, StringComparison.OrdinalIgnoreCase);
+            var wasFulfilled = order.IsFulfilled;
 
             var newlyDelivered = await DispenseOutstandingAsync(order, issuedBy);
             RecomputeOrderStatus(order);
@@ -68,6 +83,23 @@ namespace SuperBot.Infrastructure.Services
 
             await _orderRepository.UpdateOrderAsync(order);
             await NotifyAsync(order, newlyDelivered);
+
+            // Заказ только что выдан целиком (сразу или добором со склада) — сообщаем тем, кому
+            // это нужно, например кэшбэку. Их ошибки выдачу не отменяют: ключи уже у покупателя.
+            if (order.IsFulfilled && !wasFulfilled)
+            {
+                foreach (var observer in _fulfillmentObservers)
+                {
+                    try
+                    {
+                        await observer.OnOrderDeliveredAsync(order);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Fulfillment observer {Observer} failed for order {OrderId}", observer.GetType().Name, order.Id);
+                    }
+                }
+            }
 
             // Клиент заплатил, а ключа нет — об этом надо знать сейчас, а не когда кто-то откроет
             // вкладку Game keys. Шлём один раз, при переходе в ожидание; повторные проходы
@@ -130,13 +162,20 @@ namespace SuperBot.Infrastructure.Services
                     continue;
                 }
 
-                var needed = Math.Max(1, item.Quantity);
+                // Столько ключей позиция ещё должна получить: возвращённые штуки (возврат по позиции) не в счёт.
+                var needed = OutstandingKeys(item);
                 item.Delivery ??= new DeliverySnapshot { DeliveryType = "Key" };
                 var alreadyDelivered = item.Delivery.Keys.Count;
 
                 for (var i = alreadyDelivered; i < needed; i++)
                 {
-                    var key = await DispenseAsync(item.GameId, order.UserId, null, issuedBy);
+                    // Ключ — того издания, что куплено; у позиции без издания — базовый.
+                    // …и того региона, где покупатель сможет его активировать; страна — из заказа (на момент оплаты).
+                    // Если покупатель выбрал вариант — ключ строго из его партий: он заплатил
+                    // именно за эту область активации, и подмена варианта была бы обманом
+                    // (глобальный дороже, чужой региональный у него просто не заработает).
+                    var key = await DispenseAsync(item.GameId, order.UserId, null, issuedBy, item.EditionCode, order.BuyerCountry, order.Id.ToString(), item.OfferKey)
+                        ?? await DispenseDefaultEditionFallbackAsync(item, order, issuedBy);
                     if (key == null || string.IsNullOrWhiteSpace(key.Key))
                     {
                         break; // пул пуст — оставляем позицию ждущей
@@ -144,18 +183,74 @@ namespace SuperBot.Infrastructure.Services
 
                     item.Delivery.Keys.Add(new DeliveredKey { KeyMasked = MaskKey(key.Key), DeliveredAt = DateTime.UtcNow });
                     item.Delivery.DeliveredAt = DateTime.UtcNow;
-                    newlyDelivered.Add(new DeliveredKeyNotification(ResolveTitle(item, order), key.Key, key.KeyType));
+                    newlyDelivered.Add(new DeliveredKeyNotification(ResolveTitle(item, order), key.Key, key.KeyType, item.ProductType, item.GameId, item.EditionCode));
                 }
             }
 
             return newlyDelivered;
         }
 
+        /// <summary>
+        /// Второй заход для издания по умолчанию. Его ключи лежат в пуле двумя способами: без кода издания (так
+        /// заливались все ключи до появления изданий и так админка заливает ключи базового издания) и с его кодом
+        /// (загрузка через API или издание, ставшее базовым уже после заливки). Наличие на витрине считает оба
+        /// запаса вместе, поэтому и выдача обязана видеть оба: строка с кодом добирает ключи без кода, строка без
+        /// кода (старые заказы) — ключи с кодом издания по умолчанию. Только при промахе основной попытки: карточка
+        /// товара читается не на каждом ключе.
+        /// </summary>
+        private async Task<GameKey> DispenseDefaultEditionFallbackAsync(OrderItemSnapshot item, Order order, string issuedBy)
+        {
+            GameDetails details;
+            try
+            {
+                details = await _gameDetailsRepository.GetByGameIdAsync(item.GameId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Order {OrderId}: could not read the product card for the default-edition key fallback.", order.Id);
+                return null;
+            }
+
+            var fallback = GameEditions.DefaultOf(details?.Editions);
+            if (fallback is null)
+            {
+                return null;
+            }
+
+            string alternativeCode;
+            if (string.IsNullOrWhiteSpace(item.EditionCode))
+            {
+                alternativeCode = fallback.Code;
+            }
+            else if (string.Equals(item.EditionCode.Trim(), fallback.Code, StringComparison.OrdinalIgnoreCase))
+            {
+                alternativeCode = null; // ключи без кода
+            }
+            else
+            {
+                return null; // надстроечное издание — только его собственные ключи
+            }
+
+            return await DispenseAsync(item.GameId, order.UserId, null, issuedBy, alternativeCode, order.BuyerCountry, order.Id.ToString(), item.OfferKey);
+        }
+
+        /// <summary>
+        /// Сколько ключей позиция должна получить всего: купленное минус возвращённое по позиции. Возвращённая
+        /// строка ключей не ждёт — иначе добор со склада выдавал бы ключ за товар, деньги за который уже вернули.
+        /// </summary>
+        private static int OutstandingKeys(OrderItemSnapshot item) =>
+            Math.Max(0, Math.Max(1, item.Quantity) - item.RefundedQuantity);
+
         private void RecomputeOrderStatus(Order order)
         {
             var items = NormalizeItems(order);
-            var totalNeeded = items.Sum(item => Math.Max(1, item.Quantity));
+            var totalNeeded = items.Sum(OutstandingKeys);
             var totalDelivered = items.Sum(item => item.Delivery?.Keys.Count ?? 0);
+            if (totalNeeded == 0)
+            {
+                // Все строки возвращены — статус задаёт возврат, а не выдача.
+                return;
+            }
 
             string fulfillment;
             if (totalDelivered >= totalNeeded && totalNeeded > 0)
@@ -255,9 +350,19 @@ namespace SuperBot.Infrastructure.Services
         private static int CountDeliveredKeys(Order order) =>
             (order.Items ?? new List<OrderItemSnapshot>()).Sum(item => item.Delivery?.Keys.Count ?? 0);
 
-        private static string ResolveTitle(OrderItemSnapshot item, Order order) =>
-            !string.IsNullOrWhiteSpace(item.Title) ? item.Title
-            : string.IsNullOrWhiteSpace(order.GameName) ? "Game purchase" : order.GameName;
+        /// <summary>
+        /// Название позиции для человека: издание уже внутри Title, регион добавляем здесь.
+        ///
+        /// Регион в названии обязателен именно потому, что ключ региональный: покупатель должен
+        /// прочитать в письме, где он активируется, а сотрудник — какую партию пополнять.
+        /// </summary>
+        private static string ResolveTitle(OrderItemSnapshot item, Order order)
+        {
+            var title = !string.IsNullOrWhiteSpace(item.Title) ? item.Title
+                : string.IsNullOrWhiteSpace(order.GameName) ? "Game purchase" : order.GameName;
+
+            return string.IsNullOrWhiteSpace(item.OfferTitle) ? title : $"{title} ({item.OfferTitle})";
+        }
 
         /// <summary>Маскирует ключ для истории заказа: видны только последние 4 символа.</summary>
         private static string MaskKey(string key)

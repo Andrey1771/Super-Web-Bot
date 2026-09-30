@@ -1,15 +1,14 @@
+import { useSitePreferences } from '../../context/site-preferences';
+import { stripeLocaleFor } from '../cart/checkout-page/stripe-elements-options';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import React, { useEffect, useMemo, useState } from 'react';
 import { CardCvcElement, CardExpiryElement, CardNumberElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { StripeCardNumberElementOptions } from '@stripe/stripe-js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock } from '@fortawesome/free-solid-svg-icons';
-import { createStripePromise } from '../../utils/stripe-loader';
+import { getStripe } from '../../utils/stripe-loader';
 import CardBrandIcon from './CardBrandIcon';
-
-const stripePublishableKey = typeof window !== 'undefined'
-    ? window.__APP_CONFIG__?.stripePublishableKey ?? ''
-    : '';
-const stripePromise = createStripePromise(stripePublishableKey);
 
 const elementStyle = {
     style: {
@@ -46,6 +45,7 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
     onSuccess,
     onCreateSetupIntent
 }) => {
+    const { t } = useTranslation();
     const stripe = useStripe();
     const elements = useElements();
     const [clientSecret, setClientSecret] = useState<string>('');
@@ -65,7 +65,7 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
                 }
             } catch (error) {
                 if (isMounted) {
-                    setErrorMessage('Unable to start card setup. Please try again.');
+                    setErrorMessage(t('billing.setupFailed'));
                 }
             } finally {
                 if (isMounted) {
@@ -92,7 +92,7 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
 
         const cardElement = elements.getElement(CardNumberElement);
         if (!cardElement) {
-            setErrorMessage('Card number is missing.');
+            setErrorMessage(t('billing.numberMissing'));
             setIsSubmitting(false);
             return;
         }
@@ -107,7 +107,7 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
         });
 
         if (result.error) {
-            setErrorMessage(result.error.message ?? 'Card setup failed.');
+            setErrorMessage(result.error.message ?? t('billing.cardSetupFailed'));
             setIsSubmitting(false);
             return;
         }
@@ -118,14 +118,12 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
 
     return (
         <form className="billing-modal-body" onSubmit={handleSubmit}>
-            <h3>Link a bank card</h3>
-            <p className="billing-modal-subtitle">Add a card for quick payments and subscriptions.</p>
-            <div className="billing-info-banner">
-                We will charge and immediately refund a small amount to verify the card.
-            </div>
+            <h3>{t('billing.linkCard')}</h3>
+            <p className="billing-modal-subtitle">{t('billing.linkSubtitle')}</p>
+            <div className="billing-info-banner">{t('billing.verifyNote')}</div>
             <div className="billing-card-form">
                 <label className="billing-field">
-                    <span>Card number</span>
+                    <span>{t('billing.cardNumber')}</span>
                     <div className="billing-stripe-input">
                         {isLoading ? (
                             <div className="billing-input-skeleton" />
@@ -136,7 +134,7 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
                 </label>
                 <div className="billing-form-row">
                     <label className="billing-field">
-                        <span>MM/YY</span>
+                        <span>{t('billing.expiry')}</span>
                         <div className="billing-stripe-input">
                             {isLoading ? (
                                 <div className="billing-input-skeleton" />
@@ -146,7 +144,7 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
                         </div>
                     </label>
                     <label className="billing-field">
-                        <span>CVC/CVV</span>
+                        <span>{t('billing.cvc')}</span>
                         <div className="billing-stripe-input">
                             {isLoading ? (
                                 <div className="billing-input-skeleton" />
@@ -157,22 +155,22 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
                     </label>
                 </div>
                 <div className="billing-card-brands">
-                    {['visa', 'mastercard', 'maestro', 'mir', 'amex'].map((brand) => (
+                    {['visa', 'mastercard', 'amex'].map((brand) => (
                         <CardBrandIcon key={brand} brand={brand} />
                     ))}
                 </div>
                 <div className="billing-secure-row">
                     <FontAwesomeIcon icon={faLock} />
-                    <span>Your data is securely protected</span>
+                    <span>{t('billing.secure')}</span>
                 </div>
             </div>
             {errorMessage && <div className="billing-error-text">{errorMessage}</div>}
             <div className="billing-modal-actions">
                 <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting}>
-                    Cancel
+                    {t('common.cancel')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting || isLoading || !stripe}>
-                    {isSubmitting ? 'Linking...' : 'Link card'}
+                    {isSubmitting ? t('billing.linking') : t('billing.link')}
                 </button>
             </div>
         </form>
@@ -186,26 +184,30 @@ const AddCardModal: React.FC<AddCardModalProps> = ({
     onCreateSetupIntent,
     onSuccess
 }) => {
+    const { lang } = useSitePreferences();
     const elementsOptions = useMemo(() => ({
-        fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' }]
-    }), []);
+        fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' }],
+        locale: stripeLocaleFor(lang),
+    }), [lang]);
 
     if (!isOpen) {
         return null;
     }
+
+    // Загружаем Stripe.js только когда модалку действительно открыли: до этого момента
+    // она возвращает null, и трогать чужой CDN незачем.
+    const stripePromise = getStripe();
 
     if (!stripePromise) {
         return (
             <div className="billing-modal-overlay" role="dialog" aria-modal="true">
                 <div className="billing-modal">
                     <div className="billing-modal-body">
-                        <h3>Link a bank card</h3>
-                        <p className="billing-modal-subtitle">
-                            Stripe publishable key is missing. Please configure window.__APP_CONFIG__.stripePublishableKey.
-                        </p>
+                        <h3>{i18n.t('billing.linkCard')}</h3>
+                        <p className="billing-modal-subtitle">{i18n.t('billing.keyMissing')}</p>
                         <div className="billing-modal-actions">
                             <button type="button" className="btn btn-outline" onClick={onClose}>
-                                Close
+                                {i18n.t('common.close')}
                             </button>
                         </div>
                     </div>

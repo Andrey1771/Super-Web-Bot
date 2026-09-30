@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React from "react";
 
 type ChatLauncherButtonProps = {
@@ -8,14 +9,15 @@ type ChatLauncherButtonProps = {
 // Компактная круглая иконка чата: не перекрывает CTA страниц (раньше широкая
 // пилюля «Support» наезжала на кнопки) и не путается с разделом Help/страницей Support.
 const ChatLauncherButton: React.FC<ChatLauncherButtonProps> = ({ unreadCount, onClick }) => {
+  const { t } = useTranslation();
   const hasUnread = unreadCount > 0;
 
   return (
     <button
       className={`support-chat__launcher${hasUnread ? " support-chat__launcher--attention" : ""}`}
       onClick={onClick}
-      aria-label={hasUnread ? `Open support chat, ${unreadCount} new` : "Open support chat"}
-      title={hasUnread ? `${unreadCount} new message(s) from support` : "Chat with support"}
+      aria-label={hasUnread ? t("chat.openUnread", { count: unreadCount }) : t("chat.open")}
+      title={hasUnread ? t("chat.newMessages", { count: unreadCount }) : t("chat.chatWith")}
       type="button"
     >
       {/* Один контур вместо залитого пузыря с точками: залитая плашка 18×13 выглядела

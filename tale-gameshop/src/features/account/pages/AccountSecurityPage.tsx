@@ -1,3 +1,6 @@
+import {useTranslation} from 'react-i18next';
+import {currentLang} from '../../../context/site-preferences';
+import i18n from '../../../i18n';
 import React, {useCallback, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
@@ -42,23 +45,28 @@ const getRelativePasswordLabel = (value?: string | null): string | null => {
     }
     const diffDays = Math.floor((Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays < 1) {
-        return 'today';
+        return i18n.t('common.today');
     }
     if (diffDays < 30) {
-        return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+        return i18n.t('account.security.daysAgo', { count: diffDays });
     }
     const diffMonths = Math.floor(diffDays / 30);
     if (diffMonths < 12) {
-        return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+        return i18n.t('account.security.monthsAgo', { count: diffMonths });
     }
-    return 'over a year ago';
+    return i18n.t('common.overYearAgo');
 };
 
 const AccountSecurityPage: React.FC = () => {
+    const {t} = useTranslation();
     const {keycloak} = useKeycloak();
     const keycloakAuthService = container.get<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService);
     const [status, setStatus] = useState<AccountSecurityStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    // Запрос не прошёл. Без этого признака страница отличала «грузится» от «загружено»
+    // только по наличию данных, и после ошибки карточки крутили скелетон вечно: тост
+    // с ошибкой уезжал через четыре секунды, а «Loading» оставался навсегда.
+    const [loadFailed, setLoadFailed] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
@@ -77,8 +85,10 @@ const AccountSecurityPage: React.FC = () => {
         try {
             const data = await getAccountSecurityStatus();
             setStatus(data);
+            setLoadFailed(false);
         } catch (error) {
-            showToast('Unable to load security settings.');
+            setLoadFailed(true);
+            showToast(t('account.security.toast.loadFailed'));
         } finally {
             setIsLoading(false);
         }
@@ -93,10 +103,10 @@ const AccountSecurityPage: React.FC = () => {
         setIsSubmitting(true);
         try {
             await resendVerificationEmail();
-            showToast('Verification email sent.');
+            showToast(t('account.security.toast.verificationSent'));
             return true;
         } catch (error) {
-            showToast('Unable to resend verification email.');
+            showToast(t('account.security.toast.resendFailed'));
             return false;
         } finally {
             setIsSubmitting(false);
@@ -107,11 +117,11 @@ const AccountSecurityPage: React.FC = () => {
         setIsSubmitting(true);
         try {
             await changeEmail(payload);
-            showToast('Email updated. Please verify your new address.');
+            showToast(t('account.security.toast.emailUpdated'));
             setIsChangeEmailOpen(false);
             await fetchStatus();
         } catch (error) {
-            showToast('Unable to change email.');
+            showToast(t('account.security.toast.emailFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -124,14 +134,14 @@ const AccountSecurityPage: React.FC = () => {
                 currentPassword: payload.currentPassword,
                 newPassword: payload.newPassword
             });
-            showToast(response.message || 'Password updated.');
+            showToast(response.message || t('account.security.toast.passwordUpdated'));
             if (response.mode === 'logout') {
                 await keycloakAuthService.logoutWithRedirect(keycloak, window.location.origin);
             } else {
                 await fetchStatus();
             }
         } catch (error) {
-            showToast('Unable to update password.');
+            showToast(t('account.security.toast.passwordFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -141,9 +151,9 @@ const AccountSecurityPage: React.FC = () => {
         setIsSubmitting(true);
         try {
             await sendResetPasswordEmail();
-            showToast('Password reset email sent.');
+            showToast(t('account.security.toast.resetSent'));
         } catch (error) {
-            showToast('Unable to send reset email.');
+            showToast(t('account.security.toast.resetFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -156,7 +166,8 @@ const AccountSecurityPage: React.FC = () => {
         // keycloak-js типизирует action узко как 'register', хотя адаптер шлёт любой kc_action.
         keycloak.login({
             action: 'CONFIGURE_TOTP',
-            redirectUri: `${window.location.origin}/account/security`
+            redirectUri: `${window.location.origin}/account/security`,
+            locale: currentLang()
         } as any);
     };
 
@@ -166,11 +177,11 @@ const AccountSecurityPage: React.FC = () => {
             const hadBackupCodes = Boolean(status?.backupCodesGenerated);
             await disableTwoFactor();
             showToast(hadBackupCodes
-                ? 'Two-factor authentication disabled. Backup codes are no longer valid.'
-                : 'Two-factor authentication disabled.');
+                ? t('account.security.toast.twoFactorDisabledCodes')
+                : t('account.security.toast.twoFactorDisabled'));
             await fetchStatus();
         } catch (error) {
-            showToast('Unable to disable 2FA.');
+            showToast(t('account.security.toast.disableFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -181,7 +192,8 @@ const AccountSecurityPage: React.FC = () => {
         // keycloak-js типизирует action узко как 'register', хотя адаптер шлёт любой kc_action.
         keycloak.login({
             action: 'CONFIGURE_TOTP',
-            redirectUri: `${window.location.origin}/account/security`
+            redirectUri: `${window.location.origin}/account/security`,
+            locale: currentLang()
         } as any);
     };
 
@@ -190,7 +202,8 @@ const AccountSecurityPage: React.FC = () => {
         // (включена в docker-compose); после генерации Keycloak вернёт пользователя сюда.
         keycloak.login({
             action: 'CONFIGURE_RECOVERY_AUTHN_CODES',
-            redirectUri: `${window.location.origin}/account/security`
+            redirectUri: `${window.location.origin}/account/security`,
+            locale: currentLang()
         } as any);
     };
 
@@ -198,10 +211,10 @@ const AccountSecurityPage: React.FC = () => {
         setIsSubmitting(true);
         try {
             await revokeSession(sessionId);
-            showToast('Session revoked.');
+            showToast(t('account.security.toast.sessionRevoked'));
             await fetchStatus();
         } catch (error) {
-            showToast('Unable to revoke session.');
+            showToast(t('account.security.toast.sessionFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -211,10 +224,10 @@ const AccountSecurityPage: React.FC = () => {
         setIsSubmitting(true);
         try {
             await revokeAllSessions();
-            showToast('All sessions revoked.');
+            showToast(t('account.security.toast.allRevoked'));
             await fetchStatus();
         } catch (error) {
-            showToast('Unable to revoke sessions.');
+            showToast(t('account.security.toast.allFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -230,9 +243,9 @@ const AccountSecurityPage: React.FC = () => {
             link.download = 'security-report.json';
             link.click();
             window.URL.revokeObjectURL(url);
-            showToast('Security report downloaded.');
+            showToast(t('account.security.toast.reportDownloaded'));
         } catch (error) {
-            showToast('Unable to download security report.');
+            showToast(t('account.security.toast.reportFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -242,11 +255,11 @@ const AccountSecurityPage: React.FC = () => {
         setIsSubmitting(true);
         try {
             await deleteAccount(payload);
-            showToast('Account deleted.');
+            showToast(t('account.security.toast.accountDeleted'));
             setIsDeleteAccountOpen(false);
             await keycloakAuthService.logoutWithRedirect(keycloak, window.location.origin);
         } catch (error) {
-            showToast('Unable to delete account.');
+            showToast(t('account.security.toast.deleteFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -266,24 +279,24 @@ const AccountSecurityPage: React.FC = () => {
     const checklistSteps: SecurityChecklistStep[] = [
         {
             key: 'email',
-            label: 'Verify your email',
+            label: t('account.security.checklist.verifyEmail'),
             done: Boolean(status?.emailVerified),
-            actionLabel: 'Resend email',
+            actionLabel: t('account.security.checklist.resendEmail'),
             onAction: () => { void handleResendEmail(); }
         },
         {
             key: '2fa',
-            label: 'Enable two-factor authentication',
+            label: t('account.security.checklist.enable2fa'),
             done: Boolean(status?.twoFactorEnabled),
-            actionLabel: 'Enable 2FA',
+            actionLabel: t('account.security.checklist.enable2faAction'),
             onAction: handleSetup2fa
         },
         {
             key: 'backup-codes',
-            label: 'Generate backup codes',
+            label: t('account.security.checklist.backupCodes'),
             // Исчерпанный набор (0 оставшихся) — то же, что отсутствие кодов: шаг снова не выполнен.
             done: Boolean(status?.backupCodesGenerated) && (status?.backupCodesRemaining == null || status.backupCodesRemaining > 0),
-            actionLabel: 'Generate codes',
+            actionLabel: t('account.security.checklist.backupCodesAction'),
             onAction: handleGenerateBackupCodes
         }
     ];
@@ -293,9 +306,9 @@ const AccountSecurityPage: React.FC = () => {
 
     return (
         <AccountShell
-            title="Security"
-            sectionLabel="Security"
-            subtitle="Manage password, email verification and 2FA."
+            title={t('account.security.title')}
+            sectionLabel={t('account.security.title')}
+            subtitle={t('account.security.subtitle')}
             headerTestId="security-header"
         >
             <SecurityChecklist
@@ -305,26 +318,49 @@ const AccountSecurityPage: React.FC = () => {
                 onDismiss={handleDismissChecklist}
             />
 
-            <div className="security-grid">
-                <TwoFactorCard
-                    isEnabled={Boolean(status?.twoFactorEnabled)}
-                    backupCodesGenerated={Boolean(status?.backupCodesGenerated)}
-                    backupCodesTotal={status?.backupCodesTotal ?? null}
-                    backupCodesRemaining={status?.backupCodesRemaining ?? null}
-                    isPending={status === null}
-                    isBusy={isSubmitting}
-                    onPrimaryAction={status?.twoFactorEnabled ? handleOpenManage2fa : handleSetup2fa}
-                    onDisable={handleDisable2fa}
-                    onGenerateBackupCodes={handleGenerateBackupCodes}
-                />
-                <EmailVerificationCard
-                    emailVerified={Boolean(status?.emailVerified)}
-                    isPending={status === null}
-                    isBusy={isSubmitting}
-                    onResend={handleResendEmail}
-                    onChangeEmail={() => setIsChangeEmailOpen(true)}
-                />
-            </div>
+            {loadFailed ? (
+                <div className="card security-card" data-testid="security-load-error" role="alert">
+                    <div className="security-card-header">
+                        <h3>{t('account.security.unavailable')}</h3>
+                    </div>
+                    <p>
+                        {t('account.security.unavailableText')}
+                    </p>
+                    <div className="security-card-actions">
+                        <button
+                            type="button"
+                            className="btn btn-primary security-action-btn"
+                            onClick={fetchStatus}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? t('common.retrying') : t('common.tryAgain')}
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div className="security-grid">
+                    {/* Скелетон — только пока данных нет ни разу: обновление после действия
+                        не должно превращать заполненную карточку обратно в заглушку. */}
+                    <TwoFactorCard
+                        isEnabled={Boolean(status?.twoFactorEnabled)}
+                        backupCodesGenerated={Boolean(status?.backupCodesGenerated)}
+                        backupCodesTotal={status?.backupCodesTotal ?? null}
+                        backupCodesRemaining={status?.backupCodesRemaining ?? null}
+                        isPending={isLoading && status === null}
+                        isBusy={isSubmitting}
+                        onPrimaryAction={status?.twoFactorEnabled ? handleOpenManage2fa : handleSetup2fa}
+                        onDisable={handleDisable2fa}
+                        onGenerateBackupCodes={handleGenerateBackupCodes}
+                    />
+                    <EmailVerificationCard
+                        emailVerified={Boolean(status?.emailVerified)}
+                        isPending={isLoading && status === null}
+                        isBusy={isSubmitting}
+                        onResend={handleResendEmail}
+                        onChangeEmail={() => setIsChangeEmailOpen(true)}
+                    />
+                </div>
+            )}
 
             <PasswordCard
                 isSubmitting={isSubmitting}

@@ -1,4 +1,5 @@
 import React from 'react';
+import i18n from '../../../i18n';
 
 type AppErrorBoundaryState = {
     hasError: boolean;
@@ -39,10 +40,8 @@ class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, Ap
                 }}
             >
                 <div style={{ fontSize: 48 }}>😵</div>
-                <h1 style={{ margin: 0, fontSize: 24 }}>Something went wrong</h1>
-                <p style={{ margin: 0, color: '#6c6393', maxWidth: 420 }}>
-                    An unexpected error occurred. Reloading the page usually fixes it.
-                </p>
+                <h1 style={{ margin: 0, fontSize: 24 }}>{i18n.t('errorBoundary.title')}</h1>
+                <p style={{ margin: 0, color: '#6c6393', maxWidth: 420 }}>{i18n.t('errorBoundary.text')}</p>
                 <button
                     type="button"
                     onClick={() => window.location.reload()}
@@ -58,7 +57,7 @@ class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, Ap
                         cursor: 'pointer'
                     }}
                 >
-                    Reload page
+                    {i18n.t('errorBoundary.reload')}
                 </button>
             </div>
         );

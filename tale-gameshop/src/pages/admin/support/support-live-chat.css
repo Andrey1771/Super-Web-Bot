@@ -4,9 +4,15 @@
   gap: 24px;
 }
 
+/* Фильтры списка сессий: выбор статуса, поиск и «Refresh».
+   Было тремя жёсткими колонками (1fr 1.5fr auto). В сетке элементы по умолчанию не сжимаются
+   уже собственного содержимого, а у select и input оно немаленькое: в узкой левой колонке
+   первые два занимали всю ширину и выдавливали кнопку за край карточки — её просто не было
+   видно. Теперь это флекс с переносом: поля ужимаются, а кнопка при нехватке места уходит
+   на свою строку, но остаётся на экране. */
 .support-live-chat__filters {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   margin-bottom: 16px;
@@ -17,6 +23,22 @@
   padding: 8px 10px;
   border-radius: var(--radius-md);
   border: 1px solid #e1e4f2;
+  /* min-width: 0 обязателен: без него флекс-элемент тоже упирается в свою внутреннюю
+     ширину и переполняет контейнер вместо того, чтобы сжаться. */
+  min-width: 0;
+}
+
+.support-live-chat__filters select {
+  flex: 1 1 130px;
+}
+
+.support-live-chat__filters input {
+  flex: 2 1 150px;
+}
+
+/* Кнопка не сжимается: «Refresh» с обрезанной надписью хуже переноса на новую строку. */
+.support-live-chat__filters .btn {
+  flex: 0 0 auto;
 }
 
 .support-live-chat__list {

@@ -87,6 +87,379 @@
     text-align: right;
 }
 
+/* Пока сводка едет с сервера, на месте оценки стоит её форма, а не ноль и не пустота:
+   иначе карточка на секунду показывает «0.0/5», что хуже отсутствия числа. */
+.about-score-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 10px 0 6px;
+}
+
+.about-score-loading-value,
+.about-score-loading-line {
+    display: block;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: about-rating-shimmer 1.5s linear infinite;
+}
+
+.about-score-loading-value {
+    width: 132px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+}
+
+.about-score-loading-line {
+    width: 180px;
+    height: 12px;
+}
+
+@keyframes about-rating-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Свежие отзывы — первоисточник для числа в карточке рейтинга.
+   Лежат отдельной полосой под первым экраном: внутри карточки они делали её на 284px
+   выше левой колонки, и сетка первого экрана разъезжалась. */
+.about-voices {
+    /* Обычный отступ раздела (clamp(64px, 8vw, 112px)) оторвал бы отзывы от оценки, ради
+       которой они здесь и стоят. Держим их ближе к первому экрану. */
+    margin-top: clamp(32px, 4vw, 56px);
+}
+
+.about-voices-carousel {
+    display: grid;
+    gap: 16px;
+}
+
+/* Лента отзывов: прокрутка со снапом вместо сдвига через transform.
+   Ширину карточки задаёт CSS (две на широком экране, одна на узком), и JS не приходится
+   пересчитывать её на каждый ресайз. Колесо, тачпад, свайп и клавиатура работают сами. */
+.about-quotes {
+    display: flex;
+    /* По верхнему краю, а не растягивая до высоты самой длинной: карточке с одной строкой
+       отзыва незачем быть высотой с карточку на три строки — от этого и брались пустоты. */
+    align-items: flex-start;
+    gap: 20px;
+    overflow-x: auto;
+    /* proximity, а не mandatory: прилипание к карточке при свайпе остаётся, но браузер не
+       обязан возвращаться на снап при каждом изменении раскладки и не спорит с программной
+       прокруткой от стрелок и точек. Для ленты, где позицию задают кнопки, а не только палец,
+       это более мягкий и предсказуемый режим. */
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
+    /* Поля под тень карточек: она у них 0 10px 24px -14px, то есть выходит примерно на 10px
+       по бокам и на 20px вниз. С прежними 4px по горизонтали тень крайних карточек упиралась
+       в край окна прокрутки и обрубалась ровной вертикалью. Отрицательные поля возвращают
+       ленту на место, чтобы отступы не раздвигали раскладку. */
+    padding: 8px 14px 22px;
+    margin: -8px -14px -22px;
+
+    /* Мягкое затухание у краёв вместо ножевого среза.
+       Область прокрутки обрезает содержимое по прямой — при листании карточка и её тень
+       рубились вертикальной линией. Маска растворяет их на 28px, и край читается как
+       «дальше есть ещё», а не как дефект вёрстки.
+       Ширина затухания в переменных: класс на ленте включает его только с той стороны, где
+       содержимое действительно продолжается. В начале списка левый край не мылится. */
+    --fade-start: 0px;
+    --fade-end: 0px;
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--fade-start),
+        #000 calc(100% - var(--fade-end)),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--fade-start),
+        #000 calc(100% - var(--fade-end)),
+        transparent 100%
+    );
+    /* Полосу прокрутки прячем: под лентой уже есть стрелки и точки, а системная полоса
+       рядом с ними читается вторым, конкурирующим управлением. */
+    scrollbar-width: none;
+}
+
+.about-quotes.is-fade-start { --fade-start: 28px; }
+.about-quotes.is-fade-end { --fade-end: 28px; }
+
+.about-quotes::-webkit-scrollbar {
+    display: none;
+}
+
+.about-quotes:focus-visible {
+    outline: 2px solid rgba(124, 58, 237, 0.45);
+    outline-offset: 4px;
+    border-radius: var(--radius-lg);
+}
+
+.about-quotes > .about-quote {
+    flex: 0 0 calc((100% - 20px) / 2);
+    scroll-snap-align: start;
+}
+
+@media (max-width: 860px) {
+    .about-quotes > .about-quote {
+        flex-basis: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .about-quotes {
+        scroll-behavior: auto;
+    }
+}
+
+/* Стрелки стоят по бокам ленты и вертикально по центру карточек, точки — под ней.
+   Раньше всё управление лежало снизу одной строкой: стрелки оказывались далеко от того
+   края, к которому относятся, и до «вперёд» приходилось вести курсор через весь блок. */
+.about-voices-viewport {
+    position: relative;
+    /* Поля под стрелки. Раньше кнопки заходили на карточку на половину своего диаметра и
+       перекрывали её угол; теперь у них своё место сбоку, и на содержимое они не налезают. */
+    padding: 0 50px;
+    /* Обязательный min-width: 0.
+
+       Обёртка — элемент грида, а у элементов грида автоматический минимальный размер равен
+       минимальному размеру содержимого. Внутри лежит флекс-лента из десяти карточек, и её
+       min-content — это их суммарная ширина. Раньше .about-quotes был элементом грида сам, и
+       его overflow-x: auto обнулял этот минимум; после появления обёртки минимум всплыл на
+       неё, обёртка растянулась почти на 2000px, и горизонтальная прокрутка появилась у всей
+       страницы. */
+    min-width: 0;
+}
+
+.about-voices-arrow {
+    position: absolute;
+    top: 50%;
+    /* Ровно половина ширины кнопки — она садится центром на край ленты, а не рядом с ним. */
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #4c1d95;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    transition: border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.about-voices-arrow:hover:not(:disabled),
+.about-voices-arrow:focus-visible:not(:disabled) {
+    border-color: rgba(124, 58, 237, 0.45);
+    color: #7c3aed;
+}
+
+/* Край ленты: стрелка гаснет, но остаётся на месте — исчезающая кнопка дёргала бы ряд. */
+.about-voices-arrow:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.about-voices-arrow.is-prev {
+    left: 0;
+}
+
+.about-voices-arrow.is-next {
+    right: 0;
+}
+
+/* На узком экране поля под стрелки — непозволительная роскошь: карточка и так одна.
+   Кнопки убираем, остаются свайп и точки. */
+@media (max-width: 860px) {
+    .about-voices-viewport {
+        padding: 0;
+    }
+
+    .about-voices-arrow {
+        display: none;
+    }
+}
+
+.about-voices-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.about-voices-dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #d8d3ec;
+    cursor: pointer;
+    transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.about-voices-dot.is-active {
+    width: 22px;
+    background: #7c3aed;
+}
+
+.about-voices-dot:focus-visible {
+    outline: 2px solid rgba(124, 58, 237, 0.45);
+    outline-offset: 2px;
+}
+
+/* Карточка отзыва живёт по тем же правилам, что остальные карточки страницы: белый фон,
+   та же рамка, та же тень и тот же подъём при наведении. Плоская сиреневая плашка выбивалась
+   из страницы и читалась заглушкой. */
+.about-quote {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 20px 22px;
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    border: 1px solid #ebe9f5;
+    /* Две тени вместо одной размазанной. Прежняя — 36px мягкого серого — расплывалась далеко
+       за карточку, у двух соседних сливалась в сплошную полосу, и это читалось как грязная
+       подложка под лентой. Здесь тонкая тень держит край, а вторая с отрицательным разбросом
+       даёт глубину, не выползая вбок. */
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 10px 24px -14px rgba(15, 23, 42, 0.18);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.about-quote:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.05),
+        0 16px 30px -16px rgba(76, 29, 149, 0.28);
+    border-color: rgba(124, 58, 237, 0.3);
+}
+
+.about-quote-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Кружок с буквой — как у карточек команды: за отзывом стоит человек. */
+.about-quote-avatar {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 30% 30%, #f5e9ff, #c7a4ff);
+    color: #4c1d95;
+    font-weight: 800;
+    font-size: 17px;
+    /* Картинку стрижём ей самой, а не overflow на кружке: на карточках команды overflow
+       уже срезал значок редактирования, и повторять это незачем. */
+    overflow: visible;
+}
+
+.about-quote-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    object-fit: cover;
+    display: block;
+}
+
+.about-quote-who {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.about-quote-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.about-quote-dot {
+    color: #cbd5e1;
+}
+
+.about-quote-author {
+    font-weight: 700;
+    font-size: 14px;
+    color: #0f172a;
+}
+
+/* Звёзды, а не «5★» текстом: оценка на странице уже показана звёздами, и второй способ
+   написать то же самое выглядит другим сайтом. */
+.about-quote-stars {
+    display: inline-flex;
+    gap: 2px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.about-quote-stars .is-on {
+    color: #f59e0b;
+}
+
+.about-quote-stars .is-off {
+    color: #e2e8f0;
+}
+
+.about-quote-text {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #334155;
+}
+
+.about-quote-game {
+    color: #7c3aed;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.about-quote-game:hover,
+.about-quote-game:focus-visible {
+    text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .about-quote:hover {
+        transform: none;
+    }
+}
+
+.about-inline-link {
+    color: var(--color-primary, #6e2cf5);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.about-inline-link:hover,
+.about-inline-link:focus-visible {
+    text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .about-score-loading-value,
+    .about-score-loading-line {
+        animation: none;
+    }
+}
+
 .about-score-badge {
     display: inline-flex;
     align-items: center;
@@ -182,9 +555,51 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 26px 60px rgba(15, 23, 42, 0.28);
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
-    gap: clamp(24px, 3vw, 52px);
-    align-items: center;
+    /* Одна колонка на любое число цифр: текст во всю ширину, цифры строкой под ним,
+       рисунок фоном справа. Переключение между одной и двумя колонками по числу плиток
+       приводило к тому, что рисунок то появлялся, то пропадал. */
+    grid-template-columns: 1fr;
+    gap: clamp(20px, 2.4vw, 32px);
+    align-items: start;
+    /* Справа воздух под рисунок, чтобы строки не заезжали на его яркий конец. */
+    padding-right: clamp(28px, 26%, 380px);
+}
+
+
+/* Декор правой половины сложенной панели.
+   Лежит под содержимым (z-index) и не ловит курсор: это фон, а не элемент интерфейса.
+   Панель с overflow: hidden, поэтому вылет за правый край обрезается и прокрутку не плодит. */
+/* Рисунок теперь во всю панель, а не в правом углу: линия входит слева под текстом и
+   уходит вправо. Поэтому слой растянут по всей площади, а не приклеен к краю. */
+.about-purpose-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Текст и цифры — над декором. */
+.about-purpose-copy,
+.about-purpose-stats {
+    position: relative;
+    z-index: 1;
+}
+
+/* Ниже 1100px текст занимает всю ширину панели, и рисунок оказался бы под ним.
+   На узком экране его просто нет: декор не стоит того, чтобы мешать читать. */
+@media (max-width: 1100px) {
+    .about-purpose-art {
+        display: none;
+    }
+}
+
+/* По содержимому, а не растянутые на всю ширину: одна плитка иначе расползлась бы на
+   всю панель, а три — превратились бы в полосу. */
+.about-purpose-stats {
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), max-content));
+    justify-content: start;
 }
 
 .about-purpose::after {
@@ -231,8 +646,11 @@
 .about-purpose-points {
     margin-top: 22px;
     display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 28px;
+    /* Блоков теперь три, и жёсткие две колонки оставляли третий висеть в одиночестве на
+       второй строке. auto-fit раскладывает их по месту: три в ряд на широком экране,
+       два и один — на среднем, столбиком на узком. */
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
 }
 
 .about-purpose-point p {
@@ -260,7 +678,9 @@
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* auto-fit, а не жёсткие две колонки: плиток теперь столько, сколько цифр дошло до
+       порога, и при одной жёсткая сетка оставляла рядом пустую половину. */
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
     gap: 12px;
 }
 
@@ -506,8 +926,14 @@
     aspect-ratio: 1;
     border-radius: 999px;
     overflow: hidden;
-    background: radial-gradient(circle at 30% 30%, #f5e9ff, #c7a4ff);
-    color: #4c1d95;
+    /* Оттенок приходит из разметки и считается из имени — см. avatarHue. Значение по
+       умолчанию оставляет прежний сиреневый, если переменной почему-то нет. */
+    background: radial-gradient(
+        circle at 30% 30%,
+        hsl(var(--avatar-hue, 271) 100% 95%),
+        hsl(var(--avatar-hue, 271) 60% 76%)
+    );
+    color: hsl(var(--avatar-hue, 271) 65% 28%);
     font-weight: 800;
     font-size: 22px;
     display: inline-flex;
@@ -653,6 +1079,17 @@
 @media (max-width: 768px) {
     .about-rating-card {
         padding: 20px;
+    }
+
+    /* На узком экране плашка «Buyers only» отжимала оценку в 116px: «Player ratings»
+       ломалось на две строки, а «4.1/5» вставало впритык. Ставим её под оценкой —
+       читать сверху вниз тут естественнее, чем ужимать обе половины. */
+    .about-rating-head {
+        flex-direction: column;
+    }
+
+    .about-score-badge {
+        width: 100%;
     }
 
     .about-pill {

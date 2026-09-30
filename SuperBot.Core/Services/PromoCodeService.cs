@@ -24,30 +24,30 @@ public class PromoCodeService : IPromoCodeService
     {
         if (string.IsNullOrWhiteSpace(request.Code))
         {
-            return Invalid(request.CartSubtotal, "Promo code is required.");
+            return Invalid(request.CartSubtotal, "Promo code is required.", "promo.required");
         }
 
         var promoCode = await _promoCodeRepository.GetByCodeAsync(request.Code.Trim());
         if (promoCode == null)
         {
-            return Invalid(request.CartSubtotal, "Promo code does not exist.");
+            return Invalid(request.CartSubtotal, "Promo code does not exist.", "promo.notFound");
         }
 
         var now = DateTime.UtcNow;
         if (!promoCode.IsActiveAt(now))
         {
-            return Invalid(request.CartSubtotal, "Promo code has expired or is not active yet.");
+            return Invalid(request.CartSubtotal, "Promo code has expired or is not active yet.", "promo.inactive");
         }
 
         // Проверяем до сумм: сравнивать порог заказа с корзиной в другой валюте бессмысленно.
         if (!promoCode.AppliesToCurrency(request.Currency))
         {
-            return Invalid(request.CartSubtotal, "Promo code doesn't apply to this currency.");
+            return Invalid(request.CartSubtotal, "Promo code doesn't apply to this currency.", "promo.currency");
         }
 
         if (promoCode.MinOrderAmount.HasValue && request.CartSubtotal < promoCode.MinOrderAmount.Value)
         {
-            return Invalid(request.CartSubtotal, "Minimum order amount is not reached.");
+            return Invalid(request.CartSubtotal, "Minimum order amount is not reached.", "promo.minOrder");
         }
 
         var normalizedUser = request.UserName?.Trim();
@@ -55,14 +55,14 @@ public class PromoCodeService : IPromoCodeService
         {
             if (string.IsNullOrWhiteSpace(normalizedUser))
             {
-                return Invalid(request.CartSubtotal, "Promo code is available only for authorized users.");
+                return Invalid(request.CartSubtotal, "Promo code is available only for authorized users.", "promo.authOnly");
             }
 
             var userOrders = await _orderRepository.GetOrdersByUserAsync(normalizedUser);
             var hasCompletedOrder = userOrders.Any(order => order.IsPaid || string.Equals(order.Status, "DELIVERED", StringComparison.OrdinalIgnoreCase));
             if (hasCompletedOrder)
             {
-                return Invalid(request.CartSubtotal, "Promo code is only available for the first order.");
+                return Invalid(request.CartSubtotal, "Promo code is only available for the first order.", "promo.firstOrderOnly");
             }
         }
 
@@ -71,7 +71,7 @@ public class PromoCodeService : IPromoCodeService
             var usedByUser = await _promoCodeUsageRepository.CountByPromoCodeAndUserAsync(promoCode.Id!, normalizedUser);
             if (usedByUser >= promoCode.UsagePerUser.Value)
             {
-                return Invalid(request.CartSubtotal, "You have reached usage limit for this promo code.");
+                return Invalid(request.CartSubtotal, "You have reached usage limit for this promo code.", "promo.userLimit");
             }
         }
 
@@ -80,7 +80,7 @@ public class PromoCodeService : IPromoCodeService
             var totalUsed = await _promoCodeUsageRepository.CountByPromoCodeIdAsync(promoCode.Id!);
             if (totalUsed >= promoCode.UsageLimit.Value)
             {
-                return Invalid(request.CartSubtotal, "Promo code usage limit has been reached.");
+                return Invalid(request.CartSubtotal, "Promo code usage limit has been reached.", "promo.limit");
             }
         }
 
@@ -93,6 +93,7 @@ public class PromoCodeService : IPromoCodeService
             DiscountAmount = discount,
             FinalTotal = finalTotal,
             Message = "Promo code applied.",
+            MessageCode = "promo.applied",
             PromoCodeId = promoCode.Id,
             NormalizedCode = promoCode.Code
         };
@@ -122,14 +123,38 @@ public class PromoCodeService : IPromoCodeService
         });
     }
 
-    private static PromoValidationResult Invalid(decimal subtotal, string message)
+    public async Task<bool> RecordRedemptionAsync(string code, string userName, string orderId)
+    {
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(orderId))
+        {
+            return false;
+        }
+
+        var promoCode = await _promoCodeRepository.GetByCodeAsync(code.Trim());
+        if (promoCode?.Id == null)
+        {
+            return false;
+        }
+
+        return await _promoCodeUsageRepository.TryRecordUsageAsync(new PromoCodeUsage
+        {
+            PromoCodeId = promoCode.Id,
+            Code = promoCode.Code,
+            UserName = userName?.Trim() ?? string.Empty,
+            OrderId = orderId,
+            UsedAt = DateTime.UtcNow
+        });
+    }
+
+    private static PromoValidationResult Invalid(decimal subtotal, string message, string code)
     {
         return new PromoValidationResult
         {
             Valid = false,
             DiscountAmount = 0,
             FinalTotal = subtotal,
-            Message = message
+            Message = message,
+            MessageCode = code
         };
     }
 

@@ -43,13 +43,15 @@ public static class EmailTemplates
     /// Логотип небольшой и прижат влево — как бренд-марка, чтобы не спорить с центральной иконкой письма.
     /// <paramref name="logoUrl"/> — абсолютный URL растрового логотипа (PNG). Пусто → текстовый вордмарк-фолбэк.
     /// </summary>
-    public static string RenderLayout(string contentHtml, string? logoUrl = null)
+    public static string RenderLayout(string contentHtml, string? logoUrl = null, string? tagline = null)
     {
+        // Подпись под карточкой — на языке письма; не передали — английская.
+        var taglineHtml = System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(tagline) ? "Tale Shop · Game keys, delivered." : tagline);
         var logo = string.IsNullOrWhiteSpace(logoUrl)
             ? Wordmark
             : $"<img src=\"{logoUrl}\" width=\"116\" alt=\"Tale Shop\" " +
               "style=\"display:block;width:116px;height:auto;border:0;outline:none;text-decoration:none;\" />";
-        return Layout.Value.Replace("{{LOGO}}", logo).Replace("{{CONTENT}}", contentHtml);
+        return Layout.Value.Replace("{{LOGO}}", logo).Replace("{{CONTENT}}", contentHtml).Replace("{{TAGLINE}}", taglineHtml);
     }
 
     /// <summary>"ru-RU"/"UK"/null → "ru"/"uk"/"en": первые два символа, только поддерживаемые языки.</summary>

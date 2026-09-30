@@ -1,9 +1,5 @@
-import container from '../inversify.config';
-import IDENTIFIERS from '../constants/identifiers';
-import type { IApiClient } from '../iterfaces/i-api-client';
 import type { AttachmentMeta, AuthorType, SupportMessage, TicketDetails, TicketStatus } from '../types/support';
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { apiClient } from './client';
 
 const statusFromApi = (status: string | number): TicketStatus => {
     if (typeof status === 'number') {

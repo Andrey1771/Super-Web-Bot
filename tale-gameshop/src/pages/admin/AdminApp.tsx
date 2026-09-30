@@ -24,15 +24,20 @@ import SupportChatStatsPage from "./support/SupportChatStatsPage";
 import SupportKnowledgePage from "./support/SupportKnowledgePage";
 import SupportTicketsPage from "./SupportTicketsPage";
 import PromoCodesPage from "./PromoCodesPage";
+import CashbackPage from "./CashbackPage";
 import PaymentIssuesPage from "./PaymentIssuesPage";
 import RefundsPage from "./RefundsPage";
 import CustomersPage from "./CustomersPage";
 import CurrenciesPage from "./CurrenciesPage";
+import PeriodReportPage from "./PeriodReportPage";
+import InventoryValuePage from "./InventoryValuePage";
+import AbandonedCartsPage from "./AbandonedCartsPage";
 import ModerationPage from "./ModerationPage";
 import PricesPage from "./PricesPage";
 import AccountRecoveryAdminPage from "./AccountRecoveryAdminPage";
 import GameDiscountsPage from "./GameDiscountsPage";
 import AdminBotStatusPage from "./AdminBotStatusPage";
+import AdminHealthPage from "./AdminHealthPage";
 
 /**
  * Всё поддерево админки одним модулем.
@@ -51,6 +56,7 @@ export default function AdminApp() {
             <Route element={<AdminLayout />}>
                 <Route index element={<AdminPanelPage />} />
                 <Route path="bot" element={<AdminBotStatusPage />} />
+                <Route path="health" element={<AdminHealthPage />} />
                 <Route path="botChanger" element={<BotChangerPage />} />
                 <Route path="siteChanger" element={<SiteChangerPage />} />
                 <Route path="cardAdder" element={<CardAdderPage />} />
@@ -58,7 +64,11 @@ export default function AdminApp() {
                 <Route path="payments/issues" element={<PaymentIssuesPage />} />
                 <Route path="payments/refunds" element={<RefundsPage />} />
                 <Route path="payments/currencies" element={<CurrenciesPage />} />
+                <Route path="reports/period" element={<PeriodReportPage />} />
+                <Route path="reports/inventory" element={<InventoryValuePage />} />
+                <Route path="reports/abandoned-carts" element={<AbandonedCartsPage />} />
                 <Route path="promo-codes" element={<PromoCodesPage />} />
+                <Route path="cashback" element={<CashbackPage />} />
                 <Route path="game-discounts" element={<GameDiscountsPage />} />
                 <Route path="games/prices" element={<PricesPage />} />
                 <Route path="newsletter" element={<NewsletterPage />} />
@@ -80,6 +90,10 @@ export default function AdminApp() {
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="data-tools" element={<DataToolsPage />} />
+                {/* Игра — в адресе, как у постов блога. Карточку можно дать ссылкой, открыть
+                    в новой вкладке и вернуться «назад». Старый games/details?gameId= остаётся
+                    рабочим: на него ведут закладки и ссылки из тостов. */}
+                <Route path="games/:gameId/edit" element={<GameDetailsEditorPage />} />
                 <Route path="games/details" element={<GameDetailsEditorPage />} />
                 <Route path="games/keys" element={<AdminGameKeysPage />} />
                 <Route path="userInfo" element={<UserInfoPage />} />

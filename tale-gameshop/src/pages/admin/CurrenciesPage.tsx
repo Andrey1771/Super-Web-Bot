@@ -40,7 +40,7 @@ const ago = (value: string | null): string => {
 };
 
 const CurrenciesPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const { addToast } = useToast();
   const [data, setData] = useState<FxOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,12 +80,7 @@ const CurrenciesPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Currencies & FX");
-    setHeaderActions([
-      { type: "button", id: "fx-import", label: "Import now", variant: "primary", onClick: importNow },
-      { type: "button", id: "fx-refresh", label: "Refresh", variant: "outline", onClick: load },
-    ]);
-    return () => setHeaderActions([]);
-  }, [importNow, load, setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const submit = async (currency: string, force = false) => {
     const raw = drafts[currency];
@@ -133,7 +128,13 @@ const CurrenciesPage: React.FC = () => {
       <PageHeader
         title="Currencies & FX"
         description="What the storefront sells in today, at which rate, and what the customer actually pays."
-        breadcrumbs={["Orders & Payments", "Currencies"]}
+        breadcrumbs={["Sales", "Currencies & FX"]}
+        primaryAction={
+          <>
+            <button className="btn btn-primary" onClick={importNow} disabled={busy}>Import now</button>
+            <button className="btn btn-outline" onClick={load} disabled={loading}>Refresh</button>
+          </>
+        }
       />
 
       {data && (

@@ -1,28 +1,10 @@
-import container from "../inversify.config";
-import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
 import type { Game } from "../models/game";
 import { currentCurrency } from "../context/site-preferences";
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
-
-/** Строка недельного чарта продаж: сколько копий игры продано за последние 7 дней. */
-export type WeeklyChartEntry = {
-  gameId: string;
-  sold: number;
-};
-
-/**
- * Продажи за неделю, уже отсортированные сервером по убыванию.
- * Источник «популярности» и на главной, и в сортировке каталога — считает и кэширует бэкенд.
- */
-export const getWeeklyChart = async (): Promise<WeeklyChartEntry[]> => {
-  const response = await apiClient().get("/api/game/weekly-chart");
-  return Array.isArray(response.data) ? response.data : [];
-};
+import { apiClient } from "./client";
 
 /** Вариант фильтра и число результатов, которое он даст. */
-export type FacetCount = { value: string; count: number };
+/** label — подпись на языке сайта (жанры); value остаётся значением фильтра. */
+export type FacetCount = { value: string; count: number; label?: string };
 
 /** Столбик гистограммы цен: сколько игр стоит в диапазоне from..to. */
 export type PriceBucket = { from: number; to: number; count: number };
@@ -38,6 +20,38 @@ export type CatalogFacets = {
   priceHistogram: PriceBucket[];
   /** Диапазоны в один клик. Пустые сервер не присылает. */
   pricePresets: PricePreset[];
+  /** Фильтры раздела /software. У игр списки пустые. */
+  software?: {
+    categories: FacetCount[];
+    /** «12», «24», «lifetime». */
+    terms: FacetCount[];
+    /** «1», «3», «10+». */
+    devices: FacetCount[];
+    activation: FacetCount[];
+  };
+  /** Совпадения поиска по видам товара: Game, Software. */
+  kinds?: FacetCount[];
+};
+
+/** title — английское название (адреса, фильтры), label — на языке сайта. */
+export type SoftwareCategory = { tag: string; title: string; count: number; label?: string };
+
+/** Жанр игр: tag — адрес страницы жанра (/games/category/{tag}), title — название из админки. */
+export type GameGenre = { tag: string; title: string; count: number; label?: string };
+
+/** Жанры игр в порядке настроек, с числом опубликованных игр. */
+export const getGameGenres = async (): Promise<GameGenre[]> => {
+  const response = await apiClient().get('/api/game/genres');
+  return Array.isArray(response.data) ? response.data : [];
+};
+
+/** Категории раздела /software в порядке настроек, с числом товаров. */
+export const getSoftwareCategories = async (): Promise<{ total: number; categories: SoftwareCategory[] }> => {
+  const response = await apiClient().get(`/api/game/software-categories?currency=${encodeURIComponent(currentCurrency())}`);
+  return {
+    total: Number(response.data?.total ?? 0),
+    categories: Array.isArray(response.data?.categories) ? response.data.categories : [],
+  };
 };
 
 export type CatalogPage = {

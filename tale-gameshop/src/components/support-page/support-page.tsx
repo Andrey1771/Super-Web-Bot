@@ -1,3 +1,6 @@
+import PageMeta from "../common/PageMeta";
+import { useTranslation } from 'react-i18next';
+import { serverErrorText } from '../../utils/api-error';
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useKeycloak } from '@react-keycloak/web';
@@ -6,7 +9,7 @@ import container from '../../inversify.config';
 import IDENTIFIERS from '../../constants/identifiers';
 import type { IKeycloakAuthService } from '../../iterfaces/i-keycloak-auth-service';
 import { createSupportTicket } from '../../features/account/support/supportApi';
-import { supportCategories } from '../../content/support/categories';
+import { supportCategories, supportCategoryLabel } from '../../content/support/categories';
 import { useSiteSettings } from '../../hooks/use-site-settings';
 import {
     faArrowRight,
@@ -25,6 +28,7 @@ import './support-page.css';
 
 const supportActions = [
     {
+        key: 'orders',
         title: 'Orders & Payments',
         description: 'Checkout status, billing confirmations, and payment help.',
         icon: faCreditCard,
@@ -32,6 +36,7 @@ const supportActions = [
         keyword: 'payment'
     },
     {
+        key: 'keys',
         title: 'Game keys & delivery',
         description: 'Instant delivery, key activation, and resend options.',
         icon: faKey,
@@ -39,6 +44,7 @@ const supportActions = [
         keyword: 'key'
     },
     {
+        key: 'refunds',
         title: 'Refunds & issues',
         description: 'Refund eligibility and troubleshooting access issues.',
         icon: faFileCircleCheck,
@@ -46,6 +52,7 @@ const supportActions = [
         keyword: 'refund'
     },
     {
+        key: 'account',
         title: 'Account & security',
         description: 'Profile access, security checks, and verification help.',
         icon: faUserShield,
@@ -55,103 +62,51 @@ const supportActions = [
 ];
 
 const searchChips = [
-    { label: 'Refund', term: 'refund', category: 'Refunds & issues' },
-    { label: "Didn’t receive key", term: 'key delivery', category: 'Game keys & delivery' },
-    { label: 'Payment failed', term: 'payment failed', category: 'Orders & Payments' },
-    { label: 'Account issue', term: 'account', category: 'Account & security' }
+    { key: 'refund', label: 'Refund', term: 'refund', category: 'Refunds & issues' },
+    { key: 'key', label: "Didn’t receive key", term: 'key delivery', category: 'Game keys & delivery' },
+    { key: 'payment', label: 'Payment failed', term: 'payment failed', category: 'Orders & Payments' },
+    { key: 'account', label: 'Account issue', term: 'account', category: 'Account & security' }
 ];
 
+// Вопросы и ответы — в словаре (support.faq.<key>); здесь только тема и теги для поиска.
 const faqItems = [
-    {
-        id: 'faq-key-delivery',
-        question: 'How do I receive my game key?',
-        answer: 'Keys are delivered instantly by email and are always available in your account dashboard.',
-        category: 'Game keys & delivery',
-        tags: ['key', 'delivery', 'email', 'order']
-    },
-    {
-        id: 'faq-delivery-speed',
-        question: 'Is delivery instant?',
-        answer: 'Yes. Most purchases are fulfilled within seconds, and we will notify you if anything delays delivery.',
-        category: 'Game keys & delivery',
-        tags: ['instant', 'delivery', 'timing']
-    },
-    {
-        id: 'faq-payment-methods',
-        question: 'What payment methods do you support?',
-        answer: 'We accept major debit/credit cards and trusted local processors for secure checkout.',
-        category: 'Orders & Payments',
-        tags: ['payment', 'cards', 'checkout']
-    },
-    {
-        id: 'faq-payment-failed',
-        question: 'My payment failed. What should I do?',
-        answer: 'Double-check your card details, try another payment method, or contact your bank. If it still fails, reach out to support.',
-        category: 'Orders & Payments',
-        tags: ['payment failed', 'checkout', 'bank']
-    },
-    {
-        id: 'faq-refund-request',
-        question: 'Can I request a refund?',
-        answer: 'Refunds are possible for unused keys and accidental purchases. Submit a request within 14 days for review.',
-        category: 'Refunds & issues',
-        tags: ['refund', 'policy', 'chargeback']
-    },
-    {
-        id: 'faq-issue-key',
-        question: 'My key is not working. What should I check?',
-        answer: 'Make sure the region matches your account, double-check for typos, and confirm the key has not been redeemed before.',
-        category: 'Refunds & issues',
-        tags: ['issue', 'key', 'activation']
-    },
-    {
-        id: 'faq-account-security',
-        question: 'How do I secure my account?',
-        answer: 'Use a strong password, enable two-factor authentication, and avoid sharing your login details.',
-        category: 'Account & security',
-        tags: ['account', 'security', 'password']
-    },
-    {
-        id: 'faq-email-change',
-        question: 'Can I change the email linked to my account?',
-        answer: 'Yes. Head to account settings to update your email. You may be asked to verify the change.',
-        category: 'Account & security',
-        tags: ['email', 'account', 'verification']
-    },
-    {
-        id: 'faq-language-support',
-        question: 'Do you support EN / RU?',
-        answer: 'Yes. Our support team can assist in both EN and RU, and game language availability is listed on each product page.',
-        category: 'Orders & Payments',
-        tags: ['language', 'support', 'en', 'ru']
-    },
-    {
-        id: 'faq-order-status',
-        question: 'Where can I see my order status?',
-        answer: 'All orders and invoices are available in your account dashboard under “Orders & Payments.”',
-        category: 'Orders & Payments',
-        tags: ['order', 'status', 'invoice']
-    }
+    { id: 'faq-key-delivery', key: 'keyDelivery', category: 'Game keys & delivery', tags: ['key', 'delivery', 'email', 'order'] },
+    { id: 'faq-delivery-speed', key: 'deliverySpeed', category: 'Game keys & delivery', tags: ['instant', 'delivery', 'timing'] },
+    { id: 'faq-payment-methods', key: 'paymentMethods', category: 'Orders & Payments', tags: ['payment', 'cards', 'checkout'] },
+    { id: 'faq-payment-failed', key: 'paymentFailed', category: 'Orders & Payments', tags: ['payment failed', 'checkout', 'bank'] },
+    { id: 'faq-refund-request', key: 'refundRequest', category: 'Refunds & issues', tags: ['refund', 'policy', 'chargeback'] },
+    { id: 'faq-issue-key', key: 'issueKey', category: 'Refunds & issues', tags: ['issue', 'key', 'activation'] },
+    { id: 'faq-account-security', key: 'accountSecurity', category: 'Account & security', tags: ['account', 'security', 'password'] },
+    { id: 'faq-email-change', key: 'emailChange', category: 'Account & security', tags: ['email', 'account', 'verification'] },
+    { id: 'faq-language-support', key: 'languageSupport', category: 'Orders & Payments', tags: ['language', 'support', 'en', 'ru'] },
+    { id: 'faq-order-status', key: 'orderStatus', category: 'Orders & Payments', tags: ['order', 'status', 'invoice'] }
 ];
+
+/** Подпись темы на языке сайта: категория — внутренняя строка, показывается название действия. */
+const categoryKey = (category: string) => supportActions.find((action) => action.category === category)?.key ?? 'orders';
 
 const contactChannels = [
     {
+        key: 'email',
         title: 'Email support',
         description: 'We reply within 24 hours',
         icon: faEnvelope
     },
     {
+        key: 'chat',
         title: 'Live chat',
         description: 'Usually answers in minutes',
         icon: faHeadset
     },
     {
+        key: 'ticket',
         title: 'Support ticket',
         description: 'Best for order issues',
         icon: faMessage
     },
     {
         // Вход для запертых снаружи: заявка на сброс 2FA подаётся без логина.
+        key: 'recovery',
         title: 'Account recovery',
         description: 'Can’t sign in? Lost 2FA access',
         icon: faShieldAlt
@@ -159,13 +114,14 @@ const contactChannels = [
 ];
 
 const trustItems = [
-    { title: 'Secure payments', icon: faShieldAlt },
-    { title: 'Instant delivery', icon: faBolt },
-    { title: 'Verified keys', icon: faKey },
-    { title: 'Friendly support', icon: faHeadset }
+    { key: 'secure', title: 'Secure payments', icon: faShieldAlt },
+    { key: 'instant', title: 'Instant delivery', icon: faBolt },
+    { key: 'verified', title: 'Verified keys', icon: faKey },
+    { key: 'friendly', title: 'Friendly support', icon: faHeadset }
 ];
 
 const SupportPage: React.FC = () => {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('All');
     const [openFaqId, setOpenFaqId] = useState<string | null>(faqItems[0]?.id ?? null);
@@ -212,6 +168,51 @@ const SupportPage: React.FC = () => {
         setSearchTerm(event.target.value);
     };
 
+    // Канал связи открывается одинаково из шапки и из блока «Contact support»: «Email support» —
+    // почтовый клиент, «Support ticket» — свои запросы, «Account recovery» — заявка без логина,
+    // «Live chat» — виджет чата.
+    const renderChannel = (channel: (typeof contactChannels)[number], className: string, content: React.ReactNode) => {
+        if (channel.key === 'email') {
+            // Адрес задаётся админом в System → Settings.
+            return (
+                <a key={channel.title} href={`mailto:${supportEmail}?subject=Support%20request`} className={className}>
+                    {content}
+                </a>
+            );
+        }
+        if (channel.key === 'ticket') {
+            return (
+                <Link key={channel.title} to="/account/help" className={className}>
+                    {content}
+                </Link>
+            );
+        }
+        if (channel.key === 'recovery') {
+            return (
+                <Link key={channel.title} to="/account-recovery" className={className}>
+                    {content}
+                </Link>
+            );
+        }
+        if (channel.key === 'chat') {
+            return (
+                <button
+                    key={channel.title}
+                    type="button"
+                    className={className}
+                    onClick={() => window.dispatchEvent(new Event('taleshop:open-support-chat'))}
+                >
+                    {content}
+                </button>
+            );
+        }
+        return (
+            <div key={channel.title} className={className}>
+                {content}
+            </div>
+        );
+    };
+
     const filteredFaqs = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
         return faqItems.filter((item) => {
@@ -222,10 +223,11 @@ const SupportPage: React.FC = () => {
             if (!term) {
                 return true;
             }
-            const haystack = [item.question, item.answer, ...item.tags].join(' ').toLowerCase();
+            // Ищем и по тексту на языке сайта, и по английским тегам: чипы и старые запросы работают на любом языке.
+            const haystack = [t(`support.faq.${item.key}.question`), t(`support.faq.${item.key}.answer`), ...item.tags].join(' ').toLowerCase();
             return haystack.includes(term);
         });
-    }, [searchTerm, activeCategory]);
+    }, [searchTerm, activeCategory, t]);
 
     useEffect(() => {
         if (filteredFaqs.length === 0) {
@@ -266,7 +268,7 @@ const SupportPage: React.FC = () => {
             setCreatedTicketId(String(response.ticket.publicId ?? response.ticket.id));
             setMessage('');
         } catch (error: any) {
-            setSubmitError(error?.response?.data?.detail ?? 'Failed to send the request. Please try again.');
+            setSubmitError(serverErrorText(error, t('support.sendFailed')));
         } finally {
             setIsSubmitting(false);
         }
@@ -274,20 +276,93 @@ const SupportPage: React.FC = () => {
 
     return (
         <div className="support-page">
+            <PageMeta title={t('support.title')} description={t('support.subtitle')} canonicalPath="/support" />
+            {/* Шапка в две колонки: слева заголовок и поиск, справа каналы связи. Раньше заголовок
+                с подписью висел отдельно, под ним второй заголовок «Choose a topic» с ещё одной
+                подписью, а поиск лежал третьим экраном — текст без якоря. Теперь у шапки своя
+                работа (поиск), а темы идут сразу под ней с маленькой подписью. */}
             <section className="support-hero">
-                <div className="container">
+                <div className="container support-hero-grid">
                     <div className="support-hero-content">
-                        <h1>Support &amp; Help Center</h1>
-                        <p>We’re here to help you with purchases, delivery, and account questions.</p>
+                        <span className="support-eyebrow">{t('support.eyebrow')}</span>
+                        <h1>{t('support.title')}</h1>
+                        <p>{t('support.subtitle')}</p>
+                        <div className="support-search-card">
+                            <span className="support-search-icon" aria-hidden="true">
+                                <FontAwesomeIcon icon={faMagnifyingGlass} />
+                            </span>
+                            <input
+                                type="search"
+                                placeholder={t('support.searchPlaceholder')}
+                                value={searchTerm}
+                                onChange={handleSearchChange}
+                                aria-label={t('support.search')}
+                            />
+                            <span className="support-search-active">{activeCategory === 'All' ? t('support.allTopics') : t(`support.actions.${supportActions.find((action) => action.category === activeCategory)?.key ?? 'orders'}.title`)}</span>
+                        </div>
+                        <div className="support-chip-row">
+                            {searchChips.map((chip) => (
+                                <button
+                                    key={chip.label}
+                                    type="button"
+                                    className="support-chip"
+                                    onClick={() => handleChipClick(t(`support.chipTerms.${chip.key}`), chip.category)}
+                                >
+                                    {t(`support.chips.${chip.key}`)}
+                                </button>
+                            ))}
+                            {(searchTerm.trim() !== '' || activeCategory !== 'All') && (
+                                <button
+                                    type="button"
+                                    className="support-chip support-chip-clear"
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setActiveCategory('All');
+                                    }}
+                                >
+                                    {t('common.clearFilters')}
+                                </button>
+                            )}
+                        </div>
                     </div>
+                    <aside className="support-hero-aside" aria-labelledby="support-talk-heading">
+                        <h2 id="support-talk-heading">{t('support.talkToUs')}</h2>
+                        <ul className="support-hero-channels">
+                            {contactChannels.map((channel) => (
+                                <li key={channel.title}>
+                                    {renderChannel(
+                                        channel,
+                                        'support-hero-channel',
+                                        <>
+                                            <span className="support-hero-channel-title">
+                                                <FontAwesomeIcon icon={channel.icon} />
+                                                {t(`support.channels.${channel.key}.title`)}
+                                            </span>
+                                            <span className="support-hero-channel-note">{t(`support.channels.${channel.key}.text`)}</span>
+                                        </>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </aside>
                 </div>
             </section>
 
-            <section className="support-actions section">
+            <section className="support-actions">
                 <div className="container">
-                    <div className="support-section-header">
-                        <h2>Choose a topic</h2>
-                        <p>Find the right help category and jump straight into the answers.</p>
+                    <div className="support-topics-header">
+                        <h2>{t('support.browseByTopic')}</h2>
+                        <button
+                            type="button"
+                            className="support-topics-all"
+                            onClick={() => {
+                                setSearchTerm('');
+                                setActiveCategory('All');
+                                scrollToSection(faqRef);
+                            }}
+                        >
+                            {t('support.allQuestions')} <FontAwesomeIcon icon={faArrowRight} />
+                        </button>
                     </div>
                     <div className="support-action-grid">
                         {supportActions.map((action) => (
@@ -300,56 +375,10 @@ const SupportPage: React.FC = () => {
                                 <div className="support-action-icon">
                                     <FontAwesomeIcon icon={action.icon} />
                                 </div>
-                                <h3>{action.title}</h3>
-                                <p>{action.description}</p>
+                                <h3>{t(`support.actions.${action.key}.title`)}</h3>
+                                <p>{t(`support.actions.${action.key}.text`)}</p>
                             </button>
                         ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="support-search section">
-                <div className="container">
-                    <div className="support-section-header">
-                        <h2>Search support</h2>
-                        <p>Type a question or select a quick topic below.</p>
-                    </div>
-                    <div className="support-search-card">
-                        <span className="support-search-icon" aria-hidden="true">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} />
-                        </span>
-                        <input
-                            type="search"
-                            placeholder="Search for help…"
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                            aria-label="Search support"
-                        />
-                        <span className="support-search-active">{activeCategory === 'All' ? 'All topics' : activeCategory}</span>
-                    </div>
-                    <div className="support-chip-row">
-                        {searchChips.map((chip) => (
-                            <button
-                                key={chip.label}
-                                type="button"
-                                className="support-chip"
-                                onClick={() => handleChipClick(chip.term, chip.category)}
-                            >
-                                {chip.label}
-                            </button>
-                        ))}
-                        {(searchTerm.trim() !== '' || activeCategory !== 'All') && (
-                            <button
-                                type="button"
-                                className="support-chip support-chip-clear"
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setActiveCategory('All');
-                                }}
-                            >
-                                Clear filters
-                            </button>
-                        )}
                     </div>
                 </div>
             </section>
@@ -357,21 +386,21 @@ const SupportPage: React.FC = () => {
             <section className="support-faq section" ref={faqRef}>
                 <div className="container">
                     <div className="support-section-header">
-                        <h2>Frequently asked questions</h2>
-                        <p>Browse answers or refine with search and category filters.</p>
+                        <h2>{t('support.faqTitle')}</h2>
+                        <p>{t('support.faqText')}</p>
                     </div>
                     {filteredFaqs.length === 0 ? (
                         <div className="support-empty card">
                             <div>
-                                <h3>No results found</h3>
-                                <p>Try another search term or reach out to our team for direct help.</p>
+                                <h3>{t('support.noResults')}</h3>
+                                <p>{t('support.noResultsText')}</p>
                             </div>
                             <button
                                 type="button"
                                 className="btn btn-primary"
                                 onClick={() => scrollToSection(contactRef)}
                             >
-                                Contact support
+                                {t('common.contactSupport')}
                             </button>
                         </div>
                     ) : (
@@ -381,7 +410,7 @@ const SupportPage: React.FC = () => {
                                 return (
                                     <div key={item.id} className="card support-faq-item">
                                         <div className="support-faq-meta">
-                                            <span className="badge">{item.category}</span>
+                                            <span className="badge">{t(`support.actions.${categoryKey(item.category)}.title`)}</span>
                                         </div>
                                         <button
                                             type="button"
@@ -390,12 +419,12 @@ const SupportPage: React.FC = () => {
                                             aria-expanded={isOpen}
                                             aria-controls={`${item.id}-content`}
                                         >
-                                            <span>{item.question}</span>
+                                            <span>{t(`support.faq.${item.key}.question`)}</span>
                                             <FontAwesomeIcon icon={faArrowRight} className={isOpen ? 'open' : ''} />
                                         </button>
                                         {isOpen && (
                                             <div id={`${item.id}-content`} className="support-faq-content">
-                                                <p>{item.answer}</p>
+                                                <p>{t(`support.faq.${item.key}.answer`)}</p>
                                             </div>
                                         )}
                                     </div>
@@ -409,94 +438,48 @@ const SupportPage: React.FC = () => {
             <section className="support-contact section" ref={contactRef}>
                 <div className="container">
                     <div className="support-section-header">
-                        <h2>Contact support</h2>
-                        <p>If the FAQ didn’t solve it, send us a message and we’ll take it from here.</p>
+                        <h2>{t('support.contactTitle')}</h2>
+                        <p>{t('support.contactText')}</p>
                     </div>
                     <div className="support-contact-grid">
                         <div className="support-contact-channels">
-                            {contactChannels.map((channel) => {
-                                const content = (
+                            {contactChannels.map((channel) =>
+                                renderChannel(
+                                    channel,
+                                    'card support-contact-card',
                                     <>
                                         <div className="support-contact-icon">
                                             <FontAwesomeIcon icon={channel.icon} />
                                         </div>
                                         <div>
-                                            <h3>{channel.title}</h3>
-                                            <p>{channel.description}</p>
+                                            <h3>{t(`support.channels.${channel.key}.title`)}</h3>
+                                            <p>{t(`support.channels.${channel.key}.text`)}</p>
                                         </div>
                                     </>
-                                );
-                                // «Email support» открывает почтовый клиент; «Support ticket» ведёт к своим
-                                // запросам; «Live chat» открывает виджет чата.
-                                if (channel.title === 'Email support') {
-                                    return (
-                                        <a
-                                            key={channel.title}
-                                            // Адрес задаётся админом в System → Settings.
-                                            href={`mailto:${supportEmail}?subject=Support%20request`}
-                                            className="card support-contact-card"
-                                        >
-                                            {content}
-                                        </a>
-                                    );
-                                }
-                                if (channel.title === 'Support ticket') {
-                                    return (
-                                        <Link key={channel.title} to="/account/help" className="card support-contact-card">
-                                            {content}
-                                        </Link>
-                                    );
-                                }
-                                if (channel.title === 'Account recovery') {
-                                    return (
-                                        <Link key={channel.title} to="/account-recovery" className="card support-contact-card">
-                                            {content}
-                                        </Link>
-                                    );
-                                }
-                                if (channel.title === 'Live chat') {
-                                    return (
-                                        <button
-                                            key={channel.title}
-                                            type="button"
-                                            className="card support-contact-card"
-                                            onClick={() => window.dispatchEvent(new Event('taleshop:open-support-chat'))}
-                                        >
-                                            {content}
-                                        </button>
-                                    );
-                                }
-                                return (
-                                    <div key={channel.title} className="card support-contact-card">
-                                        {content}
-                                    </div>
-                                );
-                            })}
+                                )
+                            )}
                         </div>
                         {createdTicketId ? (
                             <div className="card support-contact-form support-contact-success">
-                                <h3>Request #{createdTicketId} created</h3>
-                                <p>
-                                    Our team will reply soon. You can track the conversation and add details in your
-                                    account.
-                                </p>
+                                <h3>{t('support.requestCreated', { id: createdTicketId })}</h3>
+                                <p>{t('support.requestCreatedText')}</p>
                                 <div className="support-success-actions">
                                     <Link to="/account/help" className="btn btn-primary">
-                                        Track my request
+                                        {t('support.track')}
                                     </Link>
                                     <button
                                         type="button"
                                         className="btn btn-outline"
                                         onClick={() => setCreatedTicketId(null)}
                                     >
-                                        Send another
+                                        {t('support.sendAnother')}
                                     </button>
                                 </div>
                             </div>
                         ) : (
                         <form className="card support-contact-form" onSubmit={handleSubmit}>
                             <div className="support-field">
-                                <label htmlFor="support-topic">Topic</label>
+                                <label htmlFor="support-topic">{t('support.topic')}</label>
                                 <div className="support-field-input">
                                     <FontAwesomeIcon icon={faFileCircleCheck} />
                                     <select
@@ -506,13 +489,13 @@ const SupportPage: React.FC = () => {
                                         onChange={(event) => setTopic(event.target.value)}
                                     >
                                         {supportCategories.map((category) => (
-                                            <option key={category}>{category}</option>
+                                            <option key={category} value={category}>{supportCategoryLabel(category)}</option>
                                         ))}
                                     </select>
                                 </div>
                             </div>
                             <div className="support-field">
-                                <label htmlFor="support-email">Email</label>
+                                <label htmlFor="support-email">{t('common.email')}</label>
                                 <div className="support-field-input">
                                     <FontAwesomeIcon icon={faEnvelope} />
                                     <input
@@ -526,18 +509,18 @@ const SupportPage: React.FC = () => {
                                     />
                                 </div>
                                 {!isLoggedIn && (
-                                    <small>Sign in to send a request — we’ll bring you right back here.</small>
+                                    <small>{t('support.signInHint')}</small>
                                 )}
                             </div>
                             <div className="support-field">
-                                <label htmlFor="support-message">Message</label>
+                                <label htmlFor="support-message">{t('support.message')}</label>
                                 <div className="support-field-input">
                                     <FontAwesomeIcon icon={faMessage} />
                                     <textarea
                                         id="support-message"
                                         name="message"
                                         rows={4}
-                                        placeholder="Tell us what happened"
+                                        placeholder={t('support.messagePlaceholder')}
                                         value={message}
                                         onChange={(event) => setMessage(event.target.value)}
                                         required
@@ -551,12 +534,12 @@ const SupportPage: React.FC = () => {
                                 disabled={isSubmitting || (isLoggedIn && !message.trim())}
                             >
                                 {isSubmitting
-                                    ? 'Sending...'
+                                    ? t('common.sending')
                                     : isLoggedIn
-                                        ? 'Send request'
-                                        : 'Sign in & send request'}
+                                        ? t('support.sendRequest')
+                                        : t('support.signInSend')}
                             </button>
-                            <small>We usually reply within 24 hours.</small>
+                            <small>{t('support.replyWithin')}</small>
                         </form>
                         )}
                     </div>
@@ -569,7 +552,7 @@ const SupportPage: React.FC = () => {
                         {trustItems.map((item) => (
                             <div key={item.title} className="support-trust-item">
                                 <FontAwesomeIcon icon={item.icon} />
-                                <span>{item.title}</span>
+                                <span>{t('support.trust.' + item.key)}</span>
                             </div>
                         ))}
                     </div>
@@ -580,8 +563,8 @@ const SupportPage: React.FC = () => {
                 <div className="container">
                     <div className="card support-final-card">
                         <div>
-                            <h2>Still need help?</h2>
-                            <p>Didn’t find your answer? Our support team usually responds within a few hours.</p>
+                            <h2>{t('support.stillNeed')}</h2>
+                            <p>{t('support.stillNeedText')}</p>
                         </div>
                         <div className="support-final-actions">
                             <button
@@ -589,14 +572,14 @@ const SupportPage: React.FC = () => {
                                 className="btn btn-primary"
                                 onClick={() => scrollToSection(contactRef)}
                             >
-                                Contact support
+                                {t('common.contactSupport')}
                             </button>
                             <button
                                 type="button"
                                 className="btn btn-outline"
                                 onClick={() => scrollToSection(faqRef)}
                             >
-                                Go to FAQ
+                                {t('support.goToFaq')}
                             </button>
                         </div>
                     </div>

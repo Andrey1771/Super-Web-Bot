@@ -19,6 +19,9 @@ namespace SuperBot.WebApi.Services;
 /// </summary>
 public sealed class AdminCustomerService
 {
+    /// <summary>Сколько клиентов показывать без запроса — столько же, сколько отдаёт поиск.</summary>
+    private const int DefaultListSize = 30;
+
     private readonly KeycloakAdminClient _keycloak;
     private readonly IOrderRepository _orders;
     private readonly IGameKeyRepository _keys;
@@ -48,6 +51,9 @@ public sealed class AdminCustomerService
     public async Task<IReadOnlyList<CustomerSearchHitDto>> SearchAsync(string query, CancellationToken ct)
     {
         var q = (query ?? string.Empty).Trim();
+
+        // Пустой запрос обслуживает BrowseAsync: там постраничный обход по индексу, а не
+        // поиск. Здесь возвращаем пусто, чтобы случайный запрос без слова не собирал список.
         if (q.Length < 2)
         {
             return Array.Empty<CustomerSearchHitDto>();
@@ -79,10 +85,18 @@ public sealed class AdminCustomerService
         }
 
         // Гости и старые заказы: почта есть только в Orders.UserName.
+        //
+        // Ищем подстроку где угодно — «ova» находит petrova@…, как и ждёт человек. Раньше
+        // такой запрос читал коллекцию целиком, поэтому его пришлось сузить до начала
+        // строки; после появления индекса ix_orders_user_name это больше не нужно:
+        // вместе с проекцией одного поля запрос обслуживается ОДНИМ индексом, документы
+        // не читаются вовсе (PROJECTION_COVERED — проверено планом на живой базе).
+        // Проекция здесь не украшение, а условие дешевизны: без неё Mongo пойдёт за
+        // документами и вернётся к перебору.
         var orders = _database.GetCollection<OrderDb>("Orders");
-        var regex = new MongoDB.Bson.BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(q), "i");
+        var infix = new MongoDB.Bson.BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(q), "i");
         var byOrders = await orders
-            .Find(Builders<OrderDb>.Filter.Regex(o => o.UserName, regex))
+            .Find(Builders<OrderDb>.Filter.Regex(o => o.UserName, infix))
             .Project(o => o.UserName)
             .Limit(200)
             .ToListAsync(ct);
@@ -117,6 +131,379 @@ public sealed class AdminCustomerService
             .ThenBy(h => h.Email, StringComparer.OrdinalIgnoreCase)
             .Take(30)
             .ToList();
+    }
+
+    /// <summary>
+    /// Обход клиентов окнами — для таблицы, которую листают. Срез выбирает, кого показывать:
+    ///
+    ///  • all      — все покупатели, по алфавиту почты; продолжение по индексу ix_orders_user_name,
+    ///               стоимость окна не растёт по мере прокрутки;
+    ///  • recent   — по дате последнего заказа, свежие сверху. Требует сгруппировать все заказы,
+    ///               поэтому дороже остальных; при тысячах клиентов этому срезу понадобится
+    ///               отдельная витрина покупателей, обновляемая при заказе;
+    ///  • refunded — у кого были возвраты или споры;
+    ///  • blocked  — заблокированные учётки (из Keycloak);
+    ///  • no_orders — учётки без единого заказа: зарегистрировался, но не купил.
+    /// </summary>
+    public async Task<CustomerBrowsePageDto> BrowseAsync(string? filter, string? after, int limit, CancellationToken ct)
+    {
+        var size = Math.Clamp(limit, 1, 200);
+        return (filter ?? "all").Trim().ToLowerInvariant() switch
+        {
+            "recent" => await BrowseByLastOrderAsync(after, size, ct),
+            "refunded" => await BrowseRefundedAsync(after, size, ct),
+            "blocked" => await BrowseAccountsAsync(after, size, enabledFilter: false, withoutOrders: false, ct),
+            "no_orders" => await BrowseAccountsAsync(after, size, enabledFilter: null, withoutOrders: true, ct),
+            _ => await BrowseAllBuyersAsync(after, size, ct),
+        };
+    }
+
+    /// <summary>Все покупатели по алфавиту. Продолжение — почта последней строки, читается один индекс.</summary>
+    private async Task<CustomerBrowsePageDto> BrowseAllBuyersAsync(string? after, int size, CancellationToken ct)
+    {
+        var orders = _database.GetCollection<OrderDb>("Orders");
+
+        var emails = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var cursor = string.IsNullOrWhiteSpace(after) ? null : after.Trim();
+
+        // У одного покупателя много заказов, а нужны разные почты — читаем индекс окнами,
+        // пока не наберём нужное количество. Сами документы не трогаем.
+        while (emails.Count < size)
+        {
+            var filter = cursor == null
+                ? Builders<OrderDb>.Filter.Ne(order => order.UserName, null)
+                : Builders<OrderDb>.Filter.Gt(order => order.UserName, cursor);
+
+            var batch = await orders
+                .Find(filter)
+                .Project(order => order.UserName)
+                .Sort(Builders<OrderDb>.Sort.Ascending(order => order.UserName))
+                .Limit(size * 5)
+                .ToListAsync(ct);
+
+            if (batch.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var email in batch)
+            {
+                if (!string.IsNullOrWhiteSpace(email) && seen.Add(email))
+                {
+                    emails.Add(email);
+                    if (emails.Count >= size)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            cursor = batch[^1];
+
+            if (batch.Count < size * 5)
+            {
+                break;
+            }
+        }
+
+        var items = await AttachOrderStatsAsync(emails, ct);
+
+        // Первое окно — заодно считаем, сколько всего покупателей в срезе. Distinct идёт
+        // по индексу ix_orders_user_name, документы при этом не читаются.
+        long? total = null;
+        if (string.IsNullOrWhiteSpace(after))
+        {
+            var distinct = await orders.DistinctAsync(order => order.UserName, Builders<OrderDb>.Filter.Ne(order => order.UserName, null), cancellationToken: ct);
+            var all = await distinct.ToListAsync(ct);
+            total = all.Count(email => !string.IsNullOrWhiteSpace(email));
+        }
+
+        return new CustomerBrowsePageDto
+        {
+            Items = items,
+            Total = total,
+            NextCursor = emails.Count >= size ? emails[^1] : null
+        };
+    }
+
+    /// <summary>
+    /// По дате последнего заказа, свежие сверху. Группирует все заказы — это честная цена
+    /// такой сортировки без отдельной витрины; продолжение здесь по смещению, потому что
+    /// дата не даёт устойчивой точки (два заказа в одну секунду).
+    /// </summary>
+    private async Task<CustomerBrowsePageDto> BrowseByLastOrderAsync(string? after, int size, CancellationToken ct)
+    {
+        var offset = int.TryParse(after, out var parsed) && parsed > 0 ? parsed : 0;
+        var orders = _database.GetCollection<OrderDb>("Orders");
+
+        var rows = await orders.Aggregate(new AggregateOptions { AllowDiskUse = true })
+            .Group(order => order.UserName, group => new
+            {
+                Email = group.Key,
+                Count = group.Count(),
+                LastOrder = group.Max(order => order.CreatedAt)
+            })
+            .SortByDescending(row => row.LastOrder)
+            .Skip(offset)
+            .Limit(size)
+            .ToListAsync(ct);
+
+        var items = rows
+            .Where(row => !string.IsNullOrWhiteSpace(row.Email))
+            .Select(row => new CustomerSearchHitDto
+            {
+                Email = row.Email,
+                OrderCount = row.Count,
+                LastOrderAt = row.LastOrder == default ? null : row.LastOrder,
+                Source = "guest"
+            })
+            .ToList();
+
+        return new CustomerBrowsePageDto
+        {
+            Items = items,
+            NextCursor = rows.Count >= size ? (offset + size).ToString() : null
+        };
+    }
+
+    /// <summary>Покупатели с возвратами или спорами — по алфавиту, продолжение по почте.</summary>
+    private async Task<CustomerBrowsePageDto> BrowseRefundedAsync(string? after, int size, CancellationToken ct)
+    {
+        var orders = _database.GetCollection<OrderDb>("Orders");
+
+        var refunded = Builders<OrderDb>.Filter.Or(
+            Builders<OrderDb>.Filter.Gt(order => order.RefundedAmount, 0m),
+            Builders<OrderDb>.Filter.In(order => order.Status,
+                new[] { "REFUNDED", "PARTIALLY_REFUNDED", "REFUND_PENDING", "DISPUTED", "DISPUTE_LOST" }));
+
+        var match = string.IsNullOrWhiteSpace(after)
+            ? refunded
+            : Builders<OrderDb>.Filter.And(refunded, Builders<OrderDb>.Filter.Gt(order => order.UserName, after.Trim()));
+
+        var rows = await orders.Aggregate()
+            .Match(match)
+            .Group(order => order.UserName, group => new
+            {
+                Email = group.Key,
+                Count = group.Count(),
+                LastOrder = group.Max(order => order.CreatedAt)
+            })
+            .SortBy(row => row.Email)
+            .Limit(size)
+            .ToListAsync(ct);
+
+        var items = rows
+            .Where(row => !string.IsNullOrWhiteSpace(row.Email))
+            .Select(row => new CustomerSearchHitDto
+            {
+                Email = row.Email,
+                OrderCount = row.Count,
+                LastOrderAt = row.LastOrder == default ? null : row.LastOrder,
+                Source = "guest"
+            })
+            .ToList();
+
+        return new CustomerBrowsePageDto
+        {
+            Items = items,
+            NextCursor = rows.Count >= size ? rows[^1].Email : null
+        };
+    }
+
+    /// <summary>
+    /// Срезы по учёткам Keycloak: заблокированные и «зарегистрировался, но не купил».
+    /// Продолжение — смещение в списке учёток; для второго среза окно добирается циклом,
+    /// потому что после вычёркивания покупателей от страницы может остаться меньше окна.
+    /// </summary>
+    private async Task<CustomerBrowsePageDto> BrowseAccountsAsync(
+        string? after, int size, bool? enabledFilter, bool withoutOrders, CancellationToken ct)
+    {
+        var offset = int.TryParse(after, out var parsed) && parsed > 0 ? parsed : 0;
+        var orders = _database.GetCollection<OrderDb>("Orders");
+        var items = new List<CustomerSearchHitDto>();
+        var moreLeft = false;
+
+        while (items.Count < size)
+        {
+            var fetch = withoutOrders ? size * 3 : size;
+            List<KeycloakUser> chunk;
+            try
+            {
+                chunk = await _keycloak.ListUsersAsync(offset, fetch, enabledFilter);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Customer browse: Keycloak unavailable, accounts filter returns nothing.");
+                break;
+            }
+
+            if (chunk.Count == 0)
+            {
+                break;
+            }
+
+            offset += chunk.Count;
+            moreLeft = chunk.Count >= fetch;
+
+            var withEmail = chunk.Where(user => !string.IsNullOrWhiteSpace(user.Email)).ToList();
+            var emails = withEmail.Select(user => user.Email).ToList();
+
+            var buyers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var counts = new Dictionary<string, (int Count, DateTime Last)>(StringComparer.OrdinalIgnoreCase);
+            if (emails.Count > 0)
+            {
+                var stats = await orders.Aggregate()
+                    .Match(Builders<OrderDb>.Filter.In(order => order.UserName, emails))
+                    .Group(order => order.UserName, group => new
+                    {
+                        Email = group.Key,
+                        Count = group.Count(),
+                        LastOrder = group.Max(order => order.CreatedAt)
+                    })
+                    .ToListAsync(ct);
+                foreach (var row in stats.Where(row => row.Email != null))
+                {
+                    buyers.Add(row.Email);
+                    counts[row.Email] = (row.Count, row.LastOrder);
+                }
+            }
+
+            foreach (var user in withEmail)
+            {
+                if (withoutOrders && buyers.Contains(user.Email))
+                {
+                    continue;
+                }
+
+                items.Add(new CustomerSearchHitDto
+                {
+                    Email = user.Email,
+                    Name = FullName(user.FirstName, user.LastName),
+                    KeycloakId = user.Id,
+                    Enabled = user.Enabled,
+                    Source = "account",
+                    OrderCount = counts.TryGetValue(user.Email, out var stat) ? stat.Count : 0,
+                    LastOrderAt = counts.TryGetValue(user.Email, out var stat2) && stat2.Last != default ? stat2.Last : null
+                });
+
+                if (items.Count >= size)
+                {
+                    break;
+                }
+            }
+
+            if (!moreLeft)
+            {
+                break;
+            }
+        }
+
+        return new CustomerBrowsePageDto
+        {
+            Items = items,
+            NextCursor = moreLeft ? offset.ToString() : null
+        };
+    }
+
+    /// <summary>Счётчик и дата последнего заказа для набора почт — одним запросом на окно.</summary>
+    private async Task<List<CustomerSearchHitDto>> AttachOrderStatsAsync(List<string> emails, CancellationToken ct)
+    {
+        var hits = emails.ToDictionary(
+            email => email,
+            email => new CustomerSearchHitDto { Email = email, Source = "guest" },
+            StringComparer.OrdinalIgnoreCase);
+
+        if (emails.Count > 0)
+        {
+            var orders = _database.GetCollection<OrderDb>("Orders");
+            var stats = await orders.Aggregate()
+                .Match(Builders<OrderDb>.Filter.In(order => order.UserName, emails))
+                .Group(order => order.UserName, group => new
+                {
+                    Email = group.Key,
+                    Count = group.Count(),
+                    LastOrder = group.Max(order => order.CreatedAt)
+                })
+                .ToListAsync(ct);
+
+            foreach (var row in stats)
+            {
+                if (row.Email != null && hits.TryGetValue(row.Email, out var hit))
+                {
+                    hit.OrderCount = row.Count;
+                    hit.LastOrderAt = row.LastOrder == default ? null : row.LastOrder;
+                }
+            }
+        }
+
+        return hits.Values.OrderBy(hit => hit.Email, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>
+    /// Выгрузка текущего среза в CSV — то, что видно в таблице, но целиком, а не по окнам.
+    /// Потолок строк защищает и сервер, и того, кто откроет файл; про срез он честно
+    /// сообщается последней строкой файла.
+    /// </summary>
+    public async Task<string> ExportCsvAsync(string? filter, string? query, CancellationToken ct)
+    {
+        const int exportLimit = 5000;
+        var rows = new List<CustomerSearchHitDto>();
+        var q = (query ?? string.Empty).Trim();
+
+        if (q.Length >= 2)
+        {
+            rows.AddRange(await SearchAsync(q, ct));
+        }
+        else
+        {
+            string? cursor = null;
+            while (rows.Count < exportLimit)
+            {
+                var page = await BrowseAsync(filter, cursor, 200, ct);
+                rows.AddRange(page.Items);
+                if (page.NextCursor == null)
+                {
+                    break;
+                }
+                cursor = page.NextCursor;
+            }
+        }
+
+        var truncated = rows.Count > exportLimit;
+        if (truncated)
+        {
+            rows = rows.Take(exportLimit).ToList();
+        }
+
+        static string Cell(string? value)
+        {
+            var v = value ?? string.Empty;
+            return v.Contains(',') || v.Contains('"') || v.Contains('\n')
+                ? '"' + v.Replace("\"", "\"\"") + '"'
+                : v;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Email,Name,Orders,LastOrder,Account");
+        foreach (var row in rows)
+        {
+            var account = row.Source == "account"
+                ? (row.Enabled == false ? "blocked" : "account")
+                : "guest";
+            sb.AppendLine(string.Join(",",
+                Cell(row.Email),
+                Cell(row.Name),
+                row.OrderCount.ToString(),
+                row.LastOrderAt?.ToString("yyyy-MM-dd") ?? "",
+                account));
+        }
+        if (truncated)
+        {
+            sb.AppendLine($"# truncated to first {exportLimit} rows");
+        }
+
+        return sb.ToString();
     }
 
     // ---------- карточка ----------
@@ -248,8 +635,25 @@ public sealed class AdminCustomerService
 
     // ---------- действия ----------
 
-    public async Task<ActionOutcome> SetEnabledAsync(string email, bool enabled)
+    /// <summary>Роль, дающая доступ в админку магазина. Её носителей бережём от блокировки.</summary>
+    private const string AdminRole = "admin";
+
+    /// <summary>
+    /// Блокировка и разблокировка учётки. actorEmail — кто нажал: без него нельзя отличить
+    /// «заблокировать покупателя» от «заблокировать себя».
+    /// </summary>
+    public async Task<ActionOutcome> SetEnabledAsync(string email, bool enabled, string? actorEmail = null)
     {
+        // Проверка на себя — до всяких запросов в Keycloak: она не зависит от того, жив ли он,
+        // а последствия у ошибки самые тяжёлые. Заблокировав себя, человек через пять минут
+        // (время жизни токена) теряет админку, а кнопка «Unblock» живёт внутри неё же.
+        if (!enabled
+            && !string.IsNullOrWhiteSpace(actorEmail)
+            && string.Equals(actorEmail.Trim(), email.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionOutcome.Refuse("You cannot block your own account — you would lock yourself out of the admin panel.");
+        }
+
         var user = await _keycloak.FindUserByEmailAsync(email);
         if (user is null)
         {
@@ -258,6 +662,15 @@ public sealed class AdminCustomerService
         if (user.Enabled == enabled)
         {
             return ActionOutcome.Refuse(enabled ? "Account is already enabled." : "Account is already blocked.");
+        }
+
+        if (!enabled)
+        {
+            var refusal = await RefuseIfLastAdministratorAsync(user);
+            if (refusal != null)
+            {
+                return refusal;
+            }
         }
 
         await _keycloak.SetEnabledAsync(user.Id, enabled);
@@ -274,6 +687,46 @@ public sealed class AdminCustomerService
             }
         }
         return ActionOutcome.Ok(enabled ? "Account enabled." : "Account blocked and signed out everywhere.");
+    }
+
+    /// <summary>
+    /// Не даём заблокировать администратора, если это последний, кто может войти в админку.
+    ///
+    /// Ситуация «заблокированы все админы» изнутри магазина непоправима: разблокировать
+    /// некому, остаётся консоль Keycloak. Поэтому при любой неясности — отказ: не смогли
+    /// посмотреть список администраторов, значит не знаем, останется ли кто-то кроме этого.
+    /// </summary>
+    private async Task<ActionOutcome?> RefuseIfLastAdministratorAsync(KeycloakUser user)
+    {
+        List<string> roles;
+        try
+        {
+            roles = await _keycloak.GetRealmRolesAsync(user.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Customer block: could not read roles of {Email}, blocking refused.", user.Email);
+            return ActionOutcome.Fail("Could not check the account's roles in Keycloak — blocking is refused until it answers.");
+        }
+
+        if (!roles.Contains(AdminRole, StringComparer.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var admins = await _keycloak.TryGetRealmRoleUsersAsync(AdminRole);
+        var otherActiveAdmins = admins?
+            .Count(other => other.Enabled
+                            && !string.Equals(other.Id, user.Id, StringComparison.OrdinalIgnoreCase));
+
+        if (otherActiveAdmins is > 0)
+        {
+            return null;
+        }
+
+        return ActionOutcome.Refuse(admins == null
+            ? "This is an administrator account, and the list of administrators is not available — blocking it could lock everyone out of the admin panel. Do it in the Keycloak console if you really need to."
+            : "This is the last administrator — blocking it would lock everyone out of the admin panel.");
     }
 
     public async Task<ActionOutcome> SendPasswordResetAsync(string email)
@@ -317,6 +770,22 @@ public sealed class CustomerSearchHitDto
     /// <summary>account — есть учётка в Keycloak; guest — только заказы.</summary>
     public string Source { get; set; } = "guest";
     public int OrderCount { get; set; }
+    /// <summary>Дата последнего заказа — в таблице по ней видно, кто ещё активен.</summary>
+    public DateTime? LastOrderAt { get; set; }
+}
+
+/// <summary>Окно списка покупателей и точка, с которой продолжать.</summary>
+public sealed class CustomerBrowsePageDto
+{
+    public IReadOnlyList<CustomerSearchHitDto> Items { get; set; } = Array.Empty<CustomerSearchHitDto>();
+    /// <summary>Почта последней строки окна. null — список кончился.</summary>
+    public string? NextCursor { get; set; }
+    /// <summary>
+    /// Сколько строк в срезе всего. Считается ТОЛЬКО для первого окна: таблице это нужно
+    /// один раз — задать длину полосы прокрутки, — а повторять пересчёт на каждое окно
+    /// значит платить за него всю прокрутку. У последующих окон здесь null.
+    /// </summary>
+    public long? Total { get; set; }
 }
 
 public sealed class CustomerCardDto

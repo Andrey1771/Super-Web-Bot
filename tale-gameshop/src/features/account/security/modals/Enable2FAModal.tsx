@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React from 'react';
 import type {SecurityActionResponse} from '../types';
 
@@ -16,6 +17,7 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({
     onClose,
     onRefresh
 }) => {
+    const {t} = useTranslation();
     if (!isOpen) {
         return null;
     }
@@ -32,22 +34,22 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({
         <div className="security-modal-overlay">
             <div className="security-modal">
                 <div className="security-modal-header">
-                    <h3>Set up two-factor authentication</h3>
+                    <h3>{t('account.security.enable2fa.title')}</h3>
                     <button type="button" className="security-modal-close" onClick={onClose}>
                         ✕
                     </button>
                 </div>
                 <div className="security-modal-body">
                     <p>
-                        We&apos;ll guide you through enabling 2FA in your Keycloak security settings.
+                        {t('account.security.enable2fa.text')}
                     </p>
                     <div className="security-info-banner">
-                        {action?.message ?? 'Follow the prompts to configure your authenticator app.'}
+                        {action?.message ?? t('account.security.enable2fa.fallback')}
                     </div>
                 </div>
                 <div className="security-modal-footer">
                     <button type="button" className="btn btn-outline" onClick={onClose}>
-                        Close
+                        {t('common.close')}
                     </button>
                     <button
                         type="button"
@@ -55,7 +57,7 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({
                         onClick={handleOpenAccount}
                         disabled={isSubmitting || !action?.redirectUrl}
                     >
-                        Open setup
+                        {t('account.security.enable2fa.open')}
                     </button>
                 </div>
             </div>

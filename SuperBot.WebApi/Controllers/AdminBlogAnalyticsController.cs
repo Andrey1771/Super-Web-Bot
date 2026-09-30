@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -93,7 +94,7 @@ public class AdminBlogAnalyticsController : ControllerBase
 
         var reads = allEvents
             .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(item => $"{item.PostId}:{BuildActorKey(item)}")
+            .GroupBy(item => $"{item.PostId}:{BlogActorKey.For(item.UserId, item.AnonId, item.SessionId)}")
             .Count(group => !string.IsNullOrWhiteSpace(group.Key));
 
         var reactionsByEmoji = CountReactions(allEvents);
@@ -293,23 +294,6 @@ public class AdminBlogAnalyticsController : ControllerBase
         };
     }
 
-    private static string BuildActorKey(BlogEvent item)
-    {
-        if (!string.IsNullOrWhiteSpace(item.UserId))
-        {
-            return $"u:{item.UserId}";
-        }
-        if (!string.IsNullOrWhiteSpace(item.AnonId))
-        {
-            return $"a:{item.AnonId}";
-        }
-        if (!string.IsNullOrWhiteSpace(item.SessionId))
-        {
-            return $"s:{item.SessionId}";
-        }
-        return string.Empty;
-    }
-
     private static string BuildActorDisplay(string userId, string anonId, string sessionId)
     {
         if (!string.IsNullOrWhiteSpace(userId))
@@ -383,7 +367,7 @@ public class AdminBlogAnalyticsController : ControllerBase
             .GroupBy(item => new
             {
                 postId = item.PostId,
-                actorKey = BuildActorKey(item)
+                actorKey = BlogActorKey.For(item.UserId, item.AnonId, item.SessionId)
             })
             .Where(group => !string.IsNullOrWhiteSpace(group.Key.postId) && !string.IsNullOrWhiteSpace(group.Key.actorKey))
             .Select(group => group.OrderByDescending(item => item.Timestamp).First())

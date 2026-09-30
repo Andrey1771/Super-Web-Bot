@@ -19,6 +19,24 @@ export interface Game {
     discountEndsAt?: string;
     /** Статус релиза считает сервер — клиент даты не сравнивает (часы/таймзоны врут). */
     isComingSoon?: boolean;
+    /** Для DLC — id базовой игры. */
+    parentGameId?: string | null;
+    /**
+     * Где активируется ключ. Приходит только у товаров с ограничением: у «работает везде»
+     * поля нет вовсе, и рисовать бейдж не из чего — так и задумано.
+     * allowed: true/false — вердикт для страны покупателя, null — страна неизвестна.
+     */
+    region?: {
+        badge: string;
+        summary: string;
+        exclusions?: string | null;
+        /** Код вида и списки — из них витрина собирает подпись на языке сайта (utils/region-text). */
+        kind?: string | null;
+        regionNames?: string[] | null;
+        excludedCountries?: string[] | null;
+        allowed?: boolean | null;
+    } | null;
+    isDlc?: boolean;
     genres?: string[];
     /** Ярлыки платформ («PC», «PlayStation», «Xbox», …) — сервер отдаёт минимум ["PC"]. */
     platforms?: string[];
@@ -33,8 +51,25 @@ export interface Game {
     lowStockLeft?: number | null;
     showInFeaturedStorefront?: boolean;
     featuredStorefrontPriority?: number;
+    /** Вид товара: игра или ПО. Нет поля — игра (старые ответы). */
+    kind?: 'Game' | 'Software';
+    /** Жанр игры — код (адрес страницы жанра /games/category/{genre}). У ПО нет. */
+    genre?: string | null;
+    /** Категория раздела /software (tag). У игр нет. */
+    softwareCategory?: string | null;
+    /** Лицензия ПО, чья цена на карточке («1 year · 3 devices»). */
+    license?: { code: string; label: string; termMonths?: number | null; devices?: number | null; isSubscription: boolean } | null;
+    /** Сколько у ПО лицензий: «+N licenses» на карточке. */
+    licenseCount?: number;
+    /** Цена «от»: лицензий больше одной. */
+    priceFrom?: boolean;
+    /** Где активируется ключ ПО (VendorWebsite, MicrosoftAccount, InApp). */
+    activation?: string | null;
     title: string;
     gameType: number;
     imagePath: string;
+    /** Трейлер для превью при наведении на плитку; нет — видео у товара нет. */
+    trailerUrl?: string | null;
+    trailerPosterUrl?: string | null;
     releaseDate: string;
 }

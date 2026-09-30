@@ -12,6 +12,8 @@ export type SupportKnowledgeArticle = {
   instantTriggers?: string[][];
   instantTextRu?: string;
   instantTextEn?: string;
+  instantTextUk?: string;
+  instantTextPl?: string;
   updatedAt?: string;
   updatedBy?: string;
 };

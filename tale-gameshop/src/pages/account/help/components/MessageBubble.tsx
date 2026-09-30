@@ -1,3 +1,4 @@
+import i18n from '../../../../i18n';
 import React from 'react';
 import type { SupportMessage } from '../../../../types/support';
 import AttachmentCard from './AttachmentCard';
@@ -20,7 +21,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser, timestam
             <div className="ticket-message__content">
                 <div className="ticket-message__bubble">
                     {isUser ? (
-                        <span className="ticket-message__author ticket-message__author--user">You</span>
+                        <span className="ticket-message__author ticket-message__author--user">{i18n.t('common.you')}</span>
                     ) : (
                         <span className="ticket-message__author">{message.authorName}</span>
                     )}

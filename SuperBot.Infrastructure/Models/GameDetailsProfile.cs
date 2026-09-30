@@ -16,6 +16,7 @@ namespace SuperBot.Infrastructure.Models
             CreateMap<GameLanguageSupport, GameLanguageSupportDb>().ReverseMap();
             CreateMap<GameAgeRating, GameAgeRatingDb>().ReverseMap();
             CreateMap<GameEdition, GameEditionDb>().ReverseMap();
+            CreateMap<SoftwareActivation, SoftwareActivationDb>().ReverseMap();
             CreateMap<GameDlcItem, GameDlcItemDb>().ReverseMap();
             CreateMap<GameAwardBadge, GameAwardBadgeDb>().ReverseMap();
             CreateMap<GameSystemRequirements, GameSystemRequirementsDb>().ReverseMap();

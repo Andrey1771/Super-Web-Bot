@@ -7,6 +7,7 @@ using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using System;
 using System.Security.Claims;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -21,6 +22,9 @@ namespace SuperBot.WebApi.Controllers
         private readonly IRecommendationsService _recommendationsService;
         private readonly IMemoryCache _memoryCache;
         private readonly ILogger<UsersMeController> _logger;
+        private readonly SuperBot.Core.Payments.StorefrontCurrencyOptions _currencies;
+        private readonly SuperBot.Infrastructure.Services.IFxRateService _fxRates;
+        private readonly SuperBot.Core.Payments.FxOptions _fx;
 
         public UsersMeController(
             IViewedGameRepository viewedGameRepository,
@@ -28,7 +32,10 @@ namespace SuperBot.WebApi.Controllers
             IGameRepository gameRepository,
             IRecommendationsService recommendationsService,
             IMemoryCache memoryCache,
-            ILogger<UsersMeController> logger)
+            ILogger<UsersMeController> logger,
+            Microsoft.Extensions.Options.IOptions<SuperBot.Core.Payments.StorefrontCurrencyOptions> currencies,
+            SuperBot.Infrastructure.Services.IFxRateService fxRates,
+            Microsoft.Extensions.Options.IOptionsSnapshot<SuperBot.Core.Payments.FxOptions> fx)
         {
             _viewedGameRepository = viewedGameRepository;
             _gameKeyRepository = gameKeyRepository;
@@ -36,6 +43,9 @@ namespace SuperBot.WebApi.Controllers
             _recommendationsService = recommendationsService;
             _memoryCache = memoryCache;
             _logger = logger;
+            _currencies = currencies.Value;
+            _fxRates = fxRates;
+            _fx = fx.Value;
         }
 
         [HttpPost("viewed/{gameId}")]
@@ -46,7 +56,7 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest("GameId is required.");
             }
 
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 return Unauthorized();
@@ -59,7 +69,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet("viewed")]
         public async Task<IActionResult> GetViewedGames([FromQuery] int limit = 12)
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 return Unauthorized();
@@ -95,16 +105,19 @@ namespace SuperBot.WebApi.Controllers
         // без личной истории сервис отдаёт «трендовый» фолбэк.
         [AllowAnonymous]
         [HttpGet("recommendations")]
-        public async Task<IActionResult> GetRecommendations([FromQuery] int limit = 8)
+        public async Task<IActionResult> GetRecommendations([FromServices] IGameDetailsRepository gameDetails, [FromQuery] int limit = 8, [FromQuery] string? currency = null)
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 currentUserId = string.Empty; // guest — сервис уйдёт в fallback-подборку
             }
 
             var normalizedLimit = Math.Clamp(limit, 1, 50);
-            var cacheKey = $"recommendations:{(string.IsNullOrEmpty(currentUserId) ? "guest" : currentUserId)}:{normalizedLimit}";
+            // Валюта — часть ключа кэша: подборка одна и та же, а цены в ней разные, и без этого
+            // первый зашедший «застолбил» бы свою валюту для всех на три минуты.
+            var resolvedCurrency = _currencies.Resolve(currency);
+            var cacheKey = $"recommendations:{(string.IsNullOrEmpty(currentUserId) ? "guest" : currentUserId)}:{normalizedLimit}:{resolvedCurrency}";
             if (!_memoryCache.TryGetValue(cacheKey, out IReadOnlyList<RecommendationItem> recommendations))
             {
                 recommendations = await _recommendationsService.GetRecommendationsAsync(currentUserId, normalizedLimit);
@@ -121,13 +134,56 @@ namespace SuperBot.WebApi.Controllers
                 currentUserId,
                 recommendations.Count);
 
-            return Ok(recommendations);
+            // Цена приводится к валюте покупателя тем же способом, что в каталоге: сначала
+            // ручной прайс-лист, потом пересчёт по курсу. Иначе витрина показывала бы базовую
+            // сумму со значком выбранной валюты — цену, которой не существует.
+            var rates = _fxRates.Current();
+            // Трейлеры — для превью при наведении на карточку рекомендации, тем же правилом, что в каталоге.
+            var trailers = await SuperBot.Core.Catalog.CatalogTrailer.ForGamesAsync(gameDetails, recommendations.Select(item => item.Game?.Id));
+            var response = recommendations.Select(item => new
+            {
+                reason = item.Reason,
+                game = ToPricedGame(item.Game, resolvedCurrency, rates,
+                    item.Game?.Id != null && trailers.TryGetValue(item.Game.Id, out var trailer) ? trailer : default)
+            });
+
+            return Ok(response);
+        }
+
+        /// <summary>
+        /// Игра с ценой в валюте покупателя. Возвращается новый объект, а не правится исходный:
+        /// список лежит в кэше, и правка на месте испортила бы его для всех остальных валют.
+        /// </summary>
+        private object ToPricedGame(SuperBot.Core.Entities.Game game, string currency, SuperBot.Core.Payments.FxRateBook rates,
+            (string? Url, string? Poster) trailer = default)
+        {
+            var price = SuperBot.Core.Payments.GamePricing.TryGetPrice(game, currency, rates, _fx);
+            return new
+            {
+                id = game.Id,
+                gameId = game.Id,
+                slug = game.Slug,
+                name = game.Name,
+                title = game.Title,
+                description = game.Description,
+                imagePath = game.ImagePath,
+                trailerUrl = trailer.Url,
+                trailerPosterUrl = trailer.Poster,
+                gameType = game.GameType,
+                genre = game.Kind == ProductKind.Software ? null : GameGenres.TagOf(game),
+                releaseDate = game.ReleaseDate,
+                // Цены нет в этой валюте — отдаём null, а не базовую сумму: витрина покажет
+                // «цена недоступна», и это честнее подставленной чужой валюты.
+                price,
+                finalPrice = price,
+                currency = price is null ? null : currency
+            };
         }
 
         [HttpGet("keys")]
-        public async Task<IActionResult> GetKeys([FromQuery] int limit = 20)
+        public async Task<IActionResult> GetKeys([FromServices] IGameDetailsRepository gameDetails, [FromQuery] int limit = 20)
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 return Unauthorized();
@@ -148,31 +204,49 @@ namespace SuperBot.WebApi.Controllers
             var gameMap = games.Where(game => !string.IsNullOrWhiteSpace(game.Id))
                 .ToDictionary(game => game.Id, game => game);
 
+            // У ключей ПО кабинет показывает лицензию и место активации — они в карточке товара.
+            var softwareIds = games.Where(game => game.Kind == ProductKind.Software && !string.IsNullOrWhiteSpace(game.Id)).Select(game => game.Id!).ToList();
+            var detailsByGameId = softwareIds.Count == 0
+                ? new Dictionary<string, GameDetails>()
+                : (await gameDetails.GetByGameIdsAsync(softwareIds))
+                    .Where(details => !string.IsNullOrWhiteSpace(details.GameId))
+                    .GroupBy(details => details.GameId!)
+                    .ToDictionary(group => group.Key, group => group.First());
+
             var response = keys
-                .Select(item => new GameKeyResponse
+                .Select(item =>
                 {
-                    Game = !string.IsNullOrWhiteSpace(item.GameId) && gameMap.TryGetValue(item.GameId, out var game)
-                        ? game
-                        : null,
-                    Key = item.Key,
-                    KeyType = item.KeyType,
-                    IssuedAt = item.IssuedAt,
-                    IsActive = item.IsActive
+                    var game = !string.IsNullOrWhiteSpace(item.GameId) && gameMap.TryGetValue(item.GameId, out var found) ? found : null;
+                    var software = game?.Kind == ProductKind.Software;
+                    GameDetails? details = null;
+                    if (software)
+                    {
+                        detailsByGameId.TryGetValue(game!.Id!, out details);
+                    }
+                    // Ключ без кода издания — ключ издания по умолчанию, как и при выдаче.
+                    var edition = GameEditions.Resolve(details?.Editions, item.EditionCode);
+                    return new GameKeyResponse
+                    {
+                        Game = game,
+                        Key = item.Key,
+                        KeyType = item.KeyType,
+                        IssuedAt = item.IssuedAt,
+                        IsActive = item.IsActive,
+                        Kind = (game?.Kind ?? ProductKind.Game).ToString(),
+                        License = software ? SoftwareCatalog.LicenseLabel(edition) ?? edition?.Title : null,
+                        LicenseTermMonths = software ? edition?.LicenseTermMonths : null,
+                        LicenseDevices = software ? edition?.LicenseDevices : null,
+                        LicenseIsSubscription = software && edition?.IsSubscription == true,
+                        Activation = software && details?.Activation is { } activation
+                            ? new KeyActivationResponse(activation.Target.ToString(), activation.Url, activation.Label)
+                            : null
+                    };
                 })
                 .ToList();
 
             return Ok(response);
         }
 
-        private string GetCurrentUserId()
-        {
-            return User?.FindFirst("email")?.Value
-                ?? User?.FindFirst(ClaimTypes.Email)?.Value
-                ?? User?.FindFirst("preferred_username")?.Value
-                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User?.FindFirst("sub")?.Value
-                ?? string.Empty;
-        }
     }
 
     public class ViewedGameRequest
@@ -195,5 +269,18 @@ namespace SuperBot.WebApi.Controllers
         public string KeyType { get; set; }
         public DateTime IssuedAt { get; set; }
         public bool IsActive { get; set; }
+        /// <summary>Game или Software — строкой: в объекте Game перечисление уходит числом.</summary>
+        public string Kind { get; set; } = nameof(ProductKind.Game);
+        /// <summary>Лицензия ПО («1 year · 3 devices»). У игр null. Английский запас: кабинет собирает подпись сам.</summary>
+        public string? License { get; set; }
+        /// <summary>Срок лицензии ПО в месяцах; null — бессрочная (или у игры).</summary>
+        public int? LicenseTermMonths { get; set; }
+        /// <summary>Число устройств лицензии ПО; null — не задано.</summary>
+        public int? LicenseDevices { get; set; }
+        public bool LicenseIsSubscription { get; set; }
+        /// <summary>Где активировать ключ ПО. У игр null — там площадка в KeyType.</summary>
+        public KeyActivationResponse? Activation { get; set; }
     }
+
+    public sealed record KeyActivationResponse(string Target, string? Url, string? Label);
 }

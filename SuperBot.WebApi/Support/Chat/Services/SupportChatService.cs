@@ -194,7 +194,7 @@ public class SupportChatService : ISupportChatService
         {
             throw new SupportChatRequestException(
                 "We couldn't verify that you're human. Please refresh and try again.",
-                StatusCodes.Status403Forbidden);
+                StatusCodes.Status403Forbidden, "chat.notHuman");
         }
 
         var now = DateTime.UtcNow;
@@ -510,6 +510,12 @@ public class SupportChatService : ISupportChatService
 
         try
         {
+            // Тот же предел ожидания, что и у нештокового пути. Без него потоковый запрос жил до
+            // таймаута самого HttpClient — сто секунд: посетитель две минуты смотрел на «печатает»,
+            // а получал в итоге то же сообщение о недоступности ИИ.
+            using var timeoutSource = new CancellationTokenSource(TimeSpan.FromSeconds(_options.LlmTimeoutSeconds));
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutSource.Token, cancellationToken);
+
             await _llm.StreamChatAsync(request, async chunk =>
             {
                 if (!string.IsNullOrEmpty(chunk.Content))
@@ -528,7 +534,7 @@ public class SupportChatService : ISupportChatService
                 }
 
                 usage ??= chunk.Usage;
-            }, cancellationToken);
+            }, linked.Token);
         }
         catch (Exception ex)
         {
@@ -678,7 +684,7 @@ public class SupportChatService : ISupportChatService
         if (note.Length > _options.MessageMaxLength)
         {
             throw new SupportChatRequestException(
-                $"Message exceeds {_options.MessageMaxLength} characters.", StatusCodes.Status400BadRequest);
+                $"Message exceeds {_options.MessageMaxLength} characters.", StatusCodes.Status400BadRequest, "chat.tooLong", new { max = _options.MessageMaxLength });
         }
 
         if (!string.IsNullOrWhiteSpace(request.Email) || !string.IsNullOrWhiteSpace(request.OrderId))
@@ -714,7 +720,7 @@ public class SupportChatService : ISupportChatService
         var session = await GetSessionEntityAsync(sessionId);
         if (!ObjectId.TryParse(messageId, out _))
         {
-            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound);
+            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound, "chat.messageNotFound");
         }
 
         var message = await _messages
@@ -723,13 +729,13 @@ public class SupportChatService : ISupportChatService
 
         if (message == null)
         {
-            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound);
+            throw new SupportChatRequestException("Message not found.", StatusCodes.Status404NotFound, "chat.messageNotFound");
         }
 
         // Оценивать имеет смысл только ответ бота: реплики оператора и свои же сообщения — нет.
         if (message.Role != ChatMessageRole.Assistant)
         {
-            throw new SupportChatRequestException("Only assistant replies can be rated.", StatusCodes.Status400BadRequest);
+            throw new SupportChatRequestException("Only assistant replies can be rated.", StatusCodes.Status400BadRequest, "chat.onlyAssistantRated");
         }
 
         var parsed = ParseFeedback(feedback);
@@ -825,7 +831,7 @@ public class SupportChatService : ISupportChatService
             "helpful" => ChatMessageFeedback.Helpful,
             "not_helpful" => ChatMessageFeedback.NotHelpful,
             null or "" => null,
-            _ => throw new SupportChatRequestException("Unknown feedback value.", StatusCodes.Status400BadRequest)
+            _ => throw new SupportChatRequestException("Unknown feedback value.", StatusCodes.Status400BadRequest, "chat.unknownFeedback")
         };
     }
 
@@ -1357,7 +1363,7 @@ public class SupportChatService : ISupportChatService
         {
             throw new SupportChatRequestException(
                 "The previous reply is still being written. Please wait a moment and try again.",
-                StatusCodes.Status429TooManyRequests);
+                StatusCodes.Status429TooManyRequests, "chat.replyInProgress");
         }
 
         return turn;
@@ -1524,7 +1530,7 @@ public class SupportChatService : ISupportChatService
 
         if (session == null)
         {
-            throw new SupportChatRequestException("Chat session not found.", StatusCodes.Status404NotFound);
+            throw new SupportChatRequestException("Chat session not found.", StatusCodes.Status404NotFound, "chat.sessionNotFound");
         }
 
         return session;
@@ -1647,7 +1653,7 @@ public class SupportChatService : ISupportChatService
     {
         if (session.Status == ChatSessionStatus.Closed)
         {
-            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict);
+            throw new SupportChatRequestException("This chat session is closed.", StatusCodes.Status409Conflict, "chat.closed");
         }
     }
 
@@ -1655,12 +1661,12 @@ public class SupportChatService : ISupportChatService
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            throw new SupportChatRequestException("Message is required.", StatusCodes.Status400BadRequest);
+            throw new SupportChatRequestException("Message is required.", StatusCodes.Status400BadRequest, "chat.messageRequired");
         }
 
         if (text.Length > _options.MessageMaxLength)
         {
-            throw new SupportChatRequestException($"Message exceeds {_options.MessageMaxLength} characters.", StatusCodes.Status400BadRequest);
+            throw new SupportChatRequestException($"Message exceeds {_options.MessageMaxLength} characters.", StatusCodes.Status400BadRequest, "chat.tooLong", new { max = _options.MessageMaxLength });
         }
     }
 
@@ -1676,7 +1682,7 @@ public class SupportChatService : ISupportChatService
         {
             if (count >= _options.RateLimitPerMinute)
             {
-                throw new SupportChatRequestException("Message rate limit reached. Please wait a moment.", StatusCodes.Status429TooManyRequests);
+                throw new SupportChatRequestException("Message rate limit reached. Please wait a moment.", StatusCodes.Status429TooManyRequests, "chat.rateLimit");
             }
 
             _cache.Set(key, count + 1, TimeSpan.FromMinutes(1));
@@ -1698,7 +1704,7 @@ public class SupportChatService : ISupportChatService
         {
             throw new SupportChatRequestException(
                 "Too many chats were started from your network. Please try again later.",
-                StatusCodes.Status429TooManyRequests);
+                StatusCodes.Status429TooManyRequests, "chat.networkLimit");
         }
     }
 
@@ -1714,7 +1720,7 @@ public class SupportChatService : ISupportChatService
         {
             throw new SupportChatRequestException(
                 "You're sending messages too quickly. Please slow down and try again.",
-                StatusCodes.Status429TooManyRequests);
+                StatusCodes.Status429TooManyRequests, "chat.tooFast");
         }
     }
 
@@ -1730,7 +1736,7 @@ public class SupportChatService : ISupportChatService
             // не отличить от «предыдущий ответ ещё пишется», и клиент упирался бы в тупик.
             throw new SupportChatRequestException(
                 "This conversation has reached its length limit and was closed. Start a new one to continue.",
-                StatusCodes.Status410Gone);
+                StatusCodes.Status410Gone, "chat.lengthLimit");
         }
     }
 
@@ -1784,9 +1790,14 @@ public class SupportChatService : ISupportChatService
 public class SupportChatRequestException : Exception
 {
     public int StatusCode { get; }
+    /// <summary>Код для словаря витрины (см. ApiErrors); null — только английский текст.</summary>
+    public string? Code { get; }
+    public object? Args { get; }
 
-    public SupportChatRequestException(string message, int statusCode) : base(message)
+    public SupportChatRequestException(string message, int statusCode, string? code = null, object? args = null) : base(message)
     {
         StatusCode = statusCode;
+        Code = code;
+        Args = args;
     }
 }

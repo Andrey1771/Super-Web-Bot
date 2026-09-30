@@ -164,6 +164,10 @@ public class SupportKnowledgeArticleDto
 
     public string? InstantTextEn { get; set; }
 
+    public string? InstantTextUk { get; set; }
+
+    public string? InstantTextPl { get; set; }
+
     public DateTime UpdatedAt { get; set; }
 
     public string? UpdatedBy { get; set; }

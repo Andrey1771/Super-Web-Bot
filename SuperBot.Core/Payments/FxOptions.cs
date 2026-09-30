@@ -37,6 +37,14 @@ namespace SuperBot.Core.Payments
         /// <summary>Откуда брать курсы автоматически. Пустой адрес — источника нет, курсы правит человек.</summary>
         public FxSourceOptions Source { get; set; } = new();
 
+        /// <summary>
+        /// Сколько секунд книга курсов живёт в памяти процесса до перечитывания из базы.
+        ///
+        /// Важно при нескольких инстансах: импорт запускается планировщиком на одном из них, а
+        /// торгуют по этим курсам все. Ноль — перечитывать всегда (нужно тестам).
+        /// </summary>
+        public int MemoryRefreshSeconds { get; set; } = 60;
+
         /// <summary>Правило округления для валюты.</summary>
         public PriceRoundingRule RuleFor(string currency)
         {

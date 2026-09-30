@@ -1,8 +1,7 @@
-import fallbackCoverImage from "../assets/images/untitled_cover.png";
+import i18n from "../i18n";
 
-const FALLBACK_COVER_ALT = "Blog post cover";
-
-export const BLOG_FALLBACK_COVER = fallbackCoverImage;
+// Подпись берётся из словаря в момент показа — на языке сайта.
+const fallbackCoverAlt = () => i18n.t("common.blogCover");
 
 export const normalizeBlogCoverUrl = (value?: string | null): string | null => {
     if (typeof value !== "string") {
@@ -13,27 +12,12 @@ export const normalizeBlogCoverUrl = (value?: string | null): string | null => {
     return normalized.length > 0 ? normalized : null;
 };
 
-export const getBlogCoverUrl = (value?: string | null): string => normalizeBlogCoverUrl(value) ?? BLOG_FALLBACK_COVER;
-
 export const getBlogCoverAlt = (title?: string | null): string => {
     if (typeof title !== "string") {
-        return FALLBACK_COVER_ALT;
+        return fallbackCoverAlt();
     }
 
     const normalized = title.trim();
-    return normalized.length > 0 ? normalized : FALLBACK_COVER_ALT;
+    return normalized.length > 0 ? normalized : fallbackCoverAlt();
 };
 
-
-type BlogCoverSource = {
-    coverUrl?: string | null;
-    imageUrl?: string | null;
-};
-
-export const getBlogPostCoverUrl = (post?: BlogCoverSource | null): string => {
-    if (!post) {
-        return BLOG_FALLBACK_COVER;
-    }
-
-    return getBlogCoverUrl(post.coverUrl ?? post.imageUrl);
-};

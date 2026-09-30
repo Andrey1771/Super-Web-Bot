@@ -1,36 +1,45 @@
+/*
+ * Список желаний в кабинете.
+ *
+ * Рамок нет: тулбар — строка на фоне страницы, список разделён линиями, плитки держит воздух и тень при
+ * наведении. Раньше здесь были три вложенные карточки (тулбар, панель списка, карточка товара), и страница
+ * читалась как набор коробок в коробке.
+ */
+
 .saved-toolbar {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
-}
-
-.saved-toolbar-top {
-    display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-16);
+    gap: var(--space-12);
     flex-wrap: wrap;
+    margin-bottom: var(--space-12);
 }
 
 .saved-search {
     display: flex;
     align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12) var(--space-16);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: #fff;
+    gap: var(--space-10);
     flex: 1;
-    min-height: 44px;
     min-width: 220px;
+    height: 42px;
+    padding: 0 var(--space-14);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--color-muted);
+}
+
+.saved-search:focus-within {
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .saved-search input {
+    flex: 1;
+    min-width: 0;
     border: none;
     background: transparent;
-    flex: 1;
-    font-size: 15px;
-    min-width: 0;
+    font-size: 14.5px;
+    color: var(--color-text);
 }
 
 .saved-search input:focus {
@@ -41,214 +50,175 @@
     color: var(--color-muted);
 }
 
-.saved-select {
-    border: 1px solid var(--color-border);
-    background: #fff;
-    padding: 8px 14px;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    min-width: 140px;
-}
-
-.saved-sort {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    font-weight: 600;
-    color: var(--color-text);
-}
-
-.saved-toolbar-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--space-16);
-}
-
+/* Переключатель вида — сегменты в одной пилюле: два состояния одного выбора, а не две отдельные кнопки. */
 .saved-view-toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    font-weight: 600;
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 7%, #eceaf5);
 }
 
 .saved-view-btn {
-    height: 34px;
-    padding-inline: var(--space-14);
-    font-size: 13px;
+    height: 32px;
+    padding: 0 var(--space-14);
+    border: 0;
     border-radius: 999px;
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-muted);
+    cursor: pointer;
 }
 
 .saved-view-btn.is-active {
-    border-color: var(--color-primary);
+    background: #ffffff;
     color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+    box-shadow: var(--shadow-sm);
+}
+
+.saved-select {
+    height: 38px;
+    padding: 0 var(--space-12);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    font-weight: 600;
 }
 
 .saved-toolbar-note {
+    margin-left: auto;
     font-size: 13px;
     color: var(--color-muted);
 }
 
-.saved-items-panel {
-    padding: var(--space-24);
+/* ---------- Список строк ---------- */
+
+.saved-list {
+    border-top: 1px solid var(--color-border);
 }
 
-.saved-items-grid {
+.saved-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 96px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-16);
+    padding: var(--space-14) var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* При наведении строка «всплывает» белой карточкой — граница для этого не нужна. */
+.saved-row:hover {
+    border-bottom-color: transparent;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+.saved-row-cover {
+    display: block;
+    aspect-ratio: 16 / 10;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: linear-gradient(140deg, rgba(124, 58, 237, 0.25), rgba(59, 130, 246, 0.4));
+}
+
+.saved-row-main {
+    min-width: 0;
+}
+
+.saved-row-main strong {
+    display: block;
+    font-size: 15.5px;
+}
+
+.saved-row-price {
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.saved-row-actions,
+.saved-tile-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+/* «Remove» — тихое действие: рамка ему не нужна, иначе спорит с «Add to cart». */
+.saved-item-remove {
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-muted);
+}
+
+.saved-item-remove:hover {
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+
+/* ---------- Плитки ---------- */
+
+.saved-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: var(--space-20);
 }
 
-/* Компактный вид — плотный список в одну колонку (строки во всю ширину). */
-.saved-items-grid.view-compact {
-    grid-template-columns: 1fr;
-}
-
-.saved-empty-state {
-    grid-column: 1 / -1;
-    border-radius: var(--radius-lg);
-    border: 1px dashed var(--color-border);
-    padding: var(--space-24);
-    text-align: center;
-    color: var(--color-muted);
-}
-
-.saved-item-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
-    padding: var(--space-16);
-}
-
-.saved-item-cover {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: var(--radius-md);
-    background: linear-gradient(140deg, rgba(124, 58, 237, 0.25), rgba(59, 130, 246, 0.4));
-    overflow: hidden;
-}
-
-.saved-item-cover::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(120deg, rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0));
-}
-
-.saved-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    z-index: 1;
-    border: none;
-}
-
-.saved-badge-new {
-    background: color-mix(in srgb, var(--color-primary) 22%, #ffffff);
-    color: var(--color-primary);
-}
-
-.saved-badge-sale {
-    background: #fce7f3;
-    color: #be185d;
-}
-
-.saved-item-body {
+/* Плитка — карточка, как в прежней вёрстке: белая поверхность, рамка и поля. Разница в том, что теперь она
+   единственная рамка на странице: панели-обёртки вокруг списка больше нет. Поднимается целиком при наведении. */
+.saved-tile {
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
+    padding: var(--space-14);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface, #ffffff);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
-.saved-item-cover,
-.saved-item-compact-cover {
+.saved-tile:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+    box-shadow: var(--shadow-md);
+}
+
+.saved-tile-cover {
     display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: linear-gradient(140deg, rgba(124, 58, 237, 0.25), rgba(59, 130, 246, 0.4));
 }
 
-.saved-item-title-link {
-    text-decoration: none;
-    color: inherit;
-}
-
-.saved-item-title-link:hover h3,
-.saved-item-title-link:hover strong {
-    color: #6b3ff2;
-}
-
-.saved-item-title-row {
+.saved-tile-head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--space-12);
-}
-
-.saved-item-title-row h3 {
-    margin-bottom: 6px;
-    font-size: 18px;
-}
-
-.saved-item-date {
-    display: block;
-    margin: 0;
-    font-size: 13px;
-    color: var(--color-muted);
-}
-
-/* В компактной строке заголовок и дата не должны слипаться в одну строку. */
-.saved-item-compact-header .saved-item-title-link {
-    display: block;
-    margin-bottom: 2px;
-}
-
-.saved-item-price {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    font-weight: 700;
-}
-
-.saved-item-old-price {
-    font-size: 13px;
-    color: var(--color-muted);
-    text-decoration: line-through;
-    font-weight: 500;
-}
-
-.saved-item-actions {
-    display: flex;
-    align-items: center;
     gap: var(--space-10);
-    flex-wrap: wrap;
 }
 
-.saved-item-btn {
-    height: 38px;
-    font-size: 14px;
-    padding-inline: var(--space-16);
+.saved-tile-title {
+    min-width: 0;
 }
 
-.saved-item-icon-btn {
-    height: 38px;
-    width: 38px;
-    padding: 0;
+.saved-tile-title strong {
+    display: block;
+    font-size: 15.5px;
 }
 
-.saved-item-card.compact {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: var(--space-16);
+.saved-tile-actions {
+    margin-top: auto;
 }
 
-.saved-item-compact-cover {
-    width: 72px;
-    height: 72px;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(59, 130, 246, 0.45));
-    overflow: hidden;
-    position: relative;
+.saved-tile-actions .btn-primary,
+.saved-tile-actions .btn-outline {
+    flex: 1;
+}
+
+.saved-tile-actions .saved-item-remove {
+    flex: 0 0 auto;
 }
 
 .saved-item-image {
@@ -258,23 +228,58 @@
     display: block;
 }
 
-.saved-item-compact-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-    flex: 1;
+.saved-item-title-link {
+    color: inherit;
+    text-decoration: none;
 }
 
-.saved-item-compact-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-12);
+.saved-item-title-link:hover strong {
+    color: var(--color-primary);
 }
 
-.saved-item-compact-badges {
-    display: flex;
-    gap: var(--space-8);
+.saved-item-date {
+    display: block;
+    margin-top: 2px;
+    font-size: 12.5px;
+    color: var(--color-muted);
+}
+
+.saved-item-btn {
+    height: 36px;
+    font-size: 14px;
+    padding-inline: var(--space-16);
+}
+
+.saved-empty-state {
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-border);
+    padding: var(--space-24);
+    text-align: center;
+    color: var(--color-muted);
+}
+
+@media (max-width: 760px) {
+    .saved-toolbar-note {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .saved-row {
+        grid-template-columns: 72px minmax(0, 1fr);
+        row-gap: var(--space-10);
+    }
+
+    .saved-row-price {
+        grid-column: 2;
+    }
+
+    .saved-row-actions {
+        grid-column: 1 / -1;
+    }
+
+    .saved-row-actions .btn {
+        flex: 1;
+    }
 }
 
 .saved-pagination {
@@ -468,43 +473,19 @@
 }
 
 @media (max-width: 1024px) {
-    .saved-items-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .saved-horizontal-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 768px) {
-    .saved-toolbar-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .saved-sort {
+@media (max-width: 640px) {
+    .saved-search {
+        order: -1;
         width: 100%;
     }
 
     .saved-select {
-        width: 100%;
-    }
-}
-
-@media (max-width: 640px) {
-    .saved-items-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .saved-item-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .saved-item-btn,
-    .saved-item-icon-btn {
-        width: 100%;
+        flex: 1;
     }
 
     .saved-pagination {

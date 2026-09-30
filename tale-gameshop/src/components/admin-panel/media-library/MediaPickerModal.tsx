@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
 import type { IUrlService } from "../../../iterfaces/i-url-service";
@@ -26,6 +26,9 @@ const SCALE_STEP = 0.1;
 
 const clampScale = (value: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, Number(value.toFixed(2))));
 
+/** Сколько файлов показывать за раз: больше человек в окне выбора всё равно не просмотрит. */
+const PICKER_LIMIT = 60;
+
 const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   isOpen,
   onClose,
@@ -40,6 +43,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [activeTab, setActiveTab] = useState<"library" | "upload">("library");
   const [activeFilter, setActiveFilter] = useState<"all" | "image" | "video">(filterType);
   const [items, setItems] = useState<MediaAsset[]>([]);
+  /** Сколько файлов подходит под запрос всего — показанных всегда не больше PICKER_LIMIT. */
+  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -67,7 +72,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     setSelectedIds(initialSelectedIds ?? (initialSelectedId ? [initialSelectedId] : []));
     setActiveFilter(filterType);
     setSelectionError(null);
-    fetchMedia(filterType);
+    setSearch("");
   }, [filterType, initialSelectedId, initialSelectedIds, isOpen]);
 
 
@@ -85,32 +90,42 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     setSelectionError(null);
   }, [selectedId]);
 
-  const filteredItems = useMemo(() => {
-    if (!search.trim()) {
-      return items;
-    }
-    const lower = search.toLowerCase();
-    return items.filter((item) => item.filename.toLowerCase().includes(lower));
-  }, [items, search]);
+  /**
+   * Поиск делает сервер. Раньше окно забирало первые шестьдесят файлов и фильтровало их в
+   * браузере: библиотека растёт с каждой загрузкой, и всё, что за первыми шестьюдесятью,
+   * было недостижимо — а поле поиска на такой файл отвечало «ничего не найдено».
+   */
+  const fetchMedia = useCallback(
+    async (filter: "all" | "image" | "video", query: string) => {
+      try {
+        setLoading(true);
+        setBrokenThumbnails({});
+        setBrokenImages({});
+        setSelectedPreviewBroken(false);
+        const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+        const response = await apiClient.api.get(
+          `/api/media?page=1&pageSize=${PICKER_LIMIT}&type=${filter}&search=${encodeURIComponent(query.trim())}`
+        );
+        setItems(response.data.items ?? []);
+        setTotal(response.data.total ?? 0);
+      } catch (error) {
+        console.error("Failed to load media", error);
+        addToast("Failed to load media library.", "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [addToast],
+  );
 
-  const fetchMedia = async (filter: "all" | "image" | "video" = activeFilter) => {
-    try {
-      setLoading(true);
-      setBrokenThumbnails({});
-      setBrokenImages({});
-      setSelectedPreviewBroken(false);
-      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-      const response = await apiClient.api.get(
-        `/api/media?page=1&pageSize=60&type=${filter}`
-      );
-      setItems(response.data.items ?? []);
-    } catch (error) {
-      console.error("Failed to load media", error);
-      addToast("Failed to load media library.", "error");
-    } finally {
-      setLoading(false);
+  // Запрос уходит с задержкой: иначе каждый набранный символ — отдельный поход на сервер.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
     }
-  };
+    const timer = setTimeout(() => void fetchMedia(activeFilter, search), 300);
+    return () => clearTimeout(timer);
+  }, [activeFilter, fetchMedia, isOpen, search]);
 
   const handleUpload = async () => {
     if (!uploadFile) {
@@ -265,10 +280,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                   <button
                     key={tab}
                     className={`btn btn-small ${activeFilter === tab ? "btn-primary" : "btn-outline"}`}
-                    onClick={() => {
-                      setActiveFilter(tab);
-                      fetchMedia(tab);
-                    }}
+                    onClick={() => setActiveFilter(tab)}
                   >
                     {tab === "all" ? "All" : tab === "image" ? "Images" : "Videos"}
                   </button>
@@ -298,11 +310,13 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                   <div className="skeleton h-10" />
                   <div className="skeleton h-10" />
                 </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">No media found. Upload a new file.</div>
+              ) : items.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  {search.trim() ? "Nothing found. Try another name." : "No media found. Upload a new file."}
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-                  {filteredItems.map((item) => {
+                  {items.map((item) => {
                     const isVideo = item.type === "video" || item.contentType?.startsWith("video");
                     const resolvedThumbnail = resolveMediaUrl(item.thumbnailUrl ?? undefined, apiBaseUrl);
                     const resolvedUrl = resolveMediaUrl(item.url, apiBaseUrl);
@@ -398,6 +412,14 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                     );
                   })}
                 </div>
+              )}
+
+              {/* Показываем, сколько всего подошло: молча обрезанный список выглядит как
+                  «больше ничего нет», и нужный файл тогда просто не ищут. */}
+              {total > items.length && (
+                <p className="mt-3 text-xs text-gray-500">
+                  Showing {items.length} of {total} — type a name to narrow it down.
+                </p>
               )}
             </Card>
             <Card>

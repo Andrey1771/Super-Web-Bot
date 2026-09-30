@@ -43,9 +43,24 @@ type Dashboard = {
     openTickets: number;
     oldestWaitingMinutes: number | null;
   } | null;
-  payments?: { openFailures: number } | null;
-  content?: { pendingReviews: number; unansweredQuestions: number } | null;
-  health?: { items: Array<{ name: string; state: "ok" | "warn" | "down" | "unconfigured"; detail?: string }> } | null;
+  payments?: {
+    openFailures: number;
+    /** Споры, по которым банк ждёт доказательств, — ближайший срок первым. */
+    disputesAwaitingEvidence?: Array<{ orderId: string; orderNumber: string; evidenceDueBy: string | null; amount: number; currency: string }>;
+  } | null;
+  content?: { pendingReviews: number } | null;
+  /** Кэшбэк: сколько магазин должен покупателям (доллары). */
+  cashback?: {
+    enabled: boolean;
+    availableUsd: number;
+    pendingUsd: number;
+    reservedUsd: number;
+    customersWithBalance: number;
+    liabilityUsd: number;
+  } | null;
+  // «configured» — ключи на месте, но сервис не опрашивали. Отдельно от «ok» намеренно:
+  // зелёный кружок должна ставить только проверка, которая реально куда-то сходила.
+  health?: { items: Array<{ name: string; state: "ok" | "configured" | "warn" | "down" | "unconfigured"; detail?: string }> } | null;
 };
 
 const REFRESH_MS = 60_000;
@@ -54,7 +69,7 @@ const formatWait = (minutes: number): string =>
   minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 
 const AdminPanelPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,10 +94,7 @@ const AdminPanelPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Dashboard");
-    setHeaderActions([
-      { type: "button", id: "dashboard-refresh", label: "Refresh", variant: "outline", onClick: () => load() },
-    ]);
-  }, [load, setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   useEffect(() => {
     load();
@@ -128,6 +140,23 @@ const AdminPanelPage: React.FC = () => {
       tone: support.oldestWaitingMinutes != null && support.oldestWaitingMinutes >= 15 ? "danger" : "warn",
     });
   }
+  // Спор, по которому не отправлены доказательства: пропущенный срок — проигрыш автоматически. Меньше трёх суток — красным.
+  (payments?.disputesAwaitingEvidence ?? []).forEach((dispute) => {
+    const hoursLeft = dispute.evidenceDueBy ? (new Date(dispute.evidenceDueBy).getTime() - Date.now()) / 3_600_000 : null;
+    const when = hoursLeft === null
+      ? "no deadline yet"
+      : hoursLeft <= 0
+        ? "deadline passed"
+        : hoursLeft < 48
+          ? `due in ${Math.floor(hoursLeft)} h`
+          : `due in ${Math.floor(hoursLeft / 24)} days`;
+    attention.push({
+      key: `dispute-${dispute.orderId}`,
+      text: `Dispute on ${dispute.orderNumber} (${formatMoney(dispute.amount, dispute.currency)}) — submit evidence in Stripe, ${when}`,
+      to: `/admin/orders?search=${encodeURIComponent(dispute.orderNumber)}`,
+      tone: hoursLeft !== null && hoursLeft < 72 ? "danger" : "warn",
+    });
+  });
   if (payments && payments.openFailures > 0) {
     attention.push({
       key: "payments",
@@ -142,16 +171,18 @@ const AdminPanelPage: React.FC = () => {
   if (content && content.pendingReviews > 0) {
     attention.push({ key: "reviews", text: `${content.pendingReviews} reported review${content.pendingReviews === 1 ? "" : "s"} to moderate`, to: "/admin/support/moderation", tone: "warn" });
   }
-  if (content && content.unansweredQuestions > 0) {
-    attention.push({ key: "questions", text: `${content.unansweredQuestions} unanswered question${content.unansweredQuestions === 1 ? "" : "s"} on game pages`, to: "/admin/support/moderation?tab=questions", tone: "warn" });
-  }
 
   return (
     <div className="admin-grid dashboard">
       <PageHeader
         title="Admin overview"
         description="What needs attention today — orders, keys, support and payments in one place."
-        breadcrumbs={["Admin", "Dashboard"]}
+        breadcrumbs={["Overview"]}
+        primaryAction={
+          <button className="btn btn-outline" type="button" onClick={() => load()} disabled={loading}>
+            Refresh
+          </button>
+        }
       />
 
       {error && !data && (
@@ -193,6 +224,20 @@ const AdminPanelPage: React.FC = () => {
           <span className="dashboard__tile-sub">{orders ? `${orders.awaitingPayment} awaiting payment` : "—"}</span>
         </Link>
       </div>
+
+      {/* Долг по кэшбэку — отдельной строкой и только когда программа идёт или долг уже есть:
+          при выключенной программе без долга эта плитка была бы вечным нулём. */}
+      {data?.cashback && (data.cashback.enabled || data.cashback.liabilityUsd > 0) && (
+        <div className="admin-grid admin-grid--4 dashboard__tiles">
+          <Link className="dashboard__tile" to="/admin/cashback">
+            <span className="dashboard__tile-label">Cashback owed to customers</span>
+            <span className="dashboard__tile-value">{formatMoney(data.cashback.liabilityUsd, "USD")}</span>
+            <span className="dashboard__tile-sub">
+              {`${formatMoney(data.cashback.availableUsd, "USD")} available · ${formatMoney(data.cashback.pendingUsd, "USD")} pending · ${data.cashback.customersWithBalance} customers`}
+            </span>
+          </Link>
+        </div>
+      )}
 
       <div className="admin-grid admin-grid--2">
         <Card>
@@ -240,7 +285,7 @@ const AdminPanelPage: React.FC = () => {
         <div className="flex gap-3 flex-wrap">
           <Link className="btn btn-outline" to="/admin/orders">Orders</Link>
           <Link className="btn btn-outline" to="/admin/cardAdder">Catalog</Link>
-          <Link className="btn btn-outline" to="/admin/games/keys">Game keys</Link>
+          <Link className="btn btn-outline" to="/admin/games/keys">Product keys</Link>
           <Link className="btn btn-outline" to="/admin/support/live-chat">Live chat</Link>
           <Link className="btn btn-outline" to="/admin/support/tickets">Tickets</Link>
           <Link className="btn btn-outline" to="/admin/promo-codes">Promo codes</Link>

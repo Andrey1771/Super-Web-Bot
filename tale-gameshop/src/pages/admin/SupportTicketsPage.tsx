@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { REMOTE_PAGING } from "../../hooks/use-grid-window";
 import { Link, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../components/ui/ToastProvider';
 import {
@@ -13,11 +14,14 @@ import {
     uploadAdminAttachments
 } from '../../api/adminSupportApi';
 import type { TicketStatus } from '../../types/support';
+import { DataGrid, Column, Paging, Scrolling, Sorting, type DataGridRef } from 'devextreme-react/data-grid';
+import { GRID_PAGE_SIZE, gridStatusText, useGridWindow } from '../../hooks/use-grid-window';
+import { fetchWindow } from '../../utils/page-window';
+import { formatDateTimeOrDash as formatDate } from '../../i18n/format';
 
 // Рабочее место поддержки: все тикеты клиентов, ответы от имени Support, resolve/close.
 // Ответы клиентов приходят через страницу аккаунта (Help) и авторятся как User.
 
-const PAGE_SIZE = 10;
 
 const statusLabels: Record<TicketStatus, string> = {
     Open: 'Open',
@@ -54,22 +58,10 @@ const StatusPill: React.FC<{ status: TicketStatus }> = ({ status }) => {
     );
 };
 
-const formatDate = (value?: string) => {
-    if (!value) {
-        return '—';
-    }
-    const date = new Date(value);
-    return Number.isNaN(date.valueOf()) ? '—' : date.toLocaleString();
-};
-
 const SupportTicketsPage: React.FC = () => {
     const { addToast } = useToast();
-    const [tickets, setTickets] = useState<AdminTicketSummary[]>([]);
-    const [total, setTotal] = useState(0);
-    const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState('');
     const [search, setSearch] = useState('');
-    const [isListLoading, setIsListLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [details, setDetails] = useState<AdminTicketDetails | null>(null);
     const [isDetailsLoading, setIsDetailsLoading] = useState(false);
@@ -83,25 +75,23 @@ const SupportTicketsPage: React.FC = () => {
     const MAX_FILE_MB = 10;
     const MAX_FILES = 5;
 
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const gridRef = useRef<DataGridRef<AdminTicketSummary, string> | null>(null);
 
-    const loadTickets = useCallback(async () => {
-        setIsListLoading(true);
-        try {
-            const data = await listAdminTickets({ status: statusFilter, q: search, page, pageSize: PAGE_SIZE });
-            setTickets(data.items);
-            setTotal(data.total);
-        } catch (error) {
-            console.error(error);
-            addToast('Failed to load tickets.', 'error');
-        } finally {
-            setIsListLoading(false);
-        }
-    }, [addToast, page, search, statusFilter]);
+    // Окно строк для таблицы: границы приходят от неё по мере прокрутки.
+    const loadTickets = useCallback(
+        (skip: number, take: number) =>
+            fetchWindow(skip, take, GRID_PAGE_SIZE, (page, pageSize) =>
+                listAdminTickets({ status: statusFilter, q: search, page, pageSize })
+            ),
+        [search, statusFilter]
+    );
 
-    useEffect(() => {
-        loadTickets();
-    }, [loadTickets]);
+    const { source, retry, loaded, total, error: listError } = useGridWindow<AdminTicketSummary>(loadTickets, 'id');
+
+    // Перечитать список, не сбрасывая прокрутку и выбранный тикет.
+    const refreshList = useCallback(() => {
+        gridRef.current?.instance().refresh();
+    }, []);
 
     const loadDetails = useCallback(async (ticketId: string) => {
         setIsDetailsLoading(true);
@@ -175,19 +165,12 @@ const SupportTicketsPage: React.FC = () => {
         return () => window.clearInterval(interval);
     }, [selectedId, isSending]);
 
-    // Список тикетов обновляем реже — новые обращения и смены статусов.
+    // Список тикетов обновляем реже — новые обращения и смены статусов. Просим сам грид
+    // перечитать то, что уже загружено: прокрутка и выбранный тикет остаются на месте.
     useEffect(() => {
-        const interval = window.setInterval(async () => {
-            try {
-                const data = await listAdminTickets({ status: statusFilter, q: search, page, pageSize: PAGE_SIZE });
-                setTickets(data.items);
-                setTotal(data.total);
-            } catch {
-                // тихий poll
-            }
-        }, 15000);
+        const interval = window.setInterval(refreshList, 15000);
         return () => window.clearInterval(interval);
-    }, [statusFilter, search, page]);
+    }, [refreshList]);
 
     const handleReply = async () => {
         if (!selectedId || !reply.trim()) {
@@ -207,7 +190,7 @@ const SupportTicketsPage: React.FC = () => {
             setReply('');
             setPendingFiles([]);
             await loadDetails(selectedId);
-            await loadTickets();
+            refreshList();
             addToast('Reply sent as support.', 'success');
         } catch (error) {
             console.error(error);
@@ -224,7 +207,7 @@ const SupportTicketsPage: React.FC = () => {
         try {
             await resolveAdminTicket(selectedId);
             await loadDetails(selectedId);
-            await loadTickets();
+            refreshList();
             addToast('Ticket resolved.', 'success');
         } catch (error) {
             console.error(error);
@@ -239,7 +222,7 @@ const SupportTicketsPage: React.FC = () => {
         try {
             await closeAdminTicket(selectedId);
             await loadDetails(selectedId);
-            await loadTickets();
+            refreshList();
             addToast('Ticket closed.', 'success');
         } catch (error) {
             console.error(error);
@@ -282,19 +265,13 @@ const SupportTicketsPage: React.FC = () => {
                         style={{ maxWidth: 280 }}
                         placeholder="Search by subject / TKT id..."
                         value={search}
-                        onChange={(event) => {
-                            setSearch(event.target.value);
-                            setPage(1);
-                        }}
+                        onChange={(event) => setSearch(event.target.value)}
                     />
                     <select
                         className="input"
                         style={{ maxWidth: 220 }}
                         value={statusFilter}
-                        onChange={(event) => {
-                            setStatusFilter(event.target.value);
-                            setPage(1);
-                        }}
+                        onChange={(event) => setStatusFilter(event.target.value)}
                     >
                         <option value="">All statuses</option>
                         <option value="Open">Open</option>
@@ -303,69 +280,82 @@ const SupportTicketsPage: React.FC = () => {
                         <option value="Resolved">Resolved</option>
                         <option value="Closed">Closed</option>
                     </select>
-                    <button className="btn btn-outline" onClick={loadTickets} disabled={isListLoading}>
-                        {isListLoading ? 'Loading...' : 'Refresh'}
+                    <button className="btn btn-outline" onClick={refreshList}>
+                        Refresh
                     </button>
                 </div>
 
-                {isListLoading ? (
-                    <div className="space-y-3">
-                        <div className="skeleton h-10" />
-                        <div className="skeleton h-10" />
-                        <div className="skeleton h-10" />
-                    </div>
-                ) : tickets.length === 0 ? (
-                    <p style={{ color: '#6b7280' }}>No tickets found.</p>
+                {listError ? (
+                    <p style={{ color: '#b91c1c' }}>
+                        Failed to load tickets.{' '}
+                        <button className="btn btn-outline" onClick={retry}>Try again</button>
+                    </p>
                 ) : (
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Request</th>
-                                <th>Subject</th>
-                                <th>User</th>
-                                <th>Status</th>
-                                <th>Updated</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tickets.map((ticket) => (
-                                <tr
-                                    key={ticket.id}
-                                    className={ticket.id === selectedId ? 'admin-table__row-selected' : ''}
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={() => handleSelect(ticket.id)}
-                                >
-                                    <td><strong>#{ticket.publicId}</strong></td>
-                                    <td className="admin-table__cell-truncate" title={ticket.subject}>{ticket.subject}</td>
-                                    <td className="admin-table__cell-muted">{ticket.userEmail || '—'}</td>
-                                    <td><StatusPill status={ticket.status} /></td>
-                                    <td className="admin-table__cell-muted">{formatDate(ticket.updatedAt)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                    <>
+                        <DataGrid
+                            ref={gridRef}
+                            dataSource={source}
+                            showBorders
+                            showRowLines
+                            height={420}
+                            width="100%"
+                            columnAutoWidth
+                            allowColumnResizing
+                            columnResizingMode="widget"
+                            remoteOperations={REMOTE_PAGING}
+                            noDataText="No tickets found."
+                            onRowClick={(event) => handleSelect((event.data as AdminTicketSummary).id)}
+                            onRowPrepared={(event) => {
+                                if (event.rowType === 'data') {
+                                    event.rowElement.style.cursor = 'pointer';
+                                    if ((event.data as AdminTicketSummary).id === selectedId) {
+                                        event.rowElement.classList.add('admin-table__row-selected');
+                                    }
+                                }
+                            }}
+                        >
+                            <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+                            <Paging enabled pageSize={GRID_PAGE_SIZE} />
+                            <Sorting mode="none" />
 
-                {totalPages > 1 && (
-                    <div className="flex items-center gap-2" style={{ marginTop: 12 }}>
-                        <button
-                            className="btn btn-outline"
-                            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                            disabled={page <= 1}
-                        >
-                            ‹
-                        </button>
-                        <span style={{ fontSize: 13, color: '#6b7280' }}>
-                            Page {page} of {totalPages} · {total} tickets
-                        </span>
-                        <button
-                            className="btn btn-outline"
-                            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                            disabled={page >= totalPages}
-                        >
-                            ›
-                        </button>
-                    </div>
+                            <Column
+                                caption="Request"
+                                width={120}
+                                cellRender={(cell) => <strong>#{cell.data.publicId}</strong>}
+                            />
+                            <Column
+                                dataField="subject"
+                                caption="Subject"
+                                minWidth={220}
+                                cellRender={(cell) => (
+                                    <span className="admin-table__cell-truncate" title={cell.value}>{cell.value}</span>
+                                )}
+                            />
+                            <Column
+                                caption="User"
+                                minWidth={200}
+                                cellRender={(cell) => (
+                                    <span className="admin-table__cell-muted">{cell.data.userEmail || '—'}</span>
+                                )}
+                            />
+                            <Column
+                                caption="Status"
+                                width={160}
+                                cellRender={(cell) => <StatusPill status={cell.data.status} />}
+                            />
+                            <Column
+                                caption="Updated"
+                                width={170}
+                                cellRender={(cell) => (
+                                    <span className="admin-table__cell-muted">{formatDate(cell.data.updatedAt)}</span>
+                                )}
+                            />
+                        </DataGrid>
+
+                        <p style={{ marginTop: 12, fontSize: 13, color: '#6b7280' }}>
+                            {gridStatusText(loaded, total, 'ticket')}
+                        </p>
+                    </>
                 )}
             </div>
 

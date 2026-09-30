@@ -1,10 +1,6 @@
-import container from "../inversify.config";
-import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
 import type { AccountProfile, AvatarResponse } from "../types/account-profile";
-import type { AccountOrderDetails, AccountOrdersResponse, FetchAccountOrdersParams } from "../types/account-orders";
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import type { AccountOrderDetails, AccountOrderKeysResponse, AccountOrdersResponse, FetchAccountOrdersParams, ResendOrderKeysResponse } from "../types/account-orders";
+import { apiClient } from "./client";
 
 export const fetchAccountProfile = async (): Promise<AccountProfile> => {
   const response = await apiClient().get("/api/account/me");
@@ -40,11 +36,6 @@ export const saveAccountProfile = async (payload: SaveAccountProfilePayload): Pr
   return response.data as AccountProfile;
 };
 
-export const deleteAvatar = async (): Promise<AvatarResponse> => {
-  const response = await apiClient().delete("/api/account/avatar");
-  return response.data as AvatarResponse;
-};
-
 export const fetchAccountOrders = async (params: FetchAccountOrdersParams): Promise<AccountOrdersResponse> => {
   const response = await apiClient().get("/api/account/orders", {
     params: {
@@ -59,8 +50,18 @@ export const fetchAccountOrders = async (params: FetchAccountOrdersParams): Prom
   return response.data as AccountOrdersResponse;
 };
 
-
 export const fetchAccountOrderDetails = async (orderId: string): Promise<AccountOrderDetails> => {
   const response = await apiClient().get(`/api/account/orders/${orderId}`);
   return response.data as AccountOrderDetails;
+};
+
+/** Полные ключи заказа — только после повторного ввода пароля; неверный пароль — 400 с текстом. */
+export const revealAccountOrderKeys = async (orderId: string, password: string): Promise<AccountOrderKeysResponse> => {
+  const response = await apiClient().post(`/api/account/orders/${orderId}/keys/reveal`, { password });
+  return response.data as AccountOrderKeysResponse;
+};
+
+export const resendAccountOrderKeys = async (orderId: string): Promise<ResendOrderKeysResponse> => {
+  const response = await apiClient().post(`/api/account/orders/${orderId}/resend-keys`);
+  return response.data as ResendOrderKeysResponse;
 };

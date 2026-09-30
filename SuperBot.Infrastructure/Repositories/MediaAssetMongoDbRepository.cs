@@ -53,9 +53,11 @@ namespace SuperBot.Infrastructure.Repositories
             var filter = Builders<MediaAssetDb>.Filter.Empty;
             if (!string.IsNullOrWhiteSpace(search))
             {
+                // Экранируем: в поиск попадает то, что человек набрал руками, и скобка или
+                // звёздочка в имени файла иначе улетают в базу как части регулярного выражения.
                 filter = Builders<MediaAssetDb>.Filter.Regex(
                     item => item.Filename,
-                    new MongoDB.Bson.BsonRegularExpression(search, "i"));
+                    new MongoDB.Bson.BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(search.Trim()), "i"));
             }
 
             if (!string.IsNullOrWhiteSpace(type) && type != "all")

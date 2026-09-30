@@ -1,8 +1,4 @@
-import container from "../inversify.config";
-import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { apiClient } from "./client";
 
 /** Поле настройки: действующее значение, значение из конфига и переопределено ли руками. */
 export type SettingField<T> = { value: T; defaultValue: T | null; overridden: boolean };
@@ -25,6 +21,25 @@ export type SiteSettingsView = {
   fx: {
     markupPercent: SettingField<number>;
     maxChangePercent: SettingField<number>;
+  };
+  stock: {
+    /** Общий порог «скоро закончится» (ключей в пуле ≤ порога); у игры может быть свой. */
+    lowStockThreshold: SettingField<number>;
+  };
+  /** Справочник регионов активации: текущий набор, зашитый дефолт и флаг «переопределён в настройках». */
+  team: {
+    value: Array<{ name: string; role: string; description: string; badge: string; photoUrl: string }>;
+    maxMembers: number;
+  };
+  /** Ссылки на соцсети в подвале и сети, для которых у подвала есть иконка. */
+  social: {
+    value: Array<{ network: string; url: string }>;
+    networks: Array<{ network: string; title: string; example: string }>;
+  };
+  regions: {
+    value: Array<{ code: string; name: string; countries: string[] }>;
+    defaultValue: Array<{ code: string; name: string; countries: string[] }>;
+    overridden: boolean;
   };
   rails: {
     card: { enabled: SettingField<boolean>; configured: boolean; hint: string };
@@ -49,6 +64,13 @@ export type SiteSettingsPatch = {
   cardEnabled?: boolean | null;
   cryptoEnabled?: boolean | null;
   starsEnabled?: boolean | null;
+  lowStockThreshold?: number | null;
+  /** Справочник регионов целиком; null — вернуться к конфигу/дефолту. */
+  /** Раздел «Meet the team» целиком. null/пусто — раздела на странице нет. */
+  team?: Array<{ name: string; role: string; description: string; badge: string; photoUrl: string }> | null;
+  regions?: Array<{ code: string; name: string; countries: string[] }> | null;
+  /** Ссылки на соцсети в подвале; null/пусто — блока соцсетей нет. */
+  social?: Array<{ network: string; url: string }> | null;
 };
 
 export const getSiteSettings = async (): Promise<SiteSettingsView> => (await apiClient().get("/api/admin/site-settings")).data;

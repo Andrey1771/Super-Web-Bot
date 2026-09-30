@@ -1,20 +1,20 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
 import PageHeader from "../../components/layout/PageHeader";
 import Card from "../../components/ui/Card";
+import EmptyState from "../../components/ui/EmptyState";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../components/layout/AdminHeaderContext";
+import { GRID_PAGE_SIZE, REMOTE_PAGING, gridStatusText, useGridWindow } from "../../hooks/use-grid-window";
+import { fetchWindow } from "../../utils/page-window";
 import {
-  answerQuestion,
   getModerationSummary,
   hideReview,
-  listModerationQuestions,
   listModerationReviews,
   publishReview,
-  replyToReview,
-  type ModerationQuestion,
+  removeReviewAuthorAvatar,
   type ModerationReview,
-  type QuestionFilter,
   type ReviewFilter,
 } from "../../api/adminModerationApi";
 import "./moderation-page.css";
@@ -22,25 +22,87 @@ import "./moderation-page.css";
 /**
  * Модерация: отзывы с жалобами и вопросы без ответа. Две вкладки, потому что это две разные
  * очереди с разным ритмом: жалобы — редко и срочно, вопросы — часто и терпят день.
+ *
+ * Обе очереди копятся без предела, поэтому строки приезжают окнами по мере прокрутки, а не
+ * страницами с кнопками Previous/Next.
  */
 
-const PAGE_SIZE = 20;
+/**
+ * Общие настройки обеих очередей. Объявлены снаружи компонента: devextreme-react сравнивает
+ * свойства по ссылке, и объект, собранный внутри, приезжал бы новым на каждый рендер — грид
+ * счёл бы это сменой настроек и перечитал данные, а загрузка вызвала бы следующий рендер.
+ */
+const GRID_PROPS = {
+  showBorders: true,
+  showRowLines: true,
+  height: 600,
+  width: "100%",
+  columnAutoWidth: true,
+  allowColumnResizing: true,
+  columnResizingMode: "widget" as const,
+  wordWrapEnabled: true,
+  remoteOperations: REMOTE_PAGING,
+};
+
+type ReviewRevisionView = NonNullable<ModerationReview["revisions"]>[number];
+
+/**
+ * История правок отзыва в ячейке очереди: плашка «Edited N×» (жёлтая, если правили уже под
+ * жалобами), по клику раскрываются прошлые версии. Читателю на витрине история не показывается,
+ * как у Steam; модератору она нужна, чтобы увидеть, что было до правки. Экспорт — ради теста.
+ */
+export const ReviewRevisions = ({ revisions, editedAt }: { revisions: ReviewRevisionView[]; editedAt?: string | null }) => {
+  const [open, setOpen] = useState(false);
+  if (revisions.length === 0) {
+    return null;
+  }
+  const afterReport = revisions.some((rev) => rev.underReport);
+  const when = editedAt ? new Date(editedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }) : null;
+  return (
+    <div className="moderation__revisions">
+      <button
+        type="button"
+        className={`moderation__pill moderation__revisions-toggle${afterReport ? " moderation__pill--warn" : ""}`}
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        title={afterReport ? "The text was changed after reports came in — compare the versions" : when ? `Last edited ${when}` : undefined}
+      >
+        {afterReport ? "Edited after report" : `Edited ${revisions.length}×`}
+      </button>
+      {open && (
+        <ul className="moderation__revision-list">
+          {revisions.map((rev, index) => (
+            <li key={`${rev.replacedAt}-${index}`} className={`moderation__revision${rev.underReport ? " moderation__revision--under-report" : ""}`}>
+              <div className="moderation__revision-head">
+                <span>{"★".repeat(rev.rating)}{"☆".repeat(Math.max(0, 5 - rev.rating))}</span>
+                <span>until {new Date(rev.replacedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
+                {rev.underReport && <span className="moderation__pill moderation__pill--warn">under report</span>}
+              </div>
+              <p className="moderation__revision-text">{rev.text}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Отрисовщик ячейки только для настоящих строк. DevExtreme с виртуальной прокруткой и серверной
+ * постраничностью рисует и строки-заглушки без данных (пока окно грузится или когда очередь
+ * пуста) — cellRender приходит с пустым `data`, и обращение к полю роняло страницу целиком.
+ */
+export const dataCell =
+  <T extends { id: string }>(render: (row: T) => React.ReactNode) =>
+  (cell: { data?: Partial<T> | null }) =>
+    cell.data && typeof cell.data.id === "string" ? render(cell.data as T) : null;
 
 const ModerationPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const { addToast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tab = (searchParams.get("tab") === "questions" ? "questions" : "reviews") as "reviews" | "questions";
-
-  const [summary, setSummary] = useState<{ pendingReviews: number; unansweredQuestions: number } | null>(null);
+  const [summary, setSummary] = useState<{ pendingReviews: number } | null>(null);
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("pending");
-  const [questionFilter, setQuestionFilter] = useState<QuestionFilter>("unanswered");
-  const [reviews, setReviews] = useState<ModerationReview[]>([]);
-  const [questions, setQuestions] = useState<ModerationQuestion[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [reloadToken, setReloadToken] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadSummary = useCallback(async () => {
@@ -51,201 +113,209 @@ const ModerationPage: React.FC = () => {
     }
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      if (tab === "reviews") {
-        const data = await listModerationReviews(reviewFilter, page, PAGE_SIZE);
-        setReviews(data.items);
-        setTotal(data.total);
-      } else {
-        const data = await listModerationQuestions(questionFilter, page, PAGE_SIZE);
-        setQuestions(data.items);
-        setTotal(data.total);
-      }
-    } catch (err) {
-      console.error("Moderation load failed", err);
-      addToast("Failed to load.", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [addToast, page, questionFilter, reviewFilter, tab]);
+  const loadReviews = useCallback(
+    (skip: number, take: number) =>
+      fetchWindow(skip, take, GRID_PAGE_SIZE, (page, pageSize) => listModerationReviews(reviewFilter, page, pageSize)),
+    [reviewFilter],
+  );
+
+  const reviewsGrid = useGridWindow<ModerationReview>(loadReviews, "id", reloadToken);
 
   useEffect(() => {
-    load();
     loadSummary();
-  }, [load, loadSummary]);
+  }, [loadSummary, reloadToken]);
 
   useEffect(() => {
     setPageTitle("Moderation");
-    setHeaderActions([{ type: "button", id: "mod-refresh", label: "Refresh", variant: "outline", onClick: () => { load(); loadSummary(); } }]);
-    return () => setHeaderActions([]);
-  }, [load, loadSummary, setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
-  const switchTab = (next: "reviews" | "questions") => {
-    setPage(1);
-    setSearchParams({ tab: next }, { replace: true });
-  };
+  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
+  /** Действие модератора с тостом и перечитыванием очереди; возвращает, удалось ли оно. */
   const run = async (id: string, action: () => Promise<{ ok?: boolean; message?: string }>) => {
     setBusyId(id);
     try {
       const result = await action();
       addToast(result?.message ?? "Done.", result?.ok === false ? "error" : "success");
-      await load();
-      await loadSummary();
+      // Решение меняет и саму строку, и счётчики вкладок — перечитываем очередь целиком.
+      reload();
+      return result?.ok !== false;
     } catch (err) {
       console.error("Moderation action failed", err);
       addToast("Action failed.", "error");
+      return false;
     } finally {
       setBusyId(null);
     }
   };
 
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const gameLink = (gameId: string, gameTitle: string) => (
+    <Link className="moderation__game" to={`/admin/games/details?game=${encodeURIComponent(gameId)}`}>
+      {gameTitle}
+    </Link>
+  );
 
   return (
     <div className="admin-grid moderation">
       <PageHeader
         title="Moderation"
-        description="Reported reviews and unanswered questions from game pages."
+        description="Reported reviews from game pages."
         breadcrumbs={["Support", "Moderation"]}
+        primaryAction={
+          <button className="btn btn-outline" onClick={reload}>
+            Refresh
+          </button>
+        }
       />
 
-      <div className="moderation__tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "reviews"} className={`moderation__tab${tab === "reviews" ? " moderation__tab--active" : ""}`} onClick={() => switchTab("reviews")}>
+      {/* Одна очередь — отзывы; заголовок со счётчиком ожидающих вместо вкладок. */}
+      <div className="moderation__tabs" role="presentation">
+        <span className="moderation__tab moderation__tab--active">
           Reviews{summary && summary.pendingReviews > 0 && <span className="moderation__badge">{summary.pendingReviews}</span>}
-        </button>
-        <button role="tab" aria-selected={tab === "questions"} className={`moderation__tab${tab === "questions" ? " moderation__tab--active" : ""}`} onClick={() => switchTab("questions")}>
-          Questions{summary && summary.unansweredQuestions > 0 && <span className="moderation__badge">{summary.unansweredQuestions}</span>}
-        </button>
+        </span>
       </div>
 
-      {tab === "reviews" ? (
         <Card>
           <div className="moderation__toolbar">
-            <select className="input moderation__filter" value={reviewFilter} onChange={(e) => { setPage(1); setReviewFilter(e.target.value as ReviewFilter); }}>
+            <select className="input moderation__filter" value={reviewFilter} onChange={(e) => setReviewFilter(e.target.value as ReviewFilter)}>
               <option value="pending">Reported (pending)</option>
               <option value="hidden">Hidden</option>
               <option value="published">Published</option>
               <option value="all">All</option>
             </select>
-            <span className="moderation__muted">{total} review{total === 1 ? "" : "s"}</span>
+            <span className="moderation__muted">{gridStatusText(reviewsGrid.loaded, reviewsGrid.total, "review")}</span>
           </div>
 
-          {loading && reviews.length === 0 ? (
-            <p className="moderation__muted">Loading…</p>
-          ) : reviews.length === 0 ? (
-            <p className="moderation__muted">{reviewFilter === "pending" ? "No reported reviews — nothing to decide." : "Nothing here."}</p>
+          {reviewsGrid.error ? (
+            <EmptyState
+              title="Unable to load reviews"
+              description={reviewsGrid.error}
+              action={<button className="btn btn-primary" onClick={reviewsGrid.retry}>Retry</button>}
+            />
           ) : (
-            <ul className="moderation__list">
-              {reviews.map((r) => (
-                <li key={r.id} className={`moderation__item moderation__item--${r.status.toLowerCase()}`}>
-                  <div className="moderation__item-head">
-                    <div>
-                      <Link className="moderation__game" to={`/admin/games/details?game=${encodeURIComponent(r.gameId)}`}>{r.gameTitle}</Link>
-                      <span className="moderation__muted"> · {r.userName} · {"★".repeat(r.rating)}{"☆".repeat(Math.max(0, 5 - r.rating))} · {new Date(r.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <div className="moderation__flags">
-                      {r.reportCount > 0 && <span className="moderation__pill moderation__pill--warn">{r.reportCount} report{r.reportCount === 1 ? "" : "s"}</span>}
-                      <span className="moderation__pill">{r.status}</span>
-                    </div>
+            <DataGrid
+              {...GRID_PROPS}
+              dataSource={reviewsGrid.source}
+              noDataText={reviewFilter === "pending" ? "No reported reviews — nothing to decide." : "Nothing here."}
+              onRowPrepared={(event) => {
+                // Строка носит статус отзыва — как раньше носил класс карточки.
+                if (event.rowType === "data") {
+                  const status = (event.data as Partial<ModerationReview> | undefined)?.status;
+                  if (status) event.rowElement.classList.add(`moderation__row--${status.toLowerCase()}`);
+                }
+              }}
+            >
+              <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+              <Paging enabled pageSize={GRID_PAGE_SIZE} />
+              {/* Порядок задаёт сервер; сортировка загруженного окна врала бы. */}
+              <Sorting mode="none" />
+
+              <Column
+                caption="Game"
+                minWidth={170}
+                cellRender={dataCell<ModerationReview>((row) => gameLink(row.gameId, row.gameTitle))}
+              />
+              <Column
+                caption="Author"
+                minWidth={180}
+                cellRender={dataCell<ModerationReview>((row) => (
+                  <span className="moderation__author">
+                    {/* Картинка — такая же часть отзыва, как текст, и жалоба приходит той же
+                        кнопкой. Показываем её здесь, чтобы модератор видел, на что жалуются,
+                        не открывая витрину. */}
+                    {row.avatarUrl ? (
+                      <img className="moderation__avatar" src={row.avatarUrl} alt="" />
+                    ) : (
+                      <span className="moderation__avatar moderation__avatar--initial" aria-hidden="true">
+                        {(row.userName || "?").trim().charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="moderation__muted">
+                      {row.userName}
+                      <br />
+                      {"★".repeat(row.rating)}{"☆".repeat(Math.max(0, 5 - row.rating))} · {new Date(row.createdAt).toLocaleDateString()}
+                    </span>
+                  </span>
+                ))}
+              />
+              <Column
+                dataField="text"
+                caption="Review"
+                minWidth={280}
+                cellRender={dataCell<ModerationReview>((row) => (
+                  <div>
+                    {/* Три строки максимум: иначе высота строк пляшет и виртуальная прокрутка
+                        начинает дёргаться. Полный текст — в подсказке. */}
+                    <p className="moderation__text line-clamp-3" title={row.text}>{row.text}</p>
+                    <ReviewRevisions revisions={row.revisions ?? []} editedAt={row.editedAt} />
                   </div>
-                  <p className="moderation__text">{r.text}</p>
-                  {r.shopReply && (
-                    <p className="moderation__reply">
-                      <strong>Shop reply</strong> ({r.shopReply.author}): {r.shopReply.text}
-                    </p>
-                  )}
-                  <div className="moderation__actions">
-                    {r.status !== "Published" && (
-                      <button className="btn btn-primary" disabled={busyId === r.id} onClick={() => run(r.id, () => publishReview(r.id))}>Publish</button>
+                ))}
+              />
+              <Column
+                caption="Flags"
+                width={150}
+                cellRender={dataCell<ModerationReview>((row) => (
+                  <div className="moderation__flags">
+                    {row.reportCount > 0 && (
+                      <span className="moderation__pill moderation__pill--warn">
+                        {row.reportCount} report{row.reportCount === 1 ? "" : "s"}
+                      </span>
                     )}
-                    {r.status !== "Hidden" && (
-                      <button className="btn btn-outline moderation__danger" disabled={busyId === r.id} onClick={() => run(r.id, () => hideReview(r.id))}>Hide</button>
-                    )}
-                    <input
-                      className="input moderation__reply-input"
-                      placeholder={r.shopReply ? "Replace the shop reply…" : "Reply as the shop…"}
-                      value={drafts[r.id] ?? ""}
-                      onChange={(e) => setDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                    />
-                    <button
-                      className="btn btn-outline"
-                      disabled={busyId === r.id || !(drafts[r.id] ?? "").trim()}
-                      onClick={() => run(r.id, async () => { const res = await replyToReview(r.id, drafts[r.id]); setDrafts((p) => ({ ...p, [r.id]: "" })); return res; })}
-                    >
-                      Reply
-                    </button>
-                    {r.shopReply && (
-                      <button className="btn btn-outline" disabled={busyId === r.id} onClick={() => run(r.id, () => replyToReview(r.id, ""))}>Remove reply</button>
+                    <span className="moderation__pill">{row.status}</span>
+                    {row.refunded && <span className="moderation__pill" title="The purchase was refunded; the review stays with a “Refunded” note">Refunded</span>}
+                    {/* Причины сгруппированы («Spam ×2»); комментарии и авторы — в подсказке. */}
+                    {(row.reports?.length ?? 0) > 0 && (
+                      <ul className="moderation__reasons" title={row.reports!.map((r) => `${r.userName}: ${r.reason}${r.comment ? " — " + r.comment : ""}`).join("\n")}>
+                        {Object.entries(
+                          row.reports!.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.reason]: (acc[r.reason] ?? 0) + 1 }), {})
+                        ).map(([reason, count]) => (
+                          <li key={reason}>
+                            {reason}
+                            {count > 1 ? ` ×${count}` : ""}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
-                </li>
-              ))}
-            </ul>
+                ))}
+              />
+              <Column
+                caption="Actions"
+                width={300}
+                cellRender={dataCell<ModerationReview>((row) => {
+                  const review = row;
+                  return (
+                    <div className="moderation__actions">
+                      {review.status !== "Published" && (
+                        <button className="btn btn-primary" disabled={busyId === review.id} onClick={() => run(review.id, () => publishReview(review.id))}>Publish</button>
+                      )}
+                      {review.status !== "Hidden" && (
+                        <button className="btn btn-outline moderation__danger" disabled={busyId === review.id} onClick={() => run(review.id, () => hideReview(review.id))}>Hide</button>
+                      )}
+                      {/* Отдельно от «Hide»: текст бывает нормальным при непристойной картинке
+                          и наоборот. Аватар снимается у профиля и пропадает сразу везде. */}
+                      {review.avatarUrl && (
+                        <button
+                          className="btn btn-outline moderation__danger"
+                          disabled={busyId === review.id}
+                          title="Removes the photo from the author's profile everywhere, not just here"
+                          onClick={() => run(review.id, async () => {
+                            const { removed } = await removeReviewAuthorAvatar(review.id);
+                            // «Снимать было нечего» — тоже успех, но модератору стоит сказать
+                            // прямо: иначе непонятно, сработала кнопка или нет.
+                            return { message: removed ? "Avatar removed from the profile." : "There was no avatar to remove." };
+                          })}
+                        >
+                          Remove avatar
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              />
+            </DataGrid>
           )}
         </Card>
-      ) : (
-        <Card>
-          <div className="moderation__toolbar">
-            <select className="input moderation__filter" value={questionFilter} onChange={(e) => { setPage(1); setQuestionFilter(e.target.value as QuestionFilter); }}>
-              <option value="unanswered">Unanswered</option>
-              <option value="all">All</option>
-            </select>
-            <span className="moderation__muted">{total} question{total === 1 ? "" : "s"}</span>
-          </div>
-
-          {loading && questions.length === 0 ? (
-            <p className="moderation__muted">Loading…</p>
-          ) : questions.length === 0 ? (
-            <p className="moderation__muted">{questionFilter === "unanswered" ? "Every question has an answer." : "Nothing here."}</p>
-          ) : (
-            <ul className="moderation__list">
-              {questions.map((q) => (
-                <li key={q.id} className="moderation__item">
-                  <div className="moderation__item-head">
-                    <div>
-                      <Link className="moderation__game" to={`/admin/games/details?game=${encodeURIComponent(q.gameId)}`}>{q.gameTitle}</Link>
-                      <span className="moderation__muted"> · {q.userName} · {new Date(q.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    {q.answers.length > 0 && <span className="moderation__pill">{q.answers.length} answer{q.answers.length === 1 ? "" : "s"}</span>}
-                  </div>
-                  <p className="moderation__text">{q.question}</p>
-                  {q.answers.map((a) => (
-                    <p key={a.id} className={`moderation__reply${a.isOfficial ? " moderation__reply--official" : ""}`}>
-                      <strong>{a.isOfficial ? "Official" : a.userName}</strong>: {a.text}
-                    </p>
-                  ))}
-                  <div className="moderation__actions">
-                    <input
-                      className="input moderation__reply-input"
-                      placeholder="Answer as the shop…"
-                      value={drafts[q.id] ?? ""}
-                      onChange={(e) => setDrafts((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                    />
-                    <button
-                      className="btn btn-primary"
-                      disabled={busyId === q.id || !(drafts[q.id] ?? "").trim()}
-                      onClick={() => run(q.id, async () => { const res = await answerQuestion(q.id, drafts[q.id]); setDrafts((p) => ({ ...p, [q.id]: "" })); return res; })}
-                    >
-                      Answer
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      )}
-
-      {pages > 1 && (
-        <div className="moderation__pager">
-          <button className="btn btn-outline" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>Previous</button>
-          <span className="moderation__muted">Page {page} of {pages}</span>
-          <button className="btn btn-outline" disabled={page >= pages || loading} onClick={() => setPage((p) => p + 1)}>Next</button>
-        </div>
-      )}
     </div>
   );
 };

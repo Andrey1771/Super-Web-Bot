@@ -76,43 +76,7 @@ namespace SuperBot.Infrastructure.Repositories
             return count > 0;
         }
 
-        public async Task<List<string>> GetWishlistAsync(string userId)
-        {
-            var user = await _usersCollection.Find(u => u.UserId == userId).FirstOrDefaultAsync();
-            return user?.WishlistGameIds ?? new List<string>();
-        }
 
-        public async Task AddToWishlistAsync(string userId, string gameId)
-        {
-            var filter = Builders<UserDb>.Filter.Eq(u => u.UserId, userId);
-            var update = Builders<UserDb>.Update
-                .AddToSet(u => u.WishlistGameIds, gameId)
-                .Set(u => u.UpdatedAt, DateTime.UtcNow)
-                .SetOnInsert(u => u.UserId, userId)
-                .SetOnInsert(u => u.Name, userId)
-                .SetOnInsert(u => u.Username, userId)
-                .SetOnInsert(u => u.CreatedAt, DateTime.UtcNow);
-
-            await _usersCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
-        }
-
-        public async Task RemoveFromWishlistAsync(string userId, string gameId)
-        {
-            var filter = Builders<UserDb>.Filter.Eq(u => u.UserId, userId);
-            var update = Builders<UserDb>.Update
-                .Pull(u => u.WishlistGameIds, gameId)
-                .Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-            await _usersCollection.UpdateOneAsync(filter, update);
-        }
-
-
-
-        public async Task<User> FindByUsernameAsync(string username)
-        {
-            var userDb = await _usersCollection.Find(u => u.Username == username).FirstOrDefaultAsync();
-            return _mapper.Map<User>(userDb);
-        }
 
         public async Task<IEnumerable<User>> GetAllAsync()
         {

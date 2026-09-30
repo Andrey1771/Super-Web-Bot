@@ -8,7 +8,11 @@ namespace SuperBot.Core.Interfaces
     public interface IKeyFulfillmentService
     {
         /// <param name="issuedBy">Почта сотрудника при ручной выдаче; null — автоматическая выдача при оплате.</param>
-        Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null, string issuedBy = null);
+        /// <param name="offerKey">
+        /// Региональный вариант, за который заплатил покупатель: ключ берётся строго из партий с
+        /// этой областью активации. null — вариант не выбирался, годится любой подходящий ключ.
+        /// </param>
+        Task<GameKey> DispenseAsync(string gameId, string userId, string keyType = null, string issuedBy = null, string editionCode = null, string buyerCountry = null, string orderId = null, string offerKey = null);
 
         /// <summary>
         /// Выдаёт ключи по позициям оплаченного заказа, проставляет честный статус

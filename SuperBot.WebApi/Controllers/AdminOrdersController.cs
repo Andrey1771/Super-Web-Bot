@@ -22,9 +22,11 @@ public class AdminOrdersController : ControllerBase
     private readonly IOrderRepository _orderRepository;
     private readonly IGameRepository _gameRepository;
     private readonly AdminOrderActionsService _actions;
+    private readonly SuperBot.Core.Cashback.ICashbackLedger _cashback;
 
-    public AdminOrdersController(IOrderRepository orderRepository, IGameRepository gameRepository, AdminOrderActionsService actions)
+    public AdminOrdersController(IOrderRepository orderRepository, IGameRepository gameRepository, AdminOrderActionsService actions, SuperBot.Core.Cashback.ICashbackLedger cashback)
     {
+        _cashback = cashback;
         _orderRepository = orderRepository;
         _gameRepository = gameRepository;
         _actions = actions;
@@ -87,7 +89,7 @@ public class AdminOrdersController : ControllerBase
                     Csv(itemsText),
                     Csv(ResolveTotal(order).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                     Csv(order.Currency ?? "USD"),
-                    Csv(ResolveStatus(order)),
+                    Csv(OrderStatusCodes.Resolve(order)),
                     Csv(ResolvePaymentStatus(order)),
                     Csv(order.PaymentProvider),
                     Csv(order.PaymentIntentId ?? string.Empty)));
@@ -116,6 +118,7 @@ public class AdminOrdersController : ControllerBase
         }
 
         var mapped = (await MapOrdersAsync(new[] { order })).First();
+        mapped.CashbackEarned = await MapCashbackEarnedAsync(order);
         return Ok(mapped);
     }
 
@@ -132,6 +135,11 @@ public class AdminOrdersController : ControllerBase
     [HttpPost("{id}/refund")]
     public Task<IActionResult> Refund(string id, [FromBody] OrderActionRequest request) =>
         RunAction(id, (order, actor) => _actions.RefundAsync(order, actor, request?.Reason ?? string.Empty));
+
+    /// <summary>Возврат одной позиции (или нескольких её штук) — см. <see cref="AdminOrderActionsService.RefundItemAsync"/>.</summary>
+    [HttpPost("{id}/items/{itemId}/refund")]
+    public Task<IActionResult> RefundItem(string id, string itemId, [FromBody] ItemRefundRequest request) =>
+        RunAction(id, (order, actor) => _actions.RefundItemAsync(order, actor, itemId, request?.Quantity ?? 1, request?.Reason ?? string.Empty));
 
     [HttpPost("{id}/mark-refunded")]
     public Task<IActionResult> MarkRefunded(string id, [FromBody] OrderActionRequest request) =>
@@ -172,11 +180,48 @@ public class AdminOrdersController : ControllerBase
 
         var fresh = await _orderRepository.GetOrderByIdAsync(id) ?? order;
         var mapped = (await MapOrdersAsync(new[] { fresh })).First();
+        mapped.CashbackEarned = await MapCashbackEarnedAsync(fresh);
         var body = new { ok = outcome.Success, message = outcome.Message, order = mapped };
         return outcome.Success ? Ok(body) : StatusCode(outcome.StatusCode, body);
     }
 
     // ---------- маппинг ----------
+
+    /// <summary>
+    /// Кэшбэк, начисленный за заказ: сколько, в каком состоянии и сколько забрано возвратом. Только для карточки заказа —
+    /// в списке это был бы запрос журнала на каждую строку. Суммы — в валюте заказа, как у покупателя в кабинете.
+    /// </summary>
+    private async Task<AdminOrderCashbackEarnedDto?> MapCashbackEarnedAsync(Order order)
+    {
+        if (string.IsNullOrWhiteSpace(order.UserId))
+        {
+            return null;
+        }
+
+        var entries = await _cashback.GetEntriesAsync(order.UserId);
+        var orderId = order.Id.ToString();
+        var earn = entries.FirstOrDefault(entry => entry.Type == SuperBot.Core.Cashback.CashbackEntryTypes.Earn && entry.OrderId == orderId);
+        if (earn == null)
+        {
+            return null;
+        }
+
+        var state = SuperBot.Core.Cashback.CashbackProjection.Project(entries, DateTime.UtcNow).Earns.GetValueOrDefault(earn.Id ?? earn.IdempotencyKey);
+        var currency = string.IsNullOrWhiteSpace(earn.OrderCurrency) ? "USD" : earn.OrderCurrency;
+        var inOrderCurrency = earn.OrderTotal is > 0 && earn.Percent is > 0
+            ? SuperBot.Core.Payments.CurrencyMinorUnits.Round(earn.OrderTotal.Value * earn.Percent.Value / 100m, currency)
+            : (decimal?)null;
+        return new AdminOrderCashbackEarnedDto
+        {
+            AmountUsd = earn.AmountUsd,
+            Amount = inOrderCurrency ?? earn.AmountUsd,
+            Currency = inOrderCurrency.HasValue ? currency : "USD",
+            Percent = earn.Percent,
+            Status = state?.State ?? "pending",
+            UnlocksAt = earn.UnlocksAt?.ToUniversalTime().ToString("O"),
+            ReversedUsd = state?.ReversedUsd ?? 0m
+        };
+    }
 
     private static OrderQueryParameters BuildQuery(string search, string status, string paymentStatus, DateTime? from, DateTime? to, int page, int pageSize, string sort) =>
         new()
@@ -213,8 +258,12 @@ public class AdminOrdersController : ControllerBase
                 var needed = Math.Max(1, item.Quantity);
                 return new AdminOrderItemDto
                 {
+                    ItemId = item.ItemId,
+                    LineTotal = item.LineTotal,
+                    RefundedQty = item.RefundedQuantity,
                     GameId = item.GameId ?? string.Empty,
                     Title = string.IsNullOrWhiteSpace(item.Title) ? (game?.Title ?? game?.Name ?? order.GameName) : item.Title,
+                    Region = item.OfferTitle,
                     Price = item.FinalUnitPrice != 0 ? item.FinalUnitPrice : item.UnitPrice,
                     Qty = needed,
                     KeysDelivered = delivered.Count,
@@ -231,7 +280,7 @@ public class AdminOrdersController : ControllerBase
                 Number = string.IsNullOrWhiteSpace(order.OrderNumber) ? order.Id.ToString() : order.OrderNumber,
                 UserId = order.UserId,
                 UserEmail = order.UserId.Contains('@') ? order.UserId : null,
-                Status = ResolveStatus(order),
+                Status = OrderStatusCodes.Resolve(order),
                 PaymentStatus = ResolvePaymentStatus(order),
                 FulfillmentStatus = ResolveFulfillmentStatus(order),
                 TotalAmount = ResolveTotal(order),
@@ -244,11 +293,41 @@ public class AdminOrdersController : ControllerBase
                 {
                     Provider = order.PaymentProvider,
                     TransactionId = order.PaymentIntentId,
-                    Method = order.PaymentProvider
+                    Method = PaymentInstrument.Describe(order)
                 },
                 RequiresDeliveryVerification = order.RequiresDeliveryVerification,
                 Notes = order.Notes,
                 PromoCode = order.PromoCode,
+                CashbackApplied = order.CashbackApplied,
+                RefundedAmount = order.RefundedAmount ?? 0m,
+                CashbackUsd = order.CashbackUsd,
+                Dispute = order.Dispute == null ? null : new AdminOrderDisputeDto
+                {
+                    Id = order.Dispute.Id,
+                    Status = order.Dispute.Status,
+                    Reason = order.Dispute.Reason,
+                    Amount = SuperBot.Core.Payments.CurrencyMinorUnits.FromMinor(order.Dispute.AmountMinor, order.Dispute.Currency),
+                    Currency = order.Dispute.Currency,
+                    EvidenceDueBy = order.Dispute.EvidenceDueBy?.ToUniversalTime().ToString("O"),
+                    HasEvidence = order.Dispute.HasEvidence,
+                    OpenedAt = order.Dispute.OpenedAt.ToUniversalTime().ToString("O"),
+                    ClosedAt = order.Dispute.ClosedAt?.ToUniversalTime().ToString("O"),
+                    Outcome = order.Dispute.Outcome
+                },
+                Tax = order.Tax == null ? null : new AdminOrderTaxDto
+                {
+                    Status = order.Tax.Status,
+                    Amount = order.TaxTotal ?? order.Totals.TaxTotal,
+                    Reversed = SuperBot.Core.Payments.CurrencyMinorUnits.FromMinor(order.Tax.ReversedMinor, string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency),
+                    Country = order.Tax.Country,
+                    State = order.Tax.State,
+                    TaxType = order.Tax.TaxType,
+                    RatePercent = order.Tax.RatePercent,
+                    TaxabilityReason = order.Tax.TaxabilityReason,
+                    LocationSource = order.Tax.LocationSource,
+                    TransactionId = order.Tax.TransactionId,
+                    LastError = order.Tax.LastError
+                },
                 Events = (order.Events ?? new List<OrderEvent>())
                     .OrderBy(e => e.CreatedAt)
                     .Select(e => new AdminOrderEventDto
@@ -283,19 +362,6 @@ public class AdminOrdersController : ControllerBase
 
     private static decimal ResolveTotal(Order order) =>
         order.Totals?.Total > 0 ? order.Totals.Total : order.TotalAmount ?? 0m;
-
-    private static string ResolveStatus(Order order)
-    {
-        if (!string.IsNullOrWhiteSpace(order.Status))
-        {
-            return order.Status.ToUpperInvariant();
-        }
-        if (!order.IsPaid)
-        {
-            return "PENDING";
-        }
-        return order.IsFulfilled ? "DELIVERED" : "PROCESSING";
-    }
 
     private static string ResolvePaymentStatus(Order order)
     {
@@ -335,6 +401,12 @@ public class OrderActionRequest
     public string? Reason { get; set; }
 }
 
+public class ItemRefundRequest
+{
+    public int Quantity { get; set; } = 1;
+    public string? Reason { get; set; }
+}
+
 public class ForceStatusRequest
 {
     public string Status { get; set; } = string.Empty;
@@ -360,13 +432,81 @@ public class AdminOrderDto
     public bool RequiresDeliveryVerification { get; set; }
     public string? Notes { get; set; }
     public string? PromoCode { get; set; }
+    /// <summary>Оплачено кэшбэком, в валюте заказа. TotalAmount — уже без этой части (деньги с карты).</summary>
+    public decimal CashbackApplied { get; set; }
+    /// <summary>Возвращено на карту, накопительно, в валюте заказа.</summary>
+    public decimal RefundedAmount { get; set; }
+    /// <summary>То же в долларах — столько списано с баланса покупателя.</summary>
+    public decimal CashbackUsd { get; set; }
+    /// <summary>Кэшбэк, начисленный за заказ; null — не начислялся (или список заказов, где он не считается).</summary>
+    public AdminOrderCashbackEarnedDto? CashbackEarned { get; set; }
+    /// <summary>Спор по оплате (последний); null — споров не было.</summary>
+    public AdminOrderDisputeDto? Dispute { get; set; }
+    /// <summary>Налог из Stripe Tax; null — заказ до подключения налога или не через Stripe.</summary>
+    public AdminOrderTaxDto? Tax { get; set; }
     public List<AdminOrderEventDto> Events { get; set; } = new();
+}
+
+public class AdminOrderDisputeDto
+{
+    public string Id { get; set; } = string.Empty;
+    /// <summary>Статус Stripe: needs_response, under_review, won, lost, warning_* (запрос банка без списания).</summary>
+    public string Status { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "USD";
+    /// <summary>Крайний срок отправки доказательств в Stripe.</summary>
+    public string? EvidenceDueBy { get; set; }
+    public bool HasEvidence { get; set; }
+    public string OpenedAt { get; set; } = string.Empty;
+    public string? ClosedAt { get; set; }
+    /// <summary>won | lost | warning_closed; null — спор идёт.</summary>
+    public string? Outcome { get; set; }
+}
+
+public class AdminOrderCashbackEarnedDto
+{
+    public decimal AmountUsd { get; set; }
+    /// <summary>В валюте заказа — процент уровня от оплаченного картой, как в кабинете покупателя.</summary>
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "USD";
+    public decimal? Percent { get; set; }
+    /// <summary>pending | available | spent | expired | reverted.</summary>
+    public string Status { get; set; } = "pending";
+    public string? UnlocksAt { get; set; }
+    /// <summary>Сколько забрано возвратом или спором, в долларах.</summary>
+    public decimal ReversedUsd { get; set; }
+}
+
+public class AdminOrderTaxDto
+{
+    /// <summary>pending — транзакция ещё не записана (сверка повторит), recorded — записана.</summary>
+    public string Status { get; set; } = string.Empty;
+    /// <summary>Налог внутри итога, в валюте заказа.</summary>
+    public decimal Amount { get; set; }
+    /// <summary>Сколько сторнировано возвратами (с налогом), в валюте заказа.</summary>
+    public decimal Reversed { get; set; }
+    public string? Country { get; set; }
+    public string? State { get; set; }
+    public string? TaxType { get; set; }
+    public decimal? RatePercent { get; set; }
+    public string? TaxabilityReason { get; set; }
+    public string? LocationSource { get; set; }
+    public string? TransactionId { get; set; }
+    public string? LastError { get; set; }
 }
 
 public class AdminOrderItemDto
 {
+    /// <summary>Идентификатор строки заказа — для возврата по позиции.</summary>
+    public string ItemId { get; set; } = string.Empty;
+    /// <summary>Стоимость строки (все штуки) — от неё админка показывает, сколько уйдёт на карту и кэшбэком.</summary>
+    public decimal LineTotal { get; set; }
+    public int RefundedQty { get; set; }
     public string GameId { get; set; } = string.Empty;
     public string? Title { get; set; }
+    /// <summary>Область активации купленного варианта («Europe»); пусто — вариант не выбирался.</summary>
+    public string? Region { get; set; }
     public decimal Price { get; set; }
     public int Qty { get; set; }
     public int KeysDelivered { get; set; }

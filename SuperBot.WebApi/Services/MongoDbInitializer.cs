@@ -36,7 +36,6 @@ namespace SuperBot.WebApi.Services
                 "GameKeys",
                 "GameReviews",
                 "GameReviewHelpfulVotes",
-                "GameQuestions",
                 "GameTrackingEvents",
                 "MediaAssets",
 
@@ -57,6 +56,8 @@ namespace SuperBot.WebApi.Services
                 "CryptoInvoiceStates",
                 "PromoCodes",
                 "PromoCodeUsages",
+                "CashbackEntries",
+                "CashbackAccounts",
 
                 // Витрина главной страницы
                 "DealOfWeekSettings",
@@ -79,6 +80,14 @@ namespace SuperBot.WebApi.Services
                 "NewsletterSubscribers",
                 "NewsletterCampaigns",
                 "NewsletterState",
+
+                // Приглашения оставить отзыв: по письму на заказ и явные отказы от них
+                "ReviewInvites",
+                "ReviewInviteOptOuts",
+
+                // Письма о кэшбэке: по письму на событие и отказы от них
+                "CashbackNotices",
+                "CashbackNoticeOptOuts",
 
                 // Поддержка: тикеты и живой чат
                 "SupportTickets",
@@ -141,6 +150,31 @@ namespace SuperBot.WebApi.Services
                 Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("UnsubscribeToken"),
                 new CreateIndexOptions { Sparse = true, Name = "ix_newsletter_unsub_token" }));
 
+            // Приглашение оставить отзыв — ровно одно на заказ. Уникальность здесь не
+            // украшение: отметка ставится до отправки, и при нескольких репликах именно
+            // индекс не даёт двум задачам написать человеку дважды про один заказ.
+            var reviewInvites = _database.GetCollection<MongoDB.Bson.BsonDocument>("ReviewInvites");
+            await reviewInvites.Indexes.CreateOneAsync(new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("OrderId"),
+                new CreateIndexOptions { Unique = true, Name = "ix_review_invite_order" }));
+
+            // Отказ от приглашений — один документ на адрес.
+            var reviewOptOuts = _database.GetCollection<MongoDB.Bson.BsonDocument>("ReviewInviteOptOuts");
+            await reviewOptOuts.Indexes.CreateOneAsync(new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("Email"),
+                new CreateIndexOptions { Unique = true, Name = "ix_review_optout_email" }));
+
+            // Письма о кэшбэке — одно на событие (разблокировку начисления или сгорание). Отметка ставится до
+            // отправки, и дубль письма при нескольких репликах не пропускает именно этот индекс.
+            var cashbackNotices = _database.GetCollection<MongoDB.Bson.BsonDocument>("CashbackNotices");
+            await cashbackNotices.Indexes.CreateOneAsync(new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("Key"),
+                new CreateIndexOptions { Unique = true, Name = "ix_cashback_notice_key" }));
+            var cashbackNoticeOptOuts = _database.GetCollection<MongoDB.Bson.BsonDocument>("CashbackNoticeOptOuts");
+            await cashbackNoticeOptOuts.Indexes.CreateOneAsync(new CreateIndexModel<MongoDB.Bson.BsonDocument>(
+                Builders<MongoDB.Bson.BsonDocument>.IndexKeys.Ascending("Email"),
+                new CreateIndexOptions { Unique = true, Name = "ix_cashback_notice_optout_email" }));
+
             var viewedCollection = _database.GetCollection<SuperBot.Infrastructure.Data.ViewedGameDb>("ViewedGames");
             var viewedUserGameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.ViewedGameDb>(
                 Builders<SuperBot.Infrastructure.Data.ViewedGameDb>.IndexKeys
@@ -201,15 +235,6 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_review_helpful_unique", Unique = true }
             );
             await reviewHelpfulCollection.Indexes.CreateOneAsync(helpfulIndex);
-
-            var questionsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameQuestionDb>("GameQuestions");
-            var questionsIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameQuestionDb>(
-                Builders<SuperBot.Infrastructure.Data.GameQuestionDb>.IndexKeys
-                    .Ascending(item => item.GameId)
-                    .Descending(item => item.CreatedAt),
-                new CreateIndexOptions { Name = "ix_game_questions_game_created" }
-            );
-            await questionsCollection.Indexes.CreateOneAsync(questionsIndex);
 
             var trackingCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameTrackingEventDb>("GameTrackingEvents");
             var trackingGameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameTrackingEventDb>(
@@ -325,13 +350,50 @@ namespace SuperBot.WebApi.Services
             await blogUniqueViewsCollection.Indexes.CreateOneAsync(uniqueViewsCountedIndex);
 
             var blogProfilesCollection = _database.GetCollection<SuperBot.Infrastructure.Data.UserBlogProfileDb>("UserBlogProfiles");
+
+            // Индексы профилей блога: уникальные, но ЧАСТИЧНЫЕ, а не sparse.
+            //
+            // Раньше здесь стояло Sparse = true, и это не работало. Sparse пропускает документ,
+            // только если поля НЕТ вовсе; у анонимного посетителя userId записывается явным
+            // null — поле есть, значение null, индекс его учитывает. Первый аноним профиль
+            // создавал, второй падал с duplicate key по { userId: null }, и статистика чтения
+            // новостей для незалогиненных не работала вообще. Наружу это выглядело как «мало
+            // читают», а не как поломка.
+            //
+            // $type в частичном фильтре решает ровно это: в индекс попадают только документы,
+            // где поле — строка. Ни null, ни отсутствующее значение под условие не подходят.
+            // ($ne в partialFilterExpression Mongo не принимает, поэтому именно $type.)
+            var existingProfileIndexes = await (await blogProfilesCollection.Indexes.ListAsync()).ToListAsync();
+            foreach (var legacy in new[] { "ix_blog_profiles_user", "ix_blog_profiles_anon" })
+            {
+                var current = existingProfileIndexes.FirstOrDefault(i => i.GetValue("name", "").AsString == legacy);
+                // Пересоздаём только старую форму: у частичного индекса менять нечего, а
+                // лишний drop на каждом старте снимал бы уникальность на доли секунды.
+                if (current != null && !current.Contains("partialFilterExpression"))
+                {
+                    try { await blogProfilesCollection.Indexes.DropOneAsync(legacy); } catch (MongoCommandException) { }
+                }
+            }
+
             var blogProfileUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(
                 Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>.IndexKeys.Ascending(item => item.UserId),
-                new CreateIndexOptions { Name = "ix_blog_profiles_user", Unique = true, Sparse = true }
+                new CreateIndexOptions<SuperBot.Infrastructure.Data.UserBlogProfileDb>
+                {
+                    Name = "ix_blog_profiles_user",
+                    Unique = true,
+                    PartialFilterExpression = Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>
+                        .Filter.Type(item => item.UserId, MongoDB.Bson.BsonType.String)
+                }
             );
             var blogProfileAnonIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(
                 Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>.IndexKeys.Ascending(item => item.AnonId),
-                new CreateIndexOptions { Name = "ix_blog_profiles_anon", Unique = true, Sparse = true }
+                new CreateIndexOptions<SuperBot.Infrastructure.Data.UserBlogProfileDb>
+                {
+                    Name = "ix_blog_profiles_anon",
+                    Unique = true,
+                    PartialFilterExpression = Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>
+                        .Filter.Type(item => item.AnonId, MongoDB.Bson.BsonType.String)
+                }
             );
             var blogProfileUpdatedIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.UserBlogProfileDb>(
                 Builders<SuperBot.Infrastructure.Data.UserBlogProfileDb>.IndexKeys.Descending(item => item.UpdatedAt),
@@ -358,6 +420,50 @@ namespace SuperBot.WebApi.Services
             );
             await promoUsageCollection.Indexes.CreateOneAsync(promoUsageCodeIndex);
 
+            // Один заказ — одна запись использования кода: финализацию оплаты зовут и confirm, и
+            // вебхук, и оба пытаются учесть промокод. Записи без заказа (старые) индекс не трогает.
+            try
+            {
+                await promoUsageCollection.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.PromoCodeUsageDb>(
+                    Builders<SuperBot.Infrastructure.Data.PromoCodeUsageDb>.IndexKeys
+                        .Ascending(item => item.PromoCodeId)
+                        .Ascending(item => item.OrderId),
+                    new CreateIndexOptions<SuperBot.Infrastructure.Data.PromoCodeUsageDb>
+                    {
+                        Name = "ix_promo_usages_order_unique",
+                        Unique = true,
+                        PartialFilterExpression = Builders<SuperBot.Infrastructure.Data.PromoCodeUsageDb>.Filter
+                            .Type(item => item.OrderId, BsonType.String)
+                    }));
+            }
+            catch (MongoCommandException ex)
+            {
+                // Старые дубли не дают построить уникальный индекс. Сайт от этого работать не
+                // перестаёт, но повтор финализации сможет записать использование дважды.
+                _logger.LogWarning(ex, "Не удалось создать ix_promo_usages_order_unique: в PromoCodeUsages есть дубли по заказу.");
+            }
+
+            // Журнал кэшбэка. Ключ идемпотентности уникален: повтор вебхука или confirm не может
+            // начислить, забрать или списать второй раз. По покупателю читается весь его журнал.
+            var cashbackEntries = _database.GetCollection<SuperBot.Infrastructure.Data.CashbackEntryDb>("CashbackEntries");
+            await cashbackEntries.Indexes.CreateManyAsync(new[]
+            {
+                new CreateIndexModel<SuperBot.Infrastructure.Data.CashbackEntryDb>(
+                    Builders<SuperBot.Infrastructure.Data.CashbackEntryDb>.IndexKeys.Ascending(item => item.IdempotencyKey),
+                    new CreateIndexOptions { Name = "ux_cashback_entries_idempotency", Unique = true }),
+                new CreateIndexModel<SuperBot.Infrastructure.Data.CashbackEntryDb>(
+                    Builders<SuperBot.Infrastructure.Data.CashbackEntryDb>.IndexKeys
+                        .Ascending(item => item.UserKey)
+                        .Ascending(item => item.CreatedAt),
+                    new CreateIndexOptions { Name = "ix_cashback_entries_user_created" }),
+                new CreateIndexModel<SuperBot.Infrastructure.Data.CashbackEntryDb>(
+                    Builders<SuperBot.Infrastructure.Data.CashbackEntryDb>.IndexKeys
+                        .Ascending(item => item.Type)
+                        .Ascending(item => item.Status)
+                        .Ascending(item => item.UpdatedAt),
+                    new CreateIndexOptions { Name = "ix_cashback_entries_type_status" })
+            });
+
             var gameKeyCollection = _database.GetCollection<SuperBot.Infrastructure.Data.GameKeyDb>("GameKeys");
             var gameKeyUserIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(
                 Builders<SuperBot.Infrastructure.Data.GameKeyDb>.IndexKeys
@@ -366,6 +472,26 @@ namespace SuperBot.WebApi.Services
                 new CreateIndexOptions { Name = "ix_game_keys_user_issued" }
             );
             await gameKeyCollection.Indexes.CreateOneAsync(gameKeyUserIndex);
+
+            // Остаток пула по игре: выдача и все складские сводки спрашивают именно «свободные
+            // ключи этой игры». Без индекса каждый такой вопрос читает коллекцию целиком, а она
+            // растёт вместе с каталогом, а не с числом игр.
+            await gameKeyCollection.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(
+                Builders<SuperBot.Infrastructure.Data.GameKeyDb>.IndexKeys
+                    .Ascending(item => item.GameId)
+                    .Ascending(item => item.UserId)
+                    .Ascending(item => item.Voided),
+                new CreateIndexOptions { Name = "ix_game_keys_game_pool" }
+            ));
+
+            // Расход за окно: отчёт по складу читает выданные ключи за последние N дней.
+            // Существующий (UserId, IssuedAt) для этого не годится — он начинается с покупателя,
+            // а нужен диапазон по дате.
+            await gameKeyCollection.Indexes.CreateOneAsync(new CreateIndexModel<SuperBot.Infrastructure.Data.GameKeyDb>(
+                Builders<SuperBot.Infrastructure.Data.GameKeyDb>.IndexKeys.Descending(item => item.IssuedAt),
+                new CreateIndexOptions { Name = "ix_game_keys_issued_at" }
+            ));
+
             await EnsureGameKeyHashUniquenessAsync(gameKeyCollection);
 
             var ticketsCollection = _database.GetCollection<Support.Models.SupportTicket>("SupportTickets");
@@ -484,6 +610,12 @@ namespace SuperBot.WebApi.Services
                 Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.OrderNumber),
                 new CreateIndexOptions { Name = "ix_orders_number" }
             );
+            // Почта покупателя: по ней ищут клиента в поддержке и по ней же идёт постраничный
+            // обход списка. Без индекса и то и другое читало коллекцию заказов целиком.
+            var ordersUserNameIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
+                Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(order => order.UserName),
+                new CreateIndexOptions { Name = "ix_orders_user_name" }
+            );
             var ordersOrderIdIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.OrderDb>(
                 Builders<SuperBot.Infrastructure.Data.OrderDb>.IndexKeys.Ascending(item => item.OrderId),
                 new CreateIndexOptions { Name = "ix_orders_order_id" }
@@ -495,6 +627,7 @@ namespace SuperBot.WebApi.Services
             await ordersCollection.Indexes.CreateOneAsync(ordersPaidAtIndex);
             await ordersCollection.Indexes.CreateOneAsync(ordersNumberIndex);
             await ordersCollection.Indexes.CreateOneAsync(ordersOrderIdIndex);
+            await ordersCollection.Indexes.CreateOneAsync(ordersUserNameIndex);
 
             // Локи розыгрыша «карты удачи» живут ровно до конца кулдауна и удаляются сами.
             // ExpireAfter = 0 означает «удалить, когда наступит время в поле ExpiresAt»
@@ -519,7 +652,12 @@ namespace SuperBot.WebApi.Services
             await EnsureCatalogAndLookupIndexesAsync();
             await EnsureRetentionIndexesAsync();
             await BackfillGameCurrencyAsync();
+            await SeedSoftwareCategoriesAsync();
+            await MigrateGameGenresAsync();
             await DropLegacyOrderItemFieldsAsync();
+            await DropReviewAvatarFieldAsync();
+            await DropYandexCounterFieldAsync();
+            await DropLegacyCashbackAccountIndexesAsync(_database.GetCollection<BsonDocument>("CashbackAccounts"), _logger);
 
             // Последний курс по валюте ищется постоянно (на старте процесса и при импорте),
             // а история читается редко — индекс покрывает оба случая.
@@ -543,8 +681,47 @@ namespace SuperBot.WebApi.Services
                     .Descending(item => item.UpdatedAt),
                 new CreateIndexOptions { Name = "ix_payment_state_user_updated" }
             );
+
+            // Сроки хранения состояний оплаты. Запись заводится на каждую попытку заплатить,
+            // и без уборки коллекция растёт бесконечно — к этому моменту в ней набралось
+            // двадцать три тысячи записей о платежах, которых не случилось.
+            //
+            // Сроки разные, потому что назначение записей разное:
+            //
+            //  • незавершённые (Created/Processing/Failed) — две недели. Платёжное намерение
+            //    Stripe живёт около суток, после этого запись нужна только для разбора
+            //    «почему у покупателя не прошло»;
+            //  • успешные — три месяца. На них держится защита от повторного создания заказа
+            //    по тому же намерению, и снимать её раньше, чем Stripe перестанет слать
+            //    повторы вебхука, нельзя.
+            //
+            // Отсчёт от UpdatedAt: у зависших записей он равен времени создания, а у успешных —
+            // моменту, когда заказ был создан.
+            var paymentStateUnfinishedTtlIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>(
+                Builders<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>.IndexKeys.Ascending(item => item.UpdatedAt),
+                new CreateIndexOptions<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>
+                {
+                    Name = "ix_payment_state_ttl_unfinished",
+                    ExpireAfter = TimeSpan.FromDays(14),
+                    PartialFilterExpression = Builders<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>.Filter.In(
+                        item => item.Status,
+                        new[] { "Created", "Processing", "Failed" })
+                }
+            );
+            var paymentStateSucceededTtlIndex = new CreateIndexModel<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>(
+                Builders<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>.IndexKeys.Ascending(item => item.UpdatedAt),
+                new CreateIndexOptions<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>
+                {
+                    Name = "ix_payment_state_ttl_succeeded",
+                    ExpireAfter = TimeSpan.FromDays(90),
+                    PartialFilterExpression = Builders<SuperBot.Infrastructure.Data.PaymentFinalizationStateDb>.Filter.Eq(item => item.Status, "Succeeded")
+                }
+            );
+
             await paymentStateCollection.Indexes.CreateOneAsync(paymentStateIntentIndex);
             await paymentStateCollection.Indexes.CreateOneAsync(paymentStateUserIndex);
+            await paymentStateCollection.Indexes.CreateOneAsync(paymentStateUnfinishedTtlIndex);
+            await paymentStateCollection.Indexes.CreateOneAsync(paymentStateSucceededTtlIndex);
 
             // Журнал обработанных вебхуков Stripe: уникальность по EventId = защита от повторной
             // обработки; TTL чистит записи, хранить их вечно незачем.
@@ -607,6 +784,98 @@ namespace SuperBot.WebApi.Services
         /// документах. Если где-то актуальное поле окажется пустым, а дубль — нет, вмешиваться вручную
         /// безопаснее, чем угадывать: такие документы просто пересчитываются в лог.
         /// </summary>
+        /// <summary>
+        /// Убирает из отзывов поле avatarUrl. Оно было в документах с самого начала и всегда
+        /// лежало пустым: записывать его было некому — создание отзыва его не выставляло.
+        /// Аватар автора витрина берёт из профиля в момент показа (см. Services/UserAvatars),
+        /// поэтому хранить его в отзыве не нужно и вредно: снимок заморозил бы и картинку,
+        /// и метку версии.
+        ///
+        /// Идемпотентно: повторный запуск не находит документов с полем и ничего не делает.
+        /// </summary>
+        private async Task DropReviewAvatarFieldAsync()
+        {
+            var reviews = _database.GetCollection<BsonDocument>("GameReviews");
+            var hasField = Builders<BsonDocument>.Filter.Exists("avatarUrl");
+
+            // Непустое значение — неожиданность: его никто не писал. Такие документы не трогаем
+            // и называем в логе, чтобы разобраться руками, а не потерять данные молча.
+            var filled = await reviews
+                .Find(Builders<BsonDocument>.Filter.And(
+                    hasField,
+                    Builders<BsonDocument>.Filter.Ne("avatarUrl", BsonNull.Value),
+                    Builders<BsonDocument>.Filter.Ne("avatarUrl", "")))
+                .Project(Builders<BsonDocument>.Projection.Include("_id").Include("avatarUrl"))
+                .ToListAsync();
+
+            if (filled.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Отзывов с непустым avatarUrl: {Count}. Поле у них оставлено, разберите вручную: {Ids}",
+                    filled.Count,
+                    string.Join(", ", filled.Select(doc => doc["_id"].ToString())));
+            }
+
+            var empty = Builders<BsonDocument>.Filter.And(
+                hasField,
+                Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Eq("avatarUrl", BsonNull.Value),
+                    Builders<BsonDocument>.Filter.Eq("avatarUrl", "")));
+
+            var result = await reviews.UpdateManyAsync(
+                empty,
+                Builders<BsonDocument>.Update.Unset("avatarUrl"));
+
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation("Убрано пустое поле avatarUrl у отзывов: {Count}.", result.ModifiedCount);
+            }
+        }
+
+        /// <summary>
+        /// Убирает YandexCounterId из настроек аналитики: поле ушло из класса вместе с Метрикой, а документ,
+        /// сохранённый прежним кодом, его хранил (пусть и пустым). Класс теперь терпит лишние поля, так что
+        /// чтение не падает и без этого шага; миграция нужна, чтобы форма документа совпадала с классом.
+        /// Идемпотентно.
+        /// </summary>
+        private async Task DropYandexCounterFieldAsync()
+        {
+            var result = await _database.GetCollection<BsonDocument>("AnalyticsSettings").UpdateManyAsync(
+                Builders<BsonDocument>.Filter.Exists("YandexCounterId"),
+                Builders<BsonDocument>.Update.Unset("YandexCounterId"));
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation("Убрано поле YandexCounterId из настроек аналитики: {Count}.", result.ModifiedCount);
+            }
+        }
+
+        /// <summary>
+        /// Убирает индексы первой версии кэшбэка (уровни Bronze/Silver/Gold, коммит e52af69) с CashbackAccounts.
+        /// Тогда счёт хранил поле UserId с уникальным индексом ix_cashback_accounts_user. Нынешний журнал держит
+        /// покупателя в _id, а UserId не пишет вовсе — и уникальный индекс видит у каждого нового счёта UserId = null.
+        /// Первый счёт создаётся, второй падает на дубликате: оплата кэшбэком у всех остальных покупателей
+        /// отвечала 500, а снимки балансов для админки молча не записывались.
+        ///
+        /// Удаляется любой индекс по UserId: в нынешней схеме такого поля нет, и индекс по нему — только помеха.
+        /// Идемпотентно.
+        /// </summary>
+        public static async Task DropLegacyCashbackAccountIndexesAsync(IMongoCollection<BsonDocument> accounts, Microsoft.Extensions.Logging.ILogger logger)
+        {
+            var indexes = await (await accounts.Indexes.ListAsync()).ToListAsync();
+            foreach (var index in indexes)
+            {
+                var name = index.GetValue("name", BsonNull.Value);
+                var key = index.GetValue("key", BsonNull.Value);
+                if (!name.IsString || !key.IsBsonDocument || !key.AsBsonDocument.Contains("UserId"))
+                {
+                    continue;
+                }
+
+                await accounts.Indexes.DropOneAsync(name.AsString);
+                logger.LogInformation("Удалён устаревший индекс кэшбэка {Index} на CashbackAccounts.", name.AsString);
+            }
+        }
+
         private async Task DropLegacyOrderItemFieldsAsync()
         {
             var orders = _database.GetCollection<BsonDocument>("Orders");
@@ -676,6 +945,99 @@ namespace SuperBot.WebApi.Services
             }
         }
 
+        /// <summary>
+        /// Категории софта: у настроек, заведённых до появления ПО, их нет — засеваем значениями по умолчанию.
+        /// Только пустые: уже переименованные в админке категории не трогаем.
+        /// </summary>
+        private async Task SeedSoftwareCategoriesAsync()
+        {
+            var settings = _database.GetCollection<SuperBot.Infrastructure.Data.SettingsDb>("Settings");
+            var empty = Builders<SuperBot.Infrastructure.Data.SettingsDb>.Filter.Or(
+                Builders<SuperBot.Infrastructure.Data.SettingsDb>.Filter.Exists(item => item.SoftwareCategories, false),
+                Builders<SuperBot.Infrastructure.Data.SettingsDb>.Filter.Size(item => item.SoftwareCategories, 0));
+            var defaults = SuperBot.Core.Entities.SoftwareCatalog.DefaultCategories
+                .Select(category => new SuperBot.Infrastructure.Data.GameCategoryDb { Tag = category.Tag, Title = category.Title })
+                .ToArray();
+
+            var result = await settings.UpdateManyAsync(empty, Builders<SuperBot.Infrastructure.Data.SettingsDb>.Update.Set(item => item.SoftwareCategories, defaults));
+            if (result.ModifiedCount > 0)
+            {
+                _logger.LogInformation("Software: засеяны категории по умолчанию ({Count}).", defaults.Length);
+            }
+        }
+
+        /// <summary>
+        /// Переезд жанров с перечисления на список в настройках.
+        ///
+        /// 1. Настройки: коды жанров были именами перечисления («RolePlayingGames»), а адрес страницы жанра строился из
+        ///    названия. Код становится slug названия («role-playing-games-rpgs») — ровно тем адресом, что уже был в ссылках.
+        /// 2. Игры без поля genre получают код жанра по своему номеру. Пока настройки были в старом виде, номер — это
+        ///    позиция в их списке (так их читала витрина), поэтому берём код оттуда: переименованный когда-то жанр
+        ///    сохранится у своих игр.
+        ///
+        /// Повторный запуск ничего не меняет: коды уже в новом виде, у игр поле есть.
+        /// </summary>
+        private async Task MigrateGameGenresAsync()
+        {
+            var settingsCollection = _database.GetCollection<SuperBot.Infrastructure.Data.SettingsDb>("Settings");
+            var settings = await settingsCollection.Find(FilterDefinition<SuperBot.Infrastructure.Data.SettingsDb>.Empty).FirstOrDefaultAsync();
+            var tagPattern = new System.Text.RegularExpressions.Regex("^[a-z0-9]+(-[a-z0-9]+)*$");
+
+            var byLegacyIndex = new Dictionary<int, string>();
+            if (settings is not null)
+            {
+                var stored = settings.GameCategories ?? Array.Empty<SuperBot.Infrastructure.Data.GameCategoryDb>();
+                var legacy = stored.Length == 0 || stored.Any(genre => genre is null || string.IsNullOrWhiteSpace(genre.Tag) || !tagPattern.IsMatch(genre.Tag));
+                if (legacy)
+                {
+                    var migrated = stored.Length == 0
+                        ? SuperBot.Core.Entities.GameGenres.Defaults
+                            .Select(genre => new SuperBot.Infrastructure.Data.GameCategoryDb { Tag = genre.Tag, Title = genre.Title })
+                            .ToArray()
+                        : stored.Select((genre, index) =>
+                        {
+                            var title = string.IsNullOrWhiteSpace(genre?.Title)
+                                ? SuperBot.Core.Entities.GameTypeMapper.DescriptionsCategories.GetValueOrDefault((SuperBot.Core.Entities.GameType)index, genre?.Tag ?? $"genre-{index + 1}")
+                                : genre!.Title;
+                            var tag = genre?.Tag is { } current && tagPattern.IsMatch(current)
+                                ? current
+                                : SuperBot.Core.Entities.GameGenres.Slug(title);
+                            return new SuperBot.Infrastructure.Data.GameCategoryDb { Tag = string.IsNullOrEmpty(tag) ? $"genre-{index + 1}" : tag, Title = title };
+                        }).ToArray();
+
+                    for (var index = 0; index < migrated.Length; index++)
+                    {
+                        byLegacyIndex[index] = migrated[index].Tag;
+                    }
+                    await settingsCollection.UpdateOneAsync(
+                        item => item.Id == settings.Id,
+                        Builders<SuperBot.Infrastructure.Data.SettingsDb>.Update.Set(item => item.GameCategories, migrated));
+                    _logger.LogInformation("Жанры: список в настройках переведён на коды-адреса ({Count}).", migrated.Length);
+                }
+            }
+
+            var games = _database.GetCollection<SuperBot.Infrastructure.Data.GameDb>("Games");
+            var total = 0L;
+            foreach (var type in Enum.GetValues<SuperBot.Core.Entities.GameType>())
+            {
+                var tag = byLegacyIndex.TryGetValue((int)type, out var fromSettings)
+                    ? fromSettings
+                    : SuperBot.Core.Entities.GameGenres.LegacyTag(type);
+                var filter = Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.And(
+                    Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.Eq(game => game.GameType, type),
+                    Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.Or(
+                        Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.Exists(game => game.Genre, false),
+                        Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.Eq(game => game.Genre, null)),
+                    Builders<SuperBot.Infrastructure.Data.GameDb>.Filter.Ne(game => game.Kind, SuperBot.Core.Entities.ProductKind.Software));
+                var result = await games.UpdateManyAsync(filter, Builders<SuperBot.Infrastructure.Data.GameDb>.Update.Set(game => game.Genre, tag));
+                total += result.ModifiedCount;
+            }
+            if (total > 0)
+            {
+                _logger.LogInformation("Жанры: {Count} играм проставлен код жанра по старому номеру.", total);
+            }
+        }
+
         private async Task EnsureRetentionIndexesAsync()
         {
             // События просмотра игр — самая быстрорастущая коллекция (запись на каждый просмотр).
@@ -734,6 +1096,11 @@ namespace SuperBot.WebApi.Services
             await CreateIndexSafelyAsync(games, new CreateIndexModel<SuperBot.Infrastructure.Data.GameDb>(
                 Builders<SuperBot.Infrastructure.Data.GameDb>.IndexKeys.Ascending(item => item.Slug),
                 new CreateIndexOptions { Name = "ix_games_slug" }));
+            // Название: по нему админские списки ищут и по нему же сортируют страницами.
+            // Без индекса сортировка каталога заставляла Mongo держать в памяти весь набор.
+            await CreateIndexSafelyAsync(games, new CreateIndexModel<SuperBot.Infrastructure.Data.GameDb>(
+                Builders<SuperBot.Infrastructure.Data.GameDb>.IndexKeys.Ascending(item => item.Title),
+                new CreateIndexOptions { Name = "ix_games_title" }));
             await CreateIndexSafelyAsync(games, new CreateIndexModel<SuperBot.Infrastructure.Data.GameDb>(
                 Builders<SuperBot.Infrastructure.Data.GameDb>.IndexKeys.Ascending(item => item.ExternalId),
                 new CreateIndexOptions { Name = "ix_games_external_id", Sparse = true }));

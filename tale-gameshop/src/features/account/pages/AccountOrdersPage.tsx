@@ -1,23 +1,34 @@
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../../i18n';
+import { serverErrorText } from '../../../utils/api-error';
+import { formatDate as formatLocalDate } from '../../../i18n/format';
+import { Link, useSearchParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faChevronDown,
   faChevronLeft,
   faChevronRight,
   faMagnifyingGlass,
   faArrowLeft,
   faArrowRight,
+  faStar,
+  faPenToSquare,
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useOrders } from '../../../hooks/use-orders';
 import useDebouncedValue from '../../../hooks/useDebouncedValue';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import { fetchAccountOrderDetails } from '../../../api/accountApi';
-import type { AccountOrderDetails, AccountOrderListItem } from '../../../types/account-orders';
-import SafeGameImage from '../../../components/common/SafeGameImage';
+import { fetchAccountOrderDetails, resendAccountOrderKeys, revealAccountOrderKeys } from '../../../api/accountApi';
+import ConfirmPasswordModal from '../components/ConfirmPasswordModal';
+import type { AccountOrderDetails, AccountOrderDetailItem, AccountOrderListItem } from '../../../types/account-orders';
+import Cover from '../../../components/common/Cover';
+import HoverTrailer from '../../../components/common/HoverTrailer';
 import { useSitePreferences } from '../../../context/site-preferences';
 import { formatMoney, formatOrderMoney } from '../../../utils/format-money';
+import { taxLabel } from '../../../utils/tax-label';
+import { buildPageRange } from '../../../utils/page-range';
 import './account-orders-page.css';
 
 const PAGE_SIZE = 10;
@@ -28,149 +39,287 @@ type SortOption = 'newest' | 'oldest' | 'total_desc' | 'total_asc';
 type OrderDetailItem = AccountOrderDetails['items'][number];
 
 // Суммы заказа форматируются в валюте самого заказа — она зафиксирована при оплате.
-const formatCurrency = (value: number, currency?: string | null) => formatOrderMoney(value, currency);
-
-const formatDate = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
-};
+// Битую дату общий форматтер возвращает как есть — отдельная проверка здесь не нужна.
+const formatDate = (value: string) => formatLocalDate(value, { month: 'long', day: 'numeric', year: 'numeric' });
 
 const toStatusMeta = (status: string) => {
   const normalized = status.toUpperCase();
   if (normalized === 'DELIVERED') {
-    return { label: 'Completed', className: 'status-completed' };
+    return { label: i18n.t('account.orders.status.completed'), className: 'status-completed' };
   }
   if (normalized === 'REFUNDED') {
-    return { label: 'Refunded', className: 'status-refunded' };
+    return { label: i18n.t('account.orders.status.refunded'), className: 'status-refunded' };
   }
   if (normalized === 'FAILED' || normalized === 'CANCELLED') {
-    return { label: 'Failed', className: 'status-failed' };
+    return { label: i18n.t('account.orders.status.failed'), className: 'status-failed' };
   }
   if (normalized === 'PENDING') {
-    return { label: 'Pending', className: 'status-processing' };
+    return { label: i18n.t('account.orders.status.pending'), className: 'status-processing' };
   }
   if (normalized === 'AWAITING_KEYS' || normalized === 'PENDING_KEYS' || normalized === 'PARTIAL') {
     // Оплачено, но ключей на складе пока не хватило — довыдадим при пополнении пула.
-    return { label: 'Awaiting keys', className: 'status-processing' };
+    return { label: i18n.t('account.orders.status.awaitingKeys'), className: 'status-processing' };
   }
 
-  return { label: 'Processing', className: 'status-processing' };
+  return { label: i18n.t('account.orders.status.processing'), className: 'status-processing' };
 };
 
-const buildPages = (current: number, total: number) => {
-  if (total <= 1) {
-    return [] as Array<number | 'ellipsis'>;
-  }
-
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1) as Array<number | 'ellipsis'>;
-  }
-
-  if (current <= 3) {
-    return [1, 2, 3, 4, 'ellipsis', total - 1, total];
-  }
-
-  if (current >= total - 2) {
-    return [1, 2, 'ellipsis', total - 3, total - 2, total - 1, total];
-  }
-
-  return [1, 'ellipsis', current - 1, current, current + 1, 'ellipsis', total];
+/** Ключ целиком с кнопкой «Copy» — как на странице Keys. */
+const KeyPill: React.FC<{ value: string }> = ({ value }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard?.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch (error) {
+      console.error('Failed to copy key:', error);
+    }
+  };
+  return (
+    <span className="order-line-key">
+      <code>{value}</code>
+      <button type="button" className="order-line-key-copy" onClick={copy} aria-label={i18n.t('account.orders.copyKey', { key: value })}>
+        {copied ? i18n.t('common.copied') : i18n.t('common.copy')}
+      </button>
+    </span>
+  );
 };
 
-const OrderItemRow: React.FC<{ item: OrderDetailItem }> = ({ item }) => {
-  const isClickable = Boolean(item.gameId);
-  const RowTag = isClickable ? Link : 'div';
-  const rowProps = isClickable
-    ? ({ to: `/games/${item.gameId}` } as const)
-    : ({} as const);
+// Экспортируется ради теста: вся логика показа кнопки «оценить» живёт здесь, а поднимать
+// ради неё всю страницу заказов с её хуками и запросами — дороже, чем она стоит.
+export const OrderItemRow: React.FC<{ item: AccountOrderDetailItem; revealedKeys?: string[] | null }> = ({ item, revealedKeys }) => {
+  const { t } = useTranslation();
+  // Куда вести решает сервер по каталогу сейчас: игры больше нет — ссылки нет, строка остаётся
+  // в истории с пометкой. Ссылки — обложка и название, как в корзине и на кассе; вся строка
+  // ссылкой быть не может: внутри есть кнопка «Copy».
+  const target = item.available !== false && item.slug ? `/games/${item.slug}` : null;
+
+  // Показывать кнопку решает сервер: он же принимает отзыв и знает про оплату, выдачу
+  // и уже написанное. Кабинету остаётся выбрать подпись.
+  const canReview = Boolean(item.canReview && target);
 
   return (
-    <RowTag
-      {...rowProps}
-      className={`order-line-item ${isClickable ? 'is-clickable' : ''}`}
-      aria-label={isClickable ? `Open ${item.title}` : undefined}
-    >
-      <div className="order-line-cover">
-        {item.coverUrl ? <img src={item.coverUrl} alt={item.title} /> : <div className="order-line-cover-fallback" />}
-      </div>
+    <div className="order-line">
+    <div className="order-line-item">
+      {target ? (
+        <Link className="order-line-cover-link" to={target} aria-label={t('account.orders.openItem', { title: item.title })}>
+          <Cover className="order-line-cover" ratio="square" sizes="56px" src={item.coverUrl} title={item.title} />
+        </Link>
+      ) : (
+        <Cover className="order-line-cover" ratio="square" sizes="56px" src={item.coverUrl} title={item.title} />
+      )}
 
       <div className="order-line-main">
-        <strong className="order-line-title">{item.title}</strong>
-        {(item.platform || item.region) && (
+        <strong className="order-line-title">
+          {target ? <Link className="order-line-title-link" to={target}>{item.title}</Link> : item.title}
+        </strong>
+        {(item.platform || item.region || item.available === false) && (
           <div className="order-line-secondary-meta">
             {item.platform ? <span>{item.platform}</span> : null}
             {item.region ? <span>{item.region}</span> : null}
+            {item.available === false ? <span className="order-line-unavailable">{t('account.orders.noLongerSold')}</span> : null}
           </div>
         )}
-        {item.keys.length > 0 ? (
+        {revealedKeys && revealedKeys.length > 0 ? (
+          <div className="order-line-keys order-line-keys--revealed">
+            <strong>{t('account.orders.keys')}</strong>
+            {revealedKeys.map((key) => <KeyPill key={key} value={key} />)}
+          </div>
+        ) : item.keys.length > 0 ? (
           <div className="order-line-keys">
-            <strong>Keys:</strong>
+            <strong>{t('account.orders.keys')}</strong>
             {item.keys.map((key) => <span key={key}>{key}</span>)}
           </div>
         ) : (
           <div className="order-line-keys order-line-keys--pending">
-            <span>Awaiting key delivery — you’ll be notified once it’s in stock.</span>
+            <span>{t('account.orders.awaitingDelivery')}</span>
           </div>
         )}
       </div>
 
       <div className="order-line-pricing">
-        <span>Qty: {item.quantity}</span>
-        <span>{formatCurrency(item.finalUnitPrice, item.currency)} each</span>
-        <strong>{formatCurrency(item.lineTotal, item.currency)}</strong>
+        <span>{t('account.orders.qty', { count: item.quantity })}</span>
+        <span>{t('account.orders.each', { price: formatOrderMoney(item.finalUnitPrice, item.currency) })}</span>
+        <strong>{formatOrderMoney(item.lineTotal, item.currency)}</strong>
       </div>
-    </RowTag>
+    </div>
+
+    {canReview && (
+      <div className="order-line-review">
+        <Link className="order-line-review-link" to={`${target}?tab=reviews`}>
+          <FontAwesomeIcon icon={item.hasReview ? faPenToSquare : faStar} />
+          <span>{item.hasReview ? t('account.orders.editReview') : t('account.orders.leaveReview')}</span>
+        </Link>
+        {!item.hasReview && (
+          <span className="order-line-review-hint">{t('account.orders.reviewHint')}</span>
+        )}
+      </div>
+    )}
+    </div>
   );
 };
 
-const OrderSummaryCard: React.FC<{ details: AccountOrderDetails }> = ({ details }) => (
+/** Что с кэшбэком за заказ сейчас — одной короткой строкой под суммой. */
+const earnedStatusLabel = (cashback: NonNullable<AccountOrderDetails['cashback']>) => {
+  const percent = cashback.percent ? `${cashback.percent}% · ` : '';
+  switch (cashback.earnedStatus) {
+    case 'available':
+      return `${percent}${i18n.t('account.orders.cbOnBalance')}`;
+    case 'spent':
+      return `${percent}${i18n.t('account.orders.cbUsed')}`;
+    case 'expired':
+      return `${percent}${i18n.t('account.orders.cbExpired')}`;
+    case 'reverted':
+      return i18n.t('account.orders.cbReverted');
+    default:
+      return cashback.unlocksAt
+        ? `${percent}${i18n.t('account.orders.cbUnlocks', { date: formatLocalDate(cashback.unlocksAt, { month: 'short', day: 'numeric' }) })}`
+        : `${percent}${i18n.t('account.orders.cbPending')}`;
+  }
+};
+
+const OrderSummaryCard: React.FC<{ details: AccountOrderDetails }> = ({ details }) => {
+  const { t } = useTranslation();
+  return (
   <aside className="order-summary-card">
-    <h4>Summary</h4>
+    <h4>{t('account.orders.summary')}</h4>
     <div className="order-summary-row">
-      <span>Subtotal</span>
-      <span>{formatCurrency(details.totals.subtotal, details.currency)}</span>
+      <span>{t('common.subtotal')}</span>
+      <span>{formatOrderMoney(details.totals.subtotal, details.currency)}</span>
     </div>
     <div className="order-summary-row">
-      <span>Discount</span>
-      <span>-{formatCurrency(details.totals.discountTotal, details.currency)}</span>
+      <span>{t('common.discount')}</span>
+      <span>-{formatOrderMoney(details.totals.discountTotal, details.currency)}</span>
     </div>
-    <div className="order-summary-row">
-      <span>Tax</span>
-      <span>{formatCurrency(details.totals.taxTotal, details.currency)}</span>
-    </div>
+    {/* Цены с налогом: строка показывает, сколько его внутри итога, и в сумму не прибавляется. */}
+    {details.totals.taxTotal > 0 ? (
+      <div className="order-summary-row">
+        <span>{t('checkout.inclTax', { tax: taxLabel(details.totals.taxType, details.totals.taxRatePercent) })}</span>
+        <span>{formatOrderMoney(details.totals.taxTotal, details.currency)}</span>
+      </div>
+    ) : (
+      <div className="order-summary-row">
+        <span>{t('common.tax')}</span>
+        <span>{t('common.includedInPrice')}</span>
+      </div>
+    )}
+    {/* Оплаченное кэшбэком — отдельной строкой: Total — это деньги с карты, и без этой строки
+        Subtotal − Discount не сходился бы с итогом. */}
+    {details.cashback && details.cashback.applied > 0 && (
+      <div className="order-summary-row order-summary-cashback-paid">
+        <span>{t('account.orders.paidWithCashback')}</span>
+        <span>-{formatOrderMoney(details.cashback.applied, details.currency)}</span>
+      </div>
+    )}
     <div className="order-summary-divider" />
     <div className="order-summary-row order-summary-total">
-      <span>Total</span>
-      <span>{formatCurrency(details.totals.total, details.currency)}</span>
+      <span>{t('common.total')}</span>
+      <span>{formatOrderMoney(details.totals.total, details.currency)}</span>
     </div>
+    {/* Чем платили — словами («Visa •••• 4242»): через полгода этого никто не помнит, а при возврате это первый вопрос. */}
+    {details.paymentMethod && (
+      <div className="order-summary-row order-summary-paid-with">
+        <span>{t('account.orders.paidWith')}</span>
+        <span>{details.paymentMethod}</span>
+      </div>
+    )}
+    {details.cashback?.earned != null && details.cashback.earned > 0 && (
+      <div className={`order-summary-cashback is-${details.cashback.earnedStatus ?? 'pending'}`}>
+        <span>
+          {t('account.orders.cashbackEarned')}
+          <small>{earnedStatusLabel(details.cashback)}</small>
+        </span>
+        <strong>+{formatOrderMoney(details.cashback.earned, details.currency)}</strong>
+      </div>
+    )}
   </aside>
-);
+  );
+};
 
-const OrderDetails: React.FC<{ details: AccountOrderDetails }> = ({ details }) => (
-  <div className="order-details-layout">
-    <section className="order-line-items" aria-label="Order items">
-      {details.items.map((item) => (
-        <OrderItemRow key={item.itemId} item={item} />
-      ))}
-    </section>
-    <OrderSummaryCard details={details} />
-  </div>
-);
+/**
+ * Ключи не должны пропасть вместе с письмом: «Show keys» показывает их целиком прямо в заказе,
+ * «Resend to my email» шлёт письмо повторно на адрес аккаунта. Экспорт — ради теста.
+ */
+export const OrderDetails: React.FC<{ details: AccountOrderDetails }> = ({ details }) => {
+  const { t } = useTranslation();
+  const [revealed, setRevealed] = useState<Record<string, string[]> | null>(null);
+  // Показ ключей — только после повторного пароля: одна угнанная сессия ключи не получит.
+  const [askingPassword, setAskingPassword] = useState(false);
+  const [resend, setResend] = useState<{ state: 'idle' | 'sending' | 'sent' | 'error'; message?: string }>({ state: 'idle' });
+  const hasKeys = details.items.some((item) => item.keys.length > 0);
+
+  const toggleKeys = () => {
+    if (revealed) {
+      setRevealed(null);
+      return;
+    }
+    setAskingPassword(true);
+  };
+
+  // Ошибку (неверный пароль, пауза после пяти попыток) показывает само окно и остаётся открытым.
+  const revealWithPassword = async (password: string) => {
+    const response = await revealAccountOrderKeys(details.internalId, password);
+    setRevealed(Object.fromEntries(response.items.map((line) => [line.itemId, line.keys])));
+    setAskingPassword(false);
+  };
+
+  const handleResend = async () => {
+    setResend({ state: 'sending' });
+    try {
+      const response = await resendAccountOrderKeys(details.internalId);
+      setResend({ state: 'sent', message: t('account.orders.sentKeys', { count: response.count, email: response.sentTo }) });
+    } catch (error: any) {
+      console.error('Failed to resend order keys:', error);
+      setResend({ state: 'error', message: serverErrorText(error, t('account.orders.resendFailed')) });
+    }
+  };
+
+  return (
+    <div className="order-details-layout">
+      <section className="order-line-items" aria-label={t('account.orders.orderItems')}>
+        {/* Полоса действий с ключами над списком: подпись слева, кнопки справа, ответ сервера строкой под ними. */}
+        {hasKeys && (
+          <div className="order-keys-actions">
+            <div className="order-keys-row">
+              <span className="order-keys-label">{t('account.orders.yourKeys')}</span>
+              <div className="order-keys-buttons">
+                <button type="button" className="btn btn-outline order-keys-btn" onClick={toggleKeys}>
+                  {revealed ? t('account.orders.hideKeys') : t('account.orders.showKeys')}
+                </button>
+                <button type="button" className="btn btn-outline order-keys-btn" onClick={handleResend} disabled={resend.state === 'sending' || resend.state === 'sent'}>
+                  {resend.state === 'sending' ? t('common.sending') : t('account.orders.resendEmail')}
+                </button>
+              </div>
+            </div>
+            {resend.message && (
+              <span className={`order-keys-note${resend.state === 'error' ? ' order-keys-note--error' : ''}`} role="status">{resend.message}</span>
+            )}
+          </div>
+        )}
+        {details.items.map((item) => (
+          <OrderItemRow key={item.itemId} item={item} revealedKeys={revealed?.[item.itemId] ?? null} />
+        ))}
+        {askingPassword && <ConfirmPasswordModal onConfirm={revealWithPassword} onClose={() => setAskingPassword(false)} />}
+      </section>
+      <OrderSummaryCard details={details} />
+    </div>
+  );
+};
 
 const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [details, setDetails] = useState<AccountOrderDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const statusMeta = toStatusMeta(order.status);
+  const panelId = `order-details-${order.internalId}`;
 
+  const previewTitle = order.preview.firstTitle || t('account.overview.gamePurchase');
   const previewText = order.itemsCount <= 1
-    ? `${order.itemsCount || 0} item • ${order.preview.firstTitle || 'Game purchase'}`
-    : `${order.itemsCount} items • ${order.preview.firstTitle || 'Game purchase'} +${order.preview.extraCount}`;
+    ? t('account.orders.preview', { count: order.itemsCount || 0, title: previewTitle })
+    : `${t('account.orders.preview', { count: order.itemsCount, title: previewTitle })} +${order.preview.extraCount}`;
 
   const handleToggle = async () => {
     const nextExpanded = !expanded;
@@ -187,7 +336,7 @@ const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
       setDetails(response);
     } catch (error) {
       console.error('Failed to load order details:', error);
-      setDetailsError('Unable to load order details.');
+      setDetailsError(t('account.orders.detailsFailed'));
     } finally {
       setLoadingDetails(false);
     }
@@ -195,33 +344,50 @@ const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
 
   return (
     <div className="card order-card">
-      <div className="order-card-header">
-        <span className="order-date">{formatDate(order.createdAt)}</span>
-        <span className="order-amount">{formatCurrency(order.totalAmount, order.currency)}</span>
-      </div>
-      <div className="order-card-body">
-        <div className="order-cover" aria-hidden="true">
-          {order.preview.firstCoverUrl ? <img src={order.preview.firstCoverUrl} alt="" /> : null}
+      {/* Вся карточка — одна кнопка: раскрывается кликом по любому месту, включая обложку
+          и номер заказа. Отдельная кнопка «View details» была единственным способом открыть
+          заказ, хотя нажать хочется на сам заказ. Тег button берёт на себя и клавиатуру. */}
+      <button
+        type="button"
+        className="order-card-summary"
+        onClick={handleToggle}
+        aria-expanded={expanded}
+        aria-controls={panelId}
+      >
+        <div className="order-card-header">
+          <span className="order-date">{formatDate(order.createdAt)}</span>
+          <span className="order-amount">{formatOrderMoney(order.totalAmount, order.currency)}</span>
         </div>
-        <div className="order-details">
-          <strong>Order #{order.orderId}</strong>
-          <div className="order-items">
-            <span>{previewText}</span>
+        <div className="order-card-body">
+          {/* Обложка первой игры заказа; у снятой с продажи или без картинки —
+              общая заглушка каталога, как в корзине и рекомендациях. */}
+          <Cover className="order-cover" ratio="square" sizes="64px" src={order.preview.firstCoverUrl} title={order.preview.firstTitle} />
+          <div className="order-details">
+            {/* Стрелка стоит у номера заказа, а не в углу карточки: раскрывается именно
+                заказ, и значок должен быть при том, что он раскрывает. */}
+            <div className="order-title-row">
+              <strong>{t('common.order', { id: order.orderId })}</strong>
+              <FontAwesomeIcon
+                icon={faChevronDown}
+                className={`order-chevron${expanded ? ' is-open' : ''}`}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="order-items">
+              <span>{previewText}</span>
+            </div>
+          </div>
+          <div className="order-actions">
+            <span className={`badge order-status ${statusMeta.className}`}>{statusMeta.label}</span>
           </div>
         </div>
-        <div className="order-actions">
-          <span className={`badge order-status ${statusMeta.className}`}>{statusMeta.label}</span>
-          <button type="button" className="btn btn-outline order-action-btn" onClick={handleToggle}>
-            {expanded ? 'Hide details' : 'View details'}
-          </button>
-        </div>
-      </div>
+      </button>
       {expanded && (
-        <div className="order-details-panel">
-          {loadingDetails && <div className="order-details-state">Loading order details...</div>}
+        <div className="order-details-panel" id={panelId}>
+          {loadingDetails && <div className="order-details-state">{t('account.orders.loadingDetails')}</div>}
           {!loadingDetails && detailsError && <div className="order-details-state order-details-error">{detailsError}</div>}
           {!loadingDetails && !detailsError && details?.legacyDetailsUnavailable && (
-            <div className="order-details-state">Legacy order (details unavailable).</div>
+            <div className="order-details-state">{t('account.orders.legacy')}</div>
           )}
           {!loadingDetails && !detailsError && details && !details.legacyDetailsUnavailable && (
             <OrderDetails details={details} />
@@ -233,10 +399,15 @@ const OrderCard: React.FC<{ order: AccountOrderListItem }> = ({ order }) => {
 };
 
 const AccountOrdersPage: React.FC = () => {
+  const { t } = useTranslation();
   const { currency } = useSitePreferences();
   const [status, setStatus] = useState<StatusFilter>('all');
   const [sort, setSort] = useState<SortOption>('newest');
-  const [searchInput, setSearchInput] = useState('');
+  const [searchParams] = useSearchParams();
+  // ?q= в адресе — так «View» из обзора открывает конкретный заказ: список сразу
+  // отфильтрован по его номеру. Значение читается один раз, при открытии страницы;
+  // дальше поле принадлежит человеку, и переписывать его из адреса нельзя.
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('q') ?? '');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(searchInput, 400);
 
@@ -262,18 +433,18 @@ const AccountOrdersPage: React.FC = () => {
     sort,
   });
 
-  const ordersTitle = isOrdersLoading ? 'Orders' : `Orders (${totalCount})`;
+  const ordersTitle = isOrdersLoading ? t('account.orders.title') : t('account.orders.titleCount', { count: totalCount });
   const from = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const to = totalCount === 0 ? 0 : Math.min(page * PAGE_SIZE, totalCount);
   const ordersSubtitle = isOrdersLoading
-    ? 'Loading your orders...'
+    ? t('account.orders.loading')
     : ordersError
-      ? 'Unable to load orders right now.'
+      ? t('account.orders.loadFailed')
       : totalCount === 0
-        ? 'No orders yet'
-        : `Showing ${from}-${to} of ${totalCount}`;
+        ? t('account.orders.none')
+        : t('common.showingRange', { from, to, total: totalCount });
 
-  const pages = useMemo(() => buildPages(page, totalPages), [page, totalPages]);
+  const pages = useMemo(() => buildPageRange(page, totalPages), [page, totalPages]);
 
   const applyStatus = (nextStatus: StatusFilter) => {
     setStatus(nextStatus);
@@ -296,7 +467,7 @@ const AccountOrdersPage: React.FC = () => {
   return (
     <AccountShell
       title={ordersTitle}
-      sectionLabel="Orders"
+      sectionLabel={t('account.orders.title')}
       subtitle={ordersSubtitle}
     >
       {showToolbar && (
@@ -306,7 +477,7 @@ const AccountOrdersPage: React.FC = () => {
             <FontAwesomeIcon icon={faMagnifyingGlass} className="orders-search-icon" />
             <input
               type="search"
-              placeholder="Search in orders..."
+              placeholder={t('account.orders.searchPlaceholder')}
               value={searchInput}
               onChange={(event) => onSearchChange(event.target.value)}
             />
@@ -314,19 +485,19 @@ const AccountOrdersPage: React.FC = () => {
         </div>
         <div className="orders-toolbar-row">
           <div className="orders-sort">
-            <span>Sort:</span>
+            <span>{t('common.sortLabel')}</span>
             <select className="orders-select" value={sort} onChange={(event) => applySort(event.target.value as SortOption)}>
-              <option value="newest">Newest</option>
-              <option value="oldest">Oldest</option>
-              <option value="total_desc">Highest price</option>
-              <option value="total_asc">Lowest price</option>
+              <option value="newest">{t('common.newest')}</option>
+              <option value="oldest">{t('common.oldest')}</option>
+              <option value="total_desc">{t('account.orders.highestPrice')}</option>
+              <option value="total_asc">{t('account.orders.lowestPrice')}</option>
             </select>
           </div>
-          <div className="orders-status" role="tablist" aria-label="Order status filter">
+          <div className="orders-status" role="tablist" aria-label={t('account.orders.statusFilter')}>
             {([
-              ['all', 'All'],
-              ['completed', 'Completed'],
-              ['refunded', 'Refunded'],
+              ['all', t('common.all')],
+              ['completed', t('account.orders.status.completed')],
+              ['refunded', t('account.orders.status.refunded')],
             ] as const).map(([value, label]) => (
               <button
                 key={value}
@@ -349,18 +520,18 @@ const AccountOrdersPage: React.FC = () => {
 
       <div className="orders-list">
         {isOrdersLoading && Array.from({ length: 3 }, (_, index) => (
-          <div key={`orders-skeleton-${index}`} className="card orders-state orders-state-skeleton">Loading order...</div>
+          <div key={`orders-skeleton-${index}`} className="card orders-state orders-state-skeleton">{t('account.orders.loadingOne')}</div>
         ))}
         {!isOrdersLoading && ordersError && (
           <div className="card orders-state orders-state-error">
             <span>{ordersError}</span>
             <button type="button" className="btn btn-outline" onClick={reloadOrders}>
-              Try again
+              {t('common.tryAgain')}
             </button>
           </div>
         )}
         {!isOrdersLoading && !ordersError && orders.length === 0 && (
-          <div className="card orders-state">No orders yet.</div>
+          <div className="card orders-state">{t('account.orders.noneDot')}</div>
         )}
         {!isOrdersLoading && !ordersError && orders.map((order) => <OrderCard key={order.internalId} order={order} />)}
       </div>
@@ -371,7 +542,7 @@ const AccountOrdersPage: React.FC = () => {
             <button
               type="button"
               className="btn btn-outline orders-page-btn"
-              aria-label="Previous page"
+              aria-label={t('common.previousPage')}
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               disabled={isOrdersLoading || page <= 1}
             >
@@ -385,7 +556,7 @@ const AccountOrdersPage: React.FC = () => {
                   key={item}
                   type="button"
                   className={`btn btn-outline orders-page-btn ${item === page ? 'is-active' : ''}`}
-                  onClick={() => setPage(item)}
+                  onClick={() => setPage(item as number)}
                   disabled={isOrdersLoading}
                 >
                   {item}
@@ -395,7 +566,7 @@ const AccountOrdersPage: React.FC = () => {
             <button
               type="button"
               className="btn btn-outline orders-page-btn"
-              aria-label="Next page"
+              aria-label={t('common.nextPage')}
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={isOrdersLoading || page >= totalPages}
             >
@@ -408,12 +579,12 @@ const AccountOrdersPage: React.FC = () => {
 
       <section className="orders-recommendations">
         <div className="orders-recommendations-header">
-          <h3>Recommendations based on your wishlist</h3>
+          <h3>{t('account.overview.recommendations')}</h3>
           <div className="orders-recommendations-arrows">
-            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label="Scroll left">
+            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label={t('common.scrollLeft')}>
               <FontAwesomeIcon icon={faArrowLeft} />
             </button>
-            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label="Scroll right">
+            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label={t('common.scrollRight')}>
               <FontAwesomeIcon icon={faArrowRight} />
             </button>
           </div>
@@ -423,21 +594,21 @@ const AccountOrdersPage: React.FC = () => {
           isLoading={isRecommendationsLoading}
           error={recommendationsError}
           onRetry={reloadRecommendations}
-          emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+          emptyMessage={t('cart.recommendedEmpty')}
           listClassName="orders-recommendations-list"
           stateClassName="orders-recommendations-state"
           renderSkeleton={(index) => (
             <div key={`rec-skeleton-${index}`} className="card orders-recommendation-card is-skeleton" />
           )}
           renderItem={(item) => (
-            <div key={item.game.id ?? item.game.title} className="card orders-recommendation-card">
-              <div className="orders-recommendation-media">
-                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
-              </div>
+            <div key={item.game.id ?? item.game.title} className="card orders-recommendation-card" data-hover-trailer-root="">
+              <Cover className="orders-recommendation-media" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
+                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
+                        </Cover>
               <div className="orders-recommendation-body">
                 <strong>{item.game.title}</strong>
                 <span className="orders-recommendation-price">
-                  {formatMoney(Number(item.game.price), currency)}
+                  {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
                 </span>
               </div>
               <button
@@ -445,7 +616,7 @@ const AccountOrdersPage: React.FC = () => {
                 className="btn btn-primary orders-recommendation-btn"
                 disabled={!item.game.id}
               >
-                Add to cart
+                {t('common.addToCart')}
               </button>
             </div>
           )}

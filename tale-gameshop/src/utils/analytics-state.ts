@@ -5,7 +5,7 @@ export const hasAnyAnalyticsProvider = (settings: AnalyticsPublicSettings | null
     return false;
   }
 
-  return [settings.gaMeasurementId, settings.gtmContainerId, settings.yandexCounterId].some(
+  return [settings.gaMeasurementId, settings.gtmContainerId].some(
     (value) => typeof value === "string" && value.trim().length > 0,
   );
 };

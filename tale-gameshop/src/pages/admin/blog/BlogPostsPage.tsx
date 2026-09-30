@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid } from "devextreme-react";
-import { Column, Paging } from "devextreme-react/data-grid";
+import { Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import PageHeader from "../../../components/layout/PageHeader";
@@ -10,6 +10,8 @@ import { useToast } from "../../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
+import { GRID_PAGE_SIZE, REMOTE_PAGING, gridStatusText, useGridWindow } from "../../../hooks/use-grid-window";
+import { fetchWindow } from "../../../utils/page-window";
 import type { AdminBlogBreakdown, AdminBlogOverviewAnalytics, AdminBlogPostAnalytics, IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogStatus } from "../../../types/blog";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,18 +21,17 @@ const statusOptions: Array<BlogStatus | ""> = ["", "DRAFT", "PUBLISHED", "SCHEDU
 const BlogPostsPage: React.FC = () => {
   const adminBlogService = container.get<IAdminBlogService>(IDENTIFIERS.IAdminBlogService);
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const navigate = useNavigate();
 
+  // Строки, которые таблица уже подтянула. Нужны не для отрисовки — её делает грид, — а
+  // для того, что смотрит на список рядом: выбор поста в аналитике, набор тегов, превью
+  // главного героя. Копятся по мере прокрутки и сбрасываются при смене запроса.
   const [items, setItems] = useState<BlogPost[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [status, setStatus] = useState<BlogStatus | "">("");
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [mainHeroPostId, setMainHeroPostId] = useState<string>("");
   const [updatingMainHeroId, setUpdatingMainHeroId] = useState<string>("");
   const [mainHeroPostPreview, setMainHeroPostPreview] = useState<BlogPost | null>(null);
@@ -52,61 +53,91 @@ const BlogPostsPage: React.FC = () => {
   const [postSearchTerm, setPostSearchTerm] = useState("");
   const [breakdown, setBreakdown] = useState<AdminBlogBreakdown | null>(null);
 
-  const fetchPosts = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await adminBlogService.getPosts({
-        page,
-        pageSize,
-        status,
-        search,
-        tag,
+  // Окно строк для таблицы: границы приходят от неё по мере прокрутки.
+  const loadPosts = useCallback(
+    async (skip: number, take: number) => {
+      const window = await fetchWindow(skip, take, GRID_PAGE_SIZE, (page, pageSize) =>
+        adminBlogService.getPosts({ page, pageSize, status, search, tag })
+      );
+
+      setItems((prev) => {
+        if (skip === 0) {
+          return window.items;
+        }
+        const known = new Set(prev.map((item) => item.id));
+        return [...prev, ...window.items.filter((item) => !known.has(item.id))];
       });
-      setItems(response.items);
-      setTotal(response.total);
-      const settings = await adminBlogService.getHomeSettings();
-      const views = await adminBlogService.getViewSettings();
-      const analytics = await adminBlogService.getPostsAnalytics(response.items.map((item) => item.id));
-      const analyticsMap = analytics.reduce<Record<string, AdminBlogPostAnalytics>>((acc, entry) => {
-        acc[entry.postId] = entry;
-        return acc;
-      }, {});
-      const selectedId = settings.mainHeroPostId ?? "";
-      setViewSettings(views);
-      setAnalyticsByPostId(analyticsMap);
-      setMainHeroPostId(selectedId);
-      const defaultAnalyticsId = analyticsPostId
-        || response.items.find((item) => item.status === "PUBLISHED")?.id
-        || response.items[0]?.id
-        || "";
-      if (defaultAnalyticsId) {
-        setAnalyticsPostId(defaultAnalyticsId);
-        const full = await adminBlogService.getPostAnalytics(defaultAnalyticsId);
-        setAnalyticsByPostId((prev) => ({ ...prev, [defaultAnalyticsId]: full }));
+
+      // Просмотры тянем только по строкам этого окна — по всему списку было бы незачем.
+      try {
+        const analytics = await adminBlogService.getPostsAnalytics(window.items.map((item) => item.id));
+        setAnalyticsByPostId((prev) =>
+          analytics.reduce((acc, entry) => ({ ...acc, [entry.postId]: entry }), prev)
+        );
+      } catch (analyticsError) {
+        console.error("Failed to load post analytics", analyticsError);
       }
-      if (!selectedId) {
-        setMainHeroPostPreview(null);
-      } else {
-        const fromList = response.items.find((item) => item.id === selectedId) ?? null;
-        if (fromList) {
-          setMainHeroPostPreview(fromList);
-        } else {
-          try {
-            const detail = await adminBlogService.getPost(selectedId);
+
+      return window;
+    },
+    [adminBlogService, search, status, tag]
+  );
+
+  const { source, retry, loaded, total, error } = useGridWindow<BlogPost>(loadPosts, "id", reloadToken);
+  const fetchPosts = useCallback(() => setReloadToken((token) => token + 1), []);
+
+  // Настройки главной и учёта просмотров к списку не привязаны — грузим их отдельно,
+  // иначе они перечитывались бы на каждое окно прокрутки.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const settings = await adminBlogService.getHomeSettings();
+        const views = await adminBlogService.getViewSettings();
+        if (cancelled) {
+          return;
+        }
+        setViewSettings(views);
+        const selectedId = settings.mainHeroPostId ?? "";
+        setMainHeroPostId(selectedId);
+
+        if (!selectedId) {
+          setMainHeroPostPreview(null);
+          return;
+        }
+        try {
+          const detail = await adminBlogService.getPost(selectedId);
+          if (!cancelled) {
             setMainHeroPostPreview(detail.post);
-          } catch {
+          }
+        } catch {
+          if (!cancelled) {
             setMainHeroPostPreview(null);
           }
         }
+      } catch (settingsError) {
+        console.error("Failed to load blog settings", settingsError);
       }
-    } catch (fetchError) {
-      console.error("Failed to load blog posts", fetchError);
-      setError("Unable to load blog posts.");
-    } finally {
-      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminBlogService, reloadToken]);
+
+  // Панель аналитики открывается на первом опубликованном посте из уже загруженных.
+  useEffect(() => {
+    if (analyticsPostId || items.length === 0) {
+      return;
     }
-  }, [adminBlogService, page, pageSize, status, search, tag, analyticsPostId]);
+    const preferred = items.find((item) => item.status === "PUBLISHED")?.id ?? items[0].id;
+    setAnalyticsPostId(preferred);
+    adminBlogService
+      .getPostAnalytics(preferred)
+      .then((full) => setAnalyticsByPostId((prev) => ({ ...prev, [preferred]: full })))
+      .catch((analyticsError) => console.error("Failed to load post analytics", analyticsError));
+  }, [adminBlogService, analyticsPostId, items]);
 
   const handleSetMainHero = async (post: BlogPost) => {
     if (post.status !== "PUBLISHED") {
@@ -215,20 +246,13 @@ const BlogPostsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
-
-  useEffect(() => {
     setPageTitle("Blog posts");
-    setHeaderActions([]);
-    return () => setHeaderActions([]);
-  }, [navigate, setHeaderActions, setPageTitle]);
+  }, [navigate, setPageTitle]);
 
   const handleReset = () => {
     setStatus("");
     setSearch("");
     setTag("");
-    setPage(1);
   };
 
   const activeAnalytics = analyticsPostId ? analyticsByPostId[analyticsPostId] : null;
@@ -321,25 +345,70 @@ const BlogPostsPage: React.FC = () => {
     credits: { enabled: false }
   };
 
-  const filteredTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    items.forEach((post) => post.tags.forEach((value) => tagSet.add(value)));
-    return Array.from(tagSet);
-  }, [items]);
+  /**
+   * Теги для фильтра приходят с сервера — по всем постам. Раньше список собирался из
+   * загруженных строк: тега, которого нет в подгруженном куске, в фильтре просто не было,
+   * то есть отфильтровать по нему было нельзя именно тогда, когда это нужнее всего.
+   */
+  const [filteredTags, setFilteredTags] = useState<string[]>([]);
 
-  const drillDownOptions = useMemo(() => {
-    const term = postSearchTerm.trim().toLowerCase();
-    return items
-      .filter((item) => !term || item.title.toLowerCase().includes(term) || item.slug.toLowerCase().includes(term))
-      .slice(0, 12);
-  }, [items, postSearchTerm]);
+  useEffect(() => {
+    let cancelled = false;
+    adminBlogService
+      .getTags()
+      .then((tags) => {
+        if (!cancelled) {
+          setFilteredTags(tags);
+        }
+      })
+      .catch((tagsError) => console.error("Failed to load blog tags", tagsError));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminBlogService, reloadToken]);
+
+  /**
+   * Поиск поста для аналитики. Ищет сервер, а не загруженные строки: таблица держит только
+   * то, до чего долистали, и раньше «ничего не найдено» означало «пост есть, но он ещё не
+   * подгрузился» — отличить одно от другого было нельзя.
+   */
+  const [drillDownOptions, setDrillDownOptions] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    const term = postSearchTerm.trim();
+    if (!term) {
+      setDrillDownOptions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const page = await adminBlogService.getPosts({ page: 1, pageSize: 12, search: term });
+        if (!cancelled) {
+          setDrillDownOptions(page.items);
+        }
+      } catch (searchError) {
+        console.error("Failed to search posts", searchError);
+        if (!cancelled) {
+          setDrillDownOptions([]);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [adminBlogService, postSearchTerm]);
 
   return (
     <div className="admin-grid">
       <PageHeader
         title="Blog posts"
         description="Create, edit, schedule, and publish blog posts."
-        breadcrumbs={["Admin", "Blog"]}
+        breadcrumbs={["Content", "Blog"]}
         primaryAction={(
           <button className="btn btn-primary" onClick={() => navigate("/admin/blog/new")}>
             New post
@@ -638,53 +707,39 @@ const BlogPostsPage: React.FC = () => {
       </Card>
 
       <Card>
-        {loading ? (
-          <div className="space-y-3">
-            <div className="skeleton h-10" />
-            <div className="skeleton h-10" />
-            <div className="skeleton h-10" />
-          </div>
-        ) : error ? (
+        {error ? (
           <EmptyState
             title="Unable to load posts"
             description={error}
             action={
-              <button className="btn btn-primary" onClick={fetchPosts}>
+              <button className="btn btn-primary" onClick={retry}>
                 Retry
-              </button>
-            }
-          />
-        ) : items.length === 0 ? (
-          <EmptyState
-            title="No posts found"
-            description="Create the first post to get started."
-            action={
-              <button className="btn btn-primary" onClick={() => navigate("/admin/blog/new")}>
-                Create post
               </button>
             }
           />
         ) : (
           <>
             <DataGrid
-              dataSource={items}
+              dataSource={source}
               showBorders
               showRowLines
               showColumnLines
               height={560}
               width="100%"
-              keyExpr="id"
               allowColumnResizing
               columnAutoWidth
               columnHidingEnabled
-              scrolling={{ mode: "standard", showScrollbar: "always" }}
+              remoteOperations={REMOTE_PAGING}
               onRowPrepared={(event: any) => {
                 if (event.rowType === "data" && event.data?.id === mainHeroPostId) {
                   event.rowElement?.classList.add("admin-blog-main-hero-row");
                 }
               }}
             >
-              <Paging enabled={false} />
+              <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+              <Paging enabled pageSize={GRID_PAGE_SIZE} />
+              {/* Порядок задаёт сервер; сортировка загруженного окна врала бы. */}
+              <Sorting mode="none" />
               <Column
                 dataField="title"
                 caption="Title"
@@ -814,39 +869,7 @@ const BlogPostsPage: React.FC = () => {
                 )}
               />
             </DataGrid>
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-xs text-gray-500">
-                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total} posts
-              </p>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">Rows</label>
-                <select
-                  className="p-2 border rounded"
-                  value={pageSize}
-                  onChange={(event) => setPageSize(Number(event.target.value))}
-                >
-                  {[10, 20, 50].map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="btn btn-outline"
-                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </button>
-                <button
-                  className="btn btn-outline"
-                  onClick={() => setPage((prev) => prev + 1)}
-                  disabled={page * pageSize >= total}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            <p className="mt-3 text-xs text-gray-500">{gridStatusText(loaded, total, "post")}</p>
             <div className="mt-4 p-4 border rounded-xl bg-violet-50/60 border-violet-100">
               <h4 className="text-sm font-semibold text-slate-800">Current Main Blog Hero</h4>
               {currentMainHero ? (

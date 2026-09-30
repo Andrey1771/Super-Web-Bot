@@ -58,16 +58,16 @@ namespace SuperBot.Core.Services
                 return fallback;
             }
 
-            var preferenceWeights = new Dictionary<GameType, double>();
-            var reasonByType = new Dictionary<GameType, string>();
+            var preferenceWeights = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var reasonByType = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var wishlistGames = await _gameRepository.GetByIdsAsync(wishlistIds);
 
             foreach (var game in wishlistGames)
             {
-                AddWeight(preferenceWeights, game.GameType, 3.0);
-                if (!reasonByType.ContainsKey(game.GameType))
+                AddWeight(preferenceWeights, GameGenres.TagOf(game), 3.0);
+                if (!reasonByType.ContainsKey(GameGenres.TagOf(game)))
                 {
-                    reasonByType[game.GameType] = $"Because you wishlisted: {GetGameLabel(game)}";
+                    reasonByType[GameGenres.TagOf(game)] = $"Because you wishlisted: {GetGameLabel(game)}";
                 }
                 excludeIds.Add(game.Id);
             }
@@ -85,10 +85,10 @@ namespace SuperBot.Core.Services
                 }
 
                 var decay = GetRecencyDecay(viewedItem.LastViewedAt);
-                AddWeight(preferenceWeights, game.GameType, 1.5 * decay);
-                if (!reasonByType.ContainsKey(game.GameType))
+                AddWeight(preferenceWeights, GameGenres.TagOf(game), 1.5 * decay);
+                if (!reasonByType.ContainsKey(GameGenres.TagOf(game)))
                 {
-                    reasonByType[game.GameType] = $"Similar to recently viewed: {GetGameLabel(game)}";
+                    reasonByType[GameGenres.TagOf(game)] = $"Similar to recently viewed: {GetGameLabel(game)}";
                 }
                 excludeIds.Add(game.Id);
             }
@@ -101,13 +101,13 @@ namespace SuperBot.Core.Services
 
             var candidates = allGames
                 .Where(game => game != null && !string.IsNullOrWhiteSpace(game.Id))
-                .Where(game => topTypes.Contains(game.GameType))
+                .Where(game => topTypes.Contains(GameGenres.TagOf(game)))
                 .Where(game => !excludeIds.Contains(game.Id))
                 .Select(game => new ScoredRecommendation
                 {
                     Game = game,
-                    Score = preferenceWeights.TryGetValue(game.GameType, out var weight) ? weight : 0,
-                    Reason = reasonByType.TryGetValue(game.GameType, out var reason) ? reason : "Based on your interests"
+                    Score = preferenceWeights.TryGetValue(GameGenres.TagOf(game), out var weight) ? weight : 0,
+                    Reason = reasonByType.TryGetValue(GameGenres.TagOf(game), out var reason) ? reason : "Based on your interests"
                 })
                 .Select(item =>
                 {
@@ -177,7 +177,7 @@ namespace SuperBot.Core.Services
             return game.Name ?? "this game";
         }
 
-        private static void AddWeight(Dictionary<GameType, double> weights, GameType type, double weight)
+        private static void AddWeight(Dictionary<string, double> weights, string type, double weight)
         {
             if (!weights.ContainsKey(type))
             {
@@ -259,8 +259,8 @@ namespace SuperBot.Core.Services
                         return true;
                     }
 
-                    var recentTypes = results.TakeLast(maxSameTypeInRow).Select(result => result.Game.GameType).Distinct();
-                    return !recentTypes.Contains(item.Game.GameType);
+                    var recentTypes = results.TakeLast(maxSameTypeInRow).Select(result => GameGenres.TagOf(result.Game)).Distinct();
+                    return !recentTypes.Contains(GameGenres.TagOf(item.Game));
                 }) ?? remaining.First();
 
                 results.Add(next);

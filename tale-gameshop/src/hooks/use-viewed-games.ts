@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import container from '../inversify.config';
 import IDENTIFIERS from '../constants/identifiers';
@@ -18,7 +19,7 @@ export const useViewedGames = (limit = 8) => {
             setItems(data);
         } catch (err) {
             console.error('Failed to load viewed history:', err);
-            setError('Unable to load recently viewed.');
+            setError(i18n.t('errors.loadViewed'));
         } finally {
             setIsLoading(false);
         }

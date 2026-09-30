@@ -4,6 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Services;
 using SuperBot.Infrastructure.Data;
 using SuperBot.WebApi.Support.Infrastructure;
 
@@ -24,22 +25,29 @@ namespace SuperBot.WebApi.Controllers;
 public class AdminModerationController : ControllerBase
 {
     private readonly IMongoCollection<GameReviewDb> _reviews;
-    private readonly IMongoCollection<GameQuestionDb> _questions;
     private readonly IGameReviewRepository _reviewRepository;
-    private readonly IGameQuestionRepository _questionRepository;
+    private readonly IGameReviewReportRepository _reportRepository;
     private readonly IGameRepository _games;
+    private readonly SuperBot.WebApi.Services.UserAvatarLookup _avatars;
+    private readonly SuperBot.WebApi.Services.UserAvatarStore _avatarStore;
+    private readonly ILogger<AdminModerationController> _logger;
 
     public AdminModerationController(
         IMongoDatabase database,
         IGameReviewRepository reviewRepository,
-        IGameQuestionRepository questionRepository,
-        IGameRepository games)
+        IGameReviewReportRepository reportRepository,
+        IGameRepository games,
+        SuperBot.WebApi.Services.UserAvatarLookup avatars,
+        SuperBot.WebApi.Services.UserAvatarStore avatarStore,
+        ILogger<AdminModerationController> logger)
     {
         _reviews = database.GetCollection<GameReviewDb>("GameReviews");
-        _questions = database.GetCollection<GameQuestionDb>("GameQuestions");
         _reviewRepository = reviewRepository;
-        _questionRepository = questionRepository;
+        _reportRepository = reportRepository;
         _games = games;
+        _avatars = avatars;
+        _avatarStore = avatarStore;
+        _logger = logger;
     }
 
     // ---------- сводка ----------
@@ -48,12 +56,7 @@ public class AdminModerationController : ControllerBase
     public async Task<IActionResult> Summary(CancellationToken ct)
     {
         var pending = await _reviews.CountDocumentsAsync(r => r.Status == nameof(ReviewStatus.Pending), cancellationToken: ct);
-        var unanswered = await _questions.CountDocumentsAsync(
-            Builders<GameQuestionDb>.Filter.Or(
-                Builders<GameQuestionDb>.Filter.Size(q => q.Answers, 0),
-                Builders<GameQuestionDb>.Filter.Exists(q => q.Answers, false)),
-            cancellationToken: ct);
-        return Ok(new { pendingReviews = (int)pending, unansweredQuestions = (int)unanswered });
+        return Ok(new { pendingReviews = (int)pending });
     }
 
     // ---------- отзывы ----------
@@ -84,6 +87,13 @@ public class AdminModerationController : ControllerBase
 
         var items = await _reviews.Find(filter).Sort(sort).Skip((safePage - 1) * safeSize).Limit(safeSize).ToListAsync(ct);
         var titles = await GameTitlesAsync(items.Select(r => r.GameId));
+        // Картинка — такая же часть отзыва, как текст: жалоба на неё приходит той же кнопкой
+        // и должна разбираться здесь же, а не отдельным процессом.
+        var avatars = await _avatars.ForUsersAsync(items.Select(r => r.UserId));
+        // Жалобы с причинами и комментариями: по ним модератор понимает, «один обиделся» или «все жалуются на спам».
+        var reports = (await _reportRepository.ForReviewsAsync(items.Select(r => r.Id)))
+            .GroupBy(report => report.ReviewId)
+            .ToDictionary(group => group.Key, group => group.ToList());
 
         return Ok(new
         {
@@ -95,18 +105,53 @@ public class AdminModerationController : ControllerBase
                 gameTitle = titles.TryGetValue(r.GameId ?? string.Empty, out var t) ? t : r.GameId,
                 userName = r.UserName,
                 userId = r.UserId,
+                avatarUrl = !string.IsNullOrWhiteSpace(r.UserId) && avatars.TryGetValue(r.UserId, out var avatar) ? avatar : null,
                 rating = r.Rating,
-                recommend = r.Recommend,
+                recommend = ReviewVerdict.FromRating(r.Rating),
                 text = r.Text,
                 images = r.Images?.Count ?? 0,
                 createdAt = r.CreatedAt,
                 status = string.IsNullOrEmpty(r.Status) ? nameof(ReviewStatus.Published) : r.Status,
                 reportCount = r.ReportCount,
+                refunded = r.Refunded,
+                editedAt = r.EditedAt,
+                // Прошлые версии, свежие первыми: модератор сравнивает, что было до правки.
+                revisions = (r.Revisions ?? new List<ReviewRevisionDb>())
+                    .OrderByDescending(rev => rev.ReplacedAt)
+                    .Select(rev => new { rev.Text, rev.Rating, rev.PlaytimeHours, rev.ReplacedAt, rev.UnderReport }),
                 lastReportedAt = r.LastReportedAt,
-                helpfulCount = r.HelpfulCount,
-                shopReply = r.ShopReply is null ? null : new { r.ShopReply.Text, r.ShopReply.Author, r.ShopReply.CreatedAt }
+                reports = reports.TryGetValue(r.Id, out var list)
+                    ? list.Select(report => new { reason = report.Reason.ToString(), comment = report.Comment, userName = report.UserName, createdAt = report.CreatedAt })
+                    : Enumerable.Empty<object>(),
+                helpfulCount = r.HelpfulCount
             })
         });
+    }
+
+    /// <summary>
+    /// Снимает аватар автора отзыва. Отдельным действием от «скрыть отзыв»: текст может быть
+    /// нормальным, а картинка нет, и наоборот. Аватар в отзыве не хранится, поэтому снимается
+    /// он у профиля — и пропадает сразу везде, где показан.
+    ///
+    /// Сам отзыв не трогаем: решение о нём принимается отдельно теми же кнопками рядом.
+    /// </summary>
+    [HttpPost("reviews/{id}/remove-avatar")]
+    public async Task<IActionResult> RemoveAuthorAvatar(string id, CancellationToken ct = default)
+    {
+        var review = await _reviews.Find(r => r.Id == id).FirstOrDefaultAsync(ct);
+        if (review is null)
+        {
+            return NotFound();
+        }
+
+        var removed = await _avatarStore.RemoveAsync(review.UserId, ct);
+        _logger.LogInformation(
+            "Аватар автора отзыва {ReviewId} (пользователь {UserId}) снят модератором: {Removed}.",
+            id, review.UserId, removed);
+
+        // removed = false значит «снимать было нечего» — для вызывающего это тот же успех:
+        // аватара у человека теперь нет.
+        return Ok(new { removed });
     }
 
     [HttpPost("reviews/{id}/publish")]
@@ -114,25 +159,6 @@ public class AdminModerationController : ControllerBase
 
     [HttpPost("reviews/{id}/hide")]
     public Task<IActionResult> Hide(string id) => SetReviewStatus(id, ReviewStatus.Hidden);
-
-    /// <summary>Ответ магазина под отзывом. Пустой текст снимает ответ.</summary>
-    [HttpPost("reviews/{id}/reply")]
-    public async Task<IActionResult> Reply(string id, [FromBody] ModerationTextRequest request)
-    {
-        var review = await _reviewRepository.GetByIdAsync(id);
-        if (review is null)
-        {
-            return NotFound();
-        }
-
-        var text = (request?.Text ?? string.Empty).Trim();
-        review.ShopReply = text.Length == 0
-            ? null
-            : new ReviewReply { Text = text, Author = SupportUserContext.FromClaims(User).Email, CreatedAt = DateTime.UtcNow };
-        review.UpdatedAt = DateTime.UtcNow;
-        await _reviewRepository.UpdateAsync(id, review);
-        return Ok(new { ok = true, message = text.Length == 0 ? "Reply removed." : "Reply published under the review." });
-    }
 
     private async Task<IActionResult> SetReviewStatus(string id, ReviewStatus status)
     {
@@ -148,74 +174,6 @@ public class AdminModerationController : ControllerBase
         return Ok(new { ok = true, message = status == ReviewStatus.Published ? "Review is visible again." : "Review hidden from the storefront." });
     }
 
-    // ---------- вопросы ----------
-
-    /// <param name="filter">unanswered | all</param>
-    [HttpGet("questions")]
-    public async Task<IActionResult> Questions([FromQuery] string filter = "unanswered", [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
-    {
-        var mongoFilter = filter.Equals("all", StringComparison.OrdinalIgnoreCase)
-            ? Builders<GameQuestionDb>.Filter.Empty
-            : Builders<GameQuestionDb>.Filter.Or(
-                Builders<GameQuestionDb>.Filter.Size(q => q.Answers, 0),
-                Builders<GameQuestionDb>.Filter.Exists(q => q.Answers, false));
-
-        var safePage = Math.Max(1, page);
-        var safeSize = Math.Clamp(pageSize, 1, 100);
-        var total = await _questions.CountDocumentsAsync(mongoFilter, cancellationToken: ct);
-        var items = await _questions.Find(mongoFilter)
-            .SortByDescending(q => q.CreatedAt)
-            .Skip((safePage - 1) * safeSize).Limit(safeSize)
-            .ToListAsync(ct);
-        var titles = await GameTitlesAsync(items.Select(q => q.GameId));
-
-        return Ok(new
-        {
-            total,
-            items = items.Select(q => new
-            {
-                id = q.Id,
-                gameId = q.GameId,
-                gameTitle = titles.TryGetValue(q.GameId ?? string.Empty, out var t) ? t : q.GameId,
-                userName = q.UserName,
-                question = q.Question,
-                createdAt = q.CreatedAt,
-                answers = (q.Answers ?? new List<GameAnswerDb>()).Select(a => new { a.Id, a.UserName, a.Text, a.CreatedAt, a.IsOfficial })
-            })
-        });
-    }
-
-    /// <summary>Официальный ответ магазина: помечается на витрине как «Official».</summary>
-    [HttpPost("questions/{id}/answer")]
-    public async Task<IActionResult> Answer(string id, [FromBody] ModerationTextRequest request)
-    {
-        var text = (request?.Text ?? string.Empty).Trim();
-        if (text.Length == 0)
-        {
-            return BadRequest(new { message = "Answer text is required." });
-        }
-
-        var exists = await _questions.Find(q => q.Id == id).AnyAsync();
-        if (!exists)
-        {
-            return NotFound();
-        }
-
-        var agent = SupportUserContext.FromClaims(User);
-        await _questionRepository.AddAnswerAsync(id, new GameAnswer
-        {
-            Id = ObjectId.GenerateNewId().ToString(),
-            UserId = agent.UserId,
-            UserName = "Tale Shop",
-            Text = text,
-            CreatedAt = DateTime.UtcNow,
-            IsOfficial = true
-        });
-        return Ok(new { ok = true, message = "Answer published." });
-    }
-
-    // ---------- helpers ----------
-
     private async Task<Dictionary<string, string>> GameTitlesAsync(IEnumerable<string?> ids)
     {
         var list = ids.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList()!;
@@ -229,7 +187,3 @@ public class AdminModerationController : ControllerBase
     }
 }
 
-public class ModerationTextRequest
-{
-    public string? Text { get; set; }
-}

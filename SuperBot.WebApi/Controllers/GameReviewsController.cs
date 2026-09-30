@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using SuperBot.Common.Auth;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -15,32 +17,44 @@ public class GameReviewsController : ControllerBase
     private static readonly TimeSpan SiteSummaryCacheTtl = TimeSpan.FromMinutes(10);
 
     /// <summary>Сколько свежих отзывов показываем цитатами на витрине.</summary>
-    private const int SiteSummaryQuoteCount = 2;
+    /// <summary>
+    /// Сколько свежих отзывов отдавать витрине. Двух хватало на статичную пару карточек;
+    /// на странице «О нас» они теперь листаются каруселью, и листать нужно что-то.
+    /// Десять — чтобы лента не заканчивалась через один щелчок и при этом не тянуть
+    /// половину коллекции ради блока, который читают по диагонали.
+    /// </summary>
+    private const int SiteSummaryQuoteCount = 10;
 
     private readonly IGameReviewRepository _gameReviewRepository;
     private readonly IGameReviewHelpfulRepository _helpfulRepository;
+    private readonly IGameReviewReportRepository _reportRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IGameRepository _gameRepository;
     private readonly IMemoryCache _memoryCache;
+    private readonly SuperBot.WebApi.Services.UserAvatarLookup _avatars;
 
     public GameReviewsController(
         IGameReviewRepository gameReviewRepository,
         IGameReviewHelpfulRepository helpfulRepository,
+        IGameReviewReportRepository reportRepository,
         IOrderRepository orderRepository,
         IGameRepository gameRepository,
-        IMemoryCache memoryCache)
+        IMemoryCache memoryCache,
+        SuperBot.WebApi.Services.UserAvatarLookup avatars)
     {
         _gameReviewRepository = gameReviewRepository;
         _helpfulRepository = helpfulRepository;
+        _reportRepository = reportRepository;
         _orderRepository = orderRepository;
         _gameRepository = gameRepository;
         _memoryCache = memoryCache;
+        _avatars = avatars;
     }
 
     /// <summary>Витринная цитата: отзыв вместе с игрой, на которую он написан.</summary>
     public sealed record SiteReviewQuote(
         string Author, int Rating, string Text, bool VerifiedPurchase,
-        DateTime CreatedAt, string? GameTitle, string? GameSlug);
+        DateTime CreatedAt, string? GameTitle, string? GameSlug, string? AvatarUrl);
 
     /// <summary>Рейтинг магазина: средняя оценка, распределение и пара свежих цитат.</summary>
     public sealed record SiteReviewSummary(
@@ -72,11 +86,14 @@ public class GameReviewsController : ControllerBase
             return new SiteReviewSummary(0, 0, new Dictionary<int, int>(), Array.Empty<SiteReviewQuote>());
         }
 
-        var recent = await _gameReviewRepository.GetRecentPublishedAsync(SiteSummaryQuoteCount);
+        var recent = await BuildQuoteSampleAsync(summary);
         var games = await _gameRepository.GetByIdsAsync(recent.Select(review => review.GameId));
         var gameById = games
             .Where(game => !string.IsNullOrWhiteSpace(game.Id))
             .ToDictionary(game => game.Id!, game => game);
+
+        // Аватары — одним запросом на всю пачку, а не по отзыву на штуку.
+        var avatarByUser = await _avatars.ForUsersAsync(recent.Select(review => review.UserId));
 
         var quotes = recent.Select(review =>
         {
@@ -88,10 +105,50 @@ public class GameReviewsController : ControllerBase
                 review.VerifiedPurchase,
                 review.CreatedAt,
                 game?.Title ?? game?.Name,
-                game?.Slug);
+                game?.Slug,
+                AvatarFor(avatarByUser, review.UserId));
         }).ToList();
 
         return new SiteReviewSummary(summary.Average, summary.Count, summary.Distribution, quotes);
+    }
+
+    /// <summary>
+    /// Отзывы для ленты на витрине — по долям оценок, а не «десять последних».
+    ///
+    /// Случайная выборка последних врёт в обе стороны: неделя неудачных заказов даёт стену
+    /// недовольства при средней 4.1, неделя удачных — сплошные пятёрки. Здесь каждой оценки
+    /// берётся столько, какова её доля в распределении, которое нарисовано полосками над самой
+    /// лентой. Отбора по оценке нет: прятать двойки, оставив среднюю на виду, — это витрина,
+    /// противоречащая собственным цифрам.
+    /// </summary>
+    /// <summary>Аватар автора, если он вообще есть: отсутствие ключа и значит «нет аватара».</summary>
+    private static string? AvatarFor(IReadOnlyDictionary<string, string> avatarByUser, string? userId) =>
+        !string.IsNullOrWhiteSpace(userId) && avatarByUser.TryGetValue(userId!, out var url) ? url : null;
+
+    private async Task<IReadOnlyList<GameReview>> BuildQuoteSampleAsync(GameReviewSummary summary)
+    {
+        var quotas = ReviewSample.Quotas(summary.Distribution, SiteSummaryQuoteCount);
+        if (quotas.Count == 0)
+        {
+            return await _gameReviewRepository.GetRecentPublishedAsync(SiteSummaryQuoteCount);
+        }
+
+        var picked = new List<GameReview>();
+        foreach (var (rating, take) in quotas)
+        {
+            picked.AddRange(await _gameReviewRepository.GetRecentPublishedByRatingAsync(rating, take));
+        }
+
+        // Распределение считается по ВСЕМ отзывам, а текст есть не у каждого: если по какой-то
+        // оценке не набралось отзывов с текстом, добираем свежими, чтобы лента не поредела.
+        if (picked.Count < SiteSummaryQuoteCount)
+        {
+            var known = picked.Select(review => review.Id).ToHashSet(StringComparer.Ordinal);
+            var filler = await _gameReviewRepository.GetRecentPublishedAsync(SiteSummaryQuoteCount);
+            picked.AddRange(filler.Where(review => known.Add(review.Id)).Take(SiteSummaryQuoteCount - picked.Count));
+        }
+
+        return ReviewSample.Interleave(picked, review => review.Rating);
     }
 
     [HttpGet("games/{gameId}/reviews")]
@@ -118,6 +175,15 @@ public class GameReviewsController : ControllerBase
         };
 
         var (items, total) = await _gameReviewRepository.GetPagedAsync(query);
+
+        // Аватар в отзыве не хранится — подставляем из профиля на момент показа.
+        // Один запрос на страницу выдачи (до 50 отзывов), а не по запросу на отзыв.
+        var avatarByUser = await _avatars.ForUsersAsync(items.Select(review => review.UserId));
+        foreach (var review in items)
+        {
+            review.AvatarUrl = AvatarFor(avatarByUser, review.UserId);
+        }
+
         return Ok(new { items, total });
     }
 
@@ -127,7 +193,7 @@ public class GameReviewsController : ControllerBase
     {
         if (request == null || string.IsNullOrWhiteSpace(request.Text))
         {
-            return BadRequest("Review text is required.");
+            return BadRequest(SuperBot.WebApi.Services.ApiErrors.Body("review.textRequired", "Review text is required."));
         }
 
         var userId = GetUserId();
@@ -140,22 +206,36 @@ public class GameReviewsController : ControllerBase
         var existing = await _gameReviewRepository.GetByUserAsync(gameId, userId);
         if (existing != null)
         {
-            return Conflict("Review already exists.");
+            return Conflict(SuperBot.WebApi.Services.ApiErrors.Body("review.exists", "Review already exists."));
         }
 
-        var orders = await _orderRepository.GetOrdersByUserAsync(userName);
-        var verifiedPurchase = orders.Any(order => order.GameId == gameId && order.IsPaid);
+        // По всем именам из токена (email, логин, sub) — заказ записан по email, а не по Identity.Name.
+        var orders = await _orderRepository.GetOrdersByUsersAsync(User.GetOrderOwnerAliases());
+        // Смотрим позиции заказа, а не order.GameId: в том поле лежит только первая игра
+        // набора, и отзыв на вторую и последующие сервер отклонял как «вы это не покупали».
+        var verifiedPurchase = SuperBot.Core.Services.PurchasedGames.Contains(orders, gameId);
+        if (!verifiedPurchase)
+        {
+            // Отзыв — только от покупателя: иначе «Verified purchase» ничего не значит, а страница
+            // зарастает оценками от тех, кто игру не открывал. Фронт форму и не показывает, это страховка.
+            return StatusCode(StatusCodes.Status403Forbidden, SuperBot.WebApi.Services.ApiErrors.Body("review.purchaseOnly", "Only customers who bought this game can review it."));
+        }
+
+        // Имя, под которым записан заказ с этой игрой: по нему возврат потом найдёт отзыв.
+        var buyerKey = orders.FirstOrDefault(order => order.IsPaid && SuperBot.Core.Services.PurchasedGames.From(new[] { order }).Contains(gameId))?.UserName;
 
         var review = new GameReview
         {
             GameId = gameId,
             UserId = userId,
             UserName = userName,
+            BuyerKey = buyerKey,
+            // Отзыв после возврата — можно, но с пометкой сразу.
+            Refunded = SuperBot.Core.Services.RefundedPurchases.IsRefunded(orders, gameId),
             Rating = Math.Clamp(request.Rating, 1, 5),
             PlaytimeHours = request.PlaytimeHours,
             Text = request.Text,
             Images = request.Images?.Select(item => new ReviewImage { Url = item.Url, ThumbUrl = item.ThumbUrl }).ToList() ?? new List<ReviewImage>(),
-            Recommend = request.Recommend,
             CreatedAt = DateTime.UtcNow,
             VerifiedPurchase = verifiedPurchase,
             Status = ReviewStatus.Published
@@ -182,11 +262,32 @@ public class GameReviewsController : ControllerBase
             return Forbid();
         }
 
-        review.Text = request.Text ?? review.Text;
-        review.Rating = request.Rating > 0 ? Math.Clamp(request.Rating, 1, 5) : review.Rating;
-        review.PlaytimeHours = request.PlaytimeHours ?? review.PlaytimeHours;
+        var nextText = request.Text ?? review.Text;
+        var nextRating = request.Rating > 0 ? Math.Clamp(request.Rating, 1, 5) : review.Rating;
+        var nextPlaytime = request.PlaytimeHours ?? review.PlaytimeHours;
+        var changed = !string.Equals(nextText, review.Text, StringComparison.Ordinal) || nextRating != review.Rating || nextPlaytime != review.PlaytimeHours;
+
+        if (changed)
+        {
+            // Прежняя версия — в историю для модератора: с пометкой, была ли правка уже под жалобами.
+            review.Revisions ??= new List<ReviewRevision>();
+            review.Revisions.Add(new ReviewRevision
+            {
+                Text = review.Text,
+                Rating = review.Rating,
+                PlaytimeHours = review.PlaytimeHours,
+                ReplacedAt = DateTime.UtcNow,
+                UnderReport = review.ReportCount > 0 || review.Status == ReviewStatus.Pending
+            });
+            // Правка автора — отдельно от UpdatedAt: тот меняют и модерация, и жалоба, а «Edited» должно
+            // появляться только когда человек сам что-то изменил.
+            review.EditedAt = DateTime.UtcNow;
+        }
+
+        review.Text = nextText;
+        review.Rating = nextRating;
+        review.PlaytimeHours = nextPlaytime;
         review.Images = request.Images?.Select(item => new ReviewImage { Url = item.Url, ThumbUrl = item.ThumbUrl }).ToList() ?? review.Images;
-        review.Recommend = request.Recommend;
         review.UpdatedAt = DateTime.UtcNow;
 
         await _gameReviewRepository.UpdateAsync(reviewId, review);
@@ -218,31 +319,80 @@ public class GameReviewsController : ControllerBase
         return Ok(new { helpful = isHelpful, count = nextCount });
     }
 
+    public sealed record ReportRequest(string Reason, string? Comment);
+
+    public const int ReportCommentMaxLength = 500;
+
+    /// <summary>
+    /// Жалоба на отзыв — заявка модератору с причиной и комментарием, как у Steam и Amazon.
+    /// Одна жалоба ничего не прячет: отзыв уходит с витрины (Pending) по порогу разных жалобщиков
+    /// или сразу для спама и вредоносных ссылок (ReviewReportPolicy). Один пользователь — одна
+    /// жалоба на отзыв, повтор — 409. Раньше любой клик без причины прятал отзыв мгновенно.
+    /// </summary>
     [Authorize]
     [HttpPost("reviews/{reviewId}/report")]
-    public async Task<IActionResult> ReportReview(string reviewId)
+    public async Task<IActionResult> ReportReview(string reviewId, [FromBody] ReportRequest? request)
     {
+        if (request is null || !Enum.TryParse<ReviewReportReason>(request.Reason, true, out var reason))
+        {
+            return BadRequest(SuperBot.WebApi.Services.ApiErrors.Body("review.reportReason", "Pick a reason for the report."));
+        }
+        var comment = request.Comment?.Trim();
+        if (comment is { Length: > ReportCommentMaxLength })
+        {
+            return BadRequest(SuperBot.WebApi.Services.ApiErrors.Body("review.reportTooLong", $"Details are limited to {ReportCommentMaxLength} characters.", new { max = ReportCommentMaxLength }));
+        }
+        if (reason == ReviewReportReason.Other && string.IsNullOrWhiteSpace(comment))
+        {
+            return BadRequest(SuperBot.WebApi.Services.ApiErrors.Body("review.reportDetails", "Tell us what is wrong with the review."));
+        }
+
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
         var review = await _gameReviewRepository.GetByIdAsync(reviewId);
         if (review == null)
         {
             return NotFound();
         }
+        if (string.Equals(review.UserId, userId, StringComparison.Ordinal))
+        {
+            return BadRequest(SuperBot.WebApi.Services.ApiErrors.Body("review.reportOwn", "You cannot report your own review — edit or delete it instead."));
+        }
 
-        // Жалоба снимает отзыв с витрины до решения модератора (Pending) и считается — по числу
-        // жалоб модератор понимает, «один обиделся» или «все жалуются». Раньше отзыв тоже уходил
-        // в Pending, но список таких отзывов никто не видел: жалобы уходили в никуда.
-        review.Status = ReviewStatus.Pending;
-        review.ReportCount += 1;
+        var added = await _reportRepository.AddAsync(new GameReviewReport
+        {
+            ReviewId = reviewId,
+            UserId = userId,
+            UserName = GetUserName(),
+            Reason = reason,
+            Comment = comment,
+            CreatedAt = DateTime.UtcNow
+        });
+        if (!added)
+        {
+            return Conflict(SuperBot.WebApi.Services.ApiErrors.Body("review.alreadyReported", "You have already reported this review."));
+        }
+
+        var reporters = await _reportRepository.CountReportersAsync(reviewId);
+        review.ReportCount = reporters;
         review.LastReportedAt = DateTime.UtcNow;
-        review.UpdatedAt = DateTime.UtcNow;
+        var hidden = false;
+        if (review.Status == ReviewStatus.Published && ReviewReportPolicy.ShouldHide(reason, reporters))
+        {
+            review.Status = ReviewStatus.Pending;
+            review.UpdatedAt = DateTime.UtcNow;
+            hidden = true;
+        }
         await _gameReviewRepository.UpdateAsync(reviewId, review);
-        return Ok();
+        return Ok(new { reported = true, hidden, reports = reporters });
     }
 
-    private string GetUserId()
-    {
-        return User.FindFirst("sub")?.Value ?? User.FindFirst("userId")?.Value ?? string.Empty;
-    }
+    // Не «sub» напрямую: JwtBearer отдаёт его как NameIdentifier (см. CurrentUserExtensions.GetUserId).
+    private string GetUserId() => User.GetUserId();
 
     private string GetUserName()
     {
@@ -254,7 +404,6 @@ public class GameReviewsController : ControllerBase
         public int Rating { get; set; }
         public double? PlaytimeHours { get; set; }
         public string Text { get; set; }
-        public bool Recommend { get; set; }
         public List<ReviewImageRequest> Images { get; set; } = new();
     }
 

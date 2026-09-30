@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson;
@@ -138,4 +139,84 @@ public class AdminCustomersTests
         var response = await Support().PostAsync($"/api/admin/customers/{Uri.EscapeDataString(email)}/block", null);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    /// <summary>
+    /// Срезы таблицы клиентов. Keycloak в тестах недоступен, поэтому проверяются срезы,
+    /// собираемые по заказам: «с возвратами» находит клиента с REFUNDED-заказом, обход
+    /// «все покупатели» движется курсором вперёд и не повторяет строки.
+    /// </summary>
+    [Fact]
+    public async Task Browse_slices_and_cursor_work()
+    {
+        var email = await SeedCustomerAsync();
+        var support = Support();
+
+        // Срез «с возвратами»: клиент с REFUNDED-заказом в нём есть.
+        var refunded = await support.GetAsync("/api/admin/customers/browse?filter=refunded&limit=200");
+        Assert.Equal(HttpStatusCode.OK, refunded.StatusCode);
+        var refundedBody = await refunded.Content.ReadFromJsonAsync<JsonElement>();
+        var refundedEmails = refundedBody.GetProperty("items").EnumerateArray()
+            .Select(item => item.GetProperty("email").GetString())
+            .ToList();
+        Assert.Contains(email, refundedEmails);
+
+        // Обход всех покупателей окном в одну строку: следующее окно начинается после первой
+        // почты и не возвращает её повторно.
+        var first = await (await support.GetAsync("/api/admin/customers/browse?filter=all&limit=1"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var firstEmail = first.GetProperty("items")[0].GetProperty("email").GetString();
+        var nextCursor = first.GetProperty("nextCursor").GetString();
+        Assert.False(string.IsNullOrEmpty(nextCursor));
+
+        var second = await (await support.GetAsync($"/api/admin/customers/browse?filter=all&limit=1&after={Uri.EscapeDataString(nextCursor!)}"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var secondEmails = second.GetProperty("items").EnumerateArray()
+            .Select(item => item.GetProperty("email").GetString())
+            .ToList();
+        Assert.DoesNotContain(firstEmail, secondEmails);
+    }
+
+    /// <summary>Выгрузка среза — обычный CSV с шапкой, а не пятисотка и не пустой файл.</summary>
+    [Fact]
+    public async Task Export_returns_csv_with_header()
+    {
+        await SeedCustomerAsync();
+        var support = Support();
+
+        var response = await support.GetAsync("/api/admin/customers/export?filter=all");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/csv", response.Content.Headers.ContentType?.MediaType);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.StartsWith("Email,Name,Orders,LastOrder,Account", text.TrimStart('\uFEFF'));
+        Assert.Contains("@taleshop.test", text);
+    }
+
+
+    /// <summary>
+    /// Себя заблокировать нельзя.
+    ///
+    /// В магазине администратор часто один: заблокировав собственную учётку, он через время
+    /// жизни токена теряет админку, а кнопка «Unblock» живёт внутри неё же — выбираться
+    /// придётся через консоль Keycloak. Проверка стоит на сервере, а не только в интерфейсе:
+    /// спрятанная кнопка не мешает послать запрос напрямую.
+    ///
+    /// Отказ приходит до обращения к Keycloak — потому тест и работает там, где Keycloak нет.
+    /// </summary>
+    [Fact]
+    public async Task Admin_cannot_block_himself()
+    {
+        var me = "boss@taleshop.test";
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.EmailHeader, me);
+        client.DefaultRequestHeaders.Add(TestAuthHandler.RolesHeader, "admin");
+
+        var response = await client.PostAsync($"/api/admin/customers/{Uri.EscapeDataString(me)}/block", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.GetProperty("ok").GetBoolean());
+        Assert.Contains("your own account", body.GetProperty("message").GetString());
+    }
+
 }

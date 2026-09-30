@@ -1,0 +1,47 @@
+/* Вкладка «Cashback»: сводка долга перед покупателями. Поля и уровни — из settings-page.css. */
+.cashback-admin__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.cashback-admin__head h3 {
+  margin: 0;
+}
+
+.cashback-admin__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cashback-admin__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border, #e6e3f2);
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+}
+
+.cashback-admin__stat--main {
+  background: #f6f4ff;
+  border-color: #e9e3ff;
+}
+
+.cashback-admin__value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text, #2b2350);
+  font-variant-numeric: tabular-nums;
+}
+
+.cashback-admin__label {
+  font-size: 12px;
+  color: var(--color-muted, #675e88);
+}

@@ -11,6 +11,7 @@ import {
     RecoveryStatus,
     RecoverySummary
 } from '../../api/adminRecoveryApi';
+import { formatDateTimeOrDash as formatDate } from '../../i18n/format';
 
 // Рабочее место оператора восстановления доступа: слева — очередь заявок,
 // справа — карточка сверки (заявленное против наших данных), чек-лист и действия.
@@ -30,14 +31,6 @@ const StatusPill: React.FC<{ status: RecoveryStatus }> = ({ status }) => {
             {status}
         </span>
     );
-};
-
-const formatDate = (value?: string | null) => {
-    if (!value) {
-        return '—';
-    }
-    const date = new Date(value);
-    return Number.isNaN(date.valueOf()) ? '—' : date.toLocaleString();
 };
 
 const sectionStyle: React.CSSProperties = {

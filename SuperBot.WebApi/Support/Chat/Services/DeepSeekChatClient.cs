@@ -153,6 +153,7 @@ public class DeepSeekChatClient : ISupportLlmClient
         var wire = new CompletionRequest
         {
             Model = _options.DeepSeekModel,
+            User = string.IsNullOrWhiteSpace(_options.AppTag) ? null : _options.AppTag,
             Temperature = request.Temperature,
             MaxTokens = request.MaxOutputTokens,
             Stream = stream,
@@ -234,6 +235,9 @@ public class DeepSeekChatClient : ISupportLlmClient
         public StreamOptions? StreamOptions { get; set; }
 
         public List<WireTool>? Tools { get; set; }
+
+        /// <summary>Кто спрашивает: метка приложения, чтобы отличать нас в логах провайдера.</summary>
+        public string? User { get; set; }
     }
 
     private class StreamOptions

@@ -21,7 +21,7 @@ public class RecoveryRequestException : Exception
 
 public interface IRecoveryRequestService
 {
-    Task CreateAsync(CreateRecoveryRequestDto dto, string ip, string userAgent);
+    Task CreateAsync(CreateRecoveryRequestDto dto, string ip, string userAgent, string? language = null);
     Task<PendingRecoveryDto> GetActiveForUserAsync(string userId);
     Task<bool> CancelByTokenAsync(string token);
     Task<bool> CancelByUserAsync(string userId);
@@ -75,7 +75,7 @@ public class RecoveryRequestService : IRecoveryRequestService
         _logger = logger;
     }
 
-    public async Task CreateAsync(CreateRecoveryRequestDto dto, string ip, string userAgent)
+    public async Task CreateAsync(CreateRecoveryRequestDto dto, string ip, string userAgent, string? language = null)
     {
         var accountEmail = (dto.AccountEmail ?? string.Empty).Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(accountEmail) || !accountEmail.Contains('@'))
@@ -128,6 +128,7 @@ public class RecoveryRequestService : IRecoveryRequestService
             Message = (dto.Message ?? string.Empty).Trim(),
             RequestIp = ip,
             RequestUserAgent = userAgent,
+            Language = language,
             ResolvedUserId = resolvedUserId,
             Status = RecoveryRequestStatus.Pending,
             CancelToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
@@ -338,6 +339,8 @@ public class RecoveryRequestService : IRecoveryRequestService
             await _keycloak.DeleteCredentialAsync(request.ResolvedUserId, credential.Id);
         }
         await _keycloak.LogoutAllSessionsAsync(request.ResolvedUserId);
+        // Письмо Keycloak со ссылкой на новый пароль — на языке, на котором подавали заявку.
+        await _keycloak.TrySetLocaleAsync(request.ResolvedUserId, request.Language);
         await _keycloak.ExecuteActionsEmailAsync(
             request.ResolvedUserId,
             new[] { "UPDATE_PASSWORD" },

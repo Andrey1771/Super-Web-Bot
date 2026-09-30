@@ -1,64 +1,74 @@
 import PageHeader, { GAMES_TABS } from "../../components/layout/PageHeader";
-import React, { useEffect, useState } from "react";
-import container from "../../inversify.config";
-import IDENTIFIERS from "../../constants/identifiers";
-import type { IGameService } from "../../iterfaces/i-game-service";
-import type { Game } from "../../models/game";
+import React, { useCallback, useRef, useState } from "react";
+import Drawer from "../../components/ui/Drawer";
 import KeyInventorySection from "../../components/admin/KeyInventorySection";
 import KeyStockOverview from "../../components/admin/KeyStockOverview";
+import KeyRegionStock from "../../components/admin/KeyRegionStock";
+import "./game-keys-page.css";
 
+/**
+ * Ключи по играм.
+ *
+ * Пул ключей открывается панелью по клику на строку остатка. Раньше он появлялся внизу
+ * страницы — примерно двумя экранами ниже, без перехода и без подсветки: страница просто
+ * становилась длиннее где-то за пределами видимого, и понять, к какой игре относится
+ * появившийся блок, было нельзя.
+ *
+ * Отдельного поля выбора игры здесь больше нет: таблица остатков и так показывает весь
+ * каталог (включая игры без единого ключа) и умеет искать, поэтому второй поиск на той же
+ * странице только путал — их было три на одном экране.
+ */
 const AdminGameKeysPage: React.FC = () => {
-  const [games, setGames] = useState<Game[]>([]);
-  const [selectedGameId, setSelectedGameId] = useState<string>("");
+  const [selected, setSelected] = useState<{ id: string; title: string } | null>(null);
 
-  useEffect(() => {
-    const gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
-    gameService
-      .getAllGames()
-      .then((list) => {
-        setGames(list);
-        if (list.length > 0) {
-          setSelectedGameId((prev) => prev || list[0].id || "");
-        }
-      })
-      .catch(() => {
-        setGames([]);
-      });
+  /**
+   * Есть ли в формах панели набранное, которое пропадёт при закрытии.
+   *
+   * Именно ref, а не состояние: панель закрывается обычным обработчиком нажатия клавиши,
+   * который срабатывает сразу, а состояние доезжает к следующей отрисовке. С состоянием
+   * между «вставил ключи» и «промахнулся мимо панели» остаётся щель, в которую вставленное
+   * теряется молча. Значение отсюда не рисуется, поэтому перерисовка и не нужна.
+   */
+  const unsavedRef = useRef(false);
+
+  const requestClose = useCallback(() => {
+    if (unsavedRef.current && !window.confirm("The keys you pasted have not been added yet. Close and lose them?")) {
+      return;
+    }
+    unsavedRef.current = false;
+    setSelected(null);
+  }, []);
+
+  const markUnsaved = useCallback((dirty: boolean) => {
+    unsavedRef.current = dirty;
   }, []);
 
   return (
     <div className="admin-grid">
-      <PageHeader title="Game keys" description="Key pool per game: stock, import, manual grants." breadcrumbs={["Games", "Keys"]} tabs={GAMES_TABS} />
-      <KeyStockOverview onSelectGame={setSelectedGameId} />
+      <PageHeader
+        title="Product keys"
+        description="Key pool per game or software: stock, import, manual grants. Pick a row to open its keys."
+        breadcrumbs={["Catalog", "Product keys"]}
+        tabs={GAMES_TABS}
+      />
 
-      <div className="admin-card">
-        <h2>Game keys</h2>
-        <p style={{ color: "#6b7280" }}>
-          Manage the activation-key pool per game: add keys, check stock, grant to a user.
-        </p>
-        {games.length === 0 ? (
-          <p style={{ color: "#92400e" }}>
-            No games in the catalog yet. Add a game in Catalog first, then you can manage its keys.
-          </p>
-        ) : (
-          <label>
-            Game
-            <select
-              className="input"
-              value={selectedGameId}
-              onChange={(event) => setSelectedGameId(event.target.value)}
-            >
-              {games.map((game) => (
-                <option key={game.id} value={game.id}>
-                  {game.title || game.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+      <KeyStockOverview
+        onSelectGame={(id, title) => setSelected({ id, title })}
+        selectedGameId={selected?.id}
+      />
+      <KeyRegionStock onSelectGame={(id, title) => setSelected({ id, title })} />
+
+      <div className="keys-drawer">
+        <Drawer
+          isOpen={Boolean(selected)}
+          title={selected ? `Keys — ${selected.title}` : "Keys"}
+          onClose={requestClose}
+        >
+          {/* Секция монтируется вместе с панелью: закрыли — состояние формы добавления
+              ключей не остаётся висеть от прошлой игры. */}
+          {selected && <KeyInventorySection gameId={selected.id} onDirtyChange={markUnsaved} />}
+        </Drawer>
       </div>
-
-      {selectedGameId && <KeyInventorySection gameId={selectedGameId} />}
     </div>
   );
 };

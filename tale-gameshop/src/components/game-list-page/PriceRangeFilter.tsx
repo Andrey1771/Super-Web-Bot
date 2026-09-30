@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PriceBucket } from '../../api/catalogApi';
 import { useSitePreferences } from '../../context/site-preferences';
 import { formatMoney } from '../../utils/format-money';
@@ -28,6 +29,7 @@ const CHART_HEIGHT = 40;
  * вводить числом.
  */
 const PriceRangeFilter: React.FC<PriceRangeFilterProps> = ({ min, max, from, to, histogram, onChange }) => {
+    const { t } = useTranslation();
     const { currency } = useSitePreferences();
     // Пока тянут ручку, значение живёт локально: иначе каждый пиксель движения уходил бы
     // в адресную строку и в запрос к серверу.
@@ -89,7 +91,7 @@ const PriceRangeFilter: React.FC<PriceRangeFilterProps> = ({ min, max, from, to,
                     min={min}
                     max={max}
                     value={draftFrom}
-                    aria-label="Minimum price"
+                    aria-label={t('catalog.minPrice')}
                     onChange={(event) => setDraft([Math.min(Number(event.target.value), draftTo), draftTo])}
                     onMouseUp={() => commit(draft)}
                     onTouchEnd={() => commit(draft)}
@@ -100,7 +102,7 @@ const PriceRangeFilter: React.FC<PriceRangeFilterProps> = ({ min, max, from, to,
                     min={min}
                     max={max}
                     value={draftTo}
-                    aria-label="Maximum price"
+                    aria-label={t('catalog.maxPrice')}
                     onChange={(event) => setDraft([draftFrom, Math.max(Number(event.target.value), draftFrom)])}
                     onMouseUp={() => commit(draft)}
                     onTouchEnd={() => commit(draft)}

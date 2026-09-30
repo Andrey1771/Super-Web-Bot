@@ -4,6 +4,9 @@ using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Claims;
 using System.Linq;
+using SuperBot.WebApi.Services;
+using SuperBot.WebApi.Services.Storefront;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -49,14 +52,16 @@ public class BlogController : ControllerBase
 
         var (items, total) = await _blogRepository.GetPublicPagedAsync(query);
         var statsMap = await BuildStatsMapAsync(items.Select(item => item.Id));
+        var language = BuyerLanguage.Resolve(Request);
         var list = items.Select(post => new
         {
             post.Id,
             post.Slug,
-            post.Title,
-            post.Excerpt,
+            Title = BlogLocalizer.Title(post, language),
+            Excerpt = BlogLocalizer.Excerpt(post, language),
             post.CoverUrl,
             post.Tags,
+            TagLabels = BlogLocalizer.TagLabels(post, language),
             post.PublishedAt,
             post.ReadingTime,
             post.Featured,
@@ -78,14 +83,15 @@ public class BlogController : ControllerBase
 
         var version = await _blogRepository.GetVersionByIdAsync(post.Id, post.CurrentVersionId);
         var stats = await BuildStatsAsync(post.Id);
+        var language = BuyerLanguage.Resolve(Request);
         return Ok(new
         {
             post = new
             {
                 post.Id,
                 post.Slug,
-                post.Title,
-                post.Excerpt,
+                Title = BlogLocalizer.Title(post, language),
+                Excerpt = BlogLocalizer.Excerpt(post, language),
                 post.CoverUrl,
                 ImageUrl = post.CoverUrl,
                 post.Status,
@@ -96,6 +102,7 @@ public class BlogController : ControllerBase
                 post.AuthorId,
                 post.AuthorName,
                 post.Tags,
+                TagLabels = BlogLocalizer.TagLabels(post, language),
                 post.Topics,
                 post.ReadingTime,
                 post.CurrentVersionId,
@@ -105,7 +112,7 @@ public class BlogController : ControllerBase
                 ViewCount = stats.ViewsCount,
                 CompletedReadsCount = stats.CompletedReadsCount
             },
-            version,
+            version = BlogLocalizer.Localize(version, language),
             stats
         });
     }
@@ -144,14 +151,14 @@ public class BlogController : ControllerBase
             return BadRequest("View validation requirements are not met.");
         }
 
-        var userId = GetCurrentUserId();
+        var userId = User.GetUserKey();
         var viewerKey = BuildViewerKey(userId, request.AnonId);
         if (string.IsNullOrWhiteSpace(viewerKey))
         {
             return BadRequest("Identity is required.");
         }
 
-        var ipHash = ComputeHash(GetClientIpAddress());
+        var ipHash = ComputeHash((ClientAddress.Resolve(HttpContext) ?? string.Empty));
         var userAgentHash = ComputeHash(Request.Headers.UserAgent.ToString());
         if (IsIpRateLimited(ipHash))
         {
@@ -209,8 +216,8 @@ public class BlogController : ControllerBase
         }
 
         request ??= new BlogTrackRequest();
-        var userId = GetCurrentUserId();
-        var actorKey = BuildActorKey(userId, request.AnonId, request.SessionKey);
+        var userId = User.GetUserKey();
+        var actorKey = BlogActorKey.For(userId, request.AnonId, request.SessionKey);
         if (string.IsNullOrWhiteSpace(actorKey))
         {
             return BadRequest("Identity is required.");
@@ -220,7 +227,7 @@ public class BlogController : ControllerBase
         var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
         var alreadyTracked = events.Any(item =>
             string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(BuildActorKey(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
+            string.Equals(BlogActorKey.For(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
 
         if (alreadyTracked)
         {
@@ -234,51 +241,54 @@ public class BlogController : ControllerBase
             EventType = eventType,
             Timestamp = DateTime.UtcNow,
             UserId = userId,
-            AnonId = request.AnonId,
-            SessionId = request.SessionKey
+            AnonId = request.AnonId ?? string.Empty,
+            SessionId = request.SessionKey ?? string.Empty
         });
 
         var stats = await BuildStatsAsync(post.Id);
         return Ok(stats);
     }
 
+    /// <summary>За сколько лет считаются дочитывания. Столько же было и раньше.</summary>
+    private const int StatsWindowYears = 3;
+
+    /// <summary>Событие «статья дочитана» — по нему считается второй счётчик.</summary>
+    private const string ReadCompleteEvent = "POST_READ_COMPLETE";
+
     private async Task<BlogPostStatsResponse> BuildStatsAsync(string postId)
     {
-        var views = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdAsync(postId);
-
-        var events = await _blogRecommendationsService.GetEventsByPostAsync(postId, DateTime.UtcNow.AddYears(-3));
-        var reads = events
-            .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
-            .Select(item => BuildActorKey(item.UserId, item.AnonId, item.SessionId))
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Distinct(StringComparer.Ordinal)
-            .Count();
-
-        return new BlogPostStatsResponse
-        {
-            PostId = postId,
-            ViewsCount = views,
-            CompletedReadsCount = reads,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var map = await BuildStatsMapAsync(new[] { postId });
+        return map.TryGetValue(postId, out var stats)
+            ? stats
+            : new BlogPostStatsResponse { PostId = postId, UpdatedAt = DateTime.UtcNow };
     }
 
+    /// <summary>
+    /// Статистика сразу по списку статей: два запроса на весь список, независимо от его длины.
+    ///
+    /// Раньше здесь был цикл: на каждую статью свой подсчёт просмотров (хотя строкой выше уже
+    /// лежал готовый на всех) и своя выборка ВСЕХ её событий за три года — ради одного числа.
+    /// На шести статьях это незаметно, но растёт и от числа статей в ленте, и от накопленных
+    /// событий: обе величины со временем только увеличиваются.
+    /// </summary>
     private async Task<Dictionary<string, BlogPostStatsResponse>> BuildStatsMapAsync(IEnumerable<string> postIds)
     {
         var ids = postIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids);
+        var readsMap = await _blogRecommendationsService.CountDistinctActorsByPostsAsync(
+            ids, ReadCompleteEvent, DateTime.UtcNow.AddYears(-StatsWindowYears));
 
-        var map = new Dictionary<string, BlogPostStatsResponse>(StringComparer.OrdinalIgnoreCase);
-        foreach (var postId in ids)
-        {
-            var stats = await BuildStatsAsync(postId);
-            if (viewsMap.TryGetValue(postId, out var viewCount))
+        var now = DateTime.UtcNow;
+        return ids.ToDictionary(
+            postId => postId,
+            postId => new BlogPostStatsResponse
             {
-                stats.ViewsCount = viewCount;
-            }
-            map[postId] = stats;
-        }
-        return map;
+                PostId = postId,
+                ViewsCount = viewsMap.TryGetValue(postId, out var views) ? views : 0,
+                CompletedReadsCount = readsMap.TryGetValue(postId, out var reads) ? reads : 0,
+                UpdatedAt = now
+            },
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private static string BuildViewerKey(string userId, string anonId)
@@ -316,16 +326,6 @@ public class BlogController : ControllerBase
         }
     }
 
-    private string GetClientIpAddress()
-    {
-        var forwarded = Request.Headers["X-Forwarded-For"].ToString();
-        if (!string.IsNullOrWhiteSpace(forwarded))
-        {
-            return forwarded.Split(',')[0].Trim();
-        }
-        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
-    }
-
     private static string ComputeHash(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -339,39 +339,17 @@ public class BlogController : ControllerBase
         return Convert.ToHexString(hash);
     }
 
-    private static string BuildActorKey(string userId, string anonId, string sessionKey)
-    {
-        if (!string.IsNullOrWhiteSpace(userId))
-        {
-            return $"u:{userId}";
-        }
-        if (!string.IsNullOrWhiteSpace(anonId))
-        {
-            return $"a:{anonId}";
-        }
-        if (!string.IsNullOrWhiteSpace(sessionKey))
-        {
-            return $"s:{sessionKey}";
-        }
-        return string.Empty;
-    }
-
-    private string GetCurrentUserId()
-    {
-        return User?.FindFirst("email")?.Value
-               ?? User?.FindFirst(ClaimTypes.Email)?.Value
-               ?? User?.FindFirst("preferred_username")?.Value
-               ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? User?.FindFirst("sub")?.Value
-               ?? string.Empty;
-    }
 }
 
+/// <summary>
+/// Кто дочитал статью. Пользователь берётся из токена, поэтому в запросе его нет: раньше здесь было
+/// ненулевое UserId, которого фронт не присылает, — [ApiController] отвечал 400 на каждый запрос,
+/// дочитывания не засчитывались вовсе, а страница поста повторяла запрос каждые полсекунды.
+/// </summary>
 public class BlogTrackRequest
 {
-    public string UserId { get; set; }
-    public string AnonId { get; set; }
-    public string SessionKey { get; set; }
+    public string? AnonId { get; set; }
+    public string? SessionKey { get; set; }
 }
 
 public class BlogPostStatsResponse

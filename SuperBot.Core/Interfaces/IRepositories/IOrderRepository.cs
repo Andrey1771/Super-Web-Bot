@@ -21,6 +21,8 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<List<Order>> GetPaidOrdersSinceAsync(DateTime sinceUtc);
 
         Task<List<Order>> GetOrdersByUserAsync(string userName);
+        /// <summary>Заказы под любым из имён пользователя (email, логин, sub) — см. CurrentUserExtensions.GetOrderOwnerAliases.</summary>
+        Task<List<Order>> GetOrdersByUsersAsync(IReadOnlyCollection<string> userNames);
         /// <summary>Оплаченные, но не полностью выданные заказы — для довыдачи при пополнении пула.</summary>
         Task<List<Order>> GetUnfulfilledPaidOrdersAsync();
 
@@ -63,6 +65,12 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(IReadOnlyCollection<string> userNames, OrderQueryParameters query);
         Task<(IReadOnlyList<Order> Items, long Total)> GetPagedAsync(OrderQueryParameters query);
         Task UpdateOrderAsync(Order order);
+
+        /// <summary>
+        /// Пишет только налог заказа. Отдельно от UpdateOrderAsync: налог записывается сетевым вызовом, и замена
+        /// всего документа за это время затёрла бы то, что успела сохранить выдача ключей или возврат.
+        /// </summary>
+        Task SetTaxAsync(string orderId, OrderTax tax, decimal taxTotal);
         Task DeleteOrderAsync(string orderId);
     }
 }

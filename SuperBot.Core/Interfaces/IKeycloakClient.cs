@@ -9,19 +9,6 @@ using System.Threading.Tasks;
 
 namespace SuperBot.Core.Interfaces
 {
-    public class OrganizationRepresentation
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-    }
-
-    public class UserCredentialRepresentation
-    {
-        public string Id { get; set; }
-        public string Type { get; set; }
-        public bool Temporary { get; set; }
-    }
 
     public class LoginEventRepresentation
     {
@@ -49,10 +36,7 @@ namespace SuperBot.Core.Interfaces
 
     public interface IKeycloakClient
     {
-        public Task<OrganizationRepresentation> GetOrganizationAsync(string realm, string orgId, string accessToken);
-        public Task<List<OrganizationRepresentation>> GetOrganizationsAsync(string realm, string accessToken);
         Task<List<dynamic>> GetUserCredentialsAsync(string realm, string userId, string accessToken);
-        Task<List<LoginEventRepresentation>> GetAllLoginEventsAsync(string realm, string accessToken);
         public Task<List<LoginEventRepresentation>> GetUserLoginEventsAsync(string realm, string userId, string accessToken);
         public Task<List<UserSessionRepresentation>> GetUserSessionsAsync(string realm, string userId, string accessToken);
 

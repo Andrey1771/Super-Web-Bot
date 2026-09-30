@@ -23,6 +23,16 @@ public class SupportChatOptions
     // не нужно — её «размышления» оплачиваются как ответ и для поддержки бесполезны.
     public string DeepSeekModel { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Метка приложения в запросах к провайдеру (поле user OpenAI-совместимого API).
+    ///
+    /// Нужна, когда одним ключом пользуется несколько наших приложений: метка уезжает вместе с
+    /// запросом и попадает в логи провайдера. Учтите: разбивку расходов по этому полю DeepSeek
+    /// в личном кабинете не показывает — надёжно разделять счёт умеет только отдельный ключ на
+    /// приложение. Наш собственный подсчёт (дневной бюджет) ведётся по этому же приложению.
+    /// </summary>
+    public string AppTag { get; set; } = "tale-shop-support";
+
     // --- Дневной бюджет --------------------------------------------------------
     // 0 — без ограничения. Цены за миллион токенов, сверяться с прайсом провайдера.
     public decimal DailyBudgetUsd { get; set; } = 0m;
@@ -79,8 +89,8 @@ public class SupportChatOptions
     // Выключено — обещаем только типичное ожидание, без «ответим утром».
     public bool BusinessHoursEnabled { get; set; } = false;
 
-    // IANA-идентификатор, например "Europe/Moscow". Неизвестный — считаем по UTC.
-    public string BusinessHoursTimeZone { get; set; } = "UTC";
+    // IANA-идентификатор, например "Europe/Berlin". Неизвестный — считаем по UTC.
+    public string BusinessHoursTimeZone { get; set; } = "Europe/Berlin";
 
     public int BusinessHoursStart { get; set; } = 10;
 
@@ -103,8 +113,14 @@ public class SupportChatOptions
 
     // --- Abuse / load protection ---------------------------------------------
 
-    // Max simultaneous LLM generations across the whole app. Self-hosted Ollama can be saturated
-    // by spam; excess requests wait briefly then get a "busy" reply instead of piling on the model.
+    // Max simultaneous LLM generations PER INSTANCE. Self-hosted Ollama can be saturated by spam;
+    // excess requests wait briefly then get a "busy" reply instead of piling on the model.
+    //
+    // «Per instance», а не «across the whole app», как здесь было написано раньше: лимит держит
+    // обычный SemaphoreSlim внутри процесса. На одной реплике это одно и то же, на четырёх
+    // реальный потолок становится 4×N — то есть защита от перегрузки перестаёт защищать ровно
+    // тогда, когда она нужна. Разворачивая несколько реплик, дели это число на их количество
+    // (или заменяй счётчик на распределённый — см. docs/scaling.md).
     public int MaxConcurrentLlm { get; set; } = 3;
 
     // How long a request waits for a free LLM slot before returning the "busy" message.

@@ -41,9 +41,28 @@ public class SupportKnowledgeArticle
 
     public string? InstantTextEn { get; set; }
 
+    public string? InstantTextUk { get; set; }
+
+    public string? InstantTextPl { get; set; }
+
+    /// <summary>Готовый ответ на языке диалога; нет текста на этом языке — null, и вопрос уходит модели.</summary>
+    public string? InstantTextFor(string? language) => (language ?? "en").ToLowerInvariant() switch
+    {
+        "ru" => InstantTextRu,
+        "uk" => InstantTextUk,
+        "pl" => InstantTextPl,
+        _ => InstantTextEn,
+    };
+
     public DateTime UpdatedAt { get; set; }
 
     public string? UpdatedBy { get; set; }
+
+    /// <summary>
+    /// Когда статье один раз дописали украинский и польский из сидов. Проставлено — больше не трогаем:
+    /// иначе каждый рестарт возвращал бы и стёртые админом тексты, и убранные слова-триггеры.
+    /// </summary>
+    public DateTime? TranslationsBackfilledAt { get; set; }
 }
 
 public class InstantTriggerGroup

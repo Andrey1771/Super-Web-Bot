@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, {useCallback, useEffect, useState} from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faChevronDown, faFileLines} from '@fortawesome/free-solid-svg-icons';
@@ -8,28 +9,33 @@ import {listSupportTickets} from '../support/supportApi';
 import type {SupportTicket, SupportTicketStatus} from '../support/types';
 import TicketDetailsModal from '../../../pages/account/help/components/TicketDetailsModal';
 import type {TicketSummary} from '../../../types/support';
-import {faqItems} from '../../../content/support/faq';
-import {supportDocs} from '../../../content/support/docs';
+import {FAQ_IDS, getFaqItems} from '../../../content/support/faq';
+import {groupSupportDocs} from '../../../content/support/doc-groups';
 import './account-help-page.css';
 
-const systemStatuses = [
-    {label: 'Store', status: 'Operational'},
-    {label: 'Checkout', status: 'Operational'},
-    {label: 'Key delivery', status: 'Operational'},
-    {label: 'Support chat', status: 'Operational'}
-];
-
 const AccountHelpPage: React.FC = () => {
+    const { t } = useTranslation();
     const [tickets, setTickets] = useState<SupportTicket[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const newRequestButtonRef = React.useRef<HTMLButtonElement | null>(null);
+    // Кнопок, открывающих форму обращения, две (в шапке списка и в блоке «Still need help?»): фокус после закрытия
+    // возвращается на ту, что нажали.
+    const requestOpenerRef = React.useRef<HTMLButtonElement | null>(null);
+    const openRequestModal = (event: React.MouseEvent<HTMLButtonElement>) => {
+        requestOpenerRef.current = event.currentTarget;
+        setIsModalOpen(true);
+    };
+    // Живой чат — общий виджет в углу сайта; он слушает это событие (так же открывает его страница /support).
+    const openLiveChat = () => window.dispatchEvent(new Event("taleshop:open-support-chat"));
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
     const [selectedTicketSummary, setSelectedTicketSummary] = useState<TicketSummary | undefined>();
     const [toastMessage, setToastMessage] = useState<string | null>(null);
-    const [openFaqId, setOpenFaqId] = useState<string | null>(faqItems[0]?.id ?? null);
+    const [openFaqId, setOpenFaqId] = useState<string | null>(FAQ_IDS[0] ?? null);
+    // Тексты — на языке сайта; собираем при рендере, чтобы смена языка не оставила английский.
+    const faqItems = getFaqItems();
+    const supportDocGroups = groupSupportDocs();
 
     const formatRelativeTime = (value: string) => {
         const date = new Date(value);
@@ -40,26 +46,26 @@ const AccountHelpPage: React.FC = () => {
         const diffMs = Date.now() - date.getTime();
         const diffMinutes = Math.floor(diffMs / 60000);
         if (diffMinutes < 1) {
-            return 'Just now';
+            return t('common.justNowShort');
         }
         if (diffMinutes < 60) {
-            return `${diffMinutes} min ago`;
+            return t('common.minAgo', { count: diffMinutes });
         }
         const diffHours = Math.floor(diffMinutes / 60);
         if (diffHours < 24) {
-            return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+            return t('common.hoursAgo', { count: diffHours });
         }
         const diffDays = Math.floor(diffHours / 24);
-        return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+        return t('common.daysAgo', { count: diffDays });
     };
 
     // Человеческие подписи вместо сырых enum-имён (WaitingForUser и т.п.).
     const humanStatusLabels: Record<string, string> = {
-        Open: 'Open',
-        WaitingForUser: 'Reply needed',
-        WaitingForSupport: 'In review',
-        Resolved: 'Resolved',
-        Closed: 'Closed'
+        Open: t('account.help.statuses.Open'),
+        WaitingForUser: t('account.help.statuses.WaitingForUser'),
+        WaitingForSupport: t('account.help.statuses.WaitingForSupport'),
+        Resolved: t('account.help.statuses.Resolved'),
+        Closed: t('account.help.statuses.Closed')
     };
 
     const statusLabelFor = (status: SupportTicketStatus) => {
@@ -98,7 +104,7 @@ const AccountHelpPage: React.FC = () => {
             setTickets(data);
         } catch (error) {
             console.error('Failed to load support tickets', error);
-            setLoadError('Unable to load requests right now.');
+            setLoadError(t('account.help.loadFailed'));
         } finally {
             setIsLoading(false);
         }
@@ -130,32 +136,31 @@ const AccountHelpPage: React.FC = () => {
     }, [toastMessage]);
 
     return (
-        <AccountShell title="Help" sectionLabel="Help" actions={<></>}>
+        <AccountShell title={t('account.help.title')} sectionLabel={t('account.help.title')} actions={<></>}>
             <div className="help-page">
                 <section className="card help-support">
                     <div className="help-section-header">
-                        <h2>My support requests</h2>
+                        <h2>{t('account.help.myRequests')}</h2>
                         <button
                             type="button"
                             className="btn btn-primary help-action-btn"
-                            ref={newRequestButtonRef}
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={openRequestModal}
                         >
-                            New request
+                            {t('account.help.newRequest')}
                         </button>
                     </div>
                     <div className="help-requests-table">
                         <div className="help-requests-row help-requests-head">
-                            <span>Request</span>
-                            <span>Subject</span>
-                            <span>Status</span>
-                            <span>Updated</span>
+                            <span>{t('account.help.request')}</span>
+                            <span>{t('account.help.subject')}</span>
+                            <span>{t('account.help.status')}</span>
+                            <span>{t('account.help.updated')}</span>
                             <span />
                         </div>
-                        {isLoading && <div className="help-requests-empty">Loading support requests...</div>}
+                        {isLoading && <div className="help-requests-empty">{t('account.help.loading')}</div>}
                         {!isLoading && loadError && <div className="help-requests-empty">{loadError}</div>}
                         {!isLoading && !loadError && tickets.length === 0 && (
-                            <div className="help-requests-empty">No support requests yet.</div>
+                            <div className="help-requests-empty">{t('account.help.none')}</div>
                         )}
                         {!isLoading &&
                             !loadError &&
@@ -184,7 +189,7 @@ const AccountHelpPage: React.FC = () => {
                                             setIsTicketModalOpen(true);
                                         }}
                                     >
-                                        View
+                                        {t('common.view')}
                                     </button>
                                 </div>
                             ))}
@@ -193,7 +198,7 @@ const AccountHelpPage: React.FC = () => {
 
                 <section className="card help-faq">
                     <div className="help-section-header">
-                        <h2>FAQ</h2>
+                        <h2>{t('account.help.faq')}</h2>
                     </div>
                     <div className="help-accordion">
                         {faqItems.map((item, index) => {
@@ -235,52 +240,41 @@ const AccountHelpPage: React.FC = () => {
                     </div>
                 </section>
 
-                <div className="help-info-grid">
-                    <section className="card help-guides">
-                        <h3>Guides &amp; policies</h3>
-                        <ul>
-                            {supportDocs.map((guide) => (
-                                <li key={guide.id}>
-                                    <span className="help-doc-icon" aria-hidden="true">
-                                        <FontAwesomeIcon icon={faFileLines} />
-                                    </span>
-                                    <Link to={guide.route}>{guide.title}</Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-
-                    <section className="card help-status">
-                        <h3>System status</h3>
-                        <div className="help-status-indicator">
-                            <span className="help-status-dot" aria-hidden="true" />
-                            <span>All systems operational</span>
-                        </div>
-                        <div className="help-status-list">
-                            {systemStatuses.map((system) => (
-                                <div key={system.label} className="help-status-row">
-                                    <span>{system.label}</span>
-                                    <span className="help-system-tag">{system.status}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                </div>
+                <section className="card help-guides">
+                    <h3>{t('account.help.guides')}</h3>
+                    <div className="help-guides-grid">
+                        {supportDocGroups.map((group) => (
+                            <div className="help-guides-group" key={group.title}>
+                                <h4>{group.title}</h4>
+                                <ul>
+                                    {group.docs.map((guide) => (
+                                        <li key={guide.id}>
+                                            <Link to={guide.route}>
+                                                <FontAwesomeIcon icon={faFileLines} className="help-doc-icon" aria-hidden="true" />
+                                                <span>{guide.title}</span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </section>
 
                 <section className="card help-cta">
                     <div className="help-cta-content">
-                        <h3>Still need help?</h3>
-                        <p>Our team answers 24/7. Average response time: 2-6 hours.</p>
+                        <h3>{t('account.help.stillNeed')}</h3>
+                        <p>{t('account.help.team')}</p>
                         <div className="help-cta-actions">
-                            <button type="button" className="btn btn-primary help-action-btn">
-                                Contact support
+                            <button type="button" className="btn btn-primary help-action-btn" onClick={openRequestModal}>
+                                {t('common.contactSupport')}
                             </button>
-                            <button type="button" className="btn btn-outline help-secondary-btn">
-                                Open live chat
+                            <button type="button" className="btn btn-outline help-secondary-btn" onClick={openLiveChat}>
+                                {t('account.help.openChat')}
                             </button>
                         </div>
                         <span className="help-cta-note">
-                            Please include order ID or Support ID when possible.
+                            {t('account.help.includeIds')}
                         </span>
                     </div>
                 </section>
@@ -288,10 +282,10 @@ const AccountHelpPage: React.FC = () => {
             <NewSupportRequestModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                openerRef={newRequestButtonRef}
+                openerRef={requestOpenerRef}
                 onSubmitted={async (ticket) => {
                     setTickets((prev) => [ticket, ...prev]);
-                    setToastMessage('Request submitted');
+                    setToastMessage(t('account.help.submitted'));
                     await fetchTickets();
                 }}
             />

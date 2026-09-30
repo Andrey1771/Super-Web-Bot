@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Linq;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -36,7 +37,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet("data-export")]
         public async Task<IActionResult> Export()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             if (string.IsNullOrWhiteSpace(userId))
             {
                 return Unauthorized();
@@ -48,8 +49,8 @@ namespace SuperBot.WebApi.Controllers
                 profile = new BillingProfile
                 {
                     UserId = userId,
-                    DisplayName = GetDisplayName(),
-                    Email = GetEmail(),
+                    DisplayName = User.GetDisplayName(),
+                    Email = User.GetEmail(),
                     HideOwnedGamesInProfile = false
                 };
                 await _billingProfileRepository.UpsertAsync(profile);
@@ -79,7 +80,7 @@ namespace SuperBot.WebApi.Controllers
                 }).ToArray();
             }
 
-            var identifiers = GetUserIdentifiers();
+            var identifiers = User.GetAccountIdentifiers();
             var exportPayload = new
             {
                 Profile = profile,
@@ -107,52 +108,5 @@ namespace SuperBot.WebApi.Controllers
             return File(memoryStream.ToArray(), "application/zip", "tale-shop-data-export.zip");
         }
 
-        private string GetUserId()
-        {
-            return User?.FindFirst("sub")?.Value
-                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User?.FindFirst("email")?.Value
-                ?? User?.FindFirst(ClaimTypes.Email)?.Value
-                ?? User?.FindFirst("preferred_username")?.Value
-                ?? string.Empty;
-        }
-
-        private string GetEmail()
-        {
-            return User?.FindFirst("email")?.Value
-                ?? User?.FindFirst(ClaimTypes.Email)?.Value
-                ?? string.Empty;
-        }
-
-        private string GetDisplayName()
-        {
-            return User?.FindFirst("name")?.Value
-                ?? User?.FindFirst("preferred_username")?.Value
-                ?? GetEmail();
-        }
-
-        private HashSet<string> GetUserIdentifiers()
-        {
-            var identifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var userId = GetUserId();
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                identifiers.Add(userId);
-            }
-
-            var email = GetEmail();
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                identifiers.Add(email);
-            }
-
-            var username = User?.FindFirst("preferred_username")?.Value;
-            if (!string.IsNullOrWhiteSpace(username))
-            {
-                identifiers.Add(username);
-            }
-
-            return identifiers;
-        }
     }
 }

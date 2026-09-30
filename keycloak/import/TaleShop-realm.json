@@ -2,7 +2,15 @@
   "realm": "TaleShop",
   "enabled": true,
   "loginTheme": "tale-shop",
-  "sslRequired": "none",
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "en",
+    "ru",
+    "uk",
+    "pl"
+  ],
+  "defaultLocale": "en",
+  "sslRequired": "external",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "loginWithEmailAllowed": true,
@@ -39,7 +47,7 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
       "protocol": "openid-connect",
       "rootUrl": "http://localhost",
@@ -75,7 +83,7 @@
       "publicClient": false,
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
       "clientAuthenticatorType": "client-secret",
       "secret": "local-dev-admin-secret-change-me"
@@ -83,16 +91,17 @@
   ],
   "users": [
     {
-      "username": "admin",
+      "id": "9d1c92f2-83d7-43a4-833d-018aa969c521",
+      "username": "${TALESHOP_ADMIN_USER}",
       "enabled": true,
       "emailVerified": true,
-      "email": "admin@taleshop.local",
+      "email": "${TALESHOP_ADMIN_EMAIL}",
       "firstName": "Admin",
       "lastName": "User",
       "credentials": [
         {
           "type": "password",
-          "value": "admin",
+          "value": "${TALESHOP_ADMIN_PASSWORD}",
           "temporary": false
         }
       ],
@@ -831,5 +840,13 @@
         "update.profile.on.first.login": "missing"
       }
     }
-  ]
+  ],
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 10
 }

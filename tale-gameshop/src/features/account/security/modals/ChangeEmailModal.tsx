@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React, {useState} from 'react';
 
 type ChangeEmailModalProps = {
@@ -8,6 +9,7 @@ type ChangeEmailModalProps = {
 };
 
 const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({isOpen, isSubmitting, onClose, onSubmit}) => {
+    const {t} = useTranslation();
     const [newEmail, setNewEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -18,11 +20,11 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({isOpen, isSubmitting
 
     const handleSubmit = () => {
         if (!newEmail) {
-            setError('Enter a new email address.');
+            setError(t('account.security.changeEmail.errEmail'));
             return;
         }
         if (!password) {
-            setError('Enter your password to confirm.');
+            setError(t('account.security.changeEmail.errPassword'));
             return;
         }
         setError('');
@@ -33,14 +35,14 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({isOpen, isSubmitting
         <div className="security-modal-overlay">
             <div className="security-modal">
                 <div className="security-modal-header">
-                    <h3>Change email</h3>
+                    <h3>{t('account.security.changeEmail.title')}</h3>
                     <button type="button" className="security-modal-close" onClick={onClose}>
                         ✕
                     </button>
                 </div>
                 <div className="security-modal-body">
                     <label className="security-field">
-                        <span>New email</span>
+                        <span>{t('account.security.changeEmail.newEmail')}</span>
                         <input
                             className="input"
                             type="email"
@@ -50,7 +52,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({isOpen, isSubmitting
                         />
                     </label>
                     <label className="security-field">
-                        <span>Password</span>
+                        <span>{t('common.password')}</span>
                         <input
                             className="input"
                             type="password"
@@ -63,10 +65,10 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({isOpen, isSubmitting
                 </div>
                 <div className="security-modal-footer">
                     <button type="button" className="btn btn-outline" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
-                        Update email
+                        {t('account.security.changeEmail.update')}
                     </button>
                 </div>
             </div>

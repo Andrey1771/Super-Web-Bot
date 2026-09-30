@@ -138,6 +138,17 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<List<Order>>(ordersDb);
         }
 
+        public async Task<List<Order>> GetOrdersByUsersAsync(IReadOnlyCollection<string> userNames)
+        {
+            if (userNames.Count == 0)
+            {
+                return new List<Order>();
+            }
+            var ordersDb = await _orders.Find(Builders<OrderDb>.Filter.In(order => order.UserName, userNames)).ToListAsync();
+            await EnsureOrderGuidsAsync(ordersDb);
+            return _mapper.Map<List<Order>>(ordersDb);
+        }
+
         public async Task<List<Order>> GetUnfulfilledPaidOrdersAsync()
         {
             var filter = Builders<OrderDb>.Filter.And(
@@ -322,6 +333,15 @@ namespace SuperBot.Infrastructure.Repositories
             return await FetchPagedAsync(filter, query);
         }
 
+        public async Task SetTaxAsync(string orderId, OrderTax tax, decimal taxTotal)
+        {
+            var update = Builders<OrderDb>.Update
+                .Set(order => order.Tax, _mapper.Map<OrderTaxDb>(tax))
+                .Set(order => order.TaxTotal, taxTotal)
+                .Set(order => order.Totals.TaxTotal, taxTotal);
+            await _orders.UpdateOneAsync(order => order.OrderId == orderId, update);
+        }
+
         public async Task UpdateOrderAsync(Order order)
         {
             if (order.Id == Guid.Empty)
@@ -398,7 +418,7 @@ namespace SuperBot.Infrastructure.Repositories
                 "UNPAID" => Builders<OrderDb>.Filter.Or(paymentFilter, Builders<OrderDb>.Filter.Eq(order => order.IsPaid, false)),
                 // Раздел Refunds в админке: всё, где деньги ушли обратно или оспариваются, одним фильтром.
                 "REFUNDS" => Builders<OrderDb>.Filter.In(order => order.PaymentStatus,
-                    new[] { "REFUNDED", "PARTIALLY_REFUNDED", "REFUND_PENDING", "DISPUTED" }),
+                    new[] { "REFUNDED", "PARTIALLY_REFUNDED", "REFUND_PENDING", "DISPUTED", "DISPUTE_LOST" }),
                 _ => paymentFilter
             };
         }
@@ -409,7 +429,7 @@ namespace SuperBot.Infrastructure.Repositories
 
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
-                var regex = new BsonRegularExpression(query.Search, "i");
+                var regex = new BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(query.Search.Trim()), "i");
                 var searchFilter = Builders<OrderDb>.Filter.Or(
                     Builders<OrderDb>.Filter.Regex(order => order.GameName, regex),
                     Builders<OrderDb>.Filter.Regex(order => order.UserName, regex),

@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using SuperBot.Common.Auth;
+using SuperBot.WebApi.Services;
 using SuperBot.Core.Interfaces;
 
 namespace SuperBot.WebApi.Controllers;
@@ -14,15 +17,19 @@ public class PromoController : ControllerBase
         _promoCodeService = promoCodeService;
     }
 
+    // Перебор промокодов: ответ «valid/invalid» сам по себе утечка, поэтому частота ограничена по адресу.
     [HttpPost("validate")]
+    [EnableRateLimiting(PublicRateLimits.PromoValidation)]
     public async Task<IActionResult> Validate([FromBody] PromoValidateRequest request)
     {
         if (request == null || string.IsNullOrWhiteSpace(request.Code))
         {
-            return BadRequest(new { valid = false, message = "Promo code is required." });
+            return BadRequest(new { valid = false, message = "Promo code is required.", messageCode = "promo.required" });
         }
 
-        var userName = User.Identity?.Name ?? User.FindFirst("preferred_username")?.Value;
+        // Тот же ключ покупателя, что у заказов и учёта использований (email). С Identity.Name
+        // проверка «один раз на покупателя» искала записи не под тем именем и не срабатывала.
+        var userName = User.Identity?.IsAuthenticated == true ? User.GetUserKey() : null;
         var result = await _promoCodeService.ValidateAsync(new PromoValidationRequest
         {
             Code = request.Code,
@@ -36,6 +43,8 @@ public class PromoController : ControllerBase
             discountAmount = result.DiscountAmount,
             finalTotal = result.FinalTotal,
             message = result.Message,
+            // Код сообщения — для перевода на витрине; поле code занято самим промокодом.
+            messageCode = result.MessageCode,
             code = result.NormalizedCode
         });
     }

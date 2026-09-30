@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/layout/PageHeader";
 import OrdersFilters from "../../components/orders/OrdersFilters";
-import OrdersTable from "../../components/orders/OrdersTable";
+import OrdersTable, { ORDERS_PAGE_SIZE } from "../../components/orders/OrdersTable";
+import { fetchWindow } from "../../utils/page-window";
 import OrderDetailsDrawer from "../../components/orders/OrderDetailsDrawer";
 import Card from "../../components/ui/Card";
 import container from "../../inversify.config";
@@ -23,7 +24,7 @@ const defaultFilters: OrderFilters = {
 const OrdersPage: React.FC = () => {
   const ordersService = container.get<IAdminOrdersService>(IDENTIFIERS.IAdminOrdersService);
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
 
   // ?search= — прямая ссылка из карточки клиента и дашборда: фильтр применяется сразу.
   const [searchParams] = useSearchParams();
@@ -34,49 +35,48 @@ const OrdersPage: React.FC = () => {
   );
   const [filters, setFilters] = useState<OrderFilters>(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState<OrderFilters>(initialFilters);
-  const [items, setItems] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // По этой метке таблица пересобирает источник и забирает первое окно заново:
+  // сменили фильтр, нажали Refresh, изменили заказ в дровере.
+  const [reloadToken, setReloadToken] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(async () => {
-    try {
+  // Окно строк для таблицы: границы задаёт она сама по мере прокрутки, страница добавляет
+  // только свои фильтры. API постраничный — перевод отрезка в страницы делает fetchWindow.
+  const loadOrders = useCallback(
+    async (skip: number, take: number) => {
       setLoading(true);
-      setError(null);
-      const response = await ordersService.getOrders({
-        filters: appliedFilters,
-        page,
-        pageSize,
-        sort: "createdAt:desc",
-      });
-      setItems(response.items);
-      setTotal(response.total);
-    } catch (err) {
-      console.error("Failed to load orders", err);
-      setError("Unable to load orders. Check your permissions or try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [appliedFilters, ordersService, page, pageSize]);
+      try {
+        const rows = await fetchWindow(skip, take, ORDERS_PAGE_SIZE, (page, pageSize) =>
+          ordersService.getOrders({
+            filters: appliedFilters,
+            page,
+            pageSize,
+            sort: "createdAt:desc",
+          })
+        );
+        setTotal(rows.total);
+        return rows;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appliedFilters, ordersService]
+  );
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  const fetchOrders = useCallback(() => setReloadToken((token) => token + 1), []);
 
+  // Новый фильтр — новый запрос: таблица сама начнёт с первого окна.
   const handleApply = () => {
     setAppliedFilters(filters);
-    setPage(1);
   };
 
   const handleReset = () => {
     setFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
-    setPage(1);
   };
 
   const handleRowClick = async (order: Order) => {
@@ -101,7 +101,8 @@ const OrdersPage: React.FC = () => {
       return;
     }
     setSelectedOrder(updated);
-    setItems((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    // Строка живёт в таблице, а не в состоянии страницы — просим её перечитать окно.
+    setReloadToken((token) => token + 1);
   }, []);
 
   const handleAction = useCallback(
@@ -110,6 +111,18 @@ const OrdersPage: React.FC = () => {
         throw new Error("No order selected");
       }
       const result = await ordersService.runAction(selectedOrder.id, action, reason);
+      applyResult(result.order);
+      return result;
+    },
+    [applyResult, ordersService, selectedOrder]
+  );
+
+  const handleRefundItem = useCallback(
+    async (itemId: string, quantity: number, reason: string) => {
+      if (!selectedOrder) {
+        throw new Error("No order selected");
+      }
+      const result = await ordersService.refundItem(selectedOrder.id, itemId, quantity, reason);
       applyResult(result.order);
       return result;
     },
@@ -128,11 +141,6 @@ const OrdersPage: React.FC = () => {
     [applyResult, ordersService, selectedOrder]
   );
 
-  const handlePageChange = (nextPage: number, nextPageSize: number) => {
-    setPage(nextPage);
-    setPageSize(nextPageSize);
-  };
-
   // Экспорт — по применённому фильтру и по всем страницам; CSV собирает сервер.
   const handleExport = useCallback(async () => {
     try {
@@ -146,24 +154,7 @@ const OrdersPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Orders");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "export-orders",
-        label: "Export CSV",
-        variant: "primary",
-        onClick: handleExport,
-      },
-      {
-        type: "button",
-        id: "refresh-orders",
-        label: "Refresh",
-        variant: "outline",
-        onClick: fetchOrders,
-      },
-    ]);
-    return () => setHeaderActions([]);
-  }, [fetchOrders, handleExport, setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const activeFilterCount = useMemo(() => Object.values(appliedFilters).filter(Boolean).length, [appliedFilters]);
 
@@ -172,35 +163,37 @@ const OrdersPage: React.FC = () => {
       <PageHeader
         title="Orders"
         description="Review and manage customer orders."
-        breadcrumbs={["Orders", "Admin"]}
+        breadcrumbs={["Sales", "Orders"]}
+        primaryAction={
+          <>
+            <button className="btn btn-primary" onClick={handleExport}>Export CSV</button>
+            <button className="btn btn-outline" onClick={fetchOrders} disabled={loading}>Refresh</button>
+          </>
+        }
       />
 
-      <OrdersFilters
-        filters={filters}
-        onChange={setFilters}
-        onApply={handleApply}
-        onReset={handleReset}
-        isLoading={loading}
-      />
-
-      {activeFilterCount > 0 && (
-        <Card>
-          <p className="text-sm text-gray-500">
-            Filters applied: {activeFilterCount} · Export CSV downloads all {total} matching order(s)
-          </p>
-        </Card>
-      )}
-
+      {/* Фильтры едут внутрь карточки списка: сами по себе, отдельным блоком над таблицей,
+          они висели в воздухе — фильтр без строк, к которым он применяется, ничего не значит. */}
       <OrdersTable
-        items={items}
-        total={total}
-        page={page}
-        pageSize={pageSize}
-        loading={loading}
-        error={error}
-        onRetry={fetchOrders}
+        load={loadOrders}
+        reloadToken={reloadToken}
         onRowClick={handleRowClick}
-        onPageChange={handlePageChange}
+        toolbar={
+          <div className="mb-4">
+            <OrdersFilters
+              filters={filters}
+              onChange={setFilters}
+              onApply={handleApply}
+              onReset={handleReset}
+              isLoading={loading}
+            />
+            {activeFilterCount > 0 && (
+              <p className="mt-3 text-sm text-gray-500">
+                Filters applied: {activeFilterCount} · Export CSV downloads all {total} matching order(s)
+              </p>
+            )}
+          </div>
+        }
       />
 
       <OrderDetailsDrawer
@@ -211,6 +204,7 @@ const OrdersPage: React.FC = () => {
         onClose={() => setSelectedOrder(null)}
         onAction={handleAction}
         onForceStatus={handleForceStatus}
+        onRefundItem={handleRefundItem}
       />
     </div>
   );

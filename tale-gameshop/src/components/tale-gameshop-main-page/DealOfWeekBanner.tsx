@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faCopy, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import container from "../../inversify.config";
@@ -27,14 +28,13 @@ type TarotState = {
 type DealPhase = "idle" | "dealing" | "done";
 
 // Тихие «пожелания» по бокам полосы: проявляются, всплывают и тают (магия исполнения желаний).
-const tarotWishes = [
-    "may a hidden gem find you ✦",
-    "wish for it — the deck listens",
-    "fortune favors the curious ✦",
-    "tonight is a good night to play"
-];
+// Пожелания — декоративные (aria-hidden), тексты в словаре dealWeek.wish1..4.
+const tarotWishKeys = ["wish1", "wish2", "wish3", "wish4"];
 
 // Расклад раскрыт один раз за сессию: при возвратах на главную колоду не показываем снова.
+/** Имя акции для отчётов. Одно место: разное написание рассыпало бы её на несколько. */
+const PROMOTION_NAME = "Deal of the week";
+
 const dealtStorageKey = "tarot-dealt";
 // Темп раздачи: карты выходят по одной; клики во время раздачи временно ускоряют магию.
 const firstCardDelayMs = 260;
@@ -61,6 +61,7 @@ export default function DealOfWeekBanner({
     wings: Game[];
     baseUrl: string;
 }) {
+    const { t } = useTranslation();
     const countdown = useCountdown(game.discountEndsAt);
     const { currency } = useSitePreferences();
 
@@ -113,6 +114,14 @@ export default function DealOfWeekBanner({
 
     useEffect(() => {
         analyticsClient.trackEvent("tarot_view", { hero_game_id: game.id ?? "" });
+        // То же самое стандартным именем: под ним Google подключает готовые отчёты по
+        // промо-акциям. Своё событие оставлено рядом — в нём подробности этой механики,
+        // которых стандартные поля не вмещают.
+        analyticsClient.trackEvent("view_promotion", {
+            promotion_name: PROMOTION_NAME,
+            creative_name: "deal-of-week-hero",
+            item_id: game.id ?? "",
+        });
         // Показ считаем один раз за визит на страницу.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -260,13 +269,13 @@ export default function DealOfWeekBanner({
         ...(countdown.days > 0
             ? [{
                 value: String(countdown.days),
-                label: countdown.days === 1 ? "day" : "days",
+                label: t("dealWeek.day", { count: countdown.days }),
                 progress: Math.min(countdown.days / 7, 1)
             }]
             : []),
-        { value: padCountdown(countdown.hours), label: "hours", progress: countdown.hours / 24 },
-        { value: padCountdown(countdown.minutes), label: "minutes", progress: countdown.minutes / 60 },
-        { value: padCountdown(countdown.seconds), label: "seconds", progress: countdown.seconds / 60 }
+        { value: padCountdown(countdown.hours), label: t("dealWeek.hours"), progress: countdown.hours / 24 },
+        { value: padCountdown(countdown.minutes), label: t("dealWeek.minutes"), progress: countdown.minutes / 60 },
+        { value: padCountdown(countdown.seconds), label: t("dealWeek.seconds"), progress: countdown.seconds / 60, isSeconds: true }
     ];
 
     // Содержимое лицевой стороны «карты удачи» — по состоянию пользователя.
@@ -274,11 +283,11 @@ export default function DealOfWeekBanner({
         if (!isAuthenticated) {
             return (
                 <span className="t-lucky-front">
-                    <span className="t-lucky-title">Your lucky card awaits</span>
-                    <span className="t-lucky-text">Sign in and draw a personal discount — a new card every day.</span>
+                    <span className="t-lucky-title">{t("dealWeek.luckyAwaits")}</span>
+                    <span className="t-lucky-text">{t("dealWeek.luckySignIn")}</span>
                     <Link className="t-lucky-btn" to="/logIn">
                         <i aria-hidden="true">✦</i>
-                        Log in to draw
+                        {t("dealWeek.logInToDraw")}
                         <i aria-hidden="true">✦</i>
                     </Link>
                 </span>
@@ -287,13 +296,11 @@ export default function DealOfWeekBanner({
         if (tarot?.purchaseRequired) {
             return (
                 <span className="t-lucky-front">
-                    <span className="t-lucky-title">Sealed until your first purchase</span>
-                    <span className="t-lucky-text">
-                        Buy any game — and the deck starts dealing you a personal discount every day.
-                    </span>
+                    <span className="t-lucky-title">{t("dealWeek.sealed")}</span>
+                    <span className="t-lucky-text">{t("dealWeek.sealedText")}</span>
                     <Link className="t-lucky-btn" to="/games">
                         <i aria-hidden="true">✦</i>
-                        Browse games
+                        {t("common.browseGames")}
                         <i aria-hidden="true">✦</i>
                     </Link>
                 </span>
@@ -303,7 +310,7 @@ export default function DealOfWeekBanner({
             return (
                 <span className="t-lucky-front">
                     <span className="t-lucky-percent">−{Number(luckyCode.percent).toFixed(0)}%</span>
-                    <span className="t-lucky-title">just for you</span>
+                    <span className="t-lucky-title">{t("dealWeek.justForYou")}</span>
                     <span
                         className="t-lucky-code"
                         role="button"
@@ -318,35 +325,35 @@ export default function DealOfWeekBanner({
                                 void handleCopy();
                             }
                         }}
-                        title="Copy code"
+                        title={t("common.copyCode")}
                     >
                         {luckyCode.code}
                         <FontAwesomeIcon icon={faCopy} />
                     </span>
                     <span className="t-lucky-text">
                         {copied
-                            ? "Copied — apply it at checkout!"
+                            ? t("dealWeek.copied")
                             : luckyExpiry
-                                ? `Melts away in ${luckyExpiry.days > 0 ? `${luckyExpiry.days}d ` : ""}${padCountdown(luckyExpiry.hours)}:${padCountdown(luckyExpiry.minutes)}:${padCountdown(luckyExpiry.seconds)}`
-                                : "Expired — draw again soon"}
+                                ? t("dealWeek.meltsIn", { time: `${luckyExpiry.days > 0 ? `${luckyExpiry.days}d ` : ""}${padCountdown(luckyExpiry.hours)}:${padCountdown(luckyExpiry.minutes)}:${padCountdown(luckyExpiry.seconds)}` })
+                                : t("dealWeek.expired")}
                     </span>
                 </span>
             );
         }
         return (
             <span className="t-lucky-front">
-                <span className="t-lucky-title">The card is resting</span>
+                <span className="t-lucky-title">{t("dealWeek.resting")}</span>
                 <span className="t-lucky-text">
                     {nextDraw
-                        ? `Next draw in ${nextDraw.days > 0 ? `${nextDraw.days}d ` : ""}${padCountdown(nextDraw.hours)}:${padCountdown(nextDraw.minutes)}`
-                        : "Come back a bit later."}
+                        ? t("dealWeek.nextDraw", { time: `${nextDraw.days > 0 ? `${nextDraw.days}d ` : ""}${padCountdown(nextDraw.hours)}:${padCountdown(nextDraw.minutes)}` })
+                        : t("dealWeek.comeBack")}
                 </span>
             </span>
         );
     };
 
     return (
-        <section className="deal-week-section reveal">
+        <section className="deal-week-section">
             {/* Клик по любой точке полосы во время раздачи подгоняет магию. */}
             <div className="deal-week tarot-band" onClick={handleBoost}>
                 <i className="fx-texture" aria-hidden="true"></i>
@@ -355,36 +362,36 @@ export default function DealOfWeekBanner({
                 <i className="tarot-spark ts-3" aria-hidden="true">✦</i>
                 <i className="tarot-spark ts-4" aria-hidden="true">✦</i>
                 <span className="tarot-wishes" aria-hidden="true">
-                    {tarotWishes.map((wish, index) => (
-                        <i className={`t-wish t-wish-${index + 1}`} key={wish}>{wish}</i>
+                    {tarotWishKeys.map((wish, index) => (
+                        <i className={`t-wish t-wish-${index + 1}`} key={wish}>{t(`dealWeek.${wish}`)}</i>
                     ))}
                 </span>
 
                 <div className="container tarot-inner">
                     <div className="tarot-head">
-                        <div className="heading-eyebrow is-light">Weekly spread · Deal of the week</div>
+                        <div className="heading-eyebrow is-light">{t("dealWeek.eyebrow")}</div>
                         <h2 className="tarot-title">
                             <i className="tarot-title-spark" aria-hidden="true">✦</i>
                             <span className="tarot-title-text">
                                 {phase === "idle"
-                                    ? "The deck is waiting"
+                                    ? t("dealWeek.titleIdle")
                                     : phase === "dealing"
-                                        ? "The magic is working…"
-                                        : "The cards are dealt"}
+                                        ? t("dealWeek.titleDealing")
+                                        : t("dealWeek.titleDone")}
                             </span>
                             <i className="tarot-title-spark" aria-hidden="true">✦</i>
                         </h2>
                         <div className="tarot-timer-wrap">
                             <span className="tarot-timer-label">
                                 <i aria-hidden="true">✦</i>
-                                The spell breaks in
+                                {t("dealWeek.spellBreaks")}
                                 <i aria-hidden="true">✦</i>
                             </span>
-                            <div className="tarot-runes" role="timer" aria-label="Time left for this deal">
+                            <div className="tarot-runes" role="timer" aria-label={t("dealWeek.timeLeft")}>
                                 {timerTiles.map((tile, index) => (
                                     <React.Fragment key={tile.label}>
                                         {index > 0 && <span className="t-rune-sep" aria-hidden="true">✦</span>}
-                                        <span className={`t-rune ${tile.label === "seconds" ? "is-seconds" : ""}`}>
+                                        <span className={`t-rune ${tile.isSeconds ? "is-seconds" : ""}`}>
                                             {/* Дуга — SVG, а не conic-gradient: только stroke-linecap
                                                 даёт скруглённые концы и чистое сглаживание. */}
                                             <svg className="t-rune-ring" viewBox="0 0 88 88" aria-hidden="true">
@@ -410,16 +417,16 @@ export default function DealOfWeekBanner({
                     {phase === "idle" ? (
                         // Колода: стопка рубашек + волшебная кнопка. Клик начинает раздачу.
                         <div className="tarot-intro">
-                            <button type="button" className="tarot-deck" onClick={handleDeal} aria-label="Deal the cards">
+                            <button type="button" className="tarot-deck" onClick={handleDeal} aria-label={t("dealWeek.dealCards")}>
                                 <span className="t-deck-card tdc-1"><span aria-hidden="true">✦</span></span>
                                 <span className="t-deck-card tdc-2"><span aria-hidden="true">✦</span></span>
                                 <span className="t-deck-card tdc-3"><span aria-hidden="true">✦</span></span>
                             </button>
                             <button type="button" className="btn btn-primary tarot-deal-btn" onClick={handleDeal}>
                                 <FontAwesomeIcon icon={faWandMagicSparkles} />
-                                Deal the cards
+                                {t("dealWeek.dealCards")}
                             </button>
-                            <p className="tarot-hint muted">A weekly deal and your personal lucky card hide in the deck.</p>
+                            <p className="tarot-hint muted">{t("dealWeek.deckHint")}</p>
                         </div>
                     ) : (
                         <>
@@ -435,17 +442,17 @@ export default function DealOfWeekBanner({
                                             void handleLuckyClick();
                                         }}
                                         disabled={drawing}
-                                        aria-label="Draw your lucky card"
+                                        aria-label={t("dealWeek.drawLucky")}
                                     >
                                         <span className="t-burst" aria-hidden="true"></span>
                                         <span className="t-deal-layer">
                                             <span className="t-card-3d">
                                                 <span className="t-face t-back">
                                                     <span className="t-back-spark" aria-hidden="true">✦</span>
-                                                    <span className="t-back-hint">{drawing ? "Shuffling…" : "Tap to draw"}</span>
+                                                    <span className="t-back-hint">{drawing ? t("dealWeek.shuffling") : t("dealWeek.tapToDraw")}</span>
                                                 </span>
                                                 <span className="t-face t-front">
-                                                <span className="t-arcana">0 · The Fortune</span>
+                                                <span className="t-arcana">{t("dealWeek.arcanaFortune")}</span>
                                                 {renderLuckyFront()}
                                             </span>
                                             </span>
@@ -458,8 +465,15 @@ export default function DealOfWeekBanner({
                                 <Link
                                     to={gameHref(game)}
                                     className={`t-card t-hero ${dealClass(heroOrder)} ${heroFlipped ? "is-flipped" : ""}`}
-                                    aria-label={`${game.title} — grab the deal`}
-                                    onClick={() => analyticsClient.trackEvent("deal_week_cta_click", { game_id: game.id ?? "" })}
+                                    aria-label={t("dealWeek.grabDealAria", { title: game.title })}
+                                    onClick={() => {
+                                        analyticsClient.trackEvent("deal_week_cta_click", { game_id: game.id ?? "" });
+                                        analyticsClient.trackEvent("select_promotion", {
+                                            promotion_name: PROMOTION_NAME,
+                                            creative_name: "deal-of-week-hero",
+                                            item_id: game.id ?? "",
+                                        });
+                                    }}
                                 >
                                     <span className="t-burst" aria-hidden="true"></span>
                                     <span className="t-deal-layer">
@@ -470,16 +484,16 @@ export default function DealOfWeekBanner({
                                         <span className="t-face t-front">
                                             <span className="t-cover">
                                                 <SafeGameImage gameTitle={game.title} src={game.imagePath} baseUrl={baseUrl} loading="lazy" />
-                                                <span className="t-arcana">I · The Deal</span>
+                                                <span className="t-arcana">{t("dealWeek.arcanaDeal")}</span>
                                                 <span className="t-pct">{percentLabel}</span>
                                                 <span className="t-hero-scrim">
                                                     <span className="t-caption-spark" aria-hidden="true">✦ ✦ ✦</span>
                                                     <span className="t-caption-title">{game.title}</span>
                                                     <span className="t-caption-price">
-                                                        <s>{formatMoney(Number(game.price), currency)}</s> <b>{formatMoney(finalPrice, currency)}</b>
+                                                        <s>{formatMoney(Number(game.price), game.currency ?? currency)}</s> <b>{formatMoney(finalPrice, game.currency ?? currency)}</b>
                                                     </span>
                                                     <span className="t-hero-cta">
-                                                        Grab the deal
+                                                        {t("dealWeek.grabDeal")}
                                                         <FontAwesomeIcon icon={faArrowRight} />
                                                     </span>
                                                 </span>
@@ -501,7 +515,7 @@ export default function DealOfWeekBanner({
                                         <span className="t-card-3d">
                                             <span className="t-face t-back">
                                                 <span className="t-back-spark" aria-hidden="true">✦</span>
-                                                <span className="t-back-hint">Hover to peek</span>
+                                                <span className="t-back-hint">{t("dealWeek.hoverToPeek")}</span>
                                             </span>
                                             <span className="t-face t-front">
                                                 <span className="t-cover">
@@ -511,12 +525,12 @@ export default function DealOfWeekBanner({
                                                         baseUrl={baseUrl}
                                                         loading="lazy"
                                                     />
-                                                    <span className="t-arcana">II · The Hidden Pick</span>
+                                                    <span className="t-arcana">{t("dealWeek.arcanaHidden")}</span>
                                                     <span className="t-hero-scrim">
                                                         <span className="t-caption-spark" aria-hidden="true">✦</span>
                                                         <span className="t-caption-title">{sideGame.title}</span>
                                                         <span className="t-caption-price">
-                                                            <b>{formatMoney(Number(sideGame.finalPrice ?? sideGame.price), currency)}</b>
+                                                            <b>{formatMoney(Number(sideGame.finalPrice ?? sideGame.price), sideGame.currency ?? currency)}</b>
                                                         </span>
                                                     </span>
                                                 </span>
@@ -529,8 +543,8 @@ export default function DealOfWeekBanner({
 
                             <p className="tarot-hint muted">
                                 {phase === "dealing"
-                                    ? "Tap anywhere to hurry the magic ✦"
-                                    : "One weekly deal, one personal lucky card a day, one hidden pick. The shop deals — you choose."}
+                                    ? t("dealWeek.hurry")
+                                    : t("dealWeek.dealtHint")}
                             </p>
                         </>
                     )}

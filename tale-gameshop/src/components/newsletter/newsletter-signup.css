@@ -1,0 +1,81 @@
+/* Форма подписки: одна разметка на подвал, витрину скидок и её пустое состояние.
+   Различаются только темой — светлой и тёмной. */
+.nl-signup {
+    max-width: 420px;
+}
+
+.nl-signup-form {
+    display: flex;
+    gap: var(--space-8);
+}
+
+.nl-signup-form input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 46px;
+    padding: 0 var(--space-16);
+    border-radius: var(--radius-md);
+    border: 1px solid #e1d9ff;
+    background: #ffffff;
+    color: var(--color-text);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nl-signup-form input:focus,
+.nl-signup-form input:focus-visible {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.nl-signup-form .btn {
+    height: 46px;
+    white-space: nowrap;
+}
+
+.nl-signup-done {
+    margin: 0;
+    font-weight: 600;
+    color: #15803d;
+}
+
+.nl-signup-error {
+    margin: var(--space-8) 0 0;
+    color: #b91c1c;
+    font-size: 14px;
+}
+
+/* Тёмная тема: подвал и шапка витрины. Раньше поле здесь оставалось белым — я писал,
+   что «так делают все», и это было неверно: на тёмном подвале белый прямоугольник
+   светится ярче всего остального и выглядит приклеенным. Поле полупрозрачное, как
+   у Fanatical, GOG и Humble; читаемость даёт белый текст и подсветка рамки в фокусе. */
+.nl-signup--dark .nl-signup-form input {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+}
+
+.nl-signup--dark .nl-signup-form input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.nl-signup--dark .nl-signup-form input:focus,
+.nl-signup--dark .nl-signup-form input:focus-visible {
+    border-color: #a78bfa;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.28);
+}
+
+.nl-signup--dark.nl-signup-done {
+    color: #86efac;
+}
+
+.nl-signup--dark .nl-signup-error {
+    color: #fca5a5;
+}
+
+@media (max-width: 460px) {
+    .nl-signup-form {
+        flex-direction: column;
+    }
+}

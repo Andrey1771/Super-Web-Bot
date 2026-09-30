@@ -12,7 +12,7 @@ namespace SuperBot.Tests
     {
         private static readonly PaymentMethod[] AllRails =
         {
-            PaymentMethod.Card, PaymentMethod.Crypto, PaymentMethod.TelegramStars, PaymentMethod.YooKassa
+            PaymentMethod.Card, PaymentMethod.Crypto, PaymentMethod.TelegramStars
         };
 
         private static IReadOnlyList<PaymentMethodOption> For(
@@ -71,13 +71,6 @@ namespace SuperBot.Tests
         }
 
         [Fact]
-        public void YooKassa_takesRublesOnly()
-        {
-            Assert.True(IsAvailable(For("RUB"), PaymentMethod.YooKassa));
-            Assert.False(IsAvailable(For("USD"), PaymentMethod.YooKassa));
-        }
-
-        [Fact]
         public void TelegramStars_areNotAWebCurrency()
         {
             // Звёзды — валюта Telegram: товар в них оценивается пересчётом, а не выбором покупателя.
@@ -97,7 +90,7 @@ namespace SuperBot.Tests
         public void AnyAvailable_tellsWhetherCurrencyIsSellableAtAll()
         {
             // Валюта, в которой не принимает ни один рельс, показываться не должна.
-            var noRailTakesIt = For("JPY", enabled: new[] { PaymentMethod.Crypto, PaymentMethod.YooKassa });
+            var noRailTakesIt = For("JPY", enabled: new[] { PaymentMethod.Crypto, PaymentMethod.TelegramStars });
             Assert.False(PaymentMethodAvailability.AnyAvailable(noRailTakesIt));
 
             Assert.True(PaymentMethodAvailability.AnyAvailable(For("USD")));

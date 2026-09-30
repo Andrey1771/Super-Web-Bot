@@ -13,7 +13,7 @@ public interface INewsletterService
     /// Гостевая подписка (double opt-in) или мгновенная, если подписывается владелец аккаунта
     /// своим подтверждённым email. Идемпотентна; наружу namёков «адрес уже был в базе» не даёт.
     /// </summary>
-    Task<string> SubscribeAsync(string email, string source, string? locale, string? authedUserId, string? authedEmail, CancellationToken ct);
+    Task<string> SubscribeAsync(string email, string source, string? locale, bool dealAlerts, string? authedUserId, string? authedEmail, CancellationToken ct);
 
     Task<bool> ConfirmAsync(string token, CancellationToken ct);
     Task<bool> UnsubscribeAsync(string token, CancellationToken ct);
@@ -21,18 +21,31 @@ public interface INewsletterService
     Task<NewsletterSubscriberDb?> GetByEmailAsync(string email, CancellationToken ct);
 
     /// <summary>Личный кабинет: включить/выключить рассылку для email аккаунта (без double opt-in — email уже верифицирован Keycloak).</summary>
-    Task<NewsletterSubscriberDb> SetForAccountAsync(string email, string userId, bool subscribed, CancellationToken ct);
+    /// <param name="dealAlerts">
+    /// Письма о новых скидках. null — настройку не трогаем: кабинет может менять только
+    /// саму подписку, и тогда прежний выбор человека должен остаться прежним.
+    /// </param>
+    Task<NewsletterSubscriberDb> SetForAccountAsync(string email, string userId, bool subscribed, bool? dealAlerts, CancellationToken ct);
 
     Task<(List<NewsletterSubscriberDb> Items, long Total)> ListAsync(string? status, string? search, int page, int pageSize, CancellationToken ct);
     Task<NewsletterStats> GetStatsAsync(CancellationToken ct);
     Task<string> ExportCsvAsync(CancellationToken ct);
 
-    Task<NewsletterCampaignDb> QueueCampaignAsync(string subject, string bodyText, string? createdBy, DateTime? scheduledAt, CancellationToken ct);
+    Task<NewsletterCampaignDb> QueueCampaignAsync(CampaignDraft draft, CancellationToken ct);
     Task<List<NewsletterCampaignDb>> ListCampaignsAsync(int limit, CancellationToken ct);
-    Task SendTestAsync(string to, string subject, string bodyText, CancellationToken ct);
+
+    /// <summary>Тест-письмо себе: макет и футер — на языке <paramref name="locale"/>, как у подписчика с таким языком.</summary>
+    Task SendTestAsync(string to, string subject, string bodyText, string? locale, CancellationToken ct);
 
     /// <summary>Все адреса, которым можно слать (status=confirmed).</summary>
     Task<List<NewsletterSubscriberDb>> GetConfirmedAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Кому можно слать дайджест скидок: подтверждённые, не отказавшиеся именно от него.
+    /// Отдельный метод, а не фильтр по месту, — чтобы «согласен» было определено один раз
+    /// (и подписки без поля считались согласными).
+    /// </summary>
+    Task<List<NewsletterSubscriberDb>> GetDealAlertRecipientsAsync(CancellationToken ct);
 
     IMongoCollection<NewsletterCampaignDb> Campaigns { get; }
     IMongoCollection<NewsletterStateDb> State { get; }
@@ -42,6 +55,15 @@ public interface INewsletterService
     /// <summary>Язык футера/кнопки: явный locale, иначе Locale подписчика, иначе английский.</summary>
     (string Text, string Html) WrapEmail(string bodyText, NewsletterSubscriberDb? subscriber, EmailCta? cta = null, string? locale = null);
 }
+
+/// <summary>Ручная кампания к постановке в очередь: английские тема и текст плюс переводы по языкам.</summary>
+public sealed record CampaignDraft(
+    string Subject,
+    string BodyText,
+    string? CreatedBy,
+    DateTime? ScheduledAt,
+    Dictionary<string, string>? SubjectI18n = null,
+    Dictionary<string, string>? BodyI18n = null);
 
 public class NewsletterStats
 {
@@ -80,7 +102,7 @@ public class NewsletterService : INewsletterService
 
     private string BaseUrl => _mailOptions.PublicBaseUrl.TrimEnd('/');
 
-    public async Task<string> SubscribeAsync(string email, string source, string? locale, string? authedUserId, string? authedEmail, CancellationToken ct)
+    public async Task<string> SubscribeAsync(string email, string source, string? locale, bool dealAlerts, string? authedUserId, string? authedEmail, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
         var existing = await _subscribers.Find(s => s.Email == email).FirstOrDefaultAsync(ct);
@@ -99,6 +121,7 @@ public class NewsletterService : INewsletterService
                 Sources = new List<string> { source },
                 UserId = instantConfirm ? authedUserId : null,
                 Locale = locale,
+                DealAlerts = dealAlerts,
                 ConfirmToken = instantConfirm ? null : NewToken(),
                 UnsubscribeToken = NewToken(),
                 CreatedAt = now,
@@ -115,8 +138,11 @@ public class NewsletterService : INewsletterService
         }
 
         // Существующий адрес: добавляем источник, дальше — по статусу.
+        // Повторная отправка формы — это свежий выбор человека, и он сильнее прежнего:
+        // подписка через витрину скидок так и означает «шлите про скидки».
         var update = Builders<NewsletterSubscriberDb>.Update
             .AddToSet(s => s.Sources, source)
+            .Set(s => s.DealAlerts, dealAlerts)
             .Set(s => s.UpdatedAt, now);
 
         if (existing.Status == SubscriberStatus.Confirmed)
@@ -195,7 +221,7 @@ public class NewsletterService : INewsletterService
     public Task<NewsletterSubscriberDb?> GetByEmailAsync(string email, CancellationToken ct) =>
         _subscribers.Find(s => s.Email == email).FirstOrDefaultAsync(ct)!;
 
-    public async Task<NewsletterSubscriberDb> SetForAccountAsync(string email, string userId, bool subscribed, CancellationToken ct)
+    public async Task<NewsletterSubscriberDb> SetForAccountAsync(string email, string userId, bool subscribed, bool? dealAlerts, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
         var existing = await _subscribers.Find(s => s.Email == email).FirstOrDefaultAsync(ct);
@@ -209,6 +235,7 @@ public class NewsletterService : INewsletterService
                 Sources = new List<string> { "account" },
                 UserId = userId,
                 UnsubscribeToken = NewToken(),
+                DealAlerts = dealAlerts,
                 CreatedAt = now,
                 UpdatedAt = now,
                 ConfirmedAt = subscribed ? now : null,
@@ -228,6 +255,11 @@ public class NewsletterService : INewsletterService
         update = subscribed
             ? update.Set(s => s.ConfirmedAt, existing.ConfirmedAt ?? now)
             : update.Set(s => s.UnsubscribedAt, now);
+
+        if (dealAlerts.HasValue)
+        {
+            update = update.Set(s => s.DealAlerts, dealAlerts.Value);
+        }
 
         await _subscribers.UpdateOneAsync(s => s.Id == existing.Id, update, cancellationToken: ct);
         return (await _subscribers.Find(s => s.Id == existing.Id).FirstAsync(ct));
@@ -287,13 +319,14 @@ public class NewsletterService : INewsletterService
             .ToListAsync(ct);
 
         var sb = new StringBuilder();
-        sb.AppendLine("Email,Status,Sources,CreatedAt,ConfirmedAt,UnsubscribedAt");
+        sb.AppendLine("Email,Status,Sources,DealAlerts,CreatedAt,ConfirmedAt,UnsubscribedAt");
         foreach (var s in items)
         {
             sb.AppendLine(string.Join(",",
                 s.Email,
                 s.Status,
                 $"\"{string.Join(";", s.Sources)}\"",
+                s.DealAlerts != false ? "yes" : "no",
                 s.CreatedAt.ToString("O"),
                 s.ConfirmedAt?.ToString("O") ?? "",
                 s.UnsubscribedAt?.ToString("O") ?? ""));
@@ -301,17 +334,19 @@ public class NewsletterService : INewsletterService
         return sb.ToString();
     }
 
-    public async Task<NewsletterCampaignDb> QueueCampaignAsync(string subject, string bodyText, string? createdBy, DateTime? scheduledAt, CancellationToken ct)
+    public async Task<NewsletterCampaignDb> QueueCampaignAsync(CampaignDraft draft, CancellationToken ct)
     {
         var campaign = new NewsletterCampaignDb
         {
             Type = CampaignType.Manual,
-            Subject = subject,
-            BodyText = bodyText,
+            Subject = draft.Subject,
+            BodyText = draft.BodyText,
+            SubjectI18n = SuperBot.Core.Entities.Localized.Normalize(draft.SubjectI18n),
+            BodyTextI18n = SuperBot.Core.Entities.Localized.Normalize(draft.BodyI18n),
             Status = CampaignStatus.Queued,
-            CreatedBy = createdBy,
+            CreatedBy = draft.CreatedBy,
             CreatedAt = DateTime.UtcNow,
-            ScheduledAt = scheduledAt,
+            ScheduledAt = draft.ScheduledAt,
         };
         await Campaigns.InsertOneAsync(campaign, cancellationToken: ct);
         return campaign;
@@ -326,9 +361,14 @@ public class NewsletterService : INewsletterService
     public Task<List<NewsletterSubscriberDb>> GetConfirmedAsync(CancellationToken ct) =>
         _subscribers.Find(s => s.Status == SubscriberStatus.Confirmed).ToListAsync(ct);
 
-    public async Task SendTestAsync(string to, string subject, string bodyText, CancellationToken ct)
+    public Task<List<NewsletterSubscriberDb>> GetDealAlertRecipientsAsync(CancellationToken ct) =>
+        _subscribers
+            .Find(s => s.Status == SubscriberStatus.Confirmed && s.DealAlerts != false)
+            .ToListAsync(ct);
+
+    public async Task SendTestAsync(string to, string subject, string bodyText, string? locale, CancellationToken ct)
     {
-        var (text, html) = WrapEmail(bodyText, subscriber: null);
+        var (text, html) = WrapEmail(bodyText, subscriber: null, locale: locale);
         await _mail.SendAsync(to, $"[TEST] {subject}", text, html, ct);
     }
 
@@ -394,7 +434,7 @@ public class NewsletterService : INewsletterService
 
         // Брендированный макет — Templates/EmailLayout.html (embedded resource).
         var logoUrl = string.IsNullOrWhiteSpace(BaseUrl) ? null : $"{BaseUrl}/api/email-assets/logo";
-        var html = EmailTemplates.RenderLayout($"{htmlBody}{htmlCta}{htmlFooter}", logoUrl);
+        var html = EmailTemplates.RenderLayout($"{htmlBody}{htmlCta}{htmlFooter}", logoUrl, SuperBot.WebApi.Mail.MailTexts.For(locale ?? subscriber?.Locale)["layout.tagline"]);
         return (text, html);
     }
 }

@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React from 'react';
 import './recommendations-section.css';
 
@@ -10,7 +11,8 @@ type RecommendationsSectionProps<T> = {
     listClassName?: string;
     stateClassName?: string;
     skeletonCount?: number;
-    renderItem: (item: T) => React.ReactNode;
+    /** Индекс нужен аналитике: по месту в подборке видно, кликают ли дальше первого ряда. */
+    renderItem: (item: T, index: number) => React.ReactNode;
     renderSkeleton?: (index: number) => React.ReactNode;
     testId?: string;
 };
@@ -46,7 +48,7 @@ const RecommendationsSection = <T,>({
                 <p className="recommendations-state__message">{error}</p>
                 {onRetry && (
                     <button type="button" className="btn btn-outline recommendations-state__retry" onClick={onRetry}>
-                        Retry
+                        {i18n.t('common.retry')}
                     </button>
                 )}
             </div>
@@ -63,7 +65,7 @@ const RecommendationsSection = <T,>({
 
     return (
         <div className={listClassName} data-testid={testId}>
-            {items.map((item) => renderItem(item))}
+            {items.map((item, index) => renderItem(item, index))}
         </div>
     );
 };

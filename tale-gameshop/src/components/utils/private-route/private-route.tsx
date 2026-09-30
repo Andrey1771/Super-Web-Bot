@@ -1,4 +1,6 @@
 import {useKeycloak} from "@react-keycloak/web";
+import {currentLang} from "../../../context/site-preferences";
+import AppLoader from "../../app-loader/AppLoader";
 import React, {useEffect} from "react";
 import NotFoundPage from "../not-found-page/not-found-page";
 
@@ -15,13 +17,18 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({children}) => {
 
     useEffect(() => {
         if (initialized && !isLoggedIn) {
-            keycloak.login({redirectUri: window.location.href});
+            keycloak.login({redirectUri: window.location.href, locale: currentLang()});
         }
     }, [initialized, isLoggedIn, keycloak]);
 
     // Пока Keycloak не закончил check-sso (или уже уводим на логин) — ничего не рисуем.
+    // Админка: то же самое, плюс проверка ролей ниже.
+    // Раньше здесь было null: заставку показывал общий провайдер, и до этого места
+    // управление доходило уже с готовым ответом. Теперь провайдер детей не задерживает,
+    // и без заставки человек увидел бы пустой экран, пока идёт check-sso или редирект
+    // на форму входа.
     if (!initialized || !isLoggedIn) {
-        return null;
+        return <AppLoader />;
     }
 
     // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается

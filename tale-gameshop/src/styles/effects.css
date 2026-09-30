@@ -1,9 +1,8 @@
 /* ============================================================
    Tale Shop effect system — единый источник «жизни» интерфейса:
-   фоновые текстуры, свечения, scroll-reveal, hover, микродвижение.
+   фоновые текстуры, свечения, hover, микродвижение.
    Использование:
      <i class="fx-texture" aria-hidden="true"></i>  — внутрь position:relative секции
-     class="reveal"                                 — всплытие при скролле (см. use-scroll-reveal)
      class="lift"                                   — единый hover-подъём карточек
    ============================================================ */
 
@@ -69,51 +68,13 @@
     background-repeat: no-repeat;
 }
 
-/* ---------- 4. Scroll-reveal (управляется use-scroll-reveal) ---------- */
-.reveal {
-    opacity: 0;
-    transform: translateY(16px);
-    transition: opacity 0.55s ease, transform 0.55s ease;
-}
+/* ---------- 4. Появление секций при прокрутке — убрано ---------- */
 
-.reveal.is-visible {
-    opacity: 1;
-    transform: none;
-}
-
-.reveal[data-reveal-delay='1'] { transition-delay: 0.08s; }
-.reveal[data-reveal-delay='2'] { transition-delay: 0.16s; }
-.reveal[data-reveal-delay='3'] { transition-delay: 0.24s; }
-
-/* Progressive enhancement: браузеры со scroll-driven animations (Chrome/Edge, новые Safari)
-   делают reveal чистым CSS — плавность привязана к скроллу, а не к порогу observer'а.
-   use-scroll-reveal видит поддержку через CSS.supports и не запускает JS-наблюдателей.
-   Остальные (Firefox) продолжают работать через IntersectionObserver + .is-visible. */
-@supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-        .reveal,
-        .reveal.is-visible {
-            opacity: 1;
-            transform: none;
-            transition: none;
-            /* порядок важен: шорткат animation сбрасывает animation-timeline, поэтому timeline после */
-            animation: fx-reveal-view linear both;
-            animation-timeline: view();
-            animation-range: entry 5% entry 45%;
-        }
-
-        @keyframes fx-reveal-view {
-            from {
-                opacity: 0;
-                transform: translateY(16px);
-            }
-            to {
-                opacity: 1;
-                transform: none;
-            }
-        }
-    }
-}
+/* Здесь жил reveal: секции начинались с opacity 0 и проявлялись при попадании в окно.
+   Убран по решению владельца магазина: пользы от эффекта меньше, чем вреда. Содержимое,
+   которое по умолчанию невидимо, при любой осечке (сбой временной шкалы прокрутки, не
+   сработавший наблюдатель, отключённый JS) превращается в пустые полосы во весь экран —
+   и без единой ошибки в консоли. Теперь страница просто показывает то, что на ней есть. */
 
 /* ---------- 5. Единый hover-подъём карточек ---------- */
 .lift {
@@ -164,12 +125,6 @@
 
 /* ---------- Доступность: без движения по запросу системы ---------- */
 @media (prefers-reduced-motion: reduce) {
-    .reveal {
-        opacity: 1;
-        transform: none;
-        transition: none;
-    }
-
     .fx-orb,
     .fx-float {
         animation: none;

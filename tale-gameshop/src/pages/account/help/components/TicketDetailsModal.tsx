@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../../../../i18n';
+import { serverErrorText } from '../../../../utils/api-error';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
 import {getTicketDetails, postTicketMessage, reopenTicket, resolveTicket, uploadTicketAttachment} from '../../../../api/supportApi';
@@ -22,20 +25,21 @@ const formatRelativeTime = (value: string) => {
     const diffMs = Date.now() - date.getTime();
     const diffMinutes = Math.floor(diffMs / 60000);
     if (diffMinutes < 1) {
-        return 'Just now';
+        return i18n.t('common.justNowShort');
     }
     if (diffMinutes < 60) {
-        return `${diffMinutes} min ago`;
+        return i18n.t('common.minAgo', { count: diffMinutes });
     }
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) {
-        return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+        return i18n.t('common.hoursAgo', { count: diffHours });
     }
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    return i18n.t('common.daysAgo', { count: diffDays });
 };
 
 const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose, ticketId, initialTicket}) => {
+    const { t } = useTranslation();
     const dialogRef = useRef<HTMLDivElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [ticket, setTicket] = useState<TicketDetails | null>(null);
@@ -57,20 +61,20 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
 
     const headerTitle = useMemo(() => {
         if (ticket) {
-            return `Request #${ticket.publicId} — ${ticket.subject}`;
+            return t('ticket.requestTitle', { id: ticket.publicId, subject: ticket.subject });
         }
         if (initialTicket) {
-            return `Request #${initialTicket.publicId ?? initialTicket.id} — ${initialTicket.subject}`;
+            return t('ticket.requestTitle', { id: initialTicket.publicId ?? initialTicket.id, subject: initialTicket.subject });
         }
-        return 'Request details';
-    }, [initialTicket, ticket]);
+        return t('ticket.requestDetails');
+    }, [initialTicket, ticket, t]);
 
     const headerUpdatedAt = useMemo(() => {
         if (ticket) {
-            return `Last updated: ${formatRelativeTime(ticket.updatedAt)}`;
+            return t('ticket.lastUpdated', { when: formatRelativeTime(ticket.updatedAt) });
         }
         return undefined;
-    }, [ticket]);
+    }, [ticket, t]);
 
     const loadTicket = async (currentTicketId: string, isActive: () => boolean) => {
         setIsLoading(true);
@@ -84,7 +88,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
             }
         } catch {
             if (isActive()) {
-                setError('Failed to load ticket. Retry.');
+                setError(t('ticket.loadFailed'));
             }
         } finally {
             if (isActive()) {
@@ -270,8 +274,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
             setReply('');
         } catch (sendError: any) {
             // Показываем причину от сервера (например, 409 «Reopen to reply»), а не молча глотаем.
-            const detail = sendError?.response?.data?.detail ?? 'Failed to send the reply. Please try again.';
-            setActionError(detail);
+            setActionError(serverErrorText(sendError, t('ticket.sendFailed')));
         } finally {
             setIsSending(false);
         }
@@ -287,8 +290,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
             await resolveTicket(ticketId);
             setTicket((prev) => (prev ? { ...prev, status: 'Resolved' } : prev));
         } catch (resolveError: any) {
-            const detail = resolveError?.response?.data?.detail ?? 'Failed to resolve the request. Please try again.';
-            setActionError(detail);
+            setActionError(serverErrorText(resolveError, t('ticket.resolveFailed')));
         } finally {
             setIsSending(false);
         }
@@ -305,8 +307,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
             await loadTicket(ticketId, () => true);
         } catch (reopenError: any) {
             // Например, 429 «Too many reopen attempts» или 409 «closed by support» — человек должен видеть причину.
-            const detail = reopenError?.response?.data?.detail ?? 'Failed to reopen the request. Please try again.';
-            setActionError(detail);
+            setActionError(serverErrorText(reopenError, t('ticket.reopenFailed')));
         } finally {
             setIsSending(false);
         }
@@ -334,18 +335,18 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
             >
                 <div className="ticket-modal__header">
                     <div className="ticket-modal__header-content">
-                        <p className="ticket-modal__title">Ticket details</p>
+                        <p className="ticket-modal__title">{t('ticket.details')}</p>
                         <h2 id="ticket-details-title">{headerTitle}</h2>
                         {headerUpdatedAt && <p className="ticket-modal__subtitle">{headerUpdatedAt}</p>}
                     </div>
-                    <button type="button" className="ticket-modal__close" onClick={onClose} aria-label="Close">
+                    <button type="button" className="ticket-modal__close" onClick={onClose} aria-label={t('common.close')}>
                         ×
                     </button>
                 </div>
 
                 <div className="ticket-modal__body">
                     <div className="ticket-modal__left">
-                        {isLoading && <div className="ticket-modal__skeleton">Loading ticket...</div>}
+                        {isLoading && <div className="ticket-modal__skeleton">{t('ticket.loading')}</div>}
                         {error && (
                             <div className="ticket-modal__error">
                                 <span>{error}</span>
@@ -358,7 +359,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                                         }
                                     }}
                                 >
-                                    Retry
+                                    {t('common.retry')}
                                 </button>
                             </div>
                         )}
@@ -375,14 +376,14 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                                     {actionError}
                                 </div>
                             )}
-                            {isClosed && <div className="ticket-modal__closed">This request is closed.</div>}
+                            {isClosed && <div className="ticket-modal__closed">{t('ticket.closed')}</div>}
                             {isResolved && (
                                 <div className="ticket-modal__closed">
-                                    This request is resolved. Reopen it to reply.
+                                    {t('ticket.resolved')}
                                 </div>
                             )}
                             <textarea
-                                placeholder={isLocked ? 'Reopen the request to reply…' : 'Write a reply…'}
+                                placeholder={isLocked ? t('ticket.reopenToReply') : t('ticket.writeReply')}
                                 value={reply}
                                 onChange={(event) => setReply(event.target.value)}
                                 disabled={isLocked}
@@ -394,7 +395,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isLocked}
                                 >
-                                    Attach file
+                                    {t('ticket.attachFile')}
                                 </button>
                                 <input
                                     ref={fileInputRef}
@@ -409,16 +410,16 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                                     onClick={handleSend}
                                     disabled={isLocked || !reply.trim() || isSending || isUploading}
                                 >
-                                    {isSending ? 'Sending...' : 'Send reply'}
+                                    {isSending ? t('common.sending') : t('ticket.sendReply')}
                                 </button>
                             </div>
                             {pendingFiles.length > 0 && (
                                 <div className="ticket-modal__uploading">
-                                    {isUploading ? 'Uploading attachments...' : `${pendingFiles.length} files ready to upload`}
+                                    {isUploading ? t('ticket.uploading') : t('ticket.filesReady', { count: pendingFiles.length })}
                                 </div>
                             )}
                             <div className="ticket-modal__tips">
-                                <span>Please don’t share full card numbers.</span>
+                                <span>{t('ticket.noCardNumbers')}</span>
                             </div>
                         </div>
                     </div>
@@ -434,7 +435,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                         )}
                         <div className="ticket-modal__footer-actions">
                             <button type="button" className="btn btn-outline" onClick={onClose}>
-                                Close
+                                {t('common.close')}
                             </button>
                             {ticket && ticket.status !== 'Resolved' && !isClosed && (
                                 <button
@@ -443,7 +444,7 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                                     onClick={handleResolve}
                                     disabled={isSending}
                                 >
-                                    Problem solved
+                                    {t('ticket.problemSolved')}
                                 </button>
                             )}
                         </div>
@@ -451,16 +452,16 @@ const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({isOpen, onClose,
                 </div>
                 {ticket?.status === 'Resolved' && (
                     <div className="ticket-modal__footer-note">
-                        This request is resolved. Need more help?{' '}
+                        {t('ticket.resolvedNeedMore')}{' '}
                         <button type="button" className="ticket-modal__link" onClick={handleReopen}>
-                            Reopen
+                            {t('ticket.reopen')}
                         </button>{' '}
-                        your request.
+                        {t('ticket.yourRequest')}
                     </div>
                 )}
                 {isClosed && (
                     <div className="ticket-modal__footer-note">
-                        This request is closed by support. Please create a new request if you need more help.
+                        {t('ticket.closedBySupport')}
                     </div>
                 )}
             </div>

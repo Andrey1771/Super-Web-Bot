@@ -67,6 +67,21 @@ export class AdminOrdersService implements IAdminOrdersService {
     };
   }
 
+  /** Возврат одной позиции (или нескольких её штук). 409 — отказ по предусловию, 502 — Stripe не принял. */
+  async refundItem(id: string, itemId: string, quantity: number, reason: string): Promise<OrderActionResult> {
+    const response = await this._apiClient.api.post(
+      `/api/admin/orders/${id}/items/${encodeURIComponent(itemId)}/refund`,
+      { quantity, reason },
+      { validateStatus: (status) => status < 500 || status === 502 }
+    );
+    const data = response.data ?? {};
+    return {
+      ok: Boolean(data.ok),
+      message: String(data.message ?? (response.status >= 400 ? `Request failed (${response.status}).` : "")),
+      order: mapOrderDto(data.order ?? {}),
+    };
+  }
+
   async forceStatus(id: string, status: OrderStatus, reason: string): Promise<OrderActionResult> {
     const response = await this._apiClient.api.post(
       `/api/admin/orders/${id}/force-status`,

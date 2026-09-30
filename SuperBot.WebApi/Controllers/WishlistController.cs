@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Linq;
 using System.Security.Claims;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -14,7 +15,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetWishlist()
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 return Unauthorized();
@@ -32,7 +33,7 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest("GameId is required.");
             }
 
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 return Unauthorized();
@@ -45,7 +46,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpDelete("items/{gameId}")]
         public async Task<IActionResult> RemoveFromWishlist(string gameId)
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 return Unauthorized();
@@ -58,7 +59,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("merge")]
         public async Task<IActionResult> MergeWishlist([FromBody] MergeWishlistRequest request)
         {
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
             {
                 return Unauthorized();
@@ -68,15 +69,6 @@ namespace SuperBot.WebApi.Controllers
             return Ok(new { gameIds = mergedIds });
         }
 
-        private string GetCurrentUserId()
-        {
-            return User?.FindFirst("email")?.Value
-                ?? User?.FindFirst(ClaimTypes.Email)?.Value
-                ?? User?.FindFirst("preferred_username")?.Value
-                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User?.FindFirst("sub")?.Value
-                ?? string.Empty;
-        }
     }
 
     public class WishlistItemRequest

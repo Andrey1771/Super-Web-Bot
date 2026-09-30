@@ -90,7 +90,7 @@ public class SupportTicketService : ISupportTicketService
         ValidateText(request.Description, _options.DescriptionMaxLength, "Description");
         if (string.IsNullOrWhiteSpace(request.Category))
         {
-            throw new SupportRequestException("Category is required.", StatusCodes.Status400BadRequest);
+            throw new SupportRequestException("Category is required.", StatusCodes.Status400BadRequest, "ticket.categoryRequired");
         }
 
         var now = DateTime.UtcNow;
@@ -168,7 +168,7 @@ public class SupportTicketService : ISupportTicketService
 
         if (!isSupportAgent && (ticket.Status == SupportTicketStatus.Resolved || ticket.Status == SupportTicketStatus.Closed))
         {
-            throw new SupportRequestException("Ticket is closed. Reopen to reply.", StatusCodes.Status409Conflict);
+            throw new SupportRequestException("Ticket is closed. Reopen to reply.", StatusCodes.Status409Conflict, "ticket.closedReply");
         }
 
         var now = DateTime.UtcNow;
@@ -213,7 +213,7 @@ public class SupportTicketService : ISupportTicketService
         // Closed — финальное решение поддержки: переоткрыть нельзя, только новый запрос.
         if (ticket.Status == SupportTicketStatus.Closed)
         {
-            throw new SupportRequestException("Ticket is closed by support. Please create a new request.", StatusCodes.Status409Conflict);
+            throw new SupportRequestException("Ticket is closed by support. Please create a new request.", StatusCodes.Status409Conflict, "ticket.closedBySupport");
         }
 
         if (ticket.Status != SupportTicketStatus.Resolved)
@@ -282,7 +282,7 @@ public class SupportTicketService : ISupportTicketService
     {
         if (files.Count == 0)
         {
-            throw new SupportRequestException("No files uploaded.", StatusCodes.Status400BadRequest);
+            throw new SupportRequestException("No files uploaded.", StatusCodes.Status400BadRequest, "ticket.noFiles");
         }
 
         var ticket = await FindTicketAsync(ticketId);
@@ -290,24 +290,24 @@ public class SupportTicketService : ISupportTicketService
 
         if (!isSupportAgent && (ticket.Status == SupportTicketStatus.Resolved || ticket.Status == SupportTicketStatus.Closed))
         {
-            throw new SupportRequestException("Ticket is closed. Reopen to add attachments.", StatusCodes.Status409Conflict);
+            throw new SupportRequestException("Ticket is closed. Reopen to add attachments.", StatusCodes.Status409Conflict, "ticket.closedAttach");
         }
 
         var message = await _messages.Find(m => m.Id == messageId && m.TicketId == ticket.Id).FirstOrDefaultAsync();
         if (message == null)
         {
-            throw new SupportRequestException("Message not found.", StatusCodes.Status404NotFound);
+            throw new SupportRequestException("Message not found.", StatusCodes.Status404NotFound, "ticket.messageNotFound");
         }
 
         if (!isSupportAgent && !string.Equals(message.AuthorId, user.UserId, StringComparison.OrdinalIgnoreCase))
         {
-            throw new SupportRequestException("You can only attach files to your own messages.", StatusCodes.Status403Forbidden);
+            throw new SupportRequestException("You can only attach files to your own messages.", StatusCodes.Status403Forbidden, "ticket.attachOwnOnly");
         }
 
         var existingCount = message.Attachments?.Count ?? 0;
         if (existingCount + files.Count > _options.MaxAttachmentsPerMessage)
         {
-            throw new SupportRequestException($"Max {_options.MaxAttachmentsPerMessage} files per message.", StatusCodes.Status400BadRequest);
+            throw new SupportRequestException($"Max {_options.MaxAttachmentsPerMessage} files per message.", StatusCodes.Status400BadRequest, "ticket.maxFiles", new { max = _options.MaxAttachmentsPerMessage });
         }
 
         var createdAt = DateTime.UtcNow;
@@ -317,13 +317,13 @@ public class SupportTicketService : ISupportTicketService
         {
             if (!_options.AllowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
             {
-                throw new SupportRequestException("Unsupported file type.", StatusCodes.Status400BadRequest);
+                throw new SupportRequestException("Unsupported file type.", StatusCodes.Status400BadRequest, "ticket.fileType");
             }
 
             var maxBytes = _options.AttachmentMaxMb * 1024L * 1024L;
             if (file.Length > maxBytes)
             {
-                throw new SupportRequestException($"File exceeds {_options.AttachmentMaxMb}MB limit.", StatusCodes.Status400BadRequest);
+                throw new SupportRequestException($"File exceeds {_options.AttachmentMaxMb}MB limit.", StatusCodes.Status400BadRequest, "ticket.fileSize", new { max = _options.AttachmentMaxMb });
             }
 
             await using var stream = file.OpenReadStream();
@@ -391,13 +391,13 @@ public class SupportTicketService : ISupportTicketService
         var attachment = await _attachments.Find(a => a.Id == attachmentId).FirstOrDefaultAsync();
         if (attachment == null)
         {
-            throw new SupportRequestException("Attachment not found.", StatusCodes.Status404NotFound);
+            throw new SupportRequestException("Attachment not found.", StatusCodes.Status404NotFound, "ticket.attachmentNotFound");
         }
 
         var ticket = await _tickets.Find(t => t.Id == attachment.TicketId).FirstOrDefaultAsync();
         if (ticket == null)
         {
-            throw new SupportRequestException("Ticket not found.", StatusCodes.Status404NotFound);
+            throw new SupportRequestException("Ticket not found.", StatusCodes.Status404NotFound, "ticket.notFound");
         }
 
         EnsureAccess(ticket, user, isSupportAgent);
@@ -421,7 +421,7 @@ public class SupportTicketService : ISupportTicketService
 
         if (ticket == null)
         {
-            throw new SupportRequestException("Ticket not found.", StatusCodes.Status404NotFound);
+            throw new SupportRequestException("Ticket not found.", StatusCodes.Status404NotFound, "ticket.notFound");
         }
 
         return ticket;
@@ -444,7 +444,7 @@ public class SupportTicketService : ISupportTicketService
     {
         if (!isSupportAgent && !string.Equals(ticket.UserId, user.UserId, StringComparison.OrdinalIgnoreCase))
         {
-            throw new SupportRequestException("Access denied.", StatusCodes.Status403Forbidden);
+            throw new SupportRequestException("Access denied.", StatusCodes.Status403Forbidden, "ticket.accessDenied");
         }
     }
 
@@ -452,12 +452,13 @@ public class SupportTicketService : ISupportTicketService
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new SupportRequestException($"{fieldName} is required.", StatusCodes.Status400BadRequest);
+            // Код по полю: «ticket.subjectRequired», «ticket.messageTooLong» — витрина переводит каждое отдельно.
+            throw new SupportRequestException($"{fieldName} is required.", StatusCodes.Status400BadRequest, $"ticket.{fieldName.ToLowerInvariant()}Required");
         }
 
         if (value.Length > maxLength)
         {
-            throw new SupportRequestException($"{fieldName} exceeds {maxLength} characters.", StatusCodes.Status400BadRequest);
+            throw new SupportRequestException($"{fieldName} exceeds {maxLength} characters.", StatusCodes.Status400BadRequest, $"ticket.{fieldName.ToLowerInvariant()}TooLong", new { max = maxLength });
         }
     }
 
@@ -470,7 +471,7 @@ public class SupportTicketService : ISupportTicketService
         {
             if (count >= maxReopens)
             {
-                throw new SupportRequestException("Too many reopen attempts. Please wait a few minutes.", StatusCodes.Status429TooManyRequests);
+                throw new SupportRequestException("Too many reopen attempts. Please wait a few minutes.", StatusCodes.Status429TooManyRequests, "ticket.reopenLimit");
             }
 
             _cache.Set(key, count + 1, TimeSpan.FromMinutes(windowMinutes));
@@ -487,7 +488,7 @@ public class SupportTicketService : ISupportTicketService
         {
             if (count >= _options.TicketRateLimit.MaxTickets)
             {
-                throw new SupportRequestException("Ticket creation limit reached. Please wait and try again.", StatusCodes.Status429TooManyRequests);
+                throw new SupportRequestException("Ticket creation limit reached. Please wait and try again.", StatusCodes.Status429TooManyRequests, "ticket.createLimit");
             }
 
             _cache.Set(key, count + 1, TimeSpan.FromMinutes(_options.TicketRateLimit.WindowMinutes));
@@ -594,9 +595,14 @@ public class SupportTicketService : ISupportTicketService
 public class SupportRequestException : Exception
 {
     public int StatusCode { get; }
+    /// <summary>Код для словаря витрины (см. ApiErrors); null — только английский текст.</summary>
+    public string? Code { get; }
+    public object? Args { get; }
 
-    public SupportRequestException(string message, int statusCode) : base(message)
+    public SupportRequestException(string message, int statusCode, string? code = null, object? args = null) : base(message)
     {
         StatusCode = statusCode;
+        Code = code;
+        Args = args;
     }
 }

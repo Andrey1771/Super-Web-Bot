@@ -30,15 +30,23 @@
   opacity: 0.8;
 }
 
+/* Бренд слева, ссылки справа — как и было. Разбивать подвал на два ряда пробовал ради
+   формы подписки; теперь от неё здесь только кнопка-конверт, и ряд снова один. */
 .footer-top {
   display: grid;
-  grid-template-columns: 1.2fr 2fr;
-  gap: var(--space-32);
+  grid-template-columns: minmax(0, 420px) 1fr;
+  gap: var(--space-56);
   align-items: flex-start;
 }
 
+/* Ширину задаёт трек сетки; высоту — самая длинная колонка ссылок справа.
+   Блок растянут и разложен по вертикали, чтобы иконки соцсетей встали по нижнему краю:
+   иначе они висели в воздухе, а под ними оставалось 100px пустоты до разделителя. */
 .footer-brand {
-  max-width: 420px;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
 }
 
 .footer-logo {
@@ -60,15 +68,22 @@
 }
 
 .footer-social {
-  margin-top: var(--space-24);
+  /* auto прижимает к низу колонки, отступ снизу — минимум на случай коротких колонок. */
+  margin-top: auto;
+  padding-top: var(--space-24);
 }
 
 /* Колонок четыре — под колонку жанров. При жёсткой тройке она выталкивала
    «Legal» на вторую строку, и подвал разбухал вдвое. */
+/* По содержимому, а не поровну: колонки делят строку с брендом и получают на четверых
+   780px. Поровну это по 173px, а «Role-Playing Games (RPGs)» шире — ссылка вылезала
+   в межколонник, пока у Store и Company простаивало по 88–101px. */
 .footer-columns {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
-  gap: var(--space-24);
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  justify-content: space-between;
+  gap: var(--space-24) var(--space-40);
 }
 
 .footer-column {
@@ -87,7 +102,6 @@
 .footer-column a {
   color: #c9cce1;
   font-size: 15px;
-  white-space: nowrap;
   transition: color 0.2s ease;
 }
 
@@ -108,54 +122,6 @@
 
 .footer-link-button:hover {
   color: var(--color-primary);
-}
-
-/* Scalable language selector (native select, styled for the dark footer). */
-.footer-lang {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.footer-lang-icon {
-  position: absolute;
-  left: 12px;
-  color: #9aa0b5;
-  pointer-events: none;
-}
-
-.footer-lang-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-color: rgba(255, 255, 255, 0.06);
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa0b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  color: #e7ebf5;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 34px 8px 34px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.footer-lang-select:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
-  background-color: rgba(255, 255, 255, 0.09);
-}
-
-.footer-lang-select:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
-  outline-offset: 2px;
-}
-
-/* Dropdown list renders on the OS layer (light) — keep option text readable. */
-.footer-lang-select option {
-  color: #0f172a;
 }
 
 .footer-divider {
@@ -212,6 +178,44 @@
   font-size: 13px;
 }
 
+/* Платёжные значки — белые плашки одного размера: так их показывают все витрины,
+   и марка читается в своём цвете, а не перекрашивается под тёмный фон. */
+.pay-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 30px;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.pay-visa {
+  color: #1a1f71;
+  font-size: 13px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.5px;
+}
+
+.pay-amex {
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: #016fd0;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.pay-stripe {
+  color: #635bff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
 .footer-social {
   display: inline-flex;
   gap: 8px;
@@ -243,7 +247,10 @@
     gap: var(--space-40);
   }
 
+  /* Авто-поток по столбцам и заданные треки — разные режимы: без сброса потока колонки
+     остались бы в одну строку. */
   .footer-columns {
+    grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 }
@@ -255,6 +262,7 @@
 
   /* Two compact columns of links on phones instead of one long stack. */
   .footer-columns {
+    grid-auto-flow: row;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-24) var(--space-16);
   }
@@ -273,6 +281,7 @@
 
 @media (max-width: 420px) {
   .footer-columns {
+    grid-auto-flow: row;
     grid-template-columns: 1fr;
   }
 

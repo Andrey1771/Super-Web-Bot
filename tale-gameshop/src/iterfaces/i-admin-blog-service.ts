@@ -131,6 +131,9 @@ export interface IAdminBlogService {
   restoreGuestViews(): Promise<{ modified: number }>;
   deleteGuestViews(): Promise<{ deleted: number }>;
   getPostAnalytics(id: string): Promise<AdminBlogPostAnalytics>;
+  /** Все теги постов — для фильтра. Собирать их из загруженных строк значит не показать те,
+   *  до которых не долистали. */
+  getTags(): Promise<string[]>;
   getPostsAnalytics(postIds: string[]): Promise<AdminBlogPostAnalytics[]>;
   getOverviewAnalytics(): Promise<AdminBlogOverviewAnalytics>;
   getOverviewBreakdown(params: { metric: string; bucket?: string; emoji?: string }): Promise<AdminBlogBreakdown>;
@@ -142,6 +145,12 @@ export type AdminBlogPayload = {
   excerpt: string;
   contentMarkdown: string;
   contentHtml?: string;
+  /** Переводы (ru/uk/pl → текст); теги — списки по позициям. */
+  titleI18n?: Record<string, string>;
+  excerptI18n?: Record<string, string>;
+  contentMarkdownI18n?: Record<string, string>;
+  contentHtmlI18n?: Record<string, string>;
+  tagsI18n?: Record<string, string[]>;
   coverAssetId?: string;
   tags: string[];
   status: BlogStatus;

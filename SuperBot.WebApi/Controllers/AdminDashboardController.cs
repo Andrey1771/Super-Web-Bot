@@ -16,5 +16,7 @@ public class AdminDashboardController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<AdminDashboardDto>> Get(CancellationToken ct) =>
-        Ok(await _dashboard.BuildAsync(ct));
+        // Токен вызвавшего идёт дальше в бот-сервис: у того своя авторизация на тех же
+        // ключах Keycloak, и заводить ради одной проверки служебную учётку незачем.
+        Ok(await _dashboard.BuildAsync(ct, Request.Headers.Authorization.ToString()));
 }

@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React, {useState} from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faEye, faEyeSlash} from '@fortawesome/free-solid-svg-icons';
@@ -10,6 +11,7 @@ type PasswordCardProps = {
 };
 
 const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLabel, onSubmit, onReset}) => {
+    const {t} = useTranslation();
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,13 +23,13 @@ const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLab
     const handleSubmit = () => {
         const nextErrors: { current?: string; new?: string; confirm?: string } = {};
         if (!currentPassword) {
-            nextErrors.current = 'Enter your current password.';
+            nextErrors.current = t('account.security.password.errCurrent');
         }
         if (newPassword.length < 8) {
-            nextErrors.new = 'Password must be at least 8 characters.';
+            nextErrors.new = t('account.security.password.errLength');
         }
         if (newPassword !== confirmPassword) {
-            nextErrors.confirm = 'Passwords do not match.';
+            nextErrors.confirm = t('account.security.password.errMatch');
         }
         setErrors(nextErrors);
         if (Object.keys(nextErrors).length > 0) {
@@ -41,13 +43,13 @@ const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLab
             <div className="security-password-grid">
                 <div className="security-password-form">
                     <div className="security-password-header">
-                        <h3>Password</h3>
+                        <h3>{t('account.security.password.title')}</h3>
                         <button type="button" className="security-inline-link" onClick={onReset}>
-                            Forgot password? Reset
+                            {t('account.security.password.forgot')}
                         </button>
                     </div>
                     <label className="security-field">
-                        <span>Current password</span>
+                        <span>{t('account.security.password.current')}</span>
                         <div className="security-input">
                             <input
                                 type={showCurrent ? 'text' : 'password'}
@@ -62,7 +64,7 @@ const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLab
                         {errors.current && <span className="security-error">{errors.current}</span>}
                     </label>
                     <label className="security-field">
-                        <span>New password</span>
+                        <span>{t('account.security.password.new')}</span>
                         <div className="security-input">
                             <input
                                 type={showNew ? 'text' : 'password'}
@@ -77,7 +79,7 @@ const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLab
                         {errors.new && <span className="security-error">{errors.new}</span>}
                     </label>
                     <label className="security-field">
-                        <span>Confirm new password</span>
+                        <span>{t('account.security.password.confirm')}</span>
                         <div className="security-input">
                             <input
                                 type={showConfirm ? 'text' : 'password'}
@@ -92,14 +94,14 @@ const PasswordCard: React.FC<PasswordCardProps> = ({isSubmitting, lastUpdatedLab
                         {errors.confirm && <span className="security-error">{errors.confirm}</span>}
                     </label>
                     <button type="button" className="btn btn-primary security-update-btn" onClick={handleSubmit} disabled={isSubmitting}>
-                        Update password
+                        {t('account.security.password.update')}
                     </button>
                 </div>
                 <div className="security-password-info">
                     <div className="security-info-card">
                         <div>
-                            {lastUpdatedLabel && <p>Your password was updated {lastUpdatedLabel}.</p>}
-                            <p>Resetting your password signs you out of active sessions.</p>
+                            {lastUpdatedLabel && <p>{t('account.security.password.updatedAt', {when: lastUpdatedLabel})}</p>}
+                            <p>{t('account.security.password.resetNote')}</p>
                         </div>
                     </div>
                 </div>

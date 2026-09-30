@@ -3,6 +3,13 @@
 // /uploads/. Идемпотентен: файлы перезаписываются, пути переустанавливаются.
 // Требует смонтированного uploads-тома (см. demo-seeder в docker-compose).
 
+// Защита от случайного запуска на боевой базе: сиды пишут выдуманные данные, а seed-discounts
+// стирает все скидки. Запуск только с явным ALLOW_DEMO_SEED=1 (см. seeds/README.md).
+if (process.env.ALLOW_DEMO_SEED !== "1") {
+  print("Отказ: демо-сиды запускаются только с ALLOW_DEMO_SEED=1. Это стенд, а не боевая база?");
+  quit(1);
+}
+
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -57,17 +64,33 @@ const buildCoverSvg = (slug) => {
 };
 
 const dbx = db.getSiblingDB("SteamShopDatabase");
+const COVER_PREFIX = "/uploads/demo-covers/";
 let written = 0;
-dbx.Games.find({}, { slug: 1 }).forEach((game) => {
+let kept = 0;
+dbx.Games.find({}, { slug: 1, imagePath: 1 }).forEach((game) => {
   const slug = (game.slug || "").trim().toLowerCase();
   if (!slug) {
     print(`skip: game ${game._id} has no slug`);
     return;
   }
 
+  // Своя картинка — не трогаем. Скрипт рисует заглушки для игр, у которых обложки нет;
+  // раньше он шёл по всем подряд и на общем прогоне (run-all.sh идёт после
+  // seed-showcase-game) затирал настоящую обложку витринной игры генератом.
+  const current = game.imagePath || "";
+  if (current && !current.startsWith(COVER_PREFIX)) {
+    kept += 1;
+    return;
+  }
+
+  const url = `${COVER_PREFIX}${slug}.svg`;
   fs.writeFileSync(path.join(coversDir, `${slug}.svg`), buildCoverSvg(slug));
-  dbx.Games.updateOne({ _id: game._id }, { $set: { imagePath: `/uploads/demo-covers/${slug}.svg` } });
+  dbx.Games.updateOne({ _id: game._id }, { $set: { imagePath: url } });
+  // Обложка карточки — второе место, где хранится тот же путь, и раньше скрипт его не
+  // обновлял: в карточках оставался /api/demo-covers/<slug> — эндпоинт, которого в коде
+  // нет и никогда не было, то есть 404 на каждой странице игры.
+  dbx.GameDetails.updateOne({ slug: slug }, { $set: { "cover.url": url } });
   written += 1;
 });
 
-print(`game covers: ${written} SVG files written to ${coversDir}, imagePath updated`);
+print(`game covers: ${written} SVG files written to ${coversDir}, imagePath and GameDetails.cover.url updated; ${kept} game(s) kept their own artwork`);

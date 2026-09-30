@@ -12,14 +12,7 @@ namespace SuperBot.Core.Interfaces
             order.PaidAt ?? (order.OrderDate == default ? order.CreatedAt : order.OrderDate),
             order.TotalAmount,
             order.Currency,
-            MapMethod(order.PaymentProvider));
-
-        private static string MapMethod(string? provider) => provider?.ToLowerInvariant() switch
-        {
-            "btcpay" => "Crypto",
-            "stars" => "Telegram Stars",
-            _ => "Card"
-        };
+            PaymentInstrument.Describe(order));
     }
 
     /// <summary>Одна позиция, по которой ещё ждут ключи: название игры и сколько осталось выдать.</summary>
@@ -68,15 +61,41 @@ namespace SuperBot.Core.Interfaces
         /// Гостевая покупка: ключи придержаны, просим подтвердить почту.
         /// Ссылка ведёт на /api/payments/verify-delivery?token=…
         /// </summary>
-        Task SendKeyDeliveryVerificationAsync(string email, string orderNumber, string verifyUrl, CancellationToken cancellationToken = default);
+        Task SendKeyDeliveryVerificationAsync(string email, string orderNumber, string verifyUrl, string? locale = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Отправляет покупателю выданные в этом заходе ключи. receipt — чек-строка (опц.);
         /// progress — прогресс по заказу (опц.): если выдана лишь часть, письмо так и напишет + перечислит ожидаемое.
         /// </summary>
-        Task SendGameKeysAsync(string email, string orderNumber, IReadOnlyList<DeliveredKeyNotification> keys, KeyDeliveryReceipt? receipt = null, KeyDeliveryProgress? progress = null, CancellationToken cancellationToken = default);
+        /// <para>locale — язык покупателя (Order.Language): en/ru/uk/pl; null — английский.</para>
+        Task SendGameKeysAsync(string email, string orderNumber, IReadOnlyList<DeliveredKeyNotification> keys, KeyDeliveryReceipt? receipt = null, KeyDeliveryProgress? progress = null, string? locale = null, CancellationToken cancellationToken = default);
 
         /// <summary>Почта не подтверждена за отведённый срок — заказ автоматически возвращён.</summary>
-        Task SendAutoRefundNoticeAsync(string email, string orderNumber, CancellationToken cancellationToken = default);
+        Task SendAutoRefundNoticeAsync(string email, string orderNumber, string? locale = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Возврат, сделанный магазином: полный или по позициям. Что вернули, сколько на карту и сколько на баланс кэшбэка.
+        /// Причину специалиста письмо не пересказывает — она внутренняя.
+        /// </summary>
+        Task SendRefundNoticeAsync(string email, OrderRefundNotice notice, string? locale = null, CancellationToken cancellationToken = default);
     }
+
+    /// <summary>Возвращённая позиция: название (с изданием или лицензией) и сколько штук.</summary>
+    public sealed record RefundedLine(string Title, int Quantity);
+
+    /// <summary>
+    /// Что сообщить покупателю о возврате. <paramref name="Items"/> пусто — возвращён весь заказ без разбивки.
+    /// Суммы — в валюте заказа; <paramref name="ToCashback"/> — часть, оплаченная кэшбэком и вернувшаяся на баланс.
+    /// </summary>
+    public sealed record OrderRefundNotice(
+        string OrderNumber,
+        bool FullRefund,
+        IReadOnlyList<RefundedLine> Items,
+        decimal ToCard,
+        decimal ToCashback,
+        string Currency,
+        /// <summary>false — деньги вернули вне карты (Telegram Stars, крипта): письмо не обещает возврат на карту.</summary>
+        bool ViaCard = true,
+        /// <summary>Чем платили, словами («Visa •••• 4242»): письмо говорит, куда именно вернутся деньги.</summary>
+        string? PaidWith = null);
 }

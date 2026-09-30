@@ -115,6 +115,27 @@ public class SeoTests
     }
 
     [Fact]
+    public async Task Sitemap_names_every_language_version_of_a_page()
+    {
+        // Языковые версии — параметром ?lang=, английская по «голому» адресу и она же x-default:
+        // ровно тот кластер, что витрина ставит в <head>.
+        var client = _factory.CreateClient();
+        RefreshCaches(client.BaseAddress!.ToString().TrimEnd('/'));
+        var document = XDocument.Parse(await (await client.GetAsync("/sitemap.xml")).Content.ReadAsStringAsync());
+        XNamespace xhtml = "http://www.w3.org/1999/xhtml";
+
+        var games = document.Root!.Elements(SitemapNs + "url").Single(url => url.Element(SitemapNs + "loc")!.Value.EndsWith("/games"));
+        var alternates = games.Elements(xhtml + "link")
+            .ToDictionary(link => link.Attribute("hreflang")!.Value, link => link.Attribute("href")!.Value);
+
+        Assert.Equal(new[] { "en", "pl", "ru", "uk", "x-default" }, alternates.Keys.OrderBy(key => key, StringComparer.Ordinal));
+        Assert.EndsWith("/games", alternates["en"]);
+        Assert.EndsWith("/games", alternates["x-default"]);
+        Assert.EndsWith("/games?lang=ru", alternates["ru"]);
+        Assert.Equal("https://shop.example/games?type=software&lang=pl", SeoController.LanguageHref("https://shop.example/games?type=software", "pl"));
+    }
+
+    [Fact]
     public async Task Sitemap_lists_every_game_by_its_storefront_address()
     {
         var slug = $"seo-probe-{Guid.NewGuid():N}";

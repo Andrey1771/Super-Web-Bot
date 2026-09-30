@@ -24,8 +24,7 @@ public class AnalyticsController : ControllerBase
             {
                 isEnabled = false,
                 gaMeasurementId = string.Empty,
-                gtmContainerId = string.Empty,
-                yandexCounterId = string.Empty
+                gtmContainerId = string.Empty
             });
         }
 
@@ -33,8 +32,7 @@ public class AnalyticsController : ControllerBase
         {
             isEnabled = settings.IsEnabled,
             gaMeasurementId = settings.GaMeasurementId ?? string.Empty,
-            gtmContainerId = settings.GtmContainerId ?? string.Empty,
-            yandexCounterId = settings.YandexCounterId ?? string.Empty
+            gtmContainerId = settings.GtmContainerId ?? string.Empty
         });
     }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.Sockets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
@@ -36,6 +37,7 @@ public sealed class AdminDashboardService
     private readonly IConfiguration _configuration;
     private readonly StorefrontCurrencyOptions _currencies;
     private readonly SupportChatOptions _chat;
+    private readonly SuperBot.WebApi.Mail.MailOptions _mail;
     private readonly ILogger<AdminDashboardService> _logger;
     private readonly IMemoryCache _cache;
 
@@ -49,14 +51,18 @@ public sealed class AdminDashboardService
         IConfiguration configuration,
         IOptions<StorefrontCurrencyOptions> currencies,
         IOptions<SupportChatOptions> chat,
+        IOptions<SuperBot.WebApi.Mail.MailOptions> mail,
         IMemoryCache cache,
-        ILogger<AdminDashboardService> logger)
+        ILogger<AdminDashboardService> logger,
+        IOptionsMonitor<SuperBot.Core.Cashback.CashbackOptions> cashbackOptions)
     {
+        _cashbackOptions = cashbackOptions;
         _database = database;
         _keys = keys;
         _orders = orders;
         _games = games;
         _fx = fx;
+        _mail = mail.Value;
         _http = http;
         _configuration = configuration;
         _currencies = currencies.Value;
@@ -65,7 +71,9 @@ public sealed class AdminDashboardService
         _logger = logger;
     }
 
-    public async Task<AdminDashboardDto> BuildAsync(CancellationToken ct)
+    private readonly IOptionsMonitor<SuperBot.Core.Cashback.CashbackOptions> _cashbackOptions;
+
+    public async Task<AdminDashboardDto> BuildAsync(CancellationToken ct, string? authorization = null)
     {
         var now = DateTime.UtcNow;
         var todayStart = now.Date;
@@ -78,15 +86,17 @@ public sealed class AdminDashboardService
         var supportTask = Safe(() => BuildSupportAsync(now, ct), "support");
         var paymentsTask = Safe(() => BuildPaymentsAsync(ct), "payments");
         var contentTask = Safe(() => BuildContentAsync(ct), "content");
+        var cashbackTask = Safe(() => SuperBot.WebApi.Controllers.AdminCashbackController.BuildOverviewAsync(
+            _database.GetCollection<SuperBot.Infrastructure.Data.CashbackAccountDb>("CashbackAccounts"), _cashbackOptions.CurrentValue, ct), "cashback");
         // Здоровье кэшируем на полминуты: пробы Keycloak и бота — сетевые вызовы с таймаутом, а
         // дашборд опрашивается каждую минуту; без кэша каждый Retry ждал бы таймаута заново.
         var healthTask = Safe(() => _cache.GetOrCreateAsync(HealthCacheKey, entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30);
-            return BuildHealthAsync(now, ct);
+            return BuildHealthAsync(now, authorization, ct);
         })!, "health");
 
-        await Task.WhenAll(ordersTask, keysTask, supportTask, paymentsTask, contentTask, healthTask);
+        await Task.WhenAll(ordersTask, keysTask, supportTask, paymentsTask, contentTask, healthTask, cashbackTask);
 
         return new AdminDashboardDto
         {
@@ -97,6 +107,7 @@ public sealed class AdminDashboardService
             Support = supportTask.Result,
             Payments = paymentsTask.Result,
             Content = contentTask.Result,
+            Cashback = cashbackTask.Result,
             Health = healthTask.Result
         };
     }
@@ -250,7 +261,38 @@ public sealed class AdminDashboardService
     {
         var failures = _database.GetCollection<BsonDocument>("PaymentFinalizationFailures");
         var open = await failures.CountDocumentsAsync(new BsonDocument("Status", "Open"), cancellationToken: ct);
-        return new DashboardPaymentsDto { OpenFailures = (int)open };
+
+        // Споры, по которым банк ждёт доказательств, — ближайший срок первым. Пропущенный срок означает проигрыш
+        // автоматически, поэтому им место в «Needs attention», а не только в карточке заказа.
+        var orders = _database.GetCollection<BsonDocument>("Orders");
+        var awaiting = await orders
+            .Find(new BsonDocument
+            {
+                { "Dispute.Outcome", new BsonDocument("$exists", false) },
+                { "Dispute.HasEvidence", false },
+                { "Dispute.Status", new BsonDocument("$in", new BsonArray { "needs_response", "warning_needs_response" }) }
+            })
+            .Sort(new BsonDocument("Dispute.EvidenceDueBy", 1))
+            .Limit(10)
+            .ToListAsync(ct);
+
+        return new DashboardPaymentsDto
+        {
+            OpenFailures = (int)open,
+            DisputesAwaitingEvidence = awaiting.Select(doc =>
+            {
+                var dispute = doc["Dispute"].AsBsonDocument;
+                var currency = dispute.GetValue("Currency", "USD").AsString;
+                return new DashboardDisputeDto
+                {
+                    OrderId = doc.GetValue("OrderId", BsonNull.Value).IsString ? doc["OrderId"].AsString : string.Empty,
+                    OrderNumber = doc.GetValue("OrderNumber", BsonNull.Value).IsString ? doc["OrderNumber"].AsString : string.Empty,
+                    EvidenceDueBy = dispute.GetValue("EvidenceDueBy", BsonNull.Value).IsValidDateTime ? dispute["EvidenceDueBy"].ToUniversalTime() : null,
+                    Amount = SuperBot.Core.Payments.CurrencyMinorUnits.FromMinor(dispute.GetValue("AmountMinor", 0L).ToInt64(), currency),
+                    Currency = currency
+                };
+            }).ToList()
+        };
     }
 
     // ---------- контент клиентов ----------
@@ -258,20 +300,23 @@ public sealed class AdminDashboardService
     private async Task<DashboardContentDto> BuildContentAsync(CancellationToken ct)
     {
         var reviews = _database.GetCollection<BsonDocument>("GameReviews");
-        var questions = _database.GetCollection<BsonDocument>("GameQuestions");
         var pending = await reviews.CountDocumentsAsync(new BsonDocument("status", "Pending"), cancellationToken: ct);
-        var unanswered = await questions.CountDocumentsAsync(
-            new BsonDocument("$or", new BsonArray
-            {
-                new BsonDocument("answers", new BsonDocument("$size", 0)),
-                new BsonDocument("answers", new BsonDocument("$exists", false))
-            }), cancellationToken: ct);
-        return new DashboardContentDto { PendingReviews = (int)pending, UnansweredQuestions = (int)unanswered };
+        return new DashboardContentDto { PendingReviews = (int)pending };
     }
 
     // ---------- здоровье ----------
 
-    private async Task<DashboardHealthDto> BuildHealthAsync(DateTime now, CancellationToken ct)
+    /// <summary>
+    /// Свежий прогон проверок без кэша — для фонового монитора.
+    ///
+    /// Кэш на дашборде существует, чтобы Retry подряд не ждал таймаутов заново; монитору же
+    /// нужен именно новый замер, иначе письмо об аварии придёт с получасовым опозданием.
+    /// Токена пользователя здесь нет: до бот-сервиса монитор дотягивается внутренним токеном.
+    /// </summary>
+    public Task<DashboardHealthDto> CheckHealthAsync(CancellationToken ct) =>
+        BuildHealthAsync(DateTime.UtcNow, authorization: null, ct);
+
+    private async Task<DashboardHealthDto> BuildHealthAsync(DateTime now, string? authorization, CancellationToken ct)
     {
         var items = new List<DashboardHealthItemDto>();
 
@@ -291,17 +336,22 @@ public sealed class AdminDashboardService
         // /api/admin/bot/status, спрашиваем без прав — достаточно, что отвечает (401 — тоже «жив»).
         // Пробы идут параллельно: последовательные суммировали бы таймауты.
         var keycloakProbe = ProbeAsync("Keycloak", BuildKeycloakWellKnownUrl(), ct);
-        var botProbe = ProbeAsync("Telegram bot service", _configuration["Dashboard:BotServiceUrl"] ?? "http://bot:7003/api/admin/bot/status", ct, acceptUnauthorized: true);
-        await Task.WhenAll(keycloakProbe, botProbe);
+        // Две отдельные строки, потому что это два разных вопроса. «Поднят ли контейнер»
+        // отвечает обычная проба (её засчитывает даже 401). «Слышит ли бот людей» решает
+        // вебхук — и он ломается сам по себе, при совершенно живом контейнере. Раньше была
+        // только первая строка, и мёртвый вебхук неделю выглядел зелёным.
+        var botProbe = ProbeAsync("Bot service", _configuration["Dashboard:BotServiceUrl"] ?? "http://bot:7003/api/admin/bot/status", ct, acceptUnauthorized: true);
+        var webhookProbe = ProbeWebhookAsync(authorization, ct);
+        var stripeProbe = ProbeStripeAsync(ct);
+        var mailProbe = ProbeSmtpAsync(ct);
+        var llmProbe = ProbeLlmAsync(ct);
+        await Task.WhenAll(keycloakProbe, botProbe, webhookProbe, stripeProbe, mailProbe, llmProbe);
         items.Add(keycloakProbe.Result);
         items.Add(botProbe.Result);
+        items.Add(webhookProbe.Result);
+        items.Add(stripeProbe.Result);
 
-        // Платёжные рельсы: сконфигурированы ли ключи. Не «работает ли Stripe» — это узнаётся только реальным вызовом.
-        var stripe = !string.IsNullOrWhiteSpace(_configuration["Stripe:SecretKey"]);
-        items.Add(new DashboardHealthItemDto { Name = "Stripe", State = stripe ? "ok" : "unconfigured", Detail = stripe ? "secret key set" : "Stripe:SecretKey is empty" });
-
-        var yooShop = !string.IsNullOrWhiteSpace(_configuration["YooKassa:ShopId"]);
-        items.Add(new DashboardHealthItemDto { Name = "YooKassa", State = yooShop ? "ok" : "unconfigured", Detail = yooShop ? "shop id set" : "not configured" });
+        items.Add(mailProbe.Result);
 
         // Курсы: есть ли книга и не протухла ли. Сутки — с запасом к любому разумному расписанию импорта.
         var rates = _fx.Current().All();
@@ -321,22 +371,40 @@ public sealed class AdminDashboardService
             });
         }
 
-        // LLM поддержки: провайдер и ключ. Реальную доступность знает Chat stats.
-        var llmConfigured = _chat.Provider.Equals("ollama", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrWhiteSpace(_chat.DeepSeekApiKey);
-        items.Add(new DashboardHealthItemDto { Name = $"Support LLM ({_chat.Provider})", State = llmConfigured ? "ok" : "unconfigured", Detail = llmConfigured ? "configured" : "API key missing" });
+        items.Add(llmProbe.Result);
 
         return new DashboardHealthDto { Items = items };
     }
 
     private string BuildKeycloakWellKnownUrl()
     {
-        var baseUri = _configuration["Keycloak:InternalUri"] ?? _configuration["Keycloak:Uri"] ?? "http://localhost:8088";
+        // Адрес, по которому Keycloak виден ИЗНУТРИ, а не из браузера. Первый же фоновый
+        // прогон прислал письмо «Keycloak is down: Connection refused (localhost:8088)»:
+        // проба брала публичный адрес, а внутри контейнера localhost — это он сам. Ложная
+        // тревога в первый день — самый быстрый способ приучить не читать такие письма.
+        // Порядок: готовый MetadataAddress, затем явный внутренний адрес, затем адрес
+        // админ-клиента (он по определению серверный) и лишь в конце публичный.
+        var metadata = _configuration["Keycloak:MetadataAddress"];
+        if (!string.IsNullOrWhiteSpace(metadata))
+        {
+            return metadata;
+        }
+
+        var baseUri = _configuration["Keycloak:InternalUri"]
+            ?? _configuration["Keycloak:Admin:BaseUrl"]
+            ?? _configuration["Keycloak:Uri"]
+            ?? "http://localhost:8088";
         var realm = _configuration["Keycloak:Realm"] ?? "TaleShop";
         return $"{baseUri.TrimEnd('/')}/realms/{realm}/.well-known/openid-configuration";
     }
 
     private async Task<DashboardHealthItemDto> ProbeAsync(string name, string url, CancellationToken ct, bool acceptUnauthorized = false)
     {
+        if (!ExternalProbesEnabled)
+        {
+            return NotProbed(name, !string.IsNullOrWhiteSpace(url), "address set — probes disabled here", "address not configured");
+        }
+
         var sw = Stopwatch.StartNew();
         try
         {
@@ -358,6 +426,264 @@ public sealed class AdminDashboardService
         }
     }
 
+    /// <summary>
+    /// Вебхук Telegram: спрашиваем диагноз у бот-сервиса, а не считаем его сами.
+    ///
+    /// Разбор живёт там, где лежит токен бота, и повторять его здесь нельзя: две копии одной
+    /// проверки разъезжаются, и дашборд начинает утверждать одно, а лог бота другое.
+    /// «Не смогли спросить» и «вебхук сломан» — разные ответы: первый чинится связью между
+    /// сервисами, второй регистрацией адреса.
+    /// </summary>
+    private async Task<DashboardHealthItemDto> ProbeWebhookAsync(string? authorization, CancellationToken ct)
+    {
+        const string name = "Telegram webhook";
+
+        if (!ExternalProbesEnabled)
+        {
+            return NotProbed(name, true, "bot service configured — probes disabled here", string.Empty);
+        }
+
+        var url = _configuration["Dashboard:BotWebhookHealthUrl"] ?? "http://bot:7003/api/admin/bot/webhook-health";
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            // Дашборд ждать не должен: у бот-сервиса своя проба с таймаутом в 8 секунд,
+            // и десяти нам хватает с запасом. Не успел — строка честно скажет об этом.
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+
+            using var client = _http.CreateClient("dashboard-probe");
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (!string.IsNullOrWhiteSpace(authorization))
+            {
+                request.Headers.TryAddWithoutValidation("Authorization", authorization);
+            }
+
+            // Внутренний токен: им ходит фоновый монитор, у которого нет пользователя, и он же
+            // страхует дашборд, если токен админа бот-сервису почему-то не подойдёт.
+            var serviceToken = _configuration["Internal:ServiceToken"];
+            if (!string.IsNullOrWhiteSpace(serviceToken))
+            {
+                request.Headers.TryAddWithoutValidation("X-Internal-Token", serviceToken);
+            }
+
+            using var response = await client.SendAsync(request, timeout.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                return new DashboardHealthItemDto { Name = name, State = "warn", Detail = $"bot service answered {(int)response.StatusCode}" };
+            }
+
+            using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+            var diagnosis = document.RootElement.TryGetProperty("diagnosis", out var d) ? d.GetString() ?? "Unknown" : "Unknown";
+            var message = document.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
+
+            // «Былые ошибки» — тоже рабочее состояние: адрес зарегистрирован, отвечает,
+            // очередь пуста. Всё остальное, кроме Ok, означает, что бот людей не слышит.
+            var state = diagnosis switch
+            {
+                "Ok" or "PastErrors" => "ok",
+                "Unknown" or "NotConfigured" => "warn",
+                _ => "down"
+            };
+
+            return new DashboardHealthItemDto { Name = name, State = state, Detail = message };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dashboard health: webhook probe failed");
+            return new DashboardHealthItemDto
+            {
+                Name = name,
+                State = "warn",
+                Detail = ex is OperationCanceledException ? "bot service did not answer in time" : $"bot service unreachable: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Stripe: настоящий запрос вместо взгляда в конфигурацию.
+    ///
+    /// Баланс выбран как самый дешёвый read: он ничего не меняет и не зависит от того, есть
+    /// ли в аккаунте платежи. «Ключ задан» и «Stripe отвечает» — разные вещи, и разошлись они
+    /// у нас на практике: с верным ключом и заблокированной сетью кабинет отдавал 500, а
+    /// дашборд показывал зелёный кружок.
+    /// </summary>
+    private async Task<DashboardHealthItemDto> ProbeStripeAsync(CancellationToken ct)
+    {
+        var key = _configuration["Stripe:SecretKey"];
+        if (string.IsNullOrWhiteSpace(key) || key.StartsWith("__SET_VIA_ENV__", StringComparison.Ordinal))
+        {
+            return new DashboardHealthItemDto { Name = "Stripe", State = "unconfigured", Detail = "Stripe:SecretKey is empty" };
+        }
+
+        if (!ExternalProbesEnabled)
+        {
+            return NotProbed("Stripe", true, "secret key set — probes disabled here", string.Empty);
+        }
+
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(4));
+
+            var balances = new Stripe.BalanceService();
+            await balances.GetAsync(
+                new Stripe.RequestOptions { ApiKey = key },
+                timeout.Token);
+
+            return new DashboardHealthItemDto { Name = "Stripe", State = "ok", Detail = $"answered in {sw.ElapsedMilliseconds} ms" };
+        }
+        catch (Exception ex)
+        {
+            // Разделение то же, что в обработчике ошибок кабинета: «не достучались» чинится
+            // сетью, «Stripe отказал» — ключом или настройками аккаунта. Действия разные.
+            var detail = PaymentProviderOutage.IsUnreachable(ex)
+                ? $"no answer: {PaymentProviderOutage.DescribeReason(ex)}"
+                : $"Stripe rejected the request: {PaymentProviderOutage.DescribeReason(ex)}";
+
+            _logger.LogWarning(ex, "Dashboard health: Stripe probe failed");
+            return new DashboardHealthItemDto { Name = "Stripe", State = "down", Detail = detail };
+        }
+    }
+
+    /// <summary>
+    /// Почта: соединяемся с SMTP и читаем приветствие, ничего не отправляя.
+    ///
+    /// Проверять почту важнее, чем кажется: без неё не уходят ключи, а раньше её в списке
+    /// не было вовсе. Строка приветствия «220 …» — доказательство, что за адресом именно
+    /// почтовый сервер, а не просто открытый порт.
+    /// </summary>
+    private async Task<DashboardHealthItemDto> ProbeSmtpAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(_mail.SmtpHost) || _mail.SmtpPort <= 0)
+        {
+            return new DashboardHealthItemDto { Name = "Mail (SMTP)", State = "unconfigured", Detail = "Mail:SmtpHost is empty" };
+        }
+
+        if (!ExternalProbesEnabled)
+        {
+            return NotProbed("Mail (SMTP)", true, "SMTP host set — probes disabled here", string.Empty);
+        }
+
+        var sw = Stopwatch.StartNew();
+        var target = $"{_mail.SmtpHost}:{_mail.SmtpPort}";
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
+
+            using var tcp = new TcpClient();
+            await tcp.ConnectAsync(_mail.SmtpHost, _mail.SmtpPort, timeout.Token);
+
+            // На 465 порту разговор начинается сразу с TLS, открытого приветствия там нет:
+            // ждать его — значит гарантированно получить таймаут на исправном сервере.
+            if (_mail.SmtpPort == 465)
+            {
+                return new DashboardHealthItemDto { Name = "Mail (SMTP)", State = "ok", Detail = $"{target} accepts connections ({sw.ElapsedMilliseconds} ms)" };
+            }
+
+            using var reader = new StreamReader(tcp.GetStream());
+            var greeting = await reader.ReadLineAsync(timeout.Token);
+
+            return greeting != null && greeting.StartsWith("220", StringComparison.Ordinal)
+                ? new DashboardHealthItemDto { Name = "Mail (SMTP)", State = "ok", Detail = $"{target} greeted in {sw.ElapsedMilliseconds} ms" }
+                : new DashboardHealthItemDto { Name = "Mail (SMTP)", State = "warn", Detail = $"{target} answered \"{greeting}\" instead of 220" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dashboard health: SMTP probe failed");
+            return new DashboardHealthItemDto
+            {
+                Name = "Mail (SMTP)",
+                State = "down",
+                Detail = ex is OperationCanceledException ? $"{target}: timeout" : $"{target}: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// LLM поддержки: спрашиваем список моделей, а не ответ на вопрос.
+    ///
+    /// Обычная генерация проверила бы больше, но дашборд открывают часто, и каждая проверка
+    /// стоила бы токенов. Список моделей у обоих провайдеров бесплатный и требует того же
+    /// самого: чтобы сервис отвечал, а ключ подходил.
+    /// </summary>
+    private async Task<DashboardHealthItemDto> ProbeLlmAsync(CancellationToken ct)
+    {
+        var name = $"Support LLM ({_chat.Provider})";
+        var isOllama = _chat.Provider.Equals("ollama", StringComparison.OrdinalIgnoreCase);
+
+        string url;
+        string? bearer = null;
+        if (isOllama)
+        {
+            url = $"{_chat.OllamaBaseUrl.TrimEnd('/')}/api/tags";
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(_chat.DeepSeekApiKey))
+            {
+                return new DashboardHealthItemDto { Name = name, State = "unconfigured", Detail = "API key missing" };
+            }
+            url = $"{_chat.DeepSeekBaseUrl.TrimEnd('/')}/models";
+            bearer = _chat.DeepSeekApiKey;
+        }
+
+        if (!ExternalProbesEnabled)
+        {
+            return NotProbed(name, true, "provider configured — probes disabled here", string.Empty);
+        }
+
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(4));
+
+            using var client = _http.CreateClient("dashboard-probe");
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (bearer != null)
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearer);
+            }
+
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+
+            return response.IsSuccessStatusCode
+                ? new DashboardHealthItemDto { Name = name, State = "ok", Detail = $"answered in {sw.ElapsedMilliseconds} ms" }
+                : new DashboardHealthItemDto { Name = name, State = "down", Detail = $"answered {(int)response.StatusCode}" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dashboard health: LLM probe failed");
+            return new DashboardHealthItemDto
+            {
+                Name = name,
+                State = "down",
+                Detail = ex is OperationCanceledException ? "timeout" : ex.Message
+            };
+        }
+    }
+
+    /// <summary>
+    /// Ходить ли наружу за состоянием сервисов.
+    ///
+    /// Выключается там, где сети быть не должно, — прежде всего в тестах: набор не имеет
+    /// права зависеть от чужих серверов, а таймауты складываются в минуты. Выключенная
+    /// проба не может соврать в утешительную сторону: она отдаёт «configured», то есть
+    /// «настроено, но не проверено», и никогда «ok».
+    /// </summary>
+    private bool ExternalProbesEnabled =>
+        !string.Equals(_configuration["Dashboard:ExternalProbes"], "false", StringComparison.OrdinalIgnoreCase);
+
+    private static DashboardHealthItemDto NotProbed(string name, bool configured, string configuredDetail, string missingDetail) =>
+        new()
+        {
+            Name = name,
+            State = configured ? "configured" : "unconfigured",
+            Detail = configured ? configuredDetail : missingDetail
+        };
+
     private static string FormatAge(TimeSpan age) =>
         age.TotalMinutes < 60 ? $"{(int)age.TotalMinutes} min ago"
         : age.TotalHours < 48 ? $"{(int)age.TotalHours} h ago"
@@ -375,6 +701,8 @@ public sealed class AdminDashboardDto
     public DashboardSupportDto? Support { get; set; }
     public DashboardPaymentsDto? Payments { get; set; }
     public DashboardContentDto? Content { get; set; }
+    /// <summary>Долг перед покупателями по кэшбэку (доллары).</summary>
+    public SuperBot.WebApi.Controllers.CashbackOverviewDto? Cashback { get; set; }
     public DashboardHealthDto? Health { get; set; }
 }
 
@@ -418,14 +746,23 @@ public sealed class DashboardSupportDto
 public sealed class DashboardPaymentsDto
 {
     public int OpenFailures { get; set; }
+    /// <summary>Споры, по которым банк ждёт доказательств, — ближайший срок первым (не больше десяти).</summary>
+    public List<DashboardDisputeDto> DisputesAwaitingEvidence { get; set; } = new();
+}
+
+public sealed class DashboardDisputeDto
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string OrderNumber { get; set; } = string.Empty;
+    public DateTime? EvidenceDueBy { get; set; }
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "USD";
 }
 
 public sealed class DashboardContentDto
 {
     /// <summary>Отзывы с жалобами, ждущие решения модератора.</summary>
     public int PendingReviews { get; set; }
-    /// <summary>Вопросы на карточках игр без единого ответа.</summary>
-    public int UnansweredQuestions { get; set; }
 }
 
 public sealed class DashboardHealthDto
@@ -436,7 +773,14 @@ public sealed class DashboardHealthDto
 public sealed class DashboardHealthItemDto
 {
     public string Name { get; set; } = string.Empty;
-    /// <summary>ok | warn | down | unconfigured</summary>
+    /// <summary>
+    /// ok | configured | warn | down | unconfigured
+    ///
+    /// «ok» имеет право ставить только проверка, которая реально дёргала сервис.
+    /// «configured» — ключи на месте, но доступность не проверялась: столько знает тот,
+    /// кто заглянул в конфигурацию. Разница не косметическая. Stripe с верным ключом и
+    /// заблокированной сетью держал здесь зелёный кружок, пока кабинет отдавал 500.
+    /// </summary>
     public string State { get; set; } = "ok";
     public string? Detail { get; set; }
 }

@@ -78,9 +78,17 @@
 }
 
 .brand img {
-    width: 42px;
+    /* Знак не квадратный (~1.19:1): ведём по высоте, ширина идёт за пропорцией.
+       Вписывание в квадрат добавило бы поля по бокам и уменьшило саму лягушку. */
     height: 42px;
+    width: auto;
     object-fit: contain;
+    /* Отрицательный отступ справа — не подгонка «на глаз», а компенсация пустоты внутри
+       картинки. Искорка живёт в правом верхнем углу и расширяет бокс до 49.9px, тогда как
+       сама лягушка кончается на 42.6px. На высоте надписи этот столбик пуст, поэтому
+       заявленный gap: 12px читался как 18.3px и слово отрывалось от знака. -6px возвращают
+       оптический просвет к 12px; на вертикаль и на левый край это не влияет. */
+    margin-right: -6px;
 }
 
 .brand-name {
@@ -246,6 +254,17 @@
     font-weight: 700;
 }
 
+/* Пометка вида в общем поиске: ПО и игры в одном списке. */
+.search-suggest-kind {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 11px;
+    font-weight: 700;
+}
+
 .search-suggest-price {
     flex-shrink: 0;
     font-weight: 700;
@@ -269,8 +288,16 @@
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
-.search-suggest-all:hover {
+/* Наведение и выбор стрелками подсвечиваются одинаково: строка равноправна с играми. */
+.search-suggest-all:hover,
+.search-suggest-all.is-active {
     background: rgba(107, 63, 242, 0.08);
+}
+
+/* Когда игр нет, строка остаётся единственной — верхняя линия ей уже не нужна. */
+.search-suggest-all:first-child {
+    margin-top: 0;
+    border-top: none;
 }
 
 /* ---------- Tools cluster ---------- */
@@ -361,6 +388,34 @@
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+}
+
+/* Меню страны: список длинный, поэтому у него свой поиск и прокрутка. */
+.pref-country {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 240px;
+}
+
+.pref-country-search {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+.pref-country-list {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.pref-country-empty {
+    margin: 8px 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--color-muted);
 }
 
 .pref-option {
@@ -723,12 +778,35 @@
 }
 
 .mega-genre {
+    display: flex;
+    align-items: baseline;
+    /* Число сразу за словом, а не у противоположного края: иначе подпись и счётчик
+       читаются как два несвязанных столбца. */
+    gap: 8px;
     padding: 8px 10px;
     border-radius: var(--radius-sm);
     color: #3b324f;
     font-weight: 600;
     font-size: 14px;
     transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Подписи короткие (см. shortGenreLabel) — строка не должна переноситься вовсе. */
+.mega-genre-label {
+    white-space: nowrap;
+}
+
+/* Число игр — приглушённое: это подсказка о размере, а не вторая ссылка. */
+.mega-genre-count {
+    flex: 0 0 auto;
+    color: #8b84a3;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.mega-genre:hover .mega-genre-count {
+    color: #6b3ff2;
 }
 
 .mega-genre:hover {
@@ -1129,5 +1207,98 @@
 @media (max-width: 480px) {
     .brand-name {
         font-size: 18px;
+    }
+}
+
+/* Переключатель страны (регион активации ключа). */
+.pref-country-flag {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.pref-country-picker {
+    width: 260px;
+}
+
+.pref-country-search {
+    width: 100%;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border: 1px solid #ece8ff;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 14px;
+}
+
+.pref-country-list {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.pref-country-empty {
+    padding: 8px 10px;
+    color: #6c6393;
+    font-size: 13px;
+    margin: 0;
+}
+
+.drawer-pref-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ece8ff;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 14px;
+    background: #fff;
+}
+
+/* Подпись над списком стран: какая страна выбрана и откуда мы её взяли (выбор / IP / часовой пояс). */
+.pref-country-note {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f6f2fb;
+    color: #6c6393;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.pref-country-note strong {
+    color: #2b2350;
+}
+
+/* Место под кнопки входа, пока неизвестно, вошёл ли человек.
+   Ширина подобрана под пару «Login + Sign Up»: когда ответ придёт и заглушка сменится
+   кнопками, соседние элементы шапки не сдвинутся. */
+.header-auth-skeleton {
+    display: inline-block;
+    width: 148px;
+    height: 38px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f3f0ff 0%, #e9e3ff 50%, #f3f0ff 100%);
+    background-size: 200% 100%;
+    animation: header-auth-skeleton-shimmer 1.4s linear infinite;
+}
+
+.header-auth-skeleton.is-stacked {
+    display: block;
+    width: 100%;
+    height: 84px;
+    border-radius: var(--radius-md);
+}
+
+@keyframes header-auth-skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Мигающая заглушка на неподвижном интерфейсе раздражает сильнее, чем помогает. */
+@media (prefers-reduced-motion: reduce) {
+    .header-auth-skeleton {
+        animation: none;
     }
 }

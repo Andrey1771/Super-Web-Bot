@@ -49,7 +49,7 @@ const BotChangerPage: React.FC = () => {
   const [isExpandedEditor, setIsExpandedEditor] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -212,31 +212,7 @@ const BotChangerPage: React.FC = () => {
 
   React.useEffect(() => {
     setPageTitle("Bot Data");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "save-bot-data",
-        label: saving ? "Saving..." : "Save all",
-        variant: "primary",
-        onClick: handleSave,
-      },
-      {
-        type: "button",
-        id: "export-bot-data",
-        label: "Export JSON",
-        variant: "outline",
-        onClick: handleExport,
-      },
-      {
-        type: "button",
-        id: "import-bot-data",
-        label: "Import JSON",
-        variant: "outline",
-        onClick: handleImportClick,
-      },
-    ]);
-    return () => setHeaderActions([]);
-  }, [handleExport, handleImportClick, handleSave, saving, setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const openDrawer = (item: EditorItem) => {
     setDrawerError(null);
@@ -279,7 +255,16 @@ const BotChangerPage: React.FC = () => {
       <PageHeader
         title="Bot data editor"
         description="Manage translations, keyboard keys, and message templates in one workspace."
-        breadcrumbs={["Settings", "Bot", "Bot Data"]}
+        breadcrumbs={["Bot", "Bot texts"]}
+        primaryAction={
+          <>
+            <button className="btn btn-primary" type="button" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save all"}
+            </button>
+            <button className="btn btn-outline" type="button" onClick={handleExport}>Export JSON</button>
+            <button className="btn btn-outline" type="button" onClick={handleImportClick}>Import JSON</button>
+          </>
+        }
       />
 
       <Card>

@@ -79,6 +79,11 @@ public class RecoveryRequest
     [BsonElement("requestUserAgent")]
     public string RequestUserAgent { get; set; } = string.Empty;
 
+    // Язык сайта у заявителя (en/ru/uk/pl) — на нём уходят письма по заявке; null — английский.
+    [BsonElement("language")]
+    [BsonIgnoreIfNull]
+    public string? Language { get; set; }
+
     // Найденный по email пользователь Keycloak (null — аккаунта не существует; заявителю это не раскрывается)
     [BsonElement("resolvedUserId")]
     public string? ResolvedUserId { get; set; }

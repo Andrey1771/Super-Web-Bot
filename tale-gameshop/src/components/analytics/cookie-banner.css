@@ -1,66 +1,313 @@
-.cookie-banner {
+/* Согласие на cookie: карточка в углу + отдельное окно с разбором по категориям.
+   Полоса во всю ширину с раскрывающимися настройками разрасталась в пол-экрана и закрывала
+   страницу ровно тогда, когда в неё вчитываются. */
+
+/* ---------- карточка в углу ---------- */
+
+.cookie-card {
   position: fixed;
-  bottom: 24px;
   left: 24px;
-  right: 24px;
-  background: #ffffff;
-  border-radius: var(--radius-lg);
-  padding: 20px 24px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  bottom: 24px;
   z-index: 1000;
+  width: min(400px, calc(100vw - 32px));
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.06);
+  animation: cookie-in 0.22s ease-out;
 }
 
-.cookie-banner__content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+@keyframes cookie-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
 }
 
-.cookie-banner__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+@media (prefers-reduced-motion: reduce) {
+  .cookie-card,
+  .cookie-modal__card {
+    animation: none;
+  }
 }
 
-.cookie-banner__settings {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.3);
+/* Печенье в строке заголовка: подпрыгивает на пиксель вверх, чтобы сидеть на одной линии
+   с текстом, а не свисать под ним. */
+.cookie-card__cookie {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  margin-top: -2px;
 }
 
-.cookie-banner__toggle {
+.cookie-card__title {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.cookie-banner__section-title {
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 16px;
   font-weight: 700;
   color: #0f172a;
 }
 
-.cookie-banner__section-note {
-  margin: 4px 0 0;
+.cookie-card__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #64748b;
 }
 
-@media (min-width: 768px) {
-  .cookie-banner__content {
-    flex-direction: row;
-    justify-content: space-between;
+/* Согласие и отказ — рядом, одного размера: отказ должен быть так же доступен, как согласие.
+   Это не вкус, а требование к баннерам согласия. */
+.cookie-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cookie-card__actions .cookie-btn {
+  flex: 1;
+}
+
+/* Две ссылки в строку: настройки и документ. */
+.cookie-card__links {
+    display: flex;
     align-items: center;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.cookie-card__link {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.cookie-card__link:hover {
+  color: #0f172a;
+}
+
+/* ---------- окно настроек ---------- */
+
+.cookie-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.cookie-modal__card {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+  animation: cookie-in 0.18s ease-out;
+}
+
+.cookie-modal__head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.cookie-modal__cookie {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.cookie-modal__title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cookie-modal__close {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.cookie-modal__close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.cookie-modal__list {
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cookie-option {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.cookie-option--interactive {
+  cursor: pointer;
+}
+
+.cookie-option--interactive:hover {
+  background: #f1f5f9;
+}
+
+.cookie-option__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 3px;
+}
+
+.cookie-option__always {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* Переключатель — тот же <input type="checkbox">, только выглядит тумблером: экранные
+   читалки и клавиатура работают с ним как с обычной галочкой. */
+.cookie-switch {
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  width: 44px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.cookie-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+  transition: transform 0.18s ease;
+}
+
+.cookie-switch:checked {
+  background: var(--color-primary, #7c3aed);
+}
+
+.cookie-switch:checked::after {
+  transform: translateX(20px);
+}
+
+.cookie-switch:focus-visible {
+  outline: 2px solid var(--color-primary, #7c3aed);
+  outline-offset: 2px;
+}
+
+.cookie-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ---------- кнопки ---------- */
+
+/* Свои, а не общие .btn: те тянут высоту 48px и рассчитаны на страницу, здесь нужен
+   компактный ряд, помещающийся в карточку угла. */
+.cookie-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.cookie-btn:focus-visible {
+  outline: 2px solid var(--color-primary, #7c3aed);
+  outline-offset: 2px;
+}
+
+/* Приподнимается на наведении и оседает при нажатии — кнопка отвечает на прикосновение. */
+.cookie-btn:hover {
+  transform: translateY(-1px);
+}
+
+.cookie-btn:active {
+  transform: translateY(0);
+}
+
+.cookie-btn--primary {
+  background: linear-gradient(180deg, #8b5cf6 0%, var(--color-primary, #7c3aed) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.32);
+}
+
+.cookie-btn--primary:hover {
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.38);
+}
+
+/* Отказ такой же по размеру и заметности, только без заливки: он равноправен, а не спрятан. */
+.cookie-btn--ghost {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.cookie-btn--ghost:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 720px) {
+  .cookie-card {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
   }
 
-  .cookie-banner__actions {
-    justify-content: flex-end;
-  }
-
-  .cookie-banner__settings {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
+  .cookie-modal__actions .cookie-btn {
+    flex: 1;
   }
 }

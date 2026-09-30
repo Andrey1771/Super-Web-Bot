@@ -1,3 +1,4 @@
+import { currentLocale } from "../../i18n/format";
 import React, { useMemo } from "react";
 import type { ChatFeedback, ChatMessage, ViewerProfile } from "../../types/support-chat";
 import MessageBubble from "./MessageBubble";
@@ -63,7 +64,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isTyping, typingLab
     const visible = messages
       .filter((message) => message.role === "user" || (message.text ?? "").trim().length > 0)
       .sort(byConversationOrder);
-    const locale = lang === "ru" ? "ru-RU" : "en-US";
+    const locale = currentLocale();
     const today = startOfDay(new Date().toISOString());
     const yesterday = today - 24 * 60 * 60 * 1000;
 

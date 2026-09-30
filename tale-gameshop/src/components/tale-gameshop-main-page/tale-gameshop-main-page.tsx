@@ -1,4 +1,5 @@
 import React, {
+    useCallback,
     useEffect,
     useMemo,
     useState
@@ -16,14 +17,13 @@ import {
     faChessKnight,
     faClock,
     faCoins,
-    faEnvelope,
     faEye,
     faGamepad,
+    faScrewdriverWrench,
     faGift,
     faHatWizard,
     faLeaf,
     faNewspaper,
-    faScrewdriverWrench,
     faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -51,103 +51,75 @@ import GameShelf, { gameHref } from "./GameShelf";
 import DealsCountdown from "./DealsCountdown";
 import DealOfWeekBanner from "./DealOfWeekBanner";
 import SafeGameImage from "../common/SafeGameImage";
+import { ITEM_LISTS, trackItemSelect } from "../../utils/item-list-tracking";
 import PostCoverArt from "../blog-page/PostCoverArt";
 import { formatReleaseDate } from "../../utils/format-release-date";
 import type {
     BlogListItem
 } from "../../types/blog";
-import { subscribeNewsletter } from "../../api/newsletterApi";
-import { getWeeklyChart, type WeeklyChartEntry } from "../../api/catalogApi";
-import { hasVisibleDiscount } from "../../utils/game-pricing";
 import { useSitePreferences } from "../../context/site-preferences";
 import { formatMoney } from "../../utils/format-money";
+import { gamesCatalogPath, softwareCatalogPath } from "../../utils/software";
 import PageMeta from "../common/PageMeta";
-import {
-    rememberNewsletterSubscription,
-    useKnownNewsletterSubscription,
-} from "../../hooks/use-newsletter-subscribed";
+import { useTranslation } from "react-i18next";
+import i18n from "../../i18n";
+import { formatNumber } from "../../i18n/format";
 
 // «Подбор по настроению» — фирменный блок Tale Shop: человек выбирает вайб вечера,
 // мы ведём его на готовый фильтр каталога. Категории совпадают с фильтрами стора.
 const moods = [
-    {
-        id: "adrenaline",
-        label: "Adrenaline rush",
-        icon: faBolt,
-        category: "Action",
-        title: "Something loud and fast",
-        description: "Explosive shooters and high-octane action — for nights when you want your pulse in your ears."
-    },
-    {
-        id: "story",
-        label: "Epic story night",
-        icon: faHatWizard,
-        category: "RPG",
-        title: "A tale to get lost in",
-        description: "Sprawling RPGs with choices that matter. Start tonight, surface next weekend."
-    },
-    {
-        id: "brain",
-        label: "Galaxy-brain plays",
-        icon: faChessKnight,
-        category: "Strategy",
-        title: "Outthink everything",
-        description: "Build, command and conquer. Strategy picks for players who plan three turns ahead."
-    },
-    {
-        id: "chill",
-        label: "Cozy & chill",
-        icon: faLeaf,
-        category: "Indie",
-        title: "Slow evening, warm game",
-        description: "Gentle indies and calm puzzles to unwind with — no pressure, just vibes."
-    },
-    {
-        id: "squad",
-        label: "Squad night",
-        icon: faUsers,
-        category: "Co-op",
-        title: "Better together",
-        description: "Co-op picks for duos and full squads. Grab your friends and split the chaos."
-    }
+// Подписи настроений лежат в словаре: home.mood.<id>.{label,title,text}.
+    { id: "adrenaline", icon: faBolt, category: "Action" },
+    { id: "story", icon: faHatWizard, category: "RPG" },
+    { id: "brain", icon: faChessKnight, category: "Strategy" },
+    { id: "chill", icon: faLeaf, category: "Indie" },
+    { id: "squad", icon: faUsers, category: "Co-op" }
 ];
 
 // Trust-полоса: весь бывший маркетинг (Why/How it works/отзывы) сжат в одну строку из
 // четырёх коротких обещаний — плотность difmark, подача наша. Живёт между полками
 // «New» и «Deals» (как перебивки у конкурентов). Акценты — из палитры hero-промо.
+// Тексты — в словаре: home.reasons.<key>.{title,text}.
 const reasons = [
-    { title: "Secure payments", description: "Protected checkout with trusted partners.", icon: faCheckCircle, accent: "#8b5cf6" },
-    { title: "Instant delivery", description: "Your key moments after purchase.", icon: faBolt, accent: "#3b82f6" },
-    { title: "Cashback on every order", description: "Tale Coins back on each purchase.", icon: faCoins, accent: "#34d17e" },
-    { title: "Friendly support", description: "Here to help with installs and access.", icon: faUsers, accent: "#f0a02f" }
+    { key: "secure", icon: faCheckCircle, accent: "#8b5cf6" },
+    { key: "instant", icon: faBolt, accent: "#3b82f6" },
+    { key: "cashback", icon: faCoins, accent: "#34d17e" },
+    { key: "support", icon: faUsers, accent: "#f0a02f" }
 ];
+
+/**
+ * Подпись ссылки полки с числом: «All 9 deals» вместо безликого «View all» — объём виден
+ * до перехода. Пока полки не приехали, числа нет: показать в этот момент ноль значит
+ * соврать, поэтому подпись просто остаётся без него.
+ */
+const withCount = (count: number | undefined, labelled: (amount: string) => string, plain: string) =>
+    count && count > 0 ? labelled(formatNumber(count)) : plain;
 
 // Порог полки «Under $N» — и фильтр набора, и текст заголовка, и ссылка в каталог.
 const budgetShelfMaxPrice = 10;
 
-// Вместимость товарной полки: 4 колонки × 2 ряда (референс — витрины конкурентов).
-const shelfCapacity = 8;
-
-// Слайдов в hero-карусели: больше — и точки-навигация растягиваются в простыню.
-const heroCarouselCapacity = 7;
+// Вместимость полок (4 колонки × 2 ряда) и размер карусели теперь задаёт сервер: он же их
+// и набирает. Здесь остался только порог «недорого» — он уезжает в запрос как правило витрины.
 
 // Новостей в полосе «Latest news»: ровно один ряд из четырёх карточек.
 const newsStripCapacity = 4;
 
-// Игр в подсказке mood-блока: три — достаточно, чтобы задать настроение, и не превращает
-// фирменный блок в ещё одну полку.
-const moodPreviewCapacity = 3;
-
 // Верх главной — витрина-сетка: крупная карусель игр слева, справа столбик из двух
 // промо-карточек. Контент промо — плейсхолдеры, заменяются здесь без правки разметки.
+// Карточка «Welcome offer» вшита в код, а не приходит из базы: удаление промокода
+// WELCOME10 её не гасит, и витрина продолжает звать вводить код, которого уже нет.
+// Пока это флаг — выключать баннер вместе с промокодом руками. Чинить по-настоящему
+// значит брать предложение из /api/promo, как остальную витрину берёт каталог.
+const showWelcomePromo = true;
+
+// Подписи промо — в словаре: home.promos.<key>.{eyebrow,title}.
 const heroPromos = {
     // TODO: проценты/суммы — плейсхолдеры до продуктового решения. Ссылки ведут на будущие
     // страницы фич (первая покупка → каталог, кэшбэк → /rewards), перевесим при их появлении.
     // Минимум слов (ориентир — витрины конкурентов): только заголовок и чип кода,
     // без поясняющих предложений и CTA-строк — карточка кликабельна целиком.
     welcome: {
-        eyebrow: "Welcome offer",
-        title: "10% off your first order",
+        key: "welcome",
         code: "WELCOME10",
         to: "/games",
         icon: faGift,
@@ -155,8 +127,7 @@ const heroPromos = {
         art: "welcome"
     },
     cashback: {
-        eyebrow: "Rewards",
-        title: "Cashback on every order",
+        key: "cashback",
         code: null,
         to: "/rewards",
         icon: faCoins,
@@ -169,11 +140,11 @@ const heroPromos = {
 // ?platforms= через запятую и ?filterCategory=). Значения должны совпадать с тем, как они
 // заведены у игр в каталоге. photo — PNG-вырезка «настоящего» девайса из
 // public/images/platforms (см. README там); пока файла нет, карточка откатывается на векторный art.
-// «Software» как категории в каталоге пока нет — ссылка оживёт сама, когда категорию заведут,
-// до тех пор каталог показывает дизайн-заглушку пустого фильтра.
+// «Software» ведёт в режим софта того же каталога (/games?type=software): ПО — отдельный вид товара со своими фильтрами.
+// Подписи — в словаре: home.categories.<key>.
 const heroCategoryCards = [
     {
-        title: "PC Games",
+        key: "pc",
         icon: faWindows,
         to: "/games?platforms=PC",
         accent: "#8b5cf6",
@@ -181,7 +152,7 @@ const heroCategoryCards = [
         photo: "/images/platforms/keyboard.png"
     },
     {
-        title: "Console Games",
+        key: "console",
         icon: faGamepad,
         to: "/games?platforms=PlayStation,Xbox",
         accent: "#3b82f6",
@@ -189,9 +160,9 @@ const heroCategoryCards = [
         photo: "/images/platforms/gamepad.png"
     },
     {
-        title: "Software",
+        key: "software",
         icon: faScrewdriverWrench,
-        to: "/games?filterCategory=Software",
+        to: softwareCatalogPath(),
         accent: "#60a5fa",
         art: "software",
         photo: "/images/platforms/software.png"
@@ -261,19 +232,20 @@ const heroArt: Record<string, React.ReactNode> = {
     )
 };
 
-const artFor = (variant?: string): React.ReactNode => (variant ? heroArt[variant] ?? null : null);
+const artFor =(variant?: string): React.ReactNode => (variant ? heroArt[variant] ?? null : null);
 
 // Карточка платформы: фото-вырезка девайса (клавиатура/геймпад), а не рисованная пиктограмма.
 // Отдельный компонент ради состояния фолбэка: PNG ещё не положили (404) → векторный art,
 // карточка не пустеет.
 function HeroCategoryCard({ category }: { category: HeroCategory }) {
+    const { t } = useTranslation();
     const [photoFailed, setPhotoFailed] = useState(false);
     return (
         <Link to={category.to} className="hs-category lift" style={{ ["--accent" as string]: category.accent } as React.CSSProperties}>
             <span className="hs-category-icon" aria-hidden="true">
                 <FontAwesomeIcon icon={category.icon} />
             </span>
-            <span className="hs-category-title">{category.title}</span>
+            <span className="hs-category-title">{t(`home.categories.${category.key}`)}</span>
             {photoFailed ? (
                 <div className="hs-category-art" aria-hidden="true">{artFor(category.art)}</div>
             ) : (
@@ -291,7 +263,7 @@ function HeroCategoryCard({ category }: { category: HeroCategory }) {
     );
 }
 
-// «16 hours ago» для новостных карточек; en-US, как весь витринный текст.
+// «16 hours ago» для новостных карточек — в языке сайта.
 const timeAgo = (iso?: string): string | null => {
     if (!iso) {
         return null;
@@ -302,55 +274,81 @@ const timeAgo = (iso?: string): string | null => {
     }
     const hours = Math.floor(diffMs / 3_600_000);
     if (hours < 1) {
-        return "Just now";
+        return i18n.t("common.justNow");
     }
     if (hours < 24) {
-        return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+        return i18n.t("common.hoursAgo", { count: hours });
     }
     const days = Math.floor(hours / 24);
     if (days < 30) {
-        return `${days} ${days === 1 ? "day" : "days"} ago`;
+        return i18n.t("common.daysAgo", { count: days });
     }
     const months = Math.floor(days / 30);
-    return `${months} ${months === 1 ? "month" : "months"} ago`;
+    return i18n.t("common.monthsAgo", { count: months });
+};
+
+/**
+ * Полки главной: ровно то, что показывает витрина, без каталога вокруг.
+ *
+ * Полка — это список id, а карточки лежат общим справочником: одна и та же игра легко
+ * попадает на четыре полки сразу (свежая, со скидкой, недорогая, в настроении), и возить
+ * её копии по одной на полку значит удваивать ответ на ровном месте.
+ */
+type HomeShelves = {
+    games: Record<string, Game>;
+    /**
+     * Сколько всего игр стоит за каждой ссылкой «All …» — счёт даёт сервер тем же запросом,
+     * который выполнит каталог после перехода. Полка показывает восемь карточек, и без
+     * этого числа «View all» не говорит, восемь там ещё или четыре тысячи.
+     */
+    totals?: { games: number; deals: number; upcoming: number; budget: number; software?: number };
+    /** ПО со скидкой — своя полка: игровые полки ПО не содержат. */
+    hero: string[];
+    upcoming: string[];
+    newReleases: string[];
+    deals: string[];
+    nearestDealEndsAt?: string | null;
+    budget: string[];
+    editorsPicks: string[];
+    popularThisWeek: string[];
+    /** Сколько карточек полки — настоящие продажи недели; остальное добор сервера. */
+    popularThisWeekSold?: number;
+    dealOfWeek: { heroId?: string | null; wingIds: string[] };
+    /** Ключ — категория настроения, которую запросила витрина. */
+    moods: Record<string, string[]>;
 };
 
 export default function TaleGameshopMainPage() {
+    const { t } = useTranslation();
     const { currency } = useSitePreferences();
-    const [games, setGames] = useState < Game[] > ([]);
+    /**
+     * Готовые полки главной. Раньше здесь лежал ВЕСЬ каталог, а полки нарезались в браузере:
+     * на тридцати тысячах игр это мегабайты каждому посетителю ради шести десятков карточек.
+     * Теперь отбор и порядок считает сервер, а витрина показывает то, что ей прислали.
+     */
+    const [home, setHome] = useState<HomeShelves | null>(null);
     const [blogPosts, setBlogPosts] = useState < BlogListItem[] > ([]);
-    // Серверный агрегат продаж за неделю: [{ gameId, sold }] — порядок полки «Popular this week».
-    const [weeklyChart, setWeeklyChart] = useState<WeeklyChartEntry[]>([]);
-    // Конфиг баннера «Deal of the week» (герой + кулисы), настраивается в админке скидок.
-    const [dealSpotlight, setDealSpotlight] = useState<{ heroGameId?: string | null; wingGameIds?: string[] } | null>(null);
     const [activeMoodId, setActiveMoodId] = useState(moods[0].id);
-    const [newsletterEmail, setNewsletterEmail] = useState("");
-    const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
-    // "pending" — гостю ушло письмо-подтверждение; "confirmed" — владелец аккаунта, подписан сразу.
-    const [newsletterResult, setNewsletterResult] = useState<"pending" | "confirmed">("pending");
-    const knownSubscription = useKnownNewsletterSubscription();
     const urlService = container.get < IUrlService > (IDENTIFIERS.IUrlService);
     // Одна загрузка при открытии страницы: запросы независимы и идут параллельно.
     useEffect(() => {
-        fetchGames();
         fetchBlogPosts();
-        fetchWeeklyChart();
-        fetchDealOfWeek();
     }, []);
-    const fetchGames = async () => {
-        try {
-            const apiClient = container.get < IApiClient > (IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.get("/api/game");
-            const items: Game[] = response.data;
-            if (!items || items.length === 0) {
-                throw new Error("No games found");
-            }
-            setGames(items);
-        } catch (err) {
-            //
-        }
-    };
 
+    // Игры — отдельно от остальных: они единственные несут цены, и при смене валюты их надо
+    // взять заново. Остальным запросам валюта безразлична, дёргать их лишний раз незачем.
+    useEffect(() => {
+        fetchHome();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currency]);
+    /**
+     * Полки главной одним запросом. Валюта обязательна: без неё сервер отдаёт цены в базовой,
+     * а витрина рисует их со значком выбранной — то есть показывает сумму, которой не существует.
+     * Пересчёт делает сервер, фронт только показывает то, что ему прислали.
+     *
+     * budgetMax и moods уезжают отсюда: это правила оформления витрины (какая цена считается
+     * «недорого» и какие настроения показывать), и держать их копию на сервере незачем.
+     */
     const fetchBlogPosts = async () => {
         try {
             const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
@@ -362,159 +360,59 @@ export default function TaleGameshopMainPage() {
         }
     };
 
-    const fetchWeeklyChart = async () => {
-        try {
-            setWeeklyChart(await getWeeklyChart());
-        } catch (err) {
-            // Нет данных — полка чарта просто не рисуется.
-        }
-    };
-
-    const fetchDealOfWeek = async () => {
+    const fetchHome = async () => {
         try {
             const apiClient = container.get < IApiClient > (IDENTIFIERS.IApiClient);
-            const response = await apiClient.api.get("/api/deal-of-week");
-            setDealSpotlight(response.data ?? null);
+            const query = new URLSearchParams({
+                currency,
+                budgetMax: String(budgetShelfMaxPrice),
+                moods: moods.map((mood) => mood.category).join(","),
+            });
+            const response = await apiClient.api.get(`/api/game/home?${query.toString()}`);
+            setHome(response.data as HomeShelves);
         } catch (err) {
-            // Нет конфига — баннер просто не рисуется.
+            // Полки не пришли — страница покажет скелеты, а не пустоту.
         }
     };
 
-    const heroGames = useMemo(() => {
-        return [...games].sort((a, b) => {
-            const dateA = Date.parse(a.releaseDate || "");
-            const dateB = Date.parse(b.releaseDate || "");
-            return (Number.isNaN(dateB) ? 0 : dateB) - (Number.isNaN(dateA) ? 0 : dateA);
-        });
-    }, [games]);
+    // Полки приходят готовыми: порядок, отбор и размеры задаёт сервер (см. /api/game/home).
+    // Здесь остаётся только развернуть id в карточки и не уронить страницу, пока ответ не пришёл.
+    const shelf = useCallback(
+        (ids?: string[]) => (ids ?? []).map((id) => home?.games?.[id]).filter((game): game is Game => Boolean(game)),
+        [home],
+    );
 
-    const isLoading = games.length === 0;
-    // Карусель — курируемая витрина, а не весь каталог: держим набор небольшим (иначе точки-навигация
-    // растягиваются в простыню). Скидочные игры поднимаем вперёд — витрина сама подсвечивает выгоду;
-    // внутри групп сохраняется порядок «свежие первыми». Memo обязателен — иначе новый массив
-    // на каждый рендер сбрасывал бы карусель на первый слайд.
-    const heroShowcase = useMemo(() => {
-        const discounted = heroGames.filter(hasVisibleDiscount);
-        const rest = heroGames.filter((game) => !hasVisibleDiscount(game));
-        return [...discounted, ...rest].slice(0, heroCarouselCapacity);
-    }, [heroGames]);
+    const heroShowcase = shelf(home?.hero);
+    const upcomingGames = shelf(home?.upcoming);
+    const newGames = shelf(home?.newReleases);
+    const dealGames = shelf(home?.deals);
+    const nearestDealEnd = home?.nearestDealEndsAt ?? undefined;
+    const budgetGames = shelf(home?.budget);
+    const editorsPicks = shelf(home?.editorsPicks);
+    const weeklyGames = shelf(home?.popularThisWeek);
+    // Полку сервер всегда добирает; подпись обещает «самые покупаемые», только если продаж хватило на всю полку.
+    const weeklySold = home?.popularThisWeekSold ?? weeklyGames.length;
+    const weeklySubtitle = weeklyGames.length > 0 && weeklySold >= weeklyGames.length
+        ? t("home.shelves.weekly.subtitleSold")
+        : t("home.shelves.weekly.subtitleMixed");
+    const dealOfWeek = home?.dealOfWeek?.heroId ? home.games[home.dealOfWeek.heroId] ?? null : null;
+    const dealWings = shelf(home?.dealOfWeek?.wingIds);
+
+    const isLoading = home === null;
+    // Три полки ведут в один и тот же полный каталог, поэтому и подпись у них одна.
+    const catalogLabel = withCount(home?.totals?.games, (amount) => t("home.shelves.allGames", { count: amount }), t("common.viewAll"));
+    // Порог «недорого» в валюте покупателя — как в заголовке полки, чтобы ссылка не обещала
+    // доллары человеку, который смотрит цены в евро.
+    const budgetLabel = formatMoney(budgetShelfMaxPrice, currency, { compact: true });
     const latestNews = useMemo(() => blogPosts.slice(0, newsStripCapacity), [blogPosts]);
 
-    // Полка «Upcoming»: статус считает сервер (isComingSoon), сортировка — ближайший релиз первым;
-    // непарсибельные даты в конец. Показываем немного — это анонс, а не каталог.
-    const upcomingGames = useMemo(() => {
-        const releaseTime = (game: Game) => {
-            const parsed = Date.parse(game.releaseDate || "");
-            return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
-        };
-        return games
-            .filter((game) => game.isComingSoon)
-            .sort((a, b) => releaseTime(a) - releaseTime(b))
-            .slice(0, shelfCapacity);
-    }, [games]);
-
-    // Остальные полки собираются из вышедших игр; heroGames уже отсортированы «свежие первыми».
-    const releasedGames = useMemo(() => heroGames.filter((game) => !game.isComingSoon), [heroGames]);
-    const newGames = useMemo(() => releasedGames.slice(0, shelfCapacity), [releasedGames]);
-    const dealGames = useMemo(
-        () =>
-            releasedGames
-                .filter((game) => game.discountActive && (game.discountPercent ?? 0) > 0)
-                .sort((a, b) => Number(b.discountPercent ?? 0) - Number(a.discountPercent ?? 0))
-                .slice(0, shelfCapacity),
-        [releasedGames]
-    );
-    // Таймер полки дилов тикает к САМОМУ БЛИЖНЕМУ концу скидки из показанных.
-    const nearestDealEnd = useMemo(() => {
-        const endTimes = dealGames
-            .map((game) => Date.parse(game.discountEndsAt ?? ""))
-            .filter((time) => !Number.isNaN(time));
-        return endTimes.length > 0 ? new Date(Math.min(...endTimes)).toISOString() : undefined;
-    }, [dealGames]);
-    const budgetGames = useMemo(
-        () =>
-            releasedGames
-                .filter((game) => {
-                    const price = Number(game.finalPrice ?? game.price);
-                    return price > 0 && price <= budgetShelfMaxPrice;
-                })
-                .sort((a, b) => Number(a.finalPrice ?? a.price) - Number(b.finalPrice ?? b.price))
-                .slice(0, shelfCapacity),
-        [releasedGames]
-    );
-    // Баннер «Deal of the week»: героя и кулисы выбирает сервер (админ-конфиг с фолбэками),
-    // витрина только джойнит id с каталогом — цены/обложки не дублируются.
-    const dealOfWeek = useMemo(() => {
-        const heroId = dealSpotlight?.heroGameId?.toLowerCase();
-        if (!heroId) {
-            return null;
-        }
-        return releasedGames.find((game) => game.id?.toLowerCase() === heroId && game.discountActive) ?? null;
-    }, [dealSpotlight, releasedGames]);
-    const dealWings = useMemo(() => {
-        const gameById = new Map(
-            games.filter((game) => game.id).map((game) => [game.id!.toLowerCase(), game] as const)
-        );
-        return (dealSpotlight?.wingGameIds ?? [])
-            .map((id) => gameById.get(id.toLowerCase()))
-            .filter((game): game is Game => Boolean(game));
-    }, [dealSpotlight, games]);
-    // «Editor's picks»: ручное курирование из админки — прежний Featured-биллборд, ужатый
-    // до обычной полки. Данные те же: флаг showInFeaturedStorefront + приоритет.
-    const editorsPicks = useMemo(
-        () =>
-            releasedGames
-                .filter((game) => game.showInFeaturedStorefront)
-                .sort(
-                    (a, b) =>
-                        (a.featuredStorefrontPriority ?? Number.MAX_SAFE_INTEGER) -
-                        (b.featuredStorefrontPriority ?? Number.MAX_SAFE_INTEGER)
-                )
-                .slice(0, shelfCapacity),
-        [releasedGames]
-    );
-    // «Popular this week»: порядок задаёт серверный агрегат продаж, карточки — из каталога.
-    const weeklyGames = useMemo(() => {
-        if (weeklyChart.length === 0) {
-            return [];
-        }
-        const gameById = new Map(
-            releasedGames
-                .filter((game) => game.id)
-                .map((game) => [game.id!.toLowerCase(), game] as const)
-        );
-        return weeklyChart
-            .map((entry) => gameById.get(entry.gameId.toLowerCase()))
-            .filter((game): game is Game => Boolean(game))
-            .slice(0, shelfCapacity);
-    }, [weeklyChart, releasedGames]);
     const activeMood = moods.find((mood) => mood.id === activeMoodId) ?? moods[0];
     // Mood-picker 2.0: выбранный вайб сразу показывает живые игры категории, а не только текст.
     // Совпадение по жанрам мягкое (подстрока) — «RPG» находит «Role-Playing Games (RPGs)».
-    const moodGames = useMemo(() => {
-        const target = activeMood.category.toLowerCase();
-        return releasedGames
-            .filter((game) => (game.genres ?? []).some((genre) => genre.toLowerCase().includes(target)))
-            .slice(0, moodPreviewCapacity);
-    }, [releasedGames, activeMood.category]);
-
-    const handleNewsletterSubmit = async (event: React.FormEvent) => {
-        event.preventDefault();
-        const email = newsletterEmail.trim();
-        if (!email || newsletterStatus === "sending") {
-            return;
-        }
-        setNewsletterStatus("sending");
-        try {
-            const status = await subscribeNewsletter(email, "homepage");
-            rememberNewsletterSubscription(status);
-            setNewsletterResult(status === "confirmed" ? "confirmed" : "pending");
-            setNewsletterStatus("done");
-        } catch (error) {
-            console.error("Failed to subscribe", error);
-            setNewsletterStatus("error");
-        }
-    };
+    // Игры настроения тоже считает сервер: совпадение по жанру мягкое (подстрока), поэтому
+    // «RPG» находит «Role-Playing Games (RPGs)». Все настроения приходят разом — их пять,
+    // и переключение вкладки не должно ждать запроса.
+    const moodGames = shelf(home?.moods?.[activeMood.category]);
 
     const renderHeroPromo = (promo: HeroPromo) => (
         <Link to={promo.to} className="hs-promo lift" style={{ ["--accent" as string]: promo.accent } as React.CSSProperties}>
@@ -523,8 +421,8 @@ export default function TaleGameshopMainPage() {
                 <FontAwesomeIcon icon={promo.icon} />
             </span>
             <span className="hs-promo-body">
-                <span className="hs-promo-eyebrow">{promo.eyebrow}</span>
-                <span className="hs-promo-title">{promo.title}</span>
+                <span className="hs-promo-eyebrow">{t(`home.promos.${promo.key}.eyebrow`)}</span>
+                <span className="hs-promo-title">{t(`home.promos.${promo.key}.title`)}</span>
                 {promo.code && <span className="hs-promo-code">{promo.code}</span>}
             </span>
         </Link>
@@ -532,15 +430,16 @@ export default function TaleGameshopMainPage() {
 
     return (
         <div className="main-page">
+            {/* Про ПО — только когда оно продаётся (ссылка в раздел /software). */}
             <PageMeta
-                title="Tale Shop — curated PC game keys"
-                description="Hand-picked PC game keys with secure checkout and instant delivery. Global keys, no region locks."
+                title={(home?.totals?.software ?? 0) > 0 ? t("home.metaTitleGamesSoftware") : t("home.metaTitleGames")}
+                description={(home?.totals?.software ?? 0) > 0 ? t("home.metaDescGamesSoftware") : t("home.metaDescGames")}
                 canonicalPath="/"
             />
             <section className="hero">
                 {/* Витрина сознательно без видимого заголовка (представление несёт шапка),
                     но h1 странице нужен — SEO и скринридеры получают его невидимо. */}
-                <h1 className="visually-hidden">Tale Shop — curated PC game keys with instant delivery</h1>
+                <h1 className="visually-hidden">{t("home.h1")}</h1>
                 <i className="fx-texture" aria-hidden="true"></i>
                 <i className="fx-orb hero-orb-1" aria-hidden="true"></i>
                 <i className="fx-orb is-magenta hero-orb-2" aria-hidden="true"></i>
@@ -554,14 +453,14 @@ export default function TaleGameshopMainPage() {
                             </div>
 
                             <div className="hs-side">
-                                {renderHeroPromo(heroPromos.welcome)}
+                                {showWelcomePromo && renderHeroPromo(heroPromos.welcome)}
                                 {renderHeroPromo(heroPromos.cashback)}
                             </div>
                         </div>
 
                         <div className="hero-categories">
                             {heroCategoryCards.map((category) => (
-                                <HeroCategoryCard key={category.title} category={category} />
+                                <HeroCategoryCard key={category.key} category={category} />
                             ))}
                         </div>
                     </div>
@@ -571,30 +470,31 @@ export default function TaleGameshopMainPage() {
             {/* Товарные полки — ядро главной («магазин = игры»). Каждая — курируемый срез каталога
                 со ссылкой «View all» в каталог с готовым фильтром; пустая полка не рисуется. */}
             <GameShelf
-                eyebrow="Fresh arrivals"
-                title="New on Tale Shop"
-                subtitle="The latest additions to the shelves."
+                eyebrow={t("home.shelves.new.eyebrow")}
+                title={t("home.shelves.new.title")}
+                subtitle={t("home.shelves.new.subtitle")}
                 games={newGames}
                 baseUrl={urlService.apiBaseUrl}
                 viewAllTo="/games"
+                viewAllLabel={catalogLabel}
             />
 
             {/* Перебивка между полками: четыре обещания магазина отдельными карточками. */}
-            <section className="trust-strip-section reveal">
+            <section className="trust-strip-section">
                 <div className="container">
                     <div className="trust-strip">
                         {reasons.map((reason) => (
                             <div
                                 className="trust-item lift"
-                                key={reason.title}
+                                key={reason.key}
                                 style={{ ["--accent" as string]: reason.accent } as React.CSSProperties}
                             >
                                 <span className="trust-item-icon" aria-hidden="true">
                                     <FontAwesomeIcon icon={reason.icon} />
                                 </span>
                                 <span className="trust-item-copy">
-                                    <strong>{reason.title}</strong>
-                                    <span className="muted">{reason.description}</span>
+                                    <strong>{t(`home.reasons.${reason.key}.title`)}</strong>
+                                    <span className="muted">{t(`home.reasons.${reason.key}.text`)}</span>
                                 </span>
                             </div>
                         ))}
@@ -603,12 +503,14 @@ export default function TaleGameshopMainPage() {
             </section>
 
             <GameShelf
-                eyebrow="Deals"
-                title="Best deals right now"
-                subtitle="Prices drop, keys stay instant — while the timer runs."
+                eyebrow={t("home.shelves.deals.eyebrow")}
+                title={t("home.shelves.deals.title")}
+                subtitle={t("home.shelves.deals.subtitle")}
                 games={dealGames}
                 baseUrl={urlService.apiBaseUrl}
                 viewAllTo="/deals"
+                viewAllLabel={withCount(home?.totals?.deals, (amount) => t("home.shelves.allDeals", { count: amount }), t("home.shelves.allDealsPlain"))}
+                className="is-surface"
                 headerAside={<DealsCountdown endsAt={nearestDealEnd} />}
             />
 
@@ -617,43 +519,46 @@ export default function TaleGameshopMainPage() {
             )}
 
             <GameShelf
-                eyebrow="Editor's picks"
-                title="Hand-picked by the team"
-                subtitle="Curated highlights our editors vouch for."
+                eyebrow={t("home.shelves.editors.eyebrow")}
+                title={t("home.shelves.editors.title")}
+                subtitle={t("home.shelves.editors.subtitle")}
                 games={editorsPicks}
                 baseUrl={urlService.apiBaseUrl}
                 viewAllTo="/games"
+                viewAllLabel={catalogLabel}
             />
 
             <GameShelf
-                eyebrow="On the horizon"
-                title="Upcoming games"
-                subtitle="Release dates locked — wishlist now, play on day one."
+                eyebrow={t("home.shelves.upcoming.eyebrow")}
+                title={t("home.shelves.upcoming.title")}
+                subtitle={t("home.shelves.upcoming.subtitle")}
                 games={upcomingGames}
                 baseUrl={urlService.apiBaseUrl}
                 viewAllTo="/games?comingSoon=1"
-                coverChip={(game) => formatReleaseDate(game.releaseDate) ?? "Coming soon"}
+                viewAllLabel={withCount(home?.totals?.upcoming, (amount) => t("home.shelves.allUpcoming", { count: amount }), t("home.shelves.allUpcomingPlain"))}
+                className="is-surface"
+                coverChip={(game) => formatReleaseDate(game.releaseDate) ?? t("common.comingSoon")}
                 emptyState={
                     // Полка-анонс живёт на странице постоянно: пока будущих релизов нет — заглушка.
                     <>
                         <span className="shelf-empty-icon" aria-hidden="true">
                             <FontAwesomeIcon icon={faCalendarDays} />
                         </span>
-                        <strong>Announcements on the way</strong>
-                        <p className="muted">Fresh release dates land here the moment they&rsquo;re locked.</p>
+                        <strong>{t("home.shelves.upcoming.emptyTitle")}</strong>
+                        <p className="muted">{t("home.shelves.upcoming.emptyText")}</p>
                     </>
                 }
             />
 
             {/* Фирменный интерактив: подбор игры по настроению вечера. */}
-            <section className="mood-section reveal">
+            <section className="mood-section">
                 <div className="container">
                     <div className="mood-card">
                         <div className="mood-copy">
-                            <div className="heading-eyebrow is-light">Tonight&rsquo;s pick</div>
-                            <h2>What are you in the mood for?</h2>
-                            <p>Tell us the vibe — we&rsquo;ll point you at the right shelf.</p>
-                            <div className="mood-chips" role="tablist" aria-label="Pick a mood">
+                            <div className="heading-eyebrow is-light">{t("home.mood.eyebrow")}</div>
+                            <h2>{t("home.mood.title")}</h2>
+                            <p>{t("home.mood.text")}</p>
+                            <div className="mood-chips" role="tablist" aria-label={t("home.mood.pick")}>
                                 {moods.map((mood) => (
                                     <button
                                         key={mood.id}
@@ -664,7 +569,7 @@ export default function TaleGameshopMainPage() {
                                         onClick={() => setActiveMoodId(mood.id)}
                                     >
                                         <FontAwesomeIcon icon={mood.icon} />
-                                        <span>{mood.label}</span>
+                                        <span>{t(`home.mood.${mood.id}.label`)}</span>
                                     </button>
                                 ))}
                             </div>
@@ -673,10 +578,20 @@ export default function TaleGameshopMainPage() {
                             {moodGames.length > 0 ? (
                                 // Живые игры выбранного вайба — полка прямо в mood-блоке.
                                 <>
-                                    <h3>{activeMood.title}</h3>
+                                    <h3>{t(`home.mood.${activeMood.id}.title`)}</h3>
                                     <div className="mood-games">
-                                        {moodGames.map((game) => (
-                                            <Link className="mood-game" key={game.id ?? game.title} to={gameHref(game)}>
+                                        {moodGames.map((game: Game, index: number) => (
+                                            <Link
+                                                className="mood-game"
+                                                key={game.id ?? game.title}
+                                                to={gameHref(game)}
+                                                onClick={() => trackItemSelect(
+                                                    ITEM_LISTS.homeMood,
+                                                    { id: game.id, title: game.title, price: Number(game.finalPrice ?? game.price) },
+                                                    index,
+                                                    currency,
+                                                )}
+                                            >
                                                 <span className="mood-game-cover" aria-hidden="true">
                                                     <SafeGameImage
                                                         gameTitle={game.title}
@@ -687,13 +602,13 @@ export default function TaleGameshopMainPage() {
                                                 </span>
                                                 <span className="mood-game-title">{game.title}</span>
                                                 <span className="mood-game-price">
-                                                    {formatMoney(Number(game.finalPrice ?? game.price), currency)}
+                                                    {formatMoney(Number(game.finalPrice ?? game.price), game.currency ?? currency)}
                                                 </span>
                                             </Link>
                                         ))}
                                     </div>
                                     <Link to={`/games?filterCategory=${activeMood.category}`} className="btn btn-primary mood-cta">
-                                        Browse {activeMood.category} games
+                                        {t("home.mood.browse", { category: activeMood.category })}
                                         <FontAwesomeIcon icon={faArrowRight} />
                                     </Link>
                                 </>
@@ -703,10 +618,10 @@ export default function TaleGameshopMainPage() {
                                     <div className="mood-result-icon" aria-hidden="true">
                                         <FontAwesomeIcon icon={activeMood.icon} />
                                     </div>
-                                    <h3>{activeMood.title}</h3>
-                                    <p>{activeMood.description}</p>
+                                    <h3>{t(`home.mood.${activeMood.id}.title`)}</h3>
+                                    <p>{t(`home.mood.${activeMood.id}.text`)}</p>
                                     <Link to={`/games?filterCategory=${activeMood.category}`} className="btn btn-primary mood-cta">
-                                        Browse {activeMood.category} games
+                                        {t("home.mood.browse", { category: activeMood.category })}
                                         <FontAwesomeIcon icon={faArrowRight} />
                                     </Link>
                                 </>
@@ -718,97 +633,43 @@ export default function TaleGameshopMainPage() {
 
             {/* Недельный чарт продаж — порядок отдаёт сервер (/api/game/weekly-chart). */}
             <GameShelf
-                eyebrow="Weekly chart"
-                title="Popular this week"
-                subtitle="The most bought games of the last 7 days."
+                eyebrow={t("home.shelves.weekly.eyebrow")}
+                title={t("home.shelves.weekly.title")}
+                subtitle={weeklySubtitle}
                 games={weeklyGames}
                 baseUrl={urlService.apiBaseUrl}
                 viewAllTo="/games"
+                viewAllLabel={catalogLabel}
             />
 
             <GameShelf
-                eyebrow={`Under ${formatMoney(budgetShelfMaxPrice, currency, {compact: true})}`}
-                title="Big fun, small price"
-                subtitle={`Every pick on this shelf is ${formatMoney(budgetShelfMaxPrice, currency, {compact: true})} or less.`}
+                eyebrow={t("home.shelves.budget.eyebrow", { price: budgetLabel })}
+                title={t("home.shelves.budget.title")}
+                subtitle={t("home.shelves.budget.subtitle", { price: budgetLabel })}
                 games={budgetGames}
                 baseUrl={urlService.apiBaseUrl}
-                viewAllTo={`/games?filterMaxPrice=${budgetShelfMaxPrice}`}
+                viewAllTo={gamesCatalogPath({ filterMaxPrice: String(budgetShelfMaxPrice) })}
+                className="is-surface"
+                viewAllLabel={withCount(
+                    home?.totals?.budget,
+                    (amount) => t("home.shelves.allUnder", { count: amount, price: budgetLabel }),
+                    t("home.shelves.allUnderPlain", { price: budgetLabel }),
+                )}
             />
-
-            <section className="newsletter-section reveal">
-                <div className="container">
-                    <div className="newsletter-card">
-                        <div className="newsletter-copy">
-                            <div className="heading-eyebrow">Stay in the loop</div>
-                            <h3>Get weekly deals &amp; rare picks</h3>
-                            <p className="muted">No spam. Unsubscribe anytime.</p>
-                        </div>
-                        {newsletterStatus === "done" ? (
-                            <p className="newsletter-done">
-                                {newsletterResult === "confirmed"
-                                    ? "✓ You're in! Weekly deals and rare picks are on their way to your inbox."
-                                    : "✓ Almost there — check your inbox and confirm the subscription."}
-                            </p>
-                        ) : knownSubscription ? (
-                            // Уже подписан (с этого устройства или через аккаунт) — не предлагаем подписку заново.
-                            <p className="newsletter-done">
-                                {knownSubscription === "confirmed"
-                                    ? "✓ You're subscribed — deals and rare picks land in your inbox. Manage it in account settings or via the link in any email."
-                                    : "✓ Almost there — confirm the link we sent to your inbox to activate the subscription."}
-                            </p>
-                        ) : (
-                            <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
-                                <div className="input-row">
-                                    <div className="input-icon">
-                                        <FontAwesomeIcon icon={faEnvelope} />
-                                    </div>
-                                    <input
-                                        type="email"
-                                        placeholder="Enter your email"
-                                        required
-                                        value={newsletterEmail}
-                                        onChange={(e) => {
-                                            setNewsletterEmail(e.target.value);
-                                            if (newsletterStatus === "error") {
-                                                setNewsletterStatus("idle");
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        className="btn btn-primary"
-                                        type="submit"
-                                        disabled={newsletterStatus === "sending"}
-                                    >
-                                        {newsletterStatus === "sending" ? "Saving…" : "Subscribe"}
-                                    </button>
-                                </div>
-                                {newsletterStatus === "error" && (
-                                    <p className="newsletter-error">
-                                        Couldn&rsquo;t save your email right now — please try again in a minute.
-                                    </p>
-                                )}
-                                <label className="checkbox-row">
-                                    <input type="checkbox" defaultChecked />
-                                    <span>Notify me about price drops</span>
-                                </label>
-                            </form>
-                        )}
-                    </div>
-                </div>
-            </section>
 
             {/* Latest news (наш блог = раздел «News»): карточки в стиле новостной витрины.
                 Секция видна всегда; пока постов нет — оформленная заглушка. */}
-            <section className="news-strip-section reveal">
+            <section className="news-strip-section">
                 <div className="container">
                     <div className="shelf-head">
                         <div className="section-heading">
-                            <div className="heading-eyebrow">News</div>
-                            <h2>Latest news</h2>
+                            <div className="heading-eyebrow">{t("home.news.eyebrow")}</div>
+                            <h2>{t("home.news.title")}</h2>
                         </div>
                         <div className="shelf-head-side">
-                            <Link className="shelf-view-all" to="/news">
-                                View all →
+                            <Link className="link-arrow" to="/news">
+                                {t("home.news.all")}
+                                <span className="link-arrow__icon" aria-hidden="true">→</span>
                             </Link>
                         </div>
                     </div>
@@ -817,8 +678,8 @@ export default function TaleGameshopMainPage() {
                             <span className="shelf-empty-icon" aria-hidden="true">
                                 <FontAwesomeIcon icon={faNewspaper} />
                             </span>
-                            <strong>The newsroom is warming up</strong>
-                            <p className="muted">Game news, guides and weekly picks will land here soon.</p>
+                            <strong>{t("home.news.emptyTitle")}</strong>
+                            <p className="muted">{t("home.news.emptyText")}</p>
                         </div>
                     ) : (
                         <div className="news-grid">
@@ -833,7 +694,7 @@ export default function TaleGameshopMainPage() {
                                     <div className="news-body">
                                         <span className="news-meta muted">
                                             <FontAwesomeIcon icon={faClock} />
-                                            {timeAgo(post.publishedAt) ?? "Recently"}
+                                            {timeAgo(post.publishedAt) ?? t("common.recently")}
                                         </span>
                                         <div className="news-title">{post.title}</div>
                                         <p className="news-excerpt muted">{post.excerpt}</p>

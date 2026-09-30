@@ -1,9 +1,14 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {Navigate} from 'react-router-dom';
+import {Trans, useTranslation} from 'react-i18next';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import { trackFunnelStep } from "../../../utils/funnel-tracking";
+import { getAttribution } from "../../../utils/attribution";
+import { gaItemVariant } from "../../../utils/item-list-tracking";
+import { getAnonId } from "../../../hooks/use-blog-tracking";
+import {Link, Navigate} from 'react-router-dom';
 import {Elements} from '@stripe/react-stripe-js';
 import {useKeycloak} from '@react-keycloak/web';
 import {useCart} from '../../../context/cart-context';
-import CheckoutForm from '../../payments/stripe-container/checkout-form';
+import CheckoutForm, { type DeliveryConsentCopy } from '../../payments/stripe-container/checkout-form';
 import './checkout-page.css';
 import container from '../../../inversify.config';
 import {IUrlService} from '../../../iterfaces/i-url-service';
@@ -15,12 +20,23 @@ import OrderSummaryCard from '../../../features/checkout/components/OrderSummary
 import StripePaymentCard from '../../../features/checkout/components/StripePaymentCard';
 import {calculateCheckoutTotals} from '../../../features/checkout/utils/checkout-totals';
 import { analyticsClient } from '../../../utils/analytics-client';
-import { createStripePromise } from '../../../utils/stripe-loader';
+import { checkCartRegions, type CartItemRegion } from '../../../api/regionApi';
+import { apiErrorText, serverErrorText } from '../../../utils/api-error';
+import { regionExclusionsText, regionSummaryText } from '../../../utils/region-text';
+import { getStripe } from '../../../utils/stripe-loader';
+import { buildStripeElementsOptions, stripeLocaleFor } from './stripe-elements-options';
+import { useCashbackOffer } from '../../cashback/CashbackHints';
+import { taxLabel } from '../../../utils/tax-label';
 
-const stripePromise = createStripePromise('pk_test_51PYcsW2NLq3ZGHldXb1IU6dygsBlIXn9jw2jXaFCisQOE5RBfmvVF0phul3EDhFE8RPxgdLrd6K3s5lasn0l7Aqt00E0IpEiZW');
+
 
 // Тема Stripe под бренд Tale Shop (фиолетовый, Inter). theme:'flat' убирает
 // родные рамки Stripe — рамку рисует только наш контейнер, без вложенности.
+// Сколько ждём ответа на создание платежа, прежде чем признать, что сервис не отвечает.
+// Нормальный ответ укладывается в секунду; 20 с — заведомо аномалия, но с запасом на
+// медленную сеть, чтобы не обрывать живой запрос.
+const PAYMENT_INIT_TIMEOUT_MS = 20000;
+
 const stripeAppearance = {
     theme: 'flat' as const,
     variables: {
@@ -43,6 +59,7 @@ const stripeAppearance = {
 };
 
 const CheckoutPage: React.FC = () => {
+    const {t} = useTranslation();
     const {state} = useCart();
     const {keycloak, initialized} = useKeycloak();
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
@@ -69,20 +86,80 @@ const CheckoutPage: React.FC = () => {
     // Авторитетные суммы приходят из create-payment-intent — сервер считает их по каталогу.
     const previewTotals = useMemo(() => calculateCheckoutTotals(state.items, promoDiscount), [state.items, promoDiscount]);
     const baseSubtotal = useMemo(() => calculateCheckoutTotals(state.items).subtotal, [state.items]);
-    const [serverTotals, setServerTotals] = useState<{subtotal: number; discount: number; tax: number; total: number} | null>(null);
+    const [serverTotals, setServerTotals] = useState<{subtotal: number; discount: number; tax: number; taxLabel: string | null; total: number} | null>(null);
     const totals = serverTotals ?? previewTotals;
+
+    // Оплата кэшбэком. Сколько списать, решает сервер при создании платежа (весь доступный баланс,
+    // но картой не меньше минимума) — и ровно эту сумму вычитает из PaymentIntent. Экран показывает
+    // его ответ, а не свой расчёт: итог на экране обязан совпадать с тем, что спишет Stripe.
+    // Только демо (?demo=cashback) считает на месте: баланса на сервере там нет.
+    const cashbackOffer = useCashbackOffer();
+    const [payWithCashback, setPayWithCashback] = useState(false);
+    const [serverCashback, setServerCashback] = useState<{available: number; applied: number} | null>(null);
+    const cashbackApplied = cashbackOffer.isDemo
+        ? (payWithCashback ? Math.round(Math.max(0, Math.min(cashbackOffer.available, totals.total - 0.5)) * 100) / 100 : 0)
+        : (payWithCashback ? serverCashback?.applied ?? 0 : 0);
+    const cashbackAvailable = cashbackOffer.isDemo ? cashbackOffer.available : serverCashback?.available ?? cashbackOffer.available;
     const [clientSecret, setClientSecret] = useState<string | null>(null);
+    // Сессия покупателя Stripe: с ней форма карты показывает сохранённые карты и галочку «сохранить». У гостя её нет.
+    const [customerSessionClientSecret, setCustomerSessionClientSecret] = useState<string | null>(null);
+    // Текст согласия на немедленную выдачу берём с сервера: он же его и сохранит,
+    // поэтому показанное и записанное — один текст, а не две копии.
+    const [deliveryConsent, setDeliveryConsent] = useState<DeliveryConsentCopy | null>(null);
     // Нужно ли подтверждать почту перед выдачей ключей: решает сервер (доверенные/уже
     // подтверждённые почты выдают ключи сразу). По умолчанию true — до ответа считаем, что нужно.
     const [requiresEmailVerification, setRequiresEmailVerification] = useState(true);
     const [paymentInitError, setPaymentInitError] = useState('');
+    /**
+     * Позиции, которые в стране покупателя не активируются.
+     *
+     * Сервер такой заказ и так отклонит при создании платежа, но узнать об этом отказом на
+     * последнем шаге — худший из способов. Здесь то же самое сказано до оплаты и по-человечески:
+     * какая именно игра, почему и что с этим делать.
+     */
+    const [blockedItems, setBlockedItems] = useState<CartItemRegion[]>([]);
+    // Запрос создания платежа идёт прямо сейчас. Без этого флага нажатие «Continue to payment»
+    // не меняло на экране ровным счётом ничего: clientSecret ещё пуст, ошибки ещё нет, и
+    // рендерилась та же самая форма email. При медленном или зависшем ответе покупатель
+    // видел застывший экран без единого признака, что что-то происходит.
+    const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+    // Ручной повтор: эффект зависит от корзины и email, при неизменных данных сам не перезапустится.
+    const [paymentRetry, setPaymentRetry] = useState(0);
+    // Номер последнего запроса создания платежа. Запросы уходят на каждое изменение и возвращаются в любом порядке;
+    // применяем только ответ на последний, иначе опоздавший старый ответ перерисовывал сумму и кэшбэк мигал.
+    const paymentRequestSeq = useRef(0);
     const hasTrackedCheckout = useRef(false);
-    const {currency} = useSitePreferences();
+    const {currency, country, lang} = useSitePreferences();
     const [cryptoEnabled, setCryptoEnabled] = useState(false);
     /** Почему криптой заплатить нельзя именно сейчас — текст приходит с сервера. */
     const [cryptoUnavailableReason, setCryptoUnavailableReason] = useState('');
     const [cryptoBusy, setCryptoBusy] = useState(false);
     const [cryptoError, setCryptoError] = useState('');
+
+    // Формулировку согласия на немедленную выдачу даёт сервер — он же её и сохранит.
+    // Не пришла — платить не даём: это видно в форме оплаты.
+    useEffect(() => {
+        apiClient.api.get('/api/payments/delivery-consent')
+            .then(({data}) => setDeliveryConsent({version: data.version, text: data.text}))
+            .catch((error) => {
+                console.error('Failed to load delivery consent copy', error);
+                setDeliveryConsent(null);
+            });
+    }, [apiClient.api]);
+
+    /**
+     * Пишет согласие к текущему намерению платежа. Идентификатор намерения достаём из
+     * clientSecret — отдельно его на клиенте не держат, а формат у Stripe стабильный.
+     */
+    const recordDeliveryConsent = useCallback(async (version: string) => {
+        if (!clientSecret) {
+            throw new Error('No payment intent to attach the consent to.');
+        }
+        await apiClient.api.post('/api/payments/delivery-consent', {
+            paymentIntentId: clientSecret.split('_secret')[0],
+            version
+        });
+    }, [apiClient.api, clientSecret]);
 
     // Способы оплаты спрашиваем у сервера вместе с валютой: рельс может быть настроен,
     // но не принимать выбранную валюту — крипто-инвойс, например, выставляется только
@@ -103,9 +180,45 @@ const CheckoutPage: React.FC = () => {
             });
     }, [apiClient.api, currency]);
 
+    /**
+     * Дошли до денег: выбран способ оплаты и нажата кнопка. Это граница между «начал
+     * оформлять» и «попытался заплатить» — без неё в отчётах не отличить того, кто передумал
+     * на форме, от того, у кого не прошла карта.
+     */
+    const trackPaymentAttempt = (paymentType: 'card' | 'crypto') => {
+        // Способ оплаты — родное поле этого события, отдельное своё для него не нужно:
+        // лишнее имя события засоряет отчёты и ничего не добавляет.
+        analyticsClient.trackEcommerce('add_payment_info', {
+            currency,
+            value: totals.total,
+            payment_type: paymentType,
+            items: state.items.map((item) => ({
+                item_id: item.gameId,
+                item_name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+            })),
+        });
+    };
+
+    /**
+     * Оплата не прошла. Своё событие, стандартного у Google нет: «передумал» и «не смог
+     * заплатить» — разные беды, и лечатся они по-разному. Код причины идёт от Stripe как есть
+     * (insufficient_funds, card_declined и подобные) — по нему видно, что чинить.
+     */
+    const trackPaymentFailed = (paymentType: 'card' | 'crypto', reason: string | null) => {
+        analyticsClient.trackEvent('payment_failed', {
+            payment_type: paymentType,
+            reason: reason ?? 'unknown',
+            value: totals.total,
+            currency,
+        });
+    };
+
     const handleCryptoPay = async () => {
         setCryptoBusy(true);
         setCryptoError('');
+        trackPaymentAttempt('crypto');
         try {
             // Как и в Stripe-чекауте: никаких сумм, сервер считает цену сам.
             const {data} = await apiClient.api.post('/api/payments/crypto/invoice', {
@@ -115,43 +228,88 @@ const CheckoutPage: React.FC = () => {
                 items: state.items.map((item) => ({
                     gameId: item.gameId,
                     quantity: item.quantity,
+                    editionCode: item.editionCode,
+                    // Вариант ключа: по нему сервер посчитает цену и выдаст ключ из нужной партии.
+                    offerKey: item.offerKey,
                 })),
             });
             // Hosted checkout BTCPay; после оплаты вернёт на /checkout/success?crypto_invoice=<id>.
             window.location.href = data.checkoutLink;
         } catch (error: any) {
             setCryptoError(error?.response?.status === 401
-                ? 'Please sign in to pay with crypto.'
-                : 'Could not start crypto payment. Please try again.');
+                ? t('checkout.cryptoSignIn')
+                : t('checkout.cryptoFailed'));
             setCryptoBusy(false);
+            trackPaymentFailed('crypto', error?.response?.status === 401 ? 'not_authenticated' : 'invoice_failed');
         }
     };
 
     useEffect(() => {
         if (!hasTrackedCheckout.current && totals.total > 0 && state.items.length > 0) {
+            // Тот же шаг в свою аналитику: её не режут блокировщики, и воронка не зависит от согласия на куки.
+            trackFunnelStep("begin_checkout");
             analyticsClient.trackEcommerce('begin_checkout', {
                 // Валюта покупателя, а не зашитый доллар: иначе аналитика показывала бы
                 // выручку в USD по суммам, посчитанным в другой валюте.
                 currency,
                 value: totals.total,
-                items: state.items.map((item) => ({ item_id: item.gameId, item_name: item.name, price: item.price, quantity: item.quantity }))
+                // Издание и регион ключа — как в add_to_cart и в purchase: без них один товар
+                // назывался бы в отчёте по-разному на соседних шагах воронки.
+                items: state.items.map((item) => ({
+                    item_id: item.gameId,
+                    item_name: item.name,
+                    price: item.price,
+                    quantity: item.quantity,
+                    ...(item.category ? { item_category: item.category } : {}),
+                    ...(gaItemVariant(item) ? { item_variant: gaItemVariant(item) } : {}),
+                }))
             });
             hasTrackedCheckout.current = true;
         }
     }, [state.items, totals.total]);
 
     useEffect(() => {
+        const ids = state.items.map((item) => item.gameId).filter(Boolean);
+        if (ids.length === 0) {
+            setBlockedItems([]);
+            return;
+        }
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const response = await checkCartRegions(ids);
+                if (!cancelled) {
+                    setBlockedItems(response.items.filter((item) => item.allowed === false));
+                }
+            } catch {
+                // Проверка недоступна — не выдумываем запрет: чекаут всё равно проверит на сервере.
+                if (!cancelled) {
+                    setBlockedItems([]);
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+        // Страна берётся из настроек сайта и уезжает в заголовке запроса — при её смене перепроверяем.
+    }, [state.items, country]);
+
+    useEffect(() => {
+        const requestId = ++paymentRequestSeq.current;
+        const isLatest = () => requestId === paymentRequestSeq.current;
         const fetchClientSecret = async () => {
             // Гость без введённого email: платёж ещё не создаём — в рендере форма email.
             if (!isAuthenticated && !guestEmail) {
-                setClientSecret(null);
+                setClientSecret(null); setCustomerSessionClientSecret(null);
                 setServerTotals(null);
                 setPaymentInitError('');
                 return;
             }
 
             if (state.items.length === 0) {
-                setClientSecret(null);
+                setClientSecret(null); setCustomerSessionClientSecret(null);
                 setServerTotals(null);
                 setPaymentInitError('');
                 return;
@@ -159,43 +317,93 @@ const CheckoutPage: React.FC = () => {
 
             try {
                 setPaymentInitError('');
+                setIsCreatingPayment(true);
                 // Шлём ТОЛЬКО что и сколько покупаем. Никаких сумм — их считает сервер по каталогу.
+                // Идентификатор посетителя для аналитики: покупку отправляет сервер, а куки
+                // Google он прочитать не может. Не получилось — оформление продолжается как есть.
+                const analyticsClientId = await analyticsClient.getClientId();
                 const {data} = await apiClient.api.post('/api/payments/create-payment-intent', {
+                    analyticsClientId: analyticsClientId || undefined,
+                    // Первое касание: без него в отчёте по каналам всё сольётся в «прямой заход».
+                    attribution: getAttribution(),
+                    // Свой идентификатор посетителя: связывает заказ с событиями воронки,
+                    // и конверсия «начал оплату → заплатил» становится считаемой.
+                    visitorId: getAnonId(),
                     promoCode: promoCode || undefined,
+                    // Сумму кэшбэка не шлём — только желание оплатить им. Сколько можно, считает сервер.
+                    useCashback: payWithCashback && !cashbackOffer.isDemo && cashbackOffer.enabled,
                     email: isAuthenticated ? undefined : guestEmail,
                     // Валюта покупателя: суммы сервер посчитает сам по каталогу в ней же.
                     currency,
                     items: state.items.map((item) => ({
                         gameId: item.gameId,
                         quantity: item.quantity,
+                        editionCode: item.editionCode,
+                        // Вариант ключа: по нему сервер посчитает цену и выдаст ключ из нужной партии.
+                        offerKey: item.offerKey,
                     })),
+                }, {
+                    // Без таймаута зависший запрос не отваливается никогда: catch не срабатывает,
+                    // экран остаётся в исходном виде, и покупатель не понимает, что всё встало.
+                    timeout: PAYMENT_INIT_TIMEOUT_MS,
                 });
+                if (!isLatest()) {
+                    return;
+                }
                 setClientSecret(data.clientSecret ?? data.ClientSecret ?? null);
+                setCustomerSessionClientSecret(data.customerSessionClientSecret ?? data.CustomerSessionClientSecret ?? null);
                 setRequiresEmailVerification(
                     Boolean(data.requiresEmailVerification ?? data.RequiresEmailVerification ?? true));
 
                 const serverTotalsPayload = data.totals ?? data.Totals;
                 if (serverTotalsPayload) {
+                    // total сервер отдаёт уже за вычетом кэшбэка, а сводка вычитает кэшбэк сама —
+                    // поэтому здесь храним итог ДО кэшбэка.
+                    const serverCashbackApplied = Number(serverTotalsPayload.cashback ?? serverTotalsPayload.Cashback ?? 0);
+                    const cashbackPayload = data.cashback ?? data.Cashback;
+                    setServerCashback(cashbackPayload ? {
+                        available: Number(cashbackPayload.available ?? cashbackPayload.Available ?? 0),
+                        applied: serverCashbackApplied,
+                    } : null);
                     setServerTotals({
                         subtotal: Number(serverTotalsPayload.subtotal ?? serverTotalsPayload.Subtotal ?? 0),
                         discount: Number(serverTotalsPayload.discount ?? serverTotalsPayload.Discount ?? 0),
+                        // Налог внутри итога (цены с налогом) — только для строки «Incl. VAT 19%».
                         tax: Number(serverTotalsPayload.tax ?? serverTotalsPayload.Tax ?? 0),
-                        total: Number(serverTotalsPayload.total ?? serverTotalsPayload.Total ?? 0),
+                        taxLabel: (() => {
+                            const taxPayload = data.tax ?? data.Tax;
+                            return taxPayload ? taxLabel(taxPayload.type ?? taxPayload.Type, Number(taxPayload.ratePercent ?? taxPayload.RatePercent)) : null;
+                        })(),
+                        total: Number(serverTotalsPayload.total ?? serverTotalsPayload.Total ?? 0) + serverCashbackApplied,
                     });
                 }
             } catch (error: any) {
-                setClientSecret(null);
+                if (!isLatest()) {
+                    return;
+                }
+                setClientSecret(null); setCustomerSessionClientSecret(null);
                 setServerTotals(null);
-                setPaymentInitError(error?.response?.status === 401
-                    ? 'Please sign in to continue with payment.'
-                    : (error?.response?.data?.message ?? 'Unable to initialize payment. Please try again.'));
+                if (error?.code === 'ECONNABORTED') {
+                    // Таймаут: сервер не ответил. Отдельный текст, потому что «попробуйте ещё раз»
+                    // без объяснения выглядит как отказ платежа, хотя платёж даже не создавался.
+                    setPaymentInitError(t('checkout.paymentTimeout'));
+                } else if (error?.response?.status === 401) {
+                    setPaymentInitError(t('checkout.paymentSignIn'));
+                } else {
+                    setPaymentInitError(serverErrorText(error, t('checkout.paymentInitFailed')));
+                }
+            } finally {
+                if (isLatest()) {
+                    setIsCreatingPayment(false);
+                }
             }
         };
 
         fetchClientSecret();
-        // Зависим только от корзины, промокода и применённого email гостя:
-        // суммы приходят ОТ сервера, держать их в зависимостях — значит зациклить запрос.
-    }, [apiClient.api, isAuthenticated, guestEmail, promoCode, state.items]);
+        // Зависим только от корзины, промокода, применённого email гостя и счётчика ручного
+        // повтора: суммы приходят ОТ сервера, держать их в зависимостях — значит зациклить запрос.
+    // Переключатель кэшбэка тоже меняет сумму платежа — поэтому он в зависимостях.
+    }, [apiClient.api, isAuthenticated, guestEmail, promoCode, state.items, paymentRetry, payWithCashback]);
 
     const handleApplyPromo = async () => {
         setApplyingPromo(true);
@@ -203,18 +411,19 @@ const CheckoutPage: React.FC = () => {
         setPromoMessage('');
         try {
             const {data} = await apiClient.api.post('/api/promo/validate', { code: promoCode, cartSubtotal: baseSubtotal });
+            // Текст промокода — по коду сообщения (messageCode): поле code занято самим промокодом.
             if (!data.valid) {
                 setPromoDiscount(0);
-                setPromoError(data.message || 'Promo code is invalid.');
+                setPromoError(apiErrorText({ code: data.messageCode, message: data.message }, t('checkout.promoInvalid')));
                 return;
             }
 
             setPromoCode(data.code || promoCode.trim().toUpperCase());
             setPromoDiscount(Number(data.discountAmount ?? 0));
-            setPromoMessage(data.message || 'Promo code applied.');
+            setPromoMessage(apiErrorText({ code: data.messageCode, message: data.message }, t('checkout.promoApplied')));
         } catch (error: any) {
             setPromoDiscount(0);
-            setPromoError(error?.response?.data?.message ?? 'Failed to apply promo code.');
+            setPromoError(serverErrorText(error, t('checkout.promoFailed')));
         } finally {
             setApplyingPromo(false);
         }
@@ -235,20 +444,41 @@ const CheckoutPage: React.FC = () => {
         return <Navigate to="/cart" replace />;
     }
 
-    const options = {
-        clientSecret: clientSecret ?? undefined,
-        appearance: stripeAppearance,
-        locale: 'en' as const,
-    };
+    const options = buildStripeElementsOptions({ clientSecret, customerSessionClientSecret, appearance: stripeAppearance, locale: stripeLocaleFor(lang) });
 
     return (
         <div className="checkout-page" data-testid="checkout-page">
             <section className="section checkout-page-section">
                 <div className="container">
                     <header className="checkout-page-header">
-                        <h1>Checkout</h1>
-                        <p className="checkout-page-subtitle">Review your order and complete payment securely.</p>
+                        <h1>{t('checkout.title')}</h1>
+                        <p className="checkout-page-subtitle">{t('checkout.subtitle')}</p>
                     </header>
+                    {blockedItems.length > 0 && (
+                        <div className="checkout-region-warning" role="alert">
+                            <span className="checkout-region-warning-icon">!</span>
+                            <div>
+                                <strong>{t('checkout.blockedTitle')}</strong>
+                                <ul>
+                                    {blockedItems.map((blocked) => {
+                                        const line = state.items.find((item) => item.gameId === blocked.gameId);
+                                        return (
+                                            <li key={blocked.gameId}>
+                                                {line?.name ?? t('checkout.item')}
+                                                {/* Под запретом важна причина: «Not in RU» объясняет, а «Activates
+                                                    worldwide» рядом с заголовком «не активируется» противоречит ему. */}
+                                                {regionExclusionsText(blocked) ?? regionSummaryText(blocked) ? ` — ${regionExclusionsText(blocked) ?? regionSummaryText(blocked)}` : ''}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                <p>
+                                    {t('checkout.blockedTextBefore')}<Link to="/cart">{t('checkout.blockedCart')}</Link>{t('checkout.blockedTextAfter')}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="checkout-page-grid">
                         <div className="checkout-page-main">
                             <OrderSummaryCard
@@ -259,16 +489,26 @@ const CheckoutPage: React.FC = () => {
                                 onPromoCodeChange={setPromoCode}
                                 onApplyPromo={handleApplyPromo}
                                 onRemovePromo={handleRemovePromo}
+                                // Программа выключена — ни переключателя оплаты кэшбэком, ни обещания «вернётся».
+                                cashback={cashbackOffer.ready && cashbackOffer.enabled ? {
+                                    member: cashbackOffer.member,
+                                    tier: cashbackOffer.tier,
+                                    available: cashbackAvailable,
+                                    applied: cashbackApplied,
+                                    on: payWithCashback,
+                                    onToggle: setPayWithCashback,
+                                    onSignIn: handleLogin,
+                                } : undefined}
                             />
                         </div>
                         <aside className="checkout-page-aside">
                             <StripePaymentCard>
                                 {initialized && !isAuthenticated && !clientSecret && !paymentInitError ? (
                                     <div className="checkout-guest">
-                                        <h3>Where should we send your keys?</h3>
-                                        <p>No account needed — we'll email your keys and receipt. Create an account later with the same email to keep everything in one place.</p>
-                                        <p><strong>Double-check the address</strong> — the confirmation link and your keys go exactly there.</p>
-                                        <label className="checkout-guest-label" htmlFor="guest-email">Email</label>
+                                        <h3>{t('checkout.guestTitle')}</h3>
+                                        <p>{t('checkout.guestText')}</p>
+                                        <p><strong>{t('checkout.guestCheck')}</strong>{t('checkout.guestCheckText')}</p>
+                                        <label className="checkout-guest-label" htmlFor="guest-email">{t('common.email')}</label>
                                         <input
                                             id="guest-email"
                                             className="input"
@@ -286,42 +526,65 @@ const CheckoutPage: React.FC = () => {
                                         <button
                                             type="button"
                                             className="btn btn-primary"
-                                            disabled={!guestEmailValid}
+                                            disabled={!guestEmailValid || isCreatingPayment}
+                                            aria-busy={isCreatingPayment}
                                             onClick={() => setGuestEmail(guestEmailInput.trim())}
                                         >
-                                            Continue to payment
+                                            {isCreatingPayment ? t('checkout.preparing') : t('checkout.continueToPayment')}
                                         </button>
-                                        <div className="checkout-guest-divider"><span>or</span></div>
+                                        <div className="checkout-guest-divider"><span>{t('common.or')}</span></div>
                                         <button type="button" className="btn btn-outline" onClick={handleLogin}>
-                                            Sign in — I have an account
+                                            {t('checkout.signInHaveAccount')}
                                         </button>
                                     </div>
-                                ) : clientSecret && stripePromise ? (
+                                ) : clientSecret && getStripe() ? (
                                     <>
                                         {!isAuthenticated && (
                                             <p className="checkout-guest-note">
                                                 {requiresEmailVerification
-                                                    ? <>Keys will be sent to <strong>{guestEmail}</strong> after you confirm this address.</>
-                                                    : <>Keys will be sent to <strong>{guestEmail}</strong> right after payment.</>}
+                                                    ? <Trans i18nKey="checkout.keysSentAfterConfirm" values={{email: guestEmail}} components={{b: <strong />}} />
+                                                    : <Trans i18nKey="checkout.keysSentAfterPayment" values={{email: guestEmail}} components={{b: <strong />}} />}
                                                 {' '}
                                                 <button
                                                     type="button"
                                                     className="checkout-guest-change"
-                                                    onClick={() => { setGuestEmail(''); setClientSecret(null); }}
+                                                    onClick={() => { setGuestEmail(''); setClientSecret(null); setCustomerSessionClientSecret(null); }}
                                                 >
-                                                    Change
+                                                    {t('checkout.changeEmail')}
                                                 </button>
                                             </p>
                                         )}
-                                        <Elements stripe={stripePromise} options={options}>
-                                            <CheckoutForm clientSecret={clientSecret} />
+                                        {/* key: секрет намерения и сессию покупателя после создания формы Stripe менять не даёт — новое намерение = новая форма. */}
+                                        <Elements key={clientSecret} stripe={getStripe()} options={options}>
+                                            <CheckoutForm
+                                                clientSecret={clientSecret}
+                                                consent={deliveryConsent}
+                                                onRecordConsent={recordDeliveryConsent}
+                                                onPaymentAttempt={() => trackPaymentAttempt('card')}
+                                                onPaymentFailed={(code) => trackPaymentFailed('card', code)}
+                                            />
                                         </Elements>
                                     </>
                                 ) : (
                                     <div className="checkout-page-stripe-placeholder">
-                                        {paymentInitError || !stripePromise
-                                            ? (paymentInitError || 'Stripe is temporarily unavailable. Please try again later.')
-                                            : 'Payment details will appear once your order total is ready.'}
+                                        {paymentInitError ? (
+                                            <>
+                                                <span>{paymentInitError}</span>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline checkout-retry"
+                                                    onClick={() => setPaymentRetry((n) => n + 1)}
+                                                >
+                                                    {t('common.tryAgain')}
+                                                </button>
+                                            </>
+                                        ) : !getStripe() ? (
+                                            t('checkout.stripeUnavailable')
+                                        ) : isCreatingPayment ? (
+                                            t('checkout.preparing')
+                                        ) : (
+                                            t('checkout.waitingTotal')
+                                        )}
                                     </div>
                                 )}
                             </StripePaymentCard>
@@ -335,19 +598,17 @@ const CheckoutPage: React.FC = () => {
                             {cryptoEnabled && (
                                 <div className="checkout-crypto-card">
                                     <div className="checkout-crypto-card__header">
-                                        <h3>Pay with Bitcoin</h3>
-                                        <span className="checkout-crypto-card__badge">Testnet demo</span>
+                                        <h3>{t('checkout.cryptoTitle')}</h3>
+                                        <span className="checkout-crypto-card__badge">{t('checkout.testnetDemo')}</span>
                                     </div>
-                                    <p className="checkout-crypto-card__hint">
-                                        Demo integration via self-hosted BTCPay Server. Uses test coins only — no real funds.
-                                    </p>
+                                    <p className="checkout-crypto-card__hint">{t('checkout.cryptoHint')}</p>
                                     <button
                                         type="button"
                                         className="checkout-crypto-card__button"
                                         onClick={handleCryptoPay}
                                         disabled={cryptoBusy || totals.total <= 0}
                                     >
-                                        {cryptoBusy ? 'Opening BTCPay…' : '₿ Pay with Bitcoin (testnet)'}
+                                        {cryptoBusy ? t('checkout.openingBtcpay') : t('checkout.payWithBitcoin')}
                                     </button>
                                     {cryptoError && <p className="checkout-crypto-card__error">{cryptoError}</p>}
                                 </div>

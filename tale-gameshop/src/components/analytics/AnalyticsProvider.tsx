@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IAnalyticsService } from "../../iterfaces/i-analytics-service";
+import type { IKeycloakService } from "../../iterfaces/i-keycloak-service";
 import type { AnalyticsPublicSettings } from "../../types/analytics";
 import { analyticsClient } from "../../utils/analytics-client";
 import {
@@ -94,6 +95,37 @@ const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, isAdmin
 
     analyticsClient.trackPageView(location.pathname + location.search, document.title);
   }, [isAdminRoute, location.pathname, location.search]);
+
+  /**
+   * Кто в магазине. Передаём Google постоянный идентификатор аккаунта — тогда телефон и
+   * компьютер одного человека перестают быть двумя разными посетителями, а покупка
+   * связывается с визитом, в котором игру выбирали.
+   *
+   * Слушаем оба события: вход может случиться и до монтирования (тогда сработает подписка на
+   * обновление токена), и после.
+   */
+  useEffect(() => {
+    if (isAdminRoute) {
+      return;
+    }
+
+    const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
+
+    const applyUser = () => {
+      const sub = keycloakService.keycloak?.tokenParsed?.sub;
+      analyticsClient.setUserId(sub ?? null);
+    };
+    const clearUser = () => analyticsClient.setUserId(null);
+
+    applyUser();
+    keycloakService.stateChangedEmitter.on("onAuthSuccess", applyUser);
+    keycloakService.stateChangedEmitter.on("onAuthLogout", clearUser);
+
+    return () => {
+      keycloakService.stateChangedEmitter.off("onAuthSuccess", applyUser);
+      keycloakService.stateChangedEmitter.off("onAuthLogout", clearUser);
+    };
+  }, [isAdminRoute]);
 
   const updateConsent = (value: boolean) => {
     setAnalyticsConsent(value);

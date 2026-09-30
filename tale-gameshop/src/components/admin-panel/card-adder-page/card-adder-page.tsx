@@ -6,12 +6,16 @@ import type { IUrlService } from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 import { useDispatch, useSelector } from "react-redux";
 import { Form } from "../../../store";
-import GameTypeDropdown from "../game-type-dropdown/game-type-dropdown";
+import { buildAdminCatalogParams } from "./admin-catalog-params";
 import PageHeader, { GAMES_TABS } from "../../layout/PageHeader";
 import { useSitePreferences } from "../../../context/site-preferences";
 import { formatMoney } from "../../../utils/format-money";
 import { useAdminHeader } from "../../layout/AdminHeaderContext";
 import Card from "../../ui/Card";
+import CoverFocusEditor from "../cover-focus/CoverFocusEditor";
+import { DataGrid, Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import { GRID_PAGE_SIZE, REMOTE_PAGING, gridStatusText, useGridWindow } from "../../../hooks/use-grid-window";
+import { fetchWindow } from "../../../utils/page-window";
 import Drawer from "../../ui/Drawer";
 import ModalConfirm from "../../ui/ModalConfirm";
 import EmptyState from "../../ui/EmptyState";
@@ -21,7 +25,15 @@ import { useToast } from "../../ui/ToastProvider";
 import MediaPickerModal from "../media-library/MediaPickerModal";
 import type { MediaAsset } from "../../../types/media";
 import { slugify } from "../../../utils/slugify";
+import LocalizedField from "../../admin/LocalizedField";
 import { getKeyOverview } from "../../../api/adminKeysApi";
+import { getCardCompletenessOverview } from "../../../api/adminCompletenessApi";
+import { getGamePrices } from "../../../api/adminPricesApi";
+import type { IAdminGameDetailsService } from "../../../iterfaces/i-admin-game-details-service";
+import { getAdminSoftwareCategories, type AdminSoftwareCategory } from "../../../api/adminSoftwareApi";
+import SoftwareCategoriesEditor from "../../admin/SoftwareCategoriesEditor";
+import GameGenresEditor from "../../admin/GameGenresEditor";
+import { getAdminGenres, type AdminGenre } from "../../../api/adminGenresApi";
 
 type DrawerMode = "edit" | "create" | null;
 
@@ -32,15 +44,32 @@ type GameItem = {
   /** Ручные цены по валютам; в базовой валюте цена лежит в price. */
   prices?: Record<string, number>;
   description?: string;
+  /** Переводы описания (ru/uk/pl); description — английское. */
+  descriptionI18n?: Record<string, string>;
   title?: string;
   gameType?: number;
   imagePath?: string;
   coverMediaId?: string;
   releaseDate?: string;
   isComingSoon?: boolean;
+  /** Для DLC — id базовой игры. */
+  parentGameId?: string | null;
+  /** Игра или ПО и категория раздела /software. */
+  kind?: "Game" | "Software";
+  softwareCategory?: string | null;
+  /** Черновик: на витрине не виден. Список админки просит каталог вместе с черновиками (includeDrafts). */
+  isDraft?: boolean;
+  /** Название жанра по настройкам — то, что видит покупатель. */
+  category?: string;
+  /** Код жанра игры — значение поля «Genre» в форме. */
+  genre?: string | null;
 };
 
 // Релиз наступает сам по дате — админ должен узнать о пустом пуле ДО этого дня, а не в него.
+// Размер страницы каталога. Список подгружается прокруткой, поэтому важно не столько
+// число, сколько то, что оно вообще соблюдается: прежний запрос слал limit, который
+// сервер игнорировал, и в браузер приезжал весь каталог целиком.
+
 const NO_KEYS_WARNING =
   "Release happens automatically when the date arrives — with an empty key pool the game would go on sale without keys.";
 
@@ -55,6 +84,10 @@ const emptyForm: Form = {
   imagePath: "",
   coverMediaId: "",
   releaseDate: "",
+  parentGameId: "",
+  kind: "Game",
+  softwareCategory: "",
+  genre: "",
 };
 
 const CardAdderPage: React.FC = () => {
@@ -64,17 +97,29 @@ const CardAdderPage: React.FC = () => {
   const extraCurrencies = currencies
     .map((option) => option.code)
     .filter((code) => code !== baseCurrency);
+  // Строки, которые таблица уже подтянула. Нужны не для отрисовки — её делает грид, — а
+  // тому, что смотрит на список рядом: выделение пачкой, выбор после сохранения, удаление.
   const [items, setItems] = useState<GameItem[]>([]);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [selectedGame, setSelectedGame] = useState<GameItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState("");
-  const [listLoading, setListLoading] = useState(true);
-  const [listError, setListError] = useState<string | null>(null);
+  // Вид товара в списке: тот же kind, что у каталога витрины (all | game | software).
+  const [kindFilter, setKindFilter] = useState<"all" | "game" | "software">("all");
+  // Публикация в списке: все, только опубликованные или только черновики.
+  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
+  // Как создать товар: черновиком (по умолчанию) или сразу опубликованным. Черновик не виден в магазине, пока его
+  // не опубликуют в редакторе карточки, — раньше новый товар попадал на витрину без описания, обложки и ключей.
+  const [createAsDraft, setCreateAsDraft] = useState(true);
+  const [reloadToken, setReloadToken] = useState(0);
+  // Массовые операции. Выделение живёт по id и переживает подгрузку следующих страниц,
+  // но сбрасывается при смене поиска: иначе легко применить скидку к тому, чего не видишь.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPercent, setBulkPercent] = useState(20);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<null | "apply" | "remove">(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteName, setPendingDeleteName] = useState<string | null>(null);
@@ -82,7 +127,6 @@ const CardAdderPage: React.FC = () => {
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
   const [isRemoveMediaOpen, setIsRemoveMediaOpen] = useState(false);
   const [pendingRemoveTarget, setPendingRemoveTarget] = useState<"cover" | "legacy" | null>(null);
-  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
   const [saveErrorDetails, setSaveErrorDetails] = useState<string | null>(null);
   const [isSaveErrorOpen, setIsSaveErrorOpen] = useState(false);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
@@ -90,10 +134,27 @@ const CardAdderPage: React.FC = () => {
   const [mediaLoading, setMediaLoading] = useState(false);
   // null = остатки ключей не загрузились; предупреждения в этом случае не показываем, чтобы не врать.
   const [availableKeysByGameId, setAvailableKeysByGameId] = useState<Record<string, number> | null>(null);
+  // Категории раздела /software — для формы создания ПО, подписи в списке и редактора категорий.
+  const [softwareCategories, setSoftwareCategories] = useState<AdminSoftwareCategory[]>([]);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  // Жанры игр — список из настроек, правится кнопкой «Game genres». Раньше их двенадцать были вшиты в выпадающий список.
+  const [genres, setGenres] = useState<AdminGenre[]>([]);
+  const [genresOpen, setGenresOpen] = useState(false);
+  useEffect(() => {
+    getAdminGenres()
+      .then(setGenres)
+      .catch((error) => console.error("Failed to load game genres", error));
+  }, []);
+  useEffect(() => {
+    getAdminSoftwareCategories()
+      .then(setSoftwareCategories)
+      .catch((error) => console.error("Failed to load software categories", error));
+  }, []);
+  const categoryTitle = (tag?: string | null) => softwareCategories.find((category) => category.tag === tag)?.title ?? tag ?? "";
   const { addToast } = useToast();
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const navigate = useNavigate();
 
   const form = useSelector((state: { form: Form }) => state.form);
@@ -101,9 +162,26 @@ const CardAdderPage: React.FC = () => {
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
+  // Новый поиск — новая выдача: выделение сбрасываем, иначе скидка ушла бы тем строкам,
+  // которых уже не видно.
   React.useEffect(() => {
-    fetchItems(page, true);
-  }, [page]);
+    setSelectedIds(new Set());
+  }, [debouncedSearch]);
+
+  // Пробелы карточек: «3 gaps» у строки ведёт в редактор деталей — иначе неполная карточка снаружи не видна.
+  const [gapsByGameId, setGapsByGameId] = React.useState<Record<string, { gaps: number; errors: number }>>({});
+  React.useEffect(() => {
+    let cancelled = false;
+    getCardCompletenessOverview()
+      .then((overview) => {
+        if (cancelled) return;
+        setGapsByGameId(Object.fromEntries(overview.items.map((row) => [row.gameId, { gaps: row.issues.length, errors: row.errors }])));
+      })
+      .catch((error) => console.error("Failed to load card completeness", error));
+    return () => {
+      cancelled = true;
+    };
+  }, [items.length]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -155,35 +233,101 @@ const CardAdderPage: React.FC = () => {
     fetchMediaDetails(form.coverMediaId, true);
   }, [drawerOpen, form.coverMediaId]);
 
-  const fetchItems = async (pageNumber: number, reset = false) => {
-    try {
-      setListLoading(true);
-      setListError(null);
+  // /api/game/catalog — единственный эндпоинт с настоящей пагинацией и серверным поиском.
+  // Прежний /api/game отдаёт ВЕСЬ каталог и молча игнорирует page и limit: страница
+  // считала, что листает, а каждый раз выкачивала всё и показывала одно и то же.
+  const fetchCatalogPage = React.useCallback(
+    async (page: number, pageSize: number) => {
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-      const response = await apiClient.api.get(`/api/game?page=${pageNumber}&limit=20`);
-      const newItems = response.data as GameItem[];
+      const params = buildAdminCatalogParams({ page, pageSize, kind: kindFilter, status: statusFilter, search: debouncedSearch });
+      const response = await apiClient.api.get(`/api/game/catalog?${params.toString()}`);
+      const payload = response.data as { items?: GameItem[]; total?: number };
+      return { items: payload.items ?? [], total: payload.total ?? 0 };
+    },
+    [debouncedSearch, kindFilter, statusFilter],
+  );
 
-      setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
-      if (newItems.length < 20) {
-        setHasMore(false);
+  // Окно строк для таблицы: границы приходят от неё по мере прокрутки.
+  const loadGames = React.useCallback(
+    async (skip: number, take: number) => {
+      const window = await fetchWindow(skip, take, GRID_PAGE_SIZE, fetchCatalogPage);
+      setItems((prev) => {
+        if (skip === 0) {
+          return window.items;
+        }
+        const known = new Set(prev.map((item: GameItem) => item.id));
+        return [...prev, ...window.items.filter((item) => !known.has(item.id))];
+      });
+      return window;
+    },
+    [fetchCatalogPage],
+  );
+
+  const { source, retry, loaded, total: listTotal, error: listError } = useGridWindow<GameItem>(loadGames, "id", reloadToken);
+
+  /** Перечитать список: данные изменились, а запрос — нет (сохранили, удалили, применили скидку). */
+  const reloadList = React.useCallback(() => setReloadToken((token) => token + 1), []);
+
+  // Поиск ушёл на сервер: фильтровать нечего, в items уже лежит ровно то, что нашлось.
+  // Фильтрация на клиенте искала бы только по загруженным страницам — на большом
+  // каталоге это значит «не находит ничего, что не успели подгрузить».
+  const toggleSelected = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
       }
-      setListLoading(false);
-      return newItems;
-    } catch (error) {
-      console.error("Error loading objects:", error);
-      setListError("Failed to load games.");
-    }
-    setListLoading(false);
-    return [];
-  };
+      return next;
+    });
 
-  const filteredItems = useMemo(() => {
-    if (!debouncedSearch) {
-      return items;
+  /**
+   * Массовая скидка. Скидки живут отдельной сущностью и правятся своим эндпоинтом на игру,
+   * поэтому пачкой их менять безопасно — объект Game при этом не переписывается.
+   *
+   * Массовую правку цены сознательно НЕ делаю: она идёт через PUT всего объекта Game, а поле
+   * prices (ручные цены по валютам) не отдаёт ни один эндпоинт — сохранение затирает его.
+   * Плодить это на десятки игр разом нельзя, пока баг не закрыт.
+   */
+  const runBulkDiscount = async (mode: "apply" | "remove") => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      return;
     }
-    const lower = debouncedSearch.toLowerCase();
-    return items.filter((item) => (item.name ?? "").toLowerCase().includes(lower));
-  }, [debouncedSearch, items]);
+    setBulkRunning(true);
+    const adminService = container.get<IAdminGameDetailsService>(IDENTIFIERS.IAdminGameDetailsService);
+    const start = new Date().toISOString();
+    const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    let ok = 0;
+    const failed: string[] = [];
+    // Последовательно, а не Promise.all: пачка может быть большой, и заливать сервер
+    // сотней одновременных запросов ради удобства кода не стоит.
+    for (const id of ids) {
+      try {
+        if (mode === "apply") {
+          await adminService.upsertDiscount(id, { discountPercent: bulkPercent, startDate: start, endDate: end });
+        } else {
+          await adminService.deleteDiscount(id);
+        }
+        ok += 1;
+      } catch {
+        failed.push(id);
+      }
+    }
+    setBulkRunning(false);
+    setBulkConfirm(null);
+    setSelectedIds(new Set());
+    // Отчитываемся и об успехе, и о неудачах: молчаливая частичная ошибка на пачке —
+    // худший исход, о ней узнают уже от покупателей.
+    addToast(
+      failed.length === 0
+        ? `${mode === "apply" ? "Discount applied to" : "Discount removed from"} ${ok} game${ok === 1 ? "" : "s"}.`
+        : `${ok} updated, ${failed.length} failed.`,
+      failed.length === 0 ? "success" : "error"
+    );
+    reloadList();
+  };
 
   const isDirty = useMemo(() => {
     if (!drawerOpen) {
@@ -200,7 +344,7 @@ const CardAdderPage: React.FC = () => {
       form.description !== (selectedGame.description ?? "") ||
       form.title !== (selectedGame.title ?? "") ||
       Number(form.price) !== Number(selectedGame.price ?? 0) ||
-      Number(form.gameType) !== Number(selectedGame.gameType ?? 0) ||
+      (form.genre ?? "") !== (selectedGame.genre ?? "") ||
       (form.releaseDate ?? "") !== (selectedGame.releaseDate?.split("T")[0] ?? "") ||
       form.imagePath !== (selectedGame.imagePath ?? "") ||
       form.coverMediaId !== (selectedGame.coverMediaId ?? "")
@@ -223,8 +367,14 @@ const CardAdderPage: React.FC = () => {
     if (form.description && form.description.length > 500) {
       errors.description = "Description must be 500 characters or fewer.";
     }
+    if (form.kind === "Software" && !form.softwareCategory) {
+      errors.softwareCategory = "Pick a software category.";
+    }
+    if (form.kind !== "Software" && !form.genre) {
+      errors.genre = "Pick a genre.";
+    }
     return errors;
-  }, [form.description, form.name, form.price, form.title]);
+  }, [form.description, form.name, form.price, form.title, form.kind, form.softwareCategory, form.genre]);
 
   const isFormValid = Object.keys(validationErrors).length === 0;
 
@@ -313,11 +463,17 @@ const CardAdderPage: React.FC = () => {
         price: item.price || 0,
         prices: item.prices ?? {},
         description: item.description || "",
+        descriptionI18n: item.descriptionI18n ?? {},
         title: item.title || "",
         gameType: item.gameType || 0,
         imagePath: item.imagePath || "",
         coverMediaId: item.coverMediaId || "",
         releaseDate: item.releaseDate ? item.releaseDate.split("T")[0] : "",
+        parentGameId: item.parentGameId ?? "",
+        // Вид и категория — для подписей и полей формы правки («Edit software», жанр только у игр).
+        kind: item.kind === "Software" ? "Software" : "Game",
+        softwareCategory: item.softwareCategory ?? "",
+        genre: item.genre ?? "",
       },
     });
   };
@@ -331,7 +487,6 @@ const CardAdderPage: React.FC = () => {
   }, [dispatch]);
 
   const handleSelectGame = (item: GameItem) => {
-    setIsDetailsLoading(true);
     setSelectedGameId(item.id);
     setSelectedGame(item);
     applyFormFromGame(item);
@@ -340,21 +495,21 @@ const CardAdderPage: React.FC = () => {
     } else {
       setSelectedMedia(null);
     }
-    const isMobile = window.innerWidth < 1024;
-    if (isMobile) {
-      setDetailsDrawerOpen(true);
-    }
-    setTimeout(() => setIsDetailsLoading(false), 150);
+    // Подробности показываем дровером всегда. Раньше на широком экране их держала боковая
+    // панель, из-за которой список ужимался вдвое и прятал часть колонок — при том что она
+    // пустовала до первого выбора.
+    setDetailsDrawerOpen(true);
   };
 
   const handleEditGame = (item: GameItem) => {
     handleSelectGame(item);
     setDetailsDrawerOpen(false);
-    navigate(`/admin/games/details?gameId=${item.id}`);
+    navigate(`/admin/games/${item.id}/edit`);
   };
 
   const handleCreateGame = useCallback(() => {
     resetForm();
+    setCreateAsDraft(true);
     setDrawerMode("create");
     setDrawerOpen(true);
     setDetailsDrawerOpen(false);
@@ -362,19 +517,9 @@ const CardAdderPage: React.FC = () => {
 
   React.useEffect(() => {
     setPageTitle("Catalog");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "create-game",
-        label: "+ Add",
-        variant: "primary",
-        onClick: handleCreateGame,
-      },
-    ]);
-    return () => setHeaderActions([]);
-  }, [handleCreateGame, setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     dispatch({
       type: "SET_GAME_TYPE_FORM",
@@ -389,6 +534,41 @@ const CardAdderPage: React.FC = () => {
    * Цена в дополнительной валюте. Пустое поле убирает валюту из прайс-листа целиком —
    * это «не продаём», а не «ноль»: ноль сделал бы игру бесплатной, а не скрыл её.
    */
+  // Каталожный DTO ручных цен по валютам не отдаёт — они нужны только админке, а в ответ
+  // витрины добавили бы всем покупателям прайс по валютам, которые ещё не запущены.
+  // Поэтому грузим их отдельным запросом и запоминаем факт загрузки: пока цены не приехали,
+  // форма не имеет права их отправлять (см. buildPayload).
+  const [manualPricesLoaded, setManualPricesLoaded] = useState(false);
+  // Ссылка на свежую форму: догрузка асинхронная, и замыкание с form затёрло бы правки,
+  // сделанные админом, пока запрос летел.
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  useEffect(() => {
+    // Одна валюта в магазине — раздела «цены в других валютах» нет и грузить нечего.
+    if (!selectedGameId || extraCurrencies.length === 0) {
+      setManualPricesLoaded(false);
+      return;
+    }
+    let cancelled = false;
+    setManualPricesLoaded(false);
+    getGamePrices(selectedGameId)
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+        dispatch({ type: "SET_GAME_TYPE_FORM", payload: { ...formRef.current, prices: data.prices ?? {} } });
+        setManualPricesLoaded(true);
+      })
+      .catch(() => {
+        // Не загрузилось — оставляем manualPricesLoaded false: сохранение просто не тронет цены,
+        // что безопаснее, чем отправить пустой прайс-лист.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGameId, extraCurrencies.length, dispatch]);
+
   const handlePriceInCurrencyChange = (code: string, value: string) => {
     const prices = { ...(form.prices ?? {}) };
     const trimmed = value.trim();
@@ -426,11 +606,30 @@ const CardAdderPage: React.FC = () => {
     if (!payload.releaseDate) {
       delete cleaned.releaseDate;
     }
+    // Пустой выбор — обычная игра: поле не шлём, чтобы в базе не лежала пустая строка.
+    if (!payload.parentGameId) {
+      delete cleaned.parentGameId;
+    }
+    // В форме вид — строка, как в каталоге; сервер же читает перечисление числом (0 — игра, 1 — ПО).
+    // Категория — только у ПО; DLC у ПО не бывает.
+    cleaned.kind = payload.kind === "Software" ? 1 : 0;
+    if (payload.kind === "Software") {
+      delete cleaned.parentGameId;
+      delete cleaned.genre;
+    } else {
+      delete cleaned.softwareCategory;
+    }
     if (!payload.coverMediaId) {
       delete cleaned.coverMediaId;
     }
     if (!payload.description) {
       delete cleaned.description;
+    }
+    // Прайс-лист по валютам отправляем, только если форма его действительно загрузила.
+    // Иначе пустой объект прочитался бы сервером как «снять все ручные цены» и затёр бы то,
+    // что выставлено в /admin/prices; отсутствие поля означает «не трогать».
+    if (!manualPricesLoaded) {
+      delete cleaned.prices;
     }
     return cleaned;
   };
@@ -455,17 +654,15 @@ const CardAdderPage: React.FC = () => {
       const payload = buildPayload(updatedItem);
 
       if (drawerMode === "create") {
-        const response = await apiClient.api.post("/api/game", payload);
+        const response = await apiClient.api.post(createAsDraft ? "/api/game?draft=true" : "/api/game", payload);
         createdId = response.data?.id ?? response.data?.gameId ?? null;
       }
 
-      setPage(1);
-      setHasMore(true);
-      setItems([]);
-      const refreshedItems = await fetchItems(1, true);
+      reloadList();
+      const refreshed = await fetchCatalogPage(1, GRID_PAGE_SIZE);
 
       const targetId = drawerMode === "create" ? createdId ?? updatedItem.id : selectedGame?.id;
-      const refreshedSelection = refreshedItems.find((item) => item.id === targetId);
+      const refreshedSelection = refreshed.items.find((item) => item.id === targetId);
       if (refreshedSelection) {
         setSelectedGameId(refreshedSelection.id);
         setSelectedGame(refreshedSelection);
@@ -473,6 +670,8 @@ const CardAdderPage: React.FC = () => {
       }
 
       const wasCreate = drawerMode === "create";
+      const noun = updatedItem.kind === "Software" ? "Software" : "Game";
+      const createdAsDraft = createAsDraft;
       setDrawerOpen(false);
       setDrawerMode(null);
       resetForm();
@@ -481,14 +680,19 @@ const CardAdderPage: React.FC = () => {
       // перехватит programmatic navigate и покажет «You have unsaved changes».
       if (wasCreate && createdId) {
         // Вместо мгновенного перехода — notify-плашка с кнопкой перехода и прогресс-баром.
-        addToast("Игра создана", "success", {
+        addToast(
+          createdAsDraft
+            ? `${noun} created as a draft — fill in the card and publish it in the editor.`
+            : `${noun} created and published.`,
+          "success",
+          {
           action: {
-            label: "Перейти к редактированию",
-            onClick: () => navigate(`/admin/games/details?gameId=${createdId}`),
+            label: "Open editor",
+            onClick: () => navigate(`/admin/games/${createdId}/edit`),
           },
         });
       } else {
-        addToast(wasCreate ? "Game created" : "Changes saved", "success");
+        addToast(wasCreate ? `${noun} created` : "Changes saved", "success");
       }
     } catch (error) {
       console.error("Error saving object:", error);
@@ -522,13 +726,6 @@ const CardAdderPage: React.FC = () => {
     resetForm();
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollTop + clientHeight >= scrollHeight - 10 && hasMore) {
-      setPage((prev) => prev + 1);
-    }
-  };
-
   const requestDelete = (itemId: string) => {
     setPendingDeleteId(itemId);
     const item = items.find((game) => game.id === itemId);
@@ -558,7 +755,7 @@ const CardAdderPage: React.FC = () => {
       setIsDeleteOpen(false);
       setPendingDeleteId(null);
       setPendingDeleteName(null);
-      await fetchItems(1, true);
+      reloadList();
     }
   };
 
@@ -624,25 +821,27 @@ const CardAdderPage: React.FC = () => {
     );
   };
 
-  const drawerTitle = drawerMode === "create" ? "Create game" : "Edit game";
+  const drawerTitle = drawerMode === "create"
+    ? (form.kind === "Software" ? "Create software" : "Create game")
+    : (form.kind === "Software" ? "Edit software" : "Edit game");
 
   return (
     <div className="admin-grid">
       <PageHeader
         title="Catalog editor"
-        description="Create, update, and organize game cards using a structured master–detail layout."
-        breadcrumbs={["Games", "Catalog"]}
+        description="Create, update, and organize games and software. New products start as drafts. Pick a row to open its details."
+        breadcrumbs={["Catalog"]}
         tabs={GAMES_TABS}
       />
 
-      <div className="admin-grid admin-grid--2">
+      <div className="admin-grid">
         <Card>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="admin-topbar__search">
               <span>🔎</span>
               <input
                 type="text"
-                placeholder="Search games..."
+                placeholder="Search games and software..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -652,174 +851,236 @@ const CardAdderPage: React.FC = () => {
                 </button>
               )}
             </div>
+            <div className="kind-switch" role="radiogroup" aria-label="Show products">
+              {([
+                ["all", "All"],
+                ["game", "Games"],
+                ["software", "Software"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={kindFilter === value}
+                  className={kindFilter === value ? "is-active" : ""}
+                  onClick={() => setKindFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="kind-switch" role="radiogroup" aria-label="Publication status">
+              {([
+                ["all", "Any status"],
+                ["published", "Published"],
+                ["draft", "Drafts"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={statusFilter === value}
+                  className={statusFilter === value ? "is-active" : ""}
+                  onClick={() => setStatusFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button className="btn btn-outline" type="button" onClick={() => setGenresOpen(true)}>
+                Game genres
+              </button>
+              <button className="btn btn-outline" type="button" onClick={() => setCategoriesOpen(true)}>
+                Software categories
+              </button>
+              <button className="btn btn-primary" type="button" onClick={handleCreateGame}>
+                + Add product
+              </button>
+            </div>
           </div>
 
-          <div className="mt-4 h-[420px] overflow-y-auto" onScroll={handleScroll}>
-            {listLoading ? (
-              <div className="space-y-3">
-                <div className="skeleton h-10" />
-                <div className="skeleton h-10" />
-                <div className="skeleton h-10" />
-              </div>
-            ) : listError ? (
+          <div className="mt-4">
+            {listError ? (
               <EmptyState
                 title="Unable to load games"
                 description={listError}
                 action={
-                  <button className="btn btn-primary" onClick={() => fetchItems(1, true)}>
+                  <button className="btn btn-primary" onClick={retry}>
                     Retry
                   </button>
                 }
               />
-            ) : filteredItems.length === 0 ? (
-              <EmptyState
-                title="No games yet"
-                description="Create your first game entry to populate the catalog."
-                action={
-                  <button className="btn btn-primary" onClick={handleCreateGame}>
-                    Create first item
-                  </button>
-                }
-              />
             ) : (
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Price</th>
-                    <th>Type</th>
-                    <th>Release date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredItems.map((item) => (
-                    <tr
-                      key={item.id}
-                      className={item.id === selectedGameId ? "admin-table__row-selected" : ""}
-                    >
-                      <td>
-                        <button className="text-left" onClick={() => handleSelectGame(item)}>
-                          <strong title={item.name || "Unnamed"} className="admin-table__cell-truncate">
-                            {item.name || "Unnamed"}
-                          </strong>
-                          {renderReleaseStatus(item)}
-                          <div className="admin-table__cell-muted admin-table__cell-truncate" title={item.title}>
-                            {item.title}
-                          </div>
+              <>
+              {/* Панель массовых действий появляется только при непустом выделении:
+                  постоянная строка кнопок над таблицей отвлекала бы в обычной работе. */}
+              {selectedIds.size > 0 && (
+                <div className="bulk-bar">
+                  <span className="bulk-bar__count">{selectedIds.size} selected</span>
+                  <label className="bulk-bar__percent">
+                    Discount
+                    <input
+                      type="number"
+                      min={1}
+                      max={95}
+                      className="input"
+                      value={bulkPercent}
+                      onChange={(event) => setBulkPercent(Number(event.target.value))}
+                    />
+                    %
+                  </label>
+                  <button type="button" className="btn btn-primary" disabled={bulkRunning} onClick={() => setBulkConfirm("apply")}>
+                    Apply discount
+                  </button>
+                  <button type="button" className="btn btn-outline" disabled={bulkRunning} onClick={() => setBulkConfirm("remove")}>
+                    Remove discount
+                  </button>
+                  <button type="button" className="btn btn-outline" disabled={bulkRunning} onClick={() => setSelectedIds(new Set())}>
+                    Clear
+                  </button>
+                  {bulkRunning && <span className="bulk-bar__count">Working…</span>}
+                </div>
+              )}
+
+              <DataGrid
+                dataSource={source}
+                showBorders
+                showRowLines
+                height={560}
+                width="100%"
+                columnAutoWidth
+                allowColumnResizing
+                columnResizingMode="widget"
+                remoteOperations={REMOTE_PAGING}
+                noDataText="The catalog is empty — add the first game to start selling."
+                onRowPrepared={(event) => {
+                  if (event.rowType === "data" && (event.data as GameItem).id === selectedGameId) {
+                    event.rowElement.classList.add("admin-table__row-selected");
+                  }
+                }}
+              >
+                <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+                <Paging enabled pageSize={GRID_PAGE_SIZE} />
+                {/* Порядок задаёт сервер; сортировка загруженного окна врала бы. */}
+                <Sorting mode="none" />
+
+                <Column
+                  caption=""
+                  width={46}
+                  allowSorting={false}
+                  headerCellRender={() => (
+                    /* Выделяет только загруженные строки: обещать «все 10 000» кнопка не может —
+                       операции идут по одной игре, и пачка должна быть обозримой. */
+                    <input
+                      type="checkbox"
+                      aria-label="Select all loaded games"
+                      checked={items.length > 0 && selectedIds.size === items.length}
+                      ref={(node) => {
+                        if (node) {
+                          node.indeterminate = selectedIds.size > 0 && selectedIds.size < items.length;
+                        }
+                      }}
+                      onChange={(event) =>
+                        setSelectedIds(event.target.checked ? new Set(items.map((row) => row.id)) : new Set())
+                      }
+                    />
+                  )}
+                  cellRender={(cell) => (
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${cell.data.name ?? "game"}`}
+                      checked={selectedIds.has(cell.data.id)}
+                      onChange={() => toggleSelected(cell.data.id)}
+                    />
+                  )}
+                />
+                <Column
+                  dataField="name"
+                  caption="Name"
+                  minWidth={260}
+                  cellRender={(cell) => (
+                    <button className="text-left" onClick={() => handleSelectGame(cell.data)}>
+                      <strong title={cell.data.name || "Unnamed"} className="admin-table__cell-truncate">
+                        {cell.data.name || "Unnamed"}
+                      </strong>
+                      {renderReleaseStatus(cell.data)}
+                      {cell.data.parentGameId && (
+                        <span className="admin-release-pills">
+                          <span className="admin-release-pill" title="DLC — sold from the base game page">DLC</span>
+                        </span>
+                      )}
+                      {cell.data.isDraft && (
+                        <span className="admin-kind-pill is-draft" title="Draft — not visible in the store until published in the card editor">
+                          Draft
+                        </span>
+                      )}
+                      {cell.data.kind === "Software" && (
+                        <span className="admin-kind-pill" title="Software — found in the catalog under the Software product type">
+                          Software{cell.data.softwareCategory ? ` · ${categoryTitle(cell.data.softwareCategory)}` : ""}
+                        </span>
+                      )}
+                      {gapsByGameId[cell.data.id] && (
+                        <button
+                          type="button"
+                          className={`admin-gaps-pill${gapsByGameId[cell.data.id].errors > 0 ? " admin-gaps-pill--errors" : ""}`}
+                          title="Card is incomplete — open Details to fill the gaps"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/admin/games/${cell.data.id}/edit`);
+                          }}
+                        >
+                          {gapsByGameId[cell.data.id].gaps} {gapsByGameId[cell.data.id].gaps === 1 ? "gap" : "gaps"}
                         </button>
-                      </td>
-                      <td>{formatPrice(item.price)}</td>
-                      <td className="admin-table__cell-muted">{item.gameType ?? "—"}</td>
-                      <td className="admin-table__cell-muted">{item.releaseDate?.split("T")[0] ?? "—"}</td>
-                      <td>
-                        <div className="flex gap-2">
-                          <button className="btn btn-outline" onClick={() => handleEditGame(item)}>
-                            Edit
-                          </button>
-                          <button className="btn btn-outline" onClick={() => requestDelete(item.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      <div className="admin-table__cell-muted admin-table__cell-truncate" title={cell.data.title}>
+                        {cell.data.title}
+                      </div>
+                    </button>
+                  )}
+                />
+                <Column
+                  caption="Price"
+                  width={120}
+                  cellRender={(cell) => <span>{formatPrice(cell.data.price)}</span>}
+                />
+                <Column
+                  caption="Type"
+                  width={120}
+                  cellRender={(cell) => (
+                    <span className="admin-table__cell-muted">
+                      {cell.data.kind === "Software" ? "Software" : cell.data.category || "—"}
+                    </span>
+                  )}
+                />
+                <Column
+                  caption="Release date"
+                  width={140}
+                  cellRender={(cell) => (
+                    <span className="admin-table__cell-muted">{cell.data.releaseDate?.split("T")[0] ?? "—"}</span>
+                  )}
+                />
+                <Column
+                  caption="Actions"
+                  width={180}
+                  cellRender={(cell) => (
+                    <div className="flex gap-2">
+                      <button className="btn btn-outline" onClick={() => handleEditGame(cell.data)}>
+                        Edit
+                      </button>
+                      <button className="btn btn-outline" onClick={() => requestDelete(cell.data.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                />
+              </DataGrid>
+              </>
             )}
-            {!hasMore && filteredItems.length > 0 && (
-              <p className="text-center mt-4 muted">No more objects.</p>
-            )}
+            <p className="mt-3 text-xs text-gray-500">{gridStatusText(loaded, listTotal, "game")}</p>
           </div>
         </Card>
 
-        <Card className="hidden lg:block">
-          {isDetailsLoading ? (
-            <div className="space-y-3">
-              <div className="skeleton h-10" />
-              <div className="skeleton h-20" />
-              <div className="skeleton h-20" />
-            </div>
-          ) : selectedGame ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3>{selectedGame.name || "Unnamed"}</h3>
-                <div className="flex gap-2">
-                  <button className="btn btn-outline" onClick={() => handleEditGame(selectedGame)}>
-                    Edit
-                  </button>
-                  <button className="btn btn-outline" onClick={() => requestDelete(selectedGame.id)}>
-                    Delete
-                  </button>
-                </div>
-              </div>
-
-              <Card>
-                <h3>Basic info</h3>
-                <p><strong>Name:</strong> {selectedGame.name || "—"}</p>
-                <p><strong>Title:</strong> {selectedGame.title || "—"}</p>
-              </Card>
-
-              <Card>
-                <h3>Content</h3>
-                <p>{selectedGame.description || "—"}</p>
-              </Card>
-
-              <Card>
-                <h3>Action settings</h3>
-                <p><strong>Price:</strong> {formatPrice(selectedGame.price)}</p>
-                <p><strong>Game type:</strong> {selectedGame.gameType ?? "—"}</p>
-              </Card>
-
-              <Card>
-                <h3>Date</h3>
-                <p>{selectedGame.releaseDate?.split("T")[0] ?? "—"}</p>
-                {renderReleaseStatus(selectedGame, true)}
-              </Card>
-
-              <Card>
-                <h3>Media</h3>
-                {selectedGame.coverMediaId ? (
-                  selectedMedia ? (
-                    <div className="flex items-center gap-3">
-                      <img src={selectedMedia.url} alt={selectedMedia.filename} className="h-12 w-12 rounded object-cover" />
-                      <div>
-                        <p className="text-sm font-semibold">{selectedMedia.filename}</p>
-                        <p className="text-xs text-gray-500">Linked media</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">Loading media preview...</p>
-                  )
-                ) : selectedGame.imagePath ? (
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={getLegacyPreviewUrl(selectedGame.imagePath)}
-                      alt="Legacy"
-                      className="h-12 w-12 rounded object-cover"
-                    />
-                    <div>
-                      <p className="text-sm font-semibold">{getLegacyFileName(selectedGame.imagePath)}</p>
-                      <p className="text-xs text-gray-500">Legacy image</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p>—</p>
-                )}
-              </Card>
-            </div>
-          ) : (
-            <EmptyState
-              title="Select a game to view details"
-              description="Choose a game from the list to see its details here."
-              action={
-                <button className="btn btn-primary" onClick={handleCreateGame}>
-                  Create game
-                </button>
-              }
-            />
-          )}
-        </Card>
       </div>
 
       <Drawer
@@ -828,6 +1089,76 @@ const CardAdderPage: React.FC = () => {
         onClose={handleDrawerClose}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Вид выбирается при создании: от него зависят раздел витрины, поля карточки и налоговый код.
+              Позже его можно сменить в редакторе карточки. */}
+          {drawerMode === "create" && (
+            <Card>
+              <h3>Product type</h3>
+              <div className="kind-switch" role="radiogroup" aria-label="Product type">
+                {[
+                  { value: "Game" as const, label: "Game" },
+                  { value: "Software" as const, label: "Software" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={(form.kind ?? "Game") === option.value}
+                    className={(form.kind ?? "Game") === option.value ? "is-active" : ""}
+                    onClick={() => dispatch({ type: "SET_GAME_TYPE_FORM", payload: { ...form, kind: option.value } })}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {form.kind === "Software" && (
+                <>
+                  <label className="text-sm font-semibold mt-3 block">Software category</label>
+                  <select name="softwareCategory" value={form.softwareCategory ?? ""} onChange={handleChange} className="w-full p-2 border rounded">
+                    <option value="">— pick a category —</option>
+                    {softwareCategories.map((category) => (
+                      <option key={category.tag} value={category.tag}>
+                        {category.title}
+                      </option>
+                    ))}
+                  </select>
+                  {validationErrors.softwareCategory && <small className="text-red-500">{validationErrors.softwareCategory}</small>}
+                  <p className="text-xs text-gray-500 mt-2">
+                    Licenses (term and devices), activation and operating systems are set in the card editor after creating.
+                  </p>
+                </>
+              )}
+            </Card>
+          )}
+
+          {drawerMode === "create" && (
+            <Card>
+              <h3>Visibility</h3>
+              <div className="kind-switch" role="radiogroup" aria-label="Visibility after creating">
+                {([
+                  [true, "Draft"],
+                  [false, "Published"],
+                ] as const).map(([draft, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    role="radio"
+                    aria-checked={createAsDraft === draft}
+                    className={createAsDraft === draft ? "is-active" : ""}
+                    onClick={() => setCreateAsDraft(draft)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {createAsDraft
+                  ? "Hidden from the store. Fill in the card (description, cover, " + (form.kind === "Software" ? "licenses, keys" : "keys") + ") and publish it in the card editor."
+                  : "Goes on sale right away — with only what this form has: no description page, gallery or " + (form.kind === "Software" ? "licenses" : "editions") + " yet."}
+              </p>
+            </Card>
+          )}
+
           <Card>
             <h3>Basic info</h3>
             <label className="text-sm font-semibold">Name</label>
@@ -854,17 +1185,26 @@ const CardAdderPage: React.FC = () => {
           <Card>
             <h3>Content</h3>
             <label className="text-sm font-semibold">Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.stopPropagation();
-                }
-              }}
-              className="w-full p-2 border rounded min-h-[120px]"
-            />
+            <LocalizedField
+              label="Description"
+              multiline
+              rows={5}
+              i18n={form.descriptionI18n}
+              placeholder={form.description}
+              onI18nChange={(next) => dispatch({ type: "SET_GAME_TYPE_FORM", payload: { ...form, descriptionI18n: next } })}
+            >
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.stopPropagation();
+                  }
+                }}
+                className="w-full p-2 border rounded min-h-[120px]"
+              />
+            </LocalizedField>
             <div className="flex justify-between text-xs text-gray-500">
               <span>{form.description?.length ?? 0} / 500</span>
               {validationErrors.description && <span className="text-red-500">{validationErrors.description}</span>}
@@ -905,9 +1245,45 @@ const CardAdderPage: React.FC = () => {
                 ))}
               </div>
             )}
-            <label className="text-sm font-semibold">Game type</label>
-            <GameTypeDropdown />
+            {/* Жанр — игровое понятие: у ПО вместо него категория раздела. Список — из настроек (кнопка «Game genres»). */}
+            {form.kind !== "Software" && (
+              <>
+                <label className="text-sm font-semibold">Genre</label>
+                <select name="genre" value={form.genre ?? ""} onChange={handleChange} className="w-full p-2 border rounded">
+                  <option value="">— pick a genre —</option>
+                  {/* Жанр, которого уже нет в списке, не теряем: иначе форма молча сменила бы его при сохранении. */}
+                  {form.genre && !genres.some((genre) => genre.tag === form.genre) && (
+                    <option value={form.genre}>{form.genre}</option>
+                  )}
+                  {genres.map((genre) => (
+                    <option key={genre.tag} value={genre.tag}>
+                      {genre.title}
+                    </option>
+                  ))}
+                </select>
+                {validationErrors.genre && <small className="text-red-500">{validationErrors.genre}</small>}
+              </>
+            )}
           </Card>
+
+          {form.kind !== "Software" && (
+          <Card>
+            <h3>DLC</h3>
+            {/* DLC — отдельный товар с базовой игрой: в каталоге он не в общем списке, а в блоке
+                «DLC» базовой игры; на его странице — «требуется базовая игра». */}
+            <label className="text-sm font-semibold">DLC of (base game)</label>
+            <select name="parentGameId" value={form.parentGameId ?? ""} onChange={handleChange} className="w-full p-2 border rounded">
+              <option value="">— not a DLC —</option>
+              {items
+                .filter((item) => item.id !== form.id && !item.parentGameId)
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title || item.name}
+                  </option>
+                ))}
+            </select>
+          </Card>
+          )}
 
           <Card>
             <h3>Date</h3>
@@ -946,6 +1322,8 @@ const CardAdderPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
+                {/* Точка фокуса: одна обложка живёт в квадрате, вертикали и широкой полосе — админ показывает, что в ней главное. */}
+                <CoverFocusEditor key={selectedMedia.url} imageUrl={selectedMedia.url} />
               </div>
             ) : form.imagePath ? (
               <div className="space-y-3">
@@ -970,6 +1348,7 @@ const CardAdderPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
+                <CoverFocusEditor key={form.imagePath} imageUrl={getLegacyPreviewUrl(form.imagePath)} />
               </div>
             ) : (
               <div className="space-y-3">
@@ -991,7 +1370,7 @@ const CardAdderPage: React.FC = () => {
               {saving
                 ? "Saving..."
                 : drawerMode === "create"
-                  ? "Create game"
+                  ? form.kind === "Software" ? "Create software" : "Create game"
                   : "Save changes"}
             </button>
           </div>
@@ -1000,7 +1379,7 @@ const CardAdderPage: React.FC = () => {
 
       <Drawer
         isOpen={detailsDrawerOpen && !drawerOpen}
-        title="Game details"
+        title={selectedGame?.kind === "Software" ? "Software" : "Game"}
         onClose={() => setDetailsDrawerOpen(false)}
       >
         {selectedGame ? (
@@ -1016,6 +1395,21 @@ const CardAdderPage: React.FC = () => {
                 </button>
               </div>
             </div>
+            {/* Публикация — сюда, а не кнопкой в панели: опубликовать можно только в редакторе карточки,
+                где видно, чего в ней не хватает. */}
+            <Card>
+              <h3>Visibility</h3>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p>
+                  {selectedGame.isDraft
+                    ? <><strong>Draft</strong> — not visible in the store.</>
+                    : <><strong>Published</strong> — visible in the store.</>}
+                </p>
+                <button className="btn btn-outline" onClick={() => navigate(`/admin/games/${selectedGame.id}/edit`)}>
+                  {selectedGame.isDraft ? "Open editor to publish" : "Open editor"}
+                </button>
+              </div>
+            </Card>
             <Card>
               <h3>Basic info</h3>
               <p><strong>Name:</strong> {selectedGame.name || "—"}</p>
@@ -1028,7 +1422,9 @@ const CardAdderPage: React.FC = () => {
             <Card>
               <h3>Action settings</h3>
               <p><strong>Price:</strong> {formatPrice(selectedGame.price)}</p>
-              <p><strong>Game type:</strong> {selectedGame.gameType ?? "—"}</p>
+              {selectedGame.kind === "Software"
+                ? <p><strong>Category:</strong> {categoryTitle(selectedGame.softwareCategory) || "—"}</p>
+                : <p><strong>Genre:</strong> {selectedGame.category || "—"}</p>}
             </Card>
             <Card>
               <h3>Date</h3>
@@ -1069,11 +1465,22 @@ const CardAdderPage: React.FC = () => {
           <EmptyState
             title="Select a game to view details"
             description="Choose a game from the list to see its details here."
-            action={
-              <button className="btn btn-primary" onClick={handleCreateGame}>
-                Create game
-              </button>
-            }
+          />
+        )}
+      </Drawer>
+
+      <Drawer isOpen={categoriesOpen} title="Software categories" onClose={() => setCategoriesOpen(false)}>
+        {categoriesOpen && <SoftwareCategoriesEditor onSaved={setSoftwareCategories} />}
+      </Drawer>
+
+      <Drawer isOpen={genresOpen} title="Game genres" onClose={() => setGenresOpen(false)}>
+        {genresOpen && (
+          <GameGenresEditor
+            onSaved={(saved) => {
+              setGenres(saved);
+              // Названия жанров видны в колонке Type — перечитываем список.
+              reloadList();
+            }}
           />
         )}
       </Drawer>
@@ -1096,9 +1503,22 @@ const CardAdderPage: React.FC = () => {
       />
 
       <ModalConfirm
+        isOpen={bulkConfirm !== null}
+        title={bulkConfirm === "remove" ? "Remove discount from selected games?" : "Apply discount to selected games?"}
+        description={
+          bulkConfirm === "remove"
+            ? `Discount will be removed from ${selectedIds.size} game(s).`
+            : `${bulkPercent}% discount will run for 30 days on ${selectedIds.size} game(s).`
+        }
+        confirmLabel={bulkConfirm === "remove" ? "Remove" : "Apply"}
+        onConfirm={() => bulkConfirm && runBulkDiscount(bulkConfirm)}
+        onCancel={() => setBulkConfirm(null)}
+      />
+
+      <ModalConfirm
         isOpen={isDeleteOpen}
         title={`Delete game “${pendingDeleteName ?? "Unnamed"}”?`}
-        description="Это действие необратимо."
+        description="This cannot be undone."
         confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => {

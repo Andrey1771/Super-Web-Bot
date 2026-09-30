@@ -1,3 +1,4 @@
+using SuperBot.Core.Payments;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -22,7 +23,11 @@ public sealed class AdminOrderActionsService
     private readonly IKeyFulfillmentService _fulfillment;
     private readonly IDeliveryMailer _mailer;
     private readonly IStripePaymentIntentGateway _stripe;
+    private readonly IPurchaseAnalytics _analytics;
     private readonly ILogger<AdminOrderActionsService> _logger;
+    private readonly ICashbackOrderEvents _cashback;
+    private readonly IOrderTaxService _tax;
+    private readonly IGameReviewRepository _reviews;
 
     public AdminOrderActionsService(
         IOrderRepository orders,
@@ -30,13 +35,21 @@ public sealed class AdminOrderActionsService
         IKeyFulfillmentService fulfillment,
         IDeliveryMailer mailer,
         IStripePaymentIntentGateway stripe,
-        ILogger<AdminOrderActionsService> logger)
+        IPurchaseAnalytics analytics,
+        ILogger<AdminOrderActionsService> logger,
+        ICashbackOrderEvents cashback,
+        IOrderTaxService tax,
+        IGameReviewRepository reviews)
     {
+        _cashback = cashback;
+        _tax = tax;
+        _reviews = reviews;
         _orders = orders;
         _keys = keys;
         _fulfillment = fulfillment;
         _mailer = mailer;
         _stripe = stripe;
+        _analytics = analytics;
         _logger = logger;
     }
 
@@ -48,7 +61,7 @@ public sealed class AdminOrderActionsService
     /// </summary>
     public async Task<ActionOutcome> ResendKeysAsync(Order order, string actor)
     {
-        if (!LooksLikeEmail(order.UserId))
+        if (!EmailAddress.LooksLikeEmail(order.UserId))
         {
             return ActionOutcome.Refuse("This order has no e-mail to send to (Telegram or legacy account).");
         }
@@ -64,7 +77,8 @@ public sealed class AdminOrderActionsService
             order.OrderNumber ?? order.Id.ToString(),
             delivered,
             KeyDeliveryReceipt.FromOrder(order),
-            KeyDeliveryProgress.FromOrder(order));
+            KeyDeliveryProgress.FromOrder(order),
+            locale: order.Language);
 
         AddEvent(order, "keys_resent", $"Keys re-sent to {order.UserId} ({delivered.Count})", actor);
         await _orders.UpdateOrderAsync(order);
@@ -99,12 +113,12 @@ public sealed class AdminOrderActionsService
             return ActionOutcome.Refuse("No keys in stock for the games on this order — add keys in Game keys first.");
         }
 
-        if (LooksLikeEmail(order.UserId))
+        if (EmailAddress.LooksLikeEmail(order.UserId))
         {
             try
             {
                 await _mailer.SendGameKeysAsync(order.UserId, order.OrderNumber ?? order.Id.ToString(), newlyDelivered,
-                    KeyDeliveryReceipt.FromOrder(order), KeyDeliveryProgress.FromOrder(order));
+                    KeyDeliveryReceipt.FromOrder(order), KeyDeliveryProgress.FromOrder(order), locale: order.Language);
             }
             catch (Exception ex)
             {
@@ -157,10 +171,156 @@ public sealed class AdminOrderActionsService
             return ActionOutcome.Fail("Stripe did not accept the refund. Check the Stripe dashboard; nothing was changed on the order.");
         }
 
+        var fractionBefore = OrderRefunds.Fraction(order);
+        var cardBefore = order.RefundedAmount ?? 0m;
         ApplyRefunded(order, actor, $"Refunded via Stripe. Reason: {reason}");
         await _orders.UpdateOrderAsync(order);
-        await NotifyRefundAsync(order);
+        await MarkReviewsRefundedAsync(order);
+        // Статус проставлен здесь, и пришедший следом charge.refunded выйдет по идемпотентности —
+        // поэтому кэшбэк за заказ забираем отсюда.
+        await _cashback.OnOrderRefundedAsync(order);
+        await _tax.OnOrderRefundedAsync(order);
+        // Статус проставлен сразу, поэтому пришедший следом charge.refunded промолчит —
+        // сообщаем аналитике здесь, иначе возврат из админки не попал бы в неё вообще.
+        await _analytics.TrackRefundAsync(order, order.TotalAmount ?? 0m, true);
+        await NotifyShopRefundAsync(order, full: true, RemainingLines(order), (order.RefundedAmount ?? 0m) - cardBefore, CashbackBack(order, fractionBefore, 1m));
         return ActionOutcome.Ok("Refund sent to Stripe; the order is marked REFUNDED.");
+    }
+
+    /// <summary>
+    /// Вернуть одну позицию заказа (или несколько её штук). На карту уходит пропорциональная часть списанного,
+    /// кэшбэк и налог — по точной доле стоимости заказа (<see cref="OrderRefunds.Plan"/>). Ключи не отзываются:
+    /// выданный ключ уже у покупателя, и решать, что с ним делать, — человеку.
+    /// </summary>
+    public async Task<ActionOutcome> RefundItemAsync(Order order, string actor, string itemId, int quantity, string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return ActionOutcome.Refuse("A reason is required for a refund.");
+        }
+        if (IsRefunded(order))
+        {
+            return ActionOutcome.Refuse("This order is already refunded.");
+        }
+        if (!order.IsPaid && !string.Equals(order.PaymentStatus, "PAID", StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionOutcome.Refuse("Order was never paid — cancel it instead.");
+        }
+        if (string.IsNullOrWhiteSpace(order.PaymentIntentId) || !string.Equals(order.PaymentProvider, "stripe", StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionOutcome.Refuse("Refunding a single item works for Stripe orders only. Refund other payments in the provider’s dashboard, then use “Mark as refunded”.");
+        }
+        if (order.Dispute is { ClosedAt: null })
+        {
+            return ActionOutcome.Refuse("This payment is disputed — the bank decides on the money now. Refund after the dispute closes.");
+        }
+
+        var item = (order.Items ?? new List<OrderItemSnapshot>()).FirstOrDefault(line => string.Equals(line.ItemId, itemId, StringComparison.Ordinal));
+        if (item is null)
+        {
+            return ActionOutcome.Refuse("This item is not on the order.");
+        }
+        var left = OrderRefunds.Refundable(item);
+        if (quantity < 1 || quantity > left)
+        {
+            return ActionOutcome.Refuse(left == 0
+                ? "This item is already refunded."
+                : $"You can refund from 1 to {left} of this item.");
+        }
+
+        var currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency;
+        var fractionBefore = OrderRefunds.Fraction(order);
+        var plan = OrderRefunds.Plan(order, item, quantity,
+            amount => CurrencyMinorUnits.FromMinor((long)Math.Floor(amount * CurrencyMinorUnits.ToMinor(1m, currency)), currency));
+        if (plan is null)
+        {
+            return ActionOutcome.Refuse("This order has no item prices to split the refund by — use the full refund instead.");
+        }
+
+        var refundedAfter = item.RefundedQuantity + quantity;
+        var toCardMinor = CurrencyMinorUnits.ToMinor(plan.ToCard, currency);
+        var money = (decimal amount) => $"{amount:0.00} {currency.ToUpperInvariant()}";
+        var cashbackPart = plan.LineValue - plan.ToCard;
+        var summary = $"{quantity} × {item.Title} ({money(plan.LineValue)}): {money(plan.ToCard)} to the card"
+            + (order.CashbackApplied > 0 && cashbackPart > 0 ? ", the rest as cashback" : string.Empty);
+
+        // Состояние возврата ложится в заказ ДО обращения в Stripe (как у налоговой транзакции). Возврат необратим:
+        // если ответ Stripe потеряется после того, как деньги ушли, повтор увидит позицию уже возвращённой и не вернёт
+        // их второй раз, а событие refund_pending подскажет админу сверить сумму в кабинете Stripe. Не принял Stripe —
+        // откатываем поля назад.
+        var before = (item.RefundedQuantity, order.RefundedShare, order.RefundedAmount, order.Status, order.PaymentStatus, order.UpdatedAt);
+        item.RefundedQuantity = refundedAfter;
+        order.RefundedShare = plan.Share;
+        order.RefundedAmount = (order.RefundedAmount ?? 0m) + plan.ToCard;
+        if (plan.AllItemsRefunded)
+        {
+            order.Status = "REFUNDED";
+            order.PaymentStatus = "REFUNDED";
+        }
+        else
+        {
+            order.PaymentStatus = "PARTIALLY_REFUNDED";
+        }
+        order.UpdatedAt = DateTime.UtcNow;
+        var pending = AddEvent(order, "refund_pending", $"Refunding {summary}. Reason: {reason}", actor);
+        await _orders.UpdateOrderAsync(order);
+
+        if (plan.ToCard > 0)
+        {
+            // Ключ — позиция, сколько её штук будет возвращено и сумма: повтор того же запроса не вернёт деньги дважды,
+            // а возврат с другой суммой (после других возвратов по заказу) не упрётся в чужой ключ.
+            bool ok;
+            try
+            {
+                ok = await _stripe.RefundPaymentIntentAsync(
+                    order.PaymentIntentId,
+                    $"admin_refund_item_{order.Id:N}_{item.ItemId}_{refundedAfter}_{toCardMinor}",
+                    toCardMinor);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Stripe refund for item {ItemId} of order {OrderId} failed.", item.ItemId, order.Id);
+                ok = false;
+            }
+            if (!ok)
+            {
+                (item.RefundedQuantity, order.RefundedShare, order.RefundedAmount, order.Status, order.PaymentStatus, order.UpdatedAt) = before;
+                pending.Type = "refund_failed";
+                pending.Message = $"Stripe refund for {quantity} × {item.Title} failed. Reason given: {reason}";
+                await _orders.UpdateOrderAsync(order);
+                return ActionOutcome.Fail("Stripe did not accept the refund. Check the Stripe dashboard; nothing was changed on the order.");
+            }
+        }
+
+        pending.Type = "refund";
+        pending.Message = $"Refunded {summary}. Reason: {reason}";
+        await _orders.UpdateOrderAsync(order);
+        await MarkReviewsRefundedAsync(order);
+
+        // Заказ ещё ждал ключи: оставшиеся позиции могли быть уже выданы, и тогда заказ теперь выдан целиком — статус
+        // и кэшбэк за оставшееся считает та же выдача (возвращённые строки она больше не ждёт). Выданный заказ не
+        // трогаем: у старых заказов без снимков ключей повторный пересчёт вернул бы его в ожидание.
+        if (!plan.AllItemsRefunded && !order.IsFulfilled)
+        {
+            await _fulfillment.FulfillOrderAsync(order, actor);
+        }
+
+        // Charge.refunded от Stripe придёт следом с той же суммой и выйдет по идемпотентности — поэтому кэшбэк, налог
+        // и аналитику двигаем отсюда, как и при полном возврате.
+        await _cashback.OnOrderRefundedAsync(order);
+        await _tax.OnOrderRefundedAsync(order);
+        await _analytics.TrackRefundAsync(order, plan.ToCard, plan.AllItemsRefunded);
+        // Письмо — на каждый возврат: покупатель должен знать, что вернули и куда, даже если это одна позиция из трёх.
+        await NotifyShopRefundAsync(order, plan.AllItemsRefunded,
+            new[] { new RefundedLine(LineTitle(item), quantity) },
+            plan.ToCard,
+            CashbackBack(order, fractionBefore, plan.Share));
+
+        return ActionOutcome.Ok(plan.AllItemsRefunded
+            ? "Last item refunded; the order is marked REFUNDED."
+            : plan.ToCard > 0
+                ? $"Refunded {money(plan.ToCard)} to the card."
+                : "Nothing to send to the card — this part was paid with cashback, which is returned to the balance.");
     }
 
     /// <summary>
@@ -178,9 +338,19 @@ public sealed class AdminOrderActionsService
             return ActionOutcome.Refuse("This order is already refunded.");
         }
 
+        var fractionBefore = OrderRefunds.Fraction(order);
+        var paidBefore = order.RefundedAmount ?? 0m;
         ApplyRefunded(order, actor, $"Marked as refunded outside the system. {reason}");
         await _orders.UpdateOrderAsync(order);
-        await NotifyRefundAsync(order);
+        await MarkReviewsRefundedAsync(order);
+        await _cashback.OnOrderRefundedAsync(order);
+        await _tax.OnOrderRefundedAsync(order);
+        // Возврат по чужим рельсам (Stars, крипта): вебхука Stripe не будет, и если не сообщить
+        // отсюда, во внешней аналитике эти деньги так и останутся выручкой.
+        await _analytics.TrackRefundAsync(order, order.TotalAmount ?? 0m, true);
+        // Деньги вернули по чужим рельсам — письмо говорит «тем же способом, что платили», а не «на карту».
+        await NotifyShopRefundAsync(order, full: true, RemainingLines(order), (order.RefundedAmount ?? 0m) - paidBefore,
+            CashbackBack(order, fractionBefore, 1m), viaCard: false);
         return ActionOutcome.Ok("Order marked REFUNDED.");
     }
 
@@ -226,6 +396,18 @@ public sealed class AdminOrderActionsService
         order.UpdatedAt = DateTime.UtcNow;
         AddEvent(order, "status_forced", $"Status forced {previous} → {normalized}. Reason: {reason}", actor);
         await _orders.UpdateOrderAsync(order);
+        // Аварийная смена статуса тоже может означать возврат — приводим кэшбэк к новому состоянию.
+        try
+        {
+            await _cashback.SyncOrderAsync(order);
+        }
+        catch (Exception ex)
+        {
+            // Статус уже сохранён; кэшбэк догонит ежечасная задача.
+            _logger.LogError(ex, "Cashback sync after forced status failed for order {OrderId}", order.Id);
+        }
+        // И налог: принудительный REFUNDED должен сторнировать транзакцию. Сбой — не беда, повторит сверка.
+        await _tax.OnOrderRefundedAsync(order);
         return ActionOutcome.Ok($"Status set to {normalized}.");
     }
 
@@ -238,42 +420,7 @@ public sealed class AdminOrderActionsService
     private async Task<List<DeliveredKeyNotification>> ResolveDeliveredKeysAsync(Order order)
     {
         var userKeys = await _keys.GetByUserAsync(order.UserId, 500);
-        var result = new List<DeliveredKeyNotification>();
-        var used = new HashSet<string>();
-
-        foreach (var item in order.Items ?? new List<OrderItemSnapshot>())
-        {
-            foreach (var delivered in item.Delivery?.Keys ?? new List<DeliveredKey>())
-            {
-                var match = userKeys.FirstOrDefault(k =>
-                    string.Equals(k.GameId, item.GameId, StringComparison.OrdinalIgnoreCase)
-                    && !used.Contains(k.Key)
-                    && MaskMatches(k.Key, delivered.KeyMasked));
-                if (match is null)
-                {
-                    continue;
-                }
-                used.Add(match.Key);
-                result.Add(new DeliveredKeyNotification(
-                    string.IsNullOrWhiteSpace(item.Title) ? order.GameName : item.Title, match.Key, match.KeyType));
-            }
-        }
-        return result;
-    }
-
-    private static bool MaskMatches(string plain, string? mask)
-    {
-        if (string.IsNullOrWhiteSpace(plain) || string.IsNullOrWhiteSpace(mask))
-        {
-            return false;
-        }
-        var trimmed = plain.Trim();
-        if (trimmed.Length != mask.Length)
-        {
-            return false;
-        }
-        var tail = trimmed.Length <= 4 ? trimmed : trimmed[^4..];
-        return mask.EndsWith(tail, StringComparison.Ordinal);
+        return OrderDeliveredKeys.Resolve(order, userKeys).Select(entry => entry.Key).ToList();
     }
 
     private static bool IsRefunded(Order order) =>
@@ -284,25 +431,55 @@ public sealed class AdminOrderActionsService
     {
         order.Status = "REFUNDED";
         order.PaymentStatus = "REFUNDED";
+        // Полный возврат — вернули всю сумму заказа. Totals.Total точнее устаревшего
+        // TotalAmount, но у старых заказов он нулевой, поэтому берём то, что заполнено.
+        order.RefundedAmount = order.Totals?.Total is > 0 ? order.Totals.Total : order.TotalAmount ?? 0m;
         order.UpdatedAt = DateTime.UtcNow;
         AddEvent(order, "refund", message, actor);
     }
 
-    private async Task NotifyRefundAsync(Order order)
+    /// <summary>Письмо о возврате, сделанном магазином. Сбой почты возврат не отменяет — только пишется в лог.</summary>
+    private async Task NotifyShopRefundAsync(Order order, bool full, IReadOnlyList<RefundedLine> items, decimal toCard, decimal toCashback, bool viaCard = true)
     {
-        if (!LooksLikeEmail(order.UserId))
+        if (!EmailAddress.LooksLikeEmail(order.UserId))
         {
             return;
         }
         try
         {
-            await _mailer.SendAutoRefundNoticeAsync(order.UserId, order.OrderNumber ?? order.Id.ToString());
+            await _mailer.SendRefundNoticeAsync(order.UserId, new OrderRefundNotice(
+                order.OrderNumber ?? order.Id.ToString(),
+                full,
+                items,
+                Math.Max(0m, toCard),
+                Math.Max(0m, toCashback),
+                string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
+                viaCard,
+                viaCard ? PaymentInstrument.Describe(order) : null),
+                locale: order.Language);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Refund notice e-mail failed for order {OrderId}.", order.Id);
         }
     }
+
+    /// <summary>
+    /// Сколько кэшбэка вернулось на баланс этим возвратом, в валюте заказа: оплаченное кэшбэком в той же доле, что и журнал
+    /// (<see cref="OrderRefunds.Fraction"/> до и после). Письмо — не бухгалтерия, но число должно совпадать с кабинетом.
+    /// </summary>
+    private static decimal CashbackBack(Order order, decimal fractionBefore, decimal fractionAfter) =>
+        order.CashbackApplied <= 0 ? 0m : Math.Round(order.CashbackApplied * Math.Max(0m, fractionAfter - fractionBefore), 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>Позиции, ещё не возвращённые по отдельности, — что вернул полный возврат.</summary>
+    private static IReadOnlyList<RefundedLine> RemainingLines(Order order) =>
+        (order.Items ?? new List<OrderItemSnapshot>())
+            .Where(item => OrderRefunds.Refundable(item) > 0)
+            .Select(item => new RefundedLine(LineTitle(item), OrderRefunds.Refundable(item)))
+            .ToList();
+
+    private static string LineTitle(OrderItemSnapshot item) =>
+        string.IsNullOrWhiteSpace(item.EditionTitle) ? item.Title : $"{item.Title} — {item.EditionTitle}";
 
     private static void ApplyStatusBlindly(Order order, string status)
     {
@@ -325,13 +502,33 @@ public sealed class AdminOrderActionsService
         order.IsFulfilled = status == "DELIVERED";
     }
 
-    private static void AddEvent(Order order, string type, string message, string actor)
+    /// <summary>Отзывы покупателя на возвращённые игры получают пометку «Refunded» — остаются и считаются.</summary>
+    private async Task MarkReviewsRefundedAsync(Order order)
     {
-        order.Events ??= new List<OrderEvent>();
-        order.Events.Add(new OrderEvent { Type = type, Message = message, Actor = actor, CreatedAt = DateTime.UtcNow });
+        var gameIds = SuperBot.Core.Services.RefundedPurchases.GameIds(order);
+        if (gameIds.Count == 0 || string.IsNullOrWhiteSpace(order.UserName))
+        {
+            return;
+        }
+        try
+        {
+            await _reviews.MarkRefundedAsync(order.UserName, gameIds.ToList());
+        }
+        catch (Exception ex)
+        {
+            // Пометка — не часть возврата денег: её сбой возврат не отменяет.
+            _logger.LogWarning(ex, "Could not mark reviews refunded for order {OrderId}", order.Id);
+        }
     }
 
-    private static bool LooksLikeEmail(string? value) => !string.IsNullOrWhiteSpace(value) && value.Contains('@');
+    private static OrderEvent AddEvent(Order order, string type, string message, string actor)
+    {
+        order.Events ??= new List<OrderEvent>();
+        var created = new OrderEvent { Type = type, Message = message, Actor = actor, CreatedAt = DateTime.UtcNow };
+        order.Events.Add(created);
+        return created;
+    }
+
 }
 
 /// <summary>Результат действия: получилось / отказано по предусловию / упало у провайдера.</summary>

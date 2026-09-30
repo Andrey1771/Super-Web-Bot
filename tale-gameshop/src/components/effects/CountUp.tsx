@@ -1,3 +1,4 @@
+import { formatNumber } from "../../i18n/format";
 import React, { useEffect, useRef, useState } from "react";
 
 interface CountUpProps {
@@ -58,7 +59,7 @@ const CountUp: React.FC<CountUpProps> = ({ value, duration = 900, prefix = "", s
     return (
         <span ref={ref}>
             {prefix}
-            {display.toLocaleString("en-US")}
+            {formatNumber(display)}
             {suffix}
         </span>
     );

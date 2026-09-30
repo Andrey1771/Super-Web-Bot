@@ -109,6 +109,7 @@ public class SupportKnowledgeStore : ISupportKnowledgeStore
     {
         if (await _articles.CountDocumentsAsync(FilterDefinition<SupportKnowledgeArticle>.Empty) > 0)
         {
+            await BackfillTranslationsAsync();
             return;
         }
 
@@ -121,6 +122,26 @@ public class SupportKnowledgeStore : ISupportKnowledgeStore
         await _articles.InsertManyAsync(seed);
         _cache.Remove(CacheKey);
         _logger.LogInformation("Seeded {Count} support knowledge articles from code.", seed.Count);
+    }
+
+    /// <summary>Статьям сидов, которых ещё не касались, один раз дописывает украинский и польский готовые ответы.</summary>
+    private async Task BackfillTranslationsAsync()
+    {
+        var updated = 0;
+        foreach (var article in await _articles.Find(a => a.InstantEnabled && a.TranslationsBackfilledAt == null).ToListAsync())
+        {
+            if (!SupportKnowledgeSeed.BackfillTranslations(article))
+            {
+                continue;
+            }
+            await _articles.ReplaceOneAsync(a => a.Id == article.Id, article);
+            updated++;
+        }
+        if (updated > 0)
+        {
+            _cache.Remove(CacheKey);
+            _logger.LogInformation("Backfilled uk/pl instant answers for {Count} support knowledge articles.", updated);
+        }
     }
 
     private static string Slugify(string title)

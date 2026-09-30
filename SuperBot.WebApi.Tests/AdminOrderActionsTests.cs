@@ -175,6 +175,138 @@ public class AdminOrderActionsTests
         Assert.Contains("Customer changed mind", refund.GetProperty("message").GetString());
     }
 
+    // ---------- возврат по позиции ----------
+
+    /// <summary>Заказ из двух позиций, оплаченный картой на <paramref name="card"/>, остальное — кэшбэком.</summary>
+    private async Task<Order> SeedTwoItemOrderAsync(decimal card, decimal cashback)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var orders = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+        var email = $"items-{Guid.NewGuid():N}@taleshop.test";
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            OrderNumber = $"TS-ITM-{Guid.NewGuid():N}"[..14],
+            UserId = email,
+            UserName = email,
+            PaymentProvider = "stripe",
+            PaymentIntentId = $"pi_items_{Guid.NewGuid():N}",
+            IsPaid = true,
+            IsFulfilled = true,
+            OrderDate = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            Status = "DELIVERED",
+            PaymentStatus = "PAID",
+            Currency = "USD",
+            TotalAmount = card,
+            CashbackApplied = cashback,
+            Totals = new MoneyTotals { Subtotal = card + cashback, Total = card },
+            Items = new List<OrderItemSnapshot>
+            {
+                new() { GameId = "g-a", Title = "Game A", Quantity = 1, UnitPrice = 30m, FinalUnitPrice = 30m, LineTotal = 30m },
+                new() { GameId = "g-b", Title = "Game B", Quantity = 2, UnitPrice = 5m, FinalUnitPrice = 5m, LineTotal = 10m }
+            }
+        };
+        await orders.CreateOrderAsync(order);
+        return order;
+    }
+
+    private async Task<Order> ReloadAsync(Guid id)
+    {
+        using var scope = _factory.Services.CreateScope();
+        return (await scope.ServiceProvider.GetRequiredService<IOrderRepository>().GetOrderByIdAsync(id.ToString()))!;
+    }
+
+    [Fact]
+    public async Task Item_refund_emails_the_buyer_what_came_back_to_the_card_and_the_cashback_balance()
+    {
+        // $30 картой из $40, $10 кэшбэком. Возврат одной «Game B» за $5 — это 12.5% заказа: $3.75 на карту, $1.25 на баланс.
+        var order = await SeedTwoItemOrderAsync(card: 30m, cashback: 10m);
+        _factory.Mail.Clear();
+
+        var response = await Admin().PostAsJsonAsync($"/api/admin/orders/{order.Id}/items/{order.Items[1].ItemId}/refund", new { quantity = 1, reason = "Internal note that must not reach the buyer" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var mail = Assert.Single(_factory.Mail.Sent, m => m.To == order.UserId);
+        Assert.Equal($"Part of order {order.OrderNumber} was refunded", mail.Subject);
+        Assert.Contains("Game B", mail.TextBody);
+        Assert.Contains("To your card: $3.75", mail.TextBody);
+        Assert.Contains("To your cashback balance: $1.25", mail.TextBody);
+        Assert.DoesNotContain("Internal note", mail.TextBody);
+        Assert.DoesNotContain("48 hours", mail.TextBody);
+    }
+
+    [Fact]
+    public async Task Full_admin_refund_no_longer_blames_an_unconfirmed_email()
+    {
+        var (order, _) = await SeedAsync("DELIVERED", paid: true, delivered: true);
+        _factory.Mail.Clear();
+
+        var response = await Admin().PostAsJsonAsync($"/api/admin/orders/{order.Id}/refund", new { reason = "Customer changed their mind" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var mail = Assert.Single(_factory.Mail.Sent, m => m.To == order.UserId);
+        Assert.Equal($"Order {order.OrderNumber} was refunded", mail.Subject);
+        Assert.Contains("To your card: $10.00", mail.TextBody);
+        Assert.DoesNotContain("confirm", mail.TextBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Item_refund_sends_its_share_to_stripe_and_the_last_item_completes_the_refund()
+    {
+        var order = await SeedTwoItemOrderAsync(card: 40m, cashback: 0m);
+        var admin = Admin();
+
+        var first = await admin.PostAsJsonAsync($"/api/admin/orders/{order.Id}/items/{order.Items[1].ItemId}/refund", new { quantity = 1, reason = "Wrong region" });
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        var refund = Assert.Single(_factory.Stripe.Refunds, item => item.PaymentIntentId == order.PaymentIntentId);
+        Assert.Equal(500, refund.AmountMinor);                                   // одна из двух штук по $5
+
+        var partial = await ReloadAsync(order.Id);
+        Assert.Equal("PARTIALLY_REFUNDED", partial.PaymentStatus);
+        Assert.Equal("DELIVERED", partial.Status);
+        Assert.Equal(1, partial.Items[1].RefundedQuantity);
+        Assert.Equal(5m, partial.RefundedAmount);
+        Assert.Equal(0.125m, partial.RefundedShare);
+
+        var dto = (await Body(first)).GetProperty("order").GetProperty("items")[1];
+        Assert.Equal(1, dto.GetProperty("refundedQty").GetInt32());
+        Assert.Equal(order.Items[1].ItemId, dto.GetProperty("itemId").GetString());
+
+        // Больше, чем осталось, — отказ без обращения к Stripe.
+        var tooMany = await admin.PostAsJsonAsync($"/api/admin/orders/{order.Id}/items/{order.Items[1].ItemId}/refund", new { quantity = 2, reason = "x" });
+        Assert.Equal(HttpStatusCode.Conflict, tooMany.StatusCode);
+
+        await admin.PostAsJsonAsync($"/api/admin/orders/{order.Id}/items/{order.Items[1].ItemId}/refund", new { quantity = 1, reason = "Wrong region" });
+        var last = await admin.PostAsJsonAsync($"/api/admin/orders/{order.Id}/items/{order.Items[0].ItemId}/refund", new { quantity = 1, reason = "Wrong region" });
+        Assert.Equal(HttpStatusCode.OK, last.StatusCode);
+
+        var refunds = _factory.Stripe.Refunds.Where(item => item.PaymentIntentId == order.PaymentIntentId).ToList();
+        Assert.Equal(new long?[] { 500, 500, 3000 }, refunds.Select(item => item.AmountMinor));
+        Assert.Equal(3, refunds.Select(item => item.IdempotencyKey).Distinct().Count());
+        var done = await ReloadAsync(order.Id);
+        Assert.Equal("REFUNDED", done.Status);
+        Assert.Equal(40m, done.RefundedAmount);
+        Assert.Equal(1m, done.RefundedShare);
+    }
+
+    [Fact]
+    public async Task Item_paid_with_cashback_only_skips_stripe_but_still_records_the_share()
+    {
+        // Картой оплачено 5 центов из $40: доля позиции за $5 — 0.6 цента, вниз до цента — ноль, Stripe не вызывается.
+        var order = await SeedTwoItemOrderAsync(card: 0.05m, cashback: 39.95m);
+        var admin = Admin();
+
+        var response = await admin.PostAsJsonAsync($"/api/admin/orders/{order.Id}/items/{order.Items[1].ItemId}/refund", new { quantity = 1, reason = "Duplicate" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain(_factory.Stripe.Refunds, item => item.PaymentIntentId == order.PaymentIntentId);
+
+        var saved = await ReloadAsync(order.Id);
+        Assert.Equal(0.125m, saved.RefundedShare);
+        Assert.Equal(0m, saved.RefundedAmount ?? 0m);
+        Assert.Equal("PARTIALLY_REFUNDED", saved.PaymentStatus);
+    }
+
     [Fact]
     public async Task Refund_requires_a_reason()
     {

@@ -122,6 +122,12 @@
   border-radius: var(--radius-sm);
 }
 
+/* Тема, открытая в форме выше: без отметки список и форма выглядят несвязанными. */
+.knowledge__item--active {
+  border-color: var(--color-primary);
+  background: rgba(124, 58, 237, 0.06);
+}
+
 .knowledge__item-title {
   font-size: 14px;
   font-weight: 600;

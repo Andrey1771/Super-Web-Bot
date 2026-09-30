@@ -15,18 +15,18 @@ const SURFACE = "#ffffff";
 const PERIODS = [7, 30, 90];
 
 const SOURCE_LABELS: Record<string, string> = {
-  high_risk: "Риск: взлом, чарджбэк, суд",
-  customer_request: "Клиент написал словами",
-  customer_button: "Клиент нажал кнопку",
-  assistant_decision: "Решение ассистента",
-  unknown: "Без источника (старые диалоги)",
+  high_risk: "Risk: hijack, chargeback, legal",
+  customer_request: "Customer asked in their own words",
+  customer_button: "Customer pressed the button",
+  assistant_decision: "Assistant decision",
+  unknown: "No source (legacy chats)",
 };
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 const money = (value: number) => `$${value.toFixed(value < 1 ? 4 : 2)}`;
 
 const SupportChatStatsPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const [days, setDays] = useState(30);
   const [stats, setStats] = useState<SupportChatStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,8 +34,7 @@ const SupportChatStatsPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Support / Chat stats");
-    setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,7 +43,7 @@ const SupportChatStatsPage: React.FC = () => {
       setStats(await getSupportChatStats(days));
     } catch (err) {
       console.error(err);
-      setError("Не удалось загрузить статистику.");
+      setError("Could not load the stats.");
     } finally {
       setLoading(false);
     }
@@ -87,8 +86,8 @@ const SupportChatStatsPage: React.FC = () => {
         },
       },
       series: [
-        { type: "column", name: "Закрыл бот", data: daily.map((p) => p.sessions - p.escalated), color: COLOR_SOLVED },
-        { type: "column", name: "Ушло к человеку", data: daily.map((p) => p.escalated), color: COLOR_ESCALATED },
+        { type: "column", name: "Closed by bot", data: daily.map((p) => p.sessions - p.escalated), color: COLOR_SOLVED },
+        { type: "column", name: "Escalated to a human", data: daily.map((p) => p.escalated), color: COLOR_ESCALATED },
       ],
     };
   }, [stats]);
@@ -97,7 +96,7 @@ const SupportChatStatsPage: React.FC = () => {
 
   return (
     <div className="chat-stats">
-      <div className="chat-stats__periods" role="group" aria-label="Период">
+      <div className="chat-stats__periods" role="group" aria-label="Period">
         {PERIODS.map((option) => (
           <button
             key={option}
@@ -105,63 +104,63 @@ const SupportChatStatsPage: React.FC = () => {
             className={`chat-stats__period${option === days ? " is-active" : ""}`}
             onClick={() => setDays(option)}
           >
-            {option} дней
+            {option} days
           </button>
         ))}
         <button type="button" className="chat-stats__period" onClick={load} disabled={loading}>
-          Обновить
+          Refresh
         </button>
       </div>
 
       {error && <Card><div className="chat-stats__error">{error}</div></Card>}
 
-      {!error && loading && !stats && <Card><div className="chat-stats__empty">Загружаем…</div></Card>}
+      {!error && loading && !stats && <Card><div className="chat-stats__empty">Loading…</div></Card>}
 
       {stats && (
         <>
           <div className="chat-stats__tiles">
             <Card>
               <div className="chat-stats__tile">
-                <span className="chat-stats__tile-label">Закрыто без оператора</span>
+                <span className="chat-stats__tile-label">Closed without an operator</span>
                 <strong className="chat-stats__tile-value">{percent(stats.deflectionRate)}</strong>
                 <span className="chat-stats__tile-note">
-                  {stats.sessions - stats.escalatedSessions} из {stats.sessions} обращений
+                  {stats.sessions - stats.escalatedSessions} of {stats.sessions} chats
                 </span>
               </div>
             </Card>
             <Card>
               <div className="chat-stats__tile">
-                <span className="chat-stats__tile-label">Обращений за период</span>
+                <span className="chat-stats__tile-label">Chats in period</span>
                 <strong className="chat-stats__tile-value">{stats.sessions}</strong>
                 <span className="chat-stats__tile-note">
-                  {stats.aiReplies} ответов бота · {stats.instantReplies} без модели
+                  {stats.aiReplies} bot replies · {stats.instantReplies} without the model
                 </span>
               </div>
             </Card>
             <Card>
               <div className="chat-stats__tile">
-                <span className="chat-stats__tile-label">Стоимость периода</span>
+                <span className="chat-stats__tile-label">Period cost</span>
                 <strong className="chat-stats__tile-value">{money(stats.totalCostUsd)}</strong>
                 <span className="chat-stats__tile-note">
-                  {money(stats.costPerSessionUsd)} за диалог · платных ответов {stats.billedReplies}
+                  {money(stats.costPerSessionUsd)} per chat · billed replies {stats.billedReplies}
                 </span>
               </div>
             </Card>
             <Card>
               <div className="chat-stats__tile">
-                <span className="chat-stats__tile-label">Потрачено сегодня</span>
+                <span className="chat-stats__tile-label">Spent today</span>
                 <strong className="chat-stats__tile-value">{money(stats.spentTodayUsd)}</strong>
                 <span className="chat-stats__tile-note">
-                  {stats.dailyBudgetUsd > 0 ? `лимит ${money(stats.dailyBudgetUsd)}` : "лимит не задан"}
+                  {stats.dailyBudgetUsd > 0 ? `limit ${money(stats.dailyBudgetUsd)}` : "no limit set"}
                 </span>
               </div>
             </Card>
           </div>
 
           <Card>
-            <div className="chat-stats__section-title">Обращения по дням</div>
+            <div className="chat-stats__section-title">Chats per day</div>
             {stats.sessions === 0 ? (
-              <div className="chat-stats__empty">За выбранный период обращений не было.</div>
+              <div className="chat-stats__empty">No chats in the selected period.</div>
             ) : (
               <HighchartsReact highcharts={Highcharts} options={chartOptions} />
             )}
@@ -169,42 +168,42 @@ const SupportChatStatsPage: React.FC = () => {
 
           <div className="chat-stats__columns">
             <Card>
-              <div className="chat-stats__section-title">Почему звали человека</div>
+              <div className="chat-stats__section-title">Why a human was called</div>
               <RankedList
                 items={stats.escalationsBySource.map((item) => ({
                   label: SOURCE_LABELS[item.label] ?? item.label,
                   count: item.count,
                 }))}
-                emptyText="Ни одного переключения на оператора."
+                emptyText="No escalations to an operator."
               />
             </Card>
 
             <Card>
-              <div className="chat-stats__section-title">Частые темы</div>
-              <RankedList items={stats.topCategories} emptyText="Тем пока не набралось." />
+              <div className="chat-stats__section-title">Top topics</div>
+              <RankedList items={stats.topCategories} emptyText="No topics yet." />
             </Card>
           </div>
 
           <Card>
-            <div className="chat-stats__section-title">Оценки ответов</div>
+            <div className="chat-stats__section-title">Reply ratings</div>
             {feedbackTotal === 0 ? (
-              <div className="chat-stats__empty">Клиенты пока не оценивали ответы.</div>
+              <div className="chat-stats__empty">No ratings from customers yet.</div>
             ) : (
               <div className="chat-stats__feedback">
                 <div className="chat-stats__tile">
-                  <span className="chat-stats__tile-label">Помогло</span>
+                  <span className="chat-stats__tile-label">Helpful</span>
                   <strong className="chat-stats__tile-value">{stats.feedbackHelpful}</strong>
                 </div>
                 <div className="chat-stats__tile">
-                  <span className="chat-stats__tile-label">Не помогло</span>
+                  <span className="chat-stats__tile-label">Not helpful</span>
                   <strong className="chat-stats__tile-value">{stats.feedbackNotHelpful}</strong>
                 </div>
                 <div className="chat-stats__tile">
-                  <span className="chat-stats__tile-label">Доля довольных</span>
+                  <span className="chat-stats__tile-label">Satisfaction rate</span>
                   <strong className="chat-stats__tile-value">
                     {percent(stats.feedbackHelpful / feedbackTotal)}
                   </strong>
-                  <span className="chat-stats__tile-note">оценок всего {feedbackTotal}</span>
+                  <span className="chat-stats__tile-note">{feedbackTotal} ratings in total</span>
                 </div>
               </div>
             )}

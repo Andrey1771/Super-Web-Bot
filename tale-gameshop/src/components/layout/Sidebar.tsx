@@ -5,14 +5,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faAnglesLeft,
+  faXmark,
   faAnglesRight,
   faArrowRightArrowLeft,
   faArrowRotateLeft,
   faBook,
   faBoxArchive,
+  faBoxesStacked,
+  faCartShopping,
   faChartLine,
   faChevronDown,
   faClockRotateLeft,
+  faCoins,
   faComments,
   faEnvelopeOpenText,
   faGamepad,
@@ -25,17 +29,20 @@ import {
   faReceipt,
   faRobot,
   faShieldHalved,
+  faHeartPulse,
   faSliders,
   faTags,
   faTicket,
   faTriangleExclamation,
-  faUserClock,
   faUsers,
   faUserShield,
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import { listChatSessions } from "../../api/supportChatApi";
-import logo from "../../assets/images/tale-shop-logo.svg";
+import logo from "../../assets/images/tale-shop-frog.svg";
+// Свёрнутая колонка — узкая полоса значков: там знак стоит один, без надписи рядом,
+// и квадратный вариант садится по центру, а не жмётся к краю.
+import logoIcon from "../../assets/images/tale-shop-frog-icon.svg";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -124,6 +131,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { keycloak } = useKeycloak();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  // Два разных поведения для двух размеров экрана.
+  // Широкий: панель закреплена, её можно свернуть до полосы значков стрелкой.
+  // Узкий: панель полностью убрана и выезжает только по бургеру — сворачивать там нечего,
+  // а полоса значков поверх контента выглядела как застрявшее меню.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const narrow = window.matchMedia("(max-width: 1024px)");
+    const sync = () => setIsNarrow(narrow.matches);
+    sync();
+    narrow.addEventListener("change", sync);
+    return () => narrow.removeEventListener("change", sync);
+  }, []);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(readCollapsedGroups);
   // @ts-ignore Тип возвращаемых данных и объекта keycloak отличается
   const resourceRoles = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"] ?? [];
@@ -158,34 +177,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   }, []);
 
   /*
-   * Структура меню — по тому, чем занимается человек, а не по тому, как устроен код.
-   * Дубли названий («Overview» дважды, «Settings» дважды) убраны; серые «Coming soon» —
-   * тоже: недоделанное не должно занимать четверть меню. Media переехала к играм: это
-   * картинки витрины, а не системная настройка.
+   * Структура меню — по тому, чем занимается человек: продаю, продвигаю, отвечаю клиентам,
+   * смотрю цифры, настраиваю. Раньше группы были собраны по устройству кода, и это мешало:
+   * отчёты лежали в трёх разных разделах, «Cart statistics» и «Abandoned carts» — про одно
+   * и то же, но порознь; медиатека всего сайта считалась частью игр; скидки и промокоды,
+   * то есть маркетинг магазина, стояли среди свойств игры; бот жил в одной группе с блогом
+   * под склеенным названием «Content & bot»; три ссылки в одну и ту же консоль Keycloak
+   * были раскиданы по двум разделам.
+   *
+   * Адреса страниц не менялись — только их расстановка по группам.
    */
   const groups = useMemo<NavGroup[]>(
     () => [
       {
         key: "dashboard",
-        title: "Dashboard",
+        title: "Overview",
         items: [{ label: "Overview", to: "/admin", icon: faGauge }],
       },
       {
-        key: "games",
-        title: "Games",
+        key: "catalog",
+        title: "Catalog",
         items: [
           { label: "Catalog", to: "/admin/cardAdder", icon: faGamepad },
-          { label: "Game details", to: "/admin/games/details", icon: faPenToSquare, roles: ["admin"] },
-          { label: "Game keys", to: "/admin/games/keys", icon: faKey, roles: ["admin"] },
+          { label: "Product details", to: "/admin/games/details", icon: faPenToSquare, roles: ["admin"] },
+          { label: "Product keys", to: "/admin/games/keys", icon: faKey, roles: ["admin"] },
           { label: "Prices", to: "/admin/games/prices", icon: faTags, roles: ["admin"] },
-          { label: "Discounts", to: "/admin/game-discounts", icon: faTags, roles: ["admin"] },
-          { label: "Promo codes", to: "/admin/promo-codes", icon: faTicket, roles: ["admin"] },
-          { label: "Media", to: "/admin/siteChanger", icon: faImages },
         ],
       },
       {
-        key: "orders",
-        title: "Orders & payments",
+        key: "sales",
+        title: "Sales",
         items: [
           { label: "Orders", to: "/admin/orders", icon: faReceipt },
           { label: "Refunds", to: "/admin/payments/refunds", icon: faArrowRotateLeft, roles: ["admin"] },
@@ -194,12 +215,33 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         ],
       },
       {
+        key: "marketing",
+        title: "Marketing",
+        items: [
+          { label: "Discounts", to: "/admin/game-discounts", icon: faTags, roles: ["admin"] },
+          { label: "Promo codes", to: "/admin/promo-codes", icon: faTicket, roles: ["admin"] },
+          { label: "Cashback", to: "/admin/cashback", icon: faCoins, roles: ["admin"] },
+          { label: "Newsletter", to: "/admin/newsletter", icon: faEnvelopeOpenText, roles: ["admin"] },
+        ],
+      },
+      {
+        key: "content",
+        title: "Content",
+        items: [
+          { label: "Blog posts", to: "/admin/blog", icon: faNewspaper, roles: ["admin", "editor"] },
+          { label: "Blog comments", to: "/admin/blog/comments", icon: faComments, roles: ["admin"] },
+          // Медиатека общая для сайта: её картинки берут и витрина, и блог.
+          { label: "Media", to: "/admin/siteChanger", icon: faImages },
+        ],
+      },
+      {
         key: "customers",
         title: "Customers",
         items: [
           { label: "Customers", to: "/admin/customers", icon: faUsers, roles: ["admin", "support"] },
+          { label: "Login history", to: "/admin/userInfo", icon: faClockRotateLeft, roles: ["admin"] },
           { label: "Roles", href: keycloakConsoleUrl("roles"), icon: faUserShield, roles: ["admin"] },
-          { label: "Sessions", href: keycloakConsoleUrl("sessions"), icon: faUserClock, roles: ["admin"] },
+          { label: "Sessions", href: keycloakConsoleUrl("sessions"), icon: faUserShield, roles: ["admin"] },
         ],
       },
       {
@@ -211,36 +253,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           { label: "Moderation", to: "/admin/support/moderation", icon: faShieldHalved, roles: ["admin", "support"] },
           { label: "Knowledge base", to: "/admin/support/knowledge", icon: faBook, roles: ["admin", "support"] },
           { label: "Account recovery", to: "/admin/support/recovery", icon: faLifeRing, roles: ["admin", "support"] },
+        ],
+      },
+      {
+        key: "reports",
+        title: "Reports",
+        items: [
+          { label: "Analytics", to: "/admin/analytics", icon: faChartLine },
+          { label: "Period report", to: "/admin/reports/period", icon: faChartLine, roles: ["admin"] },
+          { label: "Inventory value", to: "/admin/reports/inventory", icon: faBoxesStacked, roles: ["admin"] },
+          { label: "Cart statistics", to: "/admin/userStats", icon: faCartShopping },
+          { label: "Abandoned carts", to: "/admin/reports/abandoned-carts", icon: faCartShopping, roles: ["admin"] },
           { label: "Chat stats", to: "/admin/support/chat-stats", icon: faChartLine, roles: ["admin", "support"] },
         ],
       },
       {
-        key: "content",
-        title: "Content & bot",
+        key: "bot",
+        title: "Bot",
         items: [
-          { label: "Blog posts", to: "/admin/blog", icon: faNewspaper, roles: ["admin", "editor"] },
-          { label: "Blog comments", to: "/admin/blog/comments", icon: faComments, roles: ["admin"] },
-          { label: "Newsletter", to: "/admin/newsletter", icon: faEnvelopeOpenText, roles: ["admin"] },
           { label: "Bot status", to: "/admin/bot", icon: faRobot },
           { label: "Bot texts", to: "/admin/botChanger", icon: faWandMagicSparkles },
-        ],
-      },
-      {
-        key: "analytics",
-        title: "Analytics",
-        items: [
-          { label: "Analytics", to: "/admin/analytics", icon: faChartLine },
-          { label: "Tracking (GA / Metrika)", to: "/admin/analytics/settings", icon: faSliders },
-          { label: "Cart statistics", to: "/admin/userStats", icon: faChartLine },
         ],
       },
       {
         key: "system",
         title: "System",
         items: [
+          { label: "Service health", to: "/admin/health", icon: faHeartPulse },
           { label: "Site settings", to: "/admin/settings", icon: faSliders },
+          // Настройка счётчика, а не отчёт: сами отчёты — в разделе «Reports».
+          { label: "Tracking (Google Analytics)", to: "/admin/analytics/settings", icon: faSliders },
           { label: "Import / Export", to: "/admin/data-tools", icon: faBoxArchive, roles: ["admin"] },
-          { label: "Login history", to: "/admin/userInfo", icon: faClockRotateLeft, roles: ["admin"] },
           { label: "Keycloak console", href: keycloakConsoleUrl(), icon: faUserShield, roles: ["admin"] },
         ],
       },
@@ -248,31 +291,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     [pendingChats]
   );
 
+  // Полоса значков: колонка свёрнута и при этом закреплена сбоку. На узком экране
+  // «свёрнутого» состояния нет — там панель либо убрана, либо выехала целиком.
+  const isRail = isCollapsed && !isNarrow;
+
   const isActivePath = (to: string) =>
     to === "/admin" ? location.pathname === "/admin" : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
-    <aside className={`admin-sidebar ${isCollapsed ? "collapsed" : ""} ${isOpen ? "open" : ""}`}>
+    <aside className={`admin-sidebar ${isRail ? "collapsed" : ""} ${isOpen ? "open" : ""}`}>
       <div className="admin-sidebar__header">
         {/* Бренд — ссылка на дашборд, как логотип витрины ведёт на главную: раньше он ничего не
             делал и выглядел кнопкой, которая не нажимается. Логотип тот же, что на сайте. */}
         <Link className="admin-sidebar__brand" to="/admin" onClick={onClose} title="Dashboard">
-          <img className="admin-sidebar__logo" src={logo} alt="Tale Shop" />
+          <img className="admin-sidebar__logo" src={isRail ? logoIcon : logo} alt="Tale Shop" />
           <span className="admin-sidebar__brand-text">
             <strong>Tale Shop</strong>
             <span className="muted">Admin panel</span>
           </span>
         </Link>
-        {/* Свернуть/развернуть меню — единственный бургер на десктопе; кнопка в топбаре только
-            для узких экранов, где сайдбар выезжает поверх контента. */}
-        <button
-          className="admin-sidebar__toggle"
-          onClick={() => setIsCollapsed((prev) => !prev)}
-          aria-label={isCollapsed ? "Expand menu" : "Collapse menu"}
-          title={isCollapsed ? "Expand menu" : "Collapse menu"}
-        >
-          <FontAwesomeIcon icon={isCollapsed ? faAnglesRight : faAnglesLeft} />
-        </button>
+        {/* Сворачивание до полосы значков — только для широкого экрана, где панель закреплена.
+            На узком её роль играет бургер в топбаре: там панель либо убрана целиком, либо
+            выехала поверх контента, и промежуточное состояние не имеет смысла. */}
+        {isNarrow ? (
+          <button
+            className="admin-sidebar__toggle"
+            onClick={onClose}
+            aria-label="Close menu"
+            title="Close menu"
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        ) : (
+          <button
+            className="admin-sidebar__toggle"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            aria-label={isCollapsed ? "Expand menu" : "Collapse menu"}
+            title={isCollapsed ? "Expand menu" : "Collapse menu"}
+          >
+            <FontAwesomeIcon icon={isCollapsed ? faAnglesRight : faAnglesLeft} />
+          </button>
+        )}
       </div>
 
       {groups.map((group) => {

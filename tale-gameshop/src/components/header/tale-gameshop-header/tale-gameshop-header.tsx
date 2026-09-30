@@ -1,6 +1,7 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import "./tale-gameshop-header.css";
+import { localizeCountries } from "../../../utils/region-text";
 import { useKeycloak } from "@react-keycloak/web";
 import {
     faBars,
@@ -11,8 +12,13 @@ import {
     faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
-import logo from "../../../assets/images/tale-shop-logo.svg";
+// Знак магазина: лягушка с геймпадом. Рядом с ним в шапке стоит слово «Tale Shop»
+// текстом, поэтому знаку не нужно нести на себе надпись — и на 42px он читается
+// целиком, чего от прежней рисованной композиции добиться не удавалось.
+import logo from "../../../assets/images/tale-shop-frog.svg";
 import LoginAndRegisterSection from "../login-and-register-section/login-and-register-section";
 import AdminPanelSection from "../admin-panel-section/admin-panel-section";
 import container from "../../../inversify.config";
@@ -21,6 +27,8 @@ import IDENTIFIERS from "../../../constants/identifiers";
 import CartIcon from "../../cart/cart-icon/cart-icon";
 import HeaderSearch from "../header-search/header-search";
 import { useSitePreferences, formatMoney } from "../../../context/site-preferences";
+import { getCatalogPage } from "../../../api/catalogApi";
+import { gamesCatalogPath } from "../../../utils/software";
 
 // Компакт-режим шапки: скролл вниз складывает ряд навигации, остаётся одна строка
 // (лого/поиск/корзина). Разворот — скролл вверх, наведение мыши или фокус клавиатуры.
@@ -33,25 +41,43 @@ const HOVER_COLLAPSE_DELAY_MS = 300; // и не захлопывает мгно�
 // (курсор не на шапке), через эту паузу она складывается сама.
 const IDLE_RECOLLAPSE_MS = 2600;
 
-// Top-level navigation. Store is rendered separately because it carries the mega-menu.
+// Top-level navigation after Store (Home and Store are rendered separately: Store carries the
+// mega-menu). Подписи — из словаря по ключу пункта.
 const navLinks = [
-    { label: "Home", to: "/" },
-    { label: "Deals", to: "/deals" },
-    { label: "News", to: "/news" },
-    { label: "About", to: "/about" },
-    { label: "Support", to: "/support" },
-];
+    { key: "deals", to: "/deals" },
+    { key: "news", to: "/news" },
+    { key: "about", to: "/about" },
+    { key: "support", to: "/support" },
+] as const;
 
-// Store mega-menu. Genre links reuse the catalog's case-insensitive `filterCategory` match,
-// so short labels like "RPG" resolve to "Role-Playing Games (RPGs)" on the Store page.
-const storeGenres = [
-    { label: "Action", to: "/games?filterCategory=Action" },
-    { label: "RPG", to: "/games?filterCategory=RPG" },
-    { label: "Strategy", to: "/games?filterCategory=Strategy" },
-    { label: "Puzzle", to: "/games?filterCategory=Puzzle" },
-    { label: "Indie", to: "/games?filterCategory=Indie" },
-    { label: "Sports", to: "/games?filterCategory=Sports" },
-];
+/**
+ * Сколько жанров показывает меню магазина: два ряда по три.
+ *
+ * Раньше список был зашит руками и успел разойтись с каталогом: пункт «Indie» вёл в пустой
+ * фильтр — такого жанра в магазине нет вовсе, — а Adventure, Horror, Simulation и ещё три
+ * настоящих жанра в меню не попадали. Теперь список приходит из фасетов каталога, как в
+ * подвале: мёртвых ссылок в нём быть не может по построению.
+ */
+const STORE_GENRE_LIMIT = 6;
+
+/**
+ * Короткая подпись жанра для меню.
+ *
+ * В каталоге жанры записаны полными названиями — «Role-Playing Games (RPGs)». В узкой
+ * колонке такое имя ломается на четыре строки, и ряд перестаёт читаться как ряд.
+ * Если в названии есть сокращение в скобках, показываем именно его: оно и короче, и
+ * привычнее. Ссылка при этом ведёт по ПОЛНОМУ названию — то есть подпись сокращаем,
+ * а фильтр остаётся тем, что пришёл из каталога.
+ */
+const shortGenreLabel = (value: string): string => {
+    const trimmed = value.trim();
+    const open = trimmed.lastIndexOf('(');
+    const close = trimmed.length - 1;
+    // Сокращение — только если скобка закрывает всё название и внутри что-то есть.
+    return open > 0 && trimmed[close] === ')' && close > open + 1
+        ? trimmed.slice(open + 1, close)
+        : trimmed;
+};
 
 /** Порог подборки «недорого»: и ссылка с фильтром, и подпись под ней. */
 const BUDGET_PICKS_MAX_PRICE = 20;
@@ -61,13 +87,15 @@ const BUDGET_PICKS_MAX_PRICE = 20;
  * буквами — валюта у каждого покупателя своя. Раньше здесь был зашитый «$20», и при выборе
  * другой валюты пункт меню обещал одно, а каталог показывал другое.
  */
-const buildStoreDiscover = (currency: string) => [
-    { label: "All games", to: "/games", desc: "Browse the full catalog" },
-    { label: "Deals", to: "/deals", desc: "Discounts live right now" },
+const buildStoreDiscover = (currency: string, t: TFunction) => [
+    // Каталог по умолчанию показывает и софт: пункт, обещающий игры, ведёт на «только игры».
+    { label: t("header.allGames"), to: gamesCatalogPath(), desc: t("header.browseFullCatalog") },
+    // «Deals» отсюда убран: он есть в верхнем меню и в карточке справа. Три входа
+    // в одно место в одном выпадающем списке — это не выбор, а шум.
     {
-        label: "Budget picks",
-        to: `/games?filterMaxPrice=${BUDGET_PICKS_MAX_PRICE}`,
-        desc: `Great games under ${formatMoney(BUDGET_PICKS_MAX_PRICE, currency, { compact: true })}`,
+        label: t("header.budgetPicks"),
+        to: gamesCatalogPath({ filterMaxPrice: String(BUDGET_PICKS_MAX_PRICE) }),
+        desc: t("header.budgetPicksDesc", { price: formatMoney(BUDGET_PICKS_MAX_PRICE, currency, { compact: true }) }),
     },
 ];
 
@@ -77,7 +105,8 @@ interface PrefMenuProps {
     triggerLabel: React.ReactNode;
     ariaLabel: string;
     align?: "left" | "right";
-    children: (close: () => void) => React.ReactNode;
+    /** open передаётся, чтобы тяжёлое содержимое монтировалось только при открытии. */
+    children: (close: () => void, open: boolean) => React.ReactNode;
 }
 
 const PrefMenu: React.FC<PrefMenuProps> = ({ id, triggerLabel, ariaLabel, align = "right", children }) => {
@@ -121,16 +150,63 @@ const PrefMenu: React.FC<PrefMenuProps> = ({ id, triggerLabel, ariaLabel, align 
                 <FontAwesomeIcon className="pref-caret" icon={faChevronDown} />
             </button>
             <div id={id} className={`pref-dropdown pref-dropdown-${align} ${open ? "open" : ""}`} role="menu">
-                {children(() => setOpen(false))}
+                {children(() => setOpen(false), open)}
             </div>
         </div>
     );
 };
 
 export default function TaleGameshopHeader() {
-    const { keycloak } = useKeycloak();
+    const { t } = useTranslation();
+    const { keycloak, initialized } = useKeycloak();
     const location = useLocation();
-    const { lang, currency, setLang, setCurrency, languages, currencies, canSwitchCurrency } = useSitePreferences();
+    const { lang, currency, setLang, setCurrency, languages, currencies, canSwitchCurrency, country, countries: countryCatalog, setCountry } = useSitePreferences();
+    // Названия стран — на языке сайта; каталог сервера английский и служит запасом.
+    const countries = useMemo(() => localizeCountries(countryCatalog), [countryCatalog, lang]);
+    // Поиск по странам живёт здесь: их 248, и меню без него бесполезно.
+    const [countryQuery, setCountryQuery] = useState("");
+    /**
+     * Содержимое меню «Store»: жанры с числом игр и сколько всего сейчас со скидкой.
+     * Один запрос даёт и то, и другое — фасеты каталога считаются на сервере вместе с
+     * выдачей, поэтому просим страницу из одной позиции, а берём только счётчики.
+     */
+    const [storeMenu, setStoreMenu] = useState<{
+        genres: { label: string; fullName: string; to: string; count: number }[];
+        onSale: number;
+    } | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        getCatalogPage(new URLSearchParams({ pageSize: "1" }))
+            .then((page) => {
+                if (cancelled) {
+                    return;
+                }
+                setStoreMenu({
+                    genres: [...page.facets.categories]
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, STORE_GENRE_LIMIT)
+                        .map((facet) => ({
+                            label: shortGenreLabel(facet.label ?? facet.value),
+                            fullName: facet.label ?? facet.value,
+                            // Тот же параметр, что и раньше: каталог сравнивает категорию
+                            // без учёта регистра и по подстроке.
+                            to: `/games?filterCategory=${encodeURIComponent(facet.value)}`,
+                            count: facet.count,
+                        })),
+                    onSale: page.facets.availability.onSale,
+                });
+            })
+            .catch(() => {
+                // Каталог не ответил — меню покажет только «Discover», без выдуманных жанров.
+                if (!cancelled) {
+                    setStoreMenu(null);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isDrawerAccountOpen, setIsDrawerAccountOpen] = useState(false);
@@ -195,6 +271,26 @@ export default function TaleGameshopHeader() {
         };
         // Пустые зависимости: высота шапки больше ни от какого состояния не зависит, а её
         // изменения ловит ResizeObserver. Раньше здесь стоял флаг показа верхней планки.
+    }, []);
+
+    // Фактическая высота шапки прямо сейчас — включая промежуточные кадры сворачивания.
+    // В отличие от --app-header-height (та держит ПОЛНУЮ высоту, чтобы распорка страницы
+    // не дёргалась при каждом складывании), эта переменная переиздаётся и в компакт-режиме:
+    // на неё завязаны липкие элементы, которые должны подъезжать вслед за шапкой.
+    useLayoutEffect(() => {
+        const el = headerRef.current;
+        if (!el) {
+            return;
+        }
+        const publishOffset = () => {
+            document.documentElement.style.setProperty("--app-header-offset", `${el.offsetHeight}px`);
+        };
+        publishOffset();
+        // Без задержки: max-height ряда навигации анимируется 0.36s, и нужен каждый её кадр,
+        // иначе липкие элементы прыгнут в конечное положение вместо плавного подъезда.
+        const observer = new ResizeObserver(publishOffset);
+        observer.observe(el);
+        return () => observer.disconnect();
     }, []);
 
     // Shadow-on-scroll + компакт-режим: вниз — складываемся, вверх или у верха — разворачиваемся.
@@ -318,10 +414,10 @@ export default function TaleGameshopHeader() {
         };
     }, [isMenuOpen]);
 
-    const isAdmin = keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.["roles"].some(
-        (role) => role === "admin"
-    );
-    const email = keycloak.tokenParsed?.email;
+    // В токене Keycloak роли клиента лежат в resource_access, а почта — отдельным полем; типы keycloak-js их не описывают.
+    const token = keycloak.tokenParsed as { email?: string; resource_access?: Record<string, { roles?: string[] }> } | undefined;
+    const isAdmin = token?.resource_access?.["tale-shop-app"]?.roles?.some((role) => role === "admin");
+    const email = token?.email;
 
     const handleLogout = async () => {
         await keycloakAuthService.logoutWithRedirect(keycloak, window.location.href);
@@ -329,6 +425,16 @@ export default function TaleGameshopHeader() {
 
     const currentCurrency = currencies.find((c) => c.code === currency) ?? currencies[0];
     const currentLang = languages.find((l) => l.code === lang) ?? languages[0];
+    const currentCountry = country ? countries.find((option) => option.code === country) ?? null : null;
+    const countryMatches = (() => {
+        const needle = countryQuery.trim().toLowerCase();
+        if (!needle) {
+            return countries;
+        }
+        return countries.filter(
+            (option) => option.name.toLowerCase().includes(needle) || option.code.toLowerCase().startsWith(needle),
+        );
+    })();
 
     return (
         <header
@@ -343,9 +449,9 @@ export default function TaleGameshopHeader() {
             {/* Primary bar: brand · search · tools · account */}
             <div className="header-primary">
                 <div className="container header-primary-inner">
-                    <Link className="brand" to="/" aria-label="Tale Shop — home">
-                        <img src={logo} alt="Tale Shop logo" />
-                        <span className="brand-name">Tale Shop</span>
+                    <Link className="brand" to="/" aria-label={t("header.brandHome")}>
+                        <img src={logo} alt={t("header.logoAlt")} />
+                        <span className="brand-name">{t("common.brand")}</span>
                     </Link>
 
                     <HeaderSearch />
@@ -354,7 +460,7 @@ export default function TaleGameshopHeader() {
                         <div className="pref-cluster">
                             <PrefMenu
                                 id="lang-menu"
-                                ariaLabel="Change language"
+                                ariaLabel={t("header.changeLanguage")}
                                 triggerLabel={
                                     <span className="pref-trigger-label">
                                         <svg className="pref-globe" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -394,7 +500,7 @@ export default function TaleGameshopHeader() {
                             {canSwitchCurrency && (
                                 <PrefMenu
                                     id="currency-menu"
-                                    ariaLabel="Change currency"
+                                    ariaLabel={t("header.changeCurrency")}
                                     triggerLabel={
                                         <span className="pref-trigger-label">
                                             <span className="pref-currency-symbol">{currentCurrency.symbol}</span>
@@ -422,13 +528,87 @@ export default function TaleGameshopHeader() {
                                     }
                                 </PrefMenu>
                             )}
+                            {/* Страна покупателя стоит рядом с языком и валютой, потому что она такая
+                                же настройка всего сайта: по ней считается, где активируется ключ —
+                                в каталоге, на карточке игры, в корзине и на кассе, — и от неё же
+                                подбирается валюта. Раньше поменять её можно было только из корзины,
+                                и настройка, влияющая на весь магазин, выглядела свойством заказа. */}
+                            {countries.length > 0 && (
+                                <PrefMenu
+                                    id="country-menu"
+                                    ariaLabel={t("header.changeCountry")}
+                                    triggerLabel={
+                                        <span className="pref-trigger-label">
+                                            <svg className="pref-globe" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                                <path
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="1.7"
+                                                    d="M12 21s7-5.5 7-11a7 7 0 10-14 0c0 5.5 7 11 7 11z"
+                                                />
+                                                <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                                            </svg>
+                                            {currentCountry?.code ?? t("header.country")}
+                                        </span>
+                                    }
+                                >
+                                    {(close, open) => !open ? null : (
+                                        // Список монтируется только открытым: 248 кнопок не висят
+                                        // в разметке каждой страницы, а поиск получает фокус сразу.
+                                        <div className="pref-country">
+                                            <input
+                                                className="pref-country-search"
+                                                placeholder={t("header.searchCountry")}
+                                                value={countryQuery}
+                                                // autoFocus здесь не срабатывает: в момент монтирования
+                                                // панель ещё скрыта переходом, и focus() ничего не делает.
+                                                // Ставим фокус следующей задачей — таймер, а не кадр
+                                                // анимации: кадры не приходят во вкладке, которая сейчас
+                                                // не на экране, и фокус тогда не встал бы вовсе.
+                                                ref={(el) => { if (el) setTimeout(() => el.focus(), 0); }}
+                                                onChange={(event) => setCountryQuery(event.target.value)}
+                                            />
+                                            <div className="pref-country-list">
+                                                {countryMatches.map((option) => (
+                                                    <button
+                                                        key={option.code}
+                                                        type="button"
+                                                        role="menuitemradio"
+                                                        aria-checked={option.code === country}
+                                                        className={`pref-option ${option.code === country ? "is-active" : ""}`}
+                                                        onClick={() => {
+                                                            setCountry(option.code);
+                                                            setCountryQuery("");
+                                                            close();
+                                                        }}
+                                                    >
+                                                        <span className="pref-option-badge">{option.code}</span>
+                                                        {option.name}
+                                                    </button>
+                                                ))}
+                                                {countryMatches.length === 0 && (
+                                                    <p className="pref-country-empty">{t("header.noSuchCountry")}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </PrefMenu>
+                            )}
                         </div>
 
                         <div className="header-cart">
                             <CartIcon isText={false} />
                         </div>
 
-                        {!keycloak.authenticated ? (
+                        {/* Три состояния, а не два. Пока Keycloak не ответил, личность
+                            НЕИЗВЕСТНА — и показывать «Login» вошедшему человеку значит
+                            соврать ему на полсекунды. Вместо этого держим место заглушкой:
+                            шапка не прыгает, и неверное состояние не мелькает. */}
+                        {!initialized ? (
+                            <div className="header-auth">
+                                <span className="header-auth-skeleton" aria-hidden="true" />
+                            </div>
+                        ) : !keycloak.authenticated ? (
                             <div className="header-auth">
                                 <LoginAndRegisterSection />
                             </div>
@@ -445,29 +625,29 @@ export default function TaleGameshopHeader() {
                                         ref={accountButtonRef}
                                     >
                                         <FontAwesomeIcon icon={faCircleUser} />
-                                        <span className="account-trigger-label">Account</span>
+                                        <span className="account-trigger-label">{t("common.account")}</span>
                                         <FontAwesomeIcon className="caret" icon={faChevronDown} />
                                     </button>
                                     <div className={`account-dropdown ${isAccountOpen ? "open" : ""}`}>
                                         <div className="account-signed-in">
-                                            Signed in as <span>{email}</span>
+                                            {t("header.signedInAs")} <span>{email}</span>
                                         </div>
                                         <div className="account-links">
                                             <Link to="/account" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                                Profile
+                                                {t("header.profile")}
                                             </Link>
                                             <Link to="/account/orders" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                                Orders
+                                                {t("header.orders")}
                                             </Link>
                                             <Link to="/account/keys" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                                Keys
+                                                {t("header.keys")}
                                             </Link>
                                             <Link to="/account/settings" className="account-link" onClick={() => setIsAccountOpen(false)}>
-                                                Settings
+                                                {t("header.settings")}
                                             </Link>
                                         </div>
                                         <button className="account-link sign-out" type="button" onClick={handleLogout}>
-                                            Sign out
+                                            {t("common.signOut")}
                                         </button>
                                     </div>
                                 </div>
@@ -477,7 +657,7 @@ export default function TaleGameshopHeader() {
                         <button
                             className="menu-toggle"
                             onClick={() => setIsMenuOpen((prev) => !prev)}
-                            aria-label="Toggle menu"
+                            aria-label={t("header.toggleMenu")}
                             aria-expanded={isMenuOpen}
                         >
                             <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} />
@@ -496,7 +676,7 @@ export default function TaleGameshopHeader() {
                                 end
                                 className={({ isActive }) => `nav-item ${isActive ? "is-active" : ""}`}
                             >
-                                Home
+                                {t("common.nav.home")}
                             </NavLink>
                         </li>
                         <li className="nav-store">
@@ -504,25 +684,35 @@ export default function TaleGameshopHeader() {
                                 to="/games"
                                 className={({ isActive }) => `nav-item nav-store-trigger ${isActive ? "is-active" : ""}`}
                             >
-                                Store
+                                {t("common.nav.store")}
                                 <FontAwesomeIcon className="nav-store-caret" icon={faChevronDown} />
                             </NavLink>
-                            <div className="mega-menu" role="menu" aria-label="Store categories">
+                            <div className="mega-menu" role="menu" aria-label={t("header.storeCategories")}>
                                 <div className="mega-inner">
-                                    <div className="mega-col">
-                                        <div className="mega-heading">Browse by genre</div>
-                                        <div className="mega-genres">
-                                            {storeGenres.map((genre) => (
-                                                <Link key={genre.label} to={genre.to} className="mega-genre">
-                                                    {genre.label}
-                                                </Link>
-                                            ))}
+                                    {storeMenu && storeMenu.genres.length > 0 && (
+                                        <div className="mega-col">
+                                            <div className="mega-heading">{t("header.browseByGenre")}</div>
+                                            <div className="mega-genres">
+                                                {storeMenu.genres.map((genre) => (
+                                                    <Link
+                                                        key={genre.fullName}
+                                                        to={genre.to}
+                                                        className="mega-genre"
+                                                        title={genre.fullName}
+                                                    >
+                                                        <span className="mega-genre-label">{genre.label}</span>
+                                                        {/* Число рядом с жанром — то же, что каталог покажет
+                                                            после перехода: оба берутся из одного фасета. */}
+                                                        <span className="mega-genre-count">{genre.count}</span>
+                                                    </Link>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                     <div className="mega-col">
-                                        <div className="mega-heading">Discover</div>
+                                        <div className="mega-heading">{t("header.discover")}</div>
                                         <div className="mega-discover">
-                                            {buildStoreDiscover(currency).map((item) => (
+                                            {buildStoreDiscover(currency, t).map((item) => (
                                                 <Link key={item.label} to={item.to} className="mega-discover-item">
                                                     <span className="mega-discover-label">{item.label}</span>
                                                     <span className="mega-discover-desc">{item.desc}</span>
@@ -530,32 +720,50 @@ export default function TaleGameshopHeader() {
                                             ))}
                                         </div>
                                     </div>
+                                    {/* Было «Weekly deals — fresh discounts, updated every week»: недельного
+                                        цикла у скидок нет, их заводят когда угодно, так что обещание держать
+                                        нечем. Вместо него — то, что можно проверить прямо сейчас: сколько игр
+                                        со скидкой. Число то же, что покажет страница скидок. */}
+                                    {/* Скидок может не быть вовсе — тогда прежний текст превращался в
+                                        «0 games on sale» и тут же обещал price drops, которых нет. В этом
+                                        случае плитка говорит то же, что и сама страница скидок: сейчас
+                                        пусто, но можно подписаться на следующую волну. */}
                                     <Link to="/deals" className="mega-promo">
                                         <FontAwesomeIcon icon={faBolt} />
-                                        <span className="mega-promo-title">Weekly deals</span>
-                                        <span className="mega-promo-desc">Fresh discounts, updated every week.</span>
-                                        <span className="mega-promo-cta">Shop deals →</span>
+                                        <span className="mega-promo-title">
+                                            {!storeMenu
+                                                ? t("header.onSaleNow")
+                                                : storeMenu.onSale > 0
+                                                  ? t("header.gamesOnSale", { count: storeMenu.onSale })
+                                                  : t("header.noDealsNow")}
+                                        </span>
+                                        <span className="mega-promo-desc">
+                                            {storeMenu && storeMenu.onSale === 0 ? t("header.dealsDescEmpty") : t("header.dealsDesc")}
+                                        </span>
+                                        <span className="mega-promo-cta">
+                                            {storeMenu && storeMenu.onSale === 0 ? t("header.getNotified") : t("header.shopDeals")}
+                                        </span>
                                     </Link>
                                 </div>
                             </div>
                         </li>
-                        {navLinks
-                            .filter((link) => link.label !== "Home")
-                            .map((link) => (
-                                <li key={link.label}>
-                                    <NavLink
-                                        to={link.to}
-                                        className={({ isActive }) => `nav-item ${isActive ? "is-active" : ""}`}
-                                    >
-                                        {link.label}
-                                    </NavLink>
-                                </li>
-                            ))}
+                        {/* Раздел ПО — рядом с магазином игр, со своим меню категорий. Пока ПО нет,
+                            пункт не показываем: он вёл бы на пустую страницу. */}
+                        {navLinks.map((link) => (
+                            <li key={link.key}>
+                                <NavLink
+                                    to={link.to}
+                                    className={({ isActive }) => `nav-item ${isActive ? "is-active" : ""}`}
+                                >
+                                    {t(`common.nav.${link.key}`)}
+                                </NavLink>
+                            </li>
+                        ))}
                     </ul>
 
                     <div className="nav-trust">
                         <FontAwesomeIcon icon={faLock} />
-                        <span>Buyer-protected checkout</span>
+                        <span>{t("header.buyerProtected")}</span>
                     </div>
                 </div>
             </div>
@@ -567,49 +775,49 @@ export default function TaleGameshopHeader() {
                 <ul className="drawer-links">
                     <li>
                         <NavLink to="/" end className="drawer-link" onClick={() => setIsMenuOpen(false)}>
-                            Home
+                            {t("common.nav.home")}
                         </NavLink>
                     </li>
                     <li>
                         <div className="drawer-store-row">
                             <NavLink to="/games" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
-                                Store
+                                {t("common.nav.store")}
                             </NavLink>
                             <button
                                 type="button"
                                 className={`drawer-store-toggle ${isDrawerStoreOpen ? "open" : ""}`}
                                 aria-expanded={isDrawerStoreOpen}
-                                aria-label="Show store categories"
+                                aria-label={t("header.showStoreCategories")}
                                 onClick={() => setIsDrawerStoreOpen((prev) => !prev)}
                             >
                                 <FontAwesomeIcon icon={faChevronDown} />
                             </button>
                         </div>
                         <div className={`drawer-sublinks ${isDrawerStoreOpen ? "open" : ""}`}>
-                            <Link to="/games" className="drawer-sublink" onClick={() => setIsMenuOpen(false)}>
-                                All games
+                            <Link to={gamesCatalogPath()} className="drawer-sublink" onClick={() => setIsMenuOpen(false)}>
+                                {t("header.allGames")}
                             </Link>
-                            {storeGenres.map((genre) => (
+                            {/* Тот же список, что и в меню на широком экране: жанры из каталога. */}
+                            {(storeMenu?.genres ?? []).map((genre) => (
                                 <Link
-                                    key={genre.label}
+                                    key={genre.fullName}
                                     to={genre.to}
                                     className="drawer-sublink"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
-                                    {genre.label}
+                                    {/* В ящике строка во всю ширину — сокращать незачем. */}
+                                    {genre.fullName}
                                 </Link>
                             ))}
                         </div>
                     </li>
-                    {navLinks
-                        .filter((link) => link.label !== "Home")
-                        .map((link) => (
-                            <li key={link.label}>
-                                <NavLink to={link.to} className="drawer-link" onClick={() => setIsMenuOpen(false)}>
-                                    {link.label}
-                                </NavLink>
-                            </li>
-                        ))}
+                    {navLinks.map((link) => (
+                        <li key={link.key}>
+                            <NavLink to={link.to} className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                                {t(`common.nav.${link.key}`)}
+                            </NavLink>
+                        </li>
+                    ))}
                     {isAdmin && (
                         <li>
                             <AdminPanelSection onClick={() => setIsMenuOpen(false)} className="drawer-link drawer-admin" />
@@ -618,8 +826,8 @@ export default function TaleGameshopHeader() {
                 </ul>
 
                 <div className="drawer-prefs">
-                    <div className="drawer-pref-group" role="group" aria-label="Language">
-                        <span className="drawer-pref-caption">Language</span>
+                    <div className="drawer-pref-group" role="group" aria-label={t("header.language")}>
+                        <span className="drawer-pref-caption">{t("header.language")}</span>
                         <div className="drawer-pref-options">
                             {languages.map((option) => (
                                 <button
@@ -634,8 +842,8 @@ export default function TaleGameshopHeader() {
                         </div>
                     </div>
                     {canSwitchCurrency && (
-                        <div className="drawer-pref-group" role="group" aria-label="Currency">
-                            <span className="drawer-pref-caption">Currency</span>
+                        <div className="drawer-pref-group" role="group" aria-label={t("header.currency")}>
+                            <span className="drawer-pref-caption">{t("header.currency")}</span>
                             <div className="drawer-pref-options">
                                 {currencies.map((option) => (
                                     <button
@@ -653,7 +861,9 @@ export default function TaleGameshopHeader() {
                 </div>
 
                 <div className="drawer-actions">
-                    {!keycloak.authenticated ? (
+                    {!initialized ? (
+                        <span className="header-auth-skeleton is-stacked" aria-hidden="true" />
+                    ) : !keycloak.authenticated ? (
                         <LoginAndRegisterSection stacked />
                     ) : (
                         <div className="drawer-account">
@@ -665,26 +875,26 @@ export default function TaleGameshopHeader() {
                             >
                                 <span className="drawer-account-title">
                                     <FontAwesomeIcon icon={faCircleUser} />
-                                    My account
+                                    {t("header.myAccount")}
                                 </span>
                                 <FontAwesomeIcon className="drawer-account-caret" icon={faChevronDown} />
                             </button>
-                            <div className="drawer-account-email">Signed in as {email}</div>
+                            <div className="drawer-account-email">{t("header.signedInAs")} {email}</div>
                             <div className={`drawer-account-links ${isDrawerAccountOpen ? "open" : ""}`}>
                                 <Link to="/account" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
-                                    Profile
+                                    {t("header.profile")}
                                 </Link>
                                 <Link to="/account/orders" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
-                                    Orders
+                                    {t("header.orders")}
                                 </Link>
                                 <Link to="/account/keys" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
-                                    Keys
+                                    {t("header.keys")}
                                 </Link>
                                 <Link to="/account/settings" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
-                                    Settings
+                                    {t("header.settings")}
                                 </Link>
                                 <button className="drawer-sign-out" type="button" onClick={handleLogout}>
-                                    Sign out
+                                    {t("common.signOut")}
                                 </button>
                             </div>
                         </div>

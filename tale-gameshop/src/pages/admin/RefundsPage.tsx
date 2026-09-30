@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import PageHeader from "../../components/layout/PageHeader";
-import OrdersTable from "../../components/orders/OrdersTable";
+import OrdersTable, { ORDERS_PAGE_SIZE } from "../../components/orders/OrdersTable";
+import { fetchWindow } from "../../utils/page-window";
 import OrderDetailsDrawer from "../../components/orders/OrderDetailsDrawer";
 import Card from "../../components/ui/Card";
 import container from "../../inversify.config";
@@ -28,51 +29,34 @@ const REFUND_FILTER: OrderFilters = {
 const RefundsPage: React.FC = () => {
   const ordersService = container.get<IAdminOrdersService>(IDENTIFIERS.IAdminOrdersService);
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
 
-  const [items, setItems] = useState<Order[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(async () => {
-    try {
+  // Окно строк для таблицы; границы приходят от неё по мере прокрутки.
+  const loadOrders = useCallback(
+    async (skip: number, take: number) => {
       setLoading(true);
-      setError(null);
-      const response = await ordersService.getOrders({ filters: REFUND_FILTER, page, pageSize, sort: "updatedAt:desc" });
-      setItems(response.items);
-      setTotal(response.total);
-    } catch (err) {
-      console.error("Failed to load refunds", err);
-      setError("Unable to load refunds.");
-    } finally {
-      setLoading(false);
-    }
-  }, [ordersService, page, pageSize]);
+      try {
+        return await fetchWindow(skip, take, ORDERS_PAGE_SIZE, (page, pageSize) =>
+          ordersService.getOrders({ filters: REFUND_FILTER, page, pageSize, sort: "updatedAt:desc" })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [ordersService]
+  );
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  const fetchOrders = useCallback(() => setReloadToken((token) => token + 1), []);
 
   useEffect(() => {
     setPageTitle("Refunds");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "export-refunds",
-        label: "Export CSV",
-        variant: "primary",
-        onClick: () => ordersService.exportCsv(REFUND_FILTER, "updatedAt:desc").catch(() => addToast("Export failed.", "error")),
-      },
-      { type: "button", id: "refresh-refunds", label: "Refresh", variant: "outline", onClick: fetchOrders },
-    ]);
-    return () => setHeaderActions([]);
-  }, [addToast, fetchOrders, ordersService, setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const handleRowClick = async (order: Order) => {
     setSelectedOrder(order);
@@ -93,7 +77,7 @@ const RefundsPage: React.FC = () => {
       return;
     }
     setSelectedOrder(updated);
-    setItems((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    setReloadToken((token) => token + 1);
   }, []);
 
   const handleAction = useCallback(
@@ -102,6 +86,18 @@ const RefundsPage: React.FC = () => {
         throw new Error("No order selected");
       }
       const result = await ordersService.runAction(selectedOrder.id, action, reason);
+      applyResult(result.order);
+      return result;
+    },
+    [applyResult, ordersService, selectedOrder]
+  );
+
+  const handleRefundItem = useCallback(
+    async (itemId: string, quantity: number, reason: string) => {
+      if (!selectedOrder) {
+        throw new Error("No order selected");
+      }
+      const result = await ordersService.refundItem(selectedOrder.id, itemId, quantity, reason);
       applyResult(result.order);
       return result;
     },
@@ -125,29 +121,30 @@ const RefundsPage: React.FC = () => {
       <PageHeader
         title="Refunds"
         description="Orders that were refunded, partially refunded, are waiting for a refund, or are disputed."
-        breadcrumbs={["Orders & Payments", "Refunds"]}
+        breadcrumbs={["Sales", "Refunds"]}
+        primaryAction={
+          <>
+            <button
+              className="btn btn-primary"
+              onClick={() => ordersService.exportCsv(REFUND_FILTER, "updatedAt:desc").catch(() => addToast("Export failed.", "error"))}
+            >
+              Export CSV
+            </button>
+            <button className="btn btn-outline" onClick={fetchOrders} disabled={loading}>Refresh</button>
+          </>
+        }
       />
 
-      <Card>
-        <p className="text-sm text-gray-500">
-          To refund an order, open it (here or in Orders) and use <strong>Refund</strong> — Stripe orders are refunded
-          automatically; for other rails, refund in the provider’s dashboard and use <strong>Mark refunded</strong>.
-        </p>
-      </Card>
-
       <OrdersTable
-        items={items}
-        total={total}
-        page={page}
-        pageSize={pageSize}
-        loading={loading}
-        error={error}
-        onRetry={fetchOrders}
+        load={loadOrders}
+        reloadToken={reloadToken}
         onRowClick={handleRowClick}
-        onPageChange={(nextPage, nextPageSize) => {
-          setPage(nextPage);
-          setPageSize(nextPageSize);
-        }}
+        toolbar={
+          <p className="mb-4 text-sm text-gray-500">
+            To refund an order, open it (here or in Orders) and use <strong>Refund</strong> — Stripe orders are refunded
+            automatically; for other rails, refund in the provider’s dashboard and use <strong>Mark refunded</strong>.
+          </p>
+        }
       />
 
       <OrderDetailsDrawer
@@ -158,6 +155,7 @@ const RefundsPage: React.FC = () => {
         onClose={() => setSelectedOrder(null)}
         onAction={handleAction}
         onForceStatus={handleForceStatus}
+        onRefundItem={handleRefundItem}
       />
     </div>
   );

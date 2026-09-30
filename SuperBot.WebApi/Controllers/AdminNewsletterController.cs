@@ -45,6 +45,8 @@ public class AdminNewsletterController : ControllerBase
                 s.Status,
                 s.Sources,
                 s.Locale,
+                // Старые подписки без поля показываем как согласных — так их и трактует рассылка.
+                dealAlerts = s.DealAlerts != false,
                 hasAccount = !string.IsNullOrWhiteSpace(s.UserId),
                 s.CreatedAt,
                 s.ConfirmedAt,
@@ -80,6 +82,8 @@ public class AdminNewsletterController : ControllerBase
             c.Type,
             c.Locale,
             c.Subject,
+            // Какие переводы были у кампании — для таблицы истории.
+            Translations = (c.BodyTextI18n?.Keys ?? Enumerable.Empty<string>()).Union(c.SubjectI18n?.Keys ?? Enumerable.Empty<string>()).OrderBy(key => key).ToArray(),
             c.Status,
             c.RecipientCount,
             c.SentCount,
@@ -120,8 +124,20 @@ public class AdminNewsletterController : ControllerBase
             }
         }
 
+        // Переводы — те же пределы, что у английского: тема до 150, текст до 10 000 знаков.
+        var subjectI18n = SuperBot.Core.Entities.Localized.Normalize(request.SubjectI18n);
+        var bodyI18n = SuperBot.Core.Entities.Localized.Normalize(request.BodyI18n);
+        if (subjectI18n is not null && subjectI18n.Values.Any(value => value.Length > 150))
+        {
+            return BadRequest(new { error = "A translated subject is too long (max 150 characters)." });
+        }
+        if (bodyI18n is not null && bodyI18n.Values.Any(value => value.Length > 10_000))
+        {
+            return BadRequest(new { error = "A translated body is too long (max 10 000 characters)." });
+        }
+
         var createdBy = User.FindFirstValue("email") ?? User.FindFirstValue(ClaimTypes.Email) ?? "admin";
-        var campaign = await _newsletter.QueueCampaignAsync(subject, body, createdBy, scheduledAt, ct);
+        var campaign = await _newsletter.QueueCampaignAsync(new CampaignDraft(subject, body, createdBy, scheduledAt, subjectI18n, bodyI18n), ct);
 
         // Кампания подхватывается воркером в течение ~30 секунд после наступления ScheduledAt (или сразу).
         return Ok(new { campaign.Id, campaign.Status, campaign.ScheduledAt });
@@ -140,8 +156,9 @@ public class AdminNewsletterController : ControllerBase
             return BadRequest(new { error = "Body is too long (max 10 000 characters)." });
         }
 
-        var sample = new NewsletterSubscriberDb { Email = "subscriber@example.com", UnsubscribeToken = "preview" };
-        var (text, html) = _newsletter.WrapEmail(body, sample);
+        // Язык предпросмотра — как у подписчика с таким языком: футер и подпись макета тоже на нём.
+        var sample = new NewsletterSubscriberDb { Email = "subscriber@example.com", UnsubscribeToken = "preview", Locale = request.Locale };
+        var (text, html) = _newsletter.WrapEmail(body, sample, locale: request.Locale);
         return Ok(new { html, text });
     }
 
@@ -158,7 +175,7 @@ public class AdminNewsletterController : ControllerBase
             return BadRequest(new { error = "Subject and body are required." });
         }
 
-        await _newsletter.SendTestAsync(to, request.Subject.Trim(), request.Body.Trim(), ct);
+        await _newsletter.SendTestAsync(to, request.Subject.Trim(), request.Body.Trim(), request.Locale, ct);
         return Ok(new { sent = true });
     }
 
@@ -167,8 +184,15 @@ public class AdminNewsletterController : ControllerBase
         public string? Subject { get; set; }
         public string? Body { get; set; }
 
+        /// <summary>Переводы темы и текста (ru/uk/pl → текст); подписчик получает письмо на языке подписки.</summary>
+        public Dictionary<string, string>? SubjectI18n { get; set; }
+        public Dictionary<string, string>? BodyI18n { get; set; }
+
         /// <summary>Отложенная отправка (ISO-строка от фронта); null/отсутствует — отправить сразу.</summary>
         public DateTime? ScheduledAt { get; set; }
+
+        /// <summary>Только для предпросмотра: язык, на котором рендерить макет и футер.</summary>
+        public string? Locale { get; set; }
     }
 
     public class TestSendRequest
@@ -176,5 +200,8 @@ public class AdminNewsletterController : ControllerBase
         public string? To { get; set; }
         public string? Subject { get; set; }
         public string? Body { get; set; }
+
+        /// <summary>Язык макета и футера тест-письма — тот же, что выбран для предпросмотра.</summary>
+        public string? Locale { get; set; }
     }
 }

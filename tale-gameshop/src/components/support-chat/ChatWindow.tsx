@@ -8,6 +8,7 @@ import { getSupportDict, type SupportLang } from "./i18n";
 import { createGreeting } from "./greeting";
 import { formatSessionCode } from "../../utils/support-session-code";
 import { ArrowDownIcon, CloseIcon, SoundOffIcon, SoundOnIcon } from "./icons";
+import { clamp as clampValue } from "../../utils/clamp";
 
 type ContactForm = {
   email: string;
@@ -53,7 +54,24 @@ type ChatWindowProps = {
 type WindowSize = { width: number; height: number };
 
 /** Угол тянет обе стороны, левая грань — только ширину, верхняя — только высоту. */
-type ResizeAxis = "both" | "x" | "y";
+/**
+ * Сторона или угол, за которые тянут. Окно прижато к правому нижнему углу, поэтому рост
+ * влево и вверх достаётся даром, а вправо и вниз — сдвигом окна на ту же величину: иначе
+ * противоположный край уезжал бы вместе с тянущимся.
+ */
+type ResizeAxis = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+
+/** Какие края двигает эта ручка. */
+const RESIZE_EDGES: Record<ResizeAxis, { top: boolean; bottom: boolean; left: boolean; right: boolean }> = {
+  n: { top: true, bottom: false, left: false, right: false },
+  s: { top: false, bottom: true, left: false, right: false },
+  e: { top: false, bottom: false, left: false, right: true },
+  w: { top: false, bottom: false, left: true, right: false },
+  ne: { top: true, bottom: false, left: false, right: true },
+  nw: { top: true, bottom: false, left: true, right: false },
+  se: { top: false, bottom: true, left: false, right: true },
+  sw: { top: false, bottom: true, left: true, right: false },
+};
 
 // Снизу — размер, при котором окно ещё чат, а не полоска. Сверху — прежние «развёрнутые»
 // 560×760: дальше растягивать смысла нет, чат займёт половину экрана и перекроет витрину.
@@ -67,7 +85,8 @@ const SIZE_KEY = "tale_support_chat_size";
 // в экран: страница должна успеть приехать до того, как человек упрётся в начало списка.
 const HISTORY_TRIGGER_PX = 120;
 
-const clamp = (value: number, min: number, max: number) => Math.round(Math.min(Math.max(value, min), max));
+// Размер окна — в целых пикселях.
+const clamp = (value: number, min: number, max: number) => Math.round(clampValue(value, min, max));
 
 const clampSize = ({ width, height }: WindowSize): WindowSize => ({
   width: clamp(width, MIN_WINDOW.width, Math.min(MAX_WINDOW.width, window.innerWidth - VIEWPORT_MARGIN)),
@@ -166,7 +185,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     startY: 0,
     startWidth: 0,
     startHeight: 0,
-    axis: "both" as ResizeAxis,
+    axis: "nw" as ResizeAxis,
+    startPosX: 0,
+    startPosY: 0,
     resizing: false,
   });
 
@@ -183,6 +204,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       startY: event.clientY,
       startWidth: rect.width,
       startHeight: rect.height,
+      startPosX: pos.x,
+      startPosY: pos.y,
       axis,
       resizing: true,
     };
@@ -193,14 +216,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!resize.resizing) {
       return;
     }
-    setSize(
-      clampSize({
-        width:
-          resize.axis === "y" ? resize.startWidth : resize.startWidth + (resize.startX - event.clientX),
-        height:
-          resize.axis === "x" ? resize.startHeight : resize.startHeight + (resize.startY - event.clientY),
-      })
-    );
+    const edges = RESIZE_EDGES[resize.axis];
+    const dx = event.clientX - resize.startX;
+    const dy = event.clientY - resize.startY;
+
+    // Тянем за левый или верхний край — окно растёт «в сторону тяги», угол на месте.
+    // Тянем за правый или нижний — растёт туда же, но окно приходится сдвигать: его правый
+    // нижний угол закреплён, и без сдвига поехал бы противоположный край.
+    const widthDelta = edges.left ? -dx : edges.right ? dx : 0;
+    const heightDelta = edges.top ? -dy : edges.bottom ? dy : 0;
+
+    const next = clampSize({
+      width: resize.startWidth + widthDelta,
+      height: resize.startHeight + heightDelta,
+    });
+
+    setSize(next);
+    setPos({
+      // Сдвигаем ровно на столько, на сколько окно реально выросло: у предела размера оно
+      // упирается, и без этой поправки окно продолжало бы ехать за курсором.
+      x: edges.right ? resize.startPosX + (next.width - resize.startWidth) : resize.startPosX,
+      y: edges.bottom ? resize.startPosY + (next.height - resize.startHeight) : resize.startPosY,
+    });
   };
 
   const endResize = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -413,7 +450,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       style={windowStyle}
     >
       {!compact &&
-        (["both", "y", "x"] as const).map((axis) => (
+        (["n", "s", "e", "w", "ne", "nw", "se", "sw"] as const).map((axis) => (
           <div
             key={axis}
             className={`support-chat__resize support-chat__resize--${axis}`}

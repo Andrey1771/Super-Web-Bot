@@ -22,13 +22,15 @@ namespace SuperBot.Tests
             IEnumerable<GameDiscount>? discounts = null,
             PromoValidationResult? promo = null,
             StorefrontCurrencyOptions? currencies = null,
-            FxOptions? fx = null)
+            FxOptions? fx = null,
+            IEnumerable<GameDetails>? details = null)
         {
             var currencyOptions = currencies ?? new StorefrontCurrencyOptions();
             var fxOptions = fx ?? new FxOptions();
 
             return new CheckoutPricingService(
                 new FakeGameRepository(games ?? new[] { Game(60m) }),
+                new FakeGameDetailsRepository(details ?? Array.Empty<GameDetails>()),
                 new FakeGameDiscountRepository(discounts ?? Array.Empty<GameDiscount>()),
                 new FakePromoCodeService(promo),
                 Options.Create(currencyOptions),
@@ -37,6 +39,7 @@ namespace SuperBot.Tests
                     TestOptions.Of(fxOptions),
                     NullLogger<FxRateService>.Instance),
                 TestOptions.Of(fxOptions),
+                new SuperBot.Core.Regions.DefaultRegionCatalogProvider(),
                 NullLogger<CheckoutPricingService>.Instance);
         }
 
@@ -320,6 +323,7 @@ namespace SuperBot.Tests
             var fxOptions = new FxOptions();
             var service = new CheckoutPricingService(
                 new FakeGameRepository(new[] { game }),
+                new FakeGameDetailsRepository(Array.Empty<GameDetails>()),
                 new FakeGameDiscountRepository(Array.Empty<GameDiscount>()),
                 promoService,
                 Options.Create(currencyOptions),
@@ -328,6 +332,7 @@ namespace SuperBot.Tests
                     TestOptions.Of(fxOptions),
                     NullLogger<FxRateService>.Instance),
                 TestOptions.Of(fxOptions),
+                new SuperBot.Core.Regions.DefaultRegionCatalogProvider(),
                 NullLogger<CheckoutPricingService>.Instance);
 
             await service.PriceAsync(Cart(promo: "save10", currency: "EUR"));
@@ -347,13 +352,41 @@ namespace SuperBot.Tests
             }
 
             public Task<List<Game>> GetAllAsync() => Task.FromResult(_games);
+
+            public Task<List<Game>> GetWithRegionSettingsAsync() =>
+                Task.FromResult(_games.Where(g => g.RegionPolicy is not null || g.RegionPrices is not null).ToList());
             public Task<Game> GetByIdAsync(string id) => Task.FromResult(_games.FirstOrDefault(g => g.Id == id)!);
             public Task<Game> GetByExternalIdAsync(string externalId) => Task.FromResult<Game>(null!);
             public Task<Game> GetBySlugAsync(string slug) => Task.FromResult<Game>(null!);
             public Task<List<Game>> GetByCoverMediaIdAsync(string mediaId) => Task.FromResult(new List<Game>());
+
+            // Постраничная выборка в этих тестах не используется: они проверяют расчёт цен,
+            // а не листание каталога. Отдаём весь набор, чтобы фейк отвечал интерфейсу.
+            public Task<(List<Game> Items, long Total)> GetPageAsync(
+                string? search,
+                IReadOnlyCollection<string>? onlyIds,
+                IReadOnlyCollection<string>? excludeIds,
+                string sortBy,
+                bool descending,
+                int skip,
+                int take,
+                bool onlyWithManualPrices = false) => Task.FromResult((_games.Skip(skip).Take(take).ToList(), (long)_games.Count));
+
             public Task CreateAsync(Game game) => Task.CompletedTask;
             public Task UpdateAsync(string id, Game updatedGame) => Task.CompletedTask;
             public Task DeleteAsync(string id) => Task.CompletedTask;
+        }
+
+        private sealed class FakeGameDetailsRepository : IGameDetailsRepository
+        {
+            private readonly List<GameDetails> _details;
+            public FakeGameDetailsRepository(IEnumerable<GameDetails> details) => _details = details.ToList();
+            public Task<GameDetails> GetByGameIdAsync(string gameId) => Task.FromResult(_details.FirstOrDefault(d => d.GameId == gameId)!);
+            public Task<List<GameDetails>> GetByGameIdsAsync(IEnumerable<string> gameIds) { var set = gameIds.ToHashSet(); return Task.FromResult(_details.Where(d => d.GameId != null && set.Contains(d.GameId)).ToList()); }
+            public Task<GameDetails> GetBySlugAsync(string slug) => Task.FromResult(_details.FirstOrDefault(d => d.Slug == slug)!);
+            public Task CreateAsync(GameDetails details) => Task.CompletedTask;
+            public Task UpsertAsync(GameDetails details) => Task.CompletedTask;
+            public Task UpdateAsync(string id, GameDetails details) => Task.CompletedTask;
         }
 
         private sealed class FakeGameDiscountRepository : IGameDiscountRepository
@@ -369,6 +402,18 @@ namespace SuperBot.Tests
 
             public Task<GameDiscount?> GetByGameIdAsync(string gameId) =>
                 Task.FromResult(_discounts.FirstOrDefault(d => d.GameId == gameId));
+
+            public Task<List<GameDiscount>> GetAllAsync() => Task.FromResult(_discounts.ToList());
+
+            // Админский список каталога этим тестам не нужен: они про расчёт цены корзины.
+            public Task<(List<GameDiscountRow> Items, long Total)> GetCatalogPageAsync(
+                string? search,
+                string status,
+                string sortBy,
+                bool descending,
+                int skip,
+                int take,
+                DateTime now) => Task.FromResult((new List<GameDiscountRow>(), 0L));
 
             public Task UpsertAsync(GameDiscount discount) => Task.CompletedTask;
             public Task DeleteByGameIdAsync(string gameId) => Task.CompletedTask;
@@ -389,6 +434,159 @@ namespace SuperBot.Tests
             }
 
             public Task RecordUsageAsync(PromoApplyRequest request) => Task.CompletedTask;
+
+            public Task<bool> RecordRedemptionAsync(string code, string userName, string orderId) => Task.FromResult(false);
+        }
+        // ---------- издания ----------
+
+        private static GameDetails DetailsWithEditions(string gameId = GameId) => new()
+        {
+            GameId = gameId,
+            Editions = new List<GameEdition>
+            {
+                new() { Code = "standard", Title = "Standard", Price = 60m, IsDefault = true },
+                new() { Code = "deluxe", Title = "Deluxe Edition", Price = 80m, DiscountPercent = 25m }
+            }
+        };
+
+        [Fact]
+        public async Task Edition_line_is_priced_by_the_edition_and_keeps_its_code_and_title()
+        {
+            var service = Build(details: new[] { DetailsWithEditions() });
+
+            var result = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem> { new() { GameId = GameId, Quantity = 1, EditionCode = "deluxe" } },
+                UserName = "user-1"
+            });
+
+            Assert.True(result.Success, result.Error);
+            var line = Assert.Single(result.Items);
+            // Своя скидка издания (25% от 80) — и код/название остаются в строке для заказа и выдачи ключей.
+            Assert.Equal(80m, line.UnitPrice);
+            Assert.Equal(60m, line.FinalUnitPrice);
+            Assert.Equal("deluxe", line.EditionCode);
+            Assert.Equal("Deluxe Edition", line.EditionTitle);
+            Assert.Equal("Test Game — Deluxe Edition", line.Title);
+        }
+
+        [Fact]
+        public async Task Default_edition_is_priced_by_the_edition_and_keeps_its_code_for_the_order()
+        {
+            var service = Build(details: new[] { DetailsWithEditions() });
+
+            var result = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem> { new() { GameId = GameId, Quantity = 1, EditionCode = "standard" } },
+                UserName = "user-1"
+            });
+
+            Assert.True(result.Success, result.Error);
+            var line = Assert.Single(result.Items);
+            // Код издания по умолчанию остаётся в строке: раньше он обнулялся, и выдача видела только ключи
+            // без кода, хотя наличие считало и ключи с кодом. Ключи без кода добирает сама выдача.
+            Assert.Equal("standard", line.EditionCode);
+            Assert.Equal("Standard", line.EditionTitle);
+            Assert.Equal(60m, line.FinalUnitPrice);
+        }
+
+        [Fact]
+        public async Task Same_edition_in_different_letter_case_is_one_line_with_the_catalog_spelling()
+        {
+            // «deluxe» и «DELUXE» — одно издание. Раньше это были две строки в обход лимита количества,
+            // а вторая ещё и не выдавалась: склад ищет издание точным сравнением кода.
+            var service = Build(details: new[] { DetailsWithEditions() });
+
+            var result = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem>
+                {
+                    new() { GameId = GameId, Quantity = 6, EditionCode = "deluxe" },
+                    new() { GameId = GameId.ToUpperInvariant(), Quantity = 6, EditionCode = "DELUXE" }
+                },
+                UserName = "user-1"
+            });
+
+            Assert.False(result.Success);
+            Assert.Contains("Quantity", result.Error);
+
+            var within = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem>
+                {
+                    new() { GameId = GameId, Quantity = 2, EditionCode = "deluxe" },
+                    new() { GameId = GameId, Quantity = 3, EditionCode = " DELUXE " }
+                },
+                UserName = "user-1"
+            });
+            Assert.True(within.Success, within.Error);
+            var line = Assert.Single(within.Items);
+            Assert.Equal(5, line.Quantity);
+            Assert.Equal("deluxe", line.EditionCode);
+        }
+
+        [Fact]
+        public async Task Edition_with_a_region_offer_but_no_regional_price_is_charged_the_edition_price()
+        {
+            // Deluxe + Europe без своей региональной цены уходил по цене базовой игры (60 вместо 80),
+            // а ключ выдавался Deluxe — магазин терял разницу на каждом таком заказе.
+            var game = Game(60m);
+            var europe = SuperBot.Core.Regions.RegionOffer.KeyOf(new SuperBot.Core.Regions.RegionPolicy { Mode = "Regions", Regions = new() { "EU" } });
+            game.RegionPrices = new List<SuperBot.Core.Regions.RegionPrice> { new() { OfferKey = europe, Price = 45m } };
+            var service = Build(new[] { game }, details: new[] { DetailsWithEditions() });
+
+            var deluxe = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem> { new() { GameId = GameId, Quantity = 1, EditionCode = "deluxe", OfferKey = europe } },
+                UserName = "user-1"
+            });
+            Assert.True(deluxe.Success, deluxe.Error);
+            // Региональная цена «для игры» относится к базовому изданию, а не к Deluxe.
+            Assert.Equal(80m, Assert.Single(deluxe.Items).UnitPrice);
+
+            var standard = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem> { new() { GameId = GameId, Quantity = 1, EditionCode = "standard", OfferKey = europe } },
+                UserName = "user-1"
+            });
+            Assert.True(standard.Success, standard.Error);
+            Assert.Equal(45m, Assert.Single(standard.Items).UnitPrice);
+
+            // Своя региональная цена издания — важнее всего.
+            game.RegionPrices.Add(new SuperBot.Core.Regions.RegionPrice { OfferKey = europe, EditionCode = "deluxe", Price = 70m });
+            var priced = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem> { new() { GameId = GameId, Quantity = 1, EditionCode = "deluxe", OfferKey = europe } },
+                UserName = "user-1"
+            });
+            Assert.Equal(70m, Assert.Single(priced.Items).UnitPrice);
+        }
+
+        [Fact]
+        public async Task Two_editions_of_one_game_are_two_lines_and_unknown_edition_is_rejected()
+        {
+            var service = Build(details: new[] { DetailsWithEditions() });
+
+            var both = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem>
+                {
+                    new() { GameId = GameId, Quantity = 1, EditionCode = "standard" },
+                    new() { GameId = GameId, Quantity = 1, EditionCode = "deluxe" }
+                },
+                UserName = "user-1"
+            });
+            Assert.True(both.Success, both.Error);
+            Assert.Equal(2, both.Items.Count);
+            Assert.Equal(120m, both.Total);
+
+            var unknown = await service.PriceAsync(new CheckoutPricingRequest
+            {
+                Items = new List<CheckoutPricingItem> { new() { GameId = GameId, Quantity = 1, EditionCode = "ultimate" } },
+                UserName = "user-1"
+            });
+            Assert.False(unknown.Success);
+            Assert.Contains("edition", unknown.Error, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

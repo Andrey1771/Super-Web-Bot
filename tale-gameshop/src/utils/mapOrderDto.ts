@@ -1,8 +1,12 @@
 import type { Order, OrderEvent, OrderItem } from "../types/orders";
 
 type ApiOrderItemDto = {
+  itemId?: string;
+  lineTotal?: number;
+  refundedQty?: number;
   gameId?: string;
   title?: string;
+  region?: string | null;
   price?: number;
   qty?: number;
   keysDelivered?: number;
@@ -41,6 +45,12 @@ type ApiOrderDto = {
   notes?: string;
   promoCode?: string;
   events?: ApiOrderEventDto[];
+  refundedAmount?: number;
+  cashbackApplied?: number;
+  cashbackUsd?: number;
+  cashbackEarned?: Order["cashbackEarned"] | null;
+  tax?: Order["tax"] | null;
+  dispute?: Order["dispute"] | null;
 };
 
 const ORDER_STATUSES: Order["status"][] = [
@@ -62,8 +72,12 @@ const normalizeFulfillmentStatus = (value?: string): Order["fulfillmentStatus"] 
   value ? (value.toUpperCase() as Order["fulfillmentStatus"]) : undefined;
 
 const mapItem = (item?: ApiOrderItemDto): OrderItem => ({
+  itemId: item?.itemId ?? "",
+  lineTotal: item?.lineTotal ?? (item?.price ?? 0) * (item?.qty ?? 1),
+  refundedQty: item?.refundedQty ?? 0,
   gameId: item?.gameId ?? "",
   title: item?.title ?? "Unknown",
+  region: item?.region ?? null,
   price: item?.price ?? 0,
   qty: item?.qty ?? 1,
   keysDelivered: item?.keysDelivered ?? 0,
@@ -98,6 +112,13 @@ export const mapOrderDto = (dto: ApiOrderDto): Order => ({
   notes: dto.notes,
   promoCode: dto.promoCode,
   events: (dto.events ?? []).map(mapEvent),
+  // Кэшбэк, налог и спор раньше терялись здесь, и карточка заказа в админке их не показывала вовсе.
+  refundedAmount: dto.refundedAmount ?? undefined,
+  cashbackApplied: dto.cashbackApplied ?? undefined,
+  cashbackUsd: dto.cashbackUsd ?? undefined,
+  cashbackEarned: dto.cashbackEarned ?? undefined,
+  tax: dto.tax ?? undefined,
+  dispute: dto.dispute ?? undefined,
 });
 
 export const mapOrderListResponse = (response: { items?: ApiOrderDto[]; total?: number }) => ({

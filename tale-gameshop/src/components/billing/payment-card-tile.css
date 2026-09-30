@@ -1,0 +1,183 @@
+/* Сохранённая карта в форме карты — см. PaymentCardTile.tsx. */
+.payment-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.payment-card__plastic {
+    position: relative;
+    aspect-ratio: 1.586;
+    border-radius: 14px;
+    padding: 16px 18px;
+    color: #fff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 14px 32px rgba(30, 20, 70, 0.18);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.payment-card:hover .payment-card__plastic {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(30, 20, 70, 0.22);
+}
+
+/* Блики: два больших полупрозрачных круга, как отражение на пластике. */
+.payment-card__plastic::before,
+.payment-card__plastic::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+.payment-card__plastic::before {
+    right: -60px;
+    top: -80px;
+    width: 220px;
+    height: 220px;
+}
+
+.payment-card__plastic::after {
+    right: 20px;
+    bottom: -110px;
+    width: 200px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.payment-card__plastic.is-visa { background: linear-gradient(135deg, #1a1f71 0%, #2a3fb0 55%, #4c6fe6 100%); }
+.payment-card__plastic.is-mastercard { background: linear-gradient(135deg, #1c1c24 0%, #2d2f3a 60%, #44475a 100%); }
+.payment-card__plastic.is-maestro { background: linear-gradient(135deg, #0b3a6b 0%, #0f5aa8 60%, #2f8ad9 100%); }
+.payment-card__plastic.is-amex { background: linear-gradient(135deg, #0a6d8f 0%, #1a97b8 60%, #4fc3e0 100%); }
+.payment-card__plastic.is-discover { background: linear-gradient(135deg, #3d2a1a 0%, #8a4b17 60%, #f58220 100%); }
+.payment-card__plastic.is-mir { background: linear-gradient(135deg, #0f5c3a 0%, #16a05a 60%, #3fc57f 100%); }
+.payment-card__plastic.is-generic { background: linear-gradient(135deg, #3b2b8f 0%, #6d3ee8 60%, #9a6cff 100%); }
+
+.payment-card__top,
+.payment-card__bottom,
+.payment-card__number {
+    position: relative;
+}
+
+.payment-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.payment-card__brand-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    opacity: 0.9;
+    align-self: center;
+}
+
+.payment-card__brand svg {
+    width: 46px;
+    height: 30px;
+}
+
+.payment-card__number {
+    display: flex;
+    gap: 0.55em;
+    font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 18px;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.payment-card__last4 {
+    font-weight: 700;
+}
+
+.payment-card__bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.payment-card__expiry {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.payment-card__label {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Круглые кнопки на карте, полупрозрачные как бейдж; звезда основной карты — залитая белая. */
+.payment-card__tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.payment-card__tool {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    padding: 0;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.payment-card__tool:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.06);
+}
+
+.payment-card__tool.is-active {
+    background: #fff;
+    border-color: #fff;
+    color: #f59e0b;
+    cursor: default;
+}
+
+.payment-card__tool--danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.85);
+    border-color: rgba(239, 68, 68, 0.9);
+}
+
+.payment-card__tool:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.payment-card__tool:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .payment-card__plastic,
+    .payment-card:hover .payment-card__plastic {
+        transition: none;
+        transform: none;
+    }
+}

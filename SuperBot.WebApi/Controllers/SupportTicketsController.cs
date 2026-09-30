@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Support.Dto;
 using SuperBot.WebApi.Support.Infrastructure;
 using SuperBot.WebApi.Support.Services;
@@ -47,7 +48,7 @@ public class SupportTicketsController : ControllerBase
         }
         catch (SupportRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -65,7 +66,7 @@ public class SupportTicketsController : ControllerBase
         }
         catch (SupportRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -80,7 +81,7 @@ public class SupportTicketsController : ControllerBase
         }
         catch (SupportRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -95,7 +96,7 @@ public class SupportTicketsController : ControllerBase
         }
         catch (SupportRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -111,7 +112,7 @@ public class SupportTicketsController : ControllerBase
         }
         catch (SupportRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -126,7 +127,7 @@ public class SupportTicketsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(messageId))
             {
-                return Problem("messageId is required.", statusCode: StatusCodes.Status400BadRequest);
+                return this.ApiProblem("messageId is required.", StatusCodes.Status400BadRequest, "ticket.messageIdRequired");
             }
 
             var userContext = SupportUserContext.FromClaims(User);
@@ -135,7 +136,7 @@ public class SupportTicketsController : ControllerBase
         }
         catch (SupportRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -150,7 +151,7 @@ public class SupportTicketsController : ControllerBase
         }
         catch (SupportRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 }

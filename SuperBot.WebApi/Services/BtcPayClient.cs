@@ -61,12 +61,17 @@ namespace SuperBot.WebApi.Services
             }
         }
 
-        public async Task<BtcPayInvoice> CreateInvoiceAsync(decimal amountUsd, string redirectUrl, Dictionary<string, string> metadata, CancellationToken ct)
+        /// <summary>
+        /// Инвойс на сумму в валюте расчёта. Валюта — параметр, а не константа: чекаут считает
+        /// корзину в валюте покупателя, и подставлять сюда доллары значит выставлять счёт на
+        /// другие деньги — BTCPay пересчитает в биткоины не ту сумму.
+        /// </summary>
+        public async Task<BtcPayInvoice> CreateInvoiceAsync(decimal amount, string currency, string redirectUrl, Dictionary<string, string> metadata, CancellationToken ct)
         {
             var payload = new
             {
-                amount = amountUsd.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-                currency = "USD",
+                amount = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                currency = string.IsNullOrWhiteSpace(currency) ? "USD" : currency.ToUpperInvariant(),
                 metadata,
                 checkout = new
                 {

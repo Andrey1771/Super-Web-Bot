@@ -50,6 +50,10 @@
   flex-wrap: wrap;
 }
 
+.prices__refresh {
+  margin-left: auto;
+}
+
 .prices__search {
   max-width: 320px;
 }

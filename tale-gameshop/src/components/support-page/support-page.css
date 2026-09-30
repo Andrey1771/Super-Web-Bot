@@ -3,17 +3,159 @@
   color: var(--color-text);
 }
 
+/* Шапка: светлый градиент от белого к фону страницы, снизу отделена линией.
+   Две колонки — заголовок с поиском слева, каналы связи справа. */
 .support-hero {
-  padding: var(--space-56) 0 var(--space-32);
+  padding: var(--space-56) 0 var(--space-40);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-bg) 100%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.support-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.8fr);
+  gap: var(--space-40);
+  align-items: end;
 }
 
 .support-hero-content {
   max-width: 720px;
 }
 
-.support-hero-content p {
-  font-size: 18px;
+.support-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.support-hero-content h1 {
+  margin: var(--space-16) 0 var(--space-10);
+  font-size: clamp(30px, 3.6vw, 42px);
+  letter-spacing: -0.01em;
+}
+
+.support-hero-content > p {
+  font-size: 17px;
   color: var(--color-muted);
+  max-width: 560px;
+  margin-bottom: var(--space-24);
+}
+
+.support-hero-aside {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-20) var(--space-24);
+  box-shadow: var(--shadow-sm);
+}
+
+.support-hero-aside h2 {
+  margin: 0 0 var(--space-12);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.support-hero-channels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Строка канала: слева иконка и название, справа короткая подпись. Ссылка, кнопка и div
+   выглядят одинаково — как строки списка, а не как кнопки. */
+.support-hero-channel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-8) var(--space-10);
+  margin: 0 calc(-1 * var(--space-10));
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.support-hero-channel:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+}
+
+.support-hero-channel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-10);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.support-hero-channel-title svg {
+  color: var(--color-primary);
+  width: 16px;
+}
+
+.support-hero-channel-note {
+  font-size: 13px;
+  color: var(--color-muted);
+  text-align: right;
+}
+
+/* Темы — сразу под шапкой, с маленькой подписью вместо второго заголовка. */
+.support-actions {
+  padding: var(--space-40) 0 0;
+}
+
+.support-topics-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin-bottom: var(--space-18);
+}
+
+.support-topics-header h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.support-topics-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.support-topics-all:hover {
+  text-decoration: underline;
 }
 
 .support-section-header {
@@ -356,6 +498,11 @@ button.support-contact-card:hover {
 }
 
 @media (max-width: 1100px) {
+  .support-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
   .support-action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -392,6 +539,16 @@ button.support-contact-card:hover {
 
   .support-search-active {
     align-self: flex-start;
+  }
+
+  .support-hero-channel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .support-hero-channel-note {
+    text-align: left;
   }
 
   .support-empty {

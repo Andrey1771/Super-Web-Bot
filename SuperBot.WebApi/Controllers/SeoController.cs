@@ -2,6 +2,7 @@ using System.Text;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.WebApi.Services;
 
@@ -39,7 +40,9 @@ public class SeoController : ControllerBase
         "/callback",
         "/tg",
         "/newsletter/confirm",
-        "/newsletter/unsubscribe"
+        "/newsletter/unsubscribe",
+        // Ссылка приходит только письмом и работает по подписанному токену — в поиске ей нечего делать.
+        "/reviews/unsubscribe"
     ];
 
     private readonly ICatalogSnapshotService _catalogSnapshot;
@@ -102,11 +105,26 @@ public class SeoController : ControllerBase
     private async Task<string> BuildSitemapAsync(string baseUrl)
     {
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
+        XNamespace xhtml = "http://www.w3.org/1999/xhtml";
         var urls = new List<XElement>();
 
         void Add(string path, DateTime? lastModified, string changeFrequency, string priority)
         {
             var url = new XElement(ns + "url", new XElement(ns + "loc", $"{baseUrl}{path}"));
+
+            // Языковые версии: язык — параметр ?lang=, английская — по «голому» адресу и она же x-default.
+            // Тот же кластер витрина ставит в <head> (PageMeta): карта и страницы должны говорить одно.
+            foreach (var language in SuperBot.WebApi.Services.BuyerLanguage.Supported)
+            {
+                url.Add(new XElement(xhtml + "link",
+                    new XAttribute("rel", "alternate"),
+                    new XAttribute("hreflang", language),
+                    new XAttribute("href", LanguageHref($"{baseUrl}{path}", language))));
+            }
+            url.Add(new XElement(xhtml + "link",
+                new XAttribute("rel", "alternate"),
+                new XAttribute("hreflang", "x-default"),
+                new XAttribute("href", $"{baseUrl}{path}")));
 
             // lastmod указываем только когда он действительно известен: неверная дата
             // хуже отсутствующей — робот перестаёт доверять всей карте.
@@ -127,16 +145,27 @@ public class SeoController : ControllerBase
         Add("/about", null, "monthly", "0.3");
         Add("/faq", null, "monthly", "0.3");
 
-        var catalog = await _catalogSnapshot.GetAsync();
+        var fullCatalog = await _catalogSnapshot.GetAsync();
+        var catalog = fullCatalog.Where(item => item.Kind == ProductKind.Game).ToList();
+        var software = fullCatalog.Where(item => item.Kind == ProductKind.Software).ToList();
+
+        // Отдельного раздела ПО нет: софт — режим каталога (/games?type=software), в карту такие страницы
+        // с параметрами не попадают. Сами товары ПО — по общему адресу /games/{slug}; старые /software/…
+        // отдают 301 на него.
+        foreach (var item in software.Where(item => !string.IsNullOrWhiteSpace(item.Slug)))
+        {
+            Add($"/games/{Slugify(item.Slug)}", null, "weekly", "0.6");
+        }
 
         // Страницы категорий: отдельный адрес на жанр, который можно показать в выдаче.
-        foreach (var category in catalog
-                     .Select(item => item.Category)
-                     .Where(category => !string.IsNullOrWhiteSpace(category))
+        // Адрес — код жанра: при переименовании жанра в админке он не меняется.
+        foreach (var genre in catalog
+                     .Select(item => item.Genre)
+                     .Where(genre => !string.IsNullOrWhiteSpace(genre))
                      .Distinct(StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(category => category, StringComparer.OrdinalIgnoreCase))
+                     .OrderBy(genre => genre, StringComparer.OrdinalIgnoreCase))
         {
-            Add($"/games/category/{Slugify(category)}", null, "weekly", "0.7");
+            Add($"/games/category/{genre}", null, "weekly", "0.7");
         }
 
         foreach (var item in catalog.Where(item => !string.IsNullOrWhiteSpace(item.Slug)))
@@ -159,10 +188,14 @@ public class SeoController : ControllerBase
 
         var document = new XDocument(
             new XDeclaration("1.0", "utf-8", null),
-            new XElement(ns + "urlset", urls));
+            new XElement(ns + "urlset", new XAttribute(XNamespace.Xmlns + "xhtml", xhtml), urls));
 
         return document.Declaration + Environment.NewLine + document;
     }
+
+    /// <summary>Адрес языковой версии: английская — сам адрес, остальные — с параметром lang (как languageHref во фронте).</summary>
+    public static string LanguageHref(string url, string language) =>
+        language == "en" ? url : $"{url}{(url.Contains('?') ? "&" : "?")}lang={language}";
 
     /// <summary>
     /// Повторяет slugify витрины (tale-gameshop/src/utils/slugify.ts) СИМВОЛ В СИМВОЛ —

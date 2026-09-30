@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Stripe;
 using SuperBot.Core.Entities;
+using SuperBot.Infrastructure.Services;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Claims;
 using System.Text;
 using System.Linq;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -16,28 +17,28 @@ namespace SuperBot.WebApi.Controllers
     {
         private readonly IBillingProfileRepository _billingProfileRepository;
         private readonly ISteamOrderRepository _steamOrderRepository;
-        private readonly CustomerService _customerService;
-        private readonly PaymentMethodService _paymentMethodService;
-        private readonly SetupIntentService _setupIntentService;
+        private readonly IStripeCustomerGateway _stripe;
+        private readonly SuperBot.WebApi.Services.IBillingCustomers _billingCustomers;
         private readonly ILogger<BillingController> _logger;
 
         public BillingController(
             IBillingProfileRepository billingProfileRepository,
             ISteamOrderRepository steamOrderRepository,
+            IStripeCustomerGateway stripe,
+            SuperBot.WebApi.Services.IBillingCustomers billingCustomers,
             ILogger<BillingController> logger)
         {
             _billingProfileRepository = billingProfileRepository;
             _steamOrderRepository = steamOrderRepository;
-            _customerService = new CustomerService();
-            _paymentMethodService = new PaymentMethodService();
-            _setupIntentService = new SetupIntentService();
+            _stripe = stripe;
+            _billingCustomers = billingCustomers;
             _logger = logger;
         }
 
         [HttpGet("profile")]
         public async Task<ActionResult<BillingProfileDto>> GetProfile()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             if (string.IsNullOrWhiteSpace(userId))
             {
                 return Unauthorized();
@@ -55,7 +56,7 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest("Profile payload is required.");
             }
 
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             if (string.IsNullOrWhiteSpace(userId))
             {
                 return Unauthorized();
@@ -91,30 +92,35 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet("payment-methods")]
         public async Task<ActionResult<IReadOnlyList<PaymentMethodDto>>> GetPaymentMethods()
         {
-            var profile = await GetProfileForStripeAsync();
+            var profile = await GetProfileAsync();
             if (profile == null)
             {
                 return Unauthorized();
             }
 
-            var customer = await _customerService.GetAsync(profile.StripeCustomerId);
-            var defaultPaymentMethodId = profile.DefaultPaymentMethodId ?? customer?.InvoiceSettings?.DefaultPaymentMethodId;
-
-            var paymentMethods = await _paymentMethodService.ListAsync(new PaymentMethodListOptions
+            // Карта привязывается только к клиенту, которого создали мы. Нет клиента — карт
+            // заведомо нет, и это известно здесь, в своей базе. Раньше кабинет ради ответа
+            // «карт нет» заводил клиента в Stripe и делал три запроса наружу; из-за этого
+            // страница ещё и падала, когда Stripe недоступен.
+            if (string.IsNullOrWhiteSpace(profile.StripeCustomerId))
             {
-                Customer = profile.StripeCustomerId,
-                Type = "card"
-            });
+                return Ok(new List<PaymentMethodDto>());
+            }
 
-            var result = paymentMethods.Data.Select(method => new PaymentMethodDto
+            var defaultPaymentMethodId = profile.DefaultPaymentMethodId
+                ?? await _stripe.GetDefaultPaymentMethodIdAsync(profile.StripeCustomerId);
+
+            var cards = await _stripe.ListCardsAsync(profile.StripeCustomerId);
+
+            var result = cards.Select(card => new PaymentMethodDto
             {
-                Id = method.Id,
-                Brand = method.Card?.Brand ?? "Card",
-                Last4 = method.Card?.Last4 ?? "",
-                ExpMonth = method.Card?.ExpMonth ?? 0,
-                ExpYear = method.Card?.ExpYear ?? 0,
-                IsDefault = method.Id == defaultPaymentMethodId,
-                Label = method.Id == defaultPaymentMethodId ? "Default" : null
+                Id = card.Id,
+                Brand = card.Brand,
+                Last4 = card.Last4,
+                ExpMonth = card.ExpMonth,
+                ExpYear = card.ExpYear,
+                IsDefault = card.Id == defaultPaymentMethodId,
+                Label = card.Id == defaultPaymentMethodId ? "Default" : null
             }).ToList();
 
             return Ok(result);
@@ -123,22 +129,21 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("payment-methods/setup-intent")]
         public async Task<ActionResult<SetupIntentResponse>> CreateSetupIntent()
         {
-            var profile = await GetProfileForStripeAsync();
+            var profile = await GetProfileAsync();
             if (profile == null)
             {
                 return Unauthorized();
             }
 
-            var intent = await _setupIntentService.CreateAsync(new SetupIntentCreateOptions
-            {
-                Customer = profile.StripeCustomerId,
-                PaymentMethodTypes = new List<string> { "card" },
-                Usage = "off_session"
-            });
+            // Единственное место, где клиент действительно нужен: SetupIntent привязывает
+            // карту к клиенту, без него привязывать не к чему.
+            await EnsureStripeCustomerAsync(profile);
+
+            var clientSecret = await _stripe.CreateSetupIntentAsync(profile.StripeCustomerId);
 
             return Ok(new SetupIntentResponse
             {
-                ClientSecret = intent.ClientSecret
+                ClientSecret = clientSecret
             });
         }
 
@@ -150,19 +155,20 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest("PaymentMethodId is required.");
             }
 
-            var profile = await GetProfileForStripeAsync();
+            var profile = await GetProfileAsync();
             if (profile == null)
             {
                 return Unauthorized();
             }
 
-            await _customerService.UpdateAsync(profile.StripeCustomerId, new CustomerUpdateOptions
+            // Ни одной карты не привязано — назначать по умолчанию нечего. Заводить ради
+            // этого клиента бессмысленно: операция всё равно невыполнима.
+            if (string.IsNullOrWhiteSpace(profile.StripeCustomerId))
             {
-                InvoiceSettings = new CustomerInvoiceSettingsOptions
-                {
-                    DefaultPaymentMethod = request.PaymentMethodId
-                }
-            });
+                return NotFound("No saved cards.");
+            }
+
+            await _stripe.SetDefaultCardAsync(profile.StripeCustomerId, request.PaymentMethodId);
 
             profile.DefaultPaymentMethodId = request.PaymentMethodId;
             await _billingProfileRepository.UpsertAsync(profile);
@@ -178,31 +184,36 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest("PaymentMethodId is required.");
             }
 
-            var profile = await GetProfileForStripeAsync();
+            var profile = await GetProfileAsync();
             if (profile == null)
             {
                 return Unauthorized();
             }
 
-            await _paymentMethodService.DetachAsync(paymentMethodId);
+            if (string.IsNullOrWhiteSpace(profile.StripeCustomerId))
+            {
+                return NotFound("No saved cards.");
+            }
+
+            // Проверка владельца. Раньше detach уходил в Stripe по любому идентификатору из
+            // адреса: авторизованный посетитель, знающий чужой pm_…, отвязывал чужую карту.
+            // Идентификаторы случайные, но проверки не было вовсе.
+            var card = await _stripe.GetCardAsync(paymentMethodId);
+            if (card == null || !string.Equals(card.CustomerId, profile.StripeCustomerId, StringComparison.Ordinal))
+            {
+                // «Нет такой» и «не ваша» отвечаются одинаково: иначе ответ подсказывал бы,
+                // какие идентификаторы существуют.
+                return NotFound();
+            }
+
+            await _stripe.DetachCardAsync(paymentMethodId);
 
             if (profile.DefaultPaymentMethodId == paymentMethodId)
             {
-                profile.DefaultPaymentMethodId = null;
-                var remaining = await _paymentMethodService.ListAsync(new PaymentMethodListOptions
-                {
-                    Customer = profile.StripeCustomerId,
-                    Type = "card"
-                });
+                var remaining = await _stripe.ListCardsAsync(profile.StripeCustomerId);
+                var newDefault = remaining.FirstOrDefault();
 
-                var newDefault = remaining.Data.FirstOrDefault();
-                await _customerService.UpdateAsync(profile.StripeCustomerId, new CustomerUpdateOptions
-                {
-                    InvoiceSettings = new CustomerInvoiceSettingsOptions
-                    {
-                        DefaultPaymentMethod = newDefault?.Id
-                    }
-                });
+                await _stripe.SetDefaultCardAsync(profile.StripeCustomerId, newDefault?.Id);
 
                 profile.DefaultPaymentMethodId = newDefault?.Id;
                 await _billingProfileRepository.UpsertAsync(profile);
@@ -214,7 +225,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet("invoices")]
         public async Task<ActionResult<InvoicePageDto>> GetInvoices([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var identifiers = GetUserIdentifiers();
+            var identifiers = User.GetAccountIdentifiers();
             if (identifiers.Count == 0)
             {
                 return Unauthorized();
@@ -231,7 +242,7 @@ namespace SuperBot.WebApi.Controllers
                 .ToList();
 
             var totalCount = userOrders.Count;
-            _logger.LogInformation("Billing invoices fetched for {UserId}. Count: {Count}.", GetUserId(), totalCount);
+            _logger.LogInformation("Billing invoices fetched for {UserId}. Count: {Count}.", User.GetUserId(), totalCount);
             var pageItems = userOrders
                 .Skip((normalizedPage - 1) * normalizedPageSize)
                 .Take(normalizedPageSize)
@@ -268,13 +279,13 @@ namespace SuperBot.WebApi.Controllers
             {
                 return NotFound();
             }
-            var identifiers = GetUserIdentifiers();
+            var identifiers = User.GetAccountIdentifiers();
             if (!identifiers.Contains(order.Username))
             {
                 return Forbid();
             }
 
-            var profile = await GetOrCreateProfileAsync(GetUserId());
+            var profile = await GetOrCreateProfileAsync(User.GetUserId());
             var lines = new List<string>
             {
                 "Tale Shop Invoice",
@@ -299,8 +310,8 @@ namespace SuperBot.WebApi.Controllers
                 profile = new BillingProfile
                 {
                     UserId = userId,
-                    DisplayName = GetDisplayName(),
-                    Email = GetEmail(),
+                    DisplayName = User.GetDisplayName(),
+                    Email = User.GetEmail(),
                     HideOwnedGamesInProfile = false
                 };
                 await _billingProfileRepository.UpsertAsync(profile);
@@ -310,13 +321,13 @@ namespace SuperBot.WebApi.Controllers
             var updated = false;
             if (string.IsNullOrWhiteSpace(profile.DisplayName))
             {
-                profile.DisplayName = GetDisplayName();
+                profile.DisplayName = User.GetDisplayName();
                 updated = true;
             }
 
             if (string.IsNullOrWhiteSpace(profile.Email))
             {
-                profile.Email = GetEmail();
+                profile.Email = User.GetEmail();
                 updated = true;
             }
 
@@ -328,27 +339,34 @@ namespace SuperBot.WebApi.Controllers
             return profile;
         }
 
-        private async Task<BillingProfile> GetProfileForStripeAsync()
+        /// <summary>
+        /// Профиль покупателя из своей базы. В Stripe не ходит: раньше это делал один
+        /// помощник на всё, и «покажи мои карты» попутно заводило клиента в Stripe даже
+        /// тому, кто никогда ничего не оплатит.
+        /// </summary>
+        private async Task<BillingProfile> GetProfileAsync()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             if (string.IsNullOrWhiteSpace(userId))
             {
                 return null;
             }
 
-            var profile = await GetOrCreateProfileAsync(userId);
-            if (string.IsNullOrWhiteSpace(profile.StripeCustomerId))
+            return await GetOrCreateProfileAsync(userId);
+        }
+
+        /// <summary>
+        /// Заводит покупателя в Stripe, если его ещё нет. Тот же покупатель, что и у кассы (см. BillingCustomers):
+        /// карта, сохранённая при оплате, и карта, добавленная здесь, лежат у одного покупателя.
+        /// </summary>
+        private async Task EnsureStripeCustomerAsync(BillingProfile profile)
+        {
+            if (!string.IsNullOrWhiteSpace(profile.StripeCustomerId))
             {
-                var customer = await _customerService.CreateAsync(new CustomerCreateOptions
-                {
-                    Email = profile.Email,
-                    Name = profile.DisplayName
-                });
-                profile.StripeCustomerId = customer.Id;
-                await _billingProfileRepository.UpsertAsync(profile);
+                return;
             }
 
-            return profile;
+            profile.StripeCustomerId = await _billingCustomers.EnsureStripeCustomerAsync(User);
         }
 
         private BillingProfileDto MapProfile(BillingProfile profile)
@@ -369,54 +387,6 @@ namespace SuperBot.WebApi.Controllers
                         Phone = profile.BillingDetails.Phone
                     }
             };
-        }
-
-        private string GetUserId()
-        {
-            return User?.FindFirst("sub")?.Value
-                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User?.FindFirst("email")?.Value
-                ?? User?.FindFirst(ClaimTypes.Email)?.Value
-                ?? User?.FindFirst("preferred_username")?.Value
-                ?? string.Empty;
-        }
-
-        private string GetEmail()
-        {
-            return User?.FindFirst("email")?.Value
-                ?? User?.FindFirst(ClaimTypes.Email)?.Value
-                ?? string.Empty;
-        }
-
-        private string GetDisplayName()
-        {
-            return User?.FindFirst("name")?.Value
-                ?? User?.FindFirst("preferred_username")?.Value
-                ?? GetEmail();
-        }
-
-        private HashSet<string> GetUserIdentifiers()
-        {
-            var identifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var userId = GetUserId();
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                identifiers.Add(userId);
-            }
-
-            var email = GetEmail();
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                identifiers.Add(email);
-            }
-
-            var username = User?.FindFirst("preferred_username")?.Value;
-            if (!string.IsNullOrWhiteSpace(username))
-            {
-                identifiers.Add(username);
-            }
-
-            return identifiers;
         }
 
         private static string EscapePdf(string value)

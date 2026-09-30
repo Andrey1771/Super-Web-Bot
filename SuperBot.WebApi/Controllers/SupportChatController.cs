@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SuperBot.WebApi.Services;
 using SuperBot.WebApi.Support.Chat.Dto;
 using SuperBot.WebApi.Support.Chat.Services;
 using SuperBot.WebApi.Support.Infrastructure;
@@ -43,12 +44,12 @@ public class SupportChatController : ControllerBase
             var userContext = User.Identity?.IsAuthenticated == true
                 ? SupportUserContext.FromClaims(User)
                 : null;
-            var response = await _chatService.CreateSessionAsync(userContext, request, GetClientIp());
+            var response = await _chatService.CreateSessionAsync(userContext, request, ClientAddress.ResolveOrUnknown(HttpContext));
             return Ok(response);
         }
         catch (SupportChatRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -66,7 +67,7 @@ public class SupportChatController : ControllerBase
         }
         catch (SupportChatRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -97,7 +98,7 @@ public class SupportChatController : ControllerBase
         }
         catch (SupportChatRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -112,12 +113,12 @@ public class SupportChatController : ControllerBase
             var userContext = User.Identity?.IsAuthenticated == true
                 ? SupportUserContext.FromClaims(User)
                 : null;
-            var result = await _chatService.AddUserMessageAsync(sessionId, userContext, request.Text, GetClientIp());
+            var result = await _chatService.AddUserMessageAsync(sessionId, userContext, request.Text, ClientAddress.ResolveOrUnknown(HttpContext));
             return Ok(result);
         }
         catch (SupportChatRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -138,7 +139,7 @@ public class SupportChatController : ControllerBase
         }
         catch (SupportChatRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -160,7 +161,7 @@ public class SupportChatController : ControllerBase
         }
         catch (SupportChatRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -177,7 +178,7 @@ public class SupportChatController : ControllerBase
         }
         catch (SupportChatRequestException ex)
         {
-            return Problem(ex.Message, statusCode: ex.StatusCode);
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
         }
     }
 
@@ -200,7 +201,7 @@ public class SupportChatController : ControllerBase
                 sessionId,
                 userContext,
                 request.Text,
-                GetClientIp(),
+                ClientAddress.ResolveOrUnknown(HttpContext),
                 async chunk =>
                 {
                     var payload = JsonSerializer.Serialize(new { text = chunk }, StreamJsonOptions);
@@ -218,27 +219,11 @@ public class SupportChatController : ControllerBase
         {
             // Код кладём в событие: поток уже отдаёт 200, и HTTP-статуса у этой ошибки нет.
             // Без него виджет не отличит «диалог исчерпан» от обычного сбоя.
-            var errorPayload = JsonSerializer.Serialize(new { error = ex.Message, status = ex.StatusCode }, StreamJsonOptions);
+            var errorPayload = JsonSerializer.Serialize(new { error = ex.Message, code = ex.Code, args = ex.Args, status = ex.StatusCode }, StreamJsonOptions);
             await Response.WriteAsync($"event: error\ndata: {errorPayload}\n\n", cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
             _streamLogger.LogWarning("Support chat stream failed. SessionId={SessionId} Error={Error}", sessionId, ex.Message);
         }
     }
 
-    private string GetClientIp()
-    {
-        // Behind Cloudflare the true client IP is in CF-Connecting-IP; behind nginx it's the first
-        // entry of X-Forwarded-For. Fall back to the socket address.
-        var cfIp = Request.Headers["CF-Connecting-IP"].ToString();
-        if (!string.IsNullOrWhiteSpace(cfIp))
-        {
-            return cfIp.Trim();
-        }
-        var forwarded = Request.Headers["X-Forwarded-For"].ToString();
-        if (!string.IsNullOrWhiteSpace(forwarded))
-        {
-            return forwarded.Split(',')[0].Trim();
-        }
-        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    }
 }

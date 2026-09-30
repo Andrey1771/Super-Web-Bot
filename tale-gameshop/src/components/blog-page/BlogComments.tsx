@@ -1,3 +1,6 @@
+import { useTranslation } from "react-i18next";
+import { currentLang } from "../../context/site-preferences";
+import { formatDate as formatLocalDate } from "../../i18n/format";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useKeycloak } from "@react-keycloak/web";
 import container from "../../inversify.config";
@@ -10,8 +13,7 @@ import { getAnonId } from "../../hooks/use-blog-tracking";
 const PAGE_SIZE = 10;
 const MAX_TEXT_LENGTH = 2000;
 
-const formatCommentDate = (value: string) =>
-  new Date(value).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+const formatCommentDate = (value: string) => formatLocalDate(value);
 
 /**
  * Комментарии под статьёй: лента видна всем, а пишут только залогиненные —
@@ -19,6 +21,7 @@ const formatCommentDate = (value: string) =>
  * Гостю вместо формы показываем приглашение войти.
  */
 export default function BlogComments({ postId }: { postId: string }) {
+  const { t } = useTranslation();
   const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
   const { keycloak } = useKeycloak();
   const isAuthenticated = Boolean(keycloak.authenticated);
@@ -111,10 +114,10 @@ export default function BlogComments({ postId }: { postId: string }) {
         const status = (submitFailure as { response?: { status?: number } })?.response?.status;
         setSubmitError(
           status === 429
-            ? "You're commenting too fast — please wait a few minutes and try again."
+            ? t("blog.tooFast")
             : status === 403
-              ? "Commenting is disabled for your account."
-              : "Could not post your comment. Please try again."
+              ? t("blog.commentingDisabled")
+              : t("blog.commentFailed")
         );
       } finally {
         setSubmitting(false);
@@ -125,7 +128,7 @@ export default function BlogComments({ postId }: { postId: string }) {
 
   const handleAdminDelete = useCallback(
     async (comment: BlogComment) => {
-      const confirmed = window.confirm(`Delete this comment by "${comment.authorName}" permanently?`);
+      const confirmed = window.confirm(t("blog.deleteComment", { author: comment.authorName }));
       if (!confirmed) {
         return;
       }
@@ -145,9 +148,9 @@ export default function BlogComments({ postId }: { postId: string }) {
   const charactersLeft = MAX_TEXT_LENGTH - text.length;
 
   return (
-    <section className="blog-comments surface" aria-label="Comments">
+    <section className="blog-comments surface" aria-label={t("blog.comments")}>
       <h2 className="blog-comments__title">
-        Comments
+        {t("blog.comments")}
         {total > 0 && <span className="blog-comments__count">{total}</span>}
       </h2>
 
@@ -158,14 +161,14 @@ export default function BlogComments({ postId }: { postId: string }) {
             value={text}
             maxLength={MAX_TEXT_LENGTH}
             rows={4}
-            placeholder="Type your comment here"
-            aria-label="Comment text"
+            placeholder={t("blog.commentPlaceholder")}
+            aria-label={t("blog.commentText")}
             onChange={(event) => setText(event.target.value)}
           />
           <div className="blog-comments__form-row">
-            <span className="blog-comments__counter">{charactersLeft} characters left</span>
+            <span className="blog-comments__counter">{t("blog.charsLeft", { count: charactersLeft })}</span>
             <button className="btn btn-primary" type="submit" disabled={!text.trim() || submitting}>
-              {submitting ? "Posting…" : "Add comment"}
+              {submitting ? t("blog.posting") : t("blog.addComment")}
             </button>
           </div>
           {submitError && <p className="blog-comments__error" role="alert">{submitError}</p>}
@@ -174,21 +177,21 @@ export default function BlogComments({ postId }: { postId: string }) {
         /* Гостям форма не показывается: комментируют только с аккаунтом,
            подпись — ник из профиля. */
         <div className="blog-comments__login">
-          <p className="muted">Log in to join the discussion — comments are posted under your profile name.</p>
+          <p className="muted">{t("blog.logInToDiscuss")}</p>
           <button
             className="btn btn-primary"
             type="button"
-            onClick={() => keycloak.login({ redirectUri: window.location.href })}
+            onClick={() => keycloak.login({ redirectUri: window.location.href, locale: currentLang() })}
           >
-            Log in to comment
+            {t("blog.logInToComment")}
           </button>
         </div>
       )}
 
       {loading ? (
-        <p className="muted blog-comments__state">Loading comments…</p>
+        <p className="muted blog-comments__state">{t("blog.loadingComments")}</p>
       ) : comments.length === 0 ? (
-        <p className="muted blog-comments__state">No comments yet — be the first to share your thoughts.</p>
+        <p className="muted blog-comments__state">{t("blog.noComments")}</p>
       ) : (
         <ul className="blog-comments__list">
           {comments.map((comment) => (
@@ -204,10 +207,10 @@ export default function BlogComments({ postId }: { postId: string }) {
                     <button
                       className="blog-comment__delete"
                       type="button"
-                      title="Delete comment (admin)"
+                      title={t("blog.deleteAdmin")}
                       onClick={() => handleAdminDelete(comment)}
                     >
-                      Delete
+                      {t("common.remove")}
                     </button>
                   )}
                 </div>
@@ -220,7 +223,7 @@ export default function BlogComments({ postId }: { postId: string }) {
 
       {!loading && comments.length < total && (
         <button className="btn btn-outline blog-comments__more" type="button" onClick={loadMore} disabled={loadingMore}>
-          {loadingMore ? "Loading…" : `Show more comments (${total - comments.length})`}
+          {loadingMore ? t("common.loading") : t("blog.showMoreComments", { count: total - comments.length })}
         </button>
       )}
     </section>

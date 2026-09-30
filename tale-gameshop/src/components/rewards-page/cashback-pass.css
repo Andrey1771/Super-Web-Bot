@@ -1,0 +1,798 @@
+/*
+ * «Cashback pass» — тёмная сцена с восходящим треком уровней.
+ *
+ * Слои фона (снизу вверх): небо с пятнами света → узор геймпадов (.fx-texture) → сетка
+ * «пола», уходящая в перспективу → линия горизонта → размытые обложки игр по краям.
+ * Цвета — только семейство основного фиолетового (tokens.css) и металлы в иконках уровней.
+ */
+
+.cpass {
+    position: relative;
+    overflow: hidden;
+    color: #f3f4fb;
+    background: #0b0a18;
+    padding: clamp(64px, 7vw, 96px) 0 64px;}
+
+.cpass-sky {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(900px 480px at 78% 18%, color-mix(in srgb, var(--color-accent-fuchsia) 30%, transparent), transparent 60%),
+        radial-gradient(800px 520px at 15% 70%, color-mix(in srgb, var(--color-accent-indigo) 30%, transparent), transparent 60%),
+        radial-gradient(600px 300px at 55% 100%, color-mix(in srgb, var(--color-accent-violet) 45%, transparent), transparent 70%),
+        linear-gradient(180deg, #0b0a18 0%, #15102e 55%, #1d1240 100%);
+}
+
+.cpass-texture {
+    opacity: 0.035;
+}
+
+/* Пол: сетка в перспективе. Обёртка задаёт перспективу и гасит сетку к горизонту. */
+.cpass-floor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 46%;
+    overflow: hidden;
+    perspective: 420px;
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 45%);
+    mask-image: linear-gradient(180deg, transparent, #000 45%);
+    pointer-events: none;
+}
+
+.cpass-floor > div {
+    position: absolute;
+    left: -60%;
+    right: -60%;
+    top: -40%;
+    bottom: 0;
+    background-image:
+        linear-gradient(rgba(168, 132, 255, 0.32) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(168, 132, 255, 0.32) 1px, transparent 1px);
+    background-size: 70px 70px;
+    transform: rotateX(62deg);
+    transform-origin: 50% 100%;
+}
+
+.cpass-horizon {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 46%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(240, 171, 252, 0.6), transparent);
+    filter: blur(1px);
+    pointer-events: none;
+}
+
+/* Селектор с тремя классами: общий Cover ставит `.cover.cover { position: relative }`, и одноклассовое
+   правило ему проигрывало — обложки вставали в поток и толкали заголовок на 600px вниз. */
+.cpass .cover.cpass-cover {
+    position: absolute;
+    width: 150px;
+    aspect-ratio: 3 / 4;
+    border-radius: 14px;
+    overflow: hidden;
+    filter: blur(6px) saturate(1.2);
+    opacity: 0.4;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+.cpass-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cpass-cover-1 { left: -40px; top: 52%; rotate: -12deg; }
+.cpass-cover-2 { right: -30px; top: 58%; width: 170px; rotate: 10deg; }
+.cpass-cover-3 { right: 14%; top: -70px; width: 120px; rotate: -8deg; opacity: 0.28; }
+
+.cpass-inner {
+    position: relative;
+}
+
+/* ---------- Шапка секции ---------- */
+
+.cpass-head {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.cpass-eyebrow {
+    display: inline-flex;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.22);
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    color: #e4d9ff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.cpass-head h2 {
+    margin: 16px 0 14px;
+    max-width: 560px;
+    color: #ffffff;
+    font-size: clamp(34px, 4.2vw, 52px);
+    font-weight: 900;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+}
+
+.cpass-head h2 span {
+    background: linear-gradient(90deg, #a5b4fc, #f0abfc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.cpass-head p {
+    max-width: 470px;
+    color: #c9c4e3;
+    font-size: 17px;
+    line-height: 1.55;
+}
+
+.cpass-balance {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.cpass-balance small {
+    display: block;
+    color: #b9b3d6;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.cpass-balance b {
+    display: block;
+    color: #4ade80;
+    font-size: 34px;
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.cpass-balance a,
+.cpass-balance button {
+    display: inline-block;
+    margin-top: 6px;
+    color: #e4d9ff;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+
+.cpass-balance button {
+    margin-top: 8px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ---------- Трек ---------- */
+
+/* Трек заходит под шапку секции: левый верхний угол у него пустой (путь идёт вверх
+   справа), и туда как раз ложится заголовок. */
+.cpass-track {
+    position: relative;
+    z-index: 1;
+    aspect-ratio: 1000 / 500;
+    margin-top: -210px;
+}
+
+.cpass-rail {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.cpass-rail path {
+    fill: none;
+    stroke-linecap: round;
+}
+
+.cpass-rail-base {
+    stroke: rgba(196, 181, 253, 0.16);
+    stroke-width: 14px;
+}
+
+.cpass-rail-dots {
+    stroke: rgba(196, 181, 253, 0.35);
+    stroke-width: 2px;
+    stroke-dasharray: 2 12;
+}
+
+.cpass-rail-glow {
+    filter: drop-shadow(0 0 8px rgba(217, 70, 239, 0.7));
+}
+
+.cpass-rail-fill {
+    stroke: #a855f7;
+    stroke-width: 10px;
+}
+
+.cpass-rail-fill:nth-child(1) { stroke: var(--color-accent-indigo); }
+.cpass-rail-fill:nth-child(2) { stroke: #a855f7; }
+.cpass-rail-fill:nth-child(3) { stroke: #f0abfc; }
+
+.cpass-dot {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 5px solid var(--color-accent-fuchsia);
+    box-shadow: 0 0 0 6px rgba(217, 70, 239, 0.25);
+    transform: translate(-50%, -50%);
+    z-index: 2;
+}
+
+.cpass-nodes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Узел центрируется по медали, а не по всему блоку с подписью. */
+.cpass-node {
+    --medal: 96px;
+    position: absolute;
+    width: 200px;
+    text-align: center;
+    transform: translate(-50%, calc(var(--medal) / -2));
+    z-index: 2;
+}
+
+.cpass-node.is-current {
+    --medal: 128px;
+    z-index: 3;
+}
+
+.cpass-plat {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--medal) * 0.62);
+    width: calc(var(--medal) * 1.7);
+    height: calc(var(--medal) * 0.46);
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(196, 181, 253, 0.5), rgba(124, 58, 237, 0.16) 60%, transparent);
+    pointer-events: none;
+}
+
+.cpass-medal {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--medal);
+    height: var(--medal);
+    margin: 0 auto;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #3a2d73, #1b1535);
+    border: 2px solid rgba(196, 181, 253, 0.45);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.cpass-medal img {
+    width: 64%;
+    height: 64%;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45));
+}
+
+.cpass-node.is-current .cpass-medal {
+    border-color: #f0abfc;
+    box-shadow:
+        0 0 0 8px rgba(217, 70, 239, 0.18),
+        0 0 60px rgba(217, 70, 239, 0.45),
+        0 22px 50px rgba(0, 0, 0, 0.6);
+}
+
+.cpass-node.is-current .cpass-plat {
+    background: radial-gradient(closest-side, rgba(240, 171, 252, 0.7), rgba(217, 70, 239, 0.22) 60%, transparent);
+}
+
+.cpass-node.is-next .cpass-medal {
+    border: 2px dashed rgba(240, 171, 252, 0.8);
+}
+
+.cpass-node.is-locked .cpass-medal {
+    background: #161229;
+    border: 2px dashed rgba(196, 181, 253, 0.28);
+}
+
+.cpass-node.is-locked .cpass-medal img {
+    opacity: 0.55;
+}
+
+.cpass-tag {
+    position: absolute;
+    left: 50%;
+    top: -42px;
+    transform: translateX(-50%);
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #1a1436;
+    font-size: 13px;
+    font-weight: 900;
+    white-space: nowrap;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.cpass-tag::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 10px;
+    height: 10px;
+    background: #ffffff;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.cpass-label {
+    position: relative;
+    display: block;
+    margin-top: 14px;
+}
+
+.cpass-label b {
+    display: block;
+    color: #ffffff;
+    font-size: 17px;
+}
+
+.cpass-pct {
+    display: block;
+    color: #e4d9ff;
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1.05;
+}
+
+.cpass-node.is-current .cpass-pct {
+    font-size: 40px;
+    background: linear-gradient(90deg, #c4b5fd, #f0abfc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.cpass-node.is-locked .cpass-pct {
+    color: #8a84ab;
+}
+
+.cpass-label small {
+    display: block;
+    margin-top: 3px;
+    color: #a9a3c8;
+    font-size: 12.5px;
+}
+
+.cpass-node.is-next .cpass-label small {
+    color: #f5b8ff;
+    font-weight: 700;
+}
+
+/* Карточка следующей награды висит в пустом месте под подъёмом трека. */
+.cpass-next {
+    position: absolute;
+    left: 55%;
+    top: 76%;
+    z-index: 2;
+    width: 270px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+.cpass-next small {
+    color: #f0abfc;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.cpass-next b {
+    display: block;
+    margin: 4px 0 10px;
+    color: #ffffff;
+    font-size: 18px;
+}
+
+.cpass-bar {
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+}
+
+.cpass-bar i {
+    display: block;
+    height: 100%;
+    min-width: 6px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--color-accent-indigo), var(--color-accent-fuchsia));
+}
+
+.cpass-next p {
+    margin: 8px 0 0;
+    color: #c9c4e3;
+    font-size: 13px;
+}
+
+/* ---------- Шаги и кнопка ---------- */
+
+.cpass-steps {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin-top: 70px;
+}
+
+.cpass-chip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 18px 8px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.cpass-chip img {
+    width: 40px;
+    height: 40px;
+    padding: 5px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cpass-chip b,
+.cpass-cta-text b {
+    display: block;
+    color: #ffffff;
+    font-size: 15px;
+}
+
+.cpass-chip small {
+    display: block;
+    color: #b9b3d6;
+    font-size: 12.5px;
+}
+
+.cpass-arrow {
+    color: #8b7ad8;
+    font-weight: 900;
+}
+
+.cpass-arrow.is-lead {
+    color: #e9b8ff;
+}
+
+/* Кнопка — последнее звено цепочки: та же форма, что у шагов, но заливка как у трека. */
+.cpass-cta {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px 8px 8px;
+    border-radius: 999px;
+    color: #ffffff;
+    text-decoration: none;
+    overflow: hidden;
+    background: linear-gradient(100deg, var(--color-accent-indigo), var(--color-accent-violet) 45%, var(--color-accent-fuchsia));
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+        0 14px 34px -8px rgba(217, 70, 239, 0.65),
+        0 0 40px -6px rgba(124, 58, 237, 0.7);
+    transition: translate 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cpass-cta::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.6s ease;
+}
+
+.cpass-cta:hover {
+    translate: 0 -2px;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+        0 18px 40px -8px rgba(217, 70, 239, 0.8),
+        0 0 50px -6px rgba(124, 58, 237, 0.85);
+}
+
+.cpass-cta:hover::before {
+    transform: translateX(120%);
+}
+
+.cpass-cta:focus-visible {
+    outline: 3px solid #f0abfc;
+    outline-offset: 3px;
+}
+
+.cpass-cta-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.cpass-cta-icon img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    filter: drop-shadow(0 3px 4px rgba(46, 16, 101, 0.45));
+    transition: translate 0.25s ease;
+}
+
+.cpass-cta:hover .cpass-cta-icon img {
+    translate: 2px -2px;
+}
+
+.cpass-cta-text {
+    position: relative;
+}
+
+.cpass-cta-text small {
+    display: block;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 12.5px;
+}
+
+.cpass-cta-go {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--color-accent-violet);
+    font-size: 18px;
+    font-weight: 900;
+}
+
+/* ---------- Появление ---------- */
+
+@keyframes cpDraw {
+    from { stroke-dashoffset: 1; }
+    to   { stroke-dashoffset: 0; }
+}
+
+@keyframes cpPop {
+    0%   { opacity: 0; transform: translate(-50%, calc(var(--medal) / -2)) scale(0.6); }
+    70%  { opacity: 1; transform: translate(-50%, calc(var(--medal) / -2)) scale(1.05); }
+    100% { opacity: 1; transform: translate(-50%, calc(var(--medal) / -2)); }
+}
+
+@keyframes cpRise {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.cpass:not(.is-in) :is(.cpass-node, .cpass-next, .cpass-chip, .cpass-cta, .cpass-arrow, .cpass-dot) {
+    opacity: 0;
+}
+
+.cpass:not(.is-in) .cpass-rail-fill {
+    stroke-dashoffset: 1;
+}
+
+/* backwards, а не both: после появления на элементах не остаётся анимированного transform
+   (иначе браузер держит их на GPU-слое и текст мылится). */
+.cpass.is-in .cpass-node {
+    animation: cpPop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+    animation-delay: calc(0.1s + var(--i, 0) * 0.14s);
+}
+
+.cpass.is-in .cpass-rail-fill {
+    animation: cpDraw 0.7s ease-out backwards;
+    animation-delay: calc(0.5s + var(--i, 0) * 0.5s);
+}
+
+.cpass.is-in .cpass-dot {
+    animation: cpRise 0.4s ease-out 1.2s backwards;
+}
+
+.cpass.is-in .cpass-next {
+    animation: cpRise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.8s backwards;
+}
+
+.cpass.is-in :is(.cpass-chip, .cpass-arrow, .cpass-cta) {
+    animation: cpRise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc(1s + var(--i, 3) * 0.1s);
+}
+
+/* Появление отыграло — снимаем анимации: перезапуск их окружением (скриншотилки) иначе
+   снова прячет всё, что появляется с задержкой. См. useSettled. */
+.cpass.is-settled :is(.cpass-node, .cpass-next, .cpass-chip, .cpass-cta, .cpass-arrow, .cpass-dot, .cpass-rail-fill) {
+    animation: none;
+}
+
+/* ---------- Узкий экран: лестница снизу вверх ---------- */
+
+/* Уровней больше пяти (их задаёт админка): узлы стоят теснее — медали и подписи мельче, чтобы не наезжали. */
+@media (min-width: 901px) {
+    .cpass-nodes.is-dense .cpass-node {
+        --medal: 68px;
+        width: 128px;
+    }
+
+    .cpass-nodes.is-dense .cpass-node.is-current {
+        --medal: 92px;
+    }
+
+    .cpass-nodes.is-dense .cpass-label b {
+        font-size: 14px;
+    }
+
+    .cpass-nodes.is-dense .cpass-pct {
+        font-size: 22px;
+    }
+
+    .cpass-nodes.is-dense .cpass-label small {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 900px) {
+    .cpass {
+        padding: 48px 0 32px;
+    }
+
+    .cpass-head {
+        flex-direction: column;
+    }
+
+    .cpass-balance {
+        text-align: left;
+    }
+
+    .cpass-cover {
+        display: none;
+    }
+
+    .cpass-track {
+        aspect-ratio: auto;
+        margin-top: 28px;
+    }
+
+    .cpass-rail,
+    .cpass-dot {
+        display: none;
+    }
+
+    /* Верхний уровень наверху: лестница читается снизу вверх, как и трек на широком экране. */
+    .cpass-nodes {
+        position: relative;
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 22px;
+        padding-left: 4px;
+    }
+
+    .cpass-nodes::before {
+        content: "";
+        position: absolute;
+        left: 40px;
+        top: 20px;
+        bottom: 20px;
+        width: 6px;
+        border-radius: 99px;
+        background: linear-gradient(0deg, var(--color-accent-indigo), var(--color-accent-fuchsia) 45%, rgba(196, 181, 253, 0.16) 60%);
+    }
+
+    .cpass-node,
+    .cpass-node.is-current {
+        --medal: 72px;
+        position: relative;
+        left: auto !important;
+        top: auto !important;
+        width: auto;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        text-align: left;
+        transform: none;
+    }
+
+    .cpass-plat,
+    .cpass-tag::after {
+        display: none;
+    }
+
+    .cpass-medal {
+        margin: 0;
+        flex: none;
+    }
+
+    .cpass-tag {
+        top: auto;
+        bottom: -12px;
+        font-size: 11px;
+        padding: 3px 8px;
+    }
+
+    .cpass-label {
+        margin-top: 0;
+    }
+
+    .cpass-node.is-current .cpass-pct {
+        font-size: 32px;
+    }
+
+    .cpass-next {
+        position: static;
+        width: auto;
+        margin-top: 24px;
+    }
+
+    .cpass-steps {
+        flex-direction: column;
+        align-items: stretch;
+        margin-top: 28px;
+    }
+
+    .cpass-arrow {
+        display: none;
+    }
+
+    @keyframes cpPop {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: none; }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cpass :is(.cpass-node, .cpass-next, .cpass-chip, .cpass-cta, .cpass-arrow, .cpass-dot, .cpass-rail-fill) {
+        animation: none !important;
+        opacity: 1 !important;
+        stroke-dashoffset: 0 !important;
+    }
+
+    .cpass-cta,
+    .cpass-cta::before {
+        transition: none;
+    }
+}

@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faPen} from '@fortawesome/free-solid-svg-icons';
+import {faTelegram} from '@fortawesome/free-brands-svg-icons';
 import AccountShell from '../components/AccountShell';
 import AvatarCropModal from '../components/AvatarCropModal';
 import ModalConfirm from '../../../components/ui/ModalConfirm';
@@ -31,6 +33,7 @@ const readNotifications = (): NotificationPrefs => {
 };
 
 const AccountSettingsPage: React.FC = () => {
+    const { t } = useTranslation();
     const { profile, updateAvatar } = useAccountProfile();
     const { addToast } = useToast();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -42,19 +45,31 @@ const AccountSettingsPage: React.FC = () => {
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [savedAvatarUrl, setSavedAvatarUrl] = useState<string | null>(profile?.avatarUrl ?? null);
     const [pendingAvatarRemoval, setPendingAvatarRemoval] = useState(false);
-    const [displayNameInput, setDisplayNameInput] = useState(profile?.displayName ?? 'User');
+    const [displayNameInput, setDisplayNameInput] = useState(profile?.displayName ?? t('common.user'));
     const [emailInput, setEmailInput] = useState(profile?.email ?? '');
     const [notifications, setNotifications] = useState<NotificationPrefs>(readNotifications);
     const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+    // Письма о новых скидках. В localStorage не кладём в отличие от соседней галочки:
+    // значение серверное, и локальная копия показывала бы прежний выбор на чужом
+    // устройстве — до тех пор, пока не ответит /me.
+    const [dealAlerts, setDealAlerts] = useState(true);
     const [telegram, setTelegram] = useState<TelegramLinkStatus | null>(null);
     const [isTelegramBusy, setIsTelegramBusy] = useState(false);
+    // Бот не настроен на сервере (503). Это не сбой связи: повторять попытку бессмысленно,
+    // пока в окружении нет токена бота, — поэтому и предлагать «попробуйте ещё раз» нельзя.
+    const [isTelegramUnavailable, setIsTelegramUnavailable] = useState(false);
+    // Человек ушёл в бота — по возвращении на вкладку статус перечитывается сам, без кнопки «Refresh».
+    const awaitingTelegramLink = useRef(false);
     const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
 
     // «Promotions» — не локальная галочка, а реальная подписка на рассылку,
     // привязанная к email аккаунта (см. NewsletterController /me).
     useEffect(() => {
         getMyNewsletter()
-            .then((my) => setNotifications((prev) => ({ ...prev, promotions: my.subscribed })))
+            .then((my) => {
+                setNotifications((prev) => ({ ...prev, promotions: my.subscribed }));
+                setDealAlerts(my.dealAlerts);
+            })
             .catch(() => { /* backend недоступен — оставляем локальное значение */ });
     }, []);
 
@@ -70,10 +85,21 @@ const AccountSettingsPage: React.FC = () => {
             const token = await createTelegramLinkToken();
             // Открываем бота с deep-link: /start <token> привяжет чат к аккаунту.
             window.open(token.deepLink, '_blank', 'noopener,noreferrer');
-            addToast('Opening Telegram — tap Start in the bot to finish linking, then Refresh.', 'info');
+            awaitingTelegramLink.current = true;
+            addToast(t('account.settings.toast.openingTelegram'), 'info');
         } catch (error) {
             console.error(error);
-            addToast('Could not start Telegram linking. Please try again.', 'error');
+
+            // 503 приходит от бот-сервиса, когда у него нет токена: он не может узнать имя бота,
+            // а без имени нет и ссылки на диалог. Отличаем это от временной неудачи — иначе
+            // человек будет жать кнопку по кругу, а мешает ему настройка сервера.
+            const status = (error as { response?: { status?: number } })?.response?.status;
+            if (status === 503) {
+                setIsTelegramUnavailable(true);
+                addToast(t('account.settings.toast.telegramNotConfigured'), 'error');
+            } else {
+                addToast(t('account.settings.toast.telegramStartFailed'), 'error');
+            }
         } finally {
             setIsTelegramBusy(false);
         }
@@ -82,14 +108,35 @@ const AccountSettingsPage: React.FC = () => {
     const handleRefreshTelegram = async () => {
         setIsTelegramBusy(true);
         try {
-            setTelegram(await getTelegramStatus());
+            const next = await getTelegramStatus();
+            setTelegram(next);
+            if (next.linked) {
+                awaitingTelegramLink.current = false;
+            }
         } catch (error) {
             console.error(error);
-            addToast('Failed to refresh Telegram status.', 'error');
+            addToast(t('account.settings.toast.telegramRefreshFailed'), 'error');
         } finally {
             setIsTelegramBusy(false);
         }
     };
+
+    // Вернулись со вкладки Telegram — проверяем, привязался ли чат. Кнопка «Refresh» этому
+    // не нужна: раньше без неё человек не знал, что делать после Start в боте.
+    useEffect(() => {
+        const onReturn = () => {
+            if (document.visibilityState === 'visible' && awaitingTelegramLink.current) {
+                void handleRefreshTelegram();
+            }
+        };
+        document.addEventListener('visibilitychange', onReturn);
+        window.addEventListener('focus', onReturn);
+        return () => {
+            document.removeEventListener('visibilitychange', onReturn);
+            window.removeEventListener('focus', onReturn);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleUnlinkTelegram = async () => {
         setIsUnlinkModalOpen(false);
@@ -97,16 +144,16 @@ const AccountSettingsPage: React.FC = () => {
         try {
             await unlinkTelegram();
             setTelegram({ linked: false });
-            addToast('Telegram disconnected.', 'success');
+            addToast(t('account.settings.toast.telegramDisconnected'), 'success');
         } catch (error) {
             console.error(error);
-            addToast('Failed to disconnect Telegram.', 'error');
+            addToast(t('account.settings.toast.telegramDisconnectFailed'), 'error');
         } finally {
             setIsTelegramBusy(false);
         }
     };
 
-    const displayName = profile?.displayName ?? 'User';
+    const displayName = profile?.displayName ?? t('common.user');
 
     useEffect(() => {
         if (isAvatarModalOpen) {
@@ -114,7 +161,7 @@ const AccountSettingsPage: React.FC = () => {
         }
 
         setSavedAvatarUrl(profile?.avatarUrl ?? null);
-        setDisplayNameInput(profile?.displayName ?? 'User');
+        setDisplayNameInput(profile?.displayName ?? t('common.user'));
         setEmailInput(profile?.email ?? '');
         setPendingAvatarRemoval(false);
     }, [profile?.avatarUrl, profile?.displayName, profile?.email, isAvatarModalOpen]);
@@ -160,11 +207,11 @@ const AccountSettingsPage: React.FC = () => {
             return;
         }
         if (file.size > 2 * 1024 * 1024) {
-            addToast('File too large (max 2MB).', 'error');
+            addToast(t('account.settings.toast.fileTooLarge'), 'error');
             return;
         }
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-            addToast('Unsupported format. Use PNG, JPG, or WebP.', 'error');
+            addToast(t('account.settings.toast.unsupportedFormat'), 'error');
             return;
         }
         const nextUrl = URL.createObjectURL(file);
@@ -204,10 +251,10 @@ const AccountSettingsPage: React.FC = () => {
             setEmailInput(refreshedProfile.email ?? emailInput);
             clearAvatarDraft();
             setPendingAvatarRemoval(false);
-            addToast('Profile updated.', 'success');
+            addToast(t('account.settings.toast.profileUpdated'), 'success');
         } catch (error) {
             console.error(error);
-            addToast('Profile save failed. Please try again.', 'error');
+            addToast(t('account.settings.toast.profileSaveFailed'), 'error');
         } finally {
             setIsSavingProfile(false);
         }
@@ -218,11 +265,11 @@ const AccountSettingsPage: React.FC = () => {
         try {
             localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
             // Подписка на рассылку — серверная: включает/выключает письма для email аккаунта.
-            await setMyNewsletter(notifications.promotions);
-            addToast('Notification preferences saved.', 'success');
+            await setMyNewsletter(notifications.promotions, dealAlerts);
+            addToast(t('account.settings.toast.prefsSaved'), 'success');
         } catch (error) {
             console.error(error);
-            addToast('Failed to update the newsletter subscription. Please try again.', 'error');
+            addToast(t('account.settings.toast.newsletterFailed'), 'error');
         } finally {
             setIsSavingPreferences(false);
         }
@@ -232,25 +279,25 @@ const AccountSettingsPage: React.FC = () => {
         setPendingAvatarRemoval(true);
         clearAvatarDraft();
         setIsRemoveModalOpen(false);
-        addToast('Avatar will be removed after Save changes.', 'info');
+        addToast(t('account.settings.toast.avatarRemoveLater'), 'info');
     };
 
     const avatarDisplayUrl = draftAvatarPreviewUrl ?? (pendingAvatarRemoval ? null : savedAvatarUrl);
 
     return (
         <AccountShell
-            title="Settings"
-            sectionLabel="Settings"
-            subtitle="Manage your profile and preferences."
+            title={t('account.settings.title')}
+            sectionLabel={t('account.settings.title')}
+            subtitle={t('account.settings.subtitle')}
         >
             <div className="card settings-card" data-testid="settings-profile">
                 <div className="settings-card-header">
-                    <h3>Profile</h3>
+                    <h3>{t('account.settings.profile')}</h3>
                 </div>
                 <div className="settings-avatar-block">
                     <button type="button" className="settings-avatar" onClick={openFileDialog}>
                         {avatarDisplayUrl ? (
-                            <img src={avatarDisplayUrl} alt={`${displayName} avatar`} />
+                            <img src={avatarDisplayUrl} alt={t('account.avatarAlt', { name: displayName })} />
                         ) : (
                             <span>{initials}</span>
                         )}
@@ -260,12 +307,12 @@ const AccountSettingsPage: React.FC = () => {
                     </button>
                     <div className="settings-avatar-actions">
                         <div>
-                            <strong>Avatar</strong>
-                            <p className="settings-avatar-hint">PNG/JPG/WebP • up to 2 MB • square recommended</p>
+                            <strong>{t('account.settings.avatar')}</strong>
+                            <p className="settings-avatar-hint">{t('account.settings.avatarHint')}</p>
                         </div>
                         <div className="settings-avatar-buttons">
                             <button type="button" className="btn btn-primary" onClick={openFileDialog} disabled={isSavingProfile}>
-                                Upload photo
+                                {t('account.settings.uploadPhoto')}
                             </button>
                             <button
                                 type="button"
@@ -273,7 +320,7 @@ const AccountSettingsPage: React.FC = () => {
                                 onClick={() => setIsRemoveModalOpen(true)}
                                 disabled={!savedAvatarUrl || isSavingProfile || pendingAvatarRemoval}
                             >
-                                Remove
+                                {t('common.remove')}
                             </button>
                         </div>
                     </div>
@@ -287,32 +334,31 @@ const AccountSettingsPage: React.FC = () => {
                 </div>
                 <div className="settings-form-grid">
                     <label className="settings-field">
-                        <span>Display name</span>
+                        <span>{t('account.settings.displayName')}</span>
                         <input type="text" value={displayNameInput} onChange={(event) => setDisplayNameInput(event.target.value)} />
                     </label>
                     <label className="settings-field">
-                        <span>Email address</span>
+                        <span>{t('account.settings.emailAddress')}</span>
                         <input type="email" value={emailInput} readOnly />
                         <Link to="/account/security" className="settings-helper-link">
-                            Change email in Security
+                            {t('account.settings.changeEmailInSecurity')}
                         </Link>
                     </label>
                 </div>
                 <div className="settings-card-footer">
-                    <span className="settings-muted-link">Keep your profile secure with a fresh avatar.</span>
+                    <span className="settings-muted-link">{t('account.settings.keepSecure')}</span>
                     <button type="button" className="btn btn-primary settings-save-btn" onClick={handleSaveProfile} disabled={isSavingProfile}>
-                        {isSavingProfile ? 'Saving...' : 'Save changes'}
+                        {isSavingProfile ? t('common.saving') : t('common.saveChanges')}
                     </button>
                 </div>
             </div>
 
             <div className="card settings-card" data-testid="settings-preferences">
                 <div className="settings-card-header">
-                    <h3>Notifications</h3>
+                    <h3>{t('account.settings.notifications')}</h3>
                 </div>
                 <p className="settings-muted-link">
-                    The deals newsletter is linked to your account email — the toggle below manages the
-                    same subscription as the forms on the site and the unsubscribe link in every email.
+                    {t('account.settings.newsletterNote')}
                 </p>
                 <div className="settings-checkboxes">
                     <label className="settings-checkbox">
@@ -321,11 +367,25 @@ const AccountSettingsPage: React.FC = () => {
                             checked={notifications.promotions}
                             onChange={(event) => setNotifications((prev) => ({ ...prev, promotions: event.target.checked }))}
                         />
-                        Deals newsletter — new discounts and special offers
+                        {t('account.settings.newsletter')}
                     </label>
-                    <label className="settings-checkbox settings-checkbox--locked" title="Transactional emails (account recovery, sign-in security) can't be disabled">
+                    {/* Вложенная настройка, а не соседняя: она про одну из рассылок, и без самой
+                        подписки смысла не имеет — поэтому при выключенной подписке недоступна. */}
+                    <label
+                        className={`settings-checkbox settings-checkbox--nested${notifications.promotions ? '' : ' settings-checkbox--locked'}`}
+                        title={notifications.promotions ? undefined : t('account.settings.turnOnNewsletter')}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={dealAlerts && notifications.promotions}
+                            disabled={!notifications.promotions}
+                            onChange={(event) => setDealAlerts(event.target.checked)}
+                        />
+                        {t('account.settings.priceDrops')}
+                    </label>
+                    <label className="settings-checkbox settings-checkbox--locked" title={t('account.settings.transactionalNote')}>
                         <input type="checkbox" checked disabled />
-                        Security alerts (account recovery, sign-in) — always on
+                        {t('account.settings.securityAlerts')}
                     </label>
                 </div>
                 <div className="settings-card-footer settings-card-footer--end">
@@ -335,72 +395,80 @@ const AccountSettingsPage: React.FC = () => {
                         onClick={handleSavePreferences}
                         disabled={isSavingPreferences}
                     >
-                        {isSavingPreferences ? 'Saving...' : 'Save preferences'}
+                        {isSavingPreferences ? t('common.saving') : t('account.settings.savePreferences')}
                     </button>
                 </div>
             </div>
 
-            <div className="card settings-card" data-testid="settings-telegram">
-                <div className="settings-card-header">
-                    <h3>Telegram</h3>
-                </div>
-                <p className="settings-muted-link">
-                    Connect Telegram to receive your purchased keys directly in a private chat with our bot.
-                    Your keys always remain available here in your account too.
-                </p>
-                {telegram?.linked ? (
-                    <div className="settings-telegram-status">
-                        <span className="settings-telegram-badge settings-telegram-badge--on">Connected</span>
-                        <span className="settings-muted-link">
-                            {telegram.username ? `@${telegram.username}` : 'Linked account'}
-                        </span>
-                        <div className="settings-pointer-actions">
+            {/* Строка интеграции, как в списках у Notion и Stripe: логотип, название с одной строкой
+                описания, справа — статус и одно действие. Статус после похода в бота перечитывается
+                сам при возврате на вкладку. */}
+            <div className="card settings-card settings-telegram" data-testid="settings-telegram">
+                <div className="settings-telegram-row">
+                    <span className="settings-telegram-icon" aria-hidden="true">
+                        <FontAwesomeIcon icon={faTelegram} />
+                    </span>
+                    <div className="settings-telegram-text">
+                        <h3>Telegram</h3>
+                        <p>
+                            {telegram?.linked
+                                ? t('account.settings.telegramLinked')
+                                : t('account.settings.telegramUnlinked')}
+                        </p>
+                    </div>
+                    {telegram?.linked ? (
+                        <div className="settings-telegram-side">
+                            <span className="settings-telegram-user">
+                                <span className="settings-telegram-avatar" aria-hidden="true">
+                                    {(telegram.username ?? 'T').charAt(0).toUpperCase()}
+                                </span>
+                                {telegram.username ? `@${telegram.username}` : t('account.settings.linkedAccount')}
+                            </span>
+                            <span className="settings-telegram-badge settings-telegram-badge--on">
+                                <span className="settings-telegram-dot" aria-hidden="true" />
+                                {t('common.connected')}
+                            </span>
                             <button
                                 type="button"
-                                className="btn btn-outline"
+                                className="settings-telegram-link"
                                 onClick={() => setIsUnlinkModalOpen(true)}
                                 disabled={isTelegramBusy}
                             >
-                                Disconnect
+                                {t('common.disconnect')}
                             </button>
                         </div>
-                    </div>
-                ) : (
-                    <div className="settings-telegram-status">
-                        <span className="settings-telegram-badge">Not connected</span>
-                        <div className="settings-pointer-actions">
+                    ) : (
+                        <div className="settings-telegram-side">
+                            <span className="settings-telegram-badge">{t('common.notConnected')}</span>
                             <button
                                 type="button"
-                                className="btn btn-primary"
+                                className="btn btn-primary settings-telegram-btn"
+                                aria-label={t('account.settings.connectTelegram')}
                                 onClick={handleConnectTelegram}
-                                disabled={isTelegramBusy}
+                                disabled={isTelegramBusy || isTelegramUnavailable}
                             >
-                                {isTelegramBusy ? 'Working...' : 'Connect Telegram'}
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-outline"
-                                onClick={handleRefreshTelegram}
-                                disabled={isTelegramBusy}
-                            >
-                                Refresh
+                                {isTelegramBusy ? t('common.working') : t('common.connect')}
                             </button>
                         </div>
-                    </div>
+                    )}
+                </div>
+                {isTelegramUnavailable && (
+                    <p className="settings-telegram-note" role="alert">
+                        {t('account.settings.telegramUnavailable')}
+                    </p>
                 )}
             </div>
 
             <div className="card settings-card" data-testid="settings-security-pointer">
                 <div className="settings-card-header">
-                    <h3>Account &amp; security</h3>
+                    <h3>{t('account.settings.accountSecurity')}</h3>
                 </div>
                 <p className="settings-muted-link">
-                    Password, two-factor authentication, active sessions and account deletion are managed in
-                    Security. Payment methods and profile privacy live in Billing.
+                    {t('account.settings.securityPointer')}
                 </p>
                 <div className="settings-pointer-actions">
-                    <Link to="/account/security" className="btn btn-outline">Open Security</Link>
-                    <Link to="/account/billing" className="btn btn-outline">Billing &amp; privacy</Link>
+                    <Link to="/account/security" className="btn btn-outline">{t('account.settings.openSecurity')}</Link>
+                    <Link to="/account/billing" className="btn btn-outline">{t('account.settings.billingPrivacy')}</Link>
                 </div>
             </div>
 
@@ -415,20 +483,20 @@ const AccountSettingsPage: React.FC = () => {
 
             <ModalConfirm
                 isOpen={isUnlinkModalOpen}
-                title="Disconnect Telegram?"
-                description="Key deliveries to your Telegram chat will stop. You can reconnect anytime."
-                confirmLabel="Disconnect"
-                cancelLabel="Cancel"
+                title={t('account.settings.disconnectTitle')}
+                description={t('account.settings.disconnectText')}
+                confirmLabel={t('common.disconnect')}
+                cancelLabel={t('common.cancel')}
                 onConfirm={handleUnlinkTelegram}
                 onCancel={() => setIsUnlinkModalOpen(false)}
             />
 
             <ModalConfirm
                 isOpen={isRemoveModalOpen}
-                title="Remove avatar?"
-                description="This will remove your current avatar and return to initials."
-                confirmLabel="Remove"
-                cancelLabel="Cancel"
+                title={t('account.settings.removeAvatarTitle')}
+                description={t('account.settings.removeAvatarText')}
+                confirmLabel={t('common.remove')}
+                cancelLabel={t('common.cancel')}
                 onConfirm={handleRemove}
                 onCancel={() => setIsRemoveModalOpen(false)}
             />

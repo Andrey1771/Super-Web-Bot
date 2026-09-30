@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, {KeyboardEvent, MouseEvent, useEffect, useMemo, useRef} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faArrowRightLong, faEye} from "@fortawesome/free-solid-svg-icons";
@@ -5,6 +6,7 @@ import {Link, useNavigate} from "react-router-dom";
 import type {BlogListItem} from "../../../types/blog";
 import {useBlogTracking} from "../../../hooks/use-blog-tracking";
 import PostCoverArt from "../../../components/blog-page/PostCoverArt";
+import { formatPostDate } from "../../../utils/post-date";
 
 /** "row" — широкая горизонтальная карточка ленты новостей: обложка сбоку, текст рядом. */
 type PostCardVariant = "compact" | "featured" | "mini" | "row";
@@ -21,15 +23,6 @@ type PostCardProps = {
     onReact?: (postId: string, reaction: string) => void;
 };
 
-const formatDate = (value?: string) => {
-    if (!value) {
-        return "Draft";
-    }
-    // en-US всегда: сайт англоязычный, а формат локали браузера («27.07.2026»)
-    // выглядит на нём чужеродно.
-    return new Date(value).toLocaleDateString("en-US", {year: "numeric", month: "short", day: "numeric"});
-};
-
 export default function PostCard({
     post,
     className,
@@ -41,10 +34,12 @@ export default function PostCard({
     engagement,
     onReact
 }: PostCardProps) {
+    const { t } = useTranslation();
     const {trackImpression} = useBlogTracking();
     const navigate = useNavigate();
     const cardRef = useRef<HTMLElement | null>(null);
-    const tag = post.tags[0];
+    // Подпись первого тега на языке сайта; сам тег остаётся значением фильтра.
+    const tag = post.tagLabels?.[0] ?? post.tags[0];
     const isFeatured = variant === "featured";
     const isMini = variant === "mini";
     const titleClamp = useMemo(() => {
@@ -56,7 +51,7 @@ export default function PostCard({
     const excerptClamp = isFeatured ? "line-clamp-4" : "line-clamp-3";
     const TitleTag = (isFeatured ? "h2" : isMini ? "h4" : "h3") as React.ElementType;
     const resolvedViews = typeof engagement?.viewsCount === "number" ? engagement.viewsCount : post.viewsCount;
-    const reactionsText = typeof engagement?.totalReactions === "number" && engagement.totalReactions > 0 ? `${engagement.totalReactions} reactions` : "";
+    const reactionsText = typeof engagement?.totalReactions === "number" && engagement.totalReactions > 0 ? t("blog.reactionsCount", { count: engagement.totalReactions }) : "";
     const reactionOptions = ["👍", "❤️", "🔥", "🎮", "👀"];
 
     const isInteractiveTarget = (target: EventTarget | null) => {
@@ -129,14 +124,14 @@ export default function PostCard({
                         <TitleTag className={`post-card__title ${titleClamp}`}>{post.title}</TitleTag>
                     </Link>
                     <div className="meta-row">
-                        <span>{formatDate(post.publishedAt)}</span>
+                        <span>{formatPostDate(post.publishedAt)}</span>
                         {post.readingTime ? (
                             <>
                                 <span className="divider-dot" aria-hidden="true">•</span>
-                                <span>{`${post.readingTime} min read`}</span>
+                                <span>{t("common.minRead", { count: post.readingTime })}</span>
                             </>
                         ) : null}
-                        <span className="views-pill" title="Views">
+                        <span className="views-pill" title={t("common.views")}>
                             <FontAwesomeIcon icon={faEye} aria-hidden="true" />
                             {typeof resolvedViews === "number" ? resolvedViews : 0}
                         </span>
@@ -162,20 +157,20 @@ export default function PostCard({
             </div>
             <div className={`post-card__body post-card__body--${variant}`}>
                 <div className={`post-card__content${isFeatured ? " measure-60ch" : ""}`}>
-                    {isFeatured && showFeaturedBadge && <span className="badge featured-badge">Featured</span>}
+                    {isFeatured && showFeaturedBadge && <span className="badge featured-badge">{t("common.featured")}</span>}
                     <TitleTag className={`post-card__title ${titleClamp}`}>{post.title}</TitleTag>
                     <div className="meta-row">
-                        <span>{formatDate(post.publishedAt)}</span>
+                        <span>{formatPostDate(post.publishedAt)}</span>
                         {post.readingTime ? (
                             <>
                                 <span className="divider-dot" aria-hidden="true">•</span>
-                                <span>{`${post.readingTime} min read`}</span>
+                                <span>{t("common.minRead", { count: post.readingTime })}</span>
                             </>
                         ) : null}
                         {isFeatured && tag && <span className="meta-pill">{tag}</span>}
                         {/* Просмотры — заметной плашкой с глазом, а не серым словом в хвосте
                             строки: это единственная цифра «живости» поста, видная до клика. */}
-                        <span className="views-pill" title="Views">
+                        <span className="views-pill" title={t("common.views")}>
                             <FontAwesomeIcon icon={faEye} aria-hidden="true" />
                             {typeof resolvedViews === "number" ? resolvedViews : 0}
                         </span>
@@ -189,7 +184,7 @@ export default function PostCard({
                     {!isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}
                     {isFeatured && <p className={`post-card__excerpt ${excerptClamp}`}>{post.excerpt}</p>}
                     {!isMini && onReact ? (
-                        <div className="post-card__reactions" aria-label="Quick reactions">
+                        <div className="post-card__reactions" aria-label={t("blog.quickReactions")}>
                             {reactionOptions.map((emoji) => {
                                 const count = engagement?.reactions?.[emoji] ?? 0;
                                 const isActive = engagement?.myReaction === emoji;
@@ -212,7 +207,7 @@ export default function PostCard({
                     {isFeatured ? (
                         <>
                             <Link className="btn btn-primary" to={`/news/${post.slug}`}>
-                                Read article
+                                {t("blog.readArticle")}
                             </Link>
                             {showActions && onTagSelect && (
                                 <button
@@ -220,14 +215,14 @@ export default function PostCard({
                                     type="button"
                                     onClick={() => onTagSelect(tag ?? "All")}
                                 >
-                                    View all {tag ?? "posts"}
+                                    {t("blog.viewAllTag", { tag: tag ?? t("blog.posts") })}
                                     <FontAwesomeIcon icon={faArrowRightLong} />
                                 </button>
                             )}
                         </>
                     ) : (
                         <Link className="link-primary" to={`/news/${post.slug}`}>
-                            Read more
+                            {t("blog.readMore")}
                             <FontAwesomeIcon icon={faArrowRightLong} />
                         </Link>
                     )}

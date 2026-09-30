@@ -115,3 +115,61 @@
   font-size: 12px;
   color: #94a3b8;
 }
+
+/* Срок ответа по спору: пропущенный срок — автоматический проигрыш, поэтому он заметен, а близкий — красный. */
+.order-drawer__deadline {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.order-drawer__deadline--urgent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.order-drawer__status--dispute_lost,
+.order-drawer__status--disputed { background: #fee2e2; color: #991b1b; }
+
+/* Возврат по позиции */
+.order-drawer__item-refund {
+  margin-top: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.order-drawer__refunded {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.order-drawer__qty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.order-drawer__qty select {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.order-drawer__refund-preview {
+  list-style: none;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.order-drawer__refund-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+  font-size: 14px;
+}

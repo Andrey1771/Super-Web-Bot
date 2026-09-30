@@ -1,0 +1,317 @@
+/* Свой видеоплеер (VideoPlayer.tsx): браузерный <video> без родных контролов и наша панель поверх.
+   Цвета — из токенов сайта: прогресс и активные состояния фиолетовые, панель на тёмном градиенте. */
+.vp {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vp:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.vp__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: pointer;
+}
+
+/* Во время воспроизведения без движения мыши прячем и курсор: как в кинотеатре. */
+.vp.is-idle {
+  cursor: none;
+}
+
+.vp.is-idle .vp__video {
+  cursor: none;
+}
+
+/* ---- большая кнопка play по центру ---- */
+.vp__big-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.85);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(124, 58, 237, 0.35);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.vp__big-play svg {
+  width: 28px;
+  height: 28px;
+}
+
+.vp__big-play:hover {
+  background: var(--color-primary);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+/* ---- загрузка ---- */
+.vp__spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: vp-spin 0.9s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes vp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- ошибка ---- */
+.vp__error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-12);
+  background: rgba(8, 8, 18, 0.8);
+  color: #fff;
+  text-align: center;
+}
+
+.vp__error p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.vp__retry {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vp__retry:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ---- панель ---- */
+.vp__controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24px 12px 8px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.65) 100%);
+  color: #fff;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.vp.is-idle .vp__controls {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vp__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.vp__spacer {
+  flex: 1 1 auto;
+}
+
+.vp__btn {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.vp__btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.vp__btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.vp__time {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: var(--space-8);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.vp__time-sep {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ---- прогресс ---- */
+.vp__track {
+  position: relative;
+  height: 18px;
+  margin: 0 4px 6px;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+
+/* Сама полоса — тонкая линия по центру зоны клика; при наведении и фокусе чуть толще. */
+.vp__track::before,
+.vp__track-loaded,
+.vp__track-played {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  transition: height 0.15s ease;
+}
+
+.vp__track::before {
+  right: 0;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.vp__track-loaded {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.vp__track-played {
+  background: var(--color-primary);
+}
+
+.vp__track:hover::before,
+.vp__track:hover .vp__track-loaded,
+.vp__track:hover .vp__track-played,
+.vp__track:focus-visible::before,
+.vp__track:focus-visible .vp__track-loaded,
+.vp__track:focus-visible .vp__track-played {
+  height: 6px;
+}
+
+.vp__track-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  transform: translateY(-50%) scale(0);
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.35);
+  transition: transform 0.15s ease;
+  pointer-events: none;
+}
+
+.vp__track:hover .vp__track-thumb,
+.vp__track:focus-visible .vp__track-thumb {
+  transform: translateY(-50%) scale(1);
+}
+
+.vp__track-tip {
+  position: absolute;
+  bottom: 18px;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---- громкость ---- */
+.vp__volume {
+  display: flex;
+  align-items: center;
+}
+
+/* Ползунок выезжает при наведении на группу или фокусе, как у большинства плееров. */
+.vp__volume-range {
+  width: 0;
+  opacity: 0;
+  margin: 0;
+  transition: width 0.2s ease, opacity 0.2s ease;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.vp__volume:hover .vp__volume-range,
+.vp__volume:focus-within .vp__volume-range {
+  width: 84px;
+  opacity: 1;
+  margin: 0 8px;
+}
+
+/* На тач-экранах наведения нет — ползунок виден всегда. */
+@media (hover: none) {
+  .vp__volume-range {
+    width: 72px;
+    opacity: 1;
+    margin: 0 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .vp__time {
+    font-size: 12px;
+  }
+
+  .vp__big-play {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp__controls,
+  .vp__big-play,
+  .vp__track-thumb,
+  .vp__volume-range,
+  .vp__track::before,
+  .vp__track-loaded,
+  .vp__track-played {
+    transition: none;
+  }
+}

@@ -105,7 +105,7 @@ const presenceLabel = (session: ChatSession): string => {
 };
 
 const SupportLiveChatPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sessions, setSessions] = useState<ChatSessionListResponse["items"]>([]);
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
@@ -145,8 +145,7 @@ const SupportLiveChatPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Support / Live Chat");
-    setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   // silent — для фонового обновления: индикатор загрузки при нём не мигает.
   const fetchSessions = useCallback(async (silent = false) => {
@@ -345,7 +344,7 @@ const SupportLiveChatPage: React.FC = () => {
       <PageHeader
         title="Support / Live Chat"
         description="Monitor AI escalations, assign agents, and reply in real time."
-        breadcrumbs={["Admin", "Support", "Live chat"]}
+        breadcrumbs={["Support", "Live chat"]}
       />
 
       <div className="support-live-chat__grid">

@@ -1,4 +1,4 @@
-import type { GameDetailsResponse, Review, QAItem } from "./game-details";
+import type { GameDetailsResponse, Review } from "./game-details";
 
 export interface GameReviewFilters {
   sort?: string;
@@ -15,16 +15,26 @@ export interface GameReviewsResponse {
   total: number;
 }
 
+/** Причина жалобы — имя серверного enum ReviewReportReason. */
+export type ReviewReportReason = 'Spam' | 'Abusive' | 'OffTopic' | 'PersonalData' | 'Malware' | 'Other';
+
+export interface ReviewReportPayload {
+  reason: ReviewReportReason;
+  comment?: string;
+}
+
+/** Ответ на жалобу: hidden — отзыв ушёл с витрины (порог жалоб или тяжёлая причина). */
+export interface ReviewReportResult {
+  reported: boolean;
+  hidden: boolean;
+  reports: number;
+}
+
 export interface ReviewPayload {
   rating: number;
   playtimeHours?: number;
   text: string;
-  recommend: boolean;
   images?: { url: string; thumbUrl: string }[];
-}
-
-export interface GameQuestionsResponse {
-  items: QAItem[];
 }
 
 export type { GameDetailsResponse };

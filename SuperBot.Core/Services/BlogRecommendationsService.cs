@@ -80,7 +80,7 @@ namespace SuperBot.Core.Services
             if (post == null)
             {
                 profile.UpdatedAt = DateTime.UtcNow;
-                await _profileRepository.UpsertAsync(profile);
+                await SaveProfileSafelyAsync(profile);
                 return;
             }
 
@@ -88,7 +88,27 @@ namespace SuperBot.Core.Services
             UpdateHistory(profile, blogEvent);
 
             profile.UpdatedAt = DateTime.UtcNow;
-            await _profileRepository.UpsertAsync(profile);
+            await SaveProfileSafelyAsync(profile);
+        }
+
+        /// <summary>
+        /// Профиль рекомендаций — приятное дополнение, а событие — факт.
+        ///
+        /// Событие уже записано выше, до всякой работы с профилем. Поэтому неудача здесь не
+        /// имеет права превращаться в 500 и терять то, что уже сохранено: посетитель ничего
+        /// не заметит, а статистика прочтений останется полной. Худшее, что случится, —
+        /// рекомендации будут чуть менее точными.
+        /// </summary>
+        private async Task SaveProfileSafelyAsync(UserBlogProfile profile)
+        {
+            try
+            {
+                await _profileRepository.UpsertAsync(profile);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "Не удалось сохранить профиль рекомендаций блога.");
+            }
         }
 
         public async Task<BlogRecommendationsResult> GetHomeRecommendationsAsync(string userId, string anonId, int limit)
@@ -187,6 +207,12 @@ namespace SuperBot.Core.Services
 
             return _eventRepository.GetRecentByPostAsync(postId, fromUtc);
         }
+
+        public Task<Dictionary<string, int>> CountDistinctActorsByPostsAsync(
+            IEnumerable<string> postIds,
+            string eventType,
+            DateTime fromUtc) =>
+            _eventRepository.CountDistinctActorsByPostsAsync(postIds, eventType, fromUtc);
 
         private async Task<UserBlogProfile> ResolveProfileAsync(string userId, string anonId)
         {

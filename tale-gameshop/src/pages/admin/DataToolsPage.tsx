@@ -12,7 +12,7 @@ type ImportMode = "create-only" | "update-existing" | "create+update";
 type MediaStrategy = "missing-only" | "replace";
 
 const DataToolsPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
@@ -34,9 +34,8 @@ const DataToolsPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Import / Export");
-    setHeaderActions([]);
     loadImports();
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   const loadImports = async () => {
     try {

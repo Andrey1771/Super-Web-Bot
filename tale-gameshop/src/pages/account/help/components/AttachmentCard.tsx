@@ -1,3 +1,4 @@
+import i18n from '../../../../i18n';
 import React from 'react';
 import type { AttachmentMeta } from '../../../../types/support';
 import './ticket-details-modal.css';
@@ -30,7 +31,7 @@ const AttachmentCard: React.FC<AttachmentCardProps> = ({ attachment }) => {
                 target="_blank"
                 rel="noreferrer"
             >
-                Download
+                {i18n.t('common.download')}
             </a>
         </div>
     );

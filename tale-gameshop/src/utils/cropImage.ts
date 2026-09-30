@@ -1,3 +1,5 @@
+import { BackdropTones, imageHasTransparency, paintBackdrop, tonesFromColor } from './avatarBackdrop';
+
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -8,6 +10,23 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
   });
 
 const toRadian = (degree: number) => (degree * Math.PI) / 180;
+
+/**
+ * Ответ на вопрос «есть ли в картинке прозрачность» кэшируется по её адресу: модалка
+ * спрашивает при открытии, и пересчитывать на каждый повторный рендер незачем.
+ * Ключ — blob-адрес выбранного файла, живёт ровно столько же, сколько он.
+ */
+const transparencyCache = new Map<string, boolean>();
+
+export const hasTransparency = async (imageSrc: string): Promise<boolean> => {
+  const cached = transparencyCache.get(imageSrc);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const result = imageHasTransparency(await createImage(imageSrc));
+  transparencyCache.set(imageSrc, result);
+  return result;
+};
 
 export type AvatarPosition = {
   x: number;
@@ -21,7 +40,8 @@ const renderAvatarCanvas = async (
   rotation: number,
   viewportSize: number,
   cropSizePx: number,
-  outputSize: number
+  outputSize: number,
+  backdropColor: string | null
 ): Promise<HTMLCanvasElement> => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
@@ -31,6 +51,14 @@ const renderAvatarCanvas = async (
   const context = canvas.getContext('2d');
   if (!context) {
     throw new Error('Canvas is not available.');
+  }
+
+  // Подложка — под картинкой и до трансформаций: она заливает кадр целиком, независимо
+  // от того, как повёрнут и сдвинут сам арт. После неё в файле не остаётся прозрачности,
+  // поэтому аватар выглядит одинаково и в профиле, и в отзывах, и в админке.
+  const tones: BackdropTones | null = backdropColor ? tonesFromColor(backdropColor) : null;
+  if (tones) {
+    paintBackdrop(context, outputSize, tones);
   }
 
   // baseScale — от базового вьюпорта (как картинка отрисована на сцене),
@@ -59,9 +87,19 @@ export const getCroppedAvatarFile = async (
   rotation: number,
   viewportSize = 360,
   cropSizePx = viewportSize,
-  outputSize = 512
+  outputSize = 512,
+  backdropColor: string | null = null
 ): Promise<File> => {
-  const canvas = await renderAvatarCanvas(imageSrc, position, zoom, rotation, viewportSize, cropSizePx, outputSize);
+  const canvas = await renderAvatarCanvas(
+    imageSrc,
+    position,
+    zoom,
+    rotation,
+    viewportSize,
+    cropSizePx,
+    outputSize,
+    backdropColor
+  );
 
   const webpBlob = await canvasToBlob(canvas, 'image/webp', 0.92);
   const blob = webpBlob ?? (await canvasToBlob(canvas, 'image/png'));

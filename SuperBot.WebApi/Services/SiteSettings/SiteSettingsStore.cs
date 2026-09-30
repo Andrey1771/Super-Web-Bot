@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
+using SuperBot.Core.Cashback;
 using SuperBot.Core.Payments;
 using SuperBot.WebApi.Support.Chat;
 
@@ -23,25 +24,54 @@ public sealed class SiteSettingsStore
     public const string CollectionName = "SiteSettings";
     private const string DocumentId = "site";
 
+    /// <summary>
+    /// Через сколько секунд перечитывать настройки из базы.
+    ///
+    /// Раньше документ читался ОДИН раз и дальше жил в памяти, обновляясь только при сохранении
+    /// на этом же экземпляре. При нескольких репликах это значило, что правка в админке долетала
+    /// ровно до той реплики, которая обработала запрос: часы поддержки, наценка курса и
+    /// включённые платёжные рельсы у соседних оставались прежними до перезапуска — и какой
+    /// ответ получит покупатель, зависело от того, на какую реплику он попал.
+    ///
+    /// Тридцать секунд: настройки правят руками и редко, а держать их врозь дольше полуминуты
+    /// незачем.
+    /// </summary>
+    private const int DefaultRefreshSeconds = 30;
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SiteSettingsStore> _logger;
     private readonly object _gate = new();
     private SiteSettingsDocument _current = new();
-    private bool _loaded;
     private CancellationTokenSource _changeSource = new();
 
-    public SiteSettingsStore(IServiceScopeFactory scopeFactory, ILogger<SiteSettingsStore> logger)
+    /// <summary>Когда документ последний раз читали из базы. MinValue — не читали ни разу.</summary>
+    private DateTime _readAtUtc = DateTime.MinValue;
+
+    /// <summary>Один читатель за раз: без этого при истечении срока в базу ломятся все запросы сразу.</summary>
+    private readonly SemaphoreSlim _readGate = new(1, 1);
+
+    private readonly TimeSpan _refreshInterval;
+
+    public SiteSettingsStore(IServiceScopeFactory scopeFactory, IConfiguration configuration, ILogger<SiteSettingsStore> logger)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+
+        // Насколько документ может отстать от базы. Ноль — перечитывать каждый раз (для тестов).
+        var seconds = configuration.GetValue<int?>("SiteSettings:RefreshSeconds") ?? DefaultRefreshSeconds;
+        _refreshInterval = TimeSpan.FromSeconds(Math.Max(0, seconds));
     }
 
-    /// <summary>Текущий документ; при первом обращении читается из базы (синхронно — это старт).</summary>
+    /// <summary>
+    /// Текущий документ. При первом обращении читается из базы, дальше перечитывается не чаще
+    /// одного раза в <see cref="DefaultRefreshSeconds"/> секунд — так правка, сделанная на
+    /// соседней реплике, доезжает сюда сама.
+    /// </summary>
     public SiteSettingsDocument Current
     {
         get
         {
-            EnsureLoaded();
+            EnsureFresh();
             lock (_gate)
             {
                 return _current;
@@ -62,7 +92,7 @@ public sealed class SiteSettingsStore
 
     public async Task<SiteSettingsDocument> SaveAsync(Action<SiteSettingsDocument> patch, string actor)
     {
-        EnsureLoaded();
+        EnsureFresh();
         SiteSettingsDocument next;
         lock (_gate)
         {
@@ -70,7 +100,12 @@ public sealed class SiteSettingsStore
         }
         patch(next);
         next.Id = DocumentId;
-        next.UpdatedAtUtc = DateTime.UtcNow;
+        // Округляем до миллисекунды намеренно: Mongo хранит дату именно так. Положив в
+        // память тики .NET, мы получили бы обратно из базы то же самое значение, но
+        // усечённое, сравнение в EnsureFresh решило бы «документ изменился», и после каждого
+        // сохранения зря пересобирались бы все Options — а в журнал ушла бы запись
+        // «изменено на другом инстансе», которой не было.
+        next.UpdatedAtUtc = TruncateToMilliseconds(DateTime.UtcNow);
         next.UpdatedBy = actor;
 
         using var scope = _scopeFactory.CreateScope();
@@ -81,6 +116,8 @@ public sealed class SiteSettingsStore
         lock (_gate)
         {
             _current = next;
+            // Только что записали своё — перечитывать сразу незачем.
+            _readAtUtc = DateTime.UtcNow;
             previous = _changeSource;
             _changeSource = new CancellationTokenSource();
         }
@@ -90,31 +127,93 @@ public sealed class SiteSettingsStore
         return next;
     }
 
-    private void EnsureLoaded()
+    /// <summary>Точность хранения даты в Mongo — миллисекунда; приводим к ней заранее.</summary>
+    private static DateTime TruncateToMilliseconds(DateTime value) =>
+        new(value.Ticks - value.Ticks % TimeSpan.TicksPerMillisecond, value.Kind);
+
+    private void EnsureFresh()
     {
-        if (_loaded)
-        {
-            return;
-        }
+        bool firstRead;
         lock (_gate)
         {
-            if (_loaded)
+            firstRead = _readAtUtc == DateTime.MinValue;
+            if (!firstRead && DateTime.UtcNow - _readAtUtc < _refreshInterval)
             {
                 return;
             }
+        }
+
+        // Читает один; остальные в это время работают с прежним документом, а не ждут в очереди.
+        // Исключение — самое первое чтение: отдавать пустые настройки нельзя, там ждём.
+        if (!_readGate.Wait(0))
+        {
+            if (!firstRead)
+            {
+                return;
+            }
+            _readGate.Wait();
+        }
+
+        try
+        {
+            lock (_gate)
+            {
+                if (_readAtUtc != DateTime.MinValue && DateTime.UtcNow - _readAtUtc < _refreshInterval)
+                {
+                    return;
+                }
+                // Отметку ставим ДО чтения: иначе долгий или упавший запрос заставит ломиться
+                // в базу на каждом обращении подряд.
+                _readAtUtc = DateTime.UtcNow;
+            }
+
+            SiteSettingsDocument fresh;
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var collection = scope.ServiceProvider.GetRequiredService<IMongoDatabase>().GetCollection<SiteSettingsDocument>(CollectionName);
-                _current = collection.Find(d => d.Id == DocumentId).FirstOrDefault() ?? new SiteSettingsDocument { Id = DocumentId };
+                fresh = collection.Find(d => d.Id == DocumentId).FirstOrDefault() ?? new SiteSettingsDocument { Id = DocumentId };
             }
             catch (Exception ex)
             {
-                // База недоступна на старте — работаем по конфигу; следующая попытка при первом сохранении.
-                _logger.LogWarning(ex, "Site settings: could not load overrides, using configuration only.");
-                _current = new SiteSettingsDocument { Id = DocumentId };
+                // База недоступна. На старте это «работаем по конфигу», при обновлении —
+                // «оставляем то, что уже знаем»: обнулять действующие настройки из-за сетевого
+                // сбоя нельзя, иначе моргнут часы поддержки и платёжные рельсы.
+                _logger.LogWarning(ex, "Site settings: could not read overrides, keeping the previous copy.");
+                if (firstRead)
+                {
+                    lock (_gate)
+                    {
+                        _current = new SiteSettingsDocument { Id = DocumentId };
+                    }
+                }
+                return;
             }
-            _loaded = true;
+
+            CancellationTokenSource? previous = null;
+            lock (_gate)
+            {
+                // Токен дёргаем только когда документ действительно изменился: иначе каждые
+                // тридцать секунд пересобирались бы все Options, подписанные на него.
+                var changed = _current.UpdatedAtUtc != fresh.UpdatedAtUtc || _current.UpdatedBy != fresh.UpdatedBy;
+                _current = fresh;
+                if (changed && !firstRead)
+                {
+                    previous = _changeSource;
+                    _changeSource = new CancellationTokenSource();
+                }
+            }
+
+            if (previous is not null)
+            {
+                _logger.LogInformation("Site settings changed elsewhere — picked up (saved by {Actor}).", fresh.UpdatedBy);
+                previous.Cancel();
+                previous.Dispose();
+            }
+        }
+        finally
+        {
+            _readGate.Release();
         }
     }
 }
@@ -147,6 +246,36 @@ public sealed class SiteSettingsDocument
     public bool? CryptoEnabled { get; set; }
     public bool? StarsEnabled { get; set; }
 
+    // --- склад ключей ---
+    /// <summary>Общий порог «скоро закончится» (ключей в пуле ≤ порога). У игры может быть свой.</summary>
+    public int? LowStockThreshold { get; set; }
+
+    // --- страница «О нас» ---
+    /// <summary>Люди в разделе «Meet the team» (JSON-массив {name,role,description,badge}).
+    /// Пусто — раздела на странице нет. Выдумывать сотрудников нельзя, поэтому дефолта здесь
+    /// нет и быть не может: список заполняет владелец.</summary>
+    public string? TeamJson { get; set; }
+
+    // --- подвал ---
+    /// <summary>Ссылки на соцсети магазина (JSON-массив {network,url}, см. SocialLinks). Пусто — блока соцсетей нет.</summary>
+    public string? SocialLinksJson { get; set; }
+
+    // --- регионы активации ---
+    /// <summary>Справочник регионов (JSON-массив {code,name,countries[]}); пусто — конфиг/дефолт.</summary>
+    public string? RegionsJson { get; set; }
+
+    // --- кэшбэк ---
+    public bool? CashbackEnabled { get; set; }
+    public int? CashbackPendingDays { get; set; }
+    public int? CashbackExpiryMonths { get; set; }
+    public decimal? CashbackMinCardPaymentUsd { get; set; }
+    /// <summary>Уровни (JSON-массив {id,name,percent,spendThresholdUsd}); пусто — конфиг/дефолт.</summary>
+    public string? CashbackTiersJson { get; set; }
+    /// <summary>Письма «кэшбэк доступен» и «скоро сгорит».</summary>
+    public bool? CashbackEmailNotices { get; set; }
+    /// <summary>За сколько дней до сгорания напоминать; 0 — не напоминать.</summary>
+    public int? CashbackExpiryReminderDays { get; set; }
+
     public SiteSettingsDocument Clone() => (SiteSettingsDocument)MemberwiseClone();
 }
 
@@ -171,6 +300,46 @@ public sealed class SupportChatOptionsOverlay : IPostConfigureOptions<SupportCha
         if (s.NotifyTelegramOnEscalation.HasValue) options.NotifyTelegramOnEscalation = s.NotifyTelegramOnEscalation.Value;
         if (s.NotifyEmailOnEscalation.HasValue) options.NotifyEmailOnEscalation = s.NotifyEmailOnEscalation.Value;
     }
+}
+
+/// <summary>
+/// Оверлей поверх CashbackOptions: программу включают и настраивают из панели (вкладка Cashback), без деплоя.
+/// Уровни заменяются списком целиком — частичная правка списка уровней смысла не имеет.
+/// </summary>
+public sealed class CashbackOptionsOverlay : IPostConfigureOptions<CashbackOptions>, IOptionsChangeTokenSource<CashbackOptions>
+{
+    private readonly SiteSettingsStore _store;
+    public CashbackOptionsOverlay(SiteSettingsStore store) => _store = store;
+    public string? Name => Options.DefaultName;
+    public IChangeToken GetChangeToken() => _store.ChangeToken;
+
+    public void PostConfigure(string? name, CashbackOptions options)
+    {
+        var s = _store.Current;
+        if (s.CashbackEnabled.HasValue) options.Enabled = s.CashbackEnabled.Value;
+        if (s.CashbackPendingDays.HasValue) options.PendingDays = s.CashbackPendingDays.Value;
+        if (s.CashbackExpiryMonths.HasValue) options.ExpiryMonths = s.CashbackExpiryMonths.Value;
+        if (s.CashbackMinCardPaymentUsd.HasValue) options.MinCardPaymentUsd = s.CashbackMinCardPaymentUsd.Value;
+        if (s.CashbackEmailNotices.HasValue) options.EmailNotices = s.CashbackEmailNotices.Value;
+        if (s.CashbackExpiryReminderDays.HasValue) options.ExpiryReminderDays = s.CashbackExpiryReminderDays.Value;
+        var tiers = CashbackTiersJson.Parse(s.CashbackTiersJson);
+        if (tiers.Count > 0) options.Tiers = tiers;
+    }
+}
+
+/// <summary>Уровни кэшбэка в документе настроек — JSON-строкой, как и другие списки.</summary>
+public static class CashbackTiersJson
+{
+    private static readonly System.Text.Json.JsonSerializerOptions Json = new(System.Text.Json.JsonSerializerDefaults.Web);
+
+    public static List<CashbackTierOptions> Parse(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try { return System.Text.Json.JsonSerializer.Deserialize<List<CashbackTierOptions>>(json, Json) ?? new(); }
+        catch (System.Text.Json.JsonException) { return new(); }
+    }
+
+    public static string Serialize(IEnumerable<CashbackTierOptions> tiers) => System.Text.Json.JsonSerializer.Serialize(tiers, Json);
 }
 
 /// <summary>Оверлей поверх FxOptions: наценка и гард.</summary>
@@ -210,5 +379,28 @@ public sealed class PaymentRailsOverlay : IPostConfigureOptions<PaymentRailsOpti
         if (s.CardEnabled.HasValue) options.CardEnabled = s.CardEnabled.Value;
         if (s.CryptoEnabled.HasValue) options.CryptoEnabled = s.CryptoEnabled.Value;
         if (s.StarsEnabled.HasValue) options.StarsEnabled = s.StarsEnabled.Value;
+    }
+}
+
+/// <summary>
+/// Склад ключей для витрины: порог «скоро закончится». Общий дефолт отсюда (или из конфига
+/// Storefront:Stock), у игры его можно переопределить в разделе ключей.
+/// </summary>
+public sealed class StockOptions
+{
+    public int LowStockThreshold { get; set; } = 3;
+}
+
+public sealed class StockOptionsOverlay : IPostConfigureOptions<StockOptions>, IOptionsChangeTokenSource<StockOptions>
+{
+    private readonly SiteSettingsStore _store;
+    public StockOptionsOverlay(SiteSettingsStore store) => _store = store;
+    public string? Name => Options.DefaultName;
+    public IChangeToken GetChangeToken() => _store.ChangeToken;
+
+    public void PostConfigure(string? name, StockOptions options)
+    {
+        var s = _store.Current;
+        if (s.LowStockThreshold is >= 0) options.LowStockThreshold = s.LowStockThreshold.Value;
     }
 }

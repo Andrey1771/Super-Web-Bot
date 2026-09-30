@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface CountdownParts {
     days: number;
@@ -35,6 +36,7 @@ export const padCountdown = (value: number): string => String(value).padStart(2,
 
 // Компактный чип «Ends in …» в шапке полки дилов.
 export default function DealsCountdown({ endsAt }: { endsAt?: string }) {
+    const { t } = useTranslation();
     const countdown = useCountdown(endsAt);
     if (!countdown) {
         return null;
@@ -42,8 +44,8 @@ export default function DealsCountdown({ endsAt }: { endsAt?: string }) {
 
     const { days, hours, minutes, seconds } = countdown;
     return (
-        <span className="shelf-countdown" title="Nearest deal expires">
-            Ends in {days > 0 ? `${days}d ` : ""}{padCountdown(hours)}:{padCountdown(minutes)}:{padCountdown(seconds)}
+        <span className="shelf-countdown" title={t("home.countdown.nearestExpires")}>
+            {t("home.countdown.endsIn")} {days > 0 ? `${days}d ` : ""}{padCountdown(hours)}:{padCountdown(minutes)}:{padCountdown(seconds)}
         </span>
     );
 }

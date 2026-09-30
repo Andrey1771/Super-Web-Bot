@@ -1,14 +1,16 @@
 using System.Security.Claims;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using SuperBot.Infrastructure.Data;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -23,19 +25,47 @@ public class AccountController : ControllerBase
 
     private readonly IMongoCollection<UserDb> _users;
     private readonly IWebHostEnvironment _environment;
+    private readonly SuperBot.WebApi.Services.UserAvatarStore _avatarStore;
     private readonly IOrderRepository _orderRepository;
     private readonly IGameRepository _gameRepository;
+    private readonly IGameReviewRepository _gameReviewRepository;
+    private readonly SuperBot.Core.Cashback.ICashbackLedger _cashback;
+    private readonly IGameKeyRepository _gameKeys;
+    private readonly IDeliveryMailer _mailer;
+    private readonly IMemoryCache _cache;
+    private readonly IPasswordVerifier _passwords;
+
+    /// <summary>Не чаще одного письма с ключами на заказ за это время — от случайных двойных кликов и от перебора.</summary>
+    public static readonly TimeSpan ResendKeysCooldown = TimeSpan.FromMinutes(10);
+
+    /// <summary>Столько неверных паролей подряд — и показ ключей закрывается на <see cref="RevealLockout"/>: перебирать пароль через эту форму нельзя.</summary>
+    public const int RevealMaxFailures = 5;
+    public static readonly TimeSpan RevealLockout = TimeSpan.FromMinutes(15);
 
     public AccountController(
         IMongoDatabase database,
         IWebHostEnvironment environment,
+        SuperBot.WebApi.Services.UserAvatarStore avatarStore,
         IOrderRepository orderRepository,
-        IGameRepository gameRepository)
+        IGameRepository gameRepository,
+        IGameReviewRepository gameReviewRepository,
+        SuperBot.Core.Cashback.ICashbackLedger cashback,
+        IGameKeyRepository gameKeys,
+        IDeliveryMailer mailer,
+        IMemoryCache cache,
+        IPasswordVerifier passwords)
     {
+        _cashback = cashback;
+        _gameKeys = gameKeys;
+        _mailer = mailer;
+        _cache = cache;
+        _passwords = passwords;
         _users = database.GetCollection<UserDb>("Users");
         _environment = environment;
+        _avatarStore = avatarStore;
         _orderRepository = orderRepository;
         _gameRepository = gameRepository;
+        _gameReviewRepository = gameReviewRepository;
     }
 
     [HttpGet("orders")]
@@ -94,6 +124,124 @@ public class AccountController : ControllerBase
 
         var mapped = await MapOrderDetailsAsync(order);
         return Ok(mapped);
+    }
+
+    public sealed record RevealKeysRequest(string? Password);
+
+    /// <summary>
+    /// Полные ключи заказа по позициям. В деталях заказа ключи замаскированы — здесь, по явному
+    /// «Show keys» и после повторного ввода пароля, отдаются целиком: ключ не должен пропасть
+    /// вместе с письмом или доступом к почте, но и угнанная сессия одна его получить не должна.
+    /// Показ пишется в журнал заказа. Пять неверных паролей подряд — пауза на четверть часа.
+    /// </summary>
+    [HttpPost("orders/{orderId}/keys/reveal")]
+    public async Task<IActionResult> RevealOrderKeys([FromRoute] string orderId, [FromBody] RevealKeysRequest? request)
+    {
+        var order = await FindOwnOrderAsync(orderId);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        var identity = GetUserIdentity();
+        var username = User.FindFirstValue("preferred_username") ?? identity.Email ?? string.Empty;
+        var failKey = $"account:reveal-fail:{identity.UserId}";
+        if (_cache.TryGetValue(failKey, out int failures) && failures >= RevealMaxFailures)
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, ApiErrors.Body("order.revealLocked", $"Too many wrong passwords. Try again in {(int)RevealLockout.TotalMinutes} min.", new { minutes = (int)RevealLockout.TotalMinutes }));
+        }
+
+        if (!await _passwords.VerifyAsync(username, request?.Password ?? string.Empty))
+        {
+            var next = (_cache.TryGetValue(failKey, out int current) ? current : 0) + 1;
+            _cache.Set(failKey, next, RevealLockout);
+            var left = RevealMaxFailures - next;
+            return BadRequest(left > 0
+                ? ApiErrors.Body("order.wrongPassword", $"Invalid password. {left} attempt{(left == 1 ? "" : "s")} left.", new { count = left })
+                : ApiErrors.Body("order.revealLocked", $"Too many wrong passwords. Try again in {(int)RevealLockout.TotalMinutes} min.", new { minutes = (int)RevealLockout.TotalMinutes }));
+        }
+        _cache.Remove(failKey);
+
+        var delivered = OrderDeliveredKeys.Resolve(order, await _gameKeys.GetByUserAsync(order.UserId, 500));
+        var items = delivered
+            .GroupBy(entry => entry.ItemId)
+            .Select(group => new { itemId = group.Key, keys = group.Select(entry => entry.Key.Key).ToList() })
+            .ToList();
+
+        // Журнал: кто и когда смотрел ключи — при споре «мой ключ утёк» это первое, что нужно.
+        order.Events ??= new List<OrderEvent>();
+        order.Events.Add(new OrderEvent { Type = "keys_viewed", Message = $"Keys shown in the account after password check ({delivered.Count})", Actor = order.UserId, CreatedAt = DateTime.UtcNow });
+        await _orderRepository.UpdateOrderAsync(order);
+
+        return Ok(new { items });
+    }
+
+    /// <summary>
+    /// Переслать письмо с ключами на адрес аккаунта — без обращения в поддержку. Адрес
+    /// не выбирается: письмо уходит только туда, куда ушло первое, иначе номер заказа
+    /// стал бы паролем от ключей.
+    /// </summary>
+    [HttpPost("orders/{orderId}/resend-keys")]
+    public async Task<IActionResult> ResendOrderKeys([FromRoute] string orderId)
+    {
+        var order = await FindOwnOrderAsync(orderId);
+        if (order is null)
+        {
+            return NotFound();
+        }
+        if (string.IsNullOrWhiteSpace(order.UserId) || !order.UserId.Contains('@'))
+        {
+            return BadRequest(ApiErrors.Body("order.noEmail", "This order has no e-mail on file."));
+        }
+
+        var delivered = OrderDeliveredKeys.Resolve(order, await _gameKeys.GetByUserAsync(order.UserId, 500))
+            .Select(entry => entry.Key)
+            .ToList();
+        if (delivered.Count == 0)
+        {
+            return BadRequest(ApiErrors.Body("order.noKeys", "No keys have been delivered on this order yet."));
+        }
+
+        var cooldownKey = $"account:resend-keys:{order.Id}";
+        if (_cache.TryGetValue(cooldownKey, out DateTime sentAt))
+        {
+            var retryIn = ResendKeysCooldown - (DateTime.UtcNow - sentAt);
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                message = $"We have just sent that e-mail. Try again in {Math.Max(1, (int)Math.Ceiling(retryIn.TotalMinutes))} min.",
+                code = "order.resendCooldown",
+                args = new { minutes = Math.Max(1, (int)Math.Ceiling(retryIn.TotalMinutes)) },
+                retryAfterSeconds = (int)Math.Max(1, retryIn.TotalSeconds)
+            });
+        }
+
+        await _mailer.SendGameKeysAsync(
+            order.UserId,
+            order.OrderNumber ?? order.Id.ToString(),
+            delivered,
+            KeyDeliveryReceipt.FromOrder(order),
+            KeyDeliveryProgress.FromOrder(order),
+            locale: order.Language);
+
+        _cache.Set(cooldownKey, DateTime.UtcNow, ResendKeysCooldown);
+        order.Events ??= new List<OrderEvent>();
+        order.Events.Add(new OrderEvent { Type = "keys_resent", Message = $"Keys re-sent to {order.UserId} ({delivered.Count}) at the customer's request", Actor = order.UserId, CreatedAt = DateTime.UtcNow });
+        await _orderRepository.UpdateOrderAsync(order);
+
+        return Ok(new { sentTo = OrderDeliveredKeys.MaskEmail(order.UserId), count = delivered.Count });
+    }
+
+    /// <summary>Заказ текущего пользователя или null — чужой заказ неотличим от несуществующего.</summary>
+    private async Task<Order?> FindOwnOrderAsync(string orderId)
+    {
+        var identity = GetUserIdentity();
+        var userNames = ResolveUserAliases(identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (userNames.Count == 0)
+        {
+            return null;
+        }
+        var order = await _orderRepository.GetOrderByIdAsync(orderId);
+        return order == null || !userNames.Contains(order.UserName ?? string.Empty) ? null : order;
     }
 
     [HttpGet("me")]
@@ -314,11 +462,12 @@ public class AccountController : ControllerBase
         };
     }
 
-    private Task<List<AccountOrderListItem>> MapAccountOrdersAsync(IEnumerable<Order> orders)
+    private async Task<List<AccountOrderListItem>> MapAccountOrdersAsync(IEnumerable<Order> orders)
     {
-        var mapped = orders.Select(order =>
+        var source = orders.ToList();
+        var mapped = source.Select(order =>
         {
-            var status = ResolveStatus(order);
+            var status = OrderStatusCodes.Resolve(order);
             var items = order.Items ?? new List<OrderItemSnapshot>();
             var firstItem = items.FirstOrDefault();
             var hasSnapshotItems = items.Count > 0;
@@ -348,8 +497,11 @@ public class AccountController : ControllerBase
                 TotalAmount = order.TotalAmount ?? 0m,
                 Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
                 ItemsCount = itemsCount,
-                PaymentMethod = order.PaymentStatus,
-                RefundedAmount = status == "REFUNDED" ? (order.TotalAmount ?? 0m) : 0,
+                PaymentMethod = PaymentInstrument.Describe(order),
+                // Записанная сумма возврата точнее прежнего «полный возврат = вся сумма»:
+                // при частичном возврате там лежала бы нулевая строка, хотя деньги вернулись.
+                // Запасной путь — для заказов, возвращённых до появления поля.
+                RefundedAmount = order.RefundedAmount ?? (status == "REFUNDED" ? order.TotalAmount ?? 0m : 0m),
                 Preview = new AccountOrderPreview
                 {
                     FirstTitle = firstTitle,
@@ -360,14 +512,85 @@ public class AccountController : ControllerBase
             };
         }).ToList();
 
-        return Task.FromResult(mapped);
+        // Обложка берётся из снимка заказа: он сделан в момент покупки и не меняется, даже
+        // если игру потом убрали из каталога или сменили ей картинку. У старых заказов
+        // снимок без обложки — там подставляем нынешнюю картинку игры, одним запросом на
+        // всю страницу, иначе список выглядит как набор пустых плашек.
+        var lookup = new Dictionary<int, string>();
+        for (var i = 0; i < source.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(mapped[i].Preview.FirstCoverUrl))
+            {
+                continue;
+            }
+
+            var gameId = source[i].Items?.FirstOrDefault()?.GameId;
+            if (string.IsNullOrWhiteSpace(gameId))
+            {
+                gameId = source[i].GameId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(gameId))
+            {
+                lookup[i] = gameId;
+            }
+        }
+
+        if (lookup.Count > 0)
+        {
+            var games = await _gameRepository.GetByIdsAsync(lookup.Values.Distinct());
+            var coverByGameId = games
+                .Where(game => !string.IsNullOrWhiteSpace(game.ImagePath))
+                .GroupBy(game => game.Id)
+                .ToDictionary(group => group.Key, group => group.First().ImagePath);
+
+            foreach (var (index, gameId) in lookup)
+            {
+                if (coverByGameId.TryGetValue(gameId, out var cover))
+                {
+                    mapped[index].Preview.FirstCoverUrl = cover;
+                }
+            }
+        }
+
+        return mapped;
     }
 
-    private Task<AccountOrderDetailsResponse> MapOrderDetailsAsync(Order order)
+    private async Task<AccountOrderDetailsResponse> MapOrderDetailsAsync(Order order)
     {
         var items = order.Items ?? new List<OrderItemSnapshot>();
+
+        // Про какие из купленных игр человек уже высказался. Одним запросом на весь заказ:
+        // спрашивать по позиции — это десяток обращений к базе ради подписи на кнопке.
+        var userId = GetUserIdentity().UserId;
+        var reviewed = await _gameReviewRepository.GetReviewedGameIdsAsync(
+            userId,
+            items.Select(item => item.GameId).Where(id => !string.IsNullOrWhiteSpace(id))!);
+
+        // Куда вести и есть ли ещё товар — по каталогу сейчас, а не по снимку: slug мог смениться,
+        // игру могли снять с продажи. Название, обложка и цена остаются из снимка — что купили,
+        // то и показываем. Один запрос на заказ.
+        var gameIds = items.Select(item => item.GameId)
+            .Where(id => !string.IsNullOrWhiteSpace(id) && MongoDB.Bson.ObjectId.TryParse(id, out _))
+            .Distinct()
+            .ToList();
+        var gamesById = gameIds.Count == 0
+            ? new Dictionary<string, Game>()
+            : (await _gameRepository.GetByIdsAsync(gameIds!))
+                .Where(game => !string.IsNullOrWhiteSpace(game.Id))
+                .ToDictionary(game => game.Id!, game => game);
+
         var detailItems = items.Select(item =>
         {
+            var game = !string.IsNullOrWhiteSpace(item.GameId) && gamesById.TryGetValue(item.GameId, out var found) ? found : null;
+            var slug = !string.IsNullOrWhiteSpace(game?.Slug) ? game!.Slug : game is null ? null : item.Slug;
+            // Звать оценить можно только то, что доставлено: до выдачи ключа игру не запускали,
+            // и отзыв был бы про ожидание, а не про игру. Плюс сам сервер отзыв не примет —
+            // ему нужен оплаченный заказ.
+            var delivered = order.IsPaid
+                && (item.Delivery?.Keys?.Count > 0 || item.Delivery?.DeliveredAt != null);
+            var gameId = item.GameId;
+
             return new AccountOrderDetailItem
             {
                 ItemId = item.ItemId,
@@ -376,7 +599,9 @@ public class AccountController : ControllerBase
                 Title = string.IsNullOrWhiteSpace(item.Title) ? "Game purchase" : item.Title,
                 CoverUrl = item.CoverUrl,
                 Platform = item.Platform,
-                Region = item.Region,
+                // Регион строки — это и есть выбранный вариант ключа: покупатель платил за
+                // «европейский», и в заказе должно стоять то же слово, что он видел на кассе.
+                Region = string.IsNullOrWhiteSpace(item.OfferTitle) ? item.Region : item.OfferTitle,
                 Quantity = Math.Max(1, item.Quantity),
                 UnitPrice = item.UnitPrice,
                 Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
@@ -384,7 +609,12 @@ public class AccountController : ControllerBase
                 FinalUnitPrice = item.FinalUnitPrice,
                 LineTotal = item.LineTotal,
                 DeliveryType = item.Delivery?.DeliveryType,
-                Keys = item.Delivery?.Keys?.Select(k => k.KeyMasked ?? string.Empty).Where(k => !string.IsNullOrWhiteSpace(k)).ToList() ?? new List<string>()
+                Keys = item.Delivery?.Keys?.Select(k => k.KeyMasked ?? string.Empty).Where(k => !string.IsNullOrWhiteSpace(k)).ToList() ?? new List<string>(),
+                // Адрес страницы игры: без него кабинету некуда вести, у него есть только GameId.
+                Slug = slug,
+                Available = game is not null,
+                CanReview = delivered && !string.IsNullOrWhiteSpace(gameId) && !string.IsNullOrWhiteSpace(slug),
+                HasReview = !string.IsNullOrWhiteSpace(gameId) && reviewed.Contains(gameId!)
             };
         }).ToList();
 
@@ -399,7 +629,8 @@ public class AccountController : ControllerBase
         }
         if (total <= 0)
         {
-            total = detailItems.Sum(item => item.LineTotal) + taxTotal;
+            // Налог внутри цен строк — сверху не прибавляется.
+            total = detailItems.Sum(item => item.LineTotal);
         }
 
         var response = new AccountOrderDetailsResponse
@@ -408,50 +639,66 @@ public class AccountController : ControllerBase
             InternalId = order.Id.ToString(),
             CreatedAt = (order.CreatedAt == default ? order.OrderDate : order.CreatedAt).ToUniversalTime().ToString("O"),
             PaidAt = order.PaidAt?.ToUniversalTime().ToString("O"),
-            Status = ResolveStatus(order),
+            Status = OrderStatusCodes.Resolve(order),
             Currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency,
             Totals = new AccountOrderTotals
             {
                 Subtotal = subtotal,
                 DiscountTotal = discountTotal,
                 TaxTotal = taxTotal,
+                TaxIncluded = true,
+                TaxType = order.Tax?.TaxType,
+                TaxRatePercent = order.Tax?.RatePercent,
                 Total = total
             },
-            PaymentMethod = order.PaymentStatus,
+            PaymentMethod = PaymentInstrument.Describe(order),
+            Cashback = await MapOrderCashbackAsync(order, total),
             LegacyDetailsUnavailable = detailItems.Count == 0,
             Items = detailItems
         };
 
-        return Task.FromResult(response);
+        return response;
     }
 
-    private static string ResolveStatus(Order order)
+    /// <summary>
+    /// Кэшбэк по заказу для страницы заказа: сколько оплачено им и сколько начислено. Суммы — в валюте заказа:
+    /// начисленное считается как процент уровня от оплаченного картой, ровно так же, как при начислении.
+    /// null — у заказа нет ни того, ни другого.
+    /// </summary>
+    private async Task<AccountOrderCashback?> MapOrderCashbackAsync(Order order, decimal paidTotal)
     {
-        if (!string.IsNullOrWhiteSpace(order.Status))
-        {
-            return order.Status.ToUpperInvariant();
-        }
-
-        if (!order.IsPaid)
-        {
-            return "PENDING";
-        }
-
-        return order.IsFulfilled ? "DELIVERED" : "PROCESSING";
-    }
-
-    private string? BuildAvatarUrl(string? avatarPath, DateTime? updatedAt)
-    {
-        if (string.IsNullOrWhiteSpace(avatarPath))
+        var currency = string.IsNullOrWhiteSpace(order.Currency) ? "USD" : order.Currency;
+        var entries = await _cashback.GetEntriesAsync(order.UserId);
+        var orderId = order.Id.ToString();
+        var earn = entries.FirstOrDefault(entry => entry.Type == SuperBot.Core.Cashback.CashbackEntryTypes.Earn && entry.OrderId == orderId);
+        if (order.CashbackApplied <= 0 && earn == null)
         {
             return null;
         }
 
-        // Относительный URL: за nginx Request.Host — это внутренний backend:7002,
-        // недостижимый из браузера. Браузер сам разрешит путь против своего origin.
-        var version = updatedAt?.Ticks.ToString() ?? DateTime.UtcNow.Ticks.ToString();
-        return $"/uploads/{avatarPath}?v={version}";
+        var result = new AccountOrderCashback { Applied = order.CashbackApplied };
+        if (earn != null)
+        {
+            var state = SuperBot.Core.Cashback.CashbackProjection.Project(entries, DateTime.UtcNow).Earns
+                .GetValueOrDefault(earn.Id ?? earn.IdempotencyKey);
+            // Частичный возврат — показываем оставшееся. Полностью забранное — исходную сумму: страница
+            // зачеркнёт её с подписью «taken back», и человек увидит, что именно ушло.
+            var keptShare = state == null || state.AmountUsd <= 0 || state.State == "reverted"
+                ? 1m
+                : 1m - state.ReversedUsd / state.AmountUsd;
+            var baseAmount = earn.OrderTotal ?? paidTotal;
+            result.Percent = earn.Percent;
+            result.Earned = SuperBot.Core.Payments.CurrencyMinorUnits.Round(baseAmount * (earn.Percent ?? 0m) / 100m * keptShare, currency);
+            result.EarnedStatus = state?.State ?? "pending";
+            result.UnlocksAt = result.EarnedStatus == "pending" ? earn.UnlocksAt?.ToUniversalTime().ToString("O") : null;
+        }
+        return result;
     }
+
+    // Сборка адреса уехала в Services/UserAvatars: аватар нужен ещё и отзывам, а две копии
+    // одной формулы (особенно с меткой версии) разъезжаются при первой же правке.
+    private static string? BuildAvatarUrl(string? avatarPath, DateTime? updatedAt) =>
+        SuperBot.WebApi.Services.UserAvatars.Build(avatarPath, updatedAt);
 
 
     private string? TryRecoverAvatarPath(string userId)
@@ -467,36 +714,16 @@ public class AccountController : ControllerBase
         return Path.Combine("avatars", safeUserId, "avatar.webp").Replace("\\", "/");
     }
 
-    private string EnsureUserAvatarFolder(string safeUserId)
-    {
-        var webRoot = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        var root = Path.Combine(webRoot, "uploads", "avatars", safeUserId);
-        if (!Directory.Exists(root))
-        {
-            Directory.CreateDirectory(root);
-        }
+    // Раскладка папок аватаров и удаление файлов описаны в Services/UserAvatarStore: снимать
+    // аватар умеет ещё и модератор, а две копии одной раскладки — верный способ однажды
+    // удалить не ту папку.
+    private string EnsureUserAvatarFolder(string safeUserId) => _avatarStore.EnsureFolder(safeUserId);
 
-        return root;
-    }
+    private static void DeleteAllFilesInFolder(string folder) =>
+        SuperBot.WebApi.Services.UserAvatarStore.DeleteAllFilesInFolder(folder);
 
-    private static void DeleteAllFilesInFolder(string folder)
-    {
-        if (!Directory.Exists(folder))
-        {
-            return;
-        }
-
-        foreach (var filePath in Directory.GetFiles(folder))
-        {
-            System.IO.File.Delete(filePath);
-        }
-    }
-
-    private static string NormalizeUserId(string userId)
-    {
-        var cleaned = Regex.Replace(userId, @"[^a-zA-Z0-9_-]", string.Empty);
-        return string.IsNullOrWhiteSpace(cleaned) ? "user" : cleaned;
-    }
+    private static string NormalizeUserId(string userId) =>
+        SuperBot.WebApi.Services.UserAvatarStore.NormalizeUserId(userId);
 }
 
 public class AccountOrdersResponse
@@ -540,8 +767,22 @@ public class AccountOrderDetailsResponse
     public string Currency { get; set; } = "USD";
     public AccountOrderTotals Totals { get; set; } = new();
     public string? PaymentMethod { get; set; }
+    /// <summary>Кэшбэк по заказу; null — не оплачивался им и не начислялся.</summary>
+    public AccountOrderCashback? Cashback { get; set; }
     public bool LegacyDetailsUnavailable { get; set; }
     public List<AccountOrderDetailItem> Items { get; set; } = new();
+}
+
+public class AccountOrderCashback
+{
+    /// <summary>Оплачено кэшбэком, в валюте заказа.</summary>
+    public decimal Applied { get; set; }
+    /// <summary>Начислено за заказ, в валюте заказа (за вычетом забранного при частичном возврате); null — не начислялось.</summary>
+    public decimal? Earned { get; set; }
+    public decimal? Percent { get; set; }
+    /// <summary>pending | available | spent | expired | reverted.</summary>
+    public string? EarnedStatus { get; set; }
+    public string? UnlocksAt { get; set; }
 }
 
 public class AccountOrderTotals
@@ -549,6 +790,11 @@ public class AccountOrderTotals
     public decimal Subtotal { get; set; }
     public decimal DiscountTotal { get; set; }
     public decimal TaxTotal { get; set; }
+    /// <summary>Налог уже внутри Subtotal и Total (цены с налогом) — к итогу не прибавлять.</summary>
+    public bool TaxIncluded { get; set; }
+    /// <summary>vat, gst, sales_tax… и ставка — для подписи «Incl. VAT 22%». null — налог не посчитан.</summary>
+    public string? TaxType { get; set; }
+    public decimal? TaxRatePercent { get; set; }
     public decimal Total { get; set; }
 }
 
@@ -569,6 +815,21 @@ public class AccountOrderDetailItem
     public decimal LineTotal { get; set; }
     public string? DeliveryType { get; set; }
     public List<string> Keys { get; set; } = new();
+
+    /// <summary>Адрес страницы игры (/games/{slug}) по каталогу сейчас. Пусто, если игры больше нет.</summary>
+    public string? Slug { get; set; }
+
+    /// <summary>Товар всё ещё в каталоге. Нет — строка без ссылки и с пометкой «больше не продаётся».</summary>
+    public bool Available { get; set; }
+
+    /// <summary>
+    /// Можно ли предложить оценить эту позицию: заказ оплачен, ключ выдан и известно, куда вести.
+    /// Кабинет по этому флагу решает, показывать кнопку или нет, — а не гадает сам.
+    /// </summary>
+    public bool CanReview { get; set; }
+
+    /// <summary>Отзыв на эту игру человек уже оставил — кнопка ведёт править, а не писать заново.</summary>
+    public bool HasReview { get; set; }
 }
 
 public class AccountProfileUpdateRequest

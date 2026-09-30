@@ -8,7 +8,7 @@ export type AppConfig = {
         clientId?: string;
         redirectUri?: string;
         silentCheckSsoRedirectUri?: string;
-        onLoad?: string;
+        onLoad?: "login-required" | "check-sso";
     };
 };
 

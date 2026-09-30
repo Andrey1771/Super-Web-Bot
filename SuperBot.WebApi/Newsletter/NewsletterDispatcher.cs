@@ -71,7 +71,11 @@ public class NewsletterDispatcher : INewsletterDispatcher
             return false;
         }
 
-        var recipients = await _newsletter.GetConfirmedAsync(ct);
+        // Дайджест скидок — единственная рассылка, от которой можно отказаться отдельно:
+        // именно её обещает галочка на формах подписки. Ручные кампании идут всем.
+        var recipients = campaign.Type == CampaignType.Digest
+            ? await _newsletter.GetDealAlertRecipientsAsync(ct)
+            : await _newsletter.GetConfirmedAsync(ct);
         if (!string.IsNullOrEmpty(campaign.Locale))
         {
             // Языковая кампания (дайджест): только подписчики с этим языком.
@@ -89,8 +93,12 @@ public class NewsletterDispatcher : INewsletterDispatcher
             ct.ThrowIfCancellationRequested();
             try
             {
-                var (text, html) = _newsletter.WrapEmail(campaign.BodyText, subscriber);
-                await _mail.SendAsync(subscriber.Email, campaign.Subject, text, html, ct);
+                // Ручная кампания уходит всем, но каждому — на языке его подписки, если админ дал перевод.
+                var locale = EmailTemplates.Normalize(subscriber.Locale);
+                var subject = SuperBot.Core.Entities.Localized.Pick(campaign.SubjectI18n, locale, campaign.Subject) ?? campaign.Subject;
+                var bodyText = SuperBot.Core.Entities.Localized.Pick(campaign.BodyTextI18n, locale, campaign.BodyText) ?? campaign.BodyText;
+                var (text, html) = _newsletter.WrapEmail(bodyText, subscriber);
+                await _mail.SendAsync(subscriber.Email, subject, text, html, ct);
                 sent++;
             }
             catch (Exception ex)
@@ -153,7 +161,7 @@ public class NewsletterDispatcher : INewsletterDispatcher
         }
 
         // Дайджест локализован: одна кампания на каждый язык, среди которых есть подписчики.
-        var subscribers = await _newsletter.GetConfirmedAsync(ct);
+        var subscribers = await _newsletter.GetDealAlertRecipientsAsync(ct);
         if (subscribers.Count == 0)
         {
             return false;

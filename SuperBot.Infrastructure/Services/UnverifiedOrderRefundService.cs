@@ -121,7 +121,7 @@ namespace SuperBot.Infrastructure.Services
 
             try
             {
-                await _deliveryMailer.SendAutoRefundNoticeAsync(order.UserId, order.OrderNumber ?? order.Id.ToString());
+                await _deliveryMailer.SendAutoRefundNoticeAsync(order.UserId, order.OrderNumber ?? order.Id.ToString(), locale: order.Language);
             }
             catch (Exception mailEx)
             {

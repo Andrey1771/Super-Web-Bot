@@ -32,7 +32,7 @@ public class NewsletterPipelineTests
         var client = _factory.CreateClient();
         if (ip is not null)
         {
-            client.DefaultRequestHeaders.Add("CF-Connecting-IP", ip);
+            client.DefaultRequestHeaders.Add("X-Real-IP", ip);
         }
         if (email is not null)
         {
@@ -171,9 +171,89 @@ public class NewsletterPipelineTests
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousMe.StatusCode);
     }
 
+    /// <summary>
+    /// Личный кабинет управляет той же настройкой, что галочка на формах: подписка отдельно,
+    /// письма о скидках отдельно. Главное, что здесь проверяется, — запрос БЕЗ этого поля
+    /// настройку не трогает: кабинет умеет менять только саму подписку, и «выключить и включить»
+    /// не должно втихую вернуть человеку письма, от которых он отказался.
+    /// </summary>
+    [Fact]
+    public async Task Account_settings_manage_deal_alerts_separately_from_the_subscription()
+    {
+        const string email = "cabinet-alerts@test.io";
+        var user = CreateClient(ip: "10.9.9.3", email: email);
+
+        // По умолчанию письма о скидках приходят.
+        await user.PutAsJsonAsync("/api/newsletter/me", new { subscribed = true });
+        var me = await user.GetFromJsonAsync<JsonElement>("/api/newsletter/me");
+        Assert.True(me.GetProperty("dealAlerts").GetBoolean());
+
+        // Отказ только от них: подписка остаётся.
+        var off = await user.PutAsJsonAsync("/api/newsletter/me", new { subscribed = true, dealAlerts = false });
+        Assert.Equal(HttpStatusCode.OK, off.StatusCode);
+        me = await user.GetFromJsonAsync<JsonElement>("/api/newsletter/me");
+        Assert.True(me.GetProperty("subscribed").GetBoolean());
+        Assert.False(me.GetProperty("dealAlerts").GetBoolean());
+
+        // Запрос без поля — выбор сохраняется, даже через выключение и включение подписки.
+        await user.PutAsJsonAsync("/api/newsletter/me", new { subscribed = false });
+        await user.PutAsJsonAsync("/api/newsletter/me", new { subscribed = true });
+        me = await user.GetFromJsonAsync<JsonElement>("/api/newsletter/me");
+        Assert.True(me.GetProperty("subscribed").GetBoolean());
+        Assert.False(me.GetProperty("dealAlerts").GetBoolean());
+
+        // И обратно.
+        await user.PutAsJsonAsync("/api/newsletter/me", new { subscribed = true, dealAlerts = true });
+        me = await user.GetFromJsonAsync<JsonElement>("/api/newsletter/me");
+        Assert.True(me.GetProperty("dealAlerts").GetBoolean());
+    }
+
     // ---------------------------------------------------------------
     // Валидация входа и токенов.
     // ---------------------------------------------------------------
+    // Ручная кампания уходит всем подтверждённым, но каждому на языке его подписки:
+    // русский подписчик получает перевод, подписчик без языка — английский оригинал.
+    [Fact]
+    public async Task Manual_campaign_goes_out_in_each_subscribers_language()
+    {
+        const string russian = "campaign-lang-ru@test.io";
+        const string english = "campaign-lang-en@test.io";
+        var ruUser = CreateClient(ip: "10.7.7.1", email: russian);
+        var enUser = CreateClient(ip: "10.7.7.2", email: english);
+        Assert.Equal("confirmed", await ReadStatusAsync(await ruUser.PostAsJsonAsync("/api/newsletter/subscribe", new { email = russian, source = "account", locale = "ru" })));
+        Assert.Equal("confirmed", await ReadStatusAsync(await enUser.PostAsJsonAsync("/api/newsletter/subscribe", new { email = english, source = "account" })));
+
+        var admin = CreateClient(ip: "10.7.7.3", email: "admin@test.io", roles: "admin");
+        var tooLong = await admin.PostAsJsonAsync("/api/admin/newsletter/campaigns",
+            new { subject = "Autumn sale", body = "Everything is on sale!", subjectI18n = new Dictionary<string, string> { ["ru"] = new string('x', 151) } });
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+
+        var created = await admin.PostAsJsonAsync("/api/admin/newsletter/campaigns", new
+        {
+            subject = "Autumn sale",
+            body = "Everything is on sale!",
+            subjectI18n = new Dictionary<string, string> { ["ru"] = "Осенняя распродажа", ["de"] = "ignored" },
+            bodyI18n = new Dictionary<string, string> { ["ru"] = "Скидки на всё!", ["uk"] = "  " },
+        });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        await DrainCampaignQueueAsync();
+
+        var ruMail = _factory.Mail.LastTo(russian);
+        Assert.NotNull(ruMail);
+        Assert.Equal("Осенняя распродажа", ruMail!.Subject);
+        Assert.Contains("Скидки на всё!", ruMail.TextBody);
+        Assert.DoesNotContain("Everything is on sale!", ruMail.TextBody);
+
+        var enMail = _factory.Mail.LastTo(english);
+        Assert.NotNull(enMail);
+        Assert.Equal("Autumn sale", enMail!.Subject);
+        Assert.Contains("Everything is on sale!", enMail.TextBody);
+
+        var campaigns = await (await admin.GetAsync("/api/admin/newsletter/campaigns")).Content.ReadFromJsonAsync<JsonElement>();
+        var stored = campaigns.EnumerateArray().First(c => c.GetProperty("subject").GetString() == "Autumn sale");
+        Assert.Equal(new[] { "ru" }, stored.GetProperty("translations").EnumerateArray().Select(x => x.GetString()));
+    }
+
     [Fact]
     public async Task Invalid_email_and_tokens_are_rejected()
     {
@@ -246,7 +326,7 @@ public class NewsletterPipelineTests
         var discountRepository = scope.ServiceProvider.GetRequiredService<IGameDiscountRepository>();
 
         // Подтверждённый подписчик (как из кабинета).
-        await newsletter.SetForAccountAsync(email, "digest-user-id", subscribed: true, CancellationToken.None);
+        await newsletter.SetForAccountAsync(email, "digest-user-id", subscribed: true, dealAlerts: null, CancellationToken.None);
 
         // Игра со скидкой, стартовавшей час назад.
         var game = new Game
@@ -292,6 +372,78 @@ public class NewsletterPipelineTests
         // Повторный вызов сразу же — окно ещё не прошло, дайджест не дублируется.
         var queuedAgain = await dispatcher.MaybeQueueDealsDigestAsync(CancellationToken.None);
         Assert.False(queuedAgain);
+    }
+
+    /// <summary>
+    /// Галочка «письма о скидках» на форме подписки — настоящая настройка, а не украшение:
+    /// снявший её не получает автодайджест скидок, но остаётся подписчиком и получает
+    /// обычные письма магазина. Проверяется на двух адресах сразу — иначе «письмо не пришло»
+    /// нельзя отличить от «рассылка вообще не ушла».
+    /// </summary>
+    [Fact]
+    public async Task Deal_alerts_opt_out_skips_the_digest_but_keeps_the_newsletter()
+    {
+        const string optedOut = "no-deals-please@test.io";
+        const string optedIn = "deals-please@test.io";
+        using var scope = _factory.Services.CreateScope();
+        var newsletter = scope.ServiceProvider.GetRequiredService<INewsletterService>();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<INewsletterDispatcher>();
+        var gameRepository = scope.ServiceProvider.GetRequiredService<IGameRepository>();
+        var discountRepository = scope.ServiceProvider.GetRequiredService<IGameDiscountRepository>();
+        var client = CreateClient(ip: "10.9.9.1");
+
+        foreach (var (email, wantsDeals) in new[] { (optedOut, false), (optedIn, true) })
+        {
+            var response = await client.PostAsJsonAsync("/api/newsletter/subscribe",
+                new { email, source = "homepage", dealAlerts = wantsDeals });
+            Assert.Equal("pending", await ReadStatusAsync(response));
+            var subscriber = await newsletter.GetByEmailAsync(email, CancellationToken.None);
+            Assert.True(await newsletter.ConfirmAsync(subscriber!.ConfirmToken!, CancellationToken.None));
+        }
+
+        var game = new Game
+        {
+            Slug = "alerts-optout-game",
+            Name = "Alerts Optout Game",
+            Title = "Opt Out Quest",
+            Description = "Integration test game",
+            Price = 40m,
+            GameType = GameType.Strategy,
+            ImagePath = "",
+            ReleaseDate = DateTime.UtcNow.AddYears(-1),
+        };
+        await gameRepository.CreateAsync(game);
+        var created = (await gameRepository.GetAllAsync()).Single(g => g.Slug == "alerts-optout-game");
+        await discountRepository.UpsertAsync(new GameDiscount
+        {
+            GameId = created.Id!,
+            DiscountPercent = 35m,
+            StartDate = DateTime.UtcNow.AddHours(-1),
+            EndDate = DateTime.UtcNow.AddDays(3),
+        });
+        await newsletter.State.ReplaceOneAsync(
+            s => s.Id == "deals-digest",
+            new NewsletterStateDb { Id = "deals-digest", LastRunAt = DateTime.UtcNow.AddHours(-25) },
+            new ReplaceOptions { IsUpsert = true });
+
+        Assert.True(await dispatcher.MaybeQueueDealsDigestAsync(CancellationToken.None));
+        await DrainCampaignQueueAsync();
+
+        static bool IsDigest(string subject) => subject.Contains("deal", StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(_factory.Mail.AllTo(optedIn), mail => IsDigest(mail.Subject));
+        Assert.DoesNotContain(_factory.Mail.AllTo(optedOut), mail => IsDigest(mail.Subject));
+
+        // Отказ касается только дайджеста: обычная кампания приходит обоим.
+        var admin = CreateClient(ip: "10.9.9.2", email: "admin@test.io", roles: "admin");
+        var queued = await admin.PostAsJsonAsync("/api/admin/newsletter/campaigns",
+            new { subject = "Store news for everyone", body = "Hello from the shop." });
+        Assert.Equal(HttpStatusCode.OK, queued.StatusCode);
+        await DrainCampaignQueueAsync();
+
+        foreach (var email in new[] { optedIn, optedOut })
+        {
+            Assert.Contains(_factory.Mail.AllTo(email), mail => mail.Subject == "Store news for everyone");
+        }
     }
 
     // ---------------------------------------------------------------
@@ -368,7 +520,7 @@ public class NewsletterPipelineTests
         const string email = "scheduled-reader@test.io";
         using var scope = _factory.Services.CreateScope();
         var newsletter = scope.ServiceProvider.GetRequiredService<INewsletterService>();
-        await newsletter.SetForAccountAsync(email, "scheduled-user-id", subscribed: true, CancellationToken.None);
+        await newsletter.SetForAccountAsync(email, "scheduled-user-id", subscribed: true, dealAlerts: null, CancellationToken.None);
 
         var admin = CreateClient(ip: "10.8.8.1", email: "admin@test.io", roles: "admin");
 

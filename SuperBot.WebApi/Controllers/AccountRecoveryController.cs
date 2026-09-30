@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.WebApi.Recovery.Dto;
 using SuperBot.WebApi.Recovery.Services;
+using SuperBot.Common.Auth;
+using SuperBot.WebApi.Services;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -25,7 +27,7 @@ namespace SuperBot.WebApi.Controllers
         {
             try
             {
-                await _recovery.CreateAsync(dto, GetClientIp(), Request.Headers.UserAgent.ToString());
+                await _recovery.CreateAsync(dto, ClientAddress.ResolveOrUnknown(HttpContext), Request.Headers.UserAgent.ToString(), SuperBot.WebApi.Services.BuyerLanguage.Resolve(Request));
             }
             catch (RecoveryRequestException ex) when (ex.StatusCode == 400)
             {
@@ -48,37 +50,17 @@ namespace SuperBot.WebApi.Controllers
         [Authorize]
         public async Task<ActionResult<PendingRecoveryDto>> GetPending()
         {
-            return Ok(await _recovery.GetActiveForUserAsync(GetUserId()));
+            return Ok(await _recovery.GetActiveForUserAsync(User.GetUserId()));
         }
 
         [HttpPost("pending/cancel")]
         [Authorize]
         public async Task<IActionResult> CancelPending()
         {
-            var cancelled = await _recovery.CancelByUserAsync(GetUserId());
+            var cancelled = await _recovery.CancelByUserAsync(User.GetUserId());
             return Ok(new { cancelled });
         }
 
-        private string GetUserId()
-        {
-            return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? string.Empty;
-        }
-
-        private string GetClientIp()
-        {
-            // За Cloudflare реальный IP приходит в CF-Connecting-IP; за nginx — первый в X-Forwarded-For.
-            var cfIp = Request.Headers["CF-Connecting-IP"].ToString();
-            if (!string.IsNullOrWhiteSpace(cfIp))
-            {
-                return cfIp.Trim();
-            }
-            var forwarded = Request.Headers["X-Forwarded-For"].ToString();
-            if (!string.IsNullOrWhiteSpace(forwarded))
-            {
-                return forwarded.Split(',')[0].Trim();
-            }
-            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        }
     }
 
     public class CancelByTokenDto

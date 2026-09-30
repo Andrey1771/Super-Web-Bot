@@ -33,6 +33,7 @@ namespace SuperBot.WebApi.Controllers
         private readonly ICheckoutPricingService _pricing;
         private readonly IMongoCollection<CryptoInvoiceStateDb> _invoiceStates;
         private readonly ILogger<CryptoPaymentsController> _logger;
+        private readonly IPromoCodeService _promoCodes;
 
         public CryptoPaymentsController(
             IOptions<BtcPayOptions> options,
@@ -41,8 +42,10 @@ namespace SuperBot.WebApi.Controllers
             IKeyFulfillmentService keyFulfillmentService,
             ICheckoutPricingService pricing,
             IMongoDatabase database,
-            ILogger<CryptoPaymentsController> logger)
+            ILogger<CryptoPaymentsController> logger,
+            IPromoCodeService promoCodes)
         {
+            _promoCodes = promoCodes;
             _options = options.Value;
             _btcPay = btcPay;
             _orderRepository = orderRepository;
@@ -78,11 +81,12 @@ namespace SuperBot.WebApi.Controllers
             var pricing = await _pricing.PriceAsync(new CheckoutPricingRequest
             {
                 Items = (request?.Items ?? new List<CryptoInvoiceItemRequest>())
-                    .Select(item => new CheckoutPricingItem { GameId = item.GameId, Quantity = item.Quantity })
+                    .Select(item => new CheckoutPricingItem { GameId = item.GameId, Quantity = item.Quantity, EditionCode = item.EditionCode, OfferKey = item.OfferKey })
                     .ToList(),
                 PromoCode = request?.PromoCode,
                 UserName = userId,
-                Currency = request?.Currency
+                Currency = request?.Currency,
+                BuyerCountry = SuperBot.WebApi.Services.Regions.BuyerCountry.Resolve(Request)
             });
 
             if (!pricing.Success)
@@ -95,9 +99,9 @@ namespace SuperBot.WebApi.Controllers
 
             try
             {
-                // Инвойс в USD — BTCPay сам считает сумму в testnet-BTC по своему курсу.
+                // Инвойс в валюте расчёта — BTCPay сам пересчитает её в testnet-BTC по своему курсу.
                 // {InvoiceId} — плейсхолдер BTCPay, подставит id инвойса при редиректе обратно.
-                var invoice = await _btcPay.CreateInvoiceAsync(pricing.Total, $"{redirectBase}/checkout/success?crypto_invoice={{InvoiceId}}", metadata, ct);
+                var invoice = await _btcPay.CreateInvoiceAsync(pricing.Total, pricing.Currency, $"{redirectBase}/checkout/success?crypto_invoice={{InvoiceId}}", metadata, ct);
 
                 // Snapshot корзины: заказ создаст вебхук, когда инвойс будет оплачен.
                 // Кладём СЕРВЕРНЫЕ цены — именно из этого снапшота потом строится заказ.
@@ -105,13 +109,25 @@ namespace SuperBot.WebApi.Controllers
                 {
                     InvoiceId = invoice.Id,
                     UserId = userId,
+                    BuyerCountry = pricing.BuyerCountry,
+                    Language = SuperBot.WebApi.Services.BuyerLanguage.Resolve(Request),
                     Subtotal = pricing.Subtotal,
                     DiscountTotal = pricing.DiscountTotal,
                     Total = pricing.Total,
+                    // Валюта суммы обязана ехать вместе с суммой: заказ создаётся позже, вебхуком,
+                    // и без неё восстановить, в чём была цена, будет уже неоткуда.
+                    Currency = pricing.Currency,
+                    // Код, с которым посчитана скидка: заказ создаётся позже, вебхуком, и учесть
+                    // использование кода можно только тогда.
+                    PromoCode = pricing.PromoApplied ? pricing.NormalizedPromoCode : null,
                     CheckoutItems = pricing.Items.Select(item => new CheckoutLineItemStateDb
                     {
                         ProductType = item.ProductType,
                         GameId = item.GameId,
+                        EditionCode = item.EditionCode,
+                        EditionTitle = item.EditionTitle,
+                        OfferKey = item.OfferKey,
+                        OfferTitle = item.OfferTitle,
                         Title = item.Title,
                         CoverUrl = item.CoverUrl,
                         Platform = item.Platform,
@@ -233,15 +249,27 @@ namespace SuperBot.WebApi.Controllers
                     Status = "AWAITING_KEYS",
                     PaymentStatus = "PAID",
                     FulfillmentStatus = "PENDING_KEYS",
-                    Currency = "USD",
+                    // Та валюта, в которой считали корзину и выставляли инвойс. Зашитый доллар
+                    // записывал бы, например, евровые суммы как долларовые — и все денежные
+                    // отчёты магазина считали бы по ним неверно.
+                    Currency = string.IsNullOrWhiteSpace(claimed.Currency) ? "USD" : claimed.Currency,
                     SubtotalAmount = claimed.Subtotal,
                     DiscountTotal = claimed.DiscountTotal,
                     TotalAmount = claimed.Total,
                     Totals = new MoneyTotals { Subtotal = claimed.Subtotal, DiscountTotal = claimed.DiscountTotal, Total = claimed.Total },
                     Notes = $"BTCPay testnet invoice {invoiceId}",
+                    PromoCode = claimed.PromoCode,
+                    BuyerCountry = claimed.BuyerCountry,
+                    Language = claimed.Language,
                     Items = claimed.CheckoutItems.Select(item => new OrderItemSnapshot
                     {
                         GameId = item.GameId,
+                        // Тип строки — как у Stripe-пути: без него ключ ПО в письме и заказе выглядел бы игрой.
+                        ProductType = item.ProductType,
+                        EditionCode = item.EditionCode,
+                        EditionTitle = item.EditionTitle,
+                        OfferKey = item.OfferKey,
+                        OfferTitle = item.OfferTitle,
                         Title = item.Title,
                         CoverUrl = item.CoverUrl,
                         Quantity = Math.Max(1, item.Quantity),
@@ -253,6 +281,18 @@ namespace SuperBot.WebApi.Controllers
                 };
 
                 await _orderRepository.CreateOrderAsync(order);
+                if (!string.IsNullOrWhiteSpace(order.PromoCode))
+                {
+                    try
+                    {
+                        await _promoCodes.RecordRedemptionAsync(order.PromoCode, order.UserId, order.Id.ToString());
+                    }
+                    catch (Exception ex)
+                    {
+                        // Учёт кода не должен ронять оплаченный заказ.
+                        _logger.LogError(ex, "Could not record promo code {PromoCode} usage for crypto order {OrderId}", order.PromoCode, order.Id);
+                    }
+                }
                 await _keyFulfillmentService.FulfillOrderAsync(order);
 
                 await _invoiceStates.UpdateOneAsync(
@@ -317,6 +357,9 @@ namespace SuperBot.WebApi.Controllers
         {
             public string GameId { get; set; } = string.Empty;
             public int Quantity { get; set; }
+            public string? EditionCode { get; set; }
+            /// <summary>Выбранный на витрине региональный вариант ключа; пусто — вариантов не было.</summary>
+            public string? OfferKey { get; set; }
         }
 
         public class CryptoInvoiceStateDb
@@ -325,9 +368,16 @@ namespace SuperBot.WebApi.Controllers
             public ObjectId Id { get; set; }
             public string InvoiceId { get; set; } = string.Empty;
             public string UserId { get; set; } = string.Empty;
+            public string? BuyerCountry { get; set; }
+            /// <summary>Язык покупателя на чекауте — в заказ, для писем.</summary>
+            public string? Language { get; set; }
             public decimal Subtotal { get; set; }
             public decimal DiscountTotal { get; set; }
             public decimal Total { get; set; }
+            /// <summary>Валюта, в которой посчитаны суммы снапшота. У старых записей пусто — читать как USD.</summary>
+            public string? Currency { get; set; }
+            /// <summary>Применённый промокод (нормализованный); пусто — без кода.</summary>
+            public string? PromoCode { get; set; }
             public string? OrderId { get; set; }
             public bool Finalizing { get; set; }
             public List<CheckoutLineItemStateDb> CheckoutItems { get; set; } = new();

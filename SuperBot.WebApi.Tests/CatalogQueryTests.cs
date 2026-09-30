@@ -71,7 +71,7 @@ public class CatalogQueryTests
             .AddPoolKeysAsync(gameId, keyType, Enumerable.Range(0, count).Select(_ => $"QRY-{Guid.NewGuid():N}"));
     }
 
-    private async Task SeedDiscountAsync(string gameId, decimal percent)
+    private async Task SeedDiscountAsync(string gameId, decimal percent, int daysLeft = 1)
     {
         using var scope = _factory.Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<IGameDiscountRepository>().UpsertAsync(new GameDiscount
@@ -79,7 +79,7 @@ public class CatalogQueryTests
             GameId = gameId,
             DiscountPercent = percent,
             StartDate = DateTime.UtcNow.AddDays(-1),
-            EndDate = DateTime.UtcNow.AddDays(1)
+            EndDate = DateTime.UtcNow.AddDays(daysLeft)
         });
     }
 
@@ -502,5 +502,116 @@ public class CatalogQueryTests
         created.EnsureSuccessStatusCode();
 
         Assert.Equal(1, (await GetCatalogAsync($"q={marker}")).GetProperty("total").GetInt32());
+    }
+
+    /// <summary>
+    /// Порядок «скоро закончится» для витрины скидок: наверху то, у чего меньше времени,
+    /// а не то, где больше процент. Разница видна только на данных, где эти два порядка
+    /// противоположны, — поэтому у самой крупной скидки здесь самый дальний срок.
+    /// </summary>
+    [Fact]
+    public async Task Ending_soon_order_puts_the_nearest_deadline_first()
+    {
+        var marker = NewMarker();
+        var huge = await SeedGameAsync($"{marker} Huge Cut");
+        var tiny = await SeedGameAsync($"{marker} Tiny Cut");
+        await SeedDiscountAsync(huge, 80m, daysLeft: 9);
+        await SeedDiscountAsync(tiny, 5m, daysLeft: 1);
+        RefreshCatalog();
+
+        var byDeadline = await GetCatalogAsync($"q={marker}&onSale=true&sort=ending-soon");
+        var byPercent = await GetCatalogAsync($"q={marker}&onSale=true&sort=discount");
+
+        Assert.Equal($"{marker} Tiny Cut", TitlesOf(byDeadline).First());
+        Assert.Equal($"{marker} Huge Cut", TitlesOf(byPercent).First());
+    }
+
+    /// <summary>
+    /// «Со скидкой» — про то, что видит покупатель. Акция на ноль процентов включена, но на
+    /// карточке от неё ничего нет, и в списке скидок такой игре не место — иначе витрина
+    /// показывает пустую строку, а счётчик обещает игру, которой там не видно.
+    /// </summary>
+    [Fact]
+    public async Task Zero_percent_discount_is_not_a_sale()
+    {
+        var marker = NewMarker();
+        var real = await SeedGameAsync($"{marker} Real Cut");
+        var empty = await SeedGameAsync($"{marker} Empty Cut");
+        await SeedDiscountAsync(real, 20m);
+        await SeedDiscountAsync(empty, 0m);
+        RefreshCatalog();
+
+        var page = await GetCatalogAsync($"q={marker}&onSale=true");
+
+        Assert.Equal($"{marker} Real Cut", Assert.Single(TitlesOf(page)));
+        Assert.Equal(1, page.GetProperty("facets").GetProperty("availability").GetProperty("onSale").GetInt32());
+    }
+
+    /// <summary>
+    /// Ссылки со страницы товара: «ещё игры студии» и тег — точные совпадения по карточке игры,
+    /// а не поиск по названию (иначе «Hempuli» нашёл бы только игру с таким словом в имени).
+    /// </summary>
+    [Fact]
+    public async Task Studio_and_tag_filters_match_game_details_exactly()
+    {
+        var marker = NewMarker();
+        var byStudio = await SeedGameAsync($"{marker} Studio Game");
+        var other = await SeedGameAsync($"{marker} Other Game");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var details = scope.ServiceProvider.GetRequiredService<IGameDetailsRepository>();
+            await details.UpsertAsync(new GameDetails { GameId = byStudio, Slug = $"{marker}-studio", Title = "Studio Game", Developer = new GameStudioInfo { Name = $"{marker} Works" }, Tags = new List<string> { $"{marker}-tag" } });
+            await details.UpsertAsync(new GameDetails { GameId = other, Slug = $"{marker}-other", Title = "Other Game", Publisher = new GameStudioInfo { Name = "Someone Else" } });
+        }
+        RefreshCatalog();
+
+        var studio = await GetCatalogAsync($"studio={Uri.EscapeDataString($"{marker} Works")}");
+        Assert.Equal(1, studio.GetProperty("total").GetInt32());
+        Assert.Equal(byStudio, studio.GetProperty("items")[0].GetProperty("id").GetString());
+
+        var tag = await GetCatalogAsync($"tag={Uri.EscapeDataString($"{marker}-TAG")}");
+        Assert.Equal(1, tag.GetProperty("total").GetInt32());
+
+        Assert.Equal(0, (await GetCatalogAsync("studio=nobody-here")).GetProperty("total").GetInt32());
+    }
+
+    /// <summary>
+    /// Превью при наведении на плитку: каталог отдаёт трейлер из галереи карточки (помеченный, иначе первое видео)
+    /// и его постер. У товара без видео поле пустое — плитка ничего не грузит.
+    /// </summary>
+    [Fact]
+    public async Task Catalog_exposes_the_trailer_for_hover_previews()
+    {
+        var marker = NewMarker();
+        var withTrailer = await SeedGameAsync($"{marker} Trailer Game");
+        var stillsOnly = await SeedGameAsync($"{marker} Stills Game");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var details = scope.ServiceProvider.GetRequiredService<IGameDetailsRepository>();
+            await details.UpsertAsync(new GameDetails
+            {
+                GameId = withTrailer, Slug = $"{marker}-trailer", Title = "Trailer Game",
+                Gallery = new List<GameMediaItem>
+                {
+                    new() { Type = "image", Url = "http://cdn.test/shot1.jpg", Order = 0 },
+                    new() { Type = "video", Url = "http://cdn.test/gameplay.mp4", ThumbUrl = "http://cdn.test/gameplay.jpg", Order = 1 },
+                    new() { Type = "video", Url = "http://cdn.test/trailer.mp4", PosterUrl = "http://cdn.test/trailer-poster.jpg", IsTrailer = true, Order = 2 }
+                }
+            });
+            await details.UpsertAsync(new GameDetails
+            {
+                GameId = stillsOnly, Slug = $"{marker}-stills", Title = "Stills Game",
+                Gallery = new List<GameMediaItem> { new() { Type = "image", Url = "http://cdn.test/shot.jpg" } }
+            });
+        }
+        RefreshCatalog();
+
+        var items = (await GetCatalogAsync($"q={Uri.EscapeDataString(marker)}")).GetProperty("items").EnumerateArray().ToList();
+        var trailer = Assert.Single(items, item => item.GetProperty("id").GetString() == withTrailer);
+        Assert.Equal("http://cdn.test/trailer.mp4", trailer.GetProperty("trailerUrl").GetString());      // помеченный трейлер важнее первого видео
+        Assert.Equal("http://cdn.test/trailer-poster.jpg", trailer.GetProperty("trailerPosterUrl").GetString());
+
+        var stills = Assert.Single(items, item => item.GetProperty("id").GetString() == stillsOnly);
+        Assert.Equal(JsonValueKind.Null, stills.GetProperty("trailerUrl").ValueKind);
     }
 }

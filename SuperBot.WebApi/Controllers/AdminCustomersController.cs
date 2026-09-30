@@ -1,3 +1,5 @@
+using System.Linq;
+using SuperBot.Common.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.WebApi.Services;
@@ -18,6 +20,32 @@ public class AdminCustomersController : ControllerBase
     public async Task<IActionResult> Search([FromQuery] string q = "", CancellationToken ct = default) =>
         Ok(await _customers.SearchAsync(q, ct));
 
+    /// <summary>
+    /// Список покупателей окнами: таблица подгружает следующее окно по мере прокрутки.
+    /// Продолжение задаётся почтой последней показанной строки, а не номером страницы.
+    /// </summary>
+    [HttpGet("browse")]
+    public async Task<IActionResult> Browse(
+        [FromQuery] string? after = null,
+        [FromQuery] int limit = 50,
+        [FromQuery] string? filter = null,
+        CancellationToken ct = default) =>
+        Ok(await _customers.BrowseAsync(filter, after, limit, ct));
+
+    /// <summary>Текущий срез таблицы файлом. BOM — чтобы Excel открыл кириллицу без танцев.</summary>
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        [FromQuery] string? filter = null,
+        [FromQuery] string? q = null,
+        CancellationToken ct = default)
+    {
+        var csv = await _customers.ExportCsvAsync(filter, q, ct);
+        var bytes = System.Text.Encoding.UTF8.GetPreamble()
+            .Concat(System.Text.Encoding.UTF8.GetBytes(csv))
+            .ToArray();
+        return File(bytes, "text/csv", "customers.csv");
+    }
+
     [HttpGet("{email}")]
     public async Task<IActionResult> Get(string email, CancellationToken ct)
     {
@@ -29,7 +57,10 @@ public class AdminCustomersController : ControllerBase
 
     [HttpPost("{email}/block")]
     [Authorize(Roles = "admin")]
-    public Task<IActionResult> Block(string email) => Run(() => _customers.SetEnabledAsync(email, enabled: false));
+    // Почта нажавшего идёт в сервис: спрятанной кнопки мало, запрос можно послать и мимо
+    // интерфейса, а заблокировать себя — самая дорогая из возможных здесь ошибок.
+    public Task<IActionResult> Block(string email) =>
+        Run(() => _customers.SetEnabledAsync(email, enabled: false, actorEmail: User.GetUserKey()));
 
     [HttpPost("{email}/unblock")]
     [Authorize(Roles = "admin")]

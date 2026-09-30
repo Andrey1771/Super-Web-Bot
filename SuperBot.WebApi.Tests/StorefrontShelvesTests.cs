@@ -43,6 +43,9 @@ public class StorefrontShelvesTests
         var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
         cache.Remove(GameController.WeeklyChartCacheKey);
         cache.Remove(DealOfWeekController.SpotlightCacheKey);
+        // Полки главной строятся по снимку каталога: без сброса свежепосеянная игра в них
+        // просто не появится — снимок живёт две минуты.
+        cache.Remove(SuperBot.WebApi.Services.CatalogSnapshotService.CacheKey);
     }
 
     private async Task<string> SeedGameAsync(decimal price = 10m, DateTime? releaseDate = null)
@@ -111,11 +114,118 @@ public class StorefrontShelvesTests
         });
     }
 
+    /// <summary>Герой и кулисы баннера недели — тем же сервисом, что собирает /api/game/home.</summary>
+    private async Task<(string? HeroGameId, List<string> WingGameIds)> SpotlightAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<SuperBot.WebApi.Services.Storefront.IDealSpotlightService>().ResolveAsync();
+    }
+
     private async Task<JsonElement> GetJsonAsync(string url)
     {
         var response = await CreateClient().GetAsync(url);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+    }
+
+
+    // ---------- главная одним запросом ----------
+
+    /// <summary>Полка — это список id; сами карточки лежат общим справочником games.</summary>
+    private static List<string> ShelfIds(JsonElement home, string shelf) =>
+        home.GetProperty(shelf).EnumerateArray().Select(id => id.GetString() ?? string.Empty).ToList();
+
+    private static JsonElement Card(JsonElement home, string gameId) =>
+        home.GetProperty("games").GetProperty(gameId);
+
+    [Fact]
+    public async Task Home_returns_shelves_and_not_the_whole_catalog()
+    {
+        // Каталог общий на всю сборку, поэтому игр в базе заведомо больше, чем помещается
+        // на полку: именно это и проверяем — уезжают полки, а не каталог.
+        for (var i = 0; i < 12; i++)
+        {
+            await SeedGameAsync(price: 20m + i, releaseDate: DateTime.UtcNow.AddDays(-i - 1));
+        }
+        ResetCaches();
+
+        var home = await GetJsonAsync("/api/game/home?currency=USD");
+
+        Assert.True(home.GetProperty("newReleases").GetArrayLength() <= 8);
+        Assert.True(home.GetProperty("hero").GetArrayLength() <= 7);
+        foreach (var shelf in new[] { "upcoming", "deals", "budget", "editorsPicks", "popularThisWeek" })
+        {
+            Assert.True(home.GetProperty(shelf).GetArrayLength() <= 8, $"Полка {shelf} не должна быть каталогом.");
+        }
+    }
+
+    [Fact]
+    public async Task Home_puts_upcoming_games_apart_from_released_ones()
+    {
+        var upcoming = await SeedGameAsync(releaseDate: DateTime.UtcNow.AddYears(5));
+        ResetCaches();
+
+        var home = await GetJsonAsync("/api/game/home?currency=USD");
+
+        var upcomingIds = ShelfIds(home, "upcoming");
+        var newIds = ShelfIds(home, "newReleases");
+
+        Assert.Contains(upcoming, upcomingIds);
+        // Не вышедшая игра на полке новинок означала бы «купите то, чего нет».
+        Assert.DoesNotContain(upcoming, newIds);
+    }
+
+    [Fact]
+    public async Task Home_budget_shelf_respects_the_price_limit()
+    {
+        await SeedGameAsync(price: 3m);
+        await SeedGameAsync(price: 500m);
+        ResetCaches();
+
+        var home = await GetJsonAsync("/api/game/home?currency=USD&budgetMax=5");
+
+        var prices = ShelfIds(home, "budget")
+            .Select(id => Card(home, id).GetProperty("finalPrice").GetDecimal())
+            .ToList();
+
+        Assert.All(prices, price => Assert.True(price > 0 && price <= 5m, $"Цена {price} не помещается в лимит полки."));
+    }
+
+    [Fact]
+    public async Task Home_deals_shelf_is_ordered_by_discount_depth()
+    {
+        var deep = await SeedGameAsync(price: 100m);
+        var shallow = await SeedGameAsync(price: 100m);
+        await SeedDiscountAsync(deep, percent: 80m);
+        await SeedDiscountAsync(shallow, percent: 5m);
+        ResetCaches();
+
+        var home = await GetJsonAsync("/api/game/home?currency=USD");
+        var percents = ShelfIds(home, "deals")
+            .Select(id => Card(home, id).GetProperty("discountPercent").GetDecimal())
+            .ToList();
+
+        Assert.Equal(percents.OrderByDescending(value => value).ToList(), percents);
+    }
+
+    [Fact]
+    public async Task Home_mood_shelf_matches_genres_loosely()
+    {
+        ResetCaches();
+
+        var home = await GetJsonAsync("/api/game/home?currency=USD&moods=Action,Strategy");
+        var moods = home.GetProperty("moods");
+
+        // Полки настроений приходят по тем ключам, которые витрина запросила: их список
+        // (лейблы, иконки) живёт на витрине, серверу знать о нём незачем.
+        Assert.True(moods.TryGetProperty("Action", out var action));
+        Assert.True(moods.TryGetProperty("Strategy", out _));
+        Assert.True(action.GetArrayLength() <= 3);
+        Assert.All(
+            action.EnumerateArray().Select(id => Card(home, id.GetString()!)),
+            card => Assert.Contains(
+                card.GetProperty("genres").EnumerateArray().Select(genre => genre.GetString() ?? string.Empty),
+                genre => genre.Contains("Action", StringComparison.OrdinalIgnoreCase)));
     }
 
     // ---------- weekly chart ----------
@@ -224,10 +334,10 @@ public class StorefrontShelvesTests
         await ClearSpotlightConfigAsync();
         ResetCaches();
 
-        var spotlight = await GetJsonAsync("/api/deal-of-week");
+        var spotlight = await SpotlightAsync();
 
         // Конфига нет — сервер сам выбирает самую глубокую живую скидку, баннер не пустует.
-        Assert.Equal(deep, spotlight.GetProperty("heroGameId").GetString());
+        Assert.Equal(deep, spotlight.HeroGameId);
     }
 
     [Fact]
@@ -248,10 +358,10 @@ public class StorefrontShelvesTests
         });
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
 
-        var spotlight = await GetJsonAsync("/api/deal-of-week");
-        var wings = spotlight.GetProperty("wingGameIds").EnumerateArray().Select(id => id.GetString()).ToList();
+        var spotlight = await SpotlightAsync();
+        var wings = spotlight.WingGameIds;
 
-        Assert.Equal(hero, spotlight.GetProperty("heroGameId").GetString());
+        Assert.Equal(hero, spotlight.HeroGameId);
         Assert.Contains(wing, wings);
         Assert.DoesNotContain(hero, wings);
     }
@@ -266,14 +376,44 @@ public class StorefrontShelvesTests
 
         var admin = CreateClient(admin: true);
         await admin.PutAsJsonAsync("/api/admin/deal-of-week", new { heroGameId = first, wingGameIds = Array.Empty<string>() });
-        var before = await GetJsonAsync("/api/deal-of-week");
-        Assert.Equal(first, before.GetProperty("heroGameId").GetString());
+        var before = await SpotlightAsync();
+        Assert.Equal(first, before.HeroGameId);
 
         // Без сброса кэша админ до двух минут видел бы на главной прежнего героя.
         await admin.PutAsJsonAsync("/api/admin/deal-of-week", new { heroGameId = second, wingGameIds = Array.Empty<string>() });
-        var after = await GetJsonAsync("/api/deal-of-week");
+        var after = await SpotlightAsync();
 
-        Assert.Equal(second, after.GetProperty("heroGameId").GetString());
+        Assert.Equal(second, after.HeroGameId);
+    }
+
+    /// <summary>
+    /// Число в подписи ссылки («All 9 deals») — обещание: столько человек увидит, когда перейдёт.
+    /// Поэтому оно должно совпадать с выдачей каталога по тому же фильтру, а не считаться
+    /// своей формулой рядом. Тест ловит именно расхождение двух счётов, а не конкретные числа:
+    /// в общей базе тестов игр сколько угодно, и точное значение здесь ничего не значило бы.
+    /// </summary>
+    [Fact]
+    public async Task Shelf_link_totals_match_the_catalog_behind_the_link()
+    {
+        var discounted = await SeedGameAsync(price: 40m);
+        await SeedDiscountAsync(discounted, percent: 25m);
+        await SeedGameAsync(price: 3m);
+        ResetCaches();
+
+        var totals = (await GetJsonAsync("/api/game/home?currency=USD&budgetMax=10")).GetProperty("totals");
+
+        Assert.Equal(
+            (await GetJsonAsync("/api/game/catalog?currency=USD")).GetProperty("total").GetInt32(),
+            totals.GetProperty("games").GetInt32());
+        Assert.Equal(
+            (await GetJsonAsync("/api/game/catalog?currency=USD&onSale=true")).GetProperty("total").GetInt32(),
+            totals.GetProperty("deals").GetInt32());
+        Assert.Equal(
+            (await GetJsonAsync("/api/game/catalog?currency=USD&comingSoon=true")).GetProperty("total").GetInt32(),
+            totals.GetProperty("upcoming").GetInt32());
+        Assert.Equal(
+            (await GetJsonAsync("/api/game/catalog?currency=USD&maxPrice=10")).GetProperty("total").GetInt32(),
+            totals.GetProperty("budget").GetInt32());
     }
 
     [Fact]
@@ -288,5 +428,31 @@ public class StorefrontShelvesTests
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Полка «Popular this week» не пустеет в тихую неделю: настоящие продажи впереди, остаток добирается играми
+    /// в наличии, и витрина знает, сколько из карточек — реальные продажи недели.
+    /// </summary>
+    [Fact]
+    public async Task Home_popular_shelf_is_always_full_with_real_sales_first()
+    {
+        for (var i = 0; i < 8; i++)
+        {
+            await SeedGameAsync(price: 15m + i);
+        }
+        var bestseller = await SeedGameAsync();
+        // Число заведомо крупное: база общая на всю сборку, мелкая продажа не удержала бы первое место.
+        await SeedPaidOrderAsync(bestseller, quantity: 5000, paidAt: DateTime.UtcNow.AddHours(-1));
+        ResetCaches();
+
+        var home = await GetJsonAsync("/api/game/home?currency=USD");
+        var ids = ShelfIds(home, "popularThisWeek");
+
+        Assert.Equal(8, ids.Count);
+        Assert.Equal(ids.Count, ids.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(bestseller, ids[0]);
+        var sold = home.GetProperty("popularThisWeekSold").GetInt32();
+        Assert.InRange(sold, 1, 8);
     }
 }

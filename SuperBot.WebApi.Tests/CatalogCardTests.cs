@@ -27,6 +27,12 @@ public class CatalogCardTests
 
     // ---------- helpers ----------
 
+    /// <summary>
+    /// Имена засеянных игр по их id. Каталог постраничный, поэтому карточку ищем поиском по
+    /// имени (оно уникально), а не листанием всей выдачи.
+    /// </summary>
+    private readonly Dictionary<string, string> _seededNames = new();
+
     private async Task<string> SeedGameAsync(DateTime? releaseDate = null)
     {
         using var scope = _factory.Services.CreateScope();
@@ -44,7 +50,9 @@ public class CatalogCardTests
         });
 
         var all = await games.GetAllAsync();
-        return all.First(game => game.Name == name).Id!;
+        var id = all.First(game => game.Name == name).Id!;
+        _seededNames[id] = name;
+        return id;
     }
 
     private async Task SeedPoolKeysAsync(string gameId, int count, string keyType = "Steam Key")
@@ -92,11 +100,14 @@ public class CatalogCardTests
             scope.ServiceProvider.GetRequiredService<IMemoryCache>().Remove(CatalogSnapshotService.CacheKey);
         }
 
-        var response = await _factory.CreateClient().GetAsync("/api/game");
+        var name = _seededNames[gameId];
+        var response = await _factory.CreateClient()
+            .GetAsync($"/api/game/catalog?q={Uri.EscapeDataString(name)}&pageSize=48");
         response.EnsureSuccessStatusCode();
 
-        var catalog = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return catalog.EnumerateArray().Single(item => item.GetProperty("id").GetString() == gameId);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return payload.GetProperty("items").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetString() == gameId);
     }
 
     // ---------- оценка ----------

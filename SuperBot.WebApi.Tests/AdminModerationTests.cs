@@ -46,86 +46,89 @@ public class AdminModerationTests
         var review = new GameReview
         {
             Id = ObjectId.GenerateNewId().ToString(), GameId = gameId, UserId = "u1", UserName = "Reviewer", Rating = 1,
-            Text = "Terrible", Recommend = false, CreatedAt = DateTime.UtcNow, Status = ReviewStatus.Published
+            Text = "Terrible", CreatedAt = DateTime.UtcNow, Status = ReviewStatus.Published
         };
         await reviews.CreateAsync(review);
         return (gameId, review.Id);
     }
 
+    private static StringContent Report(string reason, string? comment = null) =>
+        new(JsonSerializer.Serialize(new { reason, comment }), System.Text.Encoding.UTF8, "application/json");
+
+    /// <summary>
+    /// Жалоба — заявка модератору, не выключатель: одна жалоба отзыв не прячет, второй раз с того же
+    /// аккаунта пожаловаться нельзя, а по порогу разных жалобщиков отзыв уходит на модерацию с причинами.
+    /// </summary>
     [Fact]
-    public async Task Reported_review_disappears_from_storefront_and_shows_up_for_moderation()
+    public async Task Reports_need_a_reason_hide_only_at_threshold_and_reach_the_moderator_with_reasons()
     {
         var (gameId, reviewId) = await SeedReviewAsync();
-        var customer = As("angry@taleshop.test", "");
+        var first = As("one@taleshop.test", "");
         var support = As("agent@taleshop.test", "support");
 
-        // До жалобы — на витрине.
-        var before = await Body(await customer.GetAsync($"/api/games/{gameId}/reviews"));
-        Assert.Contains(before.GetProperty("items").EnumerateArray(), r => r.GetProperty("id").GetString() == reviewId);
+        // Без причины — отказ; с причиной — принято, но отзыв остаётся на витрине.
+        Assert.Equal(HttpStatusCode.BadRequest, (await first.PostAsync($"/api/reviews/{reviewId}/report", Report(""))).StatusCode);
+        var accepted = await Body(await first.PostAsync($"/api/reviews/{reviewId}/report", Report("Abusive", "Calls other players names.")));
+        Assert.False(accepted.GetProperty("hidden").GetBoolean());
+        Assert.Equal(1, accepted.GetProperty("reports").GetInt32());
+        var stillThere = await Body(await first.GetAsync($"/api/games/{gameId}/reviews"));
+        Assert.Contains(stillThere.GetProperty("items").EnumerateArray(), r => r.GetProperty("id").GetString() == reviewId);
 
-        Assert.Equal(HttpStatusCode.OK, (await customer.PostAsync($"/api/reviews/{reviewId}/report", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await customer.PostAsync($"/api/reviews/{reviewId}/report", null)).StatusCode);
+        // Повтор с того же аккаунта не считается.
+        Assert.Equal(HttpStatusCode.Conflict, (await first.PostAsync($"/api/reviews/{reviewId}/report", Report("Abusive"))).StatusCode);
 
-        // После — с витрины ушёл, у модератора появился со счётчиком жалоб.
-        var after = await Body(await customer.GetAsync($"/api/games/{gameId}/reviews"));
+        // Третий разный жалобщик — порог: отзыв уходит с витрины.
+        await As("two@taleshop.test", "").PostAsync($"/api/reviews/{reviewId}/report", Report("OffTopic"));
+        var third = await Body(await As("three@taleshop.test", "").PostAsync($"/api/reviews/{reviewId}/report", Report("Other", "It is a copy of a Steam review.")));
+        Assert.True(third.GetProperty("hidden").GetBoolean());
+        var after = await Body(await first.GetAsync($"/api/games/{gameId}/reviews"));
         Assert.DoesNotContain(after.GetProperty("items").EnumerateArray(), r => r.GetProperty("id").GetString() == reviewId);
 
+        // У модератора — со счётчиком и причинами.
         var pending = await Body(await support.GetAsync("/api/admin/moderation/reviews?status=pending&pageSize=100"));
         var mine = pending.GetProperty("items").EnumerateArray().Single(r => r.GetProperty("id").GetString() == reviewId);
-        Assert.Equal(2, mine.GetProperty("reportCount").GetInt32());
+        Assert.Equal(3, mine.GetProperty("reportCount").GetInt32());
+        var reasons = mine.GetProperty("reports").EnumerateArray().Select(r => r.GetProperty("reason").GetString()).ToList();
+        Assert.Equal(new[] { "Other", "OffTopic", "Abusive" }, reasons);
+        Assert.Contains(mine.GetProperty("reports").EnumerateArray(), r => r.GetProperty("comment").GetString() == "Calls other players names.");
         Assert.StartsWith("Moderated Game", mine.GetProperty("gameTitle").GetString());
 
         // Модератор публикует обратно — на витрине снова есть.
         var publish = await support.PostAsync($"/api/admin/moderation/reviews/{reviewId}/publish", null);
         Assert.Equal(HttpStatusCode.OK, publish.StatusCode);
-        var restored = await Body(await customer.GetAsync($"/api/games/{gameId}/reviews"));
+        var restored = await Body(await first.GetAsync($"/api/games/{gameId}/reviews"));
         Assert.Contains(restored.GetProperty("items").EnumerateArray(), r => r.GetProperty("id").GetString() == reviewId);
     }
 
     [Fact]
-    public async Task Shop_reply_is_visible_on_the_storefront()
+    public async Task Spam_report_hides_the_review_at_once_and_own_review_cannot_be_reported()
+    {
+        var (gameId, reviewId) = await SeedReviewAsync();
+
+        // Автор отзыва (userId "u1" в SeedReviewAsync — не он) не может пожаловаться на себя: проверяем чужим и своим.
+        var spamReport = await Body(await As("spotter@taleshop.test", "").PostAsync($"/api/reviews/{reviewId}/report", Report("Spam", "Promo code in the text.")));
+        Assert.True(spamReport.GetProperty("hidden").GetBoolean());
+        var after = await Body(await _factory.CreateClient().GetAsync($"/api/games/{gameId}/reviews"));
+        Assert.DoesNotContain(after.GetProperty("items").EnumerateArray(), r => r.GetProperty("id").GetString() == reviewId);
+
+        // «Other» без пояснения — отказ: модератору нечего разбирать.
+        Assert.Equal(HttpStatusCode.BadRequest, (await As("vague@taleshop.test", "").PostAsync($"/api/reviews/{reviewId}/report", Report("Other"))).StatusCode);
+    }
+
+    /// <summary>Ответов магазина под отзывами нет: ни эндпоинта, ни поля в выдаче — старый
+    /// shopReply в документе витрине не показывается.</summary>
+    [Fact]
+    public async Task Shop_replies_do_not_exist()
     {
         var (gameId, reviewId) = await SeedReviewAsync();
         var support = As("agent@taleshop.test", "support");
 
         var reply = await support.PostAsJsonAsync($"/api/admin/moderation/reviews/{reviewId}/reply", new { text = "Sorry — we have refunded you." });
-        Assert.Equal(HttpStatusCode.OK, reply.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, reply.StatusCode);
 
         var list = await Body(await _factory.CreateClient().GetAsync($"/api/games/{gameId}/reviews"));
         var item = list.GetProperty("items").EnumerateArray().Single(r => r.GetProperty("id").GetString() == reviewId);
-        Assert.Equal("Sorry — we have refunded you.", item.GetProperty("shopReply").GetProperty("text").GetString());
-        Assert.Equal("agent@taleshop.test", item.GetProperty("shopReply").GetProperty("author").GetString());
-    }
-
-    [Fact]
-    public async Task Official_answer_is_flagged_where_the_customer_sees_it()
-    {
-        string gameId;
-        string questionId;
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var questions = scope.ServiceProvider.GetRequiredService<IGameQuestionRepository>();
-            gameId = ObjectId.GenerateNewId().ToString();
-            questionId = ObjectId.GenerateNewId().ToString();
-            await questions.AddQuestionAsync(new GameQuestion { Id = questionId, GameId = gameId, UserId = "u2", UserName = "Curious", Question = "Is it region-locked?", CreatedAt = DateTime.UtcNow });
-        }
-        var support = As("agent@taleshop.test", "support");
-
-        var unanswered = await Body(await support.GetAsync("/api/admin/moderation/questions?filter=unanswered&pageSize=100"));
-        Assert.Contains(unanswered.GetProperty("items").EnumerateArray(), q => q.GetProperty("id").GetString() == questionId);
-
-        Assert.Equal(HttpStatusCode.OK, (await support.PostAsJsonAsync($"/api/admin/moderation/questions/{questionId}/answer", new { text = "No, global key." })).StatusCode);
-
-        // Ушёл из неотвеченных.
-        var still = await Body(await support.GetAsync("/api/admin/moderation/questions?filter=unanswered&pageSize=100"));
-        Assert.DoesNotContain(still.GetProperty("items").EnumerateArray(), q => q.GetProperty("id").GetString() == questionId);
-
-        // На витрине ответ помечен официальным.
-        var storefront = (await Body(await _factory.CreateClient().GetAsync($"/api/games/{gameId}/questions"))).GetProperty("items");
-        var question = storefront.EnumerateArray().Single(q => q.GetProperty("id").GetString() == questionId);
-        var answer = Assert.Single(question.GetProperty("answers").EnumerateArray());
-        Assert.True(answer.GetProperty("isOfficial").GetBoolean());
-        Assert.Equal("Tale Shop", answer.GetProperty("userName").GetString());
+        Assert.False(item.TryGetProperty("shopReply", out _));
     }
 
     [Fact]

@@ -43,6 +43,22 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
         }
 
+        /// <summary>
+        /// Все теги постов. distinct идёт по полю, документы при этом не читаются — список
+        /// тегов маленький и не растёт вместе с блогом.
+        /// </summary>
+        public async Task<IReadOnlyList<string>> GetAllTagsAsync()
+        {
+            var tags = await _posts.DistinctAsync<string>("tags", Builders<BlogPostDb>.Filter.Empty);
+            var all = await tags.ToListAsync();
+
+            return all
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         public async Task<BlogPost> GetByIdAsync(string id)
         {
             var postDb = await _posts.Find(post => post.Id == id).FirstOrDefaultAsync();
@@ -68,7 +84,9 @@ namespace SuperBot.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<BlogPost>> GetByIdsAsync(IEnumerable<string> ids)
         {
-            var idList = ids?.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList() ?? new List<string>();
+            // Id постов приходят и из событий чтения, где клиент мог прислать что угодно: строка,
+            // не похожая на ObjectId, роняла весь запрос (и ленту главной вместе с ним), а не один id.
+            var idList = ids?.Where(id => !string.IsNullOrWhiteSpace(id) && ObjectId.TryParse(id, out _)).Distinct().ToList() ?? new List<string>();
             if (idList.Count == 0)
             {
                 return Array.Empty<BlogPost>();
@@ -86,21 +104,6 @@ namespace SuperBot.Infrastructure.Repositories
                 .Find(post => post.Status == "PUBLISHED")
                 .SortByDescending(post => post.PublishedAt)
                 .Limit(normalizedLimit)
-                .ToListAsync();
-
-            return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
-        }
-
-        public async Task<IReadOnlyList<BlogPost>> GetPublishedSinceAsync(DateTime fromUtc)
-        {
-            var filter = Builders<BlogPostDb>.Filter.And(
-                Builders<BlogPostDb>.Filter.Eq(post => post.Status, "PUBLISHED"),
-                Builders<BlogPostDb>.Filter.Gte(post => post.PublishedAt, fromUtc)
-            );
-
-            var postsDb = await _posts
-                .Find(filter)
-                .SortByDescending(post => post.PublishedAt)
                 .ToListAsync();
 
             return _mapper.Map<IReadOnlyList<BlogPost>>(postsDb);
@@ -227,7 +230,8 @@ namespace SuperBot.Infrastructure.Repositories
 
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
-                var regex = new BsonRegularExpression(query.Search, "i");
+                // Экранируем: «[» ронял запрос в 500, а шаблон вроде (a+)+$ нагружал базу — поиск публичный.
+                var regex = new BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(query.Search.Trim()), "i");
                 var searchFilter = Builders<BlogPostDb>.Filter.Or(
                     Builders<BlogPostDb>.Filter.Regex(post => post.Title, regex),
                     Builders<BlogPostDb>.Filter.Regex(post => post.Slug, regex)

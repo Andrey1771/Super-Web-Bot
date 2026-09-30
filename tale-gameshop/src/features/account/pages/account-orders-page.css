@@ -128,6 +128,49 @@
     gap: var(--space-16);
 }
 
+/* Вся карточка — одна кнопка: снимаем с неё оформление, оставляя только поведение. */
+.order-card-summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.order-card-summary:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+    border-radius: var(--radius-md);
+}
+
+/* Номер заказа и стрелка — одной строкой. */
+.order-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+/* Стрелка вместо кнопки «View details»: её направление показывает, что будет по нажатию. */
+.order-chevron {
+    font-size: 13px;
+    color: var(--color-muted);
+    transition: transform 150ms ease, color 150ms ease;
+}
+
+.order-card-summary:hover .order-chevron {
+    color: var(--color-text);
+}
+
+.order-chevron.is-open {
+    transform: rotate(180deg);
+}
+
 .order-card-header {
     display: flex;
     align-items: center;
@@ -179,16 +222,9 @@
 
 .order-actions {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-10);
-    align-items: flex-end;
-    min-width: 160px;
-}
-
-.order-action-btn {
-    height: 38px;
-    font-size: 14px;
-    padding-inline: var(--space-16);
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-12);
 }
 
 .order-status.status-processing {
@@ -457,6 +493,12 @@
 }
 
 .order-details-panel {
+    /* Панель — контейнер запросов: раскладка внутри зависит от ЕЁ ширины, а не от ширины
+       окна. Между окном и панелью стоит боковое меню кабинета и отступы страницы, поэтому
+       окно шириной 1280px даёт панели около 700px — и правила, написанные на @media, до
+       неё просто не доходили. */
+    container-type: inline-size;
+    container-name: order-details;
     border-top: 1px solid var(--color-border);
     margin-top: var(--space-8);
     padding: var(--space-24);
@@ -471,12 +513,26 @@
 }
 
 .order-line-items {
+    /* Второй контейнер: строке товара важна ширина списка, а не панели — в панели рядом
+       ещё стоит сводка заказа. */
+    container-type: inline-size;
+    container-name: order-lines;
     display: flex;
     flex-direction: column;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: #fff;
     overflow: hidden;
+}
+
+/* Обёртка вокруг строки товара и действий под ней. Разделитель переехал сюда со строки:
+   иначе :first-child внутри каждой обёртки снимал бы границу у всех строк подряд. */
+.order-line {
+    border-top: 1px solid var(--color-border);
+}
+
+.order-line:first-child {
+    border-top: 0;
 }
 
 .order-line-item {
@@ -487,25 +543,170 @@
     padding: var(--space-16);
     color: inherit;
     text-decoration: none;
-    border-top: 1px solid var(--color-border);
 }
 
-.order-line-item:first-child {
-    border-top: 0;
+/* Приглашение оценить: заметное, но не спорящее с самой покупкой — поэтому ссылка,
+   а не кнопка, и подпись обычным весом. */
+.order-line-review {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-8) var(--space-12);
+    padding: 0 var(--space-16) var(--space-16);
+    /* Совпадает с началом текста в строке выше: 56px обложки плюс её отступ. */
+    padding-left: calc(var(--space-16) + 56px + var(--space-12));
 }
 
-.order-line-item.is-clickable {
+.order-line-review-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, #ffffff);
+    background: color-mix(in srgb, var(--color-primary) 7%, #ffffff);
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color .2s ease, border-color .2s ease;
+}
+
+.order-line-review-link:hover,
+.order-line-review-link:focus-visible {
+    background: color-mix(in srgb, var(--color-primary) 14%, #ffffff);
+    border-color: var(--color-primary);
+    text-decoration: none;
+}
+
+.order-line-review-hint {
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+/* Узкая панель: обложки в строке уже нет как ориентира, ровняем по общему отступу. */
+@container order-lines (max-width: 520px) {
+    .order-line-review {
+        padding-left: var(--space-16);
+    }
+
+    .order-line-review-hint {
+        flex-basis: 100%;
+    }
+}
+
+/* Обложка и название — ссылки на игру; название подчёркивается при наведении, как в корзине. */
+.order-line-cover-link {
+    display: block;
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.order-line-cover-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.order-line-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.order-line-title-link:hover,
+.order-line-title-link:focus-visible {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.order-line-secondary-meta .order-line-unavailable {
+    background: #fdf1f1;
+    color: #b91c1c;
+}
+
+/* Ключи целиком: моноширинная пилюля и «Copy», как на странице Keys. */
+.order-line-keys--revealed {
+    align-items: center;
+}
+
+.order-line-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: #f7f5ff;
+}
+
+.order-line-key code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b3a72;
+    letter-spacing: 0.02em;
+}
+
+.order-line-key-copy {
+    border: 0;
+    border-radius: 999px;
+    padding: 2px 8px;
+    background: #ffffff;
+    color: var(--color-primary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
     cursor: pointer;
-    transition: background-color .2s ease, box-shadow .2s ease;
 }
 
-.order-line-item.is-clickable:hover {
-    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+.order-line-key-copy:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
 }
 
-.order-line-item.is-clickable:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, #ffffff);
-    outline-offset: -2px;
+/* Полоса действий с ключами — шапка панели позиций: приглушённый фон, подпись слева,
+   кнопки справа; ответ сервера — строкой под ними. */
+.order-keys-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16);
+    background: #f8f7fc;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.order-keys-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-8) var(--space-12);
+}
+
+.order-keys-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.order-keys-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+}
+
+.order-keys-btn {
+    height: 34px;
+    padding: 0 14px;
+    font-size: 13px;
+    background: #ffffff;
+}
+
+.order-keys-note {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.order-keys-note--error {
+    color: #b91c1c;
 }
 
 .order-line-cover {
@@ -592,7 +793,9 @@
     font-style: italic;
 }
 
-.order-summary-card {
+/* Сводка в карточке заказа. На кассе есть блок с тем же именем и другим видом:
+   без привязки к разметке заказа они перекрывали друг друга. */
+.order-details-layout .order-summary-card {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: #fff;
@@ -602,7 +805,7 @@
     gap: var(--space-12);
 }
 
-.order-summary-card h4 {
+.order-details-layout .order-summary-card h4 {
     margin: 0 0 var(--space-6);
     color: var(--color-text);
     font-size: 16px;
@@ -622,15 +825,66 @@
     font-variant-numeric: tabular-nums;
 }
 
-.order-summary-divider {
+.order-details-layout .order-summary-divider {
     border-top: 1px solid var(--color-border);
     margin-top: var(--space-12);
     padding-top: var(--space-4);
 }
 
-.order-summary-total {
+.order-details-layout .order-summary-total {
     font-size: 16px;
     font-weight: 700;
+}
+
+/* Чем платили — служебная строка под итогом, тише сумм. */
+.order-details-layout .order-summary-paid-with {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+/* Кэшбэк по заказу: оплаченное им — фирменным лиловым, начисленное — зелёным, как везде у денег. */
+.order-summary-cashback-paid span:last-child {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.order-summary-cashback {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-10);
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+    background: #e9f8f0;
+    color: #15803d;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.order-summary-cashback > span {
+    display: flex;
+    flex-direction: column;
+}
+
+.order-summary-cashback small {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-muted);
+}
+
+.order-summary-cashback strong {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.order-summary-cashback.is-reverted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.order-summary-cashback.is-reverted strong {
+    text-decoration: line-through;
 }
 
 @media (max-width: 940px) {
@@ -638,14 +892,6 @@
         padding: var(--space-20);
     }
 
-    .order-details-layout {
-        grid-template-columns: 1fr;
-        gap: var(--space-18);
-    }
-
-    .order-summary-card {
-        order: 2;
-    }
 }
 
 @media (max-width: 640px) {
@@ -653,6 +899,27 @@
         padding: var(--space-16);
     }
 
+}
+
+/* Сводка уходит под список, когда панели уже не хватает ширины на две колонки.
+   360px забирает сводка, ещё 24px — промежуток; списку меньше ~420px оставлять нельзя:
+   при 56px обложки и 156px цены названию остаются считанные пиксели, и «Lanternfall»
+   обрезается на середине слова. */
+@container order-details (max-width: 760px) {
+    .order-details-layout {
+        grid-template-columns: 1fr;
+        gap: var(--space-18);
+    }
+
+    .order-details-layout .order-summary-card {
+        order: 2;
+    }
+}
+
+/* Цена уходит под название, когда и на одну строку места мало. Порог — обложка, цена,
+   промежутки и поля плюс минимум места названию: 56 + 12 + 180 + 12 + 156 + 32 ≈ 450,
+   с запасом 520. */
+@container order-lines (max-width: 520px) {
     .order-line-item {
         grid-template-columns: 46px minmax(0, 1fr);
         grid-template-areas:

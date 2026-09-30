@@ -47,12 +47,58 @@ public static class SupportKnowledgeSeed
 
             article.InstantEnabled = true;
             article.InstantTriggers = topic.Groups
-                .Select(group => new InstantTriggerGroup { Terms = group.ToList() })
+                .Select((group, index) => new InstantTriggerGroup
+                {
+                    Terms = group.Concat(topic.ExtraGroups[index]).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+                })
                 .ToList();
+            article.TranslationsBackfilledAt = now;
             article.InstantTextRu = topic.TextRu;
             article.InstantTextEn = topic.TextEn;
+            article.InstantTextUk = topic.TextUk;
+            article.InstantTextPl = topic.TextPl;
         }
 
         return articles;
+    }
+
+    /// <summary>
+    /// Украинский и польский появились позже первого переноса: уже заведённой статье один раз дописываем
+    /// пустые uk/pl тексты и только новые uk/pl слова-триггеры (по группам, если их структура совпадает
+    /// с сидом). Английские и русские слова не трогаем, как и тексты админа. Статья получает отметку
+    /// <see cref="SupportKnowledgeArticle.TranslationsBackfilledAt"/> и больше не пересматривается.
+    /// Возвращает true, если статью надо сохранить.
+    /// </summary>
+    public static bool BackfillTranslations(SupportKnowledgeArticle article)
+    {
+        if (article.TranslationsBackfilledAt is not null)
+        {
+            return false;
+        }
+        var mapping = InstantMapping.FirstOrDefault(item => item.ArticleSlug == article.Slug);
+        var topic = mapping.TopicId is null ? null : SupportInstantAnswers.SeedTopics.FirstOrDefault(item => item.Id == mapping.TopicId);
+        if (topic == null)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(article.InstantTextUk))
+        {
+            article.InstantTextUk = topic.TextUk;
+        }
+        if (string.IsNullOrWhiteSpace(article.InstantTextPl))
+        {
+            article.InstantTextPl = topic.TextPl;
+        }
+        if (article.InstantTriggers.Count == topic.ExtraGroups.Length)
+        {
+            for (var i = 0; i < topic.ExtraGroups.Length; i++)
+            {
+                var group = article.InstantTriggers[i];
+                group.Terms.AddRange(topic.ExtraGroups[i].Where(term => !group.Terms.Contains(term, StringComparer.OrdinalIgnoreCase)));
+            }
+        }
+        article.TranslationsBackfilledAt = DateTime.UtcNow;
+        return true;
     }
 }

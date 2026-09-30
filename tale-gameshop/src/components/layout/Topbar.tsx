@@ -3,11 +3,17 @@ import { useNavigate } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IKeycloakService } from "../../iterfaces/i-keycloak-service";
-import type { HeaderAction } from "./AdminHeaderContext";
 
+/**
+ * Шапка админки: бургер на узком экране и меню профиля.
+ *
+ * Заголовок страницы и её кнопки здесь больше не показываются — их рисует сама страница
+ * (PageHeader), вместе с хлебными крошками, описанием и вкладками раздела. Две шапки подряд
+ * повторяли название, и появлялись они через раз: заголовок брался из карты путей, поэтому
+ * при переходе между страницами с одинаковым именем в карте наверху оставались кнопки и
+ * подпись предыдущей, а после обновления страницы их не было.
+ */
 type TopbarProps = {
-  title: string;
-  actions: HeaderAction[];
   onToggleSidebar: () => void;
 };
 
@@ -18,10 +24,9 @@ type TokenProfile = {
   realm_access?: { roles?: string[] };
 };
 
-const Topbar: React.FC<TopbarProps> = ({ title, actions, onToggleSidebar }) => {
+const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
   const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const token = keycloakService.keycloak.tokenParsed as TokenProfile | undefined;
   const displayName = token?.preferred_username ?? token?.email ?? "Admin";
@@ -39,25 +44,6 @@ const Topbar: React.FC<TopbarProps> = ({ title, actions, onToggleSidebar }) => {
     return roles[0] ?? "User";
   }, [token?.realm_access?.roles]);
 
-  const handleActionClick = (action: HeaderAction) => {
-    if (action.type === "link") {
-      navigate(action.to);
-    }
-    if (action.type === "button") {
-      action.onClick();
-    }
-  };
-
-  const handleMenuItem = (item: HeaderAction & { type: "menu" }["items"][number]) => {
-    if (item.to) {
-      navigate(item.to);
-    }
-    if (item.onClick) {
-      item.onClick();
-    }
-    setMenuOpenId(null);
-  };
-
   const handleLogout = async () => {
     setProfileOpen(false);
     await keycloakService.keycloak.logout({
@@ -72,47 +58,7 @@ const Topbar: React.FC<TopbarProps> = ({ title, actions, onToggleSidebar }) => {
       <button className="btn btn-outline admin-topbar__menu" onClick={onToggleSidebar} aria-label="Open menu">
         ☰
       </button>
-      <div className="admin-topbar__title">{title}</div>
       <div className="admin-topbar__actions">
-        {actions.map((action) => {
-          if (action.type === "menu") {
-            return (
-              <div key={action.id} className="admin-menu">
-                <button
-                  className="btn btn-outline"
-                  onClick={() => setMenuOpenId(menuOpenId === action.id ? null : action.id)}
-                >
-                  {action.icon}
-                  {action.label}
-                </button>
-                {menuOpenId === action.id && (
-                  <div className="admin-menu__dropdown">
-                    {action.items.map((item) => (
-                      <button
-                        key={item.id}
-                        className={`admin-menu__item ${item.danger ? "danger" : ""}`}
-                        onClick={() => handleMenuItem(item)}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          }
-          const variantClass = action.variant === "outline" ? "btn-outline" : "btn-primary";
-          return (
-            <button
-              key={action.id}
-              className={`btn ${variantClass}`}
-              onClick={() => handleActionClick(action)}
-            >
-              {action.icon}
-              {action.label}
-            </button>
-          );
-        })}
         <div className="admin-menu">
           <button
             className="admin-profile"
@@ -126,7 +72,7 @@ const Topbar: React.FC<TopbarProps> = ({ title, actions, onToggleSidebar }) => {
             <span className="admin-profile__chevron" aria-hidden="true">▾</span>
           </button>
           {profileOpen && (
-            <div className="admin-menu__dropdown admin-menu__dropdown--right">
+            <div className="admin-menu__dropdown admin-menu__dropdown--left">
               <button
                 className="admin-menu__item"
                 onClick={() => {

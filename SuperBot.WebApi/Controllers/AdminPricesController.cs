@@ -38,25 +38,34 @@ public class AdminPricesController : ControllerBase
         _fx = fx.Value;
     }
 
+    /// <summary>
+    /// Окно строк прайс-листа. Каталог растёт, а таблица тянет строки по мере прокрутки —
+    /// поэтому отдаём кусок, отсортированный и отфильтрованный базой, плюс общее число строк
+    /// (по нему таблица знает длину полосы прокрутки).
+    /// </summary>
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? q = null)
+    public async Task<IActionResult> Get(
+        [FromQuery] string? q = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50,
+        [FromQuery] bool onlyManual = false)
     {
         var book = _fxRates.Current();
         var currencies = _currencies.Supported();
         var baseCurrency = _currencies.Base;
 
-        var games = await _games.GetAllAsync();
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var needle = q.Trim();
-            games = games.Where(g =>
-                (g.Title ?? string.Empty).Contains(needle, StringComparison.OrdinalIgnoreCase) ||
-                (g.Name ?? string.Empty).Contains(needle, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
+        var (games, total) = await _games.GetPageAsync(
+            string.IsNullOrWhiteSpace(q) ? null : q.Trim(),
+            onlyIds: null,
+            excludeIds: null,
+            sortBy: "title",
+            descending: false,
+            skip: skip < 0 ? 0 : skip,
+            take: take,
+            onlyWithManualPrices: onlyManual);
 
         var rows = games
             .Where(g => !string.IsNullOrWhiteSpace(g.Id))
-            .OrderBy(g => g.Title ?? g.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => new
             {
                 gameId = g.Id,
@@ -75,7 +84,32 @@ public class AdminPricesController : ControllerBase
             rates = currencies
                 .Where(c => !string.Equals(c, baseCurrency, StringComparison.OrdinalIgnoreCase))
                 .ToDictionary(c => c, c => book.For(c)?.Rate, StringComparer.OrdinalIgnoreCase),
-            games = rows
+            games = rows,
+            total,
+            summary = skip == 0 ? await SummaryAsync(currencies, book) : null
+        });
+    }
+
+    /// <summary>
+    /// Ручные цены одной игры. Нужны форме каталога: она правит игру целиком, и без этих
+    /// значений слала бы пустой прайс-лист, затирая цены, выставленные здесь.
+    /// </summary>
+    [HttpGet("{gameId}")]
+    public async Task<IActionResult> GetForGame(string gameId)
+    {
+        var game = await _games.GetByIdAsync(gameId);
+        if (game is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(new
+        {
+            gameId = game.Id,
+            baseCurrency = GamePricing.BaseCurrency(game),
+            basePrice = game.Price,
+            // Всегда объект, пусть и пустой: null заставил бы каждого клиента городить проверку.
+            prices = game.Prices ?? new Dictionary<string, decimal>()
         });
     }
 
@@ -124,6 +158,60 @@ public class AdminPricesController : ControllerBase
 
         await _games.UpdateAsync(gameId, game);
         return Ok(new { gameId, currency = code, cell = Cell(game, code, _fxRates.Current()) });
+    }
+
+    /// <summary>
+    /// Сводка по всему каталогу: в скольких играх валюта продаётся, где цена выставлена рукой,
+    /// а где её нет вовсе. Считается по всем играм, а не по видимому окну — иначе «5 без цены»
+    /// означало бы «пять в этих пятидесяти строках», что хуже, чем не показывать ничего.
+    /// Считаем только для первого окна: при прокрутке цифры не меняются.
+    /// </summary>
+    private async Task<object> SummaryAsync(IReadOnlyList<string> currencies, FxRateBook book)
+    {
+        var all = (await _games.GetAllAsync()).Where(g => !string.IsNullOrWhiteSpace(g.Id)).ToList();
+
+        return new
+        {
+            total = all.Count,
+            perCurrency = currencies.Select(code =>
+            {
+                var sold = 0;
+                var manual = 0;
+                foreach (var game in all)
+                {
+                    var (price, source) = CellOf(game, code, book);
+                    if (price is not null)
+                    {
+                        sold++;
+                    }
+                    if (source == "manual")
+                    {
+                        manual++;
+                    }
+                }
+
+                return new { currency = code, sold, manual, missing = all.Count - sold };
+            }).ToList()
+        };
+    }
+
+    /// <summary>Действующая цена игры в валюте и откуда она взялась.</summary>
+    private (decimal? Price, string Source) CellOf(SuperBot.Core.Entities.Game game, string currency, FxRateBook book)
+    {
+        var baseCurrency = GamePricing.BaseCurrency(game);
+        if (string.Equals(currency, baseCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            return (game.Price, "base");
+        }
+
+        var manual = GamePricing.TryGetPrice(game, currency);
+        if (manual is not null)
+        {
+            return (manual, "manual");
+        }
+
+        var byRate = GamePricing.TryGetPrice(game, currency, book, _fx);
+        return byRate is null ? (null, "none") : (byRate, "rate");
     }
 
     private object Cell(SuperBot.Core.Entities.Game game, string currency, FxRateBook book)

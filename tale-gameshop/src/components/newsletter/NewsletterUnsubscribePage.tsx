@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import "./newsletter-pages.css";
@@ -8,6 +9,7 @@ type PageState = "working" | "success" | "error";
 
 // Открывается по ссылке «Unsubscribe» из футера любого письма рассылки.
 export default function NewsletterUnsubscribePage() {
+    const { t } = useTranslation();
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token") ?? "";
     const [state, setState] = useState<PageState>("working");
@@ -39,35 +41,31 @@ export default function NewsletterUnsubscribePage() {
                 {state === "working" && (
                     <>
                         <div className="newsletter-action-spinner" aria-hidden="true" />
-                        <h1>Unsubscribing…</h1>
-                        <p className="muted">One moment — removing you from the list.</p>
+                        <h1>{t("newsletter.unsubscribing")}</h1>
+                        <p className="muted">{t("newsletter.unsubscribingText")}</p>
                     </>
                 )}
                 {state === "success" && (
                     <>
                         <span className="newsletter-action-icon is-info" aria-hidden="true">👋</span>
-                        <h1>You&rsquo;re unsubscribed</h1>
+                        <h1>{t("newsletter.unsubscribed")}</h1>
                         <p className="muted">
-                            No more emails from us. Changed your mind? You can re-subscribe on the Deals page any
-                            time — or manage it in your account settings if you have one.
+                            {t("newsletter.unsubscribedText")}
                         </p>
                         <div className="newsletter-action-buttons">
-                            <Link to="/deals" className="btn btn-primary">Re-subscribe on Deals</Link>
-                            <Link to="/account/settings" className="btn btn-outline">Account settings</Link>
+                            <Link to="/deals" className="btn btn-primary">{t("newsletter.resubscribe")}</Link>
+                            <Link to="/account/settings" className="btn btn-outline">{t("newsletter.accountSettings")}</Link>
                         </div>
                     </>
                 )}
                 {state === "error" && (
                     <>
                         <span className="newsletter-action-icon is-error" aria-hidden="true">✕</span>
-                        <h1>Link invalid</h1>
-                        <p className="muted">
-                            This unsubscribe link doesn&rsquo;t look right. If you keep receiving emails, contact
-                            support and we&rsquo;ll remove you manually.
-                        </p>
+                        <h1>{t("newsletter.linkInvalid")}</h1>
+                        <p className="muted">{t("newsletter.linkInvalidText")}</p>
                         <div className="newsletter-action-buttons">
-                            <Link to="/support" className="btn btn-primary">Contact support</Link>
-                            <Link to="/" className="btn btn-outline">Back to home</Link>
+                            <Link to="/support" className="btn btn-primary">{t("common.contactSupport")}</Link>
+                            <Link to="/" className="btn btn-outline">{t("common.backToHome")}</Link>
                         </div>
                     </>
                 )}

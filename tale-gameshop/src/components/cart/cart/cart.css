@@ -103,6 +103,20 @@
     color: var(--color-text);
 }
 
+.cart-item-name-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.cart-item-name-link:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.cart-item-media {
+    display: block;
+}
+
 .cart-item-meta {
     margin: 0;
     font-size: 13px;
@@ -352,6 +366,120 @@
 }
 
 /* Секция рекомендаций */
+/*
+ * Подсказка «что за ключ»: площадка активации, издание, регион, доставка, возврат.
+ *
+ * Всплывает над строкой, а не раздвигает её: в корзине важнее видеть сам список, а подробности
+ * нужны по требованию. Панель тёмная, чтобы читалась поверх светлых карточек.
+ */
+.key-details {
+    position: relative;
+    display: inline-flex;
+}
+
+.key-details-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: 4px 10px;
+    border: 1px dashed var(--color-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.key-details-trigger:hover,
+.key-details-trigger:focus-visible {
+    color: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+}
+
+/*
+ * Ключ в стране покупателя не активируется — кнопка перестаёт быть незаметной подсказкой.
+ * Это единственное место в строке, где написано, почему покупка не сработает, и найти его
+ * человек должен до оплаты, а не после.
+ */
+.key-details-trigger.is-blocked {
+    color: #a03434;
+    border-style: solid;
+    border-color: color-mix(in srgb, #a03434 45%, var(--color-border));
+    background: color-mix(in srgb, #a03434 8%, transparent);
+}
+
+.key-details-trigger.is-blocked:hover,
+.key-details-trigger.is-blocked:focus-visible {
+    color: #a03434;
+    border-color: color-mix(in srgb, #a03434 70%, var(--color-border));
+}
+
+.key-details-panel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 8px);
+    left: 0;
+    width: max(280px, 100%);
+    padding: var(--space-12);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--shadow-md);
+}
+
+.key-details-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding-bottom: var(--space-8);
+    margin-bottom: var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.key-details-head-icon {
+    color: #1f9d55;
+}
+
+/* Запрет — не украшение: строка меняет цвет, чтобы её нельзя было принять за подтверждение. */
+.key-details-head.is-blocked .key-details-head-icon,
+.key-details-head.is-blocked {
+    color: #a03434;
+}
+
+.key-details-rows {
+    display: grid;
+    gap: var(--space-6);
+    margin: 0;
+}
+
+.key-details-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: var(--space-8);
+    font-size: 12px;
+}
+
+.key-details-row dt {
+    color: var(--color-muted);
+}
+
+.key-details-row dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.key-details-note {
+    margin: var(--space-8) 0 0;
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
 .cart-recs-head {
     display: flex;
     align-items: center;
@@ -364,83 +492,142 @@
     margin: 0;
 }
 
+/*
+ * Рекомендации в корзине — компактные строки в две колонки, а не крупные карточки.
+ *
+ * Корзина — это про заказ, который уже собран; подборка здесь помогает, а не соревнуется с ним
+ * за внимание. Четыре карточки во всю ширину с большими обложками занимали больше места, чем
+ * сам заказ, и читались как отдельная витрина.
+ */
 .cart-recs-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-16);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-12);
 }
 
 .cart-recs-skeleton {
-    height: 240px;
+    /* Заглушка ровно с готовую строку — блок не прыгает, когда рекомендации доехали. */
+    height: 92px;
     border-radius: var(--radius-lg);
     border: 1px dashed var(--color-border);
     background: color-mix(in srgb, var(--color-primary) 4%, #ffffff);
 }
 
-.rec-card {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+/* Рекомендации в корзине: одноимённая карточка есть и на странице игры, поэтому правило
+   привязано к сетке корзины — иначе побеждала бы та, что собралась позже. */
+.cart-rec {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-8);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cart-rec:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
     box-shadow: var(--shadow-sm);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.rec-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-md);
-}
-
-.rec-card-media {
-    height: 150px;
+/* Обложка в строке — небольшая и в тех же пропорциях, что карточки каталога. */
+.cart-rec-media {
+    display: block;
+    width: 76px;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-md);
     overflow: hidden;
     background: #f1f2f7;
+    flex-shrink: 0;
 }
 
-.rec-card-media img {
+.cart-rec-media img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.4s ease;
 }
 
-.rec-card:hover .rec-card-media img {
-    transform: scale(1.05);
+.cart-rec-body {
+    min-width: 0;
 }
 
-.rec-card-body {
+.cart-rec-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    /* Длинное название не должно раздвигать строку: цена и кнопка стоят на своих местах. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cart-rec-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.cart-rec-title-link:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.cart-rec-reason {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--color-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cart-rec-price {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
-    padding: var(--space-16);
+    align-items: flex-end;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
-.rec-card-title {
-    margin: 0;
+.cart-rec-price-now {
     font-size: 15px;
     font-weight: 700;
 }
 
-.rec-card-tag {
-    margin: 0;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+/* Старая цена над новой — чтобы скидка была видна, а не только выгодное число. */
+.cart-rec-price-old {
+    font-size: 12px;
+    font-weight: 600;
     color: var(--color-muted);
+    text-decoration: line-through;
 }
 
-.rec-card-foot {
-    display: flex;
+/* Кнопка без подписи: в строке на неё нет места, поэтому название действия — в aria-label. */
+.cart-rec-action {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    margin-top: var(--space-4);
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.rec-card-price {
-    font-size: 17px;
-    font-weight: 700;
+.cart-rec-action:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+}
+
+/* Уже в заказе — не кнопка, а отметка: нажимать нечего. */
+.cart-rec-action.is-in-cart {
+    cursor: default;
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
 }
 
 @media (max-width: 992px) {
@@ -471,4 +658,130 @@
     .cart-recs-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Регион позиции: подсказка того же веса, что «Edition», пока не выяснилось, что ключ не
+   подойдёт — тогда строка становится предупреждением. */
+.cart-item-region {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+.cart-item-region.is-blocked {
+    color: #a03434;
+    font-weight: 600;
+}
+
+/* Выбор страны — в корзине, где принимается решение, а не в шапке. */
+/* Страна активации — строка, а не форма: у большинства она угадана верно, и решать тут
+   нечего. Список появляется только по «change». */
+.cart-region-line {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.cart-region-line strong {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.cart-region-change {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* Панель со списком стран: раскрывается под строкой, строку не двигает. */
+.cart-region-line {
+    position: relative;
+}
+
+.cart-country-popover {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    left: 0;
+    width: min(320px, calc(100vw - 48px));
+    padding: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 18px 40px -18px rgba(43, 35, 80, 0.45);
+    display: grid;
+    gap: 8px;
+}
+
+.cart-country-search {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.cart-country-list {
+    max-height: 260px;
+    overflow-y: auto;
+    display: grid;
+    gap: 2px;
+}
+
+.cart-country-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cart-country-option:hover,
+.cart-country-option:focus-visible {
+    background: #f4f1ff;
+}
+
+.cart-country-option.is-active {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.cart-country-code {
+    min-width: 26px;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: #f1edff;
+    color: #5c4ea3;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.cart-country-empty {
+    margin: 0;
+    padding: 8px;
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.cart-region-warning {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid #f3c6c6;
+    border-radius: 10px;
+    background: #fdf0f0;
+    color: #a03434;
+    font-size: 13px;
+    line-height: 1.5;
 }

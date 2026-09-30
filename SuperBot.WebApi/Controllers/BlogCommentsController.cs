@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Claims;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -90,7 +91,7 @@ public class BlogCommentsController : ControllerBase
             return NotFound("Post not found.");
         }
 
-        var userId = GetCurrentUserId();
+        var userId = User.GetUserKey();
 
         // Бан проверяем раньше rate-limit: забаненному бессмысленно сообщать про паузу.
         if (await _comments.IsAuthorBannedAsync(userId))
@@ -129,16 +130,6 @@ public class BlogCommentsController : ControllerBase
             text = comment.Text,
             createdAt = comment.CreatedAt
         });
-    }
-
-    private string GetCurrentUserId()
-    {
-        return User?.FindFirst("email")?.Value
-               ?? User?.FindFirst(ClaimTypes.Email)?.Value
-               ?? User?.FindFirst("preferred_username")?.Value
-               ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? User?.FindFirst("sub")?.Value
-               ?? string.Empty;
     }
 
     /// <summary>

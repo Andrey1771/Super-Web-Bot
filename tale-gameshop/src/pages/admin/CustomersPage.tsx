@@ -1,21 +1,31 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { REMOTE_PAGING } from "../../hooks/use-grid-window";
+import "devextreme/dist/css/dx.light.css";
+import { DataGrid } from "devextreme-react";
+import { Column, Paging, Scrolling, Sorting } from "devextreme-react/data-grid";
+import CustomStore from "devextreme/data/custom_store";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useKeycloak } from "@react-keycloak/web";
 import PageHeader from "../../components/layout/PageHeader";
 import Card from "../../components/ui/Card";
+import Drawer from "../../components/ui/Drawer";
 import EmptyState from "../../components/ui/EmptyState";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useAdminHeader } from "../../components/layout/AdminHeaderContext";
 import {
   blockCustomer,
   getCustomer,
+  browseCustomers,
+  exportCustomersCsv,
   searchCustomers,
+  type CustomerBrowseFilter,
   sendCustomerPasswordReset,
   unblockCustomer,
   type CustomerCard,
   type CustomerSearchHit,
 } from "../../api/adminCustomersApi";
 import { formatMoney } from "../../utils/format-money";
+import CustomerCashbackCard from "../../components/admin/CustomerCashbackCard";
 import "./customers-page.css";
 
 /**
@@ -27,6 +37,8 @@ import "./customers-page.css";
  */
 
 const SEARCH_DEBOUNCE_MS = 350;
+/** Сколько покупателей тянуть за одно окно прокрутки. */
+const BROWSE_WINDOW = 50;
 
 const ago = (value?: string): string => {
   if (!value) {
@@ -49,8 +61,26 @@ const ago = (value?: string): string => {
   return `${Math.floor(days / 365)} y ago`;
 };
 
+/** Срезы таблицы. Пять готовых вопросов, с которыми приходят на этот экран. */
+const FILTERS: Array<{ value: CustomerBrowseFilter; label: string }> = [
+  { value: "all", label: "All buyers (A–Z)" },
+  { value: "recent", label: "Recently active" },
+  { value: "refunded", label: "With refunds" },
+  { value: "blocked", label: "Blocked" },
+  { value: "no_orders", label: "No orders" },
+];
+
+// Старые заказы, где вместо почты записан идентификатор: клиента за таким не существует,
+// карточку по нему не открыть — ведём сразу в заказы.
+const LEGACY_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isLegacyId = (email: string) => LEGACY_ID_RE.test(email);
+
+/** Один формат даты на таблицу и панель — раньше они показывали её по-разному. */
+const formatDay = (value: string) => new Date(value).toLocaleDateString("ru-RU");
+
 const CustomersPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const { keycloak } = useKeycloak();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -58,50 +88,121 @@ const CustomersPage: React.FC = () => {
   // @ts-ignore Тип токена Keycloak шире объявленного
   const roles: string[] = useMemo(() => [...(keycloak.tokenParsed?.resource_access?.["tale-shop-app"]?.roles ?? []), ...(keycloak.tokenParsed?.realm_access?.roles ?? [])], [keycloak.tokenParsed]);
   const isAdmin = roles.includes("admin");
+  // Собственный адрес — чтобы не предлагать заблокировать самого себя. Тот же признак
+  // проверяет и сервер: спрятанной кнопки мало, запрос можно послать мимо интерфейса.
+  const myEmail = ((keycloak.tokenParsed as { email?: string; preferred_username?: string } | undefined)?.email
+    ?? (keycloak.tokenParsed as { preferred_username?: string } | undefined)?.preferred_username
+    ?? "").toLowerCase();
 
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
-  const [hits, setHits] = useState<CustomerSearchHit[]>([]);
-  const [searching, setSearching] = useState(false);
+  // Что реально ушло в таблицу: набранное в поле уезжает туда с задержкой, а не на каждую букву.
+  const [appliedQuery, setAppliedQuery] = useState(searchParams.get("q") ?? "");
   const [card, setCard] = useState<CustomerCard | null>(null);
   const [cardLoading, setCardLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState<CustomerBrowseFilter>("all");
+  const [exporting, setExporting] = useState(false);
+  // Что показать под таблицей: сколько строк загружено, кончился ли список, была ли ошибка.
+  const [gridMeta, setGridMeta] = useState({ loaded: 0, end: false, error: false });
+  const loadedRef = useRef(0);
+  const [reloadTick, setReloadTick] = useState(0);
 
   const selectedEmail = searchParams.get("email");
 
+  // Курсор прокрутки: почта последней загруженной строки. Бесконечная прокрутка идёт только
+  // вперёд, поэтому хранить достаточно одну точку; на первом окне (skip = 0) она сбрасывается.
+  const cursor = useRef<string | null>(null);
+  // Общее число строк среза приходит с первым окном; храним его, чтобы отдавать таблице
+  // при каждой подгрузке — по нему она рисует полосу прокрутки нужной длины.
+  const knownTotal = useRef<number | null>(null);
+
+  const gridSource = useMemo(() => {
+    cursor.current = null;
+    loadedRef.current = 0;
+    knownTotal.current = null;
+    const needle = appliedQuery.trim();
+
+    return new CustomStore({
+      key: "email",
+      load: async (options: { skip?: number; take?: number }) => {
+        try {
+          // С запросом — обычный поиск: он один умеет находить учётки без заказов, потому что
+          // ходит ещё и в Keycloak. Отдаётся одной страницей: сузить запрос дешевле, чем
+          // листать выдачу, а второе окно вернуло бы те же строки повторно.
+          if (needle.length >= 2) {
+            if (options.skip) {
+              return { data: [], totalCount: loadedRef.current };
+            }
+            const rows = await searchCustomers(needle);
+            loadedRef.current = rows.length;
+            setGridMeta({ loaded: rows.length, end: true, error: false });
+            // Поиск отдаётся одной страницей, поэтому найденное и есть всё количество.
+            return { data: rows, totalCount: rows.length };
+          }
+
+          // Без запроса — выбранный срез, окнами по курсору.
+          if (!options.skip) {
+            cursor.current = null;
+            loadedRef.current = 0;
+          }
+          const page = await browseCustomers(cursor.current, options.take ?? BROWSE_WINDOW, filter);
+          cursor.current = page.nextCursor;
+          loadedRef.current += page.items.length;
+          if (page.total != null) {
+            knownTotal.current = page.total;
+          }
+          setGridMeta({ loaded: loadedRef.current, end: page.nextCursor == null, error: false });
+
+          // Таблице нужно общее число на каждой подгрузке: с первым окном оно приходит
+          // с сервера, дальше отдаём запомненное. Когда его нет (срез по учёткам),
+          // считаем по загруженному — до конца списка прокрутка всё равно дотянется.
+          return {
+            data: page.items,
+            totalCount: knownTotal.current ?? (page.nextCursor ? loadedRef.current + 1 : loadedRef.current),
+          };
+        } catch (err) {
+          // Грид покажет своё сообщение, а под таблицей появится объяснение и «Try again».
+          setGridMeta((prev) => ({ ...prev, error: true }));
+          throw err;
+        }
+      },
+    });
+  }, [appliedQuery, filter, reloadTick]);
+
   useEffect(() => {
     setPageTitle("Customers");
-    setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
-  // Поиск с задержкой: Keycloak за каждой буквой дёргать незачем.
+  // Задержка перед тем, как отдать запрос таблице: Keycloak и базу за каждой буквой
+  // дёргать незачем.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAppliedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  // Поле и адрес идут вместе. Раньше запрос попадал в адрес только при выборе клиента и
+  // оставался там навсегда: крестик очищал поле, но не ссылку, и после обновления страницы
+  // старый запрос возвращался.
   useEffect(() => {
     const trimmed = query.trim();
-    if (trimmed.length < 2) {
-      setHits([]);
+    const inUrl = searchParams.get("q") ?? "";
+    if (trimmed === inUrl) {
       return;
     }
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      setSearching(true);
-      try {
-        const result = await searchCustomers(trimmed);
-        if (!cancelled) {
-          setHits(result);
-        }
-      } catch (err) {
-        console.error("Customer search failed", err);
-      } finally {
-        if (!cancelled) {
-          setSearching(false);
-        }
+
+    const timer = window.setTimeout(() => {
+      const next = new URLSearchParams(searchParams);
+      if (trimmed) {
+        next.set("q", trimmed);
+      } else {
+        next.delete("q");
       }
+      setSearchParams(next, { replace: true });
     }, SEARCH_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [query]);
+
+    return () => window.clearTimeout(timer);
+  }, [query, searchParams, setSearchParams]);
 
   const loadCard = useCallback(async (email: string) => {
     setCardLoading(true);
@@ -128,9 +229,17 @@ const CustomersPage: React.FC = () => {
   const select = (email: string) => {
     const next = new URLSearchParams(searchParams);
     next.set("email", email);
-    if (query.trim()) {
-      next.set("q", query.trim());
-    }
+    setSearchParams(next, { replace: true });
+    // Карточка открывается над таблицей: если её выбрали, прокрутив список далеко вниз,
+    // без этого человек остался бы смотреть на строки и решил, что ничего не произошло.
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Закрыть карточку: и на экране, и в адресе — иначе ссылка тянула бы за собой клиента,
+  // которого уже посмотрели.
+  const clearSelection = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("email");
     setSearchParams(next, { replace: true });
   };
 
@@ -153,6 +262,31 @@ const CustomersPage: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportCustomersCsv(filter, appliedQuery);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "customers.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Customers export failed", err);
+      addToast("Export failed.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const isSearch = appliedQuery.trim().length >= 2;
+  // Имя и статус учётки известны только там, где ответ собирался с участием Keycloak:
+  // в поиске и в срезах по учёткам. В остальных срезах эти колонки показывали бы догадки.
+  const accountColumnsVisible = isSearch || filter === "blocked" || filter === "no_orders";
+
+  const isSelf = Boolean(card && myEmail && card.email.toLowerCase() === myEmail);
+
   const spent = card
     ? Object.entries(card.spentByCurrency).map(([currency, amount]) => formatMoney(amount, currency)).join(" · ") || "—"
     : "—";
@@ -162,44 +296,117 @@ const CustomersPage: React.FC = () => {
       <PageHeader
         title="Customers"
         description="Search a customer by e-mail or name and see their orders, keys and support history in one place."
-        breadcrumbs={["Users", "Customers"]}
+        breadcrumbs={["Customers"]}
       />
 
-      <div className="customers__layout">
-        <Card>
-          <input
-            className="w-full p-2 border rounded"
-            type="search"
-            placeholder="E-mail, name or part of it…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoFocus
-          />
-          <div className="customers__hits">
-            {searching && <p className="customers__muted">Searching…</p>}
-            {!searching && query.trim().length >= 2 && hits.length === 0 && <p className="customers__muted">Nobody found.</p>}
-            {hits.map((hit) => (
-              <button
-                key={hit.email}
-                type="button"
-                className={`customers__hit${hit.email === selectedEmail ? " customers__hit--active" : ""}`}
-                onClick={() => select(hit.email)}
-              >
-                <span className="customers__hit-email">{hit.email}</span>
-                <span className="customers__hit-meta">
-                  {hit.name ? `${hit.name} · ` : ""}
-                  {hit.orderCount} order{hit.orderCount === 1 ? "" : "s"}
-                  {hit.source === "guest" ? " · guest" : hit.enabled === false ? " · blocked" : ""}
-                </span>
-              </button>
-            ))}
+      {/* Один блок: поиск, который управляет таблицей, и сама таблица. Раньше поиск жил
+          в отдельной колонке слева, результаты — справа, а список всех покупателей — под
+          ними: три разных места про одно и то же, и пустая колонка, когда никто не выбран. */}
+      <Card>
+        <div className="customers__toolbar">
+          <div>
+            <h2 className="customers__browse-title">All customers</h2>
+            <p className="customers__muted">
+              Click a row to open the customer. Search matches any part of an e-mail or name
+              and includes accounts without orders.
+            </p>
           </div>
-        </Card>
+          <div className="customers__toolbar-actions">
+            <input
+              className="customers__search"
+              type="search"
+              placeholder="E-mail, name or part of it…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              autoFocus
+            />
+            <button className="btn btn-outline" type="button" disabled={exporting} onClick={handleExport}>
+              {exporting ? "Exporting…" : "Export CSV"}
+            </button>
+          </div>
+        </div>
 
-        <div className="customers__card">
-          {!selectedEmail ? (
-            <EmptyState title="Pick a customer" description="Search on the left, or open a customer from a chat or ticket." />
-          ) : cardLoading && !card ? (
+        {/* Срезы работают, пока поле поиска пусто: у поиска свой источник строк. */}
+        <div className="customers__chips">
+          {FILTERS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`customers__chip${filter === option.value && !isSearch ? " customers__chip--active" : ""}`}
+              disabled={isSearch}
+              title={isSearch ? "Clear the search to use slices" : undefined}
+              onClick={() => setFilter(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <DataGrid
+          dataSource={gridSource}
+          remoteOperations={REMOTE_PAGING}
+          height={560}
+          width="100%"
+          showBorders={false}
+          columnAutoWidth={true}
+          hoverStateEnabled={true}
+          noDataText={isSearch ? "Nobody found." : "Nothing in this slice."}
+          onRowClick={(event) =>
+            isLegacyId(event.data.email)
+              ? navigate(`/admin/orders?search=${encodeURIComponent(event.data.email)}`)
+              : select(event.data.email)
+          }
+        >
+          {/* Строки приходят окнами с сервера — клик по заголовку отсортировал бы только
+              загруженную часть и молча соврал. Пока сортировка не серверная, её нет. */}
+          <Sorting mode="none" />
+          {/* Виртуальная прокрутка: в DOM живут только видимые строки, окна приезжают
+              по мере движения — так же, как на странице скидок. */}
+          <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+          <Paging enabled={true} pageSize={BROWSE_WINDOW} />
+          <Column
+            dataField="email"
+            caption="E-mail"
+            cellRender={({ data }: { data: CustomerSearchHit }) =>
+              isLegacyId(data.email)
+                ? <span className="customers__muted">Legacy order — no e-mail (opens in Orders)</span>
+                : <span>{data.email}</span>
+            }
+          />
+          <Column dataField="name" caption="Name" visible={accountColumnsVisible} />
+          <Column dataField="orderCount" caption="Orders" width={90} alignment="right" />
+          <Column dataField="lastOrderAt" caption="Last order" dataType="date" format="dd.MM.yyyy" width={130} />
+          <Column
+            caption="Account"
+            width={110}
+            visible={accountColumnsVisible}
+            calculateCellValue={(row: CustomerSearchHit) =>
+              row.source === "account" ? (row.enabled === false ? "blocked" : "account") : "guest"
+            }
+          />
+        </DataGrid>
+
+        <div className="customers__grid-footer">
+          {gridMeta.error ? (
+            <>
+              <span className="customers__muted">Failed to load the list.</span>
+              <button className="btn btn-outline" type="button" onClick={() => setReloadTick((tick) => tick + 1)}>
+                Try again
+              </button>
+            </>
+          ) : (
+            <span className="customers__muted">
+              {gridMeta.loaded} loaded{gridMeta.end ? " · end of list" : " · scroll for more"}
+            </span>
+          )}
+        </div>
+      </Card>
+
+      {/* Карточка — выезжающей панелью поверх таблицы: список остаётся на месте, а прямая
+          ссылка с ?email= открывает панель сразу. */}
+      <div className="customers-drawer">
+        <Drawer isOpen={Boolean(selectedEmail)} title={selectedEmail ?? ""} onClose={clearSelection}>
+          {cardLoading && !card ? (
             <Card><div className="skeleton h-24" /></Card>
           ) : cardError ? (
             <EmptyState title="Not found" description={cardError} />
@@ -208,7 +415,7 @@ const CustomersPage: React.FC = () => {
               <Card>
                 <div className="customers__head">
                   <div>
-                    <h2 className="customers__email">{card.email}</h2>
+                    {/* Адрес уже в заголовке панели — второй раз он тут был просто эхом. */}
                     <p className="customers__muted">
                       {card.name ? `${card.name} · ` : ""}
                       {card.profileUnavailable
@@ -220,16 +427,34 @@ const CustomersPage: React.FC = () => {
                       {card.lastLoginAt ? ` · last login ${ago(card.lastLoginAt)}` : ""}
                     </p>
                   </div>
-                  {isAdmin && card.keycloakId && (
-                    <div className="customers__actions">
-                      {card.enabled === false ? (
-                        <button className="btn btn-outline" disabled={busy} onClick={() => run(() => unblockCustomer(card.email))}>Unblock</button>
-                      ) : (
-                        <button className="btn btn-outline customers__danger" disabled={busy} onClick={() => run(() => blockCustomer(card.email))}>Block</button>
-                      )}
-                      <button className="btn btn-outline" disabled={busy} onClick={() => run(() => sendCustomerPasswordReset(card.email))}>Send password reset</button>
-                    </div>
-                  )}
+                  <div className="customers__actions">
+                    {isAdmin && card.keycloakId && (card.enabled === false ? (
+                      <button className="btn btn-outline" disabled={busy} onClick={() => run(() => unblockCustomer(card.email))}>Unblock</button>
+                    ) : (
+                      <button
+                        className="btn btn-outline customers__danger"
+                        disabled={busy || isSelf}
+                        title={isSelf ? "You cannot block your own account" : undefined}
+                        onClick={() => {
+                          // Блокировка отрубает человеку вход — промах мышью не должен этого делать.
+                          if (window.confirm(`Block ${card.email}? They will not be able to sign in.`)) {
+                            run(() => blockCustomer(card.email));
+                          }
+                        }}
+                      >Block</button>
+                    ))}
+                    {isAdmin && card.keycloakId && (
+                      <button
+                        className="btn btn-outline"
+                        disabled={busy}
+                        onClick={() => {
+                          if (window.confirm(`Send a password reset e-mail to ${card.email}?`)) {
+                            run(() => sendCustomerPasswordReset(card.email));
+                          }
+                        }}
+                      >Send password reset</button>
+                    )}
+                  </div>
                 </div>
                 <div className="customers__stats">
                   <div><span className="customers__stat-value">{card.paidOrderCount}</span><span className="customers__stat-label">paid orders</span></div>
@@ -256,7 +481,7 @@ const CustomersPage: React.FC = () => {
                       {card.recentOrders.map((o) => (
                         <tr key={o.id}>
                           <td><Link className="customers__link" to={`/admin/orders?search=${encodeURIComponent(o.number)}`}>{o.number}</Link></td>
-                          <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                          <td>{formatDay(o.createdAt)}</td>
                           <td className="customers__items" title={o.items.join(", ")}>{o.items.join(", ") || "—"}</td>
                           <td>{formatMoney(o.total, o.currency)}</td>
                           <td><span className={`customers__status customers__status--${o.status.toLowerCase()}`}>{o.status}</span></td>
@@ -266,6 +491,9 @@ const CustomersPage: React.FC = () => {
                   </table>
                 )}
               </Card>
+
+              {/* Кэшбэк — деньги, поэтому только администратору; сервер проверяет роль сам. */}
+              {isAdmin && <CustomerCashbackCard email={card.email} />}
 
               <div className="admin-grid admin-grid--2">
                 <Card>
@@ -303,7 +531,7 @@ const CustomersPage: React.FC = () => {
                       {card.recentKeys.map((k, i) => (
                         <li key={`${k.masked}-${i}`}>
                           <span className="font-mono">{k.masked}</span>
-                          <span className="customers__muted"> · {k.keyType ?? "key"} · {new Date(k.issuedAt).toLocaleDateString()}</span>
+                          <span className="customers__muted"> · {k.keyType ?? "key"} · {formatDay(k.issuedAt)}</span>
                         </li>
                       ))}
                     </ul>
@@ -315,7 +543,7 @@ const CustomersPage: React.FC = () => {
               </div>
             </>
           ) : null}
-        </div>
+        </Drawer>
       </div>
     </div>
   );

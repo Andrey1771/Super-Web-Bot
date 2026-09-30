@@ -18,7 +18,14 @@ namespace SuperBot.Infrastructure.Services
         /// от orderId): повтор при сетевом сбое не должен вернуть деньги дважды.
         /// true = деньги возвращены (или уже были возвращены ранее).
         /// </summary>
-        Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey);
+        /// <param name="amountMinorUnits">Сумма частичного возврата в минорных единицах; null — весь остаток платежа.</param>
+        Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey, long? amountMinorUnits = null);
+
+        /// <summary>
+        /// Валюта выплат аккаунта Stripe (default_currency), заглавными: в ней Stripe проверяет минимальную сумму
+        /// платежа. Меняется только в кабинете Stripe, поэтому запрашивается редко и держится в памяти.
+        /// </summary>
+        Task<string?> GetSettlementCurrencyAsync();
     }
 
     /// <summary>Что мы хотим от намерения: сумма, валюта и метаданные.</summary>
@@ -30,6 +37,12 @@ namespace SuperBot.Infrastructure.Services
 
         /// <summary>Куда Stripe пришлёт чек. Для гостя это единственная квитанция о покупке.</summary>
         public string? ReceiptEmail { get; set; }
+
+        /// <summary>
+        /// Покупатель Stripe вошедшего пользователя. С ним форма карты показывает его сохранённые карты и предлагает
+        /// сохранить новую; карта после оплаты остаётся у покупателя. Гость платит без покупателя.
+        /// </summary>
+        public string? CustomerId { get; set; }
     }
 
     /// <summary>Снимок намерения — ровно те поля, которые нужны нашей логике.</summary>
@@ -42,6 +55,20 @@ namespace SuperBot.Infrastructure.Services
         public long AmountReceived { get; set; }
         public string? ClientSecret { get; set; }
         public Dictionary<string, string> Metadata { get; set; } = new();
+        /// <summary>Покупатель Stripe, к которому привязано намерение; null у гостя.</summary>
+        public string? CustomerId { get; set; }
+
+        /// <summary>Страна и индекс из платёжных данных (форма карты спрашивает их сама) — место покупателя для налога.</summary>
+        public string? BillingCountry { get; set; }
+        public string? BillingPostalCode { get; set; }
+        /// <summary>Страна банка, выпустившего карту, — запасное основание, если адреса нет.</summary>
+        public string? CardCountry { get; set; }
+
+        /// <summary>Чем заплатили: card, paypal, link…; бренд и последние цифры карты; кошелёк (apple_pay, google_pay).</summary>
+        public string? PaymentMethodType { get; set; }
+        public string? CardBrand { get; set; }
+        public string? CardLast4 { get; set; }
+        public string? CardWallet { get; set; }
 
         /// <summary>Статусы, в которых сумму ещё можно менять.</summary>
         public bool IsUpdatable =>
@@ -65,7 +92,8 @@ namespace SuperBot.Infrastructure.Services
                 return null;
             }
 
-            var intent = await _service.GetAsync(paymentIntentId);
+            // latest_charge — ради платёжного адреса и страны карты: по ним после оплаты считается окончательный налог.
+            var intent = await _service.GetAsync(paymentIntentId, new PaymentIntentGetOptions { Expand = new List<string> { "latest_charge" } });
             return intent == null ? null : Map(intent);
         }
 
@@ -77,6 +105,7 @@ namespace SuperBot.Infrastructure.Services
                 Currency = draft.Currency,
                 Metadata = draft.Metadata,
                 ReceiptEmail = draft.ReceiptEmail,
+                Customer = draft.CustomerId,
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true }
             };
 
@@ -96,19 +125,54 @@ namespace SuperBot.Infrastructure.Services
                 Amount = draft.AmountMinorUnits,
                 Currency = draft.Currency,
                 Metadata = draft.Metadata,
-                ReceiptEmail = draft.ReceiptEmail
+                ReceiptEmail = draft.ReceiptEmail,
+                // Покупателя у намерения не отбираем: null здесь значит «не менять», а не «отвязать».
+                Customer = draft.CustomerId
             });
 
             return intent == null ? null : Map(intent);
         }
 
-        public async Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey)
+        private static readonly TimeSpan SettlementCurrencyTtl = TimeSpan.FromHours(12);
+        private static readonly SemaphoreSlim SettlementCurrencyLock = new(1, 1);
+        private static (string? Currency, DateTime At) _settlementCurrency;
+
+        public async Task<string?> GetSettlementCurrencyAsync()
+        {
+            if (_settlementCurrency.Currency != null && DateTime.UtcNow - _settlementCurrency.At < SettlementCurrencyTtl)
+            {
+                return _settlementCurrency.Currency;
+            }
+
+            await SettlementCurrencyLock.WaitAsync();
+            try
+            {
+                if (_settlementCurrency.Currency != null && DateTime.UtcNow - _settlementCurrency.At < SettlementCurrencyTtl)
+                {
+                    return _settlementCurrency.Currency;
+                }
+
+                var account = await new AccountService().GetSelfAsync();
+                var currency = string.IsNullOrWhiteSpace(account?.DefaultCurrency) ? null : account.DefaultCurrency.Trim().ToUpperInvariant();
+                if (currency != null)
+                {
+                    _settlementCurrency = (currency, DateTime.UtcNow);
+                }
+                return currency;
+            }
+            finally
+            {
+                SettlementCurrencyLock.Release();
+            }
+        }
+
+        public async Task<bool> RefundPaymentIntentAsync(string paymentIntentId, string idempotencyKey, long? amountMinorUnits = null)
         {
             try
             {
                 var refunds = new RefundService();
                 await refunds.CreateAsync(
-                    new RefundCreateOptions { PaymentIntent = paymentIntentId },
+                    new RefundCreateOptions { PaymentIntent = paymentIntentId, Amount = amountMinorUnits },
                     new RequestOptions { IdempotencyKey = idempotencyKey });
                 return true;
             }
@@ -127,6 +191,14 @@ namespace SuperBot.Infrastructure.Services
             Amount = intent.Amount,
             AmountReceived = intent.AmountReceived,
             ClientSecret = intent.ClientSecret,
+            CustomerId = intent.CustomerId,
+            BillingCountry = intent.LatestCharge?.BillingDetails?.Address?.Country,
+            BillingPostalCode = intent.LatestCharge?.BillingDetails?.Address?.PostalCode,
+            CardCountry = intent.LatestCharge?.PaymentMethodDetails?.Card?.Country,
+            PaymentMethodType = intent.LatestCharge?.PaymentMethodDetails?.Type,
+            CardBrand = intent.LatestCharge?.PaymentMethodDetails?.Card?.Brand,
+            CardLast4 = intent.LatestCharge?.PaymentMethodDetails?.Card?.Last4,
+            CardWallet = intent.LatestCharge?.PaymentMethodDetails?.Card?.Wallet?.Type,
             Metadata = intent.Metadata is null
                 ? new Dictionary<string, string>()
                 : new Dictionary<string, string>(intent.Metadata)

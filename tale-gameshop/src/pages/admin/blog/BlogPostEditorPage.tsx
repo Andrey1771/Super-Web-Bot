@@ -8,16 +8,20 @@ import EmptyState from "../../../components/ui/EmptyState";
 import { useAdminHeader } from "../../../components/layout/AdminHeaderContext";
 import { useToast } from "../../../components/ui/ToastProvider";
 import MediaPickerModal from "../../../components/admin-panel/media-library/MediaPickerModal";
+import LocalizedField from "../../../components/admin/LocalizedField";
+import { bodyI18nForSave, tagsI18nToText, tagsTextToI18n, type I18nText } from "./blog-i18n";
+import { realignI18n } from "../../../utils/aligned-i18n";
 import container from "../../../inversify.config";
 import IDENTIFIERS from "../../../constants/identifiers";
 import type { IAdminBlogService } from "../../../iterfaces/i-admin-blog-service";
 import type { AdminBlogPayload } from "../../../iterfaces/i-admin-blog-service";
 import type { BlogPost, BlogPostVersion, BlogStatus } from "../../../types/blog";
-import { renderMarkdown } from "../../../utils/markdown";
+import { renderMarkdown, sanitizeHtml } from "../../../utils/markdown";
 import { slugify } from "../../../utils/slugify";
 import type { MediaAsset } from "../../../types/media";
 
 const statusOptions: BlogStatus[] = ["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"];
+
 const COVER_MIN_WIDTH = 1000;
 const COVER_MIN_HEIGHT = 560;
 
@@ -57,7 +61,7 @@ const BlogPostEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new" || !id;
   const adminBlogService = container.get<IAdminBlogService>(IDENTIFIERS.IAdminBlogService);
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -83,6 +87,11 @@ const BlogPostEditorPage: React.FC = () => {
     excerpt: "",
     contentMarkdown: "",
     contentHtml: "",
+    titleI18n: {},
+    excerptI18n: {},
+    contentMarkdownI18n: {},
+    contentHtmlI18n: {},
+    tagsI18n: {},
     coverAssetId: "",
     tags: [],
     status: "DRAFT",
@@ -94,11 +103,13 @@ const BlogPostEditorPage: React.FC = () => {
     blogHomeFeatured: false,
   });
   const formRef = useRef(form);
+  // Текст переводов тегов держится строкой, иначе запятая в поле терялась бы при каждом нажатии.
+  const [tagsI18nText, setTagsI18nText] = useState<I18nText>({});
   const scheduledAtRef = useRef(scheduledAt);
   const publishedAtRef = useRef(publishedAt);
   const changeNoteRef = useRef(changeNote);
 
-  const handleChange = (field: keyof AdminBlogPayload, value: string | string[] | boolean | number | undefined) => {
+  const handleChange = (field: keyof AdminBlogPayload, value: string | string[] | boolean | number | Record<string, string> | Record<string, string[]> | undefined) => {
     setForm((prev) => {
       const next = {
         ...prev,
@@ -131,14 +142,14 @@ const BlogPostEditorPage: React.FC = () => {
 
   const previewHtml = useMemo(() => {
     if (contentMode === "html" && form.contentHtml?.trim()) {
-      return form.contentHtml;
+      return sanitizeHtml(form.contentHtml);
     }
 
     if (form.contentMarkdown?.trim()) {
       return renderMarkdown(form.contentMarkdown);
     }
 
-    return form.contentHtml ?? "";
+    return sanitizeHtml(form.contentHtml ?? "");
   }, [contentMode, form.contentHtml, form.contentMarkdown]);
 
   const fetchPost = async () => {
@@ -153,6 +164,11 @@ const BlogPostEditorPage: React.FC = () => {
         excerpt: response.post.excerpt,
         contentMarkdown: response.version.contentMarkdown ?? "",
         contentHtml: response.version.contentHtml ?? "",
+        titleI18n: response.post.titleI18n ?? {},
+        excerptI18n: response.post.excerptI18n ?? {},
+        contentMarkdownI18n: response.version.contentMarkdownI18n ?? {},
+        contentHtmlI18n: response.version.contentHtmlI18n ?? {},
+        tagsI18n: response.post.tagsI18n ?? {},
         coverAssetId: response.post.coverAssetId ?? "",
         tags: response.post.tags,
         status: response.post.status,
@@ -165,6 +181,7 @@ const BlogPostEditorPage: React.FC = () => {
       };
       formRef.current = nextForm;
       setForm(nextForm);
+      setTagsI18nText(tagsI18nToText(response.post.tagsI18n));
       setStatusDraft(response.post.status);
       setContentMode(response.version.contentMarkdown ? "markdown" : "html");
       const nextScheduledAt = toDateTimeLocalValue(response.post.scheduledAt);
@@ -194,6 +211,7 @@ const BlogPostEditorPage: React.FC = () => {
       ...currentForm,
       contentMarkdown: normalizedMarkdown,
       contentHtml: normalizedHtml,
+      ...bodyI18nForSave(currentForm.contentMarkdownI18n ?? {}, currentForm.contentHtmlI18n ?? {}, contentMode),
       slug: currentForm.slug ? slugify(currentForm.slug) : slugify(currentForm.title),
       tags: currentForm.tags,
       status: statusOverride ?? currentForm.status,
@@ -218,6 +236,8 @@ const BlogPostEditorPage: React.FC = () => {
             ...prev,
             contentMarkdown: refreshed.version.contentMarkdown ?? prev.contentMarkdown,
             contentHtml: refreshed.version.contentHtml ?? prev.contentHtml,
+            contentMarkdownI18n: refreshed.version.contentMarkdownI18n ?? {},
+            contentHtmlI18n: refreshed.version.contentHtmlI18n ?? {},
           };
           formRef.current = next;
           return next;
@@ -229,28 +249,11 @@ const BlogPostEditorPage: React.FC = () => {
       const message = saveError?.response?.data ?? "Failed to save post.";
       addToast(String(message), "error");
     }
-  }, [addToast, adminBlogService, isNew, navigate, post]);
+  }, [addToast, adminBlogService, contentMode, isNew, navigate, post]);
 
   useEffect(() => {
     setPageTitle(isNew ? "Create post" : "Edit post");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "save-post",
-        label: "Save changes",
-        variant: "primary",
-        onClick: () => handleSave("PUBLISHED" === statusDraft ? "PUBLISHED" : statusDraft),
-      },
-      {
-        type: "button",
-        id: "save-draft",
-        label: "Save draft",
-        variant: "outline",
-        onClick: () => handleSave("DRAFT"),
-      },
-    ]);
-    return () => setHeaderActions([]);
-  }, [handleSave, isNew, setHeaderActions, setPageTitle, statusDraft]);
+  }, [isNew, setPageTitle]);
 
   useEffect(() => {
     if (!isNew) {
@@ -328,6 +331,11 @@ const BlogPostEditorPage: React.FC = () => {
           excerpt: refreshed.post.excerpt,
           contentMarkdown: refreshed.version.contentMarkdown ?? "",
           contentHtml: refreshed.version.contentHtml ?? "",
+          titleI18n: refreshed.post.titleI18n ?? {},
+          excerptI18n: refreshed.post.excerptI18n ?? {},
+          contentMarkdownI18n: refreshed.version.contentMarkdownI18n ?? {},
+          contentHtmlI18n: refreshed.version.contentHtmlI18n ?? {},
+          tagsI18n: refreshed.post.tagsI18n ?? {},
           coverAssetId: refreshed.post.coverAssetId ?? "",
           tags: refreshed.post.tags,
           status: refreshed.post.status,
@@ -346,6 +354,7 @@ const BlogPostEditorPage: React.FC = () => {
       publishedAtRef.current = restoredPublishedAt;
       setScheduledAt(restoredScheduledAt);
       setPublishedAt(restoredPublishedAt);
+      setTagsI18nText(tagsI18nToText(refreshed.post.tagsI18n));
       const versionsList = await adminBlogService.getVersions(post.id);
       setVersions(versionsList as BlogPostVersion[]);
       addToast("Version restored", "success");
@@ -378,23 +387,39 @@ const BlogPostEditorPage: React.FC = () => {
       <PageHeader
         title={isNew ? "Create post" : "Edit post"}
         description="Write, review, and publish blog content."
-        breadcrumbs={["Admin", "Blog", isNew ? "New post" : "Edit post"]}
+        breadcrumbs={["Content", "Blog", isNew ? "New post" : "Edit post"]}
+        primaryAction={
+          <>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => handleSave("PUBLISHED" === statusDraft ? "PUBLISHED" : statusDraft)}
+            >
+              Save changes
+            </button>
+            <button className="btn btn-outline" type="button" onClick={() => handleSave("DRAFT")}>
+              Save draft
+            </button>
+          </>
+        }
       />
 
       <Card>
         <h3>Basic info</h3>
         <label className="text-sm font-semibold">Title</label>
-        <input
-          type="text"
-          className="w-full p-2 border rounded"
-          value={form.title}
-          onChange={(event) => {
-            handleChange("title", event.target.value);
-            if (isNew) {
-              handleChange("slug", slugify(event.target.value));
-            }
-          }}
-        />
+        <LocalizedField label="Title" i18n={form.titleI18n} onI18nChange={(next) => handleChange("titleI18n", next)} placeholder={form.title}>
+          <input
+            type="text"
+            className="w-full p-2 border rounded"
+            value={form.title}
+            onChange={(event) => {
+              handleChange("title", event.target.value);
+              if (isNew) {
+                handleChange("slug", slugify(event.target.value));
+              }
+            }}
+          />
+        </LocalizedField>
         <p className="text-xs text-gray-500">Title should be 10–80 characters. {titleCount}/80</p>
         <label className="text-sm font-semibold">Slug</label>
         <input
@@ -404,29 +429,48 @@ const BlogPostEditorPage: React.FC = () => {
           onChange={(event) => handleChange("slug", event.target.value)}
         />
         <label className="text-sm font-semibold">Excerpt</label>
-        <textarea
-          className="w-full p-2 border rounded min-h-[120px]"
-          value={form.excerpt}
-          onChange={(event) => handleChange("excerpt", event.target.value)}
-        />
+        <LocalizedField label="Excerpt" i18n={form.excerptI18n} onI18nChange={(next) => handleChange("excerptI18n", next)} multiline rows={4} placeholder={form.excerpt}>
+          <textarea
+            className="w-full p-2 border rounded min-h-[120px]"
+            value={form.excerpt}
+            onChange={(event) => handleChange("excerpt", event.target.value)}
+          />
+        </LocalizedField>
         <p className="text-xs text-gray-500">Excerpt should be 160 characters or less. {excerptCount}/160</p>
         <label className="text-sm font-semibold">Tags</label>
-        <input
-          type="text"
-          className="w-full p-2 border rounded"
-          placeholder="rpg, updates, deals"
-          value={tagsText}
-          onChange={(event) =>
-            handleChange(
-              "tags",
-              event.target.value
+        <LocalizedField
+          label="Tags"
+          i18n={tagsI18nText}
+          onI18nChange={(next) => {
+            setTagsI18nText(next);
+            handleChange("tagsI18n", tagsTextToI18n(next));
+          }}
+          placeholder={tagsText || "rpg, updates, deals"}
+        >
+          <input
+            type="text"
+            className="w-full p-2 border rounded"
+            placeholder="rpg, updates, deals"
+            value={tagsText}
+            onChange={(event) => {
+              const nextTags = event.target.value
                 .split(",")
                 .map((value) => value.trim())
-                .filter(Boolean)
-            )
-          }
-        />
-        <p className="text-xs text-gray-500">Up to 8 tags, each 2–24 characters. {tagsCount}/8</p>
+                .filter(Boolean);
+              // Переводы привязаны к значению тега: при удалении или перестановке они переезжают вместе с ним.
+              setForm((prev) => {
+                const tagsI18n = realignI18n(prev.tags, nextTags, prev.tagsI18n);
+                const next = { ...prev, tags: nextTags, tagsI18n };
+                formRef.current = next;
+                setTagsI18nText(tagsI18nToText(tagsI18n));
+                return next;
+              });
+            }}
+          />
+        </LocalizedField>
+        <p className="text-xs text-gray-500">
+          Up to 8 tags, each 2–24 characters. {tagsCount}/8. Translations go in the same order as the English tags, separated by commas; leave a position empty to keep the English tag.
+        </p>
       </Card>
 
       <Card>
@@ -453,16 +497,25 @@ const BlogPostEditorPage: React.FC = () => {
         {activeTab === "write" ? (
           <>
             <label className="text-sm font-semibold mb-2 block">Article body ({contentMode === "markdown" ? "Markdown" : "HTML"})</label>
-            <textarea
-              className="w-full p-2 border rounded min-h-[260px]"
-              value={contentMode === "markdown" ? form.contentMarkdown : form.contentHtml}
-            onChange={(event) =>
-              contentMode === "markdown"
-                ? handleChange("contentMarkdown", event.target.value)
-                : handleChange("contentHtml", event.target.value)
-            }
-              placeholder={contentMode === "markdown" ? "Write article markdown here..." : "Write article HTML here..."}
-            />
+            <LocalizedField
+              label="Article body"
+              multiline
+              rows={12}
+              i18n={contentMode === "markdown" ? form.contentMarkdownI18n : form.contentHtmlI18n}
+              onI18nChange={(next) => handleChange(contentMode === "markdown" ? "contentMarkdownI18n" : "contentHtmlI18n", next)}
+              placeholder={contentMode === "markdown" ? "Translated markdown; empty — the English body is shown" : "Translated HTML; empty — the English body is shown"}
+            >
+              <textarea
+                className="w-full p-2 border rounded min-h-[260px]"
+                value={contentMode === "markdown" ? form.contentMarkdown : form.contentHtml}
+                onChange={(event) =>
+                  contentMode === "markdown"
+                    ? handleChange("contentMarkdown", event.target.value)
+                    : handleChange("contentHtml", event.target.value)
+                }
+                placeholder={contentMode === "markdown" ? "Write article markdown here..." : "Write article HTML here..."}
+              />
+            </LocalizedField>
           </>
         ) : (
           <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -621,7 +674,7 @@ const BlogPostEditorPage: React.FC = () => {
               <h3>Content preview</h3>
               <div
                 className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: selectedVersion.contentHtml?.trim() || renderMarkdown(selectedVersion.contentMarkdown ?? "") }}
+                dangerouslySetInnerHTML={{ __html: selectedVersion.contentHtml?.trim() ? sanitizeHtml(selectedVersion.contentHtml) : renderMarkdown(selectedVersion.contentMarkdown ?? "") }}
               />
             </Card>
           </div>

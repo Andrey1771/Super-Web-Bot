@@ -6,10 +6,50 @@ import {IKeycloakService} from "../iterfaces/i-keycloak-service";
 export interface Product {
     gameId: string;
     name: string;
+    /**
+     * Адрес карточки товара. Ссылка из корзины строится по нему через productHref, а не из названия:
+     * у товара с адресом, заданным админом, ссылка из названия открывала пустую заготовку карточки.
+     * Необязательный — у позиций, сохранённых раньше, его нет.
+     */
+    slug?: string;
     price: number;
     quantity: number;
     image: string;
+    /**
+     * Издание (Standard / Deluxe …), если у игры их несколько. Позиция корзины — игра + издание:
+     * у Standard и Deluxe разные цены и разные ключи, чекаут и выдача это учитывают.
+     */
+    editionCode?: string;
+    editionTitle?: string;
+    /**
+     * Региональный вариант ключа: где он активируется. Как и издание, входит в ключ позиции —
+     * европейский и глобальный ключ одной игры стоят по-разному и берутся из разных групп
+     * склада, поэтому в корзине это две отдельные строки, а не одна с количеством два.
+     */
+    offerKey?: string;
+    offerTitle?: string;
+    /**
+     * Жанр или тип товара — нужен только аналитике: в отчётах это разрез «что покупают».
+     * Необязательный: место, которое его не знает, просто не передаёт.
+     */
+    category?: string;
 }
+
+/**
+ * Ключ позиции корзины: игра + издание + региональный вариант.
+ *
+ * Хвосты добавляются только когда есть что добавлять: у игры без изданий и без региональных
+ * вариантов ключ остаётся прежним «gameId», и корзины, сохранённые до появления вариантов,
+ * продолжают работать без переноса.
+ */
+export const cartLineKey = (item: { gameId: string; editionCode?: string | null; offerKey?: string | null }) => {
+    const edition = item.editionCode ? `::${item.editionCode}` : '';
+    const offer = item.offerKey ? `::@${item.offerKey}` : '';
+    return `${item.gameId}${edition}${offer}`;
+};
+
+/** Позиция совпадает с ключом: полный ключ «игра::издание» или просто gameId для позиции без издания. */
+const matchesLine = (item: { gameId: string; editionCode?: string | null; offerKey?: string | null }, key: string) => cartLineKey(item) === key;
 
 export interface CartState {
     items: Product[];
@@ -23,13 +63,21 @@ export interface CartState {
 }
 
 export type CartAction =
-    | { type: 'ADD_TO_CART'; payload: Product }
+    /** meta.origin — кнопка или карточка, от которой к корзине летит обложка (см. cart-flight.ts); без неё берётся элемент в фокусе. */
+    | { type: 'ADD_TO_CART'; payload: Product; meta?: { origin?: Element | null } }
     | { type: 'REMOVE_FROM_CART'; payload: string }
     | { type: 'INCREASE_QUANTITY'; payload: string }
     | { type: 'DECREASE_QUANTITY'; payload: string }
     | { type: 'SET_CART'; payload: Product[] }
     /** Валюта сменилась: цены позиций устарели и должны приехать заново с сервера. */
     | { type: 'SET_CURRENCY'; payload: string }
+    /**
+     * Цены пришли с сервера: ключ позиции → цена. Отдельное действие, а не замена всего
+     * списка, потому что ответы приходят по одному. Замена целиком строится из состояния на
+     * момент отправки запроса, и вторая пришедшая цена затирала первую — в корзине оставался
+     * ровно один товар с ценой, остальные показывали ноль.
+     */
+    | { type: 'SET_ITEM_PRICES'; payload: Record<string, number> }
     | { type: 'CLEAR_CART' };
 
 export const initialState: CartState = {
@@ -49,7 +97,11 @@ const syncCartWithServer = async (userId: string, state: CartState) => {
                 name: product.name,
                 price: product.price,
                 quantity: product.quantity,
-                image: product.image
+                image: product.image,
+                editionCode: product.editionCode,
+                editionTitle: product.editionTitle,
+                offerKey: product.offerKey,
+                offerTitle: product.offerTitle
             }))
         });
     } catch (error) {
@@ -61,12 +113,13 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
     const execute = () : CartState => {
         switch (action.type) {
             case 'ADD_TO_CART':
-                const existingItem = state.items.find((item) => item.gameId === action.payload.gameId);
+                const lineKey = cartLineKey(action.payload);
+                const existingItem = state.items.find((item) => matchesLine(item, lineKey));
                 if (existingItem) {
                     return {
                         ...state,
                         items: state.items.map((item) =>
-                            item.gameId === action.payload.gameId
+                            matchesLine(item, lineKey)
                                 ? { ...item, quantity: item.quantity + 1 }
                                 : item
                         ),
@@ -77,14 +130,14 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
             case 'REMOVE_FROM_CART':
                 return {
                     ...state,
-                    items: state.items.filter((item) => item.gameId !== action.payload),
+                    items: state.items.filter((item) => !matchesLine(item, action.payload)),
                 };
 
             case 'INCREASE_QUANTITY':
                 return {
                     ...state,
                     items: state.items.map((item) =>
-                        item.gameId === action.payload
+                        matchesLine(item, action.payload)
                             ? { ...item, quantity: item.quantity + 1 }
                             : item
                     ),
@@ -95,7 +148,7 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
                     ...state,
                     items: state.items
                         .map((item) =>
-                            item.gameId === action.payload && item.quantity > 1
+                            matchesLine(item, action.payload) && item.quantity > 1
                                 ? { ...item, quantity: item.quantity - 1 }
                                 : item
                         )
@@ -117,6 +170,20 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
                     ...state,
                     currency: action.payload,
                     items: state.items.map((item) => ({ ...item, price: 0 })),
+                };
+            }
+
+            case 'SET_ITEM_PRICES': {
+                const prices = action.payload;
+                if (!prices || Object.keys(prices).length === 0) {
+                    return state;
+                }
+                return {
+                    ...state,
+                    items: state.items.map((item) => {
+                        const price = prices[cartLineKey(item)];
+                        return typeof price === 'number' ? { ...item, price } : item;
+                    }),
                 };
             }
 

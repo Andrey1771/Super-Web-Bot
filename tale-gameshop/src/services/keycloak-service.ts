@@ -30,6 +30,20 @@ export class KeycloakService implements IKeycloakService {
     }
 
     private _stateChangedEmitter = new EventEmitter();
+    private _sessionExpiredNotified = false;
+
+    markSessionExpired(): void {
+        if (this._sessionExpiredNotified) {
+            return;
+        }
+        this._sessionExpiredNotified = true;
+        // clearToken снимает authenticated и через провайдер даёт onAuthLogout: шапка сразу показывает
+        // вход, аналитика забывает пользователя. Плашка объясняет, почему.
+        if (this._keycloak?.authenticated) {
+            this._keycloak.clearToken();
+        }
+        this._stateChangedEmitter.emit('onSessionExpired');
+    }
     get stateChangedEmitter() {
         return this._stateChangedEmitter
     };
@@ -52,27 +66,42 @@ export class KeycloakService implements IKeycloakService {
                 }
                 break;
             case "onInitError":
+                // Глушить это событие нельзя. При ошибке init провайдер @react-keycloak
+                // НЕ выставляет initialized (см. provider.js: .init(...).catch(onError),
+                // а initialized: true ставится только в updateState), поэтому приложение
+                // навсегда остаётся на LoadingComponent — бесконечная заставка без единого
+                // слова в консоли. Пробрасываем наружу, чтобы лоадер показал ошибку.
+                this.stateChangedEmitter.emit('onInitError');
                 break;
             case "onAuthSuccess":
+                this._sessionExpiredNotified = false;
                 this.stateChangedEmitter.emit('onAuthSuccess');
                 break;
             case "onAuthError":
                 break;
             case "onAuthRefreshSuccess":
+                this._sessionExpiredNotified = false;
                 this.stateChangedEmitter.emit('onAuthSuccess');
                 break;
             case "onAuthRefreshError":
+                // Провайдер не смог обновить токен: сессия Keycloak закончилась (30 минут без действий).
+                // Раньше событие глушилось, и сайт молчал с «Account» в шапке и 401 на каждый запрос.
+                this.markSessionExpired();
                 break;
             case "onAuthLogout":
+                // Выход нужен наружу: аналитика обязана забыть, кто это был, иначе следующий
+                // гость на том же компьютере продолжит считаться предыдущим покупателем.
+                this.stateChangedEmitter.emit('onAuthLogout');
                 break;
             case "onTokenExpired":
+                // Сюда провайдер @react-keycloak приходит только с autoRefreshToken=false; по умолчанию он сам
+                // зовёт updateToken(5) по истечении токена, и это событие наружу не отдаёт.
                 break;
         }
     }
 
     public async initialiseKeycloak() {
         try {
-            console.log('Initializing keycloak service...');
             this._keycloak = new (Keycloak as any)({
                 url: this._urlService.keycloak.url,
                 realm: this._urlService.keycloak.realm,
@@ -80,14 +109,9 @@ export class KeycloakService implements IKeycloakService {
             });
             this._keycloak.redirectUri = this._urlService.keycloak.redirectUri;
 
-            const authenticated = await this._keycloak.init({
+            await this._keycloak.init({
                 onLoad: this._urlService.keycloak.onLoad
             });
-            if (authenticated) {
-                console.log('User is authenticated');
-            } else {
-                console.log('User is not authenticated');
-            }
         } catch (error) {
             console.error('Failed to initialize adapter:', error);
         }

@@ -25,9 +25,19 @@
 .deals-hero-glyph {
     position: absolute;
     right: 5%;
-    top: 50%;
-    margin-top: -190px;
-    font-size: 360px;
+    /* Привязка к верхней кромке, а не к середине.
+       Было top: 50% с отрицательным margin — знак стоял по центру hero. Но hero растёт,
+       когда из «deal alerts» раскрывается подписка (+100px по замеру), центр уезжает вниз
+       вместе с ним, и знак прыгал на полсотни пикселей. От верхней кромки двигаться нечему:
+       она на месте независимо от того, что происходит с содержимым ниже. */
+    /* Кегль подобран под САМУЮ низкую шапку — пустую, без плашек со статистикой:
+       её высота 285px, а повёрнутый на 10° знак занимает 0.864 кегля по вертикали
+       (0.734 высоты краски · cos10 + 0.813 ширины · sin10). 360px давали 311px краски,
+       и низ знака срезало кромкой блока: overflow: hidden у шапки. 290px оставляют
+       по ~17px сверху и снизу, а 7px сдвига уравнивают их — краска внутри строки
+       сидит ниже её середины, и без сдвига запас снизу вдвое меньше. */
+    top: 7px;
+    font-size: 290px;
     font-weight: 800;
     line-height: 1;
     color: transparent;
@@ -117,9 +127,9 @@
 
 .deals-toolbar {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-16);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-12) var(--space-16);
     margin-bottom: var(--space-24);
 }
 
@@ -127,8 +137,55 @@
     margin: 0;
 }
 
+/* Счётчик отталкивает вправо всё, что за ним: порядок и ссылку в каталог. */
 .deals-count {
     font-size: 14px;
+    margin-right: auto;
+}
+
+/* Переключатель порядка: два состояния, не выпадающий список — витрина не каталог. */
+.deals-views {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(107, 63, 242, 0.08);
+}
+
+.deals-view {
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-muted, #5b5470);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.deals-view:hover {
+    color: var(--color-primary, #6b3ff2);
+}
+
+.deals-view.is-active {
+    background: #ffffff;
+    color: var(--color-primary, #6b3ff2);
+    box-shadow: 0 2px 8px rgba(34, 26, 68, 0.12);
+}
+
+.deals-view:focus-visible {
+    outline: 2px solid var(--color-primary, #6b3ff2);
+    outline-offset: 2px;
+}
+
+/* Пока едет другой порядок, прежние карточки гаснут — но остаются на месте, чтобы
+   страница не прыгала на пустую сетку и обратно. */
+.deals-grid.is-busy {
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
 }
 
 .deals-grid {
@@ -137,6 +194,9 @@
     gap: var(--space-20);
 }
 
+/* Каркас на время загрузки: повторяет форму карточки витрины (common/StoreGameCard),
+   но без её содержимого. Сама карточка живёт в общем файле — здесь только заглушка,
+   поэтому от прежних правил остались три класса, на которых она держится. */
 .deal-card {
     display: flex;
     flex-direction: column;
@@ -144,154 +204,59 @@
     border: 1px solid #ece8ff;
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(84, 58, 193, 0.08);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.deal-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 22px 44px rgba(84, 58, 193, 0.16);
+    box-shadow: 0 12px 28px rgba(92, 69, 160, 0.1);
 }
 
 .deal-media {
     position: relative;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 1 / 1;
     overflow: hidden;
     background: #f0ecff;
-}
-
-.deal-media img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.deal-media-link {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-}
-
-.deal-badge {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 2;
-    padding: 5px 10px;
-    border-radius: 999px;
-    background: #ef4444;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 800;
-    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
-}
-
-/* Мягкий вариант бейджа для budget-picks (не «скидка», а ценовая категория). */
-.deal-badge-soft {
-    background: #6b3ff2;
-    box-shadow: 0 6px 16px rgba(107, 63, 242, 0.4);
-}
-
-/* Хвостовая CTA-карточка в гриде. */
-.deal-card-cta {
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 6px;
-    padding: var(--space-24);
-    min-height: 260px;
-    background: linear-gradient(160deg, #221a44 0%, #3a2870 100%);
-    border-color: transparent;
-    color: #ffffff;
-    text-decoration: none;
-}
-
-.deal-card-cta .fx-texture {
-    opacity: 0.06;
-}
-
-.deal-card-cta-title {
-    position: relative;
-    font-size: 19px;
-    font-weight: 800;
-    color: #ffffff;
-}
-
-.deal-card-cta-desc {
-    position: relative;
-    font-size: 13.5px;
-    color: rgba(255, 255, 255, 0.72);
-    line-height: 1.45;
-}
-
-.deal-card-cta-arrow {
-    position: relative;
-    margin-top: var(--space-8);
-    font-size: 26px;
-    font-weight: 800;
-    color: #c4b5fd;
-    transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.deal-card-cta:hover .deal-card-cta-arrow {
-    transform: translateX(6px);
-    color: #ffffff;
 }
 
 .deal-body {
     display: flex;
     flex-direction: column;
-    gap: var(--space-12);
-    padding: var(--space-16);
+    gap: 0.4rem;
+    padding: 0.6rem 0.7rem 0.7rem;
     flex: 1;
 }
 
-.deal-title {
-    margin: 0;
-    font-size: 16px;
+/* Срок скидки — то, чего нет в каталоге: там скидка выглядит просто ценой.
+   Ложится поверх обложки общей карточки. */
+.deal-badge-ends {
+    position: absolute;
+    z-index: 2;
+    /* Вторым этажом под процентом, а не в правом углу: справа у карточки витрины
+       кнопка вишлиста, и плашка легла бы прямо на неё. */
+    top: 48px;
+    left: 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    /* Тёмная, а не красная: два алых пятна на одной обложке спорят друг с другом. */
+    background: rgba(24, 18, 46, 0.82);
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(24, 18, 46, 0.35);
+    font-size: 12.5px;
     font-weight: 700;
-    color: #2c2354;
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(4px);
 }
 
-.deal-title a {
-    color: inherit;
-}
-
-.deal-title a:hover {
-    color: var(--color-primary);
-}
-
-.deal-prices {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-top: auto;
-}
-
+/* Осталась за крупной карточкой: там старая цена всё ещё стоит рядом с новой. */
 .deal-price-old {
     color: #9b92c4;
     text-decoration: line-through;
     font-size: 14px;
 }
 
-.deal-price-new {
-    color: var(--color-primary);
-    font-size: 20px;
-    font-weight: 800;
-}
-
-.deal-cta {
-    width: 100%;
-    height: 42px;
-}
-
 /* ---------- Skeleton ---------- */
 .deal-card-skeleton .deal-media {
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 1 / 1;
 }
 
+/* Общий скелетон витрины: им пользуются и «Скидки», и блог. В админке своя палитра —
+   она перебивает эту правилом с приставкой (см. admin.css). */
 .skeleton {
     position: relative;
     overflow: hidden;
@@ -349,42 +314,10 @@
     max-width: 56ch;
 }
 
-.deals-notify {
-    display: flex;
-    gap: var(--space-8);
-    max-width: 440px;
+/* Форма подписки живёт в общем компоненте (NewsletterSignup) — здесь только отступ
+   от текста пустого состояния. */
+.deals-empty-copy .nl-signup {
     margin-top: var(--space-16);
-}
-
-.deals-notify input {
-    flex: 1 1 auto;
-    min-width: 0;
-    height: 48px;
-    padding: 0 var(--space-16);
-    border-radius: var(--radius-md);
-    border: 1px solid #e1d9ff;
-    background: #ffffff;
-    color: var(--color-text);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.deals-notify input:focus,
-.deals-notify input:focus-visible {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
-}
-
-.deals-notify-done {
-    margin: var(--space-16) 0 0;
-    color: #15803d;
-    font-weight: 600;
-}
-
-.deals-notify-error {
-    margin: var(--space-8) 0 0;
-    color: #b91c1c;
-    font-size: 14px;
 }
 
 .deals-empty-browse {
@@ -407,40 +340,355 @@
         max-width: 200px;
     }
 
-    .deals-notify {
+    .deals-empty-copy .nl-signup {
         margin-inline: auto;
-        flex-direction: column;
     }
+
 
     .deals-empty-copy > p {
         margin-inline: auto;
     }
 }
 
-/* ---------- Footer CTA ---------- */
-.deals-footer-cta {
+/* ---------- Главная скидка: карточка на месте четырёх ---------- */
+/* Занимает два столбца в одну строку: ровный ковёр одинаковых плиток не даёт взгляду
+   входа, а «просто первая слева» героем не читается. Две строки в высоту пробовал —
+   получается почти 900px, карточка перестаёт помещаться в экран вместе с соседями. */
+.deal-spotlight {
+    grid-column: span 2;
     position: relative;
+    display: flex;
+    flex-direction: row;
     overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid #e5dcff;
+    background: linear-gradient(160deg, #ffffff 0%, #faf8ff 100%);
+    box-shadow: 0 18px 44px rgba(84, 58, 193, 0.14);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.deal-spotlight:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 28px 56px rgba(84, 58, 193, 0.2);
+}
+
+.deal-spotlight-media {
+    position: relative;
+    flex: 0 0 46%;
+    overflow: hidden;
+    background: #efeaff;
+}
+
+.deal-spotlight-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.deal-spotlight:hover .deal-spotlight-media img {
+    transform: scale(1.03);
+}
+
+/* Блик проезжает по обложке на наведении: подсказка, что карточка живая. */
+.deal-spotlight-shine {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
+    transform: translateX(-120%);
+}
+
+.deal-spotlight:hover .deal-spotlight-shine {
+    animation: deal-shine 0.9s ease;
+}
+
+@keyframes deal-shine {
+    to { transform: translateX(120%); }
+}
+
+/* Тот же фиолетовый, что у бейджа скидки на всех остальных карточках витрины
+   (см. gco-discount). Пока плитки рядом были красными, красным был и этот; теперь они
+   перешли на общую накладку, и алое пятно осталось бы одно на всю страницу — читалось бы
+   как другой смысл, а не как «та же скидка, только крупнее». Выделяет карточку размер
+   и подпись STAR DEAL, цвет для этого не нужен. */
+.deal-spotlight-percent {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 10px 24px rgba(107, 63, 242, 0.45);
+}
+
+/* Сердечко над растянутой ссылкой карточки (z-index выше её псевдоэлемента), иначе клик уходил бы на страницу игры. */
+/* Сердечко стоит в углу всей карточки (article), над белым полем текста — поэтому оно
+   фиолетовое, а не белое, как у плиток на обложках: белое на белом терялось. */
+.deal-spotlight-wishlist {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, #ffffff);
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+    color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(84, 58, 193, 0.14);
+    cursor: pointer;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.deal-spotlight-wishlist:hover {
+    background: color-mix(in srgb, var(--color-primary) 18%, #ffffff);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, #ffffff);
+    transform: scale(1.06);
+}
+
+/* В избранном — залитая фиолетовая кнопка с белым сердцем: состояние видно с расстояния. */
+.deal-spotlight-wishlist.is-active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+}
+
+.deal-spotlight-wishlist:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+/* Платформы — белая плашка в левом нижнем углу обложки, как у обычных плиток, но с подписью. */
+.deal-spotlight-platforms {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+}
+
+.deal-spotlight-platforms li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #fff;
+    color: #6f64a8;
+    box-shadow: 0 2px 8px rgba(30, 20, 70, 0.16);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.deal-spotlight-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-10);
+    padding: var(--space-24);
+}
+
+.deal-spotlight-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #b45309;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.deal-spotlight-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #2c2354;
+}
+
+.deal-spotlight-title a {
+    color: inherit;
+}
+
+/* Растянутая ссылка: вся карточка ведёт на страницу игры и показывает указатель, а не только слово-название.
+   Кнопки действий лежат выше (z-index), поэтому «Add to cart» и «Details» остаются собой. */
+.deal-spotlight-title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.deal-spotlight-title a:hover {
+    color: var(--color-primary);
+}
+
+.deal-spotlight-prices {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.deal-spotlight-price {
+    color: var(--color-primary);
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* Экономия суммой: «-54%» надо считать в уме, «$16.19» — нет. */
+.deal-spotlight-saved {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.deal-spotlight-timer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-24);
     flex-wrap: wrap;
-    margin-top: var(--space-40);
-    padding: var(--space-24) var(--space-32);
-    border-radius: var(--radius-lg);
-    border: 1px solid #ece8ff;
-    background: linear-gradient(135deg, #f7f5ff 0%, #ffffff 100%);
-}
-
-.deals-footer-cta h3 {
-    margin: 0 0 4px;
-}
-
-.deals-footer-cta p {
+    gap: 10px;
     margin: 0;
 }
 
+.deal-spotlight-timer-label {
+    color: var(--color-text-muted, #6b7280);
+    font-size: 13px;
+}
+
+.deal-spotlight-clock {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+.deal-spotlight-clock b {
+    min-width: 34px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    background: #1a1436;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.deal-spotlight-clock i {
+    color: #a78bfa;
+    font-style: normal;
+    font-weight: 800;
+}
+
+.deal-spotlight-actions {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    margin-top: var(--space-8);
+}
+
+.deal-spotlight-actions .btn {
+    height: 46px;
+    padding-inline: var(--space-24);
+}
+
+/* ---------- Плитка «deal alerts» в шапке ---------- */
+/* Четвёртая в ряду статистики: то же оформление, поэтому не выбивается, но это кнопка. */
+.deals-stat-action {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.deals-stat-action:hover,
+.deals-stat-action.is-open {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(196, 181, 253, 0.55);
+}
+
+.deals-stat-action:focus-visible {
+    outline: 2px solid #c4b5fd;
+    outline-offset: 2px;
+}
+
+.deals-stat-icon {
+    display: inline-flex;
+    align-items: center;
+    color: #c4b5fd;
+}
+
+/* Раскрывающаяся форма под плитками — в той же тёмной шапке. */
+.deals-alerts-panel {
+    margin-top: var(--space-20);
+    max-width: 520px;
+}
+
+.deals-alerts-panel p {
+    margin: 0 0 var(--space-12);
+    color: rgba(255, 255, 255, 0.74);
+    font-size: 14px;
+}
+
+/* ---------- Конец листинга ---------- */
+/* Один переход дальше по центру — как у витрин, где листинг кончается товарами. */
+.deals-end {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-40);
+}
+
+/* Обводка фирменным цветом, а не серым: серая читается как отключённая кнопка. */
+.deals-end-browse {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 46px;
+    padding-inline: var(--space-24);
+    border-color: #cbb8ff;
+    color: var(--color-primary);
+    background: #ffffff;
+}
+
+.deals-end-browse:hover {
+    border-color: var(--color-primary);
+    background: #faf7ff;
+    color: var(--color-primary);
+}
+
+.deals-end-arrow {
+    transition: transform 0.18s ease;
+}
+
+.deals-end-browse:hover .deals-end-arrow {
+    transform: translateX(3px);
+}
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
     .deals-grid {
@@ -452,6 +700,7 @@
     .deals-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
 }
 
 @media (max-width: 460px) {
@@ -459,8 +708,37 @@
         grid-template-columns: 1fr;
     }
 
-    .deals-footer-cta {
+    .deal-spotlight {
+        grid-column: span 1;
+    }
+
+    /* В одну колонку обложка встаёт над текстом — как у обычной карточки. */
+    .deal-spotlight {
         flex-direction: column;
-        align-items: flex-start;
+    }
+
+    .deal-spotlight-media {
+        flex: 0 0 auto;
+        --cover-ratio: 16 / 9;
+    }
+
+
+    .deal-spotlight-title {
+        font-size: 20px;
+    }
+}
+
+/* ---------- Доступность: без движения по запросу системы ---------- */
+@media (prefers-reduced-motion: reduce) {
+    .deal-spotlight:hover .deal-spotlight-shine {
+        animation: none;
+    }
+
+    .deal-spotlight,
+    .deal-spotlight:hover,
+    .deal-spotlight-media img,
+    .deal-spotlight:hover .deal-spotlight-media img {
+        transform: none;
+        transition: none;
     }
 }

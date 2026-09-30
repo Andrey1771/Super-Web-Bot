@@ -1,6 +1,7 @@
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Services;
 using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Repositories
@@ -46,7 +47,10 @@ namespace SuperBot.Infrastructure.Repositories
             var summary = new GameReviewSummary
             {
                 Count = items.Count,
-                Average = items.Average(item => item.Rating)
+                Average = items.Average(item => item.Rating),
+                // Доля «за» — по звёздам (4–5), а не по старому полю recommend: в старых записях оно
+                // могло расходиться с оценкой.
+                RecommendCount = items.Count(item => ReviewVerdict.IsRecommendation(item.Rating))
             };
 
             foreach (var group in items.GroupBy(item => item.Rating))
@@ -127,6 +131,26 @@ namespace SuperBot.Infrastructure.Repositories
             return items.Select(MapToEntity).ToList();
         }
 
+        public async Task<IReadOnlyList<GameReview>> GetRecentPublishedByRatingAsync(int rating, int limit)
+        {
+            if (limit <= 0)
+            {
+                return Array.Empty<GameReview>();
+            }
+
+            var filter = PublishedFilter &
+                         Builders<GameReviewDb>.Filter.Eq(item => item.Rating, rating) &
+                         Builders<GameReviewDb>.Filter.Ne(item => item.Text, null) &
+                         Builders<GameReviewDb>.Filter.Ne(item => item.Text, string.Empty);
+
+            var items = await _reviews.Find(filter)
+                .Sort(Builders<GameReviewDb>.Sort.Descending(item => item.CreatedAt))
+                .Limit(limit)
+                .ToListAsync();
+
+            return items.Select(MapToEntity).ToList();
+        }
+
         public async Task<GameReview> GetByIdAsync(string reviewId)
         {
             var review = await _reviews.Find(item => item.Id == reviewId).FirstOrDefaultAsync();
@@ -140,6 +164,28 @@ namespace SuperBot.Infrastructure.Repositories
             return MapToEntity(review);
         }
 
+        public async Task<IReadOnlySet<string>> GetReviewedGameIdsAsync(string userId, IEnumerable<string> gameIds)
+        {
+            var ids = gameIds?
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .ToList() ?? new List<string>();
+
+            if (string.IsNullOrWhiteSpace(userId) || ids.Count == 0)
+            {
+                return new HashSet<string>(StringComparer.Ordinal);
+            }
+
+            // Скрытые и ожидающие модерации отзывы тоже считаются написанными: человек своё
+            // мнение оставил, и звать его написать «ещё раз» неуместно.
+            var found = await _reviews
+                .Find(item => item.UserId == userId && ids.Contains(item.GameId))
+                .Project(item => item.GameId)
+                .ToListAsync();
+
+            return new HashSet<string>(found.Where(id => !string.IsNullOrWhiteSpace(id)), StringComparer.Ordinal);
+        }
+
         public async Task CreateAsync(GameReview review)
         {
             var db = MapToDb(review);
@@ -151,6 +197,19 @@ namespace SuperBot.Infrastructure.Repositories
         {
             var db = MapToDb(review);
             await _reviews.ReplaceOneAsync(item => item.Id == reviewId, db);
+        }
+
+        public async Task<long> MarkRefundedAsync(string buyerKey, IReadOnlyCollection<string> gameIds)
+        {
+            if (string.IsNullOrWhiteSpace(buyerKey) || gameIds.Count == 0)
+            {
+                return 0;
+            }
+            var filter = Builders<GameReviewDb>.Filter.Eq(item => item.BuyerKey, buyerKey)
+                & Builders<GameReviewDb>.Filter.In(item => item.GameId, gameIds)
+                & Builders<GameReviewDb>.Filter.Eq(item => item.Refunded, false);
+            var result = await _reviews.UpdateManyAsync(filter, Builders<GameReviewDb>.Update.Set(item => item.Refunded, true));
+            return result.ModifiedCount;
         }
 
         public async Task UpdateHelpfulCountAsync(string reviewId, int helpfulCount)
@@ -181,7 +240,7 @@ namespace SuperBot.Infrastructure.Repositories
 
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
-                var regex = new MongoDB.Bson.BsonRegularExpression(query.Search, "i");
+                var regex = new MongoDB.Bson.BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(query.Search.Trim()), "i");
                 filter &= builder.Regex(item => item.Text, regex);
             }
 
@@ -221,20 +280,23 @@ namespace SuperBot.Infrastructure.Repositories
                 GameId = db.GameId,
                 UserId = db.UserId,
                 UserName = db.UserName,
-                AvatarUrl = db.AvatarUrl,
+                // AvatarUrl не читается и не пишется: аватар подставляет витрина из профиля
+                // в момент показа, в отзыве его нет.
                 VerifiedPurchase = db.VerifiedPurchase,
+                BuyerKey = db.BuyerKey,
+                Refunded = db.Refunded,
                 Rating = db.Rating,
                 PlaytimeHours = db.PlaytimeHours,
                 Text = db.Text,
                 Images = db.Images?.Select(item => new ReviewImage { Url = item.Url, ThumbUrl = item.ThumbUrl }).ToList() ?? new List<ReviewImage>(),
-                Recommend = db.Recommend,
                 CreatedAt = db.CreatedAt,
                 UpdatedAt = db.UpdatedAt,
+                EditedAt = db.EditedAt,
+                Revisions = db.Revisions?.Select(r => new ReviewRevision { Text = r.Text, Rating = r.Rating, PlaytimeHours = r.PlaytimeHours, ReplacedAt = r.ReplacedAt, UnderReport = r.UnderReport }).ToList() ?? new List<ReviewRevision>(),
                 HelpfulCount = db.HelpfulCount,
                 Status = Enum.TryParse<ReviewStatus>(db.Status, out var status) ? status : ReviewStatus.Published,
                 ReportCount = db.ReportCount,
-                LastReportedAt = db.LastReportedAt,
-                ShopReply = db.ShopReply is null ? null : new ReviewReply { Text = db.ShopReply.Text, Author = db.ShopReply.Author, CreatedAt = db.ShopReply.CreatedAt }
+                LastReportedAt = db.LastReportedAt
             };
         }
 
@@ -246,20 +308,23 @@ namespace SuperBot.Infrastructure.Repositories
                 GameId = review.GameId,
                 UserId = review.UserId,
                 UserName = review.UserName,
-                AvatarUrl = review.AvatarUrl,
                 VerifiedPurchase = review.VerifiedPurchase,
+                BuyerKey = review.BuyerKey,
+                Refunded = review.Refunded,
                 Rating = review.Rating,
                 PlaytimeHours = review.PlaytimeHours,
                 Text = review.Text,
                 Images = review.Images?.Select(item => new ReviewImageDb { Url = item.Url, ThumbUrl = item.ThumbUrl }).ToList() ?? new List<ReviewImageDb>(),
-                Recommend = review.Recommend,
+                // Поле в документе оставлено для совместимости и всегда согласовано с оценкой.
+                Recommend = ReviewVerdict.IsRecommendation(review.Rating),
                 CreatedAt = review.CreatedAt,
                 UpdatedAt = review.UpdatedAt,
+                EditedAt = review.EditedAt,
+                Revisions = review.Revisions is { Count: > 0 } ? review.Revisions.Select(r => new ReviewRevisionDb { Text = r.Text, Rating = r.Rating, PlaytimeHours = r.PlaytimeHours, ReplacedAt = r.ReplacedAt, UnderReport = r.UnderReport }).ToList() : null,
                 HelpfulCount = review.HelpfulCount,
                 Status = review.Status.ToString(),
                 ReportCount = review.ReportCount,
-                LastReportedAt = review.LastReportedAt,
-                ShopReply = review.ShopReply is null ? null : new ReviewReplyDb { Text = review.ShopReply.Text, Author = review.ShopReply.Author, CreatedAt = review.ShopReply.CreatedAt }
+                LastReportedAt = review.LastReportedAt
             };
         }
     }

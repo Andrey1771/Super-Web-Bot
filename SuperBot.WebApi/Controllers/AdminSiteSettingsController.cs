@@ -25,6 +25,8 @@ public class AdminSiteSettingsController : ControllerBase
     private readonly IOptionsSnapshot<SupportChatOptions> _chat;
     private readonly IOptionsSnapshot<FxOptions> _fx;
     private readonly IOptionsSnapshot<PaymentRailsOptions> _rails;
+    private readonly IOptionsSnapshot<StockOptions> _stock;
+    private readonly SuperBot.Core.Regions.IRegionCatalogProvider _regions;
     private readonly IOptions<StripeSettings> _stripe;
     private readonly BtcPayOptions _btcPay;
 
@@ -34,6 +36,8 @@ public class AdminSiteSettingsController : ControllerBase
         IOptionsSnapshot<SupportChatOptions> chat,
         IOptionsSnapshot<FxOptions> fx,
         IOptionsSnapshot<PaymentRailsOptions> rails,
+        IOptionsSnapshot<StockOptions> stock,
+        SuperBot.Core.Regions.IRegionCatalogProvider regions,
         IOptions<StripeSettings> stripe,
         IOptions<BtcPayOptions> btcPay)
     {
@@ -42,6 +46,8 @@ public class AdminSiteSettingsController : ControllerBase
         _chat = chat;
         _fx = fx;
         _rails = rails;
+        _stock = stock;
+        _regions = regions;
         _stripe = stripe;
         _btcPay = btcPay.Value;
     }
@@ -59,6 +65,7 @@ public class AdminSiteSettingsController : ControllerBase
         var cfgChat = _configuration.GetSection("SupportChat");
         var cfgFx = _configuration.GetSection("Storefront:Fx");
         var cfgRails = _configuration.GetSection("PaymentRails");
+        var cfgStock = _configuration.GetSection("Storefront:Stock");
 
         return Ok(new
         {
@@ -81,6 +88,30 @@ public class AdminSiteSettingsController : ControllerBase
             {
                 markupPercent = Field(fx.MarkupPercent, cfgFx.GetValue<decimal?>("MarkupPercent") ?? 3m, doc.FxMarkupPercent),
                 maxChangePercent = Field(fx.MaxChangePercent, cfgFx.GetValue<decimal?>("MaxChangePercent") ?? 10m, doc.FxMaxChangePercent),
+            },
+            stock = new
+            {
+                lowStockThreshold = Field(_stock.Value.LowStockThreshold, cfgStock.GetValue<int?>("LowStockThreshold") ?? 3, doc.LowStockThreshold),
+            },
+            team = new
+            {
+                // Дефолта нет намеренно: пустой список — это «раздел не показываем»,
+                // а не «показываем заготовку».
+                value = SuperBot.WebApi.Services.SiteSettings.TeamMembers.Parse(doc.TeamJson),
+                maxMembers = SuperBot.WebApi.Services.SiteSettings.TeamMembers.MaxMembers,
+            },
+            social = new
+            {
+                value = SocialLinks.Parse(doc.SocialLinksJson),
+                // Сети, для которых у подвала есть иконка, — форма админки строит поля по этому списку.
+                networks = SocialLinks.Networks.Select(n => new { network = n.Network, title = n.Title, example = n.Example }),
+            },
+            regions = new
+            {
+                // Текущий справочник (с учётом настроек) и флаг, переопределён ли он; дефолт — зашитый набор.
+                value = _regions.Current.Regions,
+                defaultValue = SuperBot.Core.Regions.RegionCatalog.Default(),
+                overridden = !string.IsNullOrWhiteSpace(doc.RegionsJson),
             },
             rails = new
             {
@@ -133,12 +164,19 @@ public class AdminSiteSettingsController : ControllerBase
             }
             catch (TimeZoneNotFoundException)
             {
-                return BadRequest(new { message = $"Unknown time zone “{patch.BusinessHoursTimeZone}”. Use IANA (Europe/Moscow) or Windows names." });
+                return BadRequest(new { message = $"Unknown time zone “{patch.BusinessHoursTimeZone}”. Use IANA (Europe/Berlin) or Windows names." });
             }
+        }
+
+        var socialError = SocialLinks.Validate(patch.Social);
+        if (socialError is not null)
+        {
+            return BadRequest(new { message = socialError });
         }
 
         var actor = SupportUserContext.FromClaims(User).Email;
         // Семантика PUT здесь — «полное состояние оверлея»: null означает «как в конфиге», а не «не трогать».
+        // Кэшбэк сюда не входит: его настройки сохраняет своя вкладка (AdminCashbackController), и эти поля документа не трогаются.
         // Так одна кнопка «Reset to config» на поле — это просто отправить null.
         var saved = await _store.SaveAsync(doc =>
         {
@@ -156,6 +194,16 @@ public class AdminSiteSettingsController : ControllerBase
             doc.CardEnabled = patch.CardEnabled;
             doc.CryptoEnabled = patch.CryptoEnabled;
             doc.StarsEnabled = patch.StarsEnabled;
+            doc.LowStockThreshold = patch.LowStockThreshold is < 0 ? null : patch.LowStockThreshold;
+            doc.TeamJson = patch.Team is { Count: > 0 }
+                ? SuperBot.WebApi.Services.SiteSettings.TeamMembers.Serialize(patch.Team)
+                : null;
+            doc.SocialLinksJson = SocialLinks.Normalize(patch.Social) is { Count: > 0 } social
+                ? SocialLinks.Serialize(social)
+                : null;
+            doc.RegionsJson = patch.Regions is { Count: > 0 }
+                ? System.Text.Json.JsonSerializer.Serialize(SuperBot.WebApi.Services.Regions.RegionCatalogProvider.Normalize(patch.Regions))
+                : null;
         }, actor);
 
         return Ok(new { ok = true, message = "Settings saved and applied.", updatedAtUtc = saved.UpdatedAtUtc, updatedBy = saved.UpdatedBy });
@@ -182,4 +230,14 @@ public class SiteSettingsPatch
     public bool? CardEnabled { get; set; }
     public bool? CryptoEnabled { get; set; }
     public bool? StarsEnabled { get; set; }
+    public int? LowStockThreshold { get; set; }
+    /// <summary>Раздел «Meet the team» целиком; пусто/null — раздела на странице нет.</summary>
+    public List<SuperBot.WebApi.Services.SiteSettings.TeamMember>? Team { get; set; }
+
+    /// <summary>Ссылки на соцсети в подвале; пусто/null — блока соцсетей нет.</summary>
+    public List<SocialLink>? Social { get; set; }
+
+    /// <summary>Справочник регионов целиком; пусто/null — вернуться к конфигу/дефолту.</summary>
+    public List<SuperBot.Core.Regions.RegionDefinition>? Regions { get; set; }
+
 }

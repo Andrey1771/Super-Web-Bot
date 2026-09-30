@@ -28,6 +28,10 @@
 }
 
 .keys-toolbar {
+    /* Контейнер запросов: панель фильтров живёт в колонке кабинета, и её ширина сильно
+       меньше ширины окна. Правила по @media до неё не доходили вовремя. */
+    container-type: inline-size;
+    container-name: keys-toolbar;
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
@@ -110,13 +114,16 @@
 }
 
 .keys-table-wrapper {
+    container-type: inline-size;
+    container-name: keys-table;
+    /* Прокрутка остаётся страховкой на случай очень длинного ключа, но на узком экране
+       до неё уже не доходит: таблица там превращается в список карточек. */
     overflow-x: auto;
 }
 
 .keys-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 720px;
 }
 
 .keys-table th,
@@ -150,6 +157,23 @@
     align-items: center;
     gap: var(--space-12);
     font-weight: 600;
+}
+
+.keys-product {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+/* Место активации ключа ПО под названием. */
+.keys-activation-note {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-muted, #6b7280);
+}
+
+.keys-activation-note a {
+    color: var(--color-primary, #6b3ff2);
 }
 
 .keys-game-cover {
@@ -339,27 +363,116 @@
     }
 }
 
-@media (max-width: 768px) {
+/* Таблица ключей на узкой колонке становится списком карточек.
+   Четыре колонки (игра, тип, дата, ключ с кнопкой) в 500px не помещаются, а
+   горизонтальная прокрутка внутри страницы — плохой ответ: полосу не видно, пальцем в неё
+   не попасть, и половина строки всегда за краем. Порог 700px — ширина, ниже которой
+   колонка «Key / Activation» перестаёт вмещать сам ключ и кнопку рядом. */
+@container keys-table (max-width: 700px) {
+    .keys-table,
+    .keys-table tbody {
+        display: block;
+    }
+
+    .keys-table thead {
+        display: none;
+    }
+
+    .keys-table tr {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: var(--space-8) var(--space-12);
+        align-items: center;
+        padding: var(--space-14) var(--space-16);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .keys-table td {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    /* Название игры сверху во всю ширину, под ним тип и дата в одну строку,
+       ещё ниже — сам ключ с кнопкой. */
+    .keys-cell-game,
+    .keys-cell-key,
+    .keys-table-state {
+        grid-column: 1 / -1;
+    }
+
+    .keys-cell-type {
+        grid-column: 1;
+    }
+
+    .keys-cell-date {
+        grid-column: 2;
+        color: var(--color-muted);
+    }
+
+    .keys-key-actions {
+        display: flex;
+        width: 100%;
+    }
+
+    /* Ключ занимает остаток строки и обрезается: кнопка «Copy» важнее его хвоста,
+       а целиком он всё равно попадает в буфер обмена. */
+    .keys-key-pill {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Фильтры узкой панели: два списка в ряд вместо трёх полос во всю ширину.
+   Раньше поиск, «Sort», тип и «Clear filters» стояли четырьмя одинаковыми блоками с
+   одинаковыми отступами — и читались как четыре не связанные друг с другом штуки. */
+@container keys-toolbar (max-width: 560px) {
     .keys-toolbar-row {
         flex-direction: column;
         align-items: stretch;
+        gap: var(--space-12);
     }
 
     .keys-filters {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-10);
         width: 100%;
-        justify-content: space-between;
+    }
+
+    .keys-sort {
+        position: relative;
+    }
+
+    /* Подпись «Sort:» остаётся для читалок экрана, но места не занимает: значения в
+       списке говорят сами за себя, а подпись рядом ломала пару списков в один ряд. */
+    .keys-sort > span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        border: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 
     .keys-select {
         width: 100%;
+        min-width: 0;
+    }
+
+    .keys-toolbar-footer {
+        margin-top: calc(-1 * var(--space-4));
+        justify-content: flex-end;
     }
 }
 
 @media (max-width: 640px) {
-    .keys-toolbar-footer {
-        justify-content: flex-start;
-    }
-
     .keys-pagination {
         flex-direction: column;
         align-items: flex-start;

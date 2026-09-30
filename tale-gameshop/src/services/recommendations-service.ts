@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import { currentCurrency } from "../context/site-preferences";
 import type { IRecommendationsService } from '../iterfaces/i-recommendations-service';
 import type { IApiClient } from '../iterfaces/i-api-client';
 import IDENTIFIERS from '../constants/identifiers';
@@ -16,8 +17,10 @@ export class RecommendationsService implements IRecommendationsService {
     }
 
     async getRecommendations(limit = 8): Promise<RecommendationItem[]> {
+        // Валюта обязательна: без неё сервер отдаёт цены в базовой, а карточка рисует их со
+        // значком выбранной — то есть показывает сумму, которой не существует.
         const response = await this._apiClient.api.get(`${API_URL}/recommendations`, {
-            params: { limit }
+            params: { limit, currency: currentCurrency() }
         });
         return response.data;
     }

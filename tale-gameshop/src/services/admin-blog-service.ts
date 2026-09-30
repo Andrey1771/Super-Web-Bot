@@ -67,6 +67,11 @@ export class AdminBlogService implements IAdminBlogService {
     return response.data as { items: BlogPost[]; total: number };
   }
 
+  async getTags(): Promise<string[]> {
+    const response = await this._apiClient.api.get("/api/admin/blog/posts/tags");
+    return (response.data as string[]) ?? [];
+  }
+
   async getPost(id: string): Promise<{ post: BlogPost; version: BlogPostVersion }> {
     const response = await this._apiClient.api.get(`/api/admin/blog/posts/${id}`);
     return response.data as { post: BlogPost; version: BlogPostVersion };

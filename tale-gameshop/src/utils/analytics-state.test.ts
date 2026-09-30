@@ -11,7 +11,6 @@ describe("analytics-state", () => {
         isEnabled: true,
         gaMeasurementId: "",
         gtmContainerId: "   ",
-        yandexCounterId: "",
       }),
     ).toBe(false);
   });
@@ -21,7 +20,7 @@ describe("analytics-state", () => {
   });
 
   it("shows banner only on storefront when settings loaded and consent missing", () => {
-    const settings = { isEnabled: true, yandexCounterId: "123" };
+    const settings = { isEnabled: true, gaMeasurementId: "G-TEST" };
 
     expect(shouldShowCookieBanner(false, true, settings, null)).toBe(true);
     expect(shouldShowCookieBanner(true, true, settings, null)).toBe(false);

@@ -1,3 +1,5 @@
+import PageMeta from "../common/PageMeta";
+import { useTranslation } from "react-i18next";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
@@ -34,6 +36,8 @@ const RECOMMENDATION_LIMIT = 8;
  */
 const POSTS_PAGE_SIZE = 4;
 const sortOptions = ["Newest", "Most popular", "Editor's picks"] as const;
+// Подписи сортировки — в словаре blog.sort.*; значения остаются английскими ключами состояния.
+const SORT_KEYS: Record<(typeof sortOptions)[number], string> = { "Newest": "newest", "Most popular": "popular", "Editor's picks": "editors" };
 
 type SortOption = (typeof sortOptions)[number];
 
@@ -100,6 +104,7 @@ const getTagIcon = (tag: string) => {
 };
 
 export default function BlogPage() {
+    const { t } = useTranslation();
     const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
     const location = useLocation();
     // Выбранные теги. Пустой список — «All». Мультивыбор: у поста тегов несколько,
@@ -269,9 +274,9 @@ export default function BlogPage() {
             setTotalPosts(fallbackResult.status === "fulfilled" ? fallbackResult.value.total : fallbackPosts.length);
 
             if (!recommendations && fallbackPosts.length === 0 && featuredPool.length === 0) {
-                setError("Unable to load blog posts right now.");
+                setError(t("blog.loadFailed"));
             } else if (recommendationsResult.status === "rejected" || featuredResult.status === "rejected" || fallbackResult.status === "rejected") {
-                setNotice("Personalized picks are unavailable — showing the latest posts.");
+                setNotice(t("blog.picksUnavailable"));
             }
 
             setData({recommendations, featuredPool, fallbackPosts});
@@ -399,6 +404,20 @@ export default function BlogPage() {
         return ["All", ...Array.from(allTags).slice(0, 8)];
     }, [baseFeed, compactEditorPicks, featuredPost]);
 
+    // Подписи тегов на языке сайта: значение фильтра английское, чип показывает перевод из постов.
+    const tagLabels = useMemo(() => {
+        const labels: Record<string, string> = {};
+        [...baseFeed, ...compactEditorPicks, ...(featuredPost ? [featuredPost] : [])].forEach((post) =>
+            post.tags.forEach((tag, index) => {
+                const label = post.tagLabels?.[index];
+                if (label && label !== tag && !labels[tag]) {
+                    labels[tag] = label;
+                }
+            })
+        );
+        return labels;
+    }, [baseFeed, compactEditorPicks, featuredPost]);
+
     const filteredFeed = useMemo(() => {
         const q = debouncedSearch.trim().toLowerCase();
         const filtered = baseFeed.filter((post) => {
@@ -413,7 +432,7 @@ export default function BlogPage() {
                 return true;
             }
 
-            const haystack = `${post.title} ${post.excerpt} ${post.tags.join(" ")}`.toLowerCase();
+            const haystack = `${post.title} ${post.excerpt} ${post.tags.join(" ")} ${(post.tagLabels ?? []).join(" ")}`.toLowerCase();
             return haystack.includes(q);
         });
 
@@ -431,18 +450,18 @@ export default function BlogPage() {
 
     const toolbarSummary = useMemo(() => {
         if (!isFiltering) {
-            return `Showing ${filteredFeed.length} posts`;
+            return t("blog.showingPosts", { items: t("common.posts", { count: filteredFeed.length }) });
         }
 
-        const parts = [`${filteredFeed.length} results`];
+        const parts = [t("common.results", { count: filteredFeed.length })];
         if (activeTags.length > 0) {
-            parts.push(`tags: ${activeTags.join(", ")}`);
+            parts.push(t("blog.inTopics", { topics: activeTags.join(", ") }));
         }
         if (debouncedSearch.trim()) {
-            parts.push(`search: “${debouncedSearch.trim()}”`);
+            parts.push(t("blog.matching", { query: debouncedSearch.trim() }));
         }
         return parts.join(" • ");
-    }, [activeTags, debouncedSearch, filteredFeed.length, isFiltering]);
+    }, [activeTags, debouncedSearch, filteredFeed.length, isFiltering, t]);
 
     const handleClearFilters = () => {
         setSearchInput("");
@@ -505,10 +524,11 @@ export default function BlogPage() {
                 Плакатная плашка и этажерка «Featured + Top picks» убраны: они трижды
                 повторяли посты из ленты и отодвигали саму ленту за экран. */}
             <section className="blog-hero section">
+                <PageMeta title={t("blog.title")} description={t("blog.subtitle")} canonicalPath="/news" />
                 <div className="container">
                     <div className="blog-head">
-                        <h1>News &amp; guides</h1>
-                        <span className="blog-head__sub">weekly picks and updates from Tale Shop</span>
+                        <h1>{t("blog.title")}</h1>
+                        <span className="blog-head__sub">{t("blog.subtitle")}</span>
                     </div>
                 </div>
             </section>
@@ -530,7 +550,7 @@ export default function BlogPage() {
                             type="button"
                             className="blog-toolbar-pill"
                             aria-expanded={false}
-                            aria-label="Show search and filters"
+                            aria-label={t("blog.showFilters")}
                             onClick={() => setIsPillExpanded(true)}
                         >
                             {/* Вертикальная колонка из двух иконок — без подписи сортировки:
@@ -550,17 +570,17 @@ export default function BlogPage() {
                             <button
                                 type="button"
                                 className="blog-toolbar__collapse"
-                                aria-label="Collapse filters"
+                                aria-label={t("blog.collapseFilters")}
                                 onClick={() => setIsPillExpanded(false)}
                             >
                                 <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
                             </button>
                         )}
-                        <label className="search-field" aria-label="Search articles">
+                        <label className="search-field" aria-label={t("blog.searchArticles")}>
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                             <input
                                 type="search"
-                                placeholder="Search articles..."
+                                placeholder={t("blog.searchPlaceholder")}
                                 value={searchInput}
                                 onChange={(event) => setSearchInput(event.target.value)}
                                 // Фокус сразу в поле, но ТОЛЬКО когда панель развернули из
@@ -584,7 +604,7 @@ export default function BlogPage() {
                                         aria-pressed={isActive}
                                     >
                                         {tag !== "All" ? <FontAwesomeIcon icon={getTagIcon(tag)} /> : null}
-                                        <span>{tag}</span>
+                                        <span>{tag === "All" ? t("blog.allTags") : tagLabels[tag] ?? tag}</span>
                                     </button>
                                 );
                             })}
@@ -593,15 +613,15 @@ export default function BlogPage() {
                         {/* Общий SortSelect вместо системного <select>: системная
                             панель выпадала синей и выбивалась из оформления сайта. */}
                         <SortSelect
-                            options={sortOptions.map((option) => ({ value: option, label: option }))}
+                            options={sortOptions.map((option) => ({ value: option, label: t("blog.sort." + SORT_KEYS[option]) }))}
                             value={sort}
                             onChange={(value) => setSort(value as SortOption)}
-                            listLabel="Sort posts"
+                            listLabel={t("blog.sortPosts")}
                         />
 
                         {isFiltering ? (
                             <button className="btn btn-outline blog-toolbar__clear" type="button" onClick={handleClearFilters}>
-                                Clear filters
+                                {t("common.clearFilters")}
                             </button>
                         ) : null}
 
@@ -627,9 +647,9 @@ export default function BlogPage() {
                         </div>
                     ) : showFeedEmpty ? (
                         <div className="blog-feed-empty surface">
-                            <h3>No posts found</h3>
-                            <p className="muted">Try changing search text or selecting another topic.</p>
-                            <button className="btn btn-primary" type="button" onClick={handleClearFilters}>Clear filters</button>
+                            <h3>{t("blog.noPosts")}</h3>
+                            <p className="muted">{t("blog.noPostsText")}</p>
+                            <button className="btn btn-primary" type="button" onClick={handleClearFilters}>{t("common.clearFilters")}</button>
                         </div>
                     ) : filteredFeed.length > 0 ? (
                         <>
@@ -653,12 +673,12 @@ export default function BlogPage() {
                             {/* Невидимая метка конца ленты: как только она попадает в экран,
                                 догружается следующая порция постов. */}
                             <div ref={sentinelRef} className="blog-feed__sentinel" aria-hidden="true" />
-                            {loadingMore && <p className="blog-feed__loading muted">Loading more posts…</p>}
+                            {loadingMore && <p className="blog-feed__loading muted">{t("blog.loadingMore")}</p>}
                         </>
                     ) : (
                         <div className="blog-feed-empty surface">
-                            <h3>The newsroom is preparing new stories</h3>
-                            <p className="muted">Check back soon for fresh posts and updates.</p>
+                            <h3>{t("blog.preparing")}</h3>
+                            <p className="muted">{t("blog.preparingText")}</p>
                         </div>
                     )}
                 </div>
@@ -670,14 +690,14 @@ export default function BlogPage() {
                 <div className="container">
                     <div className="cta-card">
                         <div className="cta-copy">
-                            <h2>Looking for this week’s best prices?</h2>
-                            <p>One email per week. No spam. Unsubscribe anytime.</p>
+                            <h2>{t("blog.ctaTitle")}</h2>
+                            <p>{t("blog.ctaText")}</p>
                         </div>
                         {knownSubscription || newsletterStatus === "done" ? (
                             <p className="cta-done">
                                 {knownSubscription === "confirmed" || newsletterResult === "confirmed"
-                                    ? "You’re on the list — the next digest is coming your way."
-                                    : "Almost there — confirm the link we just emailed you."}
+                                    ? t("blog.ctaOnList")
+                                    : t("blog.ctaAlmost")}
                             </p>
                         ) : (
                             <form className="cta-form" onSubmit={handleNewsletterSubmit}>
@@ -685,15 +705,15 @@ export default function BlogPage() {
                                     type="email"
                                     required
                                     placeholder="you@example.com"
-                                    aria-label="Email for the weekly digest"
+                                    aria-label={t("blog.ctaEmail")}
                                     value={newsletterEmail}
                                     onChange={(event) => setNewsletterEmail(event.target.value)}
                                 />
                                 <button className="btn btn-primary" type="submit" disabled={newsletterStatus === "sending"}>
-                                    {newsletterStatus === "sending" ? "Subscribing…" : "Subscribe"}
+                                    {newsletterStatus === "sending" ? t("common.subscribing") : t("common.subscribe")}
                                 </button>
                                 {newsletterStatus === "error" && (
-                                    <p className="cta-error">Could not subscribe right now — try again in a minute.</p>
+                                    <p className="cta-error">{t("blog.ctaError")}</p>
                                 )}
                             </form>
                         )}

@@ -12,6 +12,7 @@ FROM nginx:alpine
 
 # Копируем конфиг для Nginx в контейнер
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx-security-headers.conf /etc/nginx/security-headers.conf
 
 # Копируем собранные фронтенд-ресурсы из первого этапа
 COPY --from=frontend /app/dist /usr/share/nginx/html

@@ -46,44 +46,36 @@
   width: auto;
 }
 
+/* Автор отзыва: аватар и подпись в строку. Картинку показываем модератору здесь же —
+   жалоба на неё приходит той же кнопкой, что и жалоба на текст. */
+.moderation__author {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.moderation__avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #f3f0ff;
+}
+
+.moderation__avatar--initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #5b4b9e;
+  font-weight: 700;
+  font-size: 13px;
+}
+
 .moderation__muted {
   color: var(--color-muted);
   font-size: 13px;
   margin: 0;
-}
-
-.moderation__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 12px;
-}
-
-.moderation__item {
-  padding: 12px 14px;
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-}
-
-/* Ожидающие — жёлтая полоса: это очередь на решение; скрытые — серая, чтобы отличать от живых. */
-.moderation__item--pending {
-  border-left-color: #f5b53f;
-}
-
-.moderation__item--hidden {
-  border-left-color: #94a3b8;
-  opacity: 0.85;
-}
-
-.moderation__item-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 13px;
 }
 
 .moderation__game {
@@ -110,22 +102,66 @@
   color: #92400e;
 }
 
+/* История правок: плашка-кнопка и раскрывающийся список прошлых версий. */
+.moderation__revisions {
+  margin-top: 4px;
+}
+
+.moderation__revisions-toggle {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.moderation__revision-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.moderation__revision {
+  padding: 6px 10px;
+  border-left: 2px solid var(--color-border);
+  font-size: 12px;
+  color: #334155;
+}
+
+.moderation__revision--under-report {
+  border-left-color: #f59e0b;
+}
+
+.moderation__revision-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+}
+
+.moderation__revision-text {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+/* Причины жалоб под плашками: коротко, полный список с комментариями — в подсказке. */
+.moderation__reasons {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.4;
+}
+
 .moderation__text {
   margin: 8px 0;
   font-size: 14px;
   white-space: pre-wrap;
-}
-
-.moderation__reply {
-  margin: 4px 0;
-  padding-left: 12px;
-  border-left: 2px solid var(--color-border);
-  font-size: 13px;
-  color: #334155;
-}
-
-.moderation__reply--official {
-  border-left-color: var(--color-primary);
 }
 
 .moderation__actions {
@@ -134,11 +170,6 @@
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 8px;
-}
-
-.moderation__reply-input {
-  flex: 1;
-  min-width: 220px;
 }
 
 .moderation__danger {
@@ -151,4 +182,29 @@
   align-items: center;
   gap: 12px;
   justify-content: center;
+}
+
+/* Очереди переехали в грид: полоса статуса теперь у строки таблицы, а не у карточки.
+   Жёлтая — ждёт решения, серая — скрытый отзыв (отличать живые от снятых важнее цвета). */
+.moderation__row--pending td:first-child {
+  box-shadow: inset 3px 0 0 #f5b53f;
+}
+
+.moderation__row--hidden td:first-child {
+  box-shadow: inset 3px 0 0 #94a3b8;
+}
+
+.moderation__row--hidden td {
+  opacity: 0.85;
+}
+
+/* В ячейке грида места меньше, чем в карточке: кнопки и поле ответа переносятся по строкам,
+   а поле не растягивает колонку. */
+.moderation .dx-datagrid .moderation__actions {
+  margin-top: 0;
+  gap: 6px;
+}
+
+.moderation .dx-datagrid .moderation__text {
+  margin: 2px 0;
 }

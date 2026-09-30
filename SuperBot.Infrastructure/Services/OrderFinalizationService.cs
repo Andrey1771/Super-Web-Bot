@@ -5,6 +5,7 @@ using Stripe;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Payments;
 using SuperBot.Infrastructure.Data;
 
 namespace SuperBot.Infrastructure.Services
@@ -26,6 +27,13 @@ namespace SuperBot.Infrastructure.Services
         /// </summary>
         Task<string?> FindReusableIntentIdAsync(string userId);
 
+        /// <summary>
+        /// Записывает согласие покупателя на немедленную выдачу ключей. Отдельным шагом, а не
+        /// частью создания намерения: согласие даётся позже, уже перед оплатой.
+        /// Возвращает false, если намерения с таким идентификатором нет.
+        /// </summary>
+        Task<bool> RecordDeliveryConsentAsync(string paymentIntentId, string version, string text);
+
         /// <summary>Идемпотентно финализирует платёж: создаёт заказ + выдаёт ключи.</summary>
         Task<OrderFinalizationResult> FinalizeAsync(OrderFinalizationRequest request);
     }
@@ -35,12 +43,32 @@ namespace SuperBot.Infrastructure.Services
         public string PaymentIntentId { get; set; } = string.Empty;
         public string UserId { get; set; } = string.Empty;
         public string Currency { get; set; } = "USD";
+        /// <summary>Страна покупателя на момент чекаута — в заказ, для выдачи ключей нужного региона.</summary>
+        public string? BuyerCountry { get; set; }
+        /// <summary>Язык сайта у покупателя на чекауте — в заказ, чтобы письма пришли на нём.</summary>
+        public string? Language { get; set; }
         public decimal Subtotal { get; set; }
         public decimal DiscountTotal { get; set; }
         public decimal TaxTotal { get; set; }
         public decimal Total { get; set; }
+
+        /// <summary>Сколько из итога оплачено кэшбэком, в валюте заказа. Картой платится Total − CashbackApplied.</summary>
+        public decimal CashbackApplied { get; set; }
+        /// <summary>То же в долларах — ровно столько отложено в журнале кэшбэка под этот платёж.</summary>
+        public decimal CashbackUsd { get; set; }
+        /// <summary>Предварительный налог с кассы; null — налог выключен.</summary>
+        public OrderTax? Tax { get; set; }
         /// <summary>Позиции в доменном виде — маппинг в тип хранения делает сам сервис.</summary>
         public List<CheckoutLineItem> CheckoutItems { get; set; } = new();
+
+        /// <summary>Идентификатор посетителя в GA — доезжает до заказа, чтобы покупка склеилась с визитом.</summary>
+        public string? AnalyticsClientId { get; set; }
+
+        /// <summary>Свой идентификатор посетителя — связывает заказ с событиями воронки.</summary>
+        public string? VisitorId { get; set; }
+
+        /// <summary>Первое касание посетителя — доезжает до заказа тем же путём.</summary>
+        public OrderAttribution? Attribution { get; set; }
     }
 
     public class OrderFinalizationRequest
@@ -122,6 +150,10 @@ namespace SuperBot.Infrastructure.Services
         private readonly IDeliveryVerificationTokenService _verificationTokens;
         private readonly IConfiguration _configuration;
         private readonly ILogger<OrderFinalizationService> _logger;
+        private readonly IPurchaseAnalytics _purchaseAnalytics;
+        private readonly IPromoCodeService _promoCodes;
+        private readonly SuperBot.Core.Cashback.ICashbackLedger _cashback;
+        private readonly IOrderTaxService _tax;
         private readonly IMongoCollection<PaymentFinalizationStateDb> _finalizationStates;
         private readonly IMongoCollection<PaymentFinalizationFailureDb> _finalizationFailures;
 
@@ -133,8 +165,16 @@ namespace SuperBot.Infrastructure.Services
             IDeliveryVerificationTokenService verificationTokens,
             IConfiguration configuration,
             ILogger<OrderFinalizationService> logger,
-            IMongoDatabase database)
+            IMongoDatabase database,
+            IPurchaseAnalytics purchaseAnalytics,
+            IPromoCodeService promoCodes,
+            SuperBot.Core.Cashback.ICashbackLedger cashback,
+            IOrderTaxService tax)
         {
+            _tax = tax;
+            _purchaseAnalytics = purchaseAnalytics;
+            _promoCodes = promoCodes;
+            _cashback = cashback;
             _orderRepository = orderRepository;
             _keyFulfillmentService = keyFulfillmentService;
             _paymentIntents = paymentIntents;
@@ -148,6 +188,18 @@ namespace SuperBot.Infrastructure.Services
 
         public async Task RecordIntentCreatedAsync(IntentCreatedRecord record)
         {
+            // Уже идущую или прошедшую оплату назад в Created не переводим: иначе повтор намерения от Stripe
+            // (тот же ключ идемпотентности) стирал бы у оплаченного заказа отметку Succeeded и защиту от повторной финализации.
+            var currentStatus = await _finalizationStates
+                .Find(item => item.PaymentIntentId == record.PaymentIntentId)
+                .Project(item => item.Status)
+                .FirstOrDefaultAsync();
+            if (currentStatus != null && currentStatus != FinalizationStatus.Created)
+            {
+                _logger.LogWarning("Payment intent {PaymentIntentId} is already {Status}; not recording it as Created again.", record.PaymentIntentId, currentStatus);
+                return;
+            }
+
             var now = DateTime.UtcNow;
             var stateUpdate = Builders<PaymentFinalizationStateDb>.Update
                 .Set(item => item.PaymentIntentId, record.PaymentIntentId)
@@ -155,15 +207,44 @@ namespace SuperBot.Infrastructure.Services
                 .Set(item => item.Status, FinalizationStatus.Created)
                 .Set(item => item.Attempts, 0)
                 .Set(item => item.Currency, record.Currency)
+                .Set(item => item.AnalyticsClientId, record.AnalyticsClientId)
+                .Set(item => item.VisitorId, record.VisitorId)
+                .Set(item => item.Attribution, ToAttributionDb(record.Attribution))
+                .Set(item => item.BuyerCountry, record.BuyerCountry)
+                .Set(item => item.Language, record.Language)
                 .Set(item => item.Subtotal, record.Subtotal)
                 .Set(item => item.DiscountTotal, record.DiscountTotal)
                 .Set(item => item.TaxTotal, record.TaxTotal)
                 .Set(item => item.Total, record.Total)
+                .Set(item => item.CashbackApplied, record.CashbackApplied)
+                .Set(item => item.CashbackUsd, record.CashbackUsd)
+                .Set(item => item.Tax, OrderTaxDb.From(record.Tax))
                 .Set(item => item.CheckoutItems, record.CheckoutItems.Select(ToStateDb).ToList())
                 .Set(item => item.UpdatedAt, now)
                 .SetOnInsert(item => item.CreatedAt, now);
 
             await _finalizationStates.UpdateOneAsync(item => item.PaymentIntentId == record.PaymentIntentId, stateUpdate, new UpdateOptions { IsUpsert = true });
+        }
+
+        public async Task<bool> RecordDeliveryConsentAsync(string paymentIntentId, string version, string text)
+        {
+            if (string.IsNullOrWhiteSpace(paymentIntentId))
+            {
+                return false;
+            }
+
+            // Без upsert: согласие относится к конкретному намерению. Если его нет, значит
+            // соглашаются неизвестно с чем — заводить под это запись нельзя.
+            var update = Builders<PaymentFinalizationStateDb>.Update
+                .Set(item => item.DeliveryConsentAt, DateTime.UtcNow)
+                .Set(item => item.DeliveryConsentVersion, version)
+                .Set(item => item.DeliveryConsentText, text)
+                .Set(item => item.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _finalizationStates.UpdateOneAsync(
+                item => item.PaymentIntentId == paymentIntentId,
+                update);
+            return result.MatchedCount > 0;
         }
 
         public async Task<string?> FindReusableIntentIdAsync(string userId)
@@ -254,6 +335,10 @@ namespace SuperBot.Infrastructure.Services
                 var existing = await _orderRepository.GetByPaymentIntentIdAsync(request.PaymentIntentId);
                 if (existing != null)
                 {
+                    // Заказ мог быть создан прошлой попыткой, упавшей до учёта промокода, — добиваем.
+                    await RecordPromoRedemptionBestEffortAsync(existing);
+                    await CommitCashbackBestEffortAsync(existing, state, request.TraceId);
+                    await _tax.RecordOrderAsync(existing, paymentIntent, state?.Tax?.ToDomain());
                     await MarkSucceededAsync(request.PaymentIntentId, resolvedUserId, attempts, existing.Id.ToString());
                     await MarkFailureResolvedAsync(request.PaymentIntentId, existing.Id.ToString());
                     return OrderFinalizationResult.Ok(FinalizationOutcome.AlreadyConfirmed, existing.Id.ToString(), "already_confirmed");
@@ -262,13 +347,16 @@ namespace SuperBot.Infrastructure.Services
                 state ??= await _finalizationStates.Find(item => item.PaymentIntentId == request.PaymentIntentId).FirstOrDefaultAsync();
                 var orderItems = BuildOrderItemsFromState(state, paymentIntent);
 
-                var totalAmount = state?.Total > 0 ? state.Total : (paymentIntent.AmountReceived > 0 ? paymentIntent.AmountReceived : paymentIntent.Amount) / 100m;
+                // Итог заказа — то, что списано картой: часть, оплаченная кэшбэком, в него не входит.
+                var cashbackApplied = state?.CashbackApplied ?? 0m;
+                var totalAmount = state?.Total > 0 ? state.Total - cashbackApplied : CurrencyMinorUnits.FromMinor(paymentIntent.AmountReceived > 0 ? paymentIntent.AmountReceived : paymentIntent.Amount, paymentIntent.Currency);
                 var subtotalAmount = state?.Subtotal > 0 ? state.Subtotal : orderItems.Sum(item => item.UnitPrice * item.Quantity);
                 var discountTotal = state?.DiscountTotal ?? orderItems.Sum(item => item.UnitDiscount * item.Quantity);
                 var taxTotal = state?.TaxTotal ?? 0m;
                 if (totalAmount <= 0)
                 {
-                    totalAmount = orderItems.Sum(item => item.LineTotal) + taxTotal;
+                    // Налог внутри цен строк — сверху не прибавляется.
+                    totalAmount = orderItems.Sum(item => item.LineTotal);
                 }
 
                 // Гостевая покупка: почта не подтверждена (metadata emailVerified=false при создании
@@ -287,6 +375,22 @@ namespace SuperBot.Infrastructure.Services
                     UserId = resolvedUserId,
                     PaymentProvider = "stripe",
                     PaymentIntentId = request.PaymentIntentId,
+                    // Чем заплатили — из оплаченного намерения: «Visa •••• 4242» в деталях заказа и в письмах.
+                    PaidWithType = paymentIntent.PaymentMethodType,
+                    PaidWithBrand = paymentIntent.CardBrand,
+                    PaidWithLast4 = paymentIntent.CardLast4,
+                    PaidWithWallet = paymentIntent.CardWallet,
+                    BuyerCountry = state?.BuyerCountry,
+                    Language = state?.Language,
+                    // Идентификатор посетителя доезжает от оформления до заказа: по нему
+                    // серверная отправка покупки склеится с визитом, а не повиснет ниоткуда.
+                    AnalyticsClientId = state?.AnalyticsClientId,
+                    VisitorId = state?.VisitorId,
+                    // Согласие на немедленную выдачу: снято на чекауте, дальше живёт в заказе.
+                    DeliveryConsentAt = state?.DeliveryConsentAt,
+                    DeliveryConsentVersion = state?.DeliveryConsentVersion,
+                    DeliveryConsentText = state?.DeliveryConsentText,
+                    Attribution = FromAttributionDb(state?.Attribution),
                     GameId = firstItem?.GameId ?? string.Empty,
                     GameName = firstItem?.Title ?? "Checkout purchase",
                     UserName = resolvedUserId,
@@ -304,6 +408,8 @@ namespace SuperBot.Infrastructure.Services
                     DiscountTotal = discountTotal,
                     TaxTotal = taxTotal,
                     TotalAmount = totalAmount,
+                    CashbackApplied = cashbackApplied,
+                    CashbackUsd = state?.CashbackUsd ?? 0m,
                     Totals = new MoneyTotals
                     {
                         Subtotal = subtotalAmount,
@@ -316,6 +422,7 @@ namespace SuperBot.Infrastructure.Services
                     // Пока true — выдача ключей заблокирована в самой KeyFulfillmentService
                     // (в т.ч. бэкфилл при пополнении пула). Флаг снимает только verify-delivery.
                     RequiresDeliveryVerification = requiresVerification,
+                    PlacedAsGuest = string.Equals(paymentIntent.MetadataValue("guest"), "true", StringComparison.OrdinalIgnoreCase),
                     Notes = BuildPaymentNote(request.PaymentIntentId),
                     Events = new List<OrderEvent>
                     {
@@ -338,6 +445,19 @@ namespace SuperBot.Infrastructure.Services
                 try
                 {
                     await _orderRepository.CreateOrderAsync(order);
+                    // Использование промокода учитываем здесь же, в единственной точке создания
+                    // оплаченного заказа. Раньше его писал только старый админский OrderController,
+                    // и лимиты «на пользователя» и «всего» у кодов на сайте не срабатывали никогда.
+                    await RecordPromoRedemptionBestEffortAsync(order);
+                    await CommitCashbackBestEffortAsync(order, state, request.TraceId);
+                    // Налоговая транзакция — после создания заказа: сетевой вызов не должен задерживать сам заказ.
+                    // Сбой не роняет финализацию, запись повторит сверка.
+                    await _tax.RecordOrderAsync(order, paymentIntent, state?.Tax?.ToDomain());
+                    // Покупка уходит в аналитику ровно здесь — в единственной точке, через
+                    // которую проходят оба пути подтверждения (клиентский confirm и вебхук),
+                    // и уже после успешной записи заказа: событие не должно опережать факт.
+                    // Отправка «тихая», внутри проглатывает свои ошибки.
+                    await _purchaseAnalytics.TrackPurchaseAsync(order);
                 }
                 catch (Exception createEx) when (IsDuplicateKey(createEx))
                 {
@@ -475,6 +595,10 @@ namespace SuperBot.Infrastructure.Services
                         ItemId = Guid.NewGuid().ToString("N"),
                         ProductType = string.IsNullOrWhiteSpace(item.ProductType) ? "Game" : item.ProductType,
                         GameId = item.GameId,
+                        EditionCode = item.EditionCode,
+                        EditionTitle = item.EditionTitle,
+                        OfferKey = item.OfferKey,
+                        OfferTitle = item.OfferTitle,
                         Title = string.IsNullOrWhiteSpace(item.Title) ? "Game purchase" : item.Title,
                         CoverUrl = item.CoverUrl,
                         Platform = item.Platform,
@@ -492,7 +616,8 @@ namespace SuperBot.Infrastructure.Services
 
             var gameId = paymentIntent.Metadata.TryGetValue("firstItemGameId", out var firstGameId) ? firstGameId : string.Empty;
             var gameTitle = paymentIntent.Metadata.TryGetValue("firstItemTitle", out var firstTitle) ? firstTitle : "Checkout purchase";
-            var total = (paymentIntent.AmountReceived > 0 ? paymentIntent.AmountReceived : paymentIntent.Amount) / 100m;
+            // Минорные единицы по валюте: у JPY и подобных копеек нет, и деление на 100 ошибалось в 100 раз.
+            var total = CurrencyMinorUnits.FromMinor(paymentIntent.AmountReceived > 0 ? paymentIntent.AmountReceived : paymentIntent.Amount, paymentIntent.Currency);
             var currency = paymentIntent.Currency?.ToUpperInvariant() ?? "USD";
 
             return
@@ -564,6 +689,54 @@ namespace SuperBot.Infrastructure.Services
         /// Финализация при этом УСПЕШНА (клиенту не показываем ошибку оплаты), поэтому статус
         /// состояния не трогаем — пишем запись о проблеме, которую видит админка (Payment issues).
         /// </summary>
+        /// <summary>
+        /// Платёж прошёл — отложенный под него кэшбэк становится списанием по заказу. Если резерва нет
+        /// (сняли как зависший, пока покупатель долго не платил), ставим его заново и сразу списываем.
+        /// Не хватило баланса — заказ всё равно оплачен и остаётся в силе, но админка обязана это увидеть:
+        /// покупатель получил скидку, которой на балансе уже не было.
+        /// </summary>
+        private async Task CommitCashbackBestEffortAsync(Order order, PaymentFinalizationStateDb? state, string? traceId)
+        {
+            var usd = state?.CashbackUsd ?? order.CashbackUsd;
+            if (usd <= 0 || string.IsNullOrWhiteSpace(order.PaymentIntentId))
+            {
+                return;
+            }
+
+            var reference = order.PaymentIntentId;
+            try
+            {
+                if (await _cashback.CommitAsync(reference, order.Id.ToString(), order.OrderNumber))
+                {
+                    return;
+                }
+
+                var entries = await _cashback.GetEntriesAsync(order.UserId);
+                if (entries.Any(entry => entry.Type == SuperBot.Core.Cashback.CashbackEntryTypes.Spend
+                                         && entry.Reference == reference
+                                         && entry.Status == SuperBot.Core.Cashback.CashbackSpendStatuses.Committed))
+                {
+                    return; // уже списано прошлой попыткой финализации
+                }
+
+                var reserved = await _cashback.ReserveAsync(order.UserId, reference, usd);
+                await _cashback.CommitAsync(reference, order.Id.ToString(), order.OrderNumber);
+                if (reserved + 0.005m < usd)
+                {
+                    await RecordDeliveryIssueAsync(reference, order.UserId, order.Id.ToString(),
+                        "CASHBACK_SHORTFALL",
+                        $"Order was paid with {usd:0.00} USD of cashback, but only {reserved:0.00} USD was left on the balance.",
+                        new InvalidOperationException("Cashback reservation was missing at payment time."), traceId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not commit cashback for order {OrderId}", order.Id);
+                await RecordDeliveryIssueAsync(reference, order.UserId, order.Id.ToString(),
+                    "CASHBACK_COMMIT_FAILED", "Order is paid, but the cashback used for it was not written off.", ex, traceId);
+            }
+        }
+
         private async Task RecordDeliveryIssueAsync(string paymentIntentId, string userId, string orderId, string code, string message, Exception ex, string? traceId)
         {
             var now = DateTime.UtcNow;
@@ -593,7 +766,7 @@ namespace SuperBot.Infrastructure.Services
             {
                 var token = _verificationTokens.CreateToken(order.Id, email, DeliveryVerificationTtl());
                 var verifyUrl = $"{PublicBaseUrl()}/api/payments/verify-delivery?token={token}";
-                await _deliveryMailer.SendKeyDeliveryVerificationAsync(email, order.OrderNumber ?? order.Id.ToString(), verifyUrl);
+                await _deliveryMailer.SendKeyDeliveryVerificationAsync(email, order.OrderNumber ?? order.Id.ToString(), verifyUrl, locale: order.Language);
             }
             catch (Exception ex)
             {
@@ -617,7 +790,8 @@ namespace SuperBot.Infrastructure.Services
             {
                 await _deliveryMailer.SendGameKeysAsync(email, order.OrderNumber ?? order.Id.ToString(), delivered,
                     SuperBot.Core.Interfaces.KeyDeliveryReceipt.FromOrder(order),
-                    SuperBot.Core.Interfaces.KeyDeliveryProgress.FromOrder(order));
+                    SuperBot.Core.Interfaces.KeyDeliveryProgress.FromOrder(order),
+                    locale: order.Language);
             }
             catch (Exception ex)
             {
@@ -653,6 +827,10 @@ namespace SuperBot.Infrastructure.Services
         {
             ProductType = item.ProductType,
             GameId = item.GameId,
+            EditionCode = item.EditionCode,
+            EditionTitle = item.EditionTitle,
+            OfferKey = item.OfferKey,
+            OfferTitle = item.OfferTitle,
             Title = item.Title,
             CoverUrl = item.CoverUrl,
             Platform = item.Platform,
@@ -664,6 +842,54 @@ namespace SuperBot.Infrastructure.Services
             LineTotal = item.LineTotal,
             Currency = item.Currency
         };
+
+        /// <summary>Атрибуция из запроса в документ состояния. null остаётся null: меток могло не быть.</summary>
+        private static Data.OrderAttributionDb ToAttributionDb(OrderAttribution source) =>
+            source is null
+                ? null
+                : new Data.OrderAttributionDb
+                {
+                    Source = source.Source,
+                    Medium = source.Medium,
+                    Campaign = source.Campaign,
+                    Referrer = source.Referrer,
+                    LandingPath = source.LandingPath,
+                    FirstSeenUtc = source.FirstSeenUtc
+                };
+
+        private static OrderAttribution FromAttributionDb(Data.OrderAttributionDb source) =>
+            source is null
+                ? null
+                : new OrderAttribution
+                {
+                    Source = source.Source,
+                    Medium = source.Medium,
+                    Campaign = source.Campaign,
+                    Referrer = source.Referrer,
+                    LandingPath = source.LandingPath,
+                    FirstSeenUtc = source.FirstSeenUtc
+                };
+
+        /// <summary>
+        /// Учёт промокода не должен ронять уже оплаченный заказ: ошибка уходит в лог, а повторная
+        /// финализация (вебхук Stripe) допишет запись — она идемпотентна по заказу.
+        /// </summary>
+        private async Task RecordPromoRedemptionBestEffortAsync(Order order)
+        {
+            if (string.IsNullOrWhiteSpace(order.PromoCode))
+            {
+                return;
+            }
+
+            try
+            {
+                await _promoCodes.RecordRedemptionAsync(order.PromoCode, order.UserId, order.Id.ToString());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not record promo code {PromoCode} usage for order {OrderId}", order.PromoCode, order.Id);
+            }
+        }
 
         private static bool IsDuplicateKey(Exception ex) => ex switch
         {

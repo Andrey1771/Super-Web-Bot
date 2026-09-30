@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faCheck, faShieldHalved, faXmark} from '@fortawesome/free-solid-svg-icons';
@@ -18,6 +19,7 @@ type SecurityChecklistProps = {
 };
 
 const SecurityChecklist: React.FC<SecurityChecklistProps> = ({show, steps, isBusy, onDismiss}) => {
+    const {t} = useTranslation();
     if (!show) {
         return null;
     }
@@ -33,14 +35,14 @@ const SecurityChecklist: React.FC<SecurityChecklistProps> = ({show, steps, isBus
                     <FontAwesomeIcon icon={faShieldHalved} />
                 </div>
                 <div className="security-checklist-title">
-                    <h2>Protect your account</h2>
-                    <p>{completed} of {steps.length} steps complete</p>
+                    <h2>{t('account.security.checklist.title')}</h2>
+                    <p>{t('account.security.checklist.progress', {done: completed, total: steps.length})}</p>
                 </div>
                 <button
                     type="button"
                     className="security-checklist-dismiss"
-                    aria-label="Dismiss"
-                    title="Dismiss"
+                    aria-label={t('session.dismiss')}
+                    title={t('session.dismiss')}
                     onClick={onDismiss}
                 >
                     <FontAwesomeIcon icon={faXmark} />

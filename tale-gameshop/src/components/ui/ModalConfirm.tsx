@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 type ModalConfirmProps = {
   isOpen: boolean;
@@ -14,11 +15,12 @@ const ModalConfirm: React.FC<ModalConfirmProps> = ({
   isOpen,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   if (!isOpen) {
     return null;
   }
@@ -33,10 +35,10 @@ const ModalConfirm: React.FC<ModalConfirmProps> = ({
         <p>{description}</p>
         <div className="flex gap-3 justify-end">
           <button className="btn btn-outline" onClick={onCancel}>
-            {cancelLabel}
+            {cancelLabel ?? t("common.cancel")}
           </button>
           <button className="btn btn-primary" onClick={onConfirm}>
-            {confirmLabel}
+            {confirmLabel ?? t("common.confirm")}
           </button>
         </div>
       </div>

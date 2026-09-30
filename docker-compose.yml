@@ -30,6 +30,21 @@ services:
       # источник без ключа; {base} подставляется базовой валютой. Скачок больше MaxChangePercent
       # гард отклонит и оставит прежний курс — см. FxRateService.
       - Storefront__Fx__Source__Url=https://open.er-api.com/v6/latest/{base}
+      # Реквизиты продавца для юридических документов витрины. Значения по умолчанию лежат
+      # в appsettings.json (секция Legal) и заполнены вымышленной компанией для демо.
+      # Здесь их можно перекрыть, не трогая образ: любое поле секции задаётся переменной
+      # с двойным подчёркиванием вместо двоеточия. Раскомментируйте нужные и подставьте свои.
+      # - Legal__Entity=${LEGAL_ENTITY:-}
+      # - Legal__RegistrationCountry=${LEGAL_REGISTRATION_COUNTRY:-}
+      # - Legal__RegistrationNumber=${LEGAL_REGISTRATION_NUMBER:-}
+      # - Legal__Address=${LEGAL_ADDRESS:-}
+      # - Legal__SupportEmail=${LEGAL_SUPPORT_EMAIL:-}
+      # - Legal__PrivacyEmail=${LEGAL_PRIVACY_EMAIL:-}
+      # - Legal__GoverningLawCountry=${LEGAL_GOVERNING_LAW_COUNTRY:-}
+      # Переводы реквизитов — той же секцией с языком и полем: Legal__I18n__<язык>__<Поле>.
+      # - Legal__I18n__ru__GoverningLawCountry=${LEGAL_GOVERNING_LAW_COUNTRY_RU:-}
+      # Пока текст не вычитал юрист, держите true: витрина покажет пометку «черновик».
+      # - Legal__Draft=true
       # Keycloak: issuer (внешний, как видит браузер) и адрес метаданных (внутренний, как видит бэкенд)
       - Keycloak__Uri=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}
       - Keycloak__Realm=TaleShop
@@ -51,26 +66,58 @@ services:
       - Recovery__SmtpPort=1025
       - Recovery__PublicBaseUrl=${PUBLIC_URL:-http://localhost}
       - Recovery__WaitingPeriodHours=72
-      # Модель за чатом поддержки: ollama (локально) или deepseek (внешний API).
-      # Ollama остаётся резервом при любом выборе, поэтому адрес нужен всегда.
+      # Письмо «расскажите, как вам игра» через неделю после выдачи ключа. Выключено, пока
+      # не выставите true: рассылка идёт живым покупателям, и включаться сама она не должна.
+      # DelayDays — через сколько дней спрашивать, MaxAgeDays — насколько старые заказы ещё
+      # трогать (при первом включении эта граница не даёт разослать письма по всей истории).
+      - ReviewInvites__Enabled=${REVIEW_INVITES_ENABLED:-false}
+      - ReviewInvites__DelayDays=${REVIEW_INVITES_DELAY_DAYS:-7}
+      - ReviewInvites__MaxAgeDays=${REVIEW_INVITES_MAX_AGE_DAYS:-30}
+      # Как часто перечитывать настройки сайта из базы (нужно при нескольких репликах).
+      - SiteSettings__RefreshSeconds=${SITE_SETTINGS_REFRESH_SECONDS:-30}
+      # Год основания магазина для страницы «О нас». Посчитать неоткуда — знаешь только ты.
+      # Пусто — плитки «Founded» на странице просто нет.
+      - About__FoundedYear=${ABOUT_FOUNDED_YEAR:-}
+      # Модель за чатом поддержки: deepseek (внешний API) или ollama (локально).
+      # По умолчанию deepseek. Ollama остаётся резервом при любом выборе — на неё чат уходит
+      # сам, если ключа нет, внешний API недоступен или исчерпан дневной бюджет, — поэтому
+      # адрес нужен всегда. Вернуться на локальную модель: SUPPORT_CHAT_PROVIDER=ollama.
       - SupportChat__OllamaBaseUrl=http://host.docker.internal:11434
-      - SupportChat__Provider=${SUPPORT_CHAT_PROVIDER:-ollama}
+      - SupportChat__Provider=${SUPPORT_CHAT_PROVIDER:-deepseek}
       - SupportChat__DeepSeekApiKey=${DEEPSEEK_API_KEY}
       # Имя модели берётся из актуального прайса провайдера; reasoning-версию не используем.
-      - SupportChat__DeepSeekModel=${DEEPSEEK_MODEL}
+      - SupportChat__DeepSeekModel=${DEEPSEEK_MODEL:-deepseek-chat}
+      # Метка приложения в запросах: одним ключом могут пользоваться несколько наших проектов.
+      - SupportChat__AppTag=${SUPPORT_CHAT_APP_TAG:-tale-shop-support}
       # Дневной потолок расходов в USD. 0 = без ограничения; при исчерпании чат уходит на Ollama.
       - SupportChat__DailyBudgetUsd=${SUPPORT_CHAT_DAILY_BUDGET_USD:-0}
       # Ящик, куда падает уведомление о передаче диалога человеку. Пусто — на Recovery__FromAddress.
       - SupportChat__SpecialistEmail=${SUPPORT_SPECIALIST_EMAIL:-}
+      # Доступ на ЧТЕНИЕ отчётов Google Analytics внутрь админки. К сбору данных отношения не
+      # имеет: витрине хватает Measurement ID из настроек. Пусто — страница Analytics overview
+      # честно скажет, что доступа нет, всё остальное работает как обычно.
+      - Analytics__Google__ClientId=${GA_OAUTH_CLIENT_ID:-}
+      - Analytics__Google__ClientSecret=${GA_OAUTH_CLIENT_SECRET:-}
+      - Analytics__Google__RefreshToken=${GA_OAUTH_REFRESH_TOKEN:-}
       # Public site URLs — set PUBLIC_URL in .env to your real domain (defaults to localhost for dev).
       - MainUrl=${PUBLIC_URL:-http://localhost}
+      # Кому бот пишет о заказах и эскалациях. Личные идентификаторы владельца — держим
+      # в .env, а не в appsettings.json: тот лежит в репозитории и уезжает на GitHub.
+      - TelegramUsername=${TELEGRAM_ADMIN_USERNAME:-}
+      - AdminChatId=${TELEGRAM_ADMIN_CHAT_ID:-}
       - FrontendConfiguration__Uri=${PUBLIC_URL:-http://localhost}
       - JwtSettings__Issuer=${PUBLIC_URL:-http://localhost}
       - JwtSettings__Audience=${PUBLIC_URL:-http://localhost}
-      - BotConfiguration__BotWebhookUrl=${PUBLIC_URL:-http://localhost}/api/Telegram
+      # Адрес вебхука Telegram. По умолчанию — публичный адрес сайта плюс /api/Telegram.
+      # BOT_WEBHOOK_URL нужен, когда они не совпадают: например, локально сайт живёт на
+      # localhost, а Telegram требует https и стучится через туннель.
+      - BotConfiguration__BotWebhookUrl=${BOT_WEBHOOK_URL:-${PUBLIC_URL:-http://localhost}/api/Telegram}
       # Application secrets — sourced from .env (gitignored), never from committed appsettings.
       - BotConfiguration__BotToken=${BOT_TOKEN}
       - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET}
+      # Общий токен для служебных вызовов между нашими же сервисами (проверки здоровья).
+      # Пустой — служебный вход закрыт, остаётся только вход по правам админа.
+      - Internal__ServiceToken=${INTERNAL_SERVICE_TOKEN:-}
       # Курс пересчёта цены в Telegram Stars (XTR) для оплаты в боте. Пусто = 50 (демо-ставка).
       - BotPayments__StarsPerUsd=${STARS_PER_USD:-50}
       # BTCPay Server (крипто-оплата, testnet DEMO). Все пустые = фича выключена.
@@ -92,11 +139,14 @@ services:
       - SupportChat__TurnstileSecretKey=${TURNSTILE_SECRET_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Снаружи API доступен через nginx; прямой порт — только для этой машины (отладка, дев-фронт).
     ports:
-      - "7002:7002"
+      - "127.0.0.1:7002:7002"
     volumes:
       # Загруженные файлы (аватары и т.п.) должны переживать пересборку контейнера.
       - uploads_data:/app/wwwroot/uploads
+      # Ключи DataProtection переживают пересоздание контейнера и общие для реплик сервиса.
+      - dp_keys_backend:/app/keys
     depends_on:
       - mongo1
       - mongo2
@@ -125,10 +175,20 @@ services:
       - JwtSettings__Audience=${PUBLIC_URL:-http://localhost}
       - JwtSettings__SecretKey=${JWT_SECRET}
       - MainUrl=${PUBLIC_URL:-http://localhost}
+      # Кому бот пишет о заказах и эскалациях. Личные идентификаторы владельца — держим
+      # в .env, а не в appsettings.json: тот лежит в репозитории и уезжает на GitHub.
+      - TelegramUsername=${TELEGRAM_ADMIN_USERNAME:-}
+      - AdminChatId=${TELEGRAM_ADMIN_CHAT_ID:-}
       # Telegram-бот
-      - BotConfiguration__BotWebhookUrl=${PUBLIC_URL:-http://localhost}/api/Telegram
+      # Адрес вебхука Telegram. По умолчанию — публичный адрес сайта плюс /api/Telegram.
+      # BOT_WEBHOOK_URL нужен, когда они не совпадают: например, локально сайт живёт на
+      # localhost, а Telegram требует https и стучится через туннель.
+      - BotConfiguration__BotWebhookUrl=${BOT_WEBHOOK_URL:-${PUBLIC_URL:-http://localhost}/api/Telegram}
       - BotConfiguration__BotToken=${BOT_TOKEN}
       - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET}
+      # Общий токен для служебных вызовов между нашими же сервисами (проверки здоровья).
+      # Пустой — служебный вход закрыт, остаётся только вход по правам админа.
+      - Internal__ServiceToken=${INTERNAL_SERVICE_TOKEN:-}
       - BotPayments__StarsPerUsd=${STARS_PER_USD:-50}
     depends_on:
       - mongo1
@@ -138,14 +198,18 @@ services:
     networks:
       - app_network
 
+    volumes:
+      # Ключи DataProtection: см. backend.
+      - dp_keys_bot:/app/keys
   mongo1:
     image: mongo:latest
     restart: always
     command: mongod --replSet rs0 --bind_ip_all
     volumes:
       - mongodb_data1:/data/db
+    # База без аутентификации: наружу её не публикуем, порт — только для этой машины.
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     networks:
       - app_network
 
@@ -169,7 +233,8 @@ services:
 
   # Демо-сид стенда: наполняет базу и uploads-том правдоподобными данными.
   # В обычный `up` не входит — запускается вручную:
-  #   docker compose --profile demo run --rm demo-seeder
+  #   docker compose --profile demo run --rm -e ALLOW_DEMO_SEED=1 demo-seeder
+  # Флаг ALLOW_DEMO_SEED сюда намеренно не прописан: без него сиды откажутся работать.
   # Подробности и принципы — в seeds/README.md.
   demo-seeder:
     image: mongo:latest
@@ -216,64 +281,30 @@ services:
       - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
       - KC_HTTP_ENABLED=true
       - KC_HEALTH_ENABLED=true
+      # Админ САЙТА (не админ-консоли Keycloak выше) — пользователь realm'а TaleShop.
+      # Realm импортируется из keycloak/import/TaleShop-realm.json, где эти три значения
+      # подставляются вместо плейсхолдеров. По умолчанию admin/admin, как и было.
+      - TALESHOP_ADMIN_USER=${TALESHOP_ADMIN_USER:-admin}
+      - TALESHOP_ADMIN_PASSWORD=${TALESHOP_ADMIN_PASSWORD:-admin}
+      - TALESHOP_ADMIN_EMAIL=${TALESHOP_ADMIN_EMAIL:-admin@taleshop.local}
+    # Админ-консоль Keycloak с учёткой по умолчанию не должна быть видна в сети — только на этой машине.
+    # В проде Keycloak публикуется через обратный прокси с TLS.
     ports:
-      - "8088:8080"
+      - "127.0.0.1:8088:8080"
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
       # Кастомная тема логина монтируется рядом со встроенными (не перекрывая их — нужен parent keycloak.v2)
       - ./keycloak/themes/tale-shop:/opt/keycloak/themes/tale-shop:ro
+    # Готовность — по /health/ready на management-порту (KC_HEALTH_ENABLED выше).
+    # curl в образе нет, поэтому HTTP-запрос делаем средствами самого шелла через /dev/tcp.
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
     networks:
       - app_network
-
-  #postgres:
-  #  image: postgres:latest
-  #  container_name: postgres
-  #  restart: always
-  #  ports:
-  #    - "5432:5432"
-  #  volumes:
-  #    - ./data:/var/lib/postgresql/data
-  #  networks:
-  #    - keycloak-network
-  #  environment:
-  #    POSTGRES_USER: $POSTGRES_USER
-  #    POSTGRES_PASSWORD: $POSTGRES_PASSWORD
-  #    POSTGRES_DB: $POSTGRES_DB
-  #    
-  #keycloak:
-  #  image: quay.io/keycloak/keycloak:latest
-  #  container_name: keycloak
-  #  restart: always
-  #  ports:
-  #    - "8088:8088"
-  #    - "8443:8443"
-  #  depends_on:
-  #    - postgres
-  #  command: ["start", "--optimized"]
-  #  networks:
-  #    - keycloak-network
-  #  environment:
-  #    KC_DB: postgres
-  #    KC_DB_URL_HOST: postgres
-  #    KC_DB_URL_DATABSE: $POSTGRES_USER
-  #    KC_DB_USERNAME: $POSTGRES_DB
-  #    KC_DB_PASSWORD: $POSTGRES_PASSWORD
-  #    KC_HOSTNAME_URL: $KC_HOSTNAME_URL
-  #    KC_HOSTNAME_STRICT_HTTPS: "true"
-  #    KC_HOSTNAME_STRICT_BACKCHANNEL: "true"
-  #    KC_PROXY: edge
-  #    KEYCLOAK_ADMIN: admin
-  #    KEYCLOAK_ADMIN_PASSWORD: $KEYCLOAK_ADMIN_PASSWORD
-  #    KEYCLOAK_FRONTEND_URL: $KEYCLOAK_FRONTEND_URL
-      # SMTP Configuration
-      #KC_MAIL_SMTP_SERVER: $SMTP_SERVER
-      #KC_MAIL_SMTP_PORT: $SMTP_PORT
-      #KC_MAIL_SMTP_FROM: $SMTP_FROM
-      #KC_MAIL_SMTP_USER: $SMTP_USER
-      #KC_MAIL_SMTP_PASSWORD: $SMTP_PASSWORD
-      #KC_MAIL_SMTP_AUTH: true
-      #KC_MAIL_SMTP_SSL: true
-
 
   # Dev-ловушка писем: Keycloak отправляет письма (2FA-setup, верификация, сброс пароля) сюда.
   # Веб-интерфейс с письмами — http://localhost:8025. Реальная почта в проде настраивается отдельно.
@@ -281,8 +312,8 @@ services:
     image: mailhog/mailhog:latest
     restart: always
     ports:
-      - "8025:8025"
-      - "1025:1025"
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
     networks:
       - app_network
 
@@ -293,11 +324,19 @@ services:
     restart: always
     ports:
       - "80:80"
+    # Длинная форма: nginx не поднимается, пока Keycloak не станет healthy.
+    # Иначе сайт начинает отдаваться раньше авторизации, фронт ловит отказ
+    # check-sso и навсегда виснет на заставке (провайдер @react-keycloak при
+    # неудачном init не выставляет initialized).
     depends_on:
-      - frontend
-      - backend
-      - bot
-    #  - keycloak
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_started
+      bot:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
     networks:
       - app_network
 
@@ -306,10 +345,10 @@ networks:
     driver: bridge
   frontend_network:
     driver: bridge
-  #keycloak-network:
-  #  driver: bridge
 
 volumes:
+  dp_keys_backend:
+  dp_keys_bot:
   mongodb_data1:
   mongodb_data2:
   mongodb_data3:

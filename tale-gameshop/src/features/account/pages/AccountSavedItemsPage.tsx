@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDate as formatLocalDate } from '../../../i18n/format';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
@@ -19,15 +21,17 @@ import { useViewedGames } from '../../../hooks/use-viewed-games';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import { useSitePreferences } from '../../../context/site-preferences';
 import { formatMoney } from '../../../utils/format-money';
-import SafeGameImage from '../../../components/common/SafeGameImage';
+import Cover from '../../../components/common/Cover';
+import HoverTrailer from '../../../components/common/HoverTrailer';
 import { slugify } from '../../../utils/slugify';
 import './account-saved-items-page.css';
 
 const PAGE_SIZE = 6;
 
 const AccountSavedItemsPage: React.FC = () => {
+    const { t } = useTranslation();
     const { currency } = useSitePreferences();
-    const [viewMode, setViewMode] = useState<'comfortable' | 'compact'>('comfortable');
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOrder, setSortOrder] = useState<'all' | 'price' | 'newest'>('all');
     const [page, setPage] = useState(1);
@@ -48,12 +52,28 @@ const AccountSavedItemsPage: React.FC = () => {
         reload: reloadViewed
     } = useViewedGames(6);
 
+    // Тянем только то, что в списке желаний, а не весь каталог: страница показывает ровно
+    // эти игры, а каталог магазина растёт независимо от размера списка.
     useEffect(() => {
+        const ids = Array.from(wishlistIds);
+        if (ids.length === 0) {
+            setGames([]);
+            return;
+        }
+        let cancelled = false;
         (async () => {
-            const allGames = await gameService.getAllGames();
-            setGames(allGames);
+            const loaded = await Promise.all(
+                // Игру могли снять с продажи — пропускаем её, а не роняем всю страницу.
+                ids.map((id) => gameService.getGameById(id).catch(() => null))
+            );
+            if (!cancelled) {
+                setGames(loaded.filter(Boolean) as Game[]);
+            }
         })();
-    }, [gameService]);
+        return () => {
+            cancelled = true;
+        };
+    }, [gameService, wishlistIds]);
 
     const wishlistGames = useMemo(
         () => games.filter((game) => game.id && wishlistIds.has(game.id)),
@@ -96,13 +116,13 @@ const AccountSavedItemsPage: React.FC = () => {
     const showingFrom = totalFiltered === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
     const showingTo = Math.min(safePage * PAGE_SIZE, totalFiltered);
     const visibleLabel =
-        totalFiltered === 0 ? 'Showing 0 of 0' : `Showing ${showingFrom}-${showingTo} of ${totalFiltered}`;
+        totalFiltered === 0 ? t('common.showingZero') : t('common.showingRange', { from: showingFrom, to: showingTo, total: totalFiltered });
 
     const formatPrice = (price: number) => formatMoney(Number.isFinite(price) ? price : 0, currency);
 
     const formatDate = (releaseDate: string) => {
         const date = new Date(releaseDate);
-        return Number.isNaN(date.valueOf()) ? 'Release date TBD' : date.toLocaleDateString('en-US', {
+        return Number.isNaN(date.valueOf()) ? t('account.saved.releaseTbd') : formatLocalDate(date, {
             month: 'long',
             day: 'numeric',
             year: 'numeric'
@@ -127,6 +147,7 @@ const AccountSavedItemsPage: React.FC = () => {
             type: 'ADD_TO_CART',
             payload: {
                 gameId: game.id ?? '',
+                slug: game.slug,
                 name: game.title ?? game.name,
                 price: game.price,
                 quantity: 1,
@@ -140,186 +161,170 @@ const AccountSavedItemsPage: React.FC = () => {
 
     return (
         <AccountShell
-            title={`Saved items (${totalWishlistItems})`}
-            sectionLabel="Saved items"
-            subtitle="Items saved to your wishlist for future purchase."
+            title={t('account.saved.title', { count: totalWishlistItems })}
+            sectionLabel={t('account.saved.section')}
+            subtitle={t('account.saved.subtitle')}
         >
-            <div className="card saved-toolbar" data-testid="saved-toolbar">
-                <div className="saved-toolbar-top">
-                    <div className="saved-search">
-                        <FontAwesomeIcon icon={faMagnifyingGlass} className="saved-search-icon" />
-                        <input
-                            type="text"
-                            placeholder="Search in wishlist..."
-                            value={searchQuery}
-                            onChange={(event) => {
-                                setSearchQuery(event.target.value);
-                                setPage(1);
-                            }}
-                        />
-                    </div>
-                    <div className="saved-sort">
-                        <span>Sort:</span>
-                        <select
-                            className="saved-select"
-                            value={sortOrder}
-                            onChange={(event) => {
-                                setSortOrder(event.target.value as 'all' | 'price' | 'newest');
-                                setPage(1);
-                            }}
-                        >
-                            <option value="all">All</option>
-                            <option value="price">Price</option>
-                            <option value="newest">Newest</option>
-                        </select>
-                    </div>
+            {/* Тулбар — строка на фоне страницы, а не карточка: раньше он сидел в своей рамке, список — в своей,
+                а товар — в третьей, и страница читалась как набор вложенных коробок. Теперь рамок нет вовсе:
+                список разделён линиями, плитки держит воздух. */}
+            <div className="saved-toolbar" data-testid="saved-toolbar">
+                <label className="saved-search">
+                    <FontAwesomeIcon icon={faMagnifyingGlass} className="saved-search-icon" aria-hidden="true" />
+                    <input
+                        type="text"
+                        placeholder={t('account.saved.searchPlaceholder')}
+                        aria-label={t('account.saved.search')}
+                        value={searchQuery}
+                        onChange={(event) => {
+                            setSearchQuery(event.target.value);
+                            setPage(1);
+                        }}
+                    />
+                </label>
+
+                <div className="saved-view-toggle" role="group" aria-label={t('account.saved.viewMode')}>
+                    <button
+                        type="button"
+                        className={`saved-view-btn ${viewMode === 'list' ? 'is-active' : ''}`}
+                        aria-pressed={viewMode === 'list'}
+                        onClick={() => setViewMode('list')}
+                    >
+                        {t('common.list')}
+                    </button>
+                    <button
+                        type="button"
+                        className={`saved-view-btn ${viewMode === 'grid' ? 'is-active' : ''}`}
+                        aria-pressed={viewMode === 'grid'}
+                        onClick={() => setViewMode('grid')}
+                    >
+                        {t('common.grid')}
+                    </button>
                 </div>
-                <div className="saved-toolbar-row">
-                    <div className="saved-view-toggle">
-                        <span>View:</span>
-                        <button
-                            type="button"
-                            className={`btn btn-outline saved-view-btn ${viewMode === 'comfortable' ? 'is-active' : ''}`}
-                            onClick={() => setViewMode('comfortable')}
-                        >
-                            Comfortable
-                        </button>
-                        <button
-                            type="button"
-                            className={`btn btn-outline saved-view-btn ${viewMode === 'compact' ? 'is-active' : ''}`}
-                            onClick={() => setViewMode('compact')}
-                        >
-                            Compact
-                        </button>
-                    </div>
-                    <span className="saved-toolbar-note">{visibleLabel}</span>
-                </div>
+
+                <select
+                    className="saved-select"
+                    aria-label={t('account.saved.sort')}
+                    value={sortOrder}
+                    onChange={(event) => {
+                        setSortOrder(event.target.value as 'all' | 'price' | 'newest');
+                        setPage(1);
+                    }}
+                >
+                    <option value="all">{t('common.all')}</option>
+                    <option value="price">{t('common.price')}</option>
+                    <option value="newest">{t('common.newest')}</option>
+                </select>
+
+                <span className="saved-toolbar-note">{visibleLabel}</span>
             </div>
 
-            <div className="card saved-items-panel" data-testid="saved-grid">
-                <div className={`saved-items-grid view-${viewMode}`}>
-                    {viewMode === 'comfortable'
-                        ? wishlistCards.map((item, index) => (
-                            <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card">
-                                <Link to={gameHref(item)} className="saved-item-cover" aria-label={`Open ${item.title}`}>
-                                    <SafeGameImage
-                                        src={item.imagePath}
-                                        gameTitle={item.title}
-                                        className="saved-item-image"
-                                    />
+            {wishlistCards.length === 0 ? (
+                <div className="saved-empty-state" data-testid="saved-grid">
+                    <p>
+                        {totalWishlistItems === 0
+                            ? t('account.saved.empty')
+                            : t('account.saved.noMatch')}
+                    </p>
+                </div>
+            ) : viewMode === 'list' ? (
+                <div className="saved-list" data-testid="saved-grid">
+                    {wishlistCards.map((item, index) => (
+                        <div key={item.id ?? `${item.title}-${index}`} className="saved-row">
+                            <Link to={gameHref(item)} className="saved-row-cover" aria-label={t('account.orders.openItem', { title: item.title })}>
+                                <Cover ratio="wide" sizes="(max-width: 640px) 40vw, 180px" src={item.imagePath} title={item.title} imgClassName="saved-item-image" />
+                            </Link>
+                            <div className="saved-row-main">
+                                <Link to={gameHref(item)} className="saved-item-title-link">
+                                    <strong>{item.title}</strong>
                                 </Link>
-                                <div className="saved-item-body">
-                                    <div className="saved-item-title-row">
-                                        <div>
-                                            <Link to={gameHref(item)} className="saved-item-title-link">
-                                                <h3>{item.title}</h3>
-                                            </Link>
-                                            <p className="saved-item-date">{formatDate(item.releaseDate)}</p>
-                                        </div>
-                                        <div className="saved-item-price">
-                                            <span>{formatPrice(item.price)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="saved-item-actions">
-                                        {item.isComingSoon ? (
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline saved-item-btn"
-                                                disabled
-                                                title="Not released yet — it unlocks for purchase on release day"
-                                            >
-                                                Coming soon
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                className="btn btn-primary saved-item-btn"
-                                                onClick={() => handleAddToCart(item)}
-                                            >
-                                                Add to cart
-                                            </button>
-                                        )}
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline saved-item-btn"
-                                            onClick={() => handleRemove(item.id)}
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                </div>
+                                <span className="saved-item-date">{formatDate(item.releaseDate)}</span>
                             </div>
-                        ))
-                        : wishlistCards.map((item, index) => (
-                            <div key={item.id ?? `${item.title}-${index}`} className="card saved-item-card compact">
-                                <Link to={gameHref(item)} className="saved-item-compact-cover" aria-label={`Open ${item.title}`}>
-                                    <SafeGameImage
-                                        src={item.imagePath}
-                                        gameTitle={item.title}
-                                        className="saved-item-image"
-                                    />
-                                </Link>
-                                <div className="saved-item-compact-body">
-                                    <div className="saved-item-compact-header">
-                                        <div>
-                                            <Link to={gameHref(item)} className="saved-item-title-link">
-                                                <strong>{item.title}</strong>
-                                            </Link>
-                                            <span className="saved-item-date">{formatDate(item.releaseDate)}</span>
-                                        </div>
-                                        <div className="saved-item-price">
-                                            <span>{formatPrice(item.price)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="saved-item-actions">
-                                        {item.isComingSoon ? (
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline saved-item-btn"
-                                                disabled
-                                                title="Not released yet — it unlocks for purchase on release day"
-                                            >
-                                                Coming soon
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                className="btn btn-primary saved-item-btn"
-                                                onClick={() => handleAddToCart(item)}
-                                            >
-                                                Add to cart
-                                            </button>
-                                        )}
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline saved-item-btn"
-                                            onClick={() => handleRemove(item.id)}
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                </div>
+                            <span className="saved-row-price">{formatPrice(item.price)}</span>
+                            <div className="saved-row-actions">
+                                {item.isComingSoon ? (
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline saved-item-btn"
+                                        disabled
+                                        title={t('account.saved.notReleased')}
+                                    >
+                                        {t('common.comingSoon')}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary saved-item-btn"
+                                        onClick={() => handleAddToCart(item)}
+                                    >
+                                        {t('common.addToCart')}
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    className="btn saved-item-remove"
+                                    onClick={() => handleRemove(item.id)}
+                                >
+                                    {t('common.remove')}
+                                </button>
                             </div>
-                        ))}
-                    {wishlistCards.length === 0 && (
-                        <div className="saved-empty-state">
-                            <p>
-                                {totalWishlistItems === 0
-                                    ? 'Your wishlist is empty for now.'
-                                    : 'No saved items match your search.'}
-                            </p>
                         </div>
-                    )}
+                    ))}
                 </div>
-            </div>
-
+            ) : (
+                <div className="saved-grid" data-testid="saved-grid">
+                    {wishlistCards.map((item, index) => (
+                        <article key={item.id ?? `${item.title}-${index}`} className="saved-tile">
+                            <Link to={gameHref(item)} className="saved-tile-cover" aria-label={t('account.orders.openItem', { title: item.title })}>
+                                <Cover ratio="wide" sizes="(max-width: 640px) 100vw, (max-width: 1100px) 45vw, 320px" src={item.imagePath} title={item.title} imgClassName="saved-item-image" />
+                            </Link>
+                            <div className="saved-tile-head">
+                                <div className="saved-tile-title">
+                                    <Link to={gameHref(item)} className="saved-item-title-link">
+                                        <strong>{item.title}</strong>
+                                    </Link>
+                                    <span className="saved-item-date">{formatDate(item.releaseDate)}</span>
+                                </div>
+                                <span className="saved-row-price">{formatPrice(item.price)}</span>
+                            </div>
+                            <div className="saved-tile-actions">
+                                {item.isComingSoon ? (
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline saved-item-btn"
+                                        disabled
+                                        title={t('account.saved.notReleased')}
+                                    >
+                                        {t('common.comingSoon')}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary saved-item-btn"
+                                        onClick={() => handleAddToCart(item)}
+                                    >
+                                        {t('common.addToCart')}
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    className="btn saved-item-remove"
+                                    onClick={() => handleRemove(item.id)}
+                                >
+                                    {t('common.remove')}
+                                </button>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
             {totalPages > 1 && (
                 <div className="saved-pagination" data-testid="saved-pagination">
                     <div className="saved-pagination-controls">
                         <button
                             type="button"
                             className="btn btn-outline saved-page-btn"
-                            aria-label="Previous page"
+                            aria-label={t('common.previousPage')}
                             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                             disabled={safePage <= 1}
                         >
@@ -338,7 +343,7 @@ const AccountSavedItemsPage: React.FC = () => {
                         <button
                             type="button"
                             className="btn btn-outline saved-page-btn"
-                            aria-label="Next page"
+                            aria-label={t('common.nextPage')}
                             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                             disabled={safePage >= totalPages}
                         >
@@ -351,32 +356,32 @@ const AccountSavedItemsPage: React.FC = () => {
 
             <section className="saved-recommendations" data-testid="saved-recommendations">
                 <div className="saved-section-header">
-                    <h3>Recommendations based on your wishlist</h3>
+                    <h3>{t('account.overview.recommendations')}</h3>
                 </div>
                 <RecommendationsSection
                     items={recommendations}
                     isLoading={isRecommendationsLoading}
                     error={recommendationsError}
                     onRetry={reloadRecommendations}
-                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    emptyMessage={t('cart.recommendedEmpty')}
                     listClassName="saved-horizontal-list"
                     stateClassName="saved-recommendations-state"
                     renderSkeleton={(index) => (
                         <div key={`rec-skeleton-${index}`} className="card saved-horizontal-card is-skeleton" />
                     )}
                     renderItem={(item) => (
-                        <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card">
-                            <div className="saved-horizontal-cover">
-                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
-                            </div>
+                        <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card" data-hover-trailer-root="">
+                            <Cover className="saved-horizontal-cover" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
+                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
+                        </Cover>
                             <div className="saved-horizontal-body">
                                 <strong>{item.game.title}</strong>
                                 <span className="saved-horizontal-price">
-                                    {formatMoney(Number(item.game.price), currency)}
+                                    {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
                                 </span>
                             </div>
                             <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>
-                                Add to cart
+                                {t('common.addToCart')}
                             </button>
                         </div>
                     )}
@@ -385,35 +390,35 @@ const AccountSavedItemsPage: React.FC = () => {
 
             <section className="saved-recently-viewed" data-testid="saved-recently-viewed">
                 <div className="saved-section-header">
-                    <h3>Recently viewed</h3>
+                    <h3>{t('account.saved.recentlyViewed')}</h3>
                 </div>
                 <RecommendationsSection
                     items={viewedItems}
                     isLoading={isViewedLoading}
                     error={viewedError}
                     onRetry={reloadViewed}
-                    emptyMessage="Browse a few games to see them here."
+                    emptyMessage={t('account.saved.browseToSee')}
                     listClassName="saved-horizontal-list"
                     stateClassName="saved-recommendations-state"
                     renderSkeleton={(index) => (
                         <div key={`viewed-skeleton-${index}`} className="card saved-horizontal-card is-skeleton" />
                     )}
                     renderItem={(item) => (
-                        <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card">
-                            <div className="saved-horizontal-cover">
-                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
-                            </div>
+                        <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card" data-hover-trailer-root="">
+                            <Cover className="saved-horizontal-cover" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
+                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
+                        </Cover>
                             <div className="saved-horizontal-body">
                                 <strong>{item.game.title}</strong>
                                 <span className="saved-horizontal-subtitle">
-                                    {new Date(item.lastViewedAt).toLocaleDateString()}
+                                    {formatLocalDate(item.lastViewedAt)}
                                 </span>
                                 <span className="saved-horizontal-price">
-                                    {formatMoney(Number(item.game.price), currency)}
+                                    {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
                                 </span>
                             </div>
                             <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>
-                                Add to cart
+                                {t('common.addToCart')}
                             </button>
                         </div>
                     )}

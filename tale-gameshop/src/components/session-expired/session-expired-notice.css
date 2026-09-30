@@ -1,0 +1,83 @@
+/* Плашка «сессия истекла»: внизу по центру, поверх страницы, но ниже просмотрщика медиа (1300). */
+.session-expired {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-24);
+  z-index: 1200;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-20);
+  width: min(640px, calc(100vw - 32px));
+  padding: var(--space-16) var(--space-20);
+  border-radius: var(--radius-lg);
+  background: var(--color-hero-surface);
+  color: #ffffff;
+  box-shadow: var(--shadow-lg);
+  animation: session-expired-in 0.2s ease;
+}
+
+@keyframes session-expired-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.session-expired__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.session-expired__text span {
+  font-size: 14px;
+  color: var(--color-hero-muted);
+}
+
+.session-expired__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex: none;
+}
+
+.session-expired__dismiss {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.session-expired__dismiss:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 560px) {
+  .session-expired {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .session-expired__actions {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-expired {
+    animation: none;
+  }
+}

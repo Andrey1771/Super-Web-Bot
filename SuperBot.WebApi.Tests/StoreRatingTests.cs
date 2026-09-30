@@ -186,6 +186,7 @@ public class StoreRatingTests
     [Fact]
     public async Task Newest_reviews_are_quoted_first()
     {
+        // Внутри одной оценки порядок остался прежним — от свежих к старым.
         await ResetReviewsAsync();
         await SeedReviewAsync(5, text: "Oldest", createdAt: DateTime.UtcNow.AddDays(-10));
         await SeedReviewAsync(5, text: "Middle", createdAt: DateTime.UtcNow.AddDays(-5));
@@ -196,7 +197,32 @@ public class StoreRatingTests
             .Select(quote => quote.GetProperty("text").GetString())
             .ToList();
 
-        Assert.Equal(new[] { "Newest", "Middle" }, quotes);
+        Assert.Equal(new[] { "Newest", "Middle", "Oldest" }, quotes);
+    }
+
+    [Fact]
+    public async Task Quotes_mirror_the_distribution_instead_of_taking_the_latest()
+    {
+        // Девять довольных и один недовольный, причём недовольный — самый свежий.
+        // «Последние отзывы» показали бы его первым и в одиночестве; доля 1 из 10 — ровно
+        // то, чем он и является, и в ленте он должен быть именно один.
+        await ResetReviewsAsync();
+        for (var i = 0; i < 9; i++)
+        {
+            await SeedReviewAsync(5, text: $"Happy {i}", createdAt: DateTime.UtcNow.AddDays(-10 + i));
+        }
+        await SeedReviewAsync(1, text: "Angry", createdAt: DateTime.UtcNow);
+
+        var quotes = (await GetSummaryAsync()).GetProperty("quotes")
+            .EnumerateArray()
+            .Select(quote => quote.GetProperty("rating").GetInt32())
+            .ToList();
+
+        Assert.Equal(10, quotes.Count);
+        Assert.Equal(1, quotes.Count(rating => rating == 1));
+        Assert.Equal(9, quotes.Count(rating => rating == 5));
+        // И он не задвинут в самый хвост, куда долистает меньшинство.
+        Assert.True(quotes.IndexOf(1) < quotes.Count - 1);
     }
 
     // ---------- кэш ----------
@@ -225,11 +251,25 @@ public class StoreRatingTests
         await SeedReviewAsync(5);
         Assert.Equal(1, (await GetSummaryAsync()).GetProperty("count").GetInt32());
 
+        var buyer = $"buyer-{Guid.NewGuid():N}@taleshop.test";
+        var gameId = Guid.NewGuid().ToString("N");
+        // Отзывы принимаются только от покупателей — заводим оплаченный заказ.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IOrderRepository>().CreateOrderAsync(new Order
+            {
+                Id = Guid.NewGuid(), OrderNumber = $"TS-SR-{Guid.NewGuid():N}"[..12], UserId = buyer, UserName = buyer, GameId = gameId, GameName = "Game",
+                IsPaid = true, IsFulfilled = true, OrderDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, Status = "DELIVERED", PaymentStatus = "PAID",
+                Currency = "USD", TotalAmount = 10m, Totals = new MoneyTotals { Total = 10m },
+                Items = new List<OrderItemSnapshot> { new() { GameId = gameId, Title = "Game", Quantity = 1 } }
+            });
+        }
+
         var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.EmailHeader, $"buyer-{Guid.NewGuid():N}@taleshop.test");
+        client.DefaultRequestHeaders.Add(TestAuthHandler.EmailHeader, buyer);
 
         var posted = await client.PostAsJsonAsync(
-            $"/api/games/{Guid.NewGuid():N}/reviews",
+            $"/api/games/{gameId}/reviews",
             new { rating = 3, text = "Fine, nothing special." });
         posted.EnsureSuccessStatusCode();
 

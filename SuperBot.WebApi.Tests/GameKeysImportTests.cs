@@ -80,6 +80,15 @@ public class GameKeysImportTests
         return id;
     }
 
+    /// <summary>Название игры по id: обзор запасов ищет по имени, а не отдаёт весь каталог.</summary>
+    private async Task<string> TitleOfAsync(string gameId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var games = scope.ServiceProvider.GetRequiredService<IGameRepository>();
+        var game = await games.GetByIdAsync(gameId);
+        return game?.Title ?? game?.Name ?? string.Empty;
+    }
+
     private static async Task<JsonElement> Body(HttpResponseMessage r) => JsonSerializer.Deserialize<JsonElement>(await r.Content.ReadAsStringAsync());
 
     [Fact]
@@ -119,20 +128,54 @@ public class GameKeysImportTests
     }
 
     [Fact]
+    public async Task Overview_pages_and_filters_on_the_server()
+    {
+        // Экран открывают ради того, что требует внимания, поэтому это и есть ответ по умолчанию,
+        // а страница ограничена: на большом каталоге отдавать строку на каждую игру нельзя.
+        var gameId = await SeedGameAsync();
+        var admin = Admin();
+        var title = await TitleOfAsync(gameId);
+
+        // Ключей нет — игра «пустая», то есть требует внимания и находится поиском по названию.
+        var attention = await Body(await admin.GetAsync("/api/admin/keys/overview?query=" + Uri.EscapeDataString(title)));
+        Assert.Equal("attention", attention.GetProperty("status").GetString());
+        Assert.Equal(1, attention.GetProperty("total").GetInt32());
+        Assert.Equal(gameId, attention.GetProperty("games").EnumerateArray().Single().GetProperty("gameId").GetString());
+
+        // Итоги считаются по всему каталогу, а не по видимой странице.
+        Assert.True(attention.GetProperty("totals").GetProperty("games").GetInt32() > 1);
+
+        // Полностью укомплектованных среди неё нет — фильтр честно отдаёт пусто.
+        var stocked = await Body(await admin.GetAsync("/api/admin/keys/overview?status=ok&query=" + Uri.EscapeDataString(title)));
+        Assert.Equal(0, stocked.GetProperty("total").GetInt32());
+        Assert.Empty(stocked.GetProperty("games").EnumerateArray());
+
+        // Размер страницы ограничивается сервером: запрос тысячи строк не проходит.
+        var page = await Body(await admin.GetAsync("/api/admin/keys/overview?status=all&pageSize=1000"));
+        Assert.True(page.GetProperty("pageSize").GetInt32() <= 100);
+        Assert.True(page.GetProperty("games").GetArrayLength() <= 100);
+    }
+
+    [Fact]
     public async Task Per_game_threshold_changes_low_stock_flag()
     {
         var gameId = await SeedGameAsync();
         var admin = Admin();
         await admin.PostAsJsonAsync($"/api/admin/keys/inventory/{gameId}/import", new { content = "THR-0001-AAAA\nTHR-0002-BBBB\nTHR-0003-CCCC\n", dryRun = false });
 
+        // Обзор отдаёт страницу и по умолчанию только требующее внимания — спрашиваем свою игру
+        // по названию и без фильтра статуса: после смены порога она перестанет быть «мало».
+        var title = await TitleOfAsync(gameId);
+        var url = "/api/admin/keys/overview?status=all&pageSize=100&query=" + Uri.EscapeDataString(title);
+
         // Общий порог 5 → 3 ключа это «мало».
-        var overview = await Body(await admin.GetAsync("/api/admin/keys/overview"));
+        var overview = await Body(await admin.GetAsync(url));
         var row = overview.GetProperty("games").EnumerateArray().Single(g => g.GetProperty("gameId").GetString() == gameId);
         Assert.True(row.GetProperty("low").GetBoolean());
 
         // Порог 2 для этой игры → уже не мало.
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"/api/admin/keys/inventory/{gameId}/threshold", new { lowStockThreshold = 2 })).StatusCode);
-        overview = await Body(await admin.GetAsync("/api/admin/keys/overview"));
+        overview = await Body(await admin.GetAsync(url));
         row = overview.GetProperty("games").EnumerateArray().Single(g => g.GetProperty("gameId").GetString() == gameId);
         Assert.False(row.GetProperty("low").GetBoolean());
         Assert.Equal(2, row.GetProperty("lowThreshold").GetInt32());

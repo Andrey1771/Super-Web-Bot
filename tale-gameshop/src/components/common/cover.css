@@ -1,0 +1,28 @@
+/* Обложка товара в рамке — см. Cover.tsx.
+   Специфичность два класса: рамка побеждает старые одноклассовые правила обёрток (aspect-ratio, height у img),
+   но уступает точечным переопределениям вида `.catalog-grid.is-list .catalog-game-image { --cover-ratio: 4 / 3 }`. */
+.cover.cover {
+    position: relative;
+    display: block;
+    aspect-ratio: var(--cover-ratio, 1 / 1);
+    /* Без этого рамка растягивается по натуральной высоте картинки — та самая ошибка, из-за которой вертикальная
+       обложка вытягивала весь ряд. */
+    min-height: 0;
+    overflow: hidden;
+    background-color: var(--cover-bg, #ede9fe);
+    background-size: cover;
+    background-position: center;
+}
+
+.cover.cover--blur {
+    background-color: transparent;
+}
+
+.cover.cover > .cover__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}

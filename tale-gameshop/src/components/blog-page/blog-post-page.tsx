@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import container from "../../inversify.config";
@@ -7,7 +8,7 @@ import type { BlogEngagementSummary, BlogListItem, BlogPost, BlogPostStats, Blog
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faEnvelope, faEye, faLink } from "@fortawesome/free-solid-svg-icons";
 import { faFacebookF, faTelegram, faWhatsapp, faXTwitter } from "@fortawesome/free-brands-svg-icons";
-import { renderMarkdown } from "../../utils/markdown";
+import { renderMarkdown, sanitizeHtml } from "../../utils/markdown";
 import { getAnonId, getSessionId } from "../../hooks/use-blog-tracking";
 import PostCoverArt from "./PostCoverArt";
 import BlogComments from "./BlogComments";
@@ -16,6 +17,7 @@ import PageMeta from "../common/PageMeta";
 import Breadcrumbs from "../common/Breadcrumbs";
 import { normalizeBlogCoverUrl } from "../../utils/blog-cover";
 import "./blog-page.css";
+import { formatPostDate } from "../../utils/post-date";
 
 type TocItem = {
   id: string;
@@ -46,20 +48,6 @@ const getArticleReadProgress = (articleElement: HTMLElement): number => {
   const viewportBottom = window.scrollY + window.innerHeight;
   const consumed = viewportBottom - articleTop;
   return Math.max(0, Math.min(consumed / articleHeight, 1));
-};
-
-const formatDate = (value?: string) => {
-  if (!value) {
-    return "Draft";
-  }
-
-  // Дата всегда в en-US: интерфейс англоязычный, а локаль браузера у покупателя
-  // может быть любой — «9 августа 2026 г.» посреди английской страницы выглядит багом.
-  return new Date(value).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  });
 };
 
 
@@ -104,7 +92,14 @@ const buildTocAndInjectAnchors = (html: string): { contentHtml: string; headings
   return { contentHtml: documentNode.body.innerHTML, headings };
 };
 
+/**
+ * Посты, просмотр которых уже засчитан в этой вкладке. Живёт вне компонента: смена языка
+ * перемонтирует страницу (LanguageScope), и без этого тот же читатель считался бы дважды.
+ */
+const trackedPostViews = new Set<string>();
+
 const BlogPostPage: React.FC = () => {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -136,7 +131,7 @@ const BlogPostPage: React.FC = () => {
         if (!slug) {
           setPost(null);
           setVersion(null);
-          setError("Post not found.");
+          setError(t("blog.postNotFound"));
           return;
         }
 
@@ -153,7 +148,7 @@ const BlogPostPage: React.FC = () => {
         setPost(null);
         setVersion(null);
         setPostStats(null);
-        setError("Unable to load blog post.");
+        setError(t("blog.postLoadFailed"));
       } finally {
         setLoading(false);
       }
@@ -182,7 +177,7 @@ const BlogPostPage: React.FC = () => {
   }, [slug]);
 
   useEffect(() => {
-    if (!post || !slug || viewTrackedRef.current) {
+    if (!post || !slug || viewTrackedRef.current || trackedPostViews.has(slug)) {
       return;
     }
 
@@ -197,6 +192,7 @@ const BlogPostPage: React.FC = () => {
       }
 
       viewTrackedRef.current = true;
+      trackedPostViews.add(slug);
       window.clearInterval(interval);
       blogService.trackPostView({
         slug,
@@ -209,6 +205,7 @@ const BlogPostPage: React.FC = () => {
         .then((stats) => setPostStats(stats))
         .catch((trackingError) => {
           viewTrackedRef.current = false;
+          trackedPostViews.delete(slug);
           console.warn("Failed to track post view", trackingError);
         });
     }, 500);
@@ -253,7 +250,8 @@ const BlogPostPage: React.FC = () => {
         })
           .then((stats) => setPostStats(stats))
           .catch((trackingError) => {
-            readTrackedRef.current = false;
+            // На этой странице больше не пробуем: сброс флага раньше превращал отказ сервера в запрос
+            // каждые полсекунды. Отметку в сессии снимаем — при следующем открытии поста будет новая попытка.
             window.sessionStorage.removeItem(`${READ_TRACK_KEY}:${slug}`);
             console.warn("Failed to track completed read", trackingError);
           });
@@ -375,7 +373,7 @@ const BlogPostPage: React.FC = () => {
   const contentHtml = useMemo(() => {
     const rawHtml = version?.contentHtml?.trim() ?? "";
     if (rawHtml) {
-      return rawHtml;
+      return sanitizeHtml(rawHtml);
     }
 
     const markdownSource = version?.contentMarkdown?.trim() ?? "";
@@ -453,7 +451,7 @@ const BlogPostPage: React.FC = () => {
   }, [post?.slug]);
 
   const emailShareLink = useMemo(() => {
-    const subject = `Check out this article: ${post?.title ?? "Blog post"}`;
+    const subject = t("blog.shareSubject", { title: post?.title ?? t("blog.blogPost") });
     const excerptLine = post?.excerpt?.trim() ? `${post.excerpt.trim()}
 
 ` : "";
@@ -508,10 +506,10 @@ ${excerptLine}${shareUrl}`;
         document.execCommand("copy");
         document.body.removeChild(helper);
       }
-      setShareFeedback("Link copied");
+      setShareFeedback(t("blog.linkCopied"));
     } catch (copyError) {
       console.error(copyError);
-      setShareFeedback("Could not copy link");
+      setShareFeedback(t("blog.copyFailed"));
     } finally {
       window.setTimeout(() => setShareFeedback(""), 1800);
     }
@@ -553,11 +551,11 @@ ${excerptLine}${shareUrl}`;
       <main className="blog-page">
         <section className="section">
           <div className="container blog-post-state-card">
-            <p className="eyebrow">News</p>
-            <h2>Something went wrong</h2>
+            <p className="eyebrow">{t("blog.news")}</p>
+            <h2>{t("errorBoundary.title")}</h2>
             <p className="muted">{error}</p>
             <Link className="btn btn-primary" to="/news">
-              Back to news
+              {t("blog.backToNews")}
             </Link>
           </div>
         </section>
@@ -570,11 +568,11 @@ ${excerptLine}${shareUrl}`;
       <main className="blog-page">
         <section className="section">
           <div className="container blog-post-state-card">
-            <p className="eyebrow">News</p>
-            <h2>Post not found</h2>
-            <p className="muted">We couldn&apos;t locate this article. It may have been moved or removed.</p>
+            <p className="eyebrow">{t("blog.news")}</p>
+            <h2>{t("blog.notFoundTitle")}</h2>
+            <p className="muted">{t("blog.notFoundText")}</p>
             <Link className="btn btn-primary" to="/news">
-              Back to news
+              {t("blog.backToNews")}
             </Link>
           </div>
         </section>
@@ -601,8 +599,8 @@ ${excerptLine}${shareUrl}`;
               разметка BreadcrumbList для выдачи. */}
           <Breadcrumbs
             items={[
-              { label: "Home", to: "/" },
-              { label: "News", to: "/news" },
+              { label: t("common.nav.home"), to: "/" },
+              { label: t("blog.news"), to: "/news" },
               { label: post.title }
             ]}
           />
@@ -620,22 +618,22 @@ ${excerptLine}${shareUrl}`;
               {post.excerpt && <p className="blog-post-hero__excerpt">{post.excerpt}</p>}
 
               {hasMeta && (
-                <div className="blog-post-meta" aria-label="Post metadata">
+                <div className="blog-post-meta" aria-label={t("blog.postMeta")}>
                   {post.authorName && <span>By {post.authorName}</span>}
-                  {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
-                  {post.readingTime && <span>{post.readingTime} min read</span>}
+                  {post.publishedAt && <span>{formatPostDate(post.publishedAt)}</span>}
+                  {post.readingTime && <span>{t("common.minRead", { count: post.readingTime })}</span>}
                 </div>
               )}
 
-              <div className="blog-post-share-icons" aria-label="Share article">
+              <div className="blog-post-share-icons" aria-label={t("blog.share")}>
                 <button
                   className="share-icon"
                   type="button"
                   onClick={handleCopyLink}
-                  aria-label="Copy link"
-                  title={shareFeedback === "Link copied" ? "Copied" : "Copy link"}
+                  aria-label={t("blog.copyLink")}
+                  title={shareFeedback === t("blog.linkCopied") ? t("common.copied") : t("blog.copyLink")}
                 >
-                  <FontAwesomeIcon icon={shareFeedback === "Link copied" ? faCheck : faLink} />
+                  <FontAwesomeIcon icon={shareFeedback === t("blog.linkCopied") ? faCheck : faLink} />
                 </button>
                 {shareTargets.map((target) => (
                   <a
@@ -644,13 +642,13 @@ ${excerptLine}${shareUrl}`;
                     href={target.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Share on ${target.label}`}
+                    aria-label={t("blog.shareOn", { network: target.label })}
                     title={target.label}
                   >
                     <FontAwesomeIcon icon={target.icon} />
                   </a>
                 ))}
-                <a className="share-icon" href={emailShareLink} aria-label="Share via email" title="Email">
+                <a className="share-icon" href={emailShareLink} aria-label={t("blog.shareEmail")} title={t("blog.email")}>
                   <FontAwesomeIcon icon={faEnvelope} />
                 </a>
               </div>
@@ -665,8 +663,8 @@ ${excerptLine}${shareUrl}`;
             {/* Оглавление из двух пунктов навигационной ценности не имеет —
                 показываем только от трёх заголовков. */}
             {articleContent.headings.length >= 3 && (
-              <nav className="blog-post-toc-inline" aria-label="Table of contents">
-                <span className="blog-post-toc-inline__title">On this page</span>
+              <nav className="blog-post-toc-inline" aria-label={t("blog.toc")}>
+                <span className="blog-post-toc-inline__title">{t("blog.onThisPage")}</span>
                 {articleContent.headings.map((heading) => (
                   <a key={heading.id} href={`#${heading.id}`} onClick={(event) => handleTocClick(event, heading.id)}>
                     {heading.text}
@@ -679,8 +677,8 @@ ${excerptLine}${shareUrl}`;
               <article id="post-content" className="blog-post-content blog-post-content--article" dangerouslySetInnerHTML={{ __html: articleContent.contentHtml }} />
             ) : (
               <article id="post-content" className="blog-post-content blog-post-content--empty">
-                <h2>Article content is coming soon</h2>
-                <p className="muted">This post has metadata, but the full article body is not available yet.</p>
+                <h2>{t("blog.bodySoon")}</h2>
+                <p className="muted">{t("blog.bodySoonText")}</p>
               </article>
             )}
 
@@ -688,8 +686,8 @@ ${excerptLine}${shareUrl}`;
                 из шапки), теги — строкой ниже. */}
             <div className="blog-post-card__footer">
               <div className="blog-post-card__row">
-                <div className="post-reactions-inline" aria-label="Post reactions">
-                  <span className="blog-post-card__label">React</span>
+                <div className="post-reactions-inline" aria-label={t("blog.reactions")}>
+                  <span className="blog-post-card__label">{t("blog.react")}</span>
                   {reactions.map((emoji) => {
                     const count = engagement?.reactions?.[emoji] ?? 0;
                     const isActive = engagement?.myReaction === emoji;
@@ -709,18 +707,18 @@ ${excerptLine}${shareUrl}`;
                 </div>
 
                 {typeof postStats?.viewsCount === "number" && (
-                  <span className="views-pill" title="Views">
+                  <span className="views-pill" title={t("common.views")}>
                     <FontAwesomeIcon icon={faEye} aria-hidden="true" />
-                    {`${postStats.viewsCount} ${postStats.viewsCount === 1 ? "view" : "views"}`}
+                    {t("common.viewsCount", { count: postStats.viewsCount })}
                   </span>
                 )}
               </div>
 
               {post.tags.length > 0 && (
-                <div className="blog-post-tags" aria-label="Post tags">
-                  {post.tags.map((tag) => (
+                <div className="blog-post-tags" aria-label={t("blog.tags")}>
+                  {post.tags.map((tag, index) => (
                     <Link key={tag} to={`/news?tag=${encodeURIComponent(tag)}`} className="blog-tag">
-                      #{tag}
+                      #{post.tagLabels?.[index] ?? tag}
                     </Link>
                   ))}
                 </div>
@@ -732,15 +730,15 @@ ${excerptLine}${shareUrl}`;
 
           {/* Соседние посты — сдержанные текстовые ссылки, а не отдельные карточки. */}
           {(adjacentPosts.newer || adjacentPosts.older) && (
-            <nav className="blog-post-nav" aria-label="Adjacent posts">
+            <nav className="blog-post-nav" aria-label={t("blog.adjacent")}>
               {adjacentPosts.newer && (
                 <Link className="blog-post-nav__link" to={`/news/${adjacentPosts.newer.slug}`}>
-                  ← Newer post: <span>{adjacentPosts.newer.title}</span>
+                  {t("blog.newerPost")} <span>{adjacentPosts.newer.title}</span>
                 </Link>
               )}
               {adjacentPosts.older && (
                 <Link className="blog-post-nav__link blog-post-nav__link--right" to={`/news/${adjacentPosts.older.slug}`}>
-                  Older post: <span>{adjacentPosts.older.title}</span> →
+                  {t("blog.olderPost")} <span>{adjacentPosts.older.title}</span> →
                 </Link>
               )}
             </nav>
@@ -748,8 +746,8 @@ ${excerptLine}${shareUrl}`;
 
           <section className="related-posts-section" aria-labelledby="related-posts-title">
             <div className="related-posts-section__header">
-              <h2 id="related-posts-title">Related posts</h2>
-              <p className="muted">More stories you might enjoy.</p>
+              <h2 id="related-posts-title">{t("blog.related")}</h2>
+              <p className="muted">{t("blog.relatedText")}</p>
             </div>
 
             {relatedLoading ? (
@@ -770,9 +768,9 @@ ${excerptLine}${shareUrl}`;
               </div>
             ) : (
               <div className="related-posts-empty surface">
-                <p className="muted">No related posts yet. Explore all the news for more articles.</p>
+                <p className="muted">{t("blog.noRelated")}</p>
                 <Link className="btn btn-outline" to="/news">
-                  Browse all posts
+                  {t("blog.browseAll")}
                 </Link>
               </div>
             )}

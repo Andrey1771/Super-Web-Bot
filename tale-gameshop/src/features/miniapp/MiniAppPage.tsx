@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import SafeGameImage from '../../components/common/SafeGameImage';
+import Cover from '../../components/common/Cover';
 import { useSitePreferences } from '../../context/site-preferences';
 import { formatMoney } from '../../utils/format-money';
+import { MINIAPP_CATALOG_URL, toMiniAppGames, type MiniAppGame } from './miniapp-catalog';
 import './miniapp-page.css';
 
 // --- Минимальный контракт Telegram WebApp SDK (грузится динамически, только на этой странице) ---
@@ -38,24 +39,6 @@ type TelegramWebApp = {
         notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
         impactOccurred: (style: 'light' | 'medium' | 'heavy') => void;
     };
-};
-
-type MiniAppGame = {
-    id: string;
-    name: string;
-    title: string;
-    imagePath?: string;
-    description?: string;
-    price: number;
-    finalPrice?: number;
-    discountActive?: boolean;
-    discountPercent?: number;
-    genres?: string[];
-    /** Валюта цены. Не доллары — звёздами такую игру не продать, сервер откажет. */
-    currency?: string;
-    /** Статус релиза считает сервер; невышедшие показываем, но не продаём (бэкенд всё равно откажет). */
-    isComingSoon?: boolean;
-    releaseDate?: string;
 };
 
 // Дата релиза по-русски (Mini App — русская витрина), «скоро» — если даты нет/не парсится.
@@ -124,8 +107,6 @@ const applyTheme = (webApp: TelegramWebApp) => {
 };
 
 const priceOf = (game: MiniAppGame): number => Number(game.finalPrice ?? game.price ?? 0);
-// Валюта витрины, а не символ в шаблоне: мини-апп показывает ту же цену, что и сайт.
-const money = (value: number, currency: string): string => formatMoney(value, currency);
 /**
  * USD→Stars по той же формуле, что на сервере (`StarPrice.FromUsd`): max(1, round(usd × ставка))
  * на позицию. Это ПРЕДПРОСМОТР — итоговую сумму инвойса считает сервер, и расходиться они
@@ -183,11 +164,11 @@ const MiniAppPage: React.FC = () => {
         (async () => {
             try {
                 setLoading(true);
-                const response = await fetch('/api/game');
+                const response = await fetch(MINIAPP_CATALOG_URL);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
-                setGames((await response.json()) as MiniAppGame[]);
+                setGames(toMiniAppGames(await response.json()));
             } catch (fetchError) {
                 console.error('Failed to load catalog', fetchError);
                 setError('Не удалось загрузить каталог.');
@@ -350,7 +331,7 @@ const MiniAppPage: React.FC = () => {
             }
         } else if (cartCount > 0) {
             mainActionRef.current = goCart;
-            main.setText(`Корзина · ${cartCount} · ${money(cartTotal, currency)}`);
+            main.setText(`Корзина · ${cartCount} · ${formatMoney(cartTotal, currency)}`);
             main.hideProgress();
             main.show();
         } else {
@@ -429,7 +410,7 @@ const MiniAppPage: React.FC = () => {
                         return (
                             <article key={game.id} className="miniapp__card">
                                 <button className="miniapp__coverbtn" onClick={() => openProduct(game)}>
-                                    <SafeGameImage src={game.imagePath} gameTitle={game.title} baseUrl={window.location.origin} />
+                                    <Cover as="span" ratio="landscape" sizes="50vw" src={game.imagePath} title={game.title} baseUrl={window.location.origin} />
                                     {game.discountActive && game.discountPercent ? (
                                         <span className="miniapp__badge">−{Number(game.discountPercent).toFixed(0)}%</span>
                                     ) : null}
@@ -440,8 +421,8 @@ const MiniAppPage: React.FC = () => {
                                     <div className="miniapp__price">
                                         <span className="miniapp__pricestars">⭐ {starsOfUsd(priceOf(game), starsPerUsd, game.currency) ?? "—"}</span>
                                         <span className="miniapp__priceusd">
-                                            {money(priceOf(game), currency)}
-                                            {discounted ? <s>{money(game.price, currency)}</s> : null}
+                                            {formatMoney(priceOf(game), currency)}
+                                            {discounted ? <s>{formatMoney(game.price, currency)}</s> : null}
                                         </span>
                                     </div>
                                     {game.isComingSoon ? (
@@ -476,7 +457,7 @@ const MiniAppPage: React.FC = () => {
         return (
             <div className="miniapp__product">
                 <div className="miniapp__producthero">
-                    <SafeGameImage src={selected.imagePath} gameTitle={selected.title} baseUrl={window.location.origin} />
+                    <Cover ratio="wide" sizes="100vw" priority blur src={selected.imagePath} title={selected.title} baseUrl={window.location.origin} />
                     {selected.discountActive && selected.discountPercent ? (
                         <span className="miniapp__badge">-{Number(selected.discountPercent).toFixed(0)}%</span>
                     ) : null}
@@ -485,9 +466,9 @@ const MiniAppPage: React.FC = () => {
                 {genreOf(selected) ? <span className="miniapp__genre">{genreOf(selected)}</span> : null}
                 <div className="miniapp__productprice">
                     <span>⭐ {starsOfUsd(priceOf(selected), starsPerUsd, selected.currency) ?? "—"}</span>
-                    <span className="miniapp__productusd">{money(priceOf(selected), currency)}</span>
+                    <span className="miniapp__productusd">{formatMoney(priceOf(selected), currency)}</span>
                     {selected.discountActive && selected.finalPrice != null && selected.finalPrice < selected.price ? (
-                        <span className="miniapp__strike">{money(selected.price, currency)}</span>
+                        <span className="miniapp__strike">{formatMoney(selected.price, currency)}</span>
                     ) : null}
                 </div>
                 {selected.description ? (
@@ -521,9 +502,7 @@ const MiniAppPage: React.FC = () => {
                         <div className="miniapp__similarrow">
                             {similar.map((g) => (
                                 <button key={g.id} className="miniapp__similarcard" onClick={() => openProduct(g)}>
-                                    <div className="miniapp__similarcover">
-                                        <SafeGameImage src={g.imagePath} gameTitle={g.title} baseUrl={window.location.origin} />
-                                    </div>
+                                    <Cover as="span" className="miniapp__similarcover" ratio="landscape" sizes="40vw" src={g.imagePath} title={g.title} baseUrl={window.location.origin} />
                                     <span className="miniapp__similartitle">{g.title || g.name}</span>
                                     <span className="miniapp__similarprice">⭐ {starsOfUsd(priceOf(g), starsPerUsd, g.currency) ?? "—"}</span>
                                 </button>
@@ -556,14 +535,12 @@ const MiniAppPage: React.FC = () => {
                     <div className="miniapp__cartlist">
                         {cart.map((line) => (
                             <div key={line.game.id} className="miniapp__cartline">
-                                <div className="miniapp__cartcover">
-                                    <SafeGameImage src={line.game.imagePath} gameTitle={line.game.title} baseUrl={window.location.origin} />
-                                </div>
+                                <Cover className="miniapp__cartcover" ratio="square" sizes="66px" src={line.game.imagePath} title={line.game.title} baseUrl={window.location.origin} />
                                 <div className="miniapp__cartinfo">
                                     <h4>{line.game.title || line.game.name}</h4>
                                     <div className="miniapp__price">
                                         <span className="miniapp__pricestars">⭐ {(starsOfUsd(priceOf(line.game), starsPerUsd, line.game.currency) ?? 0) * line.qty}</span>
-                                        <span className="miniapp__priceusd">{money(priceOf(line.game) * line.qty, currency)}</span>
+                                        <span className="miniapp__priceusd">{formatMoney(priceOf(line.game) * line.qty, currency)}</span>
                                     </div>
                                 </div>
                                 <div className="miniapp__cartactions">
@@ -580,7 +557,7 @@ const MiniAppPage: React.FC = () => {
 
                     <div className="miniapp__total">
                         <span>Итого</span>
-                        <span className="miniapp__totalvalue">⭐ {cartStars}<small>{money(cartTotal, currency)}</small></span>
+                        <span className="miniapp__totalvalue">⭐ {cartStars}<small>{formatMoney(cartTotal, currency)}</small></span>
                     </div>
 
                     {/* В Telegram платит нативная MainButton (внизу) — второй кнопки не даём.
@@ -601,9 +578,7 @@ const MiniAppPage: React.FC = () => {
                             <div className="miniapp__similarrow">
                                 {recommendations.map((g) => (
                                     <button key={g.id} className="miniapp__similarcard" onClick={() => addToCart(g)}>
-                                        <div className="miniapp__similarcover">
-                                            <SafeGameImage src={g.imagePath} gameTitle={g.title} baseUrl={window.location.origin} />
-                                        </div>
+                                        <Cover as="span" className="miniapp__similarcover" ratio="landscape" sizes="40vw" src={g.imagePath} title={g.title} baseUrl={window.location.origin} />
                                         <span className="miniapp__similartitle">{g.title || g.name}</span>
                                         <span className="miniapp__similaradd"><span>+</span> ⭐ {starsOfUsd(priceOf(g), starsPerUsd, g.currency) ?? "—"}</span>
                                     </button>

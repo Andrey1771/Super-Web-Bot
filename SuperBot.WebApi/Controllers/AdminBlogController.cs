@@ -5,6 +5,7 @@ using SuperBot.Core.Interfaces;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Text.RegularExpressions;
 using SuperBot.WebApi.Services;
+using SuperBot.WebApi.Services.Storefront;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -71,6 +72,13 @@ public class AdminBlogController : ControllerBase
 
         var (items, total) = await _blogRepository.GetPagedAsync(query);
         return Ok(new { items, total });
+    }
+
+    /// <summary>Теги для фильтра: по всем постам, а не по загруженной странице.</summary>
+    [HttpGet("tags")]
+    public async Task<IActionResult> GetTags()
+    {
+        return Ok(await _blogRepository.GetAllTagsAsync());
     }
 
     [HttpGet("{id}")]
@@ -184,6 +192,9 @@ public class AdminBlogController : ControllerBase
             Title = request.Title,
             Slug = slug,
             Excerpt = normalizedExcerpt,
+            TitleI18n = request.TitleI18n,
+            ExcerptI18n = request.ExcerptI18n,
+            TagsI18n = request.TagsI18n,
             CoverAssetId = request.CoverAssetId,
             CoverUrl = await ResolveCoverUrlAsync(request.CoverAssetId, request.CoverUrl),
             Status = NormalizeStatus(request.Status),
@@ -217,11 +228,17 @@ public class AdminBlogController : ControllerBase
             Excerpt = normalizedExcerpt,
             ContentMarkdown = request.ContentMarkdown ?? "",
             ContentHtml = request.ContentHtml ?? "",
+            TitleI18n = request.TitleI18n,
+            ExcerptI18n = request.ExcerptI18n,
+            ContentMarkdownI18n = request.ContentMarkdownI18n,
+            ContentHtmlI18n = request.ContentHtmlI18n,
             CoverAssetId = request.CoverAssetId,
             CreatedAt = now,
             CreatedBy = request.AuthorName,
             ChangeNote = request.ChangeNote ?? "Initial version"
         };
+        BlogLocalizer.NormalizeForSave(post);
+        BlogLocalizer.NormalizeForSave(version);
 
         if (shouldBeBlogHomeFeatured)
         {
@@ -295,6 +312,9 @@ public class AdminBlogController : ControllerBase
         post.Title = request.Title;
         post.Slug = slug;
         post.Excerpt = normalizedExcerpt;
+        post.TitleI18n = request.TitleI18n;
+        post.ExcerptI18n = request.ExcerptI18n;
+        post.TagsI18n = request.TagsI18n;
         post.CoverAssetId = request.CoverAssetId;
         post.CoverUrl = await ResolveCoverUrlAsync(request.CoverAssetId, request.CoverUrl);
         post.Status = NormalizeStatus(request.Status);
@@ -322,11 +342,17 @@ public class AdminBlogController : ControllerBase
             Excerpt = normalizedExcerpt,
             ContentMarkdown = request.ContentMarkdown ?? "",
             ContentHtml = request.ContentHtml ?? "",
+            TitleI18n = request.TitleI18n,
+            ExcerptI18n = request.ExcerptI18n,
+            ContentMarkdownI18n = request.ContentMarkdownI18n,
+            ContentHtmlI18n = request.ContentHtmlI18n,
             CoverAssetId = request.CoverAssetId,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = request.AuthorName,
             ChangeNote = request.ChangeNote ?? "Updated"
         };
+        BlogLocalizer.NormalizeForSave(post);
+        BlogLocalizer.NormalizeForSave(version);
 
         if (post.BlogHomeFeatured)
         {
@@ -396,6 +422,10 @@ public class AdminBlogController : ControllerBase
             Excerpt = version.Excerpt,
             ContentMarkdown = version.ContentMarkdown,
             ContentHtml = version.ContentHtml,
+            TitleI18n = version.TitleI18n,
+            ExcerptI18n = version.ExcerptI18n,
+            ContentMarkdownI18n = version.ContentMarkdownI18n,
+            ContentHtmlI18n = version.ContentHtmlI18n,
             CoverAssetId = version.CoverAssetId,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = request.RestoredBy,
@@ -404,6 +434,8 @@ public class AdminBlogController : ControllerBase
 
         post.Title = version.Title;
         post.Excerpt = version.Excerpt;
+        post.TitleI18n = version.TitleI18n;
+        post.ExcerptI18n = version.ExcerptI18n;
         post.CoverAssetId = version.CoverAssetId;
         post.UpdatedAt = DateTime.UtcNow;
         await _blogRepository.UpdateAsync(post, restored);
@@ -654,7 +686,7 @@ public class AdminBlogController : ControllerBase
         var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, DateTime.UtcNow.AddYears(-5));
         var readsCount = events
             .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
-            .Select(item => BuildActorKey(item))
+            .Select(item => BlogActorKey.For(item.UserId, item.AnonId, item.SessionId))
             .Where(key => !string.IsNullOrWhiteSpace(key))
             .Distinct(StringComparer.Ordinal)
             .Count();
@@ -732,26 +764,6 @@ public class AdminBlogController : ControllerBase
         return result;
     }
 
-    private static string BuildActorKey(BlogEvent item)
-    {
-        if (!string.IsNullOrWhiteSpace(item.UserId))
-        {
-            return $"u:{item.UserId}";
-        }
-
-        if (!string.IsNullOrWhiteSpace(item.AnonId))
-        {
-            return $"a:{item.AnonId}";
-        }
-
-        if (!string.IsNullOrWhiteSpace(item.SessionId))
-        {
-            return $"s:{item.SessionId}";
-        }
-
-        return string.Empty;
-    }
-
     private static string GetReaction(BlogEvent item)
     {
         if (item.Meta == null)
@@ -777,7 +789,7 @@ public class AdminBlogController : ControllerBase
             .Where(item =>
                 string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(BuildActorKey)
+            .GroupBy(item => BlogActorKey.For(item.UserId, item.AnonId, item.SessionId))
             .Where(group => !string.IsNullOrWhiteSpace(group.Key))
             .Select(group => group.OrderByDescending(item => item.Timestamp).First())
             .ToList();
@@ -898,6 +910,12 @@ public class SaveBlogPostRequest
     public string? Excerpt { get; set; }
     public string? ContentMarkdown { get; set; }
     public string? ContentHtml { get; set; }
+    /// <summary>Переводы (ru/uk/pl → текст) заголовка, анонса и тела; теги — списки по позициям.</summary>
+    public Dictionary<string, string>? TitleI18n { get; set; }
+    public Dictionary<string, string>? ExcerptI18n { get; set; }
+    public Dictionary<string, string>? ContentMarkdownI18n { get; set; }
+    public Dictionary<string, string>? ContentHtmlI18n { get; set; }
+    public Dictionary<string, List<string>>? TagsI18n { get; set; }
     public string? CoverAssetId { get; set; }
     public string? CoverUrl { get; set; }
     public string? Status { get; set; }

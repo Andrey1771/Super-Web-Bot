@@ -1,5 +1,7 @@
-import React, {useEffect, useState} from 'react';
-import {Link, NavLink} from 'react-router-dom';
+import React, {useEffect, useRef, useState} from 'react';
+import {useTranslation} from 'react-i18next';
+import {formatDateTime} from '../../../i18n/format';
+import {Link, NavLink, useLocation} from 'react-router-dom';
 import {useKeycloak} from '@react-keycloak/web';
 import { useAccountProfile } from '../context/AccountProfileContext';
 import { cancelPendingRecovery, getPendingRecovery } from '../../../api/accountRecoveryApi';
@@ -33,28 +35,30 @@ type NavGroup = {
 };
 
 // Ментальная модель покупателя: «мои покупки» → «мой аккаунт» → «помощь».
+// label/title — ключи словаря account.nav.*.
 const navGroups: NavGroup[] = [
     {
-        title: 'Purchases',
+        title: 'purchases',
         items: [
-            {label: 'Overview', to: '/account'},
-            {label: 'Orders', to: '/account/orders', counter: 'orders'},
-            {label: 'Keys & activation', to: '/account/keys', counter: 'keys'},
-            {label: 'Saved items', to: '/account/saved', counter: 'saved'}
+            {label: 'overview', to: '/account'},
+            {label: 'orders', to: '/account/orders', counter: 'orders'},
+            {label: 'keys', to: '/account/keys', counter: 'keys'},
+            {label: 'cashback', to: '/account/rewards'},
+            {label: 'saved', to: '/account/saved', counter: 'saved'}
         ]
     },
     {
-        title: 'Account',
+        title: 'account',
         items: [
-            {label: 'Settings', to: '/account/settings'},
-            {label: 'Billing', to: '/account/billing'},
-            {label: 'Security', to: '/account/security'}
+            {label: 'settings', to: '/account/settings'},
+            {label: 'billing', to: '/account/billing'},
+            {label: 'security', to: '/account/security'}
         ]
     },
     {
-        title: 'Support',
+        title: 'support',
         items: [
-            {label: 'Help', to: '/account/help', counter: 'help'}
+            {label: 'help', to: '/account/help', counter: 'help'}
         ]
     }
 ];
@@ -67,6 +71,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
     headerTestId,
     children
 }) => {
+    const {t} = useTranslation();
     const { profile, isLoading: isProfileLoading } = useAccountProfile();
     const counters = useAccountCounters();
     const { count: wishlistCount } = useWishlist();
@@ -86,7 +91,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
         preferred_username?: string;
         email?: string;
     };
-    const displayName = profile?.displayName ?? tokenClaims.name ?? tokenClaims.preferred_username ?? 'My account';
+    const displayName = profile?.displayName ?? tokenClaims.name ?? tokenClaims.preferred_username ?? t('account.myAccount');
     const email = profile?.email ?? tokenClaims.email ?? '';
     const initialsSource = displayName || email;
     const initials = initialsSource
@@ -119,6 +124,59 @@ const AccountShell: React.FC<AccountShellProps> = ({
         await keycloakAuthService.logoutWithRedirect(keycloak, window.location.origin);
     };
 
+    /**
+     * Меню разделов на узком экране.
+     *
+     * Раньше оно превращалось в ленту чипов с горизонтальной прокруткой: половина
+     * разделов была за краем экрана, и догадаться, что ленту можно листать, было неоткуда.
+     * Теперь это выдвижная панель — та же вертикальная навигация, что и на десктопе,
+     * с заголовками групп, профилем и выходом.
+     */
+    const location = useLocation();
+    const [isNavOpen, setIsNavOpen] = useState(false);
+    const navToggleRef = useRef<HTMLButtonElement | null>(null);
+    const navCloseRef = useRef<HTMLButtonElement | null>(null);
+
+    // Подпись на кнопке — раздел, в котором человек сейчас. Считаем по адресу, а не по
+    // sectionLabel страницы: на кнопке должно стоять ровно то же слово, что и в меню.
+    const currentNavLabel =
+        navGroups
+            .flatMap((group) => group.items)
+            .filter((item) => (item.to === '/account' ? location.pathname === '/account' : location.pathname.startsWith(item.to)))
+            .sort((a, b) => b.to.length - a.to.length)[0]?.label;
+    const currentNavLabelText = currentNavLabel ? t(`account.nav.${currentNavLabel}`) : sectionLabel;
+
+    // Переход по ссылке закрывает панель. Отдельным эффектом, а не обработчиком на каждой
+    // ссылке: адрес меняется и от «назад» в браузере.
+    useEffect(() => {
+        setIsNavOpen(false);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        if (!isNavOpen) {
+            return;
+        }
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsNavOpen(false);
+            }
+        };
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', onKeyDown);
+        navCloseRef.current?.focus();
+
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            document.body.style.overflow = previousOverflow;
+            // Фокус возвращаем туда, откуда панель открыли, — иначе после закрытия он
+            // улетает в начало страницы.
+            navToggleRef.current?.focus();
+        };
+    }, [isNavOpen]);
+
     // Живая сессия — главный канал «уведомить владельца»: если кто-то запросил
     // восстановление доступа (сброс 2FA), показываем баннер с отменой в один клик.
     const [pendingRecovery, setPendingRecovery] = useState<PendingRecovery | null>(null);
@@ -144,7 +202,40 @@ const AccountShell: React.FC<AccountShellProps> = ({
     return (
         <div className="account-page">
             <div className="container account-layout">
-                <aside className="account-sidebar">
+                {/* Кнопка видна только на узких экранах: на десктопе меню и так на виду. */}
+                <button
+                    type="button"
+                    className="account-nav-toggle"
+                    ref={navToggleRef}
+                    onClick={() => setIsNavOpen(true)}
+                    aria-expanded={isNavOpen}
+                    aria-controls="account-sections"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                    <span className="account-nav-toggle-label">{currentNavLabelText}</span>
+                    <span className="account-nav-toggle-hint">{t('account.sections')}</span>
+                </button>
+
+                <div
+                    className={`account-nav-backdrop${isNavOpen ? ' is-open' : ''}`}
+                    onClick={() => setIsNavOpen(false)}
+                    aria-hidden="true"
+                />
+
+                <aside id="account-sections" className={`account-sidebar${isNavOpen ? ' is-open' : ''}`}>
+                    <button
+                        type="button"
+                        className="account-nav-close"
+                        ref={navCloseRef}
+                        onClick={() => setIsNavOpen(false)}
+                        aria-label={t('account.closeSections')}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                    </button>
                     <div className="card account-profile">
                         {showProfileSkeleton ? (
                             <>
@@ -158,7 +249,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
                             <>
                                 <div className="account-avatar">
                                     {profile?.avatarUrl ? (
-                                        <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
+                                        <img src={profile.avatarUrl} alt={t('account.avatarAlt', {name: displayName})} />
                                     ) : (
                                         initials
                                     )}
@@ -166,7 +257,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
                                 <div className="account-profile-details">
                                     <strong>{displayName}</strong>
                                     <span className="account-email">{email}</span>
-                                    {isVerifiedBuyer && <span className="badge">Verified buyer</span>}
+                                    {isVerifiedBuyer && <span className="badge">{t('account.verifiedBuyer')}</span>}
                                 </div>
                             </>
                         )}
@@ -174,7 +265,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
                     <nav className="account-nav">
                         {navGroups.map((group) => (
                             <div key={group.title} className="account-nav-group">
-                                <div className="account-nav-group-title">{group.title}</div>
+                                <div className="account-nav-group-title">{t(`account.nav.${group.title}`)}</div>
                                 {group.items.map((item) => {
                                     const count = counterValue(item.counter);
                                     return (
@@ -186,11 +277,11 @@ const AccountShell: React.FC<AccountShellProps> = ({
                                                 `account-nav-link${isActive ? ' active' : ''}`
                                             }
                                         >
-                                            <span>{item.label}</span>
+                                            <span>{t(`account.nav.${item.label}`)}</span>
                                             {count > 0 && (
                                                 <span
                                                     className={`account-nav-count${item.counter === 'help' ? ' is-attention' : ''}`}
-                                                    title={item.counter === 'help' ? 'Support replied — reply needed' : undefined}
+                                                    title={item.counter === 'help' ? t('account.replyNeeded') : undefined}
                                                 >
                                                     {count}
                                                 </span>
@@ -202,19 +293,19 @@ const AccountShell: React.FC<AccountShellProps> = ({
                         ))}
                     </nav>
                     <button type="button" className="account-signout" onClick={handleSignOut}>
-                        Sign out
+                        {t('account.signOut')}
                     </button>
                 </aside>
                 <div className="account-content">
                     {pendingRecovery?.exists && (
                         <div className="account-recovery-alert" role="alert">
                             <div className="account-recovery-alert-text">
-                                <strong>Account recovery was requested ({pendingRecovery.publicId}).</strong>
+                                <strong>{t('account.recoveryRequested', {id: pendingRecovery.publicId})}</strong>
                                 <span>
                                     {pendingRecovery.status === 'Approved' && pendingRecovery.executeAfter
-                                        ? ` Two-factor authentication will be reset after ${new Date(pendingRecovery.executeAfter).toLocaleString()}.`
-                                        : ' The request is being reviewed by support.'}
-                                    {' '}If this wasn’t you, cancel it now.
+                                        ? t('account.recoveryReset', {date: formatDateTime(pendingRecovery.executeAfter)})
+                                        : t('account.recoveryReview')}
+                                    {' '}{t('account.recoveryNotYou')}
                                 </span>
                             </div>
                             <button
@@ -223,14 +314,14 @@ const AccountShell: React.FC<AccountShellProps> = ({
                                 onClick={handleCancelRecovery}
                                 disabled={isCancellingRecovery}
                             >
-                                {isCancellingRecovery ? 'Cancelling…' : 'Cancel request'}
+                                {isCancellingRecovery ? t('account.cancelling') : t('account.cancelRequest')}
                             </button>
                         </div>
                     )}
                     <div className="account-breadcrumbs">
-                        <Link to="/">Home</Link>
+                        <Link to="/">{t('common.nav.home')}</Link>
                         <span>/</span>
-                        <Link to="/account">Account</Link>
+                        <Link to="/account">{t('common.account')}</Link>
                         <span>/</span>
                         <span>{sectionLabel}</span>
                     </div>
@@ -244,7 +335,7 @@ const AccountShell: React.FC<AccountShellProps> = ({
                                 в сайдбаре (Settings) и в карточке на Overview, без дублей. */}
                             {actions ?? (
                                 <Link to="/account/help" className="btn btn-primary account-action-btn">
-                                    Help
+                                    {t('account.nav.help')}
                                 </Link>
                             )}
                         </div>

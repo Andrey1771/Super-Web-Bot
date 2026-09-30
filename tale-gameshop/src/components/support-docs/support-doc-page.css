@@ -73,12 +73,13 @@
     line-height: 1.2;
 }
 
+/* Длина строки одна на весь документ — см. --doc-measure ниже. */
 .support-doc-lead {
     margin: 0;
     color: var(--color-muted);
     font-size: 16px;
     line-height: 1.6;
-    max-width: 640px;
+    max-width: var(--doc-measure);
 }
 
 .support-doc-meta {
@@ -144,6 +145,20 @@
 .support-doc-callout p {
     margin: 0;
     color: var(--color-text);
+    max-width: var(--doc-measure);
+}
+
+/* Длина строки.
+
+   На коротких гайдах это не мешало, но у условий продажи строка вышла в 112 символов
+   при ширине карточки 932px: на такой строке глаз теряет начало следующей, а юридический
+   текст и без того читают через силу. 70ch — верх обычного диапазона (45–75), в наших
+   шрифте и кегле это около 70 символов.
+
+   Ограничиваем текст, а не карточку: сузив карточку, мы оставили бы пустую полосу
+   между ней и боковой колонкой. */
+.support-doc-page {
+    --doc-measure: 70ch;
 }
 
 /* Секции */
@@ -180,10 +195,52 @@
     font-size: 20px;
 }
 
+/* Якорь проступает при наведении на заголовок — постоянная решётка рядом с каждым
+   пунктом только шумит. С клавиатуры он виден по фокусу, а не только мышью. */
+.support-doc-section-anchor {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--color-muted);
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.support-doc-section-header:hover .support-doc-section-anchor,
+.support-doc-section-anchor:focus-visible {
+    opacity: 1;
+}
+
+.support-doc-section-anchor:hover {
+    background: #f1edff;
+    color: var(--color-primary);
+}
+
+.support-doc-section-anchor:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Заголовок, к которому только что перешли по ссылке, не должен прятаться под шапкой. */
+.support-doc-section {
+    scroll-margin-top: 120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .support-doc-section-anchor {
+        transition: none;
+    }
+}
+
 .support-doc-section-intro {
     margin: 0;
     color: var(--color-muted);
     line-height: 1.55;
+    max-width: var(--doc-measure);
 }
 
 /* Маркированный список с фирменным маркером */
@@ -193,6 +250,7 @@
     padding: 0;
     display: grid;
     gap: var(--space-12);
+    max-width: var(--doc-measure);
 }
 
 .support-doc-list li {
@@ -222,6 +280,8 @@
     display: grid;
     gap: var(--space-12);
     counter-reset: none;
+    /* Шире номера шага, чтобы текст шагов имел ту же меру, что и остальной. */
+    max-width: calc(var(--doc-measure) + 42px);
 }
 
 .support-doc-steps li {
@@ -274,17 +334,57 @@
 }
 
 /* Правая колонка */
+/* Колонка липнет целиком, обе карточки в ней движутся как одно.
+
+   Двух неверных попыток тут стоит избежать в будущем. Первая: липкая колонка со своей
+   прокруткой — рядом с прокруткой страницы появлялась вторая полоса. Вторая: липким
+   сделать только оглавление — тогда список документов уезжал ПОД него, и было видно
+   карточку со срезанным верхом.
+
+   Здесь у колонки нет своей прокрутки, а высоту отдаёт оглавление: если содержимое
+   не помещается, ужимается и прокручивается внутри себя именно оно, а список остаётся
+   целым. При двенадцати разделах не ужимается ничего. */
+/* Колонка тянется на всю высоту страницы — это «дорожка», по которой едет липкий блок.
+   Липкой её саму делать нельзя: липкий элемент живёт только внутри своей коробки, а она
+   была высотой со своё содержимое, и на середине документа оглавление отклеивалось. */
 .support-doc-aside {
+    align-self: stretch;
+}
+
+.support-doc-sticky {
+    position: sticky;
+    top: 110px;
+    max-height: calc(100vh - 130px);
     display: flex;
     flex-direction: column;
     gap: var(--space-20);
-    position: sticky;
-    top: 110px;
+}
+
+/* Прокрутка внутри — только на случай документа разделов на тридцать. При двенадцати
+   оглавление занимает 437px и не ужимается ни в каком разумном окне: в колонке оно
+   теперь одно и высоту ни с кем не делит. */
+.support-doc-toc {
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
 }
 
 .support-doc-toc,
 .support-doc-related {
     padding: var(--space-20);
+}
+
+/* В статье карточка вдвое шире, чем была в колонке: ссылки идут в два столбца,
+   иначе шесть строк тянутся узкой лентой по левому краю. */
+.support-doc-related ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-12) var(--space-24);
+}
+
+@media (max-width: 640px) {
+    .support-doc-related ul {
+        grid-template-columns: 1fr;
+    }
 }
 
 .support-doc-toc h3,
@@ -315,11 +415,80 @@
     color: var(--color-primary);
 }
 
+/* Текущий раздел. Полоска слева, а не только цвет: по длинному оглавлению глаз ищет
+   место, а не оттенок, и одного цвета для этого мало. */
+.support-doc-toc a.is-active {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.support-doc-toc a.is-active::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--color-primary);
+}
+
+.support-doc-toc a.is-active span {
+    opacity: 1;
+}
+
+.support-doc-toc li {
+    position: relative;
+}
+
 .support-doc-toc a span {
     font-size: 12px;
     font-weight: 700;
     color: var(--color-primary);
     opacity: 0.7;
+}
+
+/* Кнопка «наверх». Появляется, когда до верха уже далеко. */
+.support-doc-backtotop {
+    position: fixed;
+    left: 24px;
+    bottom: 24px;
+    z-index: 40;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #e4dbff;
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-primary);
+    box-shadow: 0 10px 26px rgba(84, 58, 193, 0.22);
+    cursor: pointer;
+    animation: support-doc-backtotop-in 0.18s ease;
+    transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.support-doc-backtotop:hover {
+    transform: translateY(-2px);
+    background: #faf7ff;
+}
+
+.support-doc-backtotop:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+@keyframes support-doc-backtotop-in {
+    from { opacity: 0; transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .support-doc-backtotop,
+    .support-doc-backtotop:hover {
+        animation: none;
+        transition: none;
+        transform: none;
+    }
 }
 
 .support-doc-related li {
@@ -379,7 +548,23 @@
     }
 
     .support-doc-aside {
+        align-self: auto;
+    }
+
+    .support-doc-sticky {
         position: static;
+        max-height: none;
+    }
+
+    /* На мобильном оглавление и так скрыто, а список документов должен быть виден
+       при любой высоте окна — здесь колонка обычный блок в потоке. */
+    .support-doc-toc {
+        overflow-y: visible;
+    }
+
+    .support-doc-related {
+        display: flex;
+        flex-direction: column;
     }
 
     /* Оглавление на мобильном не критично — прячем, чтобы не дублировать структуру. */

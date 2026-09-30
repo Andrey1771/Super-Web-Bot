@@ -1,5 +1,4 @@
 import React from "react";
-import Card from "../ui/Card";
 import type { OrderFilters, OrderStatus, PaymentStatus } from "../../types/orders";
 
 type OrdersFiltersProps = {
@@ -23,9 +22,13 @@ const statusOptions: (OrderStatus | "")[] = [
 
 const paymentOptions: (PaymentStatus | "")[] = ["", "UNPAID", "PAID", "REFUNDED", "FAILED"];
 
+/**
+ * Фильтры списка заказов. Своей карточки у них нет намеренно: фильтр без таблицы ничего не
+ * значит, поэтому он живёт внутри карточки списка, а не отдельным блоком над ней.
+ */
 const OrdersFilters: React.FC<OrdersFiltersProps> = ({ filters, onChange, onApply, onReset, isLoading }) => {
   return (
-    <Card>
+    <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="text-sm font-semibold">Search</label>
@@ -95,7 +98,7 @@ const OrdersFilters: React.FC<OrdersFiltersProps> = ({ filters, onChange, onAppl
           Apply
         </button>
       </div>
-    </Card>
+    </>
   );
 };
 

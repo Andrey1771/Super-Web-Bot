@@ -1,7 +1,16 @@
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { getCroppedAvatarFile } from '../../../utils/cropImage';
+import { getCroppedAvatarFile, hasTransparency } from '../../../utils/cropImage';
+import {
+  AVATAR_BACKDROPS,
+  DEFAULT_BACKDROP_COLOR,
+  backdropToCss,
+  tonesFromColor
+} from '../../../utils/avatarBackdrop';
+import './avatar-crop-modal.css';
+import { clamp } from "../../../utils/clamp";
 
 type AvatarCropModalProps = {
   imageSrc: string | null;
@@ -29,8 +38,6 @@ const VIEWPORT_SIZE = 360;
 const MASK_RATIO = 0.72;
 const MAX_ZOOM = 4;
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
 const getRotatedBounds = (width: number, height: number, rotation: number): Size => {
   const radians = (Math.PI * rotation) / 180;
   const sin = Math.abs(Math.sin(radians));
@@ -42,6 +49,7 @@ const getRotatedBounds = (width: number, height: number, rotation: number): Size
 };
 
 const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isSaving, onClose, onSave }) => {
+  const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
@@ -56,19 +64,31 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
   const [rotation, setRotation] = useState(0);
   const [cropSize, setCropSize] = useState<Size | null>(null);
   const [mediaSize, setMediaSize] = useState<Size | null>(null);
+  /** null — подложки нет: так для картинок без прозрачности, где она всё равно невидима. */
+  const [backdropColor, setBackdropColor] = useState<string | null>(null);
+  const [isTransparent, setIsTransparent] = useState(false);
+
+  /** Что выбрано, пока пользователь ничего не трогал. */
+  const defaultBackdropColor = isTransparent ? DEFAULT_BACKDROP_COLOR : null;
 
   const effectiveMaxZoom = useMemo(() => Math.max(MAX_ZOOM, Number((minZoom + 0.01).toFixed(2))), [minZoom]);
 
   const hasUnsavedChanges = useMemo(
-    () => Boolean(imageSrc) && (Math.abs(position.x) > 0 || Math.abs(position.y) > 0 || Math.abs(zoom - minZoom) > 0.001 || rotation !== 0),
-    [imageSrc, minZoom, position.x, position.y, rotation, zoom]
+    () =>
+      Boolean(imageSrc) &&
+      (Math.abs(position.x) > 0 ||
+        Math.abs(position.y) > 0 ||
+        Math.abs(zoom - minZoom) > 0.001 ||
+        rotation !== 0 ||
+        backdropColor !== defaultBackdropColor),
+    [backdropColor, defaultBackdropColor, imageSrc, minZoom, position.x, position.y, rotation, zoom]
   );
 
   const requestClose = useCallback(() => {
     if (isSaving) {
       return;
     }
-    if (hasUnsavedChanges && !window.confirm('Discard avatar changes?')) {
+    if (hasUnsavedChanges && !window.confirm(t('account.avatar.discard'))) {
       return;
     }
     onClose();
@@ -163,6 +183,8 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
       setRotation(0);
       setCropSize(null);
       setMediaSize(null);
+      setBackdropColor(null);
+      setIsTransparent(false);
       pointersRef.current.clear();
       pinchDistanceRef.current = null;
       dragRef.current = null;
@@ -205,6 +227,29 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
     setRotation(0);
   }, [imageSrc, isOpen]);
 
+  // Прозрачность проверяем один раз на картинку (дальше берётся из кэша). Пока ответа нет,
+  // ряд подложек не рисуется — иначе он моргал бы при каждом открытии модалки.
+  useEffect(() => {
+    if (!isOpen || !imageSrc) {
+      return;
+    }
+
+    let cancelled = false;
+    hasTransparency(imageSrc)
+      .then((transparent) => {
+        if (cancelled) {
+          return;
+        }
+        setIsTransparent(transparent);
+        setBackdropColor(transparent ? DEFAULT_BACKDROP_COLOR : null);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageSrc, isOpen]);
+
   useEffect(() => {
     const stage = stageRef.current;
     if (!isOpen || !stage) {
@@ -238,9 +283,18 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
     }
 
     const cropDiameter = cropSize?.width ?? VIEWPORT_SIZE * MASK_RATIO;
-    const file = await getCroppedAvatarFile(imageSrc, position, zoom, rotation, VIEWPORT_SIZE, cropDiameter, 512);
+    const file = await getCroppedAvatarFile(
+      imageSrc,
+      position,
+      zoom,
+      rotation,
+      VIEWPORT_SIZE,
+      cropDiameter,
+      512,
+      backdropColor
+    );
     await onSave(file);
-  }, [cropSize, imageSrc, isSaving, onSave, position, rotation, zoom]);
+  }, [backdropColor, cropSize, imageSrc, isSaving, onSave, position, rotation, zoom]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -318,6 +372,11 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
     setClampedZoom(minZoom);
   };
 
+  const tones = backdropColor ? tonesFromColor(backdropColor) : null;
+  // Цвет из пипетки не совпадает ни с одним свотчем палитры — тогда подсвечен «свой цвет».
+  const isCustomColor =
+    Boolean(backdropColor) && !AVATAR_BACKDROPS.some((item) => item.color === backdropColor);
+
   if (!isOpen || !imageSrc) {
     return null;
   }
@@ -334,10 +393,10 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
       >
         <div className="ts-avatar-crop-modal__header">
           <div>
-            <h3 id="avatar-crop-title">Edit avatar</h3>
-            <p>Drag to reposition. Use zoom to fit.</p>
+            <h3 id="avatar-crop-title">{t('account.avatar.title')}</h3>
+            <p>{t('account.avatar.hint')}</p>
           </div>
-          <button type="button" className="ts-modal-close" onClick={requestClose} aria-label="Close avatar editor">
+          <button type="button" className="ts-modal-close" onClick={requestClose} aria-label={t('account.avatar.closeEditor')}>
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
@@ -352,9 +411,18 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
             onPointerCancel={onPointerUp}
             onWheel={onWheel}
           >
+            {/* Живое превью подложки: тот же градиент, что уйдёт в файл, и ровно под кругом
+                маски — видно, что получится, ещё до сохранения. */}
+            {tones && (
+              <div
+                className="ts-avatar-cropper-backdrop"
+                aria-hidden="true"
+                style={{ background: backdropToCss(tones) }}
+              />
+            )}
             <img
               src={imageSrc}
-              alt="Crop avatar"
+              alt={t('account.avatar.cropAlt')}
               draggable={false}
               onLoad={handleImageLoad}
               style={{
@@ -373,7 +441,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
           <aside className="ts-avatar-crop-controls">
             {/* Превью убрано: круглая маска на сцене и есть живое превью результата. */}
             <label className="ts-avatar-crop-controls__group">
-              <span>Zoom</span>
+              <span>{t('common.zoom')}</span>
               <div className="ts-avatar-crop-controls__zoom-row">
                 <button type="button" className="btn btn-outline" onClick={() => setClampedZoom(zoom - 0.1)}>
                   -
@@ -394,7 +462,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
             </label>
 
             <label className="ts-avatar-crop-controls__group">
-              <span>Rotate</span>
+              <span>{t('common.rotate')}</span>
               <input
                 type="range"
                 min={-45}
@@ -413,18 +481,61 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
                 <FontAwesomeIcon icon={faRotateRight} /> 90°
               </button>
               <button type="button" className="btn btn-outline" onClick={handleResetFit}>
-                Fit
+                {t('common.fit')}
               </button>
             </div>
+
+            {isTransparent && (
+              <div className="ts-avatar-crop-controls__group">
+                <span>{t('account.avatar.backdrop')}</span>
+                <div className="ts-avatar-backdrops" role="radiogroup" aria-label={t('account.avatar.backdropAria')}>
+                  {AVATAR_BACKDROPS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={backdropColor === option.color}
+                      title={t(`account.avatar.backdrops.${option.id}`, { defaultValue: option.label })}
+                      className={['ts-avatar-backdrop', backdropColor === option.color ? 'is-active' : '']
+                        .filter(Boolean)
+                        .join(' ')}
+                      style={{ background: backdropToCss(tonesFromColor(option.color)) }}
+                      onClick={() => setBackdropColor(option.color)}
+                    >
+                      <span className="visually-hidden">{t(`account.avatar.backdrops.${option.id}`, { defaultValue: option.label })}</span>
+                    </button>
+                  ))}
+                  {/* Пипетка последней: палитра закрывает обычные случаи, а этот пункт —
+                      для аватарки, которой нужен свой цвет. */}
+                  <label
+                    className={['ts-avatar-backdrop', 'ts-avatar-backdrop--custom', isCustomColor ? 'is-active' : '']
+                      .filter(Boolean)
+                      .join(' ')}
+                    title={t('account.avatar.customColour')}
+                    style={isCustomColor && tones ? { background: backdropToCss(tones) } : undefined}
+                  >
+                    <input
+                      type="color"
+                      value={backdropColor ?? DEFAULT_BACKDROP_COLOR}
+                      onChange={(event) => setBackdropColor(event.target.value)}
+                    />
+                    <span className="visually-hidden">{t('account.avatar.customColour')}</span>
+                  </label>
+                </div>
+                <span className="ts-avatar-crop-controls__hint">
+                  {t('account.avatar.transparentHint')}
+                </span>
+              </div>
+            )}
           </aside>
         </div>
 
         <div className="ts-avatar-crop-modal__footer">
           <button type="button" className="btn btn-outline" onClick={requestClose} disabled={isSaving}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save avatar'}
+            {isSaving ? t('common.saving') : t('account.avatar.save')}
           </button>
         </div>
       </div>

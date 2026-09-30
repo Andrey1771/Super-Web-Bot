@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import "./newsletter-pages.css";
@@ -8,6 +9,7 @@ type PageState = "working" | "success" | "error";
 
 // Открывается по ссылке из письма «Confirm your Tale Shop subscription».
 export default function NewsletterConfirmPage() {
+    const { t } = useTranslation();
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token") ?? "";
     const [state, setState] = useState<PageState>("working");
@@ -39,35 +41,33 @@ export default function NewsletterConfirmPage() {
                 {state === "working" && (
                     <>
                         <div className="newsletter-action-spinner" aria-hidden="true" />
-                        <h1>Confirming…</h1>
-                        <p className="muted">One moment — we&rsquo;re confirming your subscription.</p>
+                        <h1>{t("newsletter.confirming")}</h1>
+                        <p className="muted">{t("newsletter.confirmingText")}</p>
                     </>
                 )}
                 {state === "success" && (
                     <>
                         <span className="newsletter-action-icon is-success" aria-hidden="true">✓</span>
-                        <h1>Subscription confirmed</h1>
+                        <h1>{t("newsletter.confirmed")}</h1>
                         <p className="muted">
-                            You&rsquo;re on the list. We&rsquo;ll email you when fresh deals go live — and you can
-                            unsubscribe with one click from any email.
+                            {t("newsletter.confirmedText")}
                         </p>
                         <div className="newsletter-action-buttons">
-                            <Link to="/deals" className="btn btn-primary">Browse deals</Link>
-                            <Link to="/" className="btn btn-outline">Back to home</Link>
+                            <Link to="/deals" className="btn btn-primary">{t("newsletter.browseDeals")}</Link>
+                            <Link to="/" className="btn btn-outline">{t("common.backToHome")}</Link>
                         </div>
                     </>
                 )}
                 {state === "error" && (
                     <>
                         <span className="newsletter-action-icon is-error" aria-hidden="true">✕</span>
-                        <h1>Link invalid or already used</h1>
+                        <h1>{t("newsletter.linkUsed")}</h1>
                         <p className="muted">
-                            This confirmation link doesn&rsquo;t work anymore. If you already confirmed — you&rsquo;re
-                            all set. Otherwise, subscribe again to get a fresh link.
+                            {t("newsletter.linkUsedText")}
                         </p>
                         <div className="newsletter-action-buttons">
-                            <Link to="/deals" className="btn btn-primary">Subscribe on Deals</Link>
-                            <Link to="/" className="btn btn-outline">Back to home</Link>
+                            <Link to="/deals" className="btn btn-primary">{t("newsletter.subscribeOnDeals")}</Link>
+                            <Link to="/" className="btn btn-outline">{t("common.backToHome")}</Link>
                         </div>
                     </>
                 )}

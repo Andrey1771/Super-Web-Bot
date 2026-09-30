@@ -35,12 +35,11 @@ const UserStatsPage: React.FC = () => {
     const [chartType, setChartType] = useState<"pie" | "bar">("pie");
     const [groupBy, setGroupBy] = useState<"name" | "gameId">("name");
     const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-    const { setHeaderActions, setPageTitle } = useAdminHeader();
+    const { setPageTitle } = useAdminHeader();
 
     useEffect(() => {
         setPageTitle("Game Statistics");
-        setHeaderActions([]);
-    }, [setHeaderActions, setPageTitle]);
+    }, [setPageTitle]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -146,7 +145,7 @@ const UserStatsPage: React.FC = () => {
             <PageHeader
                 title="Game statistics"
                 description="Track cart activity, top categories, and distribution trends."
-                breadcrumbs={["Analytics", "Game statistics"]}
+                breadcrumbs={["Reports", "Cart statistics"]}
             />
 
             <div className="admin-grid admin-grid--3">

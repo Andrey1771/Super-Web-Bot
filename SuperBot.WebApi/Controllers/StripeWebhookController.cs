@@ -109,12 +109,13 @@ namespace SuperBot.WebApi.Controllers
                     : (false, StatusCode(StatusCodes.Status500InternalServerError, "Refund not applied yet."));
             }
 
-            // Чарджбек: деньги оспорены, а ключ уже у покупателя — это всегда к человеку.
-            if (stripeEvent.Type == "charge.dispute.created")
+            // Чарджбек: деньги оспорены, а ключ уже у покупателя. Открытие, смена статуса (срок ответа, отправленные
+            // доказательства) и закрытие — одним обработчиком: итог спора решает, вернуть ли кэшбэк или считать деньги возвратом.
+            if (stripeEvent.Type is "charge.dispute.created" or "charge.dispute.updated" or "charge.dispute.closed")
             {
                 if (stripeEvent.Data.Object is not Dispute dispute || string.IsNullOrWhiteSpace(dispute.PaymentIntentId))
                 {
-                    _logger.LogWarning("charge.dispute.created without a usable Dispute payload ({EventId}).", stripeEvent.Id);
+                    _logger.LogWarning("{Type} without a usable Dispute payload ({EventId}).", stripeEvent.Type, stripeEvent.Id);
                     return (true, Ok());
                 }
 
@@ -125,7 +126,10 @@ namespace SuperBot.WebApi.Controllers
                     Reason = dispute.Reason,
                     AmountMinor = dispute.Amount,
                     Currency = dispute.Currency ?? "usd",
-                    EventId = stripeEvent.Id
+                    EventId = stripeEvent.Id,
+                    Status = dispute.Status,
+                    EvidenceDueBy = dispute.EvidenceDetails?.DueBy,
+                    HasEvidence = dispute.EvidenceDetails?.HasEvidence ?? false
                 });
 
                 return applied

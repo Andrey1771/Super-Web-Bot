@@ -28,6 +28,14 @@ RUN dotnet publish SuperBot.WebApi/SuperBot.WebApi.csproj -c Release -o /app/pub
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
+# ffmpeg нужен самому приложению: из видео вынимается кадр для превью и его длительность
+# (ffprobe). Без него загруженное видео показывается в медиатеке заглушкой «Preview missing»,
+# а кнопка «Generate preview» отвечает ошибкой — код это проверяет и честно об этом говорит,
+# но лечится это здесь, а не в коде.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Копируем собранное приложение
 COPY --from=build /app/published ./ 
 

@@ -5,6 +5,7 @@ import { IApiClient } from '../iterfaces/i-api-client';
 import container from "../inversify.config";
 import { IKeycloakService } from '../iterfaces/i-keycloak-service';
 import {IUrlService} from "../iterfaces/i-url-service";
+import { currentCountry, currentLang } from "../context/site-preferences";
 
 @injectable()
 export class ApiClient implements IApiClient {
@@ -25,14 +26,34 @@ export class ApiClient implements IApiClient {
 
 // Перехватчик запросов
         this._api.interceptors.request.use(
-            (config: any) => {
-                const token = this._keycloakService.keycloak.token; // Получаем токен (если он существует)
+            async (config: any) => {
+                const keycloak = this._keycloakService.keycloak;
+                // Токен доступа живёт пять минут. Перед запросом обновляем его, если он истёк или истечёт
+                // в ближайшие 30 секунд, — иначе после пяти минут на странице любой вход в API давал 401,
+                // хотя человек оставался «вошедшим». Не получилось обновить — шлём как есть: сервер
+                // ответит 401 сам, а не мы заранее.
+                if (keycloak?.authenticated && typeof keycloak.updateToken === 'function') {
+                    try {
+                        await keycloak.updateToken(30);
+                    } catch {
+                        // Сессия Keycloak могла закончиться — решает сервер по токену ниже.
+                    }
+                }
+                const token = keycloak?.token;
                 if (token) {
                     config.headers = {
                         ...config.headers,
                         Authorization: `Bearer ${token}`,
                     };
                 }
+                // Страна покупателя — сервер по ней говорит, где активируется ключ, и выдаёт подходящий.
+                const country = currentCountry();
+                if (country) {
+                    config.headers = { ...config.headers, 'X-Buyer-Country': country };
+                }
+                // Язык сайта — сервер записывает его в заказ и шлёт письма на нём. Язык браузера
+                // тут не подходит: покупатель мог выбрать в шапке другой.
+                config.headers = { ...config.headers, 'Accept-Language': currentLang() };
                 return config;
             },
             (error: AxiosError) => {
@@ -46,9 +67,10 @@ export class ApiClient implements IApiClient {
                 return response;
             },
             (error: AxiosError) => {
-                if (error.response && error.response.status === 401) {
-                    // Логика при 401 Unauthorized, например, разлогин пользователя
-                    console.error('Unauthorized, redirecting to login...');
+                if (error.response && error.response.status === 401 && this._keycloakService.keycloak?.authenticated) {
+                    // 401 у вошедшего — токен мёртв, обновить перед запросом не удалось: сессия закончилась.
+                    // Снимаем вход и показываем плашку «Session expired» вместо молчаливых ошибок.
+                    this._keycloakService.markSessionExpired();
                 }
                 return Promise.reject(error);
             }

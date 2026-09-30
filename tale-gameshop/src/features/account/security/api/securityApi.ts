@@ -1,9 +1,5 @@
-import container from '../../../../inversify.config';
-import IDENTIFIERS from '../../../../constants/identifiers';
-import type { IApiClient } from '../../../../iterfaces/i-api-client';
 import type {AccountSecurityStatus, SecurityActionResponse} from '../types';
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { apiClient } from '../../../../api/client';
 
 export const getAccountSecurityStatus = async (): Promise<AccountSecurityStatus> => {
     const response = await apiClient().get('/api/account/security/status');
@@ -20,11 +16,6 @@ export const changeEmail = async (payload: { newEmail: string; password: string 
 
 export const changePassword = async (payload: { currentPassword: string; newPassword: string }): Promise<SecurityActionResponse> => {
     const response = await apiClient().post('/api/account/security/password/change', payload);
-    return response.data;
-};
-
-export const setupTwoFactor = async (): Promise<SecurityActionResponse> => {
-    const response = await apiClient().post('/api/account/security/2fa/setup');
     return response.data;
 };
 

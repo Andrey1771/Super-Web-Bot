@@ -1,10 +1,11 @@
+import {useTranslation} from 'react-i18next';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
 import {Link} from 'react-router-dom';
 import {createSupportTicket, uploadSupportAttachment} from '../support/supportApi';
 import type {CreateSupportTicketPayload, SupportTicket} from '../support/types';
-import {supportDocs} from '../../../content/support/docs';
-import {supportCategories} from '../../../content/support/categories';
+import {getSupportDocs} from '../../../content/support/docs';
+import {supportCategories, supportCategoryLabel} from '../../../content/support/categories';
 import '../pages/account-help-new-request-modal.css';
 
 interface NewSupportRequestModalProps {
@@ -18,7 +19,8 @@ interface NewSupportRequestModalProps {
 const issueOptions = supportCategories;
 
 const quickActionIds = ['activation-guide', 'refund-policy', 'payment-methods'];
-const quickActions = supportDocs
+// Считается при рендере: названия документов — на языке сайта, а он может смениться без перезагрузки.
+const getQuickActions = () => getSupportDocs()
     .filter((doc) => quickActionIds.includes(doc.id))
     .map((doc) => ({label: doc.title, to: doc.route}));
 
@@ -37,6 +39,8 @@ const formatFileSize = (size: number): string => {
 };
 
 const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, onClose, onSubmitted, openerRef}) => {
+    const {t} = useTranslation();
+    const quickActions = getQuickActions();
     const dialogRef = useRef<HTMLDivElement | null>(null);
     const firstFieldRef = useRef<HTMLSelectElement | null>(null);
     const [category, setCategory] = useState('');
@@ -134,19 +138,19 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
         const invalidFiles = files.filter((file) => !ALLOWED_TYPES.includes(file.type));
 
         if (invalidFiles.length > 0) {
-            setAttachmentError('Unsupported file format. Please upload PNG, JPG, or PDF files.');
+            setAttachmentError(t('account.support.errFormat'));
             return;
         }
 
         const nextFiles = [...attachments, ...incoming];
         if (nextFiles.length > MAX_ATTACHMENTS) {
-            setAttachmentError(`You can upload up to ${MAX_ATTACHMENTS} files.`);
+            setAttachmentError(t('account.support.errCount', {count: MAX_ATTACHMENTS}));
             return;
         }
 
         const oversized = nextFiles.find((file) => file.size > MAX_FILE_SIZE);
         if (oversized) {
-            setAttachmentError('Each file must be 10MB or smaller.');
+            setAttachmentError(t('account.support.errSize'));
             return;
         }
 
@@ -173,9 +177,9 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
 
     const validate = () => {
         const nextErrors = {
-            category: category ? '' : 'Please select an issue category.',
-            subject: subject.trim() ? '' : 'Subject is required.',
-            description: description.trim() ? '' : 'Description is required.'
+            category: category ? '' : t('account.support.errCategory'),
+            subject: subject.trim() ? '' : t('account.support.errSubject'),
+            description: description.trim() ? '' : t('account.support.errDescription')
         };
         setErrors(nextErrors);
         return nextErrors;
@@ -205,7 +209,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                     await uploadSupportAttachment(created.ticket.id, created.firstMessageId, attachments);
                 } catch (error) {
                     console.warn('Attachment upload failed', error);
-                    setSubmitWarning('Ticket created, but attachments failed. You can add them in a follow-up.');
+                    setSubmitWarning(t('account.support.attachmentsFailed'));
                 }
             }
 
@@ -213,7 +217,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
             onClose();
         } catch (error) {
             console.error('Failed to create support request', error);
-            setSubmitError('Something went wrong. Please try again.');
+            setSubmitError(t('account.support.failed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -225,7 +229,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
         if (isSubmitting) {
             return;
         }
-        if (hasDraft && !window.confirm('Discard draft?')) {
+        if (hasDraft && !window.confirm(t('account.support.discardDraft'))) {
             return;
         }
         onClose();
@@ -253,12 +257,12 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                 aria-describedby="new-request-description"
             >
                 <div className="new-request-modal-header">
-                    <h2 id="new-request-title">Submit a new request</h2>
+                    <h2 id="new-request-title">{t('account.support.title')}</h2>
                     <button
                         type="button"
                         className="new-request-modal-close"
                         onClick={() => handleRequestClose('button')}
-                        aria-label="Close"
+                        aria-label={t('common.close')}
                         disabled={isSubmitting}
                     >
                         ×
@@ -268,7 +272,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                     <form className="new-request-form" id="new-request-form" onSubmit={handleSubmit}>
                         {submitError && <div className="new-request-form-error">{submitError}</div>}
                         <div className="new-request-form-field">
-                            <label htmlFor="support-issue">What can we help you with? <span aria-hidden="true">*</span></label>
+                            <label htmlFor="support-issue">{t('account.support.what')} <span aria-hidden="true">*</span></label>
                             <select
                                 id="support-issue"
                                 ref={firstFieldRef}
@@ -283,11 +287,11 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                                 required
                             >
                                 <option value="" disabled>
-                                    Select an issue...
+                                    {t('account.support.selectIssue')}
                                 </option>
                                 {issueOptions.map((option) => (
                                     <option key={option} value={option}>
-                                        {option}
+                                        {supportCategoryLabel(option)}
                                     </option>
                                 ))}
                             </select>
@@ -295,7 +299,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                         </div>
 
                         <div className="new-request-form-field">
-                            <label htmlFor="support-subject">Subject <span aria-hidden="true">*</span></label>
+                            <label htmlFor="support-subject">{t('account.help.subject')} <span aria-hidden="true">*</span></label>
                             <input
                                 id="support-subject"
                                 type="text"
@@ -306,7 +310,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                                         setErrors((prev) => ({...prev, subject: ''}));
                                     }
                                 }}
-                                placeholder="Enter a brief subject"
+                                placeholder={t('account.support.subjectPlaceholder')}
                                 className={errors.subject ? 'has-error' : ''}
                                 required
                             />
@@ -314,7 +318,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                         </div>
 
                         <div className="new-request-form-field">
-                            <label htmlFor="support-description">Description <span aria-hidden="true">*</span></label>
+                            <label htmlFor="support-description">{t('account.support.description')} <span aria-hidden="true">*</span></label>
                             <textarea
                                 id="support-description"
                                 value={description}
@@ -324,7 +328,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                                         setErrors((prev) => ({...prev, description: ''}));
                                     }
                                 }}
-                                placeholder="Describe your issue or question in detail..."
+                                placeholder={t('account.support.descriptionPlaceholder')}
                                 rows={5}
                                 className={errors.description ? 'has-error' : ''}
                                 required
@@ -333,7 +337,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                         </div>
 
                         <div className="new-request-form-field">
-                            <span className="new-request-attach-title">Attach file <span className="muted">(optional)</span></span>
+                            <span className="new-request-attach-title">{t('account.support.attach')} <span className="muted">{t('common.optional')}</span></span>
                             <div
                                 className="new-request-attach-box"
                                 onDragOver={(event) => event.preventDefault()}
@@ -348,8 +352,8 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                                     className="new-request-file-input"
                                 />
                                 <label htmlFor="support-attachments" className="new-request-attach-label">
-                                    <span className="new-request-attach-button">Choose file</span>
-                                    <span className="new-request-attach-text">Attach screenshots, receipts, or other files.</span>
+                                    <span className="new-request-attach-button">{t('account.support.chooseFile')}</span>
+                                    <span className="new-request-attach-text">{t('account.support.attachHint')}</span>
                                 </label>
                             </div>
                             {attachmentError && <span className="field-error">{attachmentError}</span>}
@@ -365,7 +369,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                                                 className="new-request-remove"
                                                 onClick={() => handleRemoveAttachment(file.name)}
                                             >
-                                                Remove
+                                                {t('common.remove')}
                                             </button>
                                         </li>
                                     ))}
@@ -374,13 +378,13 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                         </div>
 
                         <p id="new-request-description" className="new-request-note">
-                            Our team responds 24/7. Average response time: 2–4 hours.
+                            {t('account.support.teamNote')}
                         </p>
                         {submitWarning && <div className="new-request-form-warning">{submitWarning}</div>}
                     </form>
 
                     <aside className="new-request-quick-actions">
-                        <h3>Quick actions</h3>
+                        <h3>{t('account.support.quickActions')}</h3>
                         <div className="new-request-quick-list">
                             {quickActions.map((action) => (
                                 <Link key={action.label} to={action.to} className="new-request-quick-link">
@@ -389,13 +393,13 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                             ))}
                         </div>
                         <p className="new-request-quick-note">
-                            Looking for answers? Browse guides or policies while we review your request.
+                            {t('account.support.quickNote')}
                         </p>
                     </aside>
                 </div>
                 <div className="new-request-modal-footer">
                     <button type="button" className="btn btn-outline" onClick={() => handleRequestClose('button')} disabled={isSubmitting}>
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button
                         type="submit"
@@ -403,7 +407,7 @@ const NewSupportRequestModal: React.FC<NewSupportRequestModalProps> = ({isOpen, 
                         className="btn btn-primary"
                         disabled={!isFormReady || isSubmitting}
                     >
-                        {isSubmitting ? 'Submitting...' : 'Submit request'}
+                        {isSubmitting ? t('common.submitting') : t('account.support.submit')}
                     </button>
                 </div>
             </div>

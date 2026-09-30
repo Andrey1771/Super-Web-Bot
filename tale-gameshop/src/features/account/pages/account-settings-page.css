@@ -213,6 +213,11 @@
     accent-color: var(--color-primary);
 }
 
+/* Настройка внутри подписки: сдвиг показывает, что она подчинена галочке над ней. */
+.settings-checkbox--nested {
+    margin-left: 26px;
+}
+
 /* Транзакционные письма: галка всегда включена и недоступна — визуально приглушаем. */
 .settings-checkbox--locked {
     color: var(--color-text-muted, #6b7280);
@@ -312,21 +317,80 @@
     margin-top: var(--space-12);
 }
 
-.settings-telegram-status {
+/* Telegram — строка интеграции: логотип, текст, справа статус и действие. */
+.settings-telegram-row {
     display: flex;
     align-items: center;
-    gap: var(--space-12);
+    gap: var(--space-16);
+}
+
+.settings-telegram-icon {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 12px;
+    background: #2aabee;
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+}
+
+.settings-telegram-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-telegram-text h3 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.settings-telegram-text p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-muted);
+}
+
+.settings-telegram-side {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10, 10px);
+    flex: none;
     flex-wrap: wrap;
-    margin-top: var(--space-12);
+    justify-content: flex-end;
+}
+
+.settings-telegram-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.settings-telegram-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a78bfa, #2aabee);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
 }
 
 .settings-telegram-badge {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     padding: 4px 10px;
     border-radius: 999px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     background: var(--color-surface-muted, rgba(148, 163, 184, 0.16));
     color: var(--color-muted);
 }
@@ -334,6 +398,61 @@
 .settings-telegram-badge--on {
     background: rgba(16, 185, 129, 0.15);
     color: #047857;
+}
+
+.settings-telegram-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.settings-telegram-btn {
+    height: 36px;
+    min-height: 0;
+    padding: 0 14px;
+    font-size: 13px;
+}
+
+.settings-telegram-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.settings-telegram-link:hover:not(:disabled) {
+    color: var(--color-primary);
+}
+
+.settings-telegram-link:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.settings-telegram-note {
+    margin: var(--space-12) 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #b42318;
+}
+
+@media (max-width: 640px) {
+    .settings-telegram-row {
+        flex-wrap: wrap;
+    }
+
+    .settings-telegram-side {
+        width: 100%;
+        justify-content: flex-start;
+        padding-left: calc(44px + var(--space-16));
+    }
 }
 
 .settings-checkbox--danger input {
@@ -486,212 +605,5 @@
     .settings-recommendation-card {
         min-width: 220px;
         scroll-snap-align: start;
-    }
-}
-
-
-.ts-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(17, 24, 39, 0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1200;
-    padding: 20px;
-}
-
-.ts-modal {
-    width: min(720px, 100%);
-    background: #fff;
-    border-radius: var(--radius-lg);
-    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
-}
-
-.ts-modal-close {
-    border: none;
-    background: transparent;
-    color: var(--color-muted);
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    cursor: pointer;
-}
-
-.ts-modal-close:hover {
-    background: rgba(124, 58, 237, 0.1);
-    color: var(--color-primary);
-}
-
-.ts-avatar-crop-modal {
-    display: flex;
-    flex-direction: column;
-}
-
-.ts-avatar-crop-modal__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.ts-avatar-crop-modal__header h3 {
-    margin: 0;
-}
-
-.ts-avatar-crop-modal__header p {
-    margin: 6px 0 0;
-    font-size: 13px;
-    color: var(--color-muted);
-}
-
-.ts-avatar-crop-modal__body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 240px;
-    gap: 20px;
-    padding: 24px;
-}
-
-.ts-avatar-cropper-stage {
-    position: relative;
-    min-height: 360px;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    background: #111827;
-    touch-action: none;
-    cursor: grab;
-}
-
-.ts-avatar-cropper-stage:active {
-    cursor: grabbing;
-}
-
-.ts-avatar-cropper-stage > img {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    user-select: none;
-    transform-origin: center;
-    max-width: none;
-    max-height: none;
-}
-
-.ts-avatar-cropper-mask {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-}
-
-.ts-avatar-cropper-mask::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at center, transparent 0 34%, rgba(17, 24, 39, 0.62) 35%);
-}
-
-.ts-avatar-cropper-mask::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 72%;
-    aspect-ratio: 1;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.72);
-}
-
-.ts-avatar-crop-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.ts-avatar-crop-controls__label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 13px;
-    color: var(--color-muted);
-}
-
-.ts-avatar-crop-preview {
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    background: #eef1f7;
-    overflow: hidden;
-}
-
-.ts-avatar-crop-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.ts-avatar-crop-controls__group {
-    display: grid;
-    gap: 8px;
-    font-size: 14px;
-}
-
-
-.ts-avatar-crop-controls__zoom-row {
-    display: grid;
-    grid-template-columns: 38px 1fr 38px;
-    gap: 8px;
-    align-items: center;
-}
-
-.ts-avatar-crop-controls__zoom-row .btn {
-    height: 34px;
-    padding: 0;
-    font-size: 18px;
-    line-height: 1;
-}
-
-.ts-avatar-crop-controls__zoom-value {
-    font-size: 12px;
-    color: var(--color-muted);
-}
-
-.ts-avatar-crop-controls__buttons {
-    display: flex;
-    gap: 8px;
-}
-
-.ts-avatar-crop-controls__buttons .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.ts-avatar-crop-modal__footer {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 18px 24px 24px;
-    border-top: 1px solid var(--color-border);
-}
-
-@media (max-width: 768px) {
-    .ts-modal-overlay {
-        padding: 10px;
-    }
-
-    .ts-avatar-crop-modal__body {
-        grid-template-columns: 1fr;
-    }
-
-    .ts-avatar-cropper-stage {
-        min-height: 280px;
-    }
-
-    .ts-avatar-crop-controls__buttons {
-        flex-wrap: wrap;
-    }
-
-    .ts-avatar-crop-modal__footer {
-        justify-content: flex-end;
     }
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './breadcrumbs.css';
 
 export type Crumb = {
@@ -18,6 +19,7 @@ export type Crumb = {
  * Последняя ступень намеренно не ссылка — вести на страницу, где уже находишься, незачем.
  */
 const Breadcrumbs: React.FC<{ items: Crumb[] }> = ({ items }) => {
+    const { t } = useTranslation();
     if (items.length === 0) {
         return null;
     }
@@ -34,7 +36,7 @@ const Breadcrumbs: React.FC<{ items: Crumb[] }> = ({ items }) => {
     };
 
     return (
-        <nav className="breadcrumbs" aria-label="Breadcrumb">
+        <nav className="breadcrumbs" aria-label={t('common.breadcrumb')}>
             <ol>
                 {items.map((item, index) => (
                     <li key={`${item.label}-${index}`}>
@@ -52,10 +54,11 @@ const Breadcrumbs: React.FC<{ items: Crumb[] }> = ({ items }) => {
                 ))}
             </ol>
             {/* Разметку вставляем сырой: React экранировал бы скобки и кавычки,
-                и робот получил бы не JSON, а текст. */}
+                и робот получил бы не JSON, а текст. «<» экранируем: название товара
+                с «</script>» иначе закрыло бы тег и вставило свой скрипт. */}
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
             />
         </nav>
     );

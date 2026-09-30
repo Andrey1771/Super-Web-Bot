@@ -188,7 +188,9 @@ money fields, so a tampered price cannot reach Stripe.
 | --- | --- |
 | `payment_intent.succeeded` | Creates the order and dispenses keys |
 | `charge.refunded` | Full refund → order `REFUNDED`; partial → `PARTIALLY_REFUNDED` |
-| `charge.dispute.created` | Marks payment `DISPUTED` and raises an admin "Payment issue" |
+| `charge.dispute.created` | Marks payment `DISPUTED`, takes back the order's cashback and raises an admin "Payment issue" with the evidence deadline |
+| `charge.dispute.updated` | Keeps the dispute status and evidence deadline on the order and in the "Payment issue" up to date |
+| `charge.dispute.closed` | Won (or inquiry closed) → payment back to `PAID`, cashback given back, issue resolved. Lost → `DISPUTE_LOST`, counted as a refund (reports, tax reversal, cashback spent on the order returned), issue stays open |
 
 Refunds and chargebacks are handled by `PaymentReconciliationService`. Keys are **not** revoked
 automatically — a delivered key may already be activated, so the order is flagged for a human

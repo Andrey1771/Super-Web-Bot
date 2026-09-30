@@ -21,6 +21,14 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("excerpt")]
         public string Excerpt { get; set; }
 
+        [BsonElement("titleI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? TitleI18n { get; set; }
+
+        [BsonElement("excerptI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? ExcerptI18n { get; set; }
+
         [BsonElement("coverAssetId")]
         public string CoverAssetId { get; set; }
 
@@ -50,6 +58,10 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("tags")]
         public string[] Tags { get; set; }
+
+        [BsonElement("tagsI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, List<string>>? TagsI18n { get; set; }
 
         [BsonElement("topics")]
         public string[] Topics { get; set; }

@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React, {useEffect, useState} from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faChevronRight} from '@fortawesome/free-solid-svg-icons';
@@ -23,6 +24,7 @@ const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
     onResend,
     onChangeEmail
 }) => {
+    const {t} = useTranslation();
     const [cooldown, setCooldown] = useState(0);
     const [isSending, setIsSending] = useState(false);
 
@@ -53,8 +55,8 @@ const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
         return (
             <div className="card security-card" data-testid="security-email-card" aria-busy="true">
                 <div className="security-card-header">
-                    <h3>Email verification</h3>
-                    <span className="security-status-pill is-off">Loading</span>
+                    <h3>{t('account.security.email.title')}</h3>
+                    <span className="security-status-pill is-off">{t('common.loading')}</span>
                 </div>
                 <span className="security-skeleton-line" />
                 <span className="security-skeleton-line is-short" />
@@ -65,24 +67,24 @@ const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
     return (
         <div className="card security-card" data-testid="security-email-card">
             <div className="security-card-header">
-                <h3>Email verification</h3>
+                <h3>{t('account.security.email.title')}</h3>
                 <span className={`security-status-pill ${emailVerified ? 'is-on' : ''}`}>
-                    {emailVerified ? 'Verified' : 'Not verified'}
+                    {emailVerified ? t('common.verified') : t('common.notVerified')}
                 </span>
             </div>
             {emailVerified ? (
                 <>
-                    <p className="security-muted">Purchases and recovery are protected.</p>
+                    <p className="security-muted">{t('account.security.email.protected')}</p>
                     <div className="security-email-actions">
                         <button type="button" className="btn btn-outline security-secondary-btn" onClick={onChangeEmail}>
-                            Change email
+                            {t('account.security.email.changeEmail')}
                             <FontAwesomeIcon icon={faChevronRight} />
                         </button>
                     </div>
                 </>
             ) : (
                 <>
-                    <p className="security-muted">Verify email to secure purchases and recovery.</p>
+                    <p className="security-muted">{t('account.security.email.verifyHint')}</p>
                     <div className="security-email-actions">
                         <button
                             type="button"
@@ -90,10 +92,10 @@ const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
                             onClick={handleResend}
                             disabled={isBusy || isSending || cooldown > 0}
                         >
-                            {cooldown > 0 ? `Sent. Resend in ${formatCooldown(cooldown)}` : 'Resend verification email'}
+                            {cooldown > 0 ? t('account.security.email.sentResendIn', {time: formatCooldown(cooldown)}) : t('account.security.email.resend')}
                         </button>
                         <button type="button" className="btn btn-outline security-secondary-btn" onClick={onChangeEmail}>
-                            Change email
+                            {t('account.security.email.changeEmail')}
                             <FontAwesomeIcon icon={faChevronRight} />
                         </button>
                     </div>

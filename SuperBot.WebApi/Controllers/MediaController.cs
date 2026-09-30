@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Diagnostics;
 using SuperBot.WebApi.Services;
+using SixLabors.ImageSharp.Processing;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -16,25 +17,32 @@ public class MediaController : ControllerBase
     private readonly string _uploadFolder;
     private readonly string _webRoot;
     private readonly string _videoThumbsFolder;
+    private readonly string _imageThumbsFolder;
     private readonly IMediaAssetRepository _mediaRepository;
     private readonly IGameRepository _gameRepository;
     private readonly IImageMetadataReader _imageMetadataReader;
     private const string VideoPlaceholderFileName = "video-placeholder.svg";
+    // .gif — ради анимаций в описаниях игр. Файл сохраняется как есть, без перекодирования
+    // (см. CopyToAsync ниже), превью генерится только для видео, поэтому анимация не теряется.
     private static readonly HashSet<string> AllowedImages = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".png", ".webp"
+        ".jpg", ".jpeg", ".png", ".webp", ".gif"
     };
     private static readonly HashSet<string> AllowedVideos = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mp4", ".webm"
     };
 
+    private readonly ICoverImages _covers;
+
     public MediaController(
         IWebHostEnvironment env,
         IMediaAssetRepository mediaRepository,
         IGameRepository gameRepository,
-        IImageMetadataReader imageMetadataReader)
+        IImageMetadataReader imageMetadataReader,
+        ICoverImages covers)
     {
+        _covers = covers;
         _mediaRepository = mediaRepository;
         _gameRepository = gameRepository;
         _imageMetadataReader = imageMetadataReader;
@@ -45,8 +53,10 @@ public class MediaController : ControllerBase
         {
             Directory.CreateDirectory(_webRoot);
         }
-        _uploadFolder = Path.Combine(_webRoot, "uploads");
+        // Та же папка, что у вариантов обложек и статики /uploads (Uploads:Root перекрывает wwwroot/uploads).
+        _uploadFolder = covers.Root;
         _videoThumbsFolder = Path.Combine(_uploadFolder, "video-thumbs");
+        _imageThumbsFolder = Path.Combine(_uploadFolder, "image-thumbs");
         if (!Directory.Exists(_uploadFolder))
         {
             Directory.CreateDirectory(_uploadFolder);
@@ -55,7 +65,18 @@ public class MediaController : ControllerBase
         {
             Directory.CreateDirectory(_videoThumbsFolder);
         }
+        if (!Directory.Exists(_imageThumbsFolder))
+        {
+            Directory.CreateDirectory(_imageThumbsFolder);
+        }
     }
+
+    /// <summary>
+    /// Длинная сторона миниатюры. В медиатеке и в окне выбора картинка показывается размером
+    /// с ноготь, а грузился при этом оригинал: страница из двух десятков плиток вытягивала
+    /// десятки мегабайт. 480px хватает и для плитки, и для превью в боковой панели.
+    /// </summary>
+    private const int ImageThumbnailMaxSide = 480;
 
     [HttpPost("upload")]
     [Authorize(Roles = "admin")]
@@ -86,7 +107,7 @@ public class MediaController : ControllerBase
 
         if (isImage && !AllowedImages.Contains(safeExt))
         {
-            return BadRequest("Unsupported image format. Allowed: jpg, jpeg, png, webp.");
+            return BadRequest("Unsupported image format. Allowed: jpg, jpeg, png, webp, gif.");
         }
 
         if (isImage && file.Length > 15_000_000)
@@ -153,12 +174,24 @@ public class MediaController : ControllerBase
         }
         else
         {
+            // Обложка проверяется и ужимается сразу (см. CoverImages): маленькая — отказ с понятной причиной.
+            var prepared = await _covers.PrepareUploadAsync(physicalPath, $"images/{uniqueFileName}", ct);
+            if (!prepared.Ok)
+            {
+                System.IO.File.Delete(physicalPath);
+                return BadRequest(prepared.Error);
+            }
+
             var imageSize = await _imageMetadataReader.TryReadImageSizeAsync(physicalPath, ct);
             if (imageSize.HasValue)
             {
                 width = imageSize.Value.Width;
                 height = imageSize.Value.Height;
             }
+
+            // Миниатюра — не оптимизация «на будущее», а условие работоспособности: без неё
+            // список медиатеки грузит оригиналы, и один экран плиток тянет мегабайты.
+            thumbnailUrl = await TryCreateImageThumbnailAsync(physicalPath, uniqueFileName, ct);
         }
 
         var asset = new MediaAsset
@@ -270,9 +303,26 @@ public class MediaController : ControllerBase
 
         var isVideo = string.Equals(asset.Type, "video", StringComparison.OrdinalIgnoreCase)
             || (asset.ContentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true);
+
         if (!isVideo)
         {
-            return BadRequest("Preview generation is supported only for videos.");
+            // Картинке миниатюра нужна ровно так же, как видео: в списке она показывается
+            // размером с ноготь, а без миниатюры туда грузится оригинал.
+            var imagePath = GetPhysicalPathFromUrl(asset.Url);
+            if (string.IsNullOrWhiteSpace(imagePath) || !System.IO.File.Exists(imagePath))
+            {
+                return NotFound("Image file not found.");
+            }
+
+            var built = await TryCreateImageThumbnailAsync(imagePath, Path.GetFileName(imagePath), ct);
+            if (built == null)
+            {
+                return BadRequest("Image is already small enough — a thumbnail would not help.");
+            }
+
+            asset.ThumbnailUrl = built;
+            await _mediaRepository.UpdateAsync(id, asset);
+            return Ok(asset);
         }
 
         if (!IsFfmpegAvailable())
@@ -311,6 +361,48 @@ public class MediaController : ControllerBase
         {
             return StatusCode(500, $"Failed to generate video preview: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Досоздать миниатюры тем картинкам, что залиты до появления миниатюр. Идёт пачками,
+    /// чтобы один запрос не молотил всю библиотеку: сколько сделал и сколько осталось —
+    /// в ответе, и вызывать можно повторно, пока remaining не станет нулём.
+    /// </summary>
+    [HttpPost("thumbnails/backfill")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> BackfillThumbnails([FromQuery] int limit = 50, CancellationToken ct = default)
+    {
+        limit = limit is < 1 or > 500 ? 50 : limit;
+
+        var (items, _) = await _mediaRepository.ListAsync(string.Empty, 1, int.MaxValue, "image");
+        var pending = items.Where(item => string.IsNullOrWhiteSpace(item.ThumbnailUrl)).ToList();
+
+        var done = 0;
+        foreach (var asset in pending.Take(limit))
+        {
+            if (ct.IsCancellationRequested)
+            {
+                break;
+            }
+
+            var imagePath = GetPhysicalPathFromUrl(asset.Url);
+            if (string.IsNullOrWhiteSpace(imagePath) || !System.IO.File.Exists(imagePath))
+            {
+                continue;
+            }
+
+            var built = await TryCreateImageThumbnailAsync(imagePath, Path.GetFileName(imagePath), ct);
+            if (built == null)
+            {
+                continue;
+            }
+
+            asset.ThumbnailUrl = built;
+            await _mediaRepository.UpdateAsync(asset.Id!, asset);
+            done++;
+        }
+
+        return Ok(new { generated = done, remaining = Math.Max(pending.Count - done, 0) });
     }
 
     [HttpGet("{id}")]
@@ -378,6 +470,50 @@ public class MediaController : ControllerBase
 
         await _mediaRepository.DeleteAsync(id);
         return Ok(new { deleted = true, usedByCount = usage.Count });
+    }
+
+
+    /// <summary>
+    /// Уменьшенная копия картинки для списков. Возвращает адрес миниатюры или null, если
+    /// уменьшить не удалось — тогда список покажет оригинал, как показывал раньше.
+    ///
+    /// Ошибку наверх не поднимаем намеренно: файл уже сохранён и годен, а отсутствие
+    /// миниатюры — это медленнее, но не сломано. Ронять из-за неё загрузку нельзя.
+    /// </summary>
+    private async Task<string?> TryCreateImageThumbnailAsync(string physicalPath, string uniqueFileName, CancellationToken ct)
+    {
+        try
+        {
+            using var image = await SixLabors.ImageSharp.Image.LoadAsync(physicalPath, ct);
+
+            // Картинку меньше миниатюры уменьшать незачем: копия вышла бы тяжелее оригинала.
+            if (image.Width <= ImageThumbnailMaxSide && image.Height <= ImageThumbnailMaxSide)
+            {
+                return null;
+            }
+
+            image.Mutate(context => context
+                .AutoOrient()
+                .Resize(new SixLabors.ImageSharp.Processing.ResizeOptions
+                {
+                    Mode = SixLabors.ImageSharp.Processing.ResizeMode.Max,
+                    Size = new SixLabors.ImageSharp.Size(ImageThumbnailMaxSide, ImageThumbnailMaxSide)
+                }));
+
+            var thumbFileName = $"{Path.GetFileNameWithoutExtension(uniqueFileName)}.webp";
+            var thumbPhysicalPath = Path.Combine(_imageThumbsFolder, thumbFileName);
+            await using (var output = System.IO.File.Create(thumbPhysicalPath))
+            {
+                await image.SaveAsync(output, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder { Quality = 80 }, ct);
+            }
+
+            return $"{Request.Scheme}://{Request.Host}/uploads/image-thumbs/{thumbFileName}";
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to build image thumbnail for {uniqueFileName}: {ex.Message}");
+            return null;
+        }
     }
 
     private static bool IsFfmpegAvailable()

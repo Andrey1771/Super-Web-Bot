@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../i18n/format';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
@@ -8,7 +10,7 @@ import {
 import AccountShell from '../components/AccountShell';
 import './account-billing-page.css';
 import AddCardModal from '../../../components/billing/AddCardModal';
-import CardBrandIcon from '../../../components/billing/CardBrandIcon';
+import PaymentCardTile from '../../../components/billing/PaymentCardTile';
 import {
     createSetupIntent,
     downloadDataExport,
@@ -23,6 +25,7 @@ import {
 import type { BillingDetailsDto, BillingProfileDto, InvoiceDto, PaymentMethodDto } from '../../../api/billing-api';
 
 const AccountBillingPage: React.FC = () => {
+    const { t } = useTranslation();
     const [profile, setProfile] = useState<BillingProfileDto | null>(null);
     const [profileDraft, setProfileDraft] = useState<BillingProfileDto | null>(null);
     const [profileLoading, setProfileLoading] = useState(true);
@@ -30,6 +33,7 @@ const AccountBillingPage: React.FC = () => {
 
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDto[]>([]);
     const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
+    const [busyMethodId, setBusyMethodId] = useState<string | null>(null);
     const [paymentMethodsError, setPaymentMethodsError] = useState<string | null>(null);
 
     const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
@@ -66,22 +70,30 @@ const AccountBillingPage: React.FC = () => {
             const data = await fetchBillingProfile();
             syncProfileDraft(data);
         } catch (error) {
-            setProfileError('Unable to load billing profile.');
+            setProfileError(t('account.billing.toast.profileLoadFailed'));
         } finally {
             setProfileLoading(false);
         }
     };
 
-    const loadPaymentMethods = async () => {
-        setPaymentMethodsLoading(true);
+    // silent — обновить список, не убирая карты с экрана: скелеты только при первой загрузке. Иначе после
+    // «сделать основной» карты на миг пропадали и появлялись заново.
+    const loadPaymentMethods = async (silent = false) => {
+        if (!silent) {
+            setPaymentMethodsLoading(true);
+        }
         setPaymentMethodsError(null);
         try {
             const data = await fetchPaymentMethods();
             setPaymentMethods(data);
         } catch (error) {
-            setPaymentMethodsError('Unable to load payment methods.');
+            if (!silent) {
+                setPaymentMethodsError(t('account.billing.toast.methodsLoadFailed'));
+            }
         } finally {
-            setPaymentMethodsLoading(false);
+            if (!silent) {
+                setPaymentMethodsLoading(false);
+            }
         }
     };
 
@@ -93,7 +105,7 @@ const AccountBillingPage: React.FC = () => {
             setInvoices(data.items);
             setInvoiceTotalCount(data.totalCount);
         } catch (error) {
-            setInvoicesError('Unable to load invoices.');
+            setInvoicesError(t('account.billing.toast.invoicesLoadFailed'));
         } finally {
             setInvoicesLoading(false);
         }
@@ -127,7 +139,7 @@ const AccountBillingPage: React.FC = () => {
                 });
                 syncProfileDraft(updated);
             } catch (error) {
-                setToast('Unable to update privacy setting.');
+                setToast(t('account.billing.toast.privacyFailed'));
             }
         }, 500);
 
@@ -169,31 +181,41 @@ const AccountBillingPage: React.FC = () => {
                 hideOwnedGamesInProfile: profileDraft.hideOwnedGamesInProfile
             });
             syncProfileDraft(updated);
-            setToast('Billing profile updated.');
+            setToast(t('account.billing.toast.profileUpdated'));
         } catch (error) {
-            setToast('Unable to save profile changes.');
+            setToast(t('account.billing.toast.profileSaveFailed'));
         } finally {
             setIsSavingProfile(false);
         }
     };
 
     const handleSetDefault = async (methodId: string) => {
+        setBusyMethodId(methodId);
+        // Звезда переезжает сразу, сервер подтверждает следом; не подтвердил — список перечитывается как есть.
+        setPaymentMethods((prev) => prev.map((method) => ({ ...method, isDefault: method.id === methodId })));
         try {
             await setDefaultPaymentMethod(methodId);
-            await loadPaymentMethods();
-            setToast('Default payment method updated.');
+            await loadPaymentMethods(true);
+            setToast(t('account.billing.toast.defaultUpdated'));
         } catch (error) {
-            setToast('Unable to set default payment method.');
+            await loadPaymentMethods(true);
+            setToast(t('account.billing.toast.defaultFailed'));
+        } finally {
+            setBusyMethodId(null);
         }
     };
 
     const handleRemoveMethod = async (methodId: string) => {
+        setBusyMethodId(methodId);
         try {
             await removePaymentMethod(methodId);
-            await loadPaymentMethods();
-            setToast('Payment method removed.');
+            setPaymentMethods((prev) => prev.filter((method) => method.id !== methodId));
+            await loadPaymentMethods(true);
+            setToast(t('account.billing.toast.methodRemoved'));
         } catch (error) {
-            setToast('Unable to remove payment method.');
+            setToast(t('account.billing.toast.removeFailed'));
+        } finally {
+            setBusyMethodId(null);
         }
     };
 
@@ -210,7 +232,7 @@ const AccountBillingPage: React.FC = () => {
             link.remove();
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            setToast('Unable to download invoice.');
+            setToast(t('account.billing.toast.invoiceFailed'));
         } finally {
             setIsDownloadingInvoice(null);
         }
@@ -229,7 +251,7 @@ const AccountBillingPage: React.FC = () => {
             link.remove();
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            setToast('Unable to download data export.');
+            setToast(t('account.billing.toast.exportFailed'));
         } finally {
             setIsDownloadingData(false);
         }
@@ -238,7 +260,7 @@ const AccountBillingPage: React.FC = () => {
     const handleAddCardSuccess = async () => {
         setIsAddCardOpen(false);
         await loadPaymentMethods();
-        setToast('Card linked successfully.');
+        setToast(t('account.billing.toast.cardLinked'));
     };
 
     const handleCreateSetupIntent = useCallback(async () => {
@@ -268,13 +290,13 @@ const AccountBillingPage: React.FC = () => {
 
     return (
         <AccountShell
-            title="Billing"
-            sectionLabel="Billing"
-            subtitle="Payment methods, invoices and billing details."
+            title={t('account.billing.title')}
+            sectionLabel={t('account.billing.title')}
+            subtitle={t('account.billing.subtitle')}
         >
             <div className="card billing-card">
                 <div className="billing-card-header">
-                    <h3>Saved payment methods</h3>
+                    <h3>{t('account.billing.savedMethods')}</h3>
                 </div>
                 {/* Имя/email живут в Settings — здесь только платёжные методы, без дублей профиля. */}
                 <div className="billing-methods">
@@ -291,46 +313,22 @@ const AccountBillingPage: React.FC = () => {
                     )}
                     {!paymentMethodsLoading && !paymentMethodsError && paymentMethods.length === 0 && (
                         <div className="billing-state">
-                            No payment methods yet. Link a card to get started.
+                            {t('account.billing.noMethods')}
                         </div>
                     )}
                     {!paymentMethodsLoading && !paymentMethodsError && paymentMethods.map((method) => (
-                        <div key={method.id} className="billing-method-card">
-                            <div className="billing-method-info">
-                                <div className="billing-method-brandline">
-                                    <CardBrandIcon brand={method.brand} />
-                                    <span className="billing-method-brand">{method.brand}</span>
-                                </div>
-                                <p>•••• {method.last4}</p>
-                            </div>
-                            <div className="billing-method-meta">
-                                <span className="billing-method-label">
-                                    {method.isDefault ? 'Default' : method.label ?? 'Card'}
-                                </span>
-                                <span>Expires {String(method.expMonth).padStart(2, '0')}/{method.expYear}</span>
-                            </div>
-                            <div className="billing-method-actions">
-                                {!method.isDefault && (
-                                    <button
-                                        type="button"
-                                        className="billing-link-btn"
-                                        onClick={() => handleSetDefault(method.id)}
-                                    >
-                                        Set default
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    className="billing-link-btn is-danger"
-                                    onClick={() => handleRemoveMethod(method.id)}
-                                >
-                                    Remove
-                                </button>
-                            </div>
-                        </div>
+                        // Карта нарисована как карта (см. PaymentCardTile): система по цвету и знаку, номер, срок,
+                        // метка «Default» на пластике. Строка настроек с мелким значком картой не читалась.
+                        <PaymentCardTile
+                            key={method.id}
+                            method={method}
+                            busy={busyMethodId === method.id}
+                            onSetDefault={handleSetDefault}
+                            onRemove={handleRemoveMethod}
+                        />
                     ))}
                     <button type="button" className="btn btn-outline billing-add-btn" onClick={() => setIsAddCardOpen(true)}>
-                        Add method
+                        {t('account.billing.addMethod')}
                     </button>
                 </div>
                 {profileError && (
@@ -343,9 +341,9 @@ const AccountBillingPage: React.FC = () => {
 
             <div className="card billing-card">
                 <div className="billing-card-header">
-                    <h3>Billing details</h3>
+                    <h3>{t('account.billing.details')}</h3>
                     <button type="button" className="billing-link-btn" onClick={() => setIsBillingDetailsOpen(true)}>
-                        Edit
+                        {t('common.edit')}
                     </button>
                 </div>
                 <div className="billing-details">
@@ -357,24 +355,24 @@ const AccountBillingPage: React.FC = () => {
                             ))}
                         </>
                     ) : (
-                        <p className="billing-muted">No billing details added yet.</p>
+                        <p className="billing-muted">{t('account.billing.noDetails')}</p>
                     )}
                 </div>
             </div>
 
             <div className="card billing-card">
                 <div className="billing-card-header">
-                    <h3>Invoices</h3>
+                    <h3>{t('account.billing.invoices')}</h3>
                 </div>
                 <div className="billing-table-wrapper">
                     <table className="billing-table">
                         <thead>
                         <tr>
-                            <th>Order</th>
-                            <th>ID</th>
-                            <th>Date</th>
-                            <th>Amount</th>
-                            <th>Invoice</th>
+                            <th>{t('account.billing.order')}</th>
+                            <th>{t('account.billing.id')}</th>
+                            <th>{t('account.billing.date')}</th>
+                            <th>{t('account.billing.amount')}</th>
+                            <th>{t('account.billing.invoice')}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -398,26 +396,28 @@ const AccountBillingPage: React.FC = () => {
                         {!invoicesLoading && !invoicesError && invoices.length === 0 && (
                             <tr>
                                 <td colSpan={5} className="billing-table-state">
-                                    No invoices available yet.
+                                    {t('account.billing.noInvoices')}
                                 </td>
                             </tr>
                         )}
                         {!invoicesLoading && !invoicesError && invoices.map((invoice) => (
                             <tr key={invoice.id}>
-                                <td>#{invoice.orderId}</td>
-                                <td>{invoice.id}</td>
-                                <td>{new Date(invoice.date).toLocaleDateString()}</td>
-                                <td>
+                                {/* См. AccountOverviewPage: имена ячеек нужны карточной
+                                    раскладке на узком экране. */}
+                                <td className="billing-cell-order">#{invoice.orderId}</td>
+                                <td className="billing-cell-id">{invoice.id}</td>
+                                <td className="billing-cell-date">{formatDate(invoice.date)}</td>
+                                <td className="billing-cell-amount">
                                     {invoice.amount.toFixed(2)} {invoice.currency.toUpperCase()}
                                 </td>
-                                <td>
+                                <td className="billing-cell-action">
                                     <button
                                         type="button"
                                         className="btn btn-outline billing-download-btn"
                                         onClick={() => handleDownloadInvoice(invoice)}
                                         disabled={!invoice.pdfAvailable || isDownloadingInvoice === invoice.id}
                                     >
-                                        {isDownloadingInvoice === invoice.id ? 'Downloading...' : 'Download PDF'}
+                                        {isDownloadingInvoice === invoice.id ? t('common.downloading') : t('account.billing.downloadPdf')}
                                     </button>
                                 </td>
                             </tr>
@@ -430,7 +430,7 @@ const AccountBillingPage: React.FC = () => {
                         <button
                             type="button"
                             className="btn btn-outline billing-page-btn"
-                            aria-label="Previous page"
+                            aria-label={t('common.previousPage')}
                             onClick={() => setInvoicePage((prev) => Math.max(1, prev - 1))}
                             disabled={invoicePage === 1}
                         >
@@ -449,7 +449,7 @@ const AccountBillingPage: React.FC = () => {
                         <button
                             type="button"
                             className="btn btn-outline billing-page-btn"
-                            aria-label="Next page"
+                            aria-label={t('common.nextPage')}
                             onClick={() => setInvoicePage((prev) => Math.min(invoiceTotalPages, prev + 1))}
                             disabled={invoicePage === invoiceTotalPages}
                         >
@@ -458,15 +458,15 @@ const AccountBillingPage: React.FC = () => {
                     </div>
                     <span className="billing-pagination-note">
                         {invoiceTotalCount === 0
-                            ? 'Showing 0 of 0'
-                            : `Showing ${(invoicePage - 1) * invoicePageSize + 1}-${Math.min(invoicePage * invoicePageSize, invoiceTotalCount)} of ${invoiceTotalCount}`}
+                            ? t('common.showingZero')
+                            : t('common.showingRange', { from: (invoicePage - 1) * invoicePageSize + 1, to: Math.min(invoicePage * invoicePageSize, invoiceTotalCount), total: invoiceTotalCount })}
                     </span>
                 </div>
             </div>
 
             <div className="card billing-card billing-privacy-card">
                 <div className="billing-card-header">
-                    <h3>Privacy &amp; data</h3>
+                    <h3>{t('account.billing.privacy')}</h3>
                 </div>
                 <div className="billing-privacy-row">
                     <label className="billing-checkbox">
@@ -476,7 +476,7 @@ const AccountBillingPage: React.FC = () => {
                             onChange={(event) => handleProfileChange({ hideOwnedGamesInProfile: event.target.checked })}
                             disabled={profileLoading}
                         />
-                        Hide owned games in profile
+                        {t('account.billing.hideOwned')}
                     </label>
                     <button
                         type="button"
@@ -484,7 +484,7 @@ const AccountBillingPage: React.FC = () => {
                         onClick={handleDownloadData}
                         disabled={isDownloadingData}
                     >
-                        {isDownloadingData ? 'Preparing...' : 'Download my data'}
+                        {isDownloadingData ? t('common.preparing') : t('account.billing.downloadData')}
                     </button>
                 </div>
             </div>
@@ -500,11 +500,11 @@ const AccountBillingPage: React.FC = () => {
                 <div className="billing-modal-overlay" role="dialog" aria-modal="true">
                     <div className="billing-modal">
                         <div className="billing-modal-body">
-                            <h3>Edit billing details</h3>
-                            <p className="billing-modal-subtitle">Update your billing address for invoices.</p>
+                            <h3>{t('account.billing.editDetails')}</h3>
+                            <p className="billing-modal-subtitle">{t('account.billing.editDetailsText')}</p>
                             <div className="billing-card-form">
                                 <label className="billing-field">
-                                    <span>Address line</span>
+                                    <span>{t('account.billing.addressLine')}</span>
                                     <input
                                         className="billing-input"
                                         type="text"
@@ -514,7 +514,7 @@ const AccountBillingPage: React.FC = () => {
                                 </label>
                                 <div className="billing-form-row">
                                     <label className="billing-field">
-                                        <span>City</span>
+                                        <span>{t('account.billing.city')}</span>
                                         <input
                                             className="billing-input"
                                             type="text"
@@ -523,7 +523,7 @@ const AccountBillingPage: React.FC = () => {
                                         />
                                     </label>
                                     <label className="billing-field">
-                                        <span>Postal code</span>
+                                        <span>{t('account.billing.postalCode')}</span>
                                         <input
                                             className="billing-input"
                                             type="text"
@@ -534,7 +534,7 @@ const AccountBillingPage: React.FC = () => {
                                 </div>
                                 <div className="billing-form-row">
                                     <label className="billing-field">
-                                        <span>Country</span>
+                                        <span>{t('account.billing.country')}</span>
                                         <input
                                             className="billing-input"
                                             type="text"
@@ -543,7 +543,7 @@ const AccountBillingPage: React.FC = () => {
                                         />
                                     </label>
                                     <label className="billing-field">
-                                        <span>Phone</span>
+                                        <span>{t('account.billing.phone')}</span>
                                         <input
                                             className="billing-input"
                                             type="text"
@@ -555,13 +555,13 @@ const AccountBillingPage: React.FC = () => {
                             </div>
                             <div className="billing-modal-actions">
                                 <button type="button" className="btn btn-outline" onClick={() => setIsBillingDetailsOpen(false)}>
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button type="button" className="btn btn-primary" onClick={() => {
                                     setIsBillingDetailsOpen(false);
                                     handleSaveProfile();
                                 }}>
-                                    Save
+                                    {t('common.save')}
                                 </button>
                             </div>
                         </div>

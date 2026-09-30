@@ -15,6 +15,16 @@ import { isPlaceholderThumbnailUrl, resolveMediaUrl } from "../../../utils/media
 
 const pageSize = 24;
 
+/** Сколько файлов заливаем одновременно. Больше — и медленный канал начинает захлёбываться. */
+const UPLOAD_CONCURRENCY = 3;
+
+/** Файл в очереди загрузки и что с ним стало. */
+type UploadEntry = {
+  file: File;
+  status: "pending" | "uploading" | "done" | "error";
+  error?: string;
+};
+
 const SiteChangerPage: React.FC = () => {
   const [items, setItems] = useState<MediaAsset[]>([]);
   const [total, setTotal] = useState(0);
@@ -25,7 +35,12 @@ const SiteChangerPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  /**
+   * Очередь загрузки: файл и что с ним стало. Пачку заливаем по одному файлу за запрос —
+   * так сервер не получает сотни мегабайт одним телом, а упавший файл не тянет за собой
+   * остальные: у каждого свой исход, и он виден в списке.
+   */
+  const [uploadQueue, setUploadQueue] = useState<UploadEntry[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -39,48 +54,105 @@ const SiteChangerPage: React.FC = () => {
   const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
   const [generatingPreviews, setGeneratingPreviews] = useState<Record<string, boolean>>({});
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const apiBaseUrl = container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
   const debouncedSearch = useDebouncedValue(search, 300);
+  /** Маячок под списком: попал на экран — пора грузить следующую страницу. */
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+  /**
+   * Признак «запрос уже в пути». Именно ref, а не состояние: состояние обновляется к
+   * следующей отрисовке, а маячок за это время успевает сработать ещё раз и запросить
+   * страницу, которую уже грузят.
+   */
+  const loadingRef = React.useRef(false);
+  /** Меняется, когда список надо перечитать с начала: загрузили файл, удалили, сделали превью. */
+  const [reloadTick, setReloadTick] = useState(0);
+  const reloadMedia = React.useCallback(() => setReloadTick((tick) => tick + 1), []);
 
-  useEffect(() => {
-    fetchMedia();
-  }, [page, debouncedSearch, typeFilter]);
+  /**
+   * Пометить превью битым — но только если ещё не помечено. Без этой проверки каждая ошибка
+   * загрузки писала в состояние новый объект, список перерисовывался, картинка падала снова,
+   * и страница уходила в бесконечный круг перерисовок.
+   */
+  const markThumbnailBroken = React.useCallback((assetId: string) => {
+    setBrokenThumbnails((prev) => (prev[assetId] ? prev : { ...prev, [assetId]: true }));
+  }, []);
 
   useEffect(() => {
     setPageTitle("Media Manager");
-    setHeaderActions([
-      {
-        type: "button",
-        id: "upload-media",
-        label: "Upload",
-        variant: "primary",
-        onClick: () => setUploadOpen(true),
-      },
-    ]);
-    return () => setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
+
+  /** Что именно спрашиваем у сервера. Меняется — выдача начинается заново. */
+  const queryKey = `${debouncedSearch}|${typeFilter}`;
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+    void fetchMedia(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey, reloadTick]);
 
-  const fetchMedia = async () => {
+  // Следующие страницы дописываются к уже показанным — их просит прокрутка, а не кнопка.
+  useEffect(() => {
+    if (page === 1) {
+      return;
+    }
+    void fetchMedia(page, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  /**
+   * Догрузка по прокрутке: как только маячок под списком показывается на экране, просим
+   * следующую страницу. rootMargin в 400px — чтобы страница подъезжала до того, как человек
+   * упрётся в конец списка.
+   */
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || loading || !canGoNext) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting) && !loadingRef.current) {
+          loadingRef.current = true;
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  });
+
+  const fetchMedia = async (pageNumber: number, replace: boolean) => {
     try {
+      loadingRef.current = true;
       setLoading(true);
       setError(null);
-      setBrokenThumbnails({});
+      if (replace) {
+        setBrokenThumbnails({});
+      }
       const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
       const response = await apiClient.api.get(
-        `/api/media?search=${encodeURIComponent(debouncedSearch)}&page=${page}&pageSize=${pageSize}&type=${typeFilter}`
+        `/api/media?search=${encodeURIComponent(debouncedSearch)}&page=${pageNumber}&pageSize=${pageSize}&type=${typeFilter}`
       );
-      setItems(response.data.items ?? []);
+      const batch = (response.data.items ?? []) as MediaAsset[];
+      setItems((prev) => {
+        if (replace) {
+          return batch;
+        }
+        // Файл мог приехать дважды, если между запросами что-то загрузили: страницы
+        // сдвигаются, и без проверки одна и та же карточка появилась бы в списке два раза.
+        const known = new Set(prev.map((item) => item.id));
+        return [...prev, ...batch.filter((item) => !known.has(item.id))];
+      });
       setTotal(response.data.total ?? 0);
     } catch (error) {
       console.error("Error loading media", error);
       setError("Failed to load media library.");
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
@@ -115,30 +187,99 @@ const SiteChangerPage: React.FC = () => {
     fetchUsage(asset.id);
   };
 
-  const handleUpload = async () => {
-    if (!uploadFile) {
-      addToast("Choose a file to upload.", "error");
+  const uploadDone = uploadQueue.filter((entry) => entry.status === "done").length;
+  const uploadFailed = uploadQueue.filter((entry) => entry.status === "error").length;
+  const uploadPending = uploadQueue.filter(
+    (entry) => entry.status === "pending" || entry.status === "error",
+  ).length;
+
+  const addToUploadQueue = (files: FileList | null) => {
+    const picked = Array.from(files ?? []);
+    if (picked.length === 0) {
       return;
     }
-    try {
-      setUploading(true);
-      const formData = new FormData();
-      formData.append("file", uploadFile);
-      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
-      await apiClient.api.post("/api/media/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      addToast("Media uploaded to library.", "success");
+
+    setUploadQueue((prev) => {
+      // Тот же файл могли выбрать дважды (например, добавив вторую пачку) — не заливаем повторно.
+      const known = new Set(prev.map((entry) => `${entry.file.name}:${entry.file.size}`));
+      const fresh = picked
+        .filter((file) => !known.has(`${file.name}:${file.size}`))
+        .map((file) => ({ file, status: "pending" as const }));
+      return [...prev, ...fresh];
+    });
+  };
+
+  /**
+   * Заливка очереди. Файлы идут пачками по UPLOAD_CONCURRENCY: последовательно — медленно на
+   * полусотне файлов, все разом — забивают канал и упираются в лимиты сервера.
+   *
+   * Ошибка одного файла не останавливает остальные: причина остаётся у него в строке, и
+   * повторить можно только упавшие, не перезаливая уже загруженное.
+   */
+  const handleUpload = async () => {
+    const pending = uploadQueue.filter((entry) => entry.status === "pending" || entry.status === "error");
+    if (pending.length === 0) {
+      addToast("Choose files to upload.", "error");
+      return;
+    }
+
+    setUploading(true);
+    const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+
+    const setStatus = (file: File, status: UploadEntry["status"], error?: string) =>
+      setUploadQueue((prev) =>
+        prev.map((entry) => (entry.file === file ? { ...entry, status, error } : entry)),
+      );
+
+    const queue = [...pending];
+    let uploaded = 0;
+    let failed = 0;
+
+    const worker = async () => {
+      for (;;) {
+        const next = queue.shift();
+        if (!next) {
+          return;
+        }
+
+        setStatus(next.file, "uploading");
+        try {
+          const formData = new FormData();
+          formData.append("file", next.file);
+          await apiClient.api.post("/api/media/upload", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          setStatus(next.file, "done");
+          uploaded++;
+        } catch (error: any) {
+          console.error("Upload failed", error);
+          const message = error?.response?.data ?? "Upload failed.";
+          setStatus(next.file, "error", typeof message === "string" ? message : "Upload failed.");
+          failed++;
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(UPLOAD_CONCURRENCY, queue.length) }, worker));
+    setUploading(false);
+
+    if (uploaded > 0) {
+      addToast(
+        failed === 0
+          ? `Uploaded ${uploaded} file(s) to the library.`
+          : `Uploaded ${uploaded}, failed ${failed}. Failed files stay in the list — press Upload to retry them.`,
+        failed === 0 ? "success" : "error",
+      );
+      reloadMedia();
+    } else {
+      addToast(`All ${failed} file(s) failed. See the list for the reason.`, "error");
+    }
+
+    // Окно закрываем только когда заливать больше нечего: с упавшими файлами человек
+    // должен увидеть, что именно не прошло.
+    if (failed === 0) {
       setUploadOpen(false);
-      setUploadFile(null);
-      setPage(1);
-      fetchMedia();
-    } catch (error: any) {
-      console.error("Upload failed", error);
-      const message = error?.response?.data ?? "Upload failed. Try again.";
-      addToast(typeof message === "string" ? message : "Upload failed. Try again.", "error");
-    } finally {
-      setUploading(false);
+      setUploadQueue([]);
     }
   };
 
@@ -161,8 +302,7 @@ const SiteChangerPage: React.FC = () => {
         addToast("Media deleted.", "success");
         setDeleteOpen(false);
         setDeleteTarget(null);
-        setPage(1);
-        fetchMedia();
+        reloadMedia();
       } else {
         addToast("Media is currently in use.", "error");
         setDeleteUsageCount(response.data.usedByCount ?? deleteUsageCount);
@@ -254,7 +394,7 @@ const SiteChangerPage: React.FC = () => {
           title="Unable to load media"
           description={error}
           action={
-            <button className="btn btn-primary" onClick={fetchMedia}>
+            <button className="btn btn-primary" onClick={reloadMedia}>
               Retry
             </button>
           }
@@ -286,7 +426,7 @@ const SiteChangerPage: React.FC = () => {
             const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id] || isPlaceholderThumbnailUrl(item.thumbnailUrl));
             const isGenerating = generatingPreviews[item.id];
             return (
-            <Card key={item.id} className="flex items-center gap-4">
+            <Card key={item.id} className="flex items-center gap-4 media-card media-card--row">
               {isVideo ? (
                 !showPreviewMissing ? (
                   <div className="relative h-16 w-20 overflow-hidden rounded">
@@ -294,7 +434,9 @@ const SiteChangerPage: React.FC = () => {
                       src={resolvedThumbnail}
                       alt={item.filename}
                       className="h-full w-full object-cover"
-                      onError={() => setBrokenThumbnails((prev) => ({ ...prev, [item.id]: true }))}
+                      loading="lazy"
+                      decoding="async"
+                      onError={() => markThumbnailBroken(item.id)}
                     />
                     <span className="absolute inset-0 flex items-center justify-center text-white">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">▶</span>
@@ -325,7 +467,13 @@ const SiteChangerPage: React.FC = () => {
                   </div>
                 )
               ) : (
-                <img src={resolvedUrl} alt={item.filename} className="h-16 w-20 rounded object-cover" />
+                <img
+                  src={resolvedThumbnail || resolvedUrl}
+                  alt={item.filename}
+                  className="h-16 w-20 rounded object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
               )}
               <div className="flex-1">
                 <p className="font-semibold">{item.filename}</p>
@@ -358,7 +506,7 @@ const SiteChangerPage: React.FC = () => {
           const showPreviewMissing = isVideo && (!resolvedThumbnail || brokenThumbnails[item.id] || isPlaceholderThumbnailUrl(item.thumbnailUrl));
           const isGenerating = generatingPreviews[item.id];
           return (
-          <div key={item.id} className="border rounded-lg p-3 bg-white shadow-sm">
+          <div key={item.id} className="media-card border rounded-lg p-3 bg-white shadow-sm">
             <button className="w-full" onClick={() => handleOpenDetails(item)}>
               <div className="h-32 w-full overflow-hidden rounded">
                 {isVideo ? (
@@ -368,7 +516,9 @@ const SiteChangerPage: React.FC = () => {
                         src={resolvedThumbnail}
                         alt={item.filename}
                         className="h-full w-full object-cover"
-                        onError={() => setBrokenThumbnails((prev) => ({ ...prev, [item.id]: true }))}
+                        loading="lazy"
+                        decoding="async"
+                        onError={() => markThumbnailBroken(item.id)}
                       />
                       <span className="absolute inset-0 flex items-center justify-center text-white">
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">▶</span>
@@ -404,7 +554,13 @@ const SiteChangerPage: React.FC = () => {
                     </div>
                   )
                 ) : (
-                  <img src={resolvedUrl} alt={item.filename} className="h-full w-full object-cover" />
+                  <img
+                    src={resolvedThumbnail || resolvedUrl}
+                    alt={item.filename}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 )}
               </div>
             </button>
@@ -486,20 +642,17 @@ const SiteChangerPage: React.FC = () => {
         </div>
         <div className="mt-4">{renderGrid}</div>
 
+        {/* Маячок догрузки. Кнопок «вперёд-назад» здесь больше нет: на тридцати тысячах файлов
+            это тысяча с лишним страниц, и до нужной не долистать — быстрее найти поиском,
+            а остальное подъезжает само по мере прокрутки. */}
+        <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
+
         {!emptyState && !error && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs text-gray-500">
-              Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total} assets
-            </p>
-            <div className="flex gap-2">
-              <button className="btn btn-outline" onClick={() => setPage((prev) => Math.max(prev - 1, 1))} disabled={page === 1}>
-                Previous
-              </button>
-              <button className="btn btn-outline" onClick={() => setPage((prev) => prev + 1)} disabled={!canGoNext}>
-                Next
-              </button>
-            </div>
-          </div>
+          <p className="mt-4 text-xs text-gray-500">
+            {loading && items.length > 0
+              ? `Loading… ${items.length} of ${total} assets`
+              : `${items.length} of ${total} assets loaded`}
+          </p>
         )}
       </Card>
 
@@ -581,22 +734,73 @@ const SiteChangerPage: React.FC = () => {
       </Drawer>
 
       {uploadOpen && (
-        <div className="admin-modal" onClick={() => setUploadOpen(false)}>
+        <div className="admin-modal" onClick={() => (uploading ? undefined : setUploadOpen(false))}>
           <div className="admin-modal__card" onClick={(event) => event.stopPropagation()}>
             <h2 className="text-lg font-semibold mb-4">Upload media</h2>
+
+            {/* multiple: файлы заливаются пачкой, по одному запросу на файл. */}
             <input
               type="file"
               accept="image/*,video/*"
-              onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+              multiple
+              disabled={uploading}
+              onChange={(event) => {
+                addToUploadQueue(event.target.files);
+                // Сбрасываем значение, иначе повторный выбор тех же файлов не даст события.
+                event.target.value = "";
+              }}
               className="mb-4"
             />
-            {uploadFile && <p className="text-sm text-gray-600">Selected: {uploadFile.name}</p>}
+
+            {uploadQueue.length > 0 && (
+              <>
+                <p className="text-sm text-gray-600 mb-2">
+                  {uploadDone} of {uploadQueue.length} uploaded
+                  {uploadFailed > 0 ? `, ${uploadFailed} failed` : ""}
+                </p>
+                <ul className="media-upload-queue">
+                  {uploadQueue.map((entry) => (
+                    <li key={`${entry.file.name}:${entry.file.size}`} className="media-upload-queue__item">
+                      <span className="media-upload-queue__name" title={entry.file.name}>
+                        {entry.file.name}
+                      </span>
+                      <span className={`media-upload-queue__status media-upload-queue__status--${entry.status}`}>
+                        {entry.status === "done"
+                          ? "uploaded"
+                          : entry.status === "uploading"
+                            ? "uploading…"
+                            : entry.status === "error"
+                              ? entry.error ?? "failed"
+                              : formatBytes(entry.file.size)}
+                      </span>
+                      {!uploading && entry.status !== "done" && (
+                        <button
+                          type="button"
+                          className="media-upload-queue__remove"
+                          title="Remove from the queue"
+                          onClick={() =>
+                            setUploadQueue((prev) => prev.filter((item) => item.file !== entry.file))
+                          }
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
             <div className="flex justify-end gap-2 mt-4">
-              <button className="btn btn-outline" onClick={() => setUploadOpen(false)}>
-                Cancel
+              <button className="btn btn-outline" onClick={() => setUploadOpen(false)} disabled={uploading}>
+                {uploadDone > 0 && !uploading ? "Close" : "Cancel"}
               </button>
-              <button className="btn btn-primary" onClick={handleUpload} disabled={uploading}>
-                {uploading ? "Uploading..." : "Upload"}
+              <button className="btn btn-primary" onClick={handleUpload} disabled={uploading || uploadPending === 0}>
+                {uploading
+                  ? `Uploading… ${uploadDone}/${uploadQueue.length}`
+                  : uploadFailed > 0
+                    ? `Retry ${uploadFailed} failed`
+                    : `Upload ${uploadPending || ""}`.trim()}
               </button>
             </div>
           </div>

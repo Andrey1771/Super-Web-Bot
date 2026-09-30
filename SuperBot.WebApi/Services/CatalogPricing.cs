@@ -50,6 +50,35 @@ public static class CatalogPricing
             return item;
         }
 
+        if (item.Licenses is { Count: > 0 } licenses)
+        {
+            // У ПО цена позиции — цена одной из лицензий, поэтому переводим лицензии (у каждой свой прайс-лист,
+            // как у изданий на кассе), а позицию собираем заново. Лицензия без цены в валюте не продаётся и уходит.
+            var converted = new List<CatalogLicense>(licenses.Count);
+            foreach (var license in licenses)
+            {
+                var licensePrice = FindPrice(license.Prices, currency)
+                    ?? FxConversion.Convert(
+                        license.Price,
+                        rates?.For(currency),
+                        fx?.MarkupPercent ?? 0m,
+                        fx?.RuleFor(currency) ?? PriceRoundingRule.None,
+                        currency);
+                if (licensePrice is not null)
+                {
+                    converted.Add(license with
+                    {
+                        Price = licensePrice.Value,
+                        FinalPrice = PriceCalculator.FinalPrice(licensePrice.Value, license.DiscountPercent)
+                    });
+                }
+            }
+
+            return converted.Count == 0
+                ? null
+                : SoftwareLicenses.Represent(item with { Licenses = converted, Currency = currency });
+        }
+
         // Сначала ручная цена и только потом пересчёт: ценник, назначенный человеком,
         // не должен уезжать вслед за курсом.
         var price = FindPrice(item.Prices, currency)

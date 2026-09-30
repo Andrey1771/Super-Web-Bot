@@ -9,6 +9,9 @@ import type { IApiClient } from "../../iterfaces/i-api-client";
 import type { Settings } from "../../models/settings";
 import { DEFAULT_SUPPORT_EMAIL, invalidateSiteSettings } from "../../hooks/use-site-settings";
 import { getSiteSettings, saveSiteSettings, type SiteSettingsPatch, type SiteSettingsView } from "../../api/adminSiteSettingsApi";
+import RegionsCatalogEditor from "../../components/admin/RegionsCatalogEditor";
+import TeamEditor from "../../components/admin/TeamEditor";
+import SocialLinksEditor from "../../components/admin/SocialLinksEditor";
 import "./settings-page.css";
 
 /**
@@ -36,6 +39,13 @@ const draftFrom = (view: SiteSettingsView): Draft => ({
   cardEnabled: view.rails.card.enabled.overridden ? view.rails.card.enabled.value : null,
   cryptoEnabled: view.rails.crypto.enabled.overridden ? view.rails.crypto.enabled.value : null,
   starsEnabled: view.rails.stars.enabled.overridden ? view.rails.stars.enabled.value : null,
+  lowStockThreshold: view.stock?.lowStockThreshold?.overridden ? view.stock.lowStockThreshold.value : null,
+  regions: view.regions?.overridden ? view.regions.value : null,
+  // У команды нет «значения по умолчанию»: пустой список — это законное «раздел скрыт»,
+  // а не «показываем заготовку». Поэтому в черновик кладём то, что сохранено.
+  team: view.team?.value?.length ? view.team.value : null,
+  // Как у команды: дефолта нет, пустой список — «блок соцсетей скрыт».
+  social: view.social?.value?.length ? view.social.value : null,
 });
 
 /**
@@ -127,7 +137,7 @@ const TextField: React.FC<FieldCtx & { label: string; keyName: keyof Draft; plac
 };
 
 const SettingsPage: React.FC = () => {
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
   const { addToast } = useToast();
 
   // --- контакты (старый эндпоинт /api/Settings) ---
@@ -143,8 +153,7 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Site settings");
-    setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -265,7 +274,7 @@ const SettingsPage: React.FC = () => {
             <p className="text-sm text-gray-500">What the chat widget tells customers about when a human is around.</p>
             <div className="site-settings__grid">
               <BoolField view={view} draft={draft} set={set} reset={reset} label="Business hours enabled" keyName="businessHoursEnabled" hint="Off — the widget never says “outside working hours”." />
-              <TextField view={view} draft={draft} set={set} reset={reset} label="Time zone" keyName="businessHoursTimeZone" placeholder="Europe/Moscow" hint="IANA (Europe/Moscow) or Windows name." />
+              <TextField view={view} draft={draft} set={set} reset={reset} label="Time zone" keyName="businessHoursTimeZone" placeholder="Europe/Berlin" hint="IANA (Europe/Berlin) or Windows name." />
               <NumberField view={view} draft={draft} set={set} reset={reset} label="Opens at" keyName="businessHoursStart" unit="h" min={0} />
               <NumberField view={view} draft={draft} set={set} reset={reset} label="Closes at" keyName="businessHoursEnd" unit="h" min={1} />
               <NumberField view={view} draft={draft} set={set} reset={reset} label="Expected wait" keyName="expectedWaitMinutes" unit="min" min={0} hint="Shown as “a specialist usually replies within N minutes”." />
@@ -290,6 +299,52 @@ const SettingsPage: React.FC = () => {
               <NumberField view={view} draft={draft} set={set} reset={reset} label="Markup on rate" keyName="fxMarkupPercent" unit="%" min={0} step={0.1} hint="Covers rate movement between showing a price and settling it." />
               <NumberField view={view} draft={draft} set={set} reset={reset} label="Change guard" keyName="fxMaxChangePercent" unit="%" min={0.1} step={0.5} hint="A rate that moves more than this in one update is rejected until a human confirms." />
             </div>
+          </Card>
+
+          <Card>
+            <h3>Key stock</h3>
+            <p className="text-sm text-gray-500">Drives “Selling fast” on the storefront and the low-stock list in Keys. A game can override it in Games → Keys.</p>
+            <div className="site-settings__grid">
+              <NumberField view={view} draft={draft} set={set} reset={reset} label="Low-stock threshold" keyName="lowStockThreshold" unit="keys" min={0} step={1} hint="“Selling fast” when free keys in the pool are at or below this number." />
+            </div>
+          </Card>
+
+          <Card>
+            <h3>Meet the team</h3>
+            <p className="text-sm text-gray-500">
+              People shown on the About page. Empty list — the section is hidden. Add only people who
+              actually exist: this is a public claim about real humans, not decoration.
+            </p>
+            <TeamEditor
+              value={draft.team ?? view.team?.value ?? []}
+              maxMembers={view.team?.maxMembers ?? 12}
+              onChange={(next) => set("team", next)}
+            />
+          </Card>
+
+          <Card>
+            <h3>Social links</h3>
+            <p className="text-sm text-gray-500">
+              Icons in the site footer. Empty field — that network is not shown. Paste the address of the
+              store's real profile: anyone who clicks the icon will take it for the official channel.
+            </p>
+            <SocialLinksEditor
+              value={draft.social ?? view.social?.value ?? []}
+              networks={view.social?.networks ?? []}
+              onChange={(next) => set("social", next)}
+            />
+          </Card>
+
+          <Card>
+            <h3>Activation regions</h3>
+            <p className="text-sm text-gray-500">Named sets of countries used by key region policies (“EU only”, “Global except RU, CN”). Edit here; games and key batches pick from this list in Games → Keys.</p>
+            {/* Пока не переопределено — показываем текущий (дефолтный) набор только для чтения; «Load defaults» копирует его в редактор. */}
+            <RegionsCatalogEditor
+              value={draft.regions ?? view.regions?.value ?? []}
+              defaults={view.regions?.defaultValue ?? []}
+              overridden={Boolean(draft.regions)}
+              onChange={(next) => set("regions", next)}
+            />
           </Card>
 
           <Card>
@@ -334,6 +389,7 @@ function lookup(view: SiteSettingsView, key: keyof Draft): { value: unknown; def
     case "cardEnabled": return view.rails.card.enabled;
     case "cryptoEnabled": return view.rails.crypto.enabled;
     case "starsEnabled": return view.rails.stars.enabled;
+    case "lowStockThreshold": return view.stock?.lowStockThreshold ?? { value: 3, defaultValue: 3, overridden: false };
     default: return { value: null, defaultValue: null, overridden: false };
   }
 }

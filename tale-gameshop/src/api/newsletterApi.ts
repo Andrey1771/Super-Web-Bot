@@ -1,8 +1,5 @@
-import container from "../inversify.config";
-import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+import { analyticsClient } from "../utils/analytics-client";
+import { apiClient } from "./client";
 
 export type SubscriberStatus = "pending" | "confirmed" | "unsubscribed";
 
@@ -10,13 +7,27 @@ export type SubscriberStatus = "pending" | "confirmed" | "unsubscribed";
  * Подписка на рассылку (double opt-in для гостей).
  * Возвращает "pending" (проверьте почту) или "confirmed" (владелец аккаунта подписал свой email).
  */
-export const subscribeNewsletter = async (email: string, source: string): Promise<SubscriberStatus> => {
+export const subscribeNewsletter = async (
+  email: string,
+  source: string,
+  /** Слать ли письма о новых скидках. Формы, которые не спрашивают, подписывают на них. */
+  dealAlerts = true,
+): Promise<SubscriberStatus> => {
   const response = await apiClient().post("/api/newsletter/subscribe", {
     email,
     source,
+    dealAlerts,
     locale: document.documentElement.lang || "en",
   });
-  return (response.data?.status as SubscriberStatus) ?? "pending";
+
+  const status = (response.data?.status as SubscriberStatus) ?? "pending";
+
+  // Единственный способ вернуть того, кто ушёл без покупки. Считаем здесь, а не на формах:
+  // форм три (главная, скидки, блог), и источник эта функция уже знает по параметру.
+  // Адрес в событие не идёт: аналитике он не нужен, а личных данных в ней быть не должно.
+  analyticsClient.trackEvent("newsletter_subscribe", { source, status, dealAlerts });
+
+  return status;
 };
 
 export const confirmNewsletter = async (token: string): Promise<void> => {
@@ -32,6 +43,8 @@ export const unsubscribeNewsletter = async (token: string): Promise<void> => {
 export interface MyNewsletter {
   subscribed: boolean;
   status: SubscriberStatus | null;
+  /** Письма о новых скидках. Подписки без явного выбора приходят как true. */
+  dealAlerts: boolean;
 }
 
 export const getMyNewsletter = async (): Promise<MyNewsletter> => {
@@ -39,8 +52,12 @@ export const getMyNewsletter = async (): Promise<MyNewsletter> => {
   return response.data as MyNewsletter;
 };
 
-export const setMyNewsletter = async (subscribed: boolean): Promise<MyNewsletter> => {
-  const response = await apiClient().put("/api/newsletter/me", { subscribed });
+export const setMyNewsletter = async (
+  subscribed: boolean,
+  /** Не передан — настройка не меняется: прежний выбор человека остаётся прежним. */
+  dealAlerts?: boolean,
+): Promise<MyNewsletter> => {
+  const response = await apiClient().put("/api/newsletter/me", { subscribed, dealAlerts });
   return response.data as MyNewsletter;
 };
 
@@ -52,6 +69,8 @@ export interface AdminSubscriber {
   status: SubscriberStatus;
   sources: string[];
   locale?: string | null;
+  /** Согласие на письма о новых скидках. Подписки без явного выбора считаются согласными. */
+  dealAlerts: boolean;
   hasAccount: boolean;
   createdAt: string;
   confirmedAt?: string | null;
@@ -79,6 +98,8 @@ export interface AdminCampaign {
   /** Язык кампании (дайджест шлётся по языкам подписчиков); null — всем. */
   locale?: string | null;
   subject: string;
+  /** Языки, для которых у кампании были переводы темы или текста. */
+  translations?: string[];
   status: "queued" | "sending" | "sent" | "failed";
   recipientCount: number;
   sentCount: number;
@@ -113,18 +134,21 @@ export const adminCreateCampaign = async (
   subject: string,
   body: string,
   scheduledAt?: string,
+  subjectI18n?: Record<string, string>,
+  bodyI18n?: Record<string, string>,
 ): Promise<void> => {
-  await apiClient().post("/api/admin/newsletter/campaigns", { subject, body, scheduledAt });
+  await apiClient().post("/api/admin/newsletter/campaigns", { subject, body, scheduledAt, subjectI18n, bodyI18n });
 };
 
 /** Предпросмотр письма: сервер рендерит тем же кодом, что и реальную отправку. */
-export const adminPreviewCampaign = async (body: string): Promise<string> => {
-  const response = await apiClient().post("/api/admin/newsletter/campaigns/preview", { body });
+export const adminPreviewCampaign = async (body: string, locale?: string): Promise<string> => {
+  const response = await apiClient().post("/api/admin/newsletter/campaigns/preview", { body, locale });
   return (response.data?.html as string) ?? "";
 };
 
-export const adminSendTest = async (to: string, subject: string, body: string): Promise<void> => {
-  await apiClient().post("/api/admin/newsletter/campaigns/test", { to, subject, body });
+/** Тест-письмо: макет и футер на языке locale — как у подписчика с таким языком. */
+export const adminSendTest = async (to: string, subject: string, body: string, locale?: string): Promise<void> => {
+  await apiClient().post("/api/admin/newsletter/campaigns/test", { to, subject, body, locale });
 };
 
 /** CSV подписчиков — скачивание через axios (заголовок авторизации нужен, простой href не подходит). */

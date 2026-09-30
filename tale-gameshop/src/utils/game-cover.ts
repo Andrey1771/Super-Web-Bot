@@ -1,9 +1,11 @@
+import i18n from "../i18n";
 import gameCoverFallback from "../assets/images/placeholders/game-cover-fallback.png";
 
 const ABSOLUTE_URL_RE = /^(?:[a-z]+:)?\/\//i;
 
 export const GAME_COVER_FALLBACK = gameCoverFallback;
-export const GAME_COVER_FALLBACK_ALT = "Game cover";
+/** Подпись-запаска обложки — на языке сайта, поэтому функция, а не константа. */
+export const gameCoverFallbackAlt = () => i18n.t("common.gameCover");
 
 const trimToUndefined = (value?: string | null): string | undefined => {
   if (typeof value !== "string") {
@@ -36,5 +38,3 @@ export const normalizeGameCoverUrl = (value?: string | null, baseUrl?: string | 
   return `${trimmedBaseUrl}${urlPath}`;
 };
 
-export const getGameCoverUrl = (value?: string | null, baseUrl?: string | null): string =>
-  normalizeGameCoverUrl(value, baseUrl) ?? GAME_COVER_FALLBACK;

@@ -1,0 +1,1262 @@
+/*
+ * Публичная страница кэшбэка.
+ *
+ * Тёмная шапка и светлое тело — тот же приём, что на странице скидок: предложение
+ * объявляется на контрасте, правила читаются на белом.
+ */
+
+.rewards-page {
+    background: var(--color-bg);
+}
+
+/* ---------- Шапка ---------- */
+
+.rewards-hero {
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at 78% 20%, color-mix(in srgb, var(--color-primary) 34%, transparent), transparent 58%),
+        linear-gradient(135deg, #0c0f1a 0%, #1a1436 55%, #0c0f1a 100%);
+    color: #f3f4fb;
+    padding: var(--space-56) 0 var(--space-48);
+}
+
+/* Текст слева, рисунок справа. На узком экране рисунок уходит вовсе: в колонку он
+   становится картинкой ради картинки и отодвигает предложение под сгиб. */
+.rewards-hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+    align-items: center;
+    gap: var(--space-32);
+}
+
+.rewards-hero-inner {
+    max-width: 620px;
+}
+
+.rewards-hero-art {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+@media (max-width: 900px) {
+    .rewards-hero-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rewards-hero-art {
+        display: none;
+    }
+}
+
+.rewards-orb-1 {
+    top: -120px;
+    right: 12%;
+}
+
+.rewards-orb-2 {
+    bottom: -150px;
+    left: -80px;
+}
+
+.rewards-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.22);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    color: #d6c8ff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.rewards-hero h1 {
+    margin: var(--space-16) 0 var(--space-12);
+    color: #ffffff;
+    font-size: clamp(30px, 4vw, 44px);
+    line-height: 1.15;
+}
+
+.rewards-hero-subtext {
+    color: rgba(255, 255, 255, 0.74);
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 620px;
+}
+
+/* Три коротких факта вместо счётчиков «500K покупателей»: таких чисел у нас нет,
+   а выдумывать их — то же самое, что выдумывать отзывы. */
+.rewards-hero-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-12);
+    margin-top: var(--space-24);
+}
+
+.rewards-fact {
+    padding: var(--space-10) var(--space-16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.rewards-fact strong {
+    color: #ffffff;
+}
+
+/* ---------- Тело ---------- */
+
+/* Только вертикаль: сокращённое «padding: X 0 Y» обнуляло боковые отступы .container,
+   и на экранах уже max-width контент прилипал к краям. */
+.rewards-body {
+    padding-top: var(--space-48);
+    padding-bottom: var(--space-64);
+}
+
+/* Светлая полоса между тёмной шапкой и тёмной сценой пропуска: один блок, ровные поля.
+   Поля щедрые — с 64px блок зажимало между двумя тёмными секциями. */
+.rewards-body--intro {
+    padding-top: clamp(64px, 8vw, 112px);
+    padding-bottom: clamp(64px, 8vw, 112px);
+}
+
+.rewards-body--intro .rewards-what {
+    margin-bottom: 0;
+}
+
+.rewards-section-header {
+    max-width: 640px;
+    margin-bottom: var(--space-24);
+}
+
+.rewards-section-header + * {
+    margin-bottom: var(--space-48);
+}
+
+.rewards-label {
+    display: inline-block;
+    margin-bottom: var(--space-8);
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.rewards-section-header h2 {
+    margin: 0 0 var(--space-8);
+    font-size: clamp(24px, 2.6vw, 32px);
+    color: var(--color-text);
+}
+
+/* ---------- Что это ---------- */
+
+/* Карточка у левого края контейнера, текст у правого — как края блоков выше и ниже.
+   Раньше карточка стояла по центру своей колонки, а текст обрывался на 560px, и блок
+   висел посередине, не совпадая ни с одним краем. */
+.rewards-what {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 720px);
+    justify-content: space-between;
+    align-items: center;
+    gap: clamp(24px, 4vw, 56px);
+    margin-bottom: var(--space-56);
+}
+
+.rewards-receipt-art {
+    width: 100%;
+    max-width: 360px;
+    height: auto;
+    justify-self: center;
+}
+
+/* Заголовок того же размера, что у «Where you'll see it» и вопросов. */
+.rewards-what h2 {
+    margin: 10px 0 var(--space-12);
+    font-size: clamp(28px, 3.3vw, 38px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--color-text);
+}
+
+.rewards-what p {
+    max-width: 640px;
+    margin: 0 0 var(--space-12);
+    line-height: 1.7;
+}
+
+@media (max-width: 860px) {
+    .rewards-what {
+        grid-template-columns: 1fr;
+    }
+
+    .rewards-what .rw-order {
+        justify-self: center;
+    }
+}
+
+/* ---------- Шаги ---------- */
+
+.rewards-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+    gap: var(--space-20);
+    /* Нижний отступ явно: «margin: 0» перебивал общий отступ после заголовка секции,
+       и подпись следующего блока прилипала к карточкам. */
+    margin: 0 0 var(--space-48);
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+}
+
+.rewards-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-24);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+/* У каждого шага свой акцент (--accent): цветная кромка сверху, номер и мягкий отсвет
+   за иконкой. Без этого четыре белые карточки читались как одна повторённая. */
+.rewards-step {
+    overflow: hidden;
+}
+
+/* Акцент сдержанный: тонкая кромка и едва заметный отсвет. Цвет помогает различить
+   карточки, но не спорит с контентом и кнопками. */
+.rewards-step::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--accent, var(--color-primary));
+    opacity: 0.75;
+}
+
+.rewards-step::after {
+    content: "";
+    position: absolute;
+    top: -40px;
+    left: -30px;
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent, var(--color-primary)) 10%, transparent), transparent 70%);
+    pointer-events: none;
+}
+
+.rewards-step > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Номер крупной подложкой в углу: порядок шагов важнее их иконок, но не важнее текста. */
+.rewards-step-index {
+    position: absolute;
+    top: var(--space-12);
+    right: var(--space-16);
+    font-size: 44px;
+    font-weight: 800;
+    line-height: 1;
+    color: color-mix(in srgb, var(--accent, var(--color-primary)) 22%, transparent);
+}
+
+.rewards-step-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--accent, var(--color-primary)) 12%, #ffffff);
+    color: var(--accent, var(--color-primary));
+    font-size: 18px;
+}
+
+.rewards-step h3 {
+    margin: 0 0 var(--space-6);
+    font-size: 17px;
+    color: var(--color-text);
+}
+
+.rewards-step p {
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Картинка шага встаёт на место иконки: тот же вертикальный ритм, но крупнее — рисунок
+   в 44px превращается в кашу. */
+.rewards-step-art {
+    width: 88px;
+    height: 88px;
+    filter: drop-shadow(0 10px 14px rgba(26, 20, 54, 0.18));
+    object-fit: contain;
+    object-position: left center;
+    display: block;
+}
+
+/* ---------- Считалка ---------- */
+
+.rewards-calc-header {
+    margin-top: var(--space-8);
+}
+
+.rewards-calc {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
+    gap: clamp(20px, 3vw, 40px);
+    align-items: center;
+    padding: var(--space-28);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.rewards-calc-input label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-12);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-muted);
+}
+
+.rewards-calc-input label strong {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.rewards-calc-input input[type="range"] {
+    width: 100%;
+    margin: var(--space-12) 0 0;
+    accent-color: var(--color-primary);
+}
+
+.rewards-calc-note {
+    margin: var(--space-10) 0 0;
+    font-size: 13px;
+}
+
+.rewards-calc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+    gap: var(--space-10);
+}
+
+.rewards-calc-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-14) var(--space-16);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: #fbfaff;
+    text-align: center;
+}
+
+/* Уровень, на котором человек стоит сейчас (для незалогиненного — стартовый). */
+.rewards-calc-cell.is-current {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 7%, #ffffff);
+}
+
+.rewards-calc-tier {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-muted);
+}
+
+.rewards-calc-back {
+    font-size: 22px;
+    font-weight: 800;
+    color: #15803d;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+}
+
+.rewards-calc-percent {
+    font-size: 12px;
+}
+
+@media (max-width: 860px) {
+    .rewards-calc {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- Уровни ---------- */
+
+.rewards-table-scroll {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.rewards-tiers {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+}
+
+.rewards-tiers th,
+.rewards-tiers td {
+    padding: var(--space-16) var(--space-20);
+    text-align: center;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.rewards-tiers tbody tr:last-child th,
+.rewards-tiers tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.rewards-tiers thead th {
+    font-size: 16px;
+    color: var(--color-text);
+}
+
+/* Процент в плашке — одинаковой фирменной для всех уровней: уровни различает материал
+   иконки над колонкой, а не цвет цифр. */
+.rewards-tier-pill {
+    display: inline-block;
+    min-width: 64px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+    color: var(--color-primary);
+}
+
+.rewards-tier-icon {
+    display: block;
+    width: 52px;
+    height: 52px;
+    margin: 0 auto var(--space-8);
+    object-fit: contain;
+    filter: drop-shadow(0 8px 12px rgba(26, 20, 54, 0.18));
+}
+
+/* Первая колонка — подписи строк: прижимаем влево, иначе таблица читается как сетка чисел. */
+.rewards-tiers tbody th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-muted);
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.rewards-tiers td {
+    color: var(--color-muted);
+    font-size: 15px;
+}
+
+/* td в селекторе обязателен: иначе «.rewards-tiers td» выше перебивает цвет на серый. */
+.rewards-tiers td.rewards-tiers-percent {
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--color-primary);
+}
+
+/* ---------- Вопросы ---------- */
+
+/* Блок вопросов — отдельный компонент со своими стилями: CashbackFaq.tsx, cashback-faq.css. */
+
+/* Финал страницы — отдельный компонент: CashbackClosing.tsx, cashback-closing.css. */
+
+/* ==========================================================================
+   Движение
+   --------------------------------------------------------------------------
+   Сюжет, а не набор въездов: ключ поворачивается как в замке (~1 с) → щелчок →
+   монеты по одной ложатся в стопку → часть разлетается и остаётся парить →
+   под «comes back» дорисовывается линия. Ниже по странице блоки оживают, когда
+   до них докрутили (класс .is-in ставит useReveal).
+
+   Анимации появления — с fill-mode backwards, НЕ both: скрыт элемент только во время
+   задержки, а итоговую видимость держит его обычный стиль. С both итог держала сама
+   анимация, и полностраничные скриншотилки (сбрасывают/перезапускают анимации) снимали
+   шапку пустой, а текст на повёрнутых элементах мылился из-за постоянного GPU-слоя.
+   При prefers-reduced-motion (в конце файла) страница сразу в конечном виде.
+   ========================================================================== */
+
+@keyframes rwEnter {
+    from { opacity: 0; transform: translateY(18px); filter: blur(6px); }
+    to   { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes rwPop {
+    0%   { opacity: 0; transform: scale(0.4); }
+    70%  { opacity: 1; transform: scale(1.08); }
+    100% { opacity: 1; transform: none; }
+}
+
+@keyframes rwRise {
+    from { opacity: 0; transform: translateY(28px) rotate(-2deg); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes rwDraw {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+/* ---------- Шапка: текст ---------- */
+
+.rw-enter {
+    animation: rwEnter 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: var(--d, 0s);
+}
+
+.rewards-hero-accent {
+    position: relative;
+    white-space: nowrap;
+}
+
+.rewards-hero-accent::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.02em;
+    height: 0.12em;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #1c8f57, #34d17e);
+    transform-origin: left center;
+    animation: rwDraw 0.6s cubic-bezier(0.6, 0, 0.2, 1) 1.75s backwards;
+}
+
+/* ---------- Шапка: рисунок ---------- */
+
+/* Слои глубины: на них только параллакс за курсором, собственное движение — на детях. */
+.rw-depth {
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.rw-depth-key   { transform: translate(calc(var(--px, 0) * -14px), calc(var(--py, 0) * -10px)); }
+.rw-depth-stack { transform: translate(calc(var(--px, 0) * 6px),   calc(var(--py, 0) * 4px)); }
+.rw-depth-fly   { transform: translate(calc(var(--px, 0) * 22px),  calc(var(--py, 0) * 16px)); }
+
+.rw-glow {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation:
+        rwGlowIn 1.2s ease-out backwards,
+        rwBreathe 5s ease-in-out 2.2s infinite;
+}
+
+@keyframes rwGlowIn {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes rwBreathe {
+    0%, 100% { opacity: 1; transform: none; }
+    50%      { opacity: 0.7; transform: scale(0.94); }
+}
+
+/* Ключ входит, поворачиваясь вокруг головки, чуть перекручивается и доворачивается назад —
+   как в замке. Центр поворота — головка ключа в координатах рисунка. */
+.rw-key {
+    transform-box: view-box;
+    transform-origin: 150px 160px;
+    animation: rwKeyTurn 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s backwards;
+}
+
+@keyframes rwKeyTurn {
+    0%   { opacity: 0; transform: translate(-90px, 40px) rotate(-95deg); }
+    55%  { opacity: 1; transform: translate(4px, -2px) rotate(9deg); }
+    78%  { transform: rotate(-3deg); }
+    100% { opacity: 1; transform: none; }
+}
+
+.rw-key-click {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: rwClick 0.7s ease-out 1.05s backwards;
+}
+
+/* Первый кадр прозрачный: fill-mode both показывает его всю задержку, и кольцо
+   висело бы до «щелчка» — или навсегда, если вкладка открылась в фоне. */
+@keyframes rwClick {
+    0%   { opacity: 0; transform: scale(0.7); }
+    1%   { opacity: 0.9; transform: scale(0.7); }
+    100% { opacity: 0; transform: scale(1.9); }
+}
+
+/* Блик пробегает по ключу сразу после щелчка и потом изредка повторяется. */
+.rw-key-glint {
+    opacity: 0;
+    animation: rwGlint 5.5s ease-in-out 1.15s infinite;
+}
+
+@keyframes rwGlint {
+    0%        { opacity: 0; transform: translateX(0); }
+    3%        { opacity: 0.55; }
+    18%       { opacity: 0.55; transform: translateX(300px); }
+    19%, 100% { opacity: 0; transform: translateX(300px); }
+}
+
+/* Монеты стопки падают по одной снизу вверх и приплющиваются при ударе. */
+.rw-coin {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: rwCoinDrop 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) backwards;
+    animation-delay: calc(1.05s + var(--i, 0) * 0.11s);
+}
+
+@keyframes rwCoinDrop {
+    0%   { opacity: 0; transform: translateY(-260px); }
+    35%  { opacity: 1; }
+    62%  { transform: translateY(0) scale(1.07, 0.8); }
+    82%  { transform: translateY(-5px) scale(0.98, 1.04); }
+    100% { opacity: 1; transform: none; }
+}
+
+/* Отдельные монеты выстреливают из стопки, когда она собрана, и остаются в воздухе. */
+.rw-fly {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: rwFlyOut 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+    animation-delay: calc(1.65s + var(--i, 0) * 0.08s);
+}
+
+@keyframes rwFlyOut {
+    0%   { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+    30%  { opacity: 1; }
+    100% { opacity: 1; transform: none; }
+}
+
+.rw-fly-bob {
+    animation: rwBob 3.2s ease-in-out infinite alternate;
+    animation-delay: calc(var(--i, 0) * -0.8s);
+}
+
+@keyframes rwBob {
+    from { transform: translateY(5px); }
+    to   { transform: translateY(-7px); }
+}
+
+/* Редкий переворот ребром — монета «блестит», а не просто висит. */
+.rw-fly-spin {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: rwSpin 6s ease-in-out infinite;
+    animation-delay: calc(2.6s + var(--i, 0) * 1.3s);
+}
+
+@keyframes rwSpin {
+    0%, 84%, 100% { transform: none; }
+    92%           { transform: scaleX(0.12); }
+}
+
+.rw-spark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation:
+        rwPop 0.5s ease-out backwards,
+        rwTwinkle 2.6s ease-in-out infinite;
+    animation-delay:
+        calc(1.9s + var(--i, 0) * 0.15s),
+        calc(2.6s + var(--i, 0) * 0.7s);
+}
+
+@keyframes rwTwinkle {
+    0%, 100% { opacity: 1; transform: none; }
+    50%      { opacity: 0.35; transform: scale(0.55) rotate(45deg); }
+}
+
+/* Если вместо вектора лежит картинка — у неё нет слоёв, поэтому она просто всплывает и парит. */
+img.rewards-hero-art {
+    animation:
+        rwEnter 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s backwards,
+        rwBob 4s ease-in-out 1.1s infinite alternate;
+}
+
+/* Появление отыграло — анимации появления снимаются (useSettled): иначе полностраничные
+   скриншотилки, перезапуская анимации, снимали шапку пустой. Бесконечные покачивания и
+   «дыхание» свечения остаются. */
+.rewards-hero.is-settled :is(.rw-enter, .rewards-hero-accent)::after,
+.rewards-hero.is-settled .rw-enter {
+    animation: none;
+}
+
+.rewards-hero-scene.is-settled :is(.rw-cover, .rw-stack-drop, .rw-fly, .rw-scene-badge) {
+    animation: none;
+}
+
+.rewards-hero-scene.is-settled .rw-scene-glow {
+    animation: rwBreathe 5s ease-in-out infinite;
+}
+
+/* ---------- «Что это»: чек печатается ---------- */
+
+.rewards-what:not(.is-in) > div,
+.rewards-what:not(.is-in) .rewards-receipt-art,
+.rewards-what:not(.is-in) .rw-r {
+    opacity: 0;
+}
+
+.rewards-what.is-in > div {
+    animation: rwEnter 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s backwards;
+}
+
+.rewards-what.is-in img.rewards-receipt-art {
+    animation: rwRise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.rewards-what.is-in .rw-r-card {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: rwRise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.rewards-what.is-in .rw-r-pop {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: rwPop 0.5s ease-out backwards;
+    animation-delay: var(--d, 0s);
+}
+
+.rewards-what.is-in .rw-r-line {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: rwDraw 0.4s cubic-bezier(0.6, 0, 0.2, 1) backwards;
+    animation-delay: var(--d, 0s);
+}
+
+/* Строка кэшбэка — финал: выезжает снизу с отскоком, монета переворачивается, сумма вспыхивает. */
+.rewards-what.is-in .rw-r-cash {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: rwCashIn 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) 1.3s backwards;
+}
+
+@keyframes rwCashIn {
+    from { opacity: 0; transform: translateY(26px) scale(0.92); }
+    to   { opacity: 1; transform: none; }
+}
+
+.rewards-what.is-in .rw-r-coin {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: rwCoinFlip 0.8s ease-in-out 1.7s backwards;
+}
+
+@keyframes rwCoinFlip {
+    0%, 50%, 100% { transform: none; }
+    25%, 75%      { transform: scaleX(0.1); }
+}
+
+.rewards-what.is-in .rw-r-amount {
+    animation: rwAmountGlow 1.2s ease-out 1.9s backwards;
+}
+
+@keyframes rwAmountGlow {
+    0%   { fill: #34d17e; }
+    40%  { fill: #6ef2a8; }
+    100% { fill: #1c8f57; }
+}
+
+/* ---------- Шапка из 3D-рендеров ----------
+   Те же классы движения, что у вектора (rw-key, rw-fly…), но слои — HTML-картинки.
+   Координаты в долях сцены, а монеты вылетают из стопки на cqw/cqh — сцена сама
+   контейнер, и траектория масштабируется вместе с ней. */
+
+.rewards-hero-scene {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 520 / 420;
+    container-type: size;
+}
+
+.rewards-hero-scene img {
+    display: block;
+    width: 100%;
+    height: auto;
+    user-select: none;
+    pointer-events: none;
+}
+
+.rw-scene-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 52% 52%, rgba(139, 92, 246, 0.5), transparent 62%);
+    animation:
+        rwGlowIn 1.2s ease-out backwards,
+        rwBreathe 5s ease-in-out 2.2s infinite;
+}
+
+.rw-scene-wallet {
+    position: absolute;
+    left: 46%;
+    top: 22%;
+    width: 44%;
+}
+
+.rw-scene-wallet img {
+    filter: drop-shadow(0 26px 30px rgba(6, 4, 20, 0.55));
+}
+
+.rw-stack-drop {
+    transform-origin: center bottom;
+    animation: rwStackDrop 0.8s cubic-bezier(0.3, 0.7, 0.4, 1) 1.05s backwards;
+}
+
+@keyframes rwStackDrop {
+    0%   { opacity: 0; transform: translateY(-45%); }
+    40%  { opacity: 1; }
+    65%  { transform: translateY(0) scale(1.05, 0.9); }
+    85%  { transform: translateY(-2%) scale(0.99, 1.02); }
+    100% { opacity: 1; transform: none; }
+}
+
+/* Веер обложек: наклон — на слоте, раздача — на карточке внутри, чтобы transform не спорили. */
+.rw-scene-covers {
+    position: absolute;
+    inset: 0;
+}
+
+.rw-cover-slot {
+    position: absolute;
+    width: 30%;
+}
+
+.rw-cover {
+    aspect-ratio: 3 / 4;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #241a4d;
+    box-shadow:
+        0 24px 40px -12px rgba(6, 4, 20, 0.7),
+        0 0 0 1px rgba(255, 255, 255, 0.12);
+    animation: rwDeal 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
+    animation-delay: calc(0.15s + var(--i, 0) * 0.16s);
+}
+
+.rw-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@keyframes rwDeal {
+    0%   { opacity: 0; transform: translate(40%, 30%) rotate(18deg) scale(0.7); }
+    60%  { opacity: 1; }
+    100% { opacity: 1; transform: none; }
+}
+
+.rw-scene-wallet {
+    position: absolute;
+    left: 50%;
+    top: 34%;
+    width: 42%;
+}
+
+.rw-scene-badge-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* Сумма кэшбэка за верхнюю игру — выпрыгивает, когда кошелёк лёг на место. */
+.rw-scene-badge {
+    position: absolute;
+    left: 56%;
+    top: 20%;
+    padding: 0.5em 0.95em;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #22b36a, #157347);
+    color: #ecfdf3;
+    font-size: clamp(13px, 1.3vw, 17px);
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 14px 28px -8px rgba(21, 115, 71, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    animation: rwPop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.4) 1.7s backwards;
+}
+
+.rw-scene-badge b {
+    font-size: 1.25em;
+    font-weight: 800;
+}
+
+/* Слой с transform становится опорой для absolute-детей — растягиваем его на всю сцену,
+   иначе у него нулевая высота и монеты с top: 56% прилипают к верху. */
+.rewards-hero-scene .rw-depth-fly {
+    position: absolute;
+    inset: 0;
+}
+
+.rw-scene-fly {
+    position: absolute;
+    display: block;
+}
+
+.rw-scene-fly > span {
+    display: block;
+}
+
+.rw-scene-fly img {
+    filter: drop-shadow(0 10px 12px rgba(6, 4, 20, 0.45));
+}
+
+@media (max-width: 900px) {
+    .rewards-hero-scene {
+        display: none;
+    }
+}
+
+/* ---------- Живая карточка заказа ---------- */
+
+/* Карточка наклонена — без наклона блок выглядит плоско. Чтобы повёрнутый текст не мылился,
+   анимации появления карточки и её строк идут с fill-mode backwards, а не both: после
+   окончания на элементе не остаётся анимированного transform/filter, браузер снимает его с
+   отдельного GPU-слоя и рисует повёрнутый текст векторно, а не поворачивает готовую картинку.
+   Не добавляй сюда will-change/translateZ — вернётся мыло. */
+.rw-order {
+    justify-self: start;
+    width: 100%;
+    max-width: 380px;
+    margin: 0;
+    rotate: -2deg;
+}
+
+.rw-order-card {
+    padding: var(--space-20);
+    border-radius: 22px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow:
+        0 30px 60px -24px rgba(26, 20, 54, 0.35),
+        0 0 0 8px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.rw-order-tier {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.rw-order-tier img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.rw-order--loading {
+    aspect-ratio: 380 / 330;
+}
+
+.rw-order-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-14);
+    padding-bottom: var(--space-16);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.rw-order-cover {
+    width: 64px;
+    height: 86px;
+    flex: none;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 8px 18px rgba(26, 20, 54, 0.25);
+}
+
+.rw-order-title {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.rw-order-title strong {
+    color: var(--color-text);
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.rw-order-title span {
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.rw-order-rows {
+    display: grid;
+    gap: var(--space-8);
+    margin: var(--space-14) 0;
+}
+
+.rw-order-rows > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-12);
+    font-size: 14px;
+}
+
+.rw-order-rows dt {
+    color: var(--color-muted);
+}
+
+.rw-order-rows dd {
+    margin: 0;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.rw-order-rows dd.is-struck {
+    color: var(--color-muted);
+    text-decoration: line-through;
+    text-decoration-color: #e0483d;
+}
+
+.rw-order-rows dd.is-discount {
+    color: #e0483d;
+    font-weight: 600;
+}
+
+.rw-order-total {
+    padding-top: var(--space-8);
+    border-top: 1px dashed var(--color-border);
+    font-weight: 700;
+}
+
+.rw-order-total dt,
+.rw-order-total dd {
+    color: var(--color-text) !important;
+    font-size: 16px;
+}
+
+.rw-order-cash {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-14);
+    border-radius: 14px;
+    background: linear-gradient(135deg, #e7f7ee, #d4f3e2);
+    border: 1px solid #b9ebcf;
+}
+
+.rw-order-cash > div {
+    display: grid;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.rw-order-cash strong {
+    color: #14532d;
+    font-size: 14px;
+}
+
+.rw-order-cash span {
+    color: #3f7a5a;
+    font-size: 12px;
+}
+
+/* Монета из градиентов: объём и ободок, чтобы не читалась плоским кружком. */
+.rw-order-coin {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 35% 30%, #b8f7d2 0 18%, transparent 19%),
+        radial-gradient(circle, #34d17e 0 52%, #22a861 53% 62%, #34d17e 63%);
+    box-shadow: inset 0 -3px 0 #1c8f57, 0 4px 10px rgba(28, 143, 87, 0.35);
+}
+
+.rw-order-amount {
+    color: #15803d;
+    font-size: 20px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Появление: строки по очереди, зелёная строка — последней, с отскоком. */
+.rewards-what:not(.is-in) .rw-r-step,
+.rewards-what:not(.is-in) .rw-order-cash {
+    opacity: 0;
+}
+
+/* backwards, а не both — см. комментарий у .rw-order: иначе наклонённый текст мылится. */
+.rewards-what.is-in .rw-order {
+    animation: rwRise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.rewards-what.is-in .rw-r-step {
+    animation: rwEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: var(--d, 0s);
+}
+
+.rewards-what.is-in .rw-order-cash {
+    animation: rwCashIn 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) 1.1s backwards;
+}
+
+.rewards-what.is-in .rw-order-amount {
+    animation: rwAmountPulse 0.9s ease-out 1.6s backwards;
+}
+
+@keyframes rwAmountPulse {
+    0%   { color: #34d17e; transform: scale(0.8); }
+    50%  { color: #22c55e; transform: scale(1.15); }
+    100% { color: #15803d; transform: none; }
+}
+
+.rw-order-amount {
+    display: inline-block;
+}
+
+@media (max-width: 860px) {
+    .rw-order {
+        rotate: none;
+    }
+}
+
+/* ---------- Шаги ---------- */
+
+.rewards-steps:not(.is-in) .rewards-step {
+    opacity: 0;
+}
+
+.rewards-steps.is-in .rewards-step {
+    animation: rwEnter 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 0.13s);
+}
+
+.rewards-steps.is-in .rewards-step-icon,
+.rewards-steps.is-in .rewards-step-art {
+    animation: rwPop 0.5s ease-out backwards;
+    animation-delay: calc(0.2s + var(--i, 0) * 0.13s);
+}
+
+/* Цифра шага въезжает из угла последней — порядок доигрывает после содержимого. */
+.rewards-steps.is-in .rewards-step-index {
+    animation: rwIndexIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc(0.3s + var(--i, 0) * 0.13s);
+}
+
+@keyframes rwIndexIn {
+    from { opacity: 0; transform: translate(14px, -8px) scale(1.4); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* Карточка шага отзывается на наведение — иконка подпрыгивает. Подъём карточки идёт
+   через translate, а не transform: transform занят анимацией появления с fill both. */
+.rewards-step {
+    transition: translate 0.25s ease, box-shadow 0.25s ease;
+}
+
+.rewards-step:hover {
+    translate: 0 -4px;
+    box-shadow: 0 12px 28px rgba(26, 20, 54, 0.12);
+}
+
+.rewards-step:hover .rewards-step-icon {
+    animation: rwHop 0.5s ease;
+}
+
+@keyframes rwHop {
+    0%, 100% { transform: none; }
+    40%      { transform: translateY(-6px) rotate(-8deg); }
+}
+
+/* ---------- Уровни: колонки проявляются слева направо, проценты набегают ---------- */
+
+.rewards-table-scroll:not(.is-in) :is(th, td):not(:first-child) {
+    opacity: 0;
+}
+
+.rewards-table-scroll.is-in :is(th, td):not(:first-child) {
+    animation: rwEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.rewards-table-scroll.is-in :is(th, td):nth-child(2) { animation-delay: 0.05s; }
+.rewards-table-scroll.is-in :is(th, td):nth-child(3) { animation-delay: 0.15s; }
+.rewards-table-scroll.is-in :is(th, td):nth-child(4) { animation-delay: 0.25s; }
+.rewards-table-scroll.is-in :is(th, td):nth-child(5) { animation-delay: 0.35s; }
+
+/* ---------- Без движения ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .rw-enter,
+    .rewards-hero-accent::after,
+    .rw-depth,
+    .rw-glow,
+    .rw-key,
+    .rw-key-click,
+    .rw-key-glint,
+    .rw-coin,
+    .rw-fly,
+    .rw-fly-bob,
+    .rw-fly-spin,
+    .rw-spark,
+    img.rewards-hero-art,
+    .rewards-what > div,
+    .rewards-receipt-art,
+    .rw-r,
+    .rw-r-coin,
+    .rw-r-amount,
+    .rw-stack-drop,
+    .rw-cover,
+    .rw-scene-badge,
+    .rw-scene-glow,
+    .rw-order,
+    .rw-r-step,
+    .rw-order-cash,
+    .rw-order-amount,
+    .rewards-step,
+    .rewards-step-icon,
+    .rewards-step-art,
+    .rewards-step-index,
+    .rewards-table-scroll :is(th, td) {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .rw-enter,
+    .rw-depth,
+    .rw-key,
+    .rw-coin,
+    .rw-fly,
+    .rw-r,
+    .rw-stack-drop,
+    .rw-cover,
+    .rw-scene-badge,
+    .rw-r-step,
+    .rw-order-cash,
+    .rewards-what > div,
+    .rewards-receipt-art,
+    .rewards-table-scroll :is(th, td) {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+
+    .rewards-step {
+        opacity: 1 !important;
+        translate: none !important;
+    }
+
+    .rw-key-click,
+    .rw-key-glint {
+        opacity: 0 !important;
+    }
+}

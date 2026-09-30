@@ -1,11 +1,17 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../../i18n';
+import { tierName } from '../../../utils/cashback';
+import { formatDate } from '../../../i18n/format';
 import {Link, useNavigate} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
     faBagShopping,
     faCreditCard,
     faKey,
-    faHeart
+    faHeart,
+    faCoins,
+    faHourglassHalf
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import {accountProfile} from '../mockAccountData';
@@ -17,13 +23,40 @@ import { useOrders } from '../../../hooks/use-orders';
 import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
 import { usePaymentMethodsSummary } from '../../../hooks/use-payment-methods-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import SafeGameImage from '../../../components/common/SafeGameImage';
+import Cover from '../../../components/common/Cover';
+import HoverTrailer from '../../../components/common/HoverTrailer';
 import { useSitePreferences } from '../../../context/site-preferences';
-import { formatMoney } from '../../../utils/format-money';
+import { formatMoney, formatOrderMoney } from '../../../utils/format-money';
+import { useCashbackStatus } from '../../../hooks/use-cashback-status';
+import { tierIcon } from '../cashback-icons';
 import './account-overview-page.css';
+import './account-rewards-page.css';
+
+/** «Sep 24» — дата разблокировки кэшбэка; год здесь лишний, это ближайшие недели. */
+const formatShortDate = (iso: string) => formatDate(iso.length === 10 ? `${iso}T00:00:00` : iso, { month: 'short', day: 'numeric' });
+
+/** Дата заказа. Пустое или битое значение показываем прочерком, а не «Invalid Date». */
+const formatOrderDate = (value?: string | null) => {
+    if (!value) {
+        return '—';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '—';
+    }
+
+    return formatDate(date);
+};
 
 const AccountOverviewPage: React.FC = () => {
+    const { t } = useTranslation();
     const { currency } = useSitePreferences();
+    const cashback = useCashbackStatus();
+    // Уровень и суммы — с сервера, в валюте его ответа (для валюты без курса это доллары).
+    const cashbackMoney = (value: number) => formatMoney(value, cashback.currency);
+    const cashbackTier = cashback.level.tiers.find((item) => item.id === cashback.level.tierId) ?? cashback.level.tiers[0];
+    const cashbackNext = cashback.level.tiers.find((item) => item.id === cashback.level.nextTierId) ?? null;
     const {dispatch} = useCart();
     const navigate = useNavigate();
     const {
@@ -32,7 +65,7 @@ const AccountOverviewPage: React.FC = () => {
         isLoading: isOrdersLoading,
         error: ordersError,
         reload: reloadOrders
-    } = useOrders(3);
+    } = useOrders({ limit: 3 });
     const {
         items: recommendations,
         isLoading: isRecommendationsLoading,
@@ -59,28 +92,30 @@ const AccountOverviewPage: React.FC = () => {
     } = usePaymentMethodsSummary();
 
     const ordersSummary = ordersError
-        ? 'Unavailable'
+        ? t('common.unavailable')
         : isOrdersLoading
-            ? 'Loading...'
-            : `${ordersTotal} order${ordersTotal === 1 ? '' : 's'}`;
+            ? t('common.loading')
+            : t('account.overview.orders', { count: ordersTotal });
     const keysSummary = keysError
-        ? 'Unavailable'
+        ? t('common.unavailable')
         : isKeysLoading
-            ? 'Loading...'
-            : `${keys.length} active key${keys.length === 1 ? '' : 's'}`;
+            ? t('common.loading')
+            : t('account.overview.activeKeys', { count: keys.length });
     const savedSummary = wishlistError
-        ? 'Unavailable'
+        ? t('common.unavailable')
         : isWishlistLoading
-            ? 'Loading...'
-            : `${wishlistCount} item${wishlistCount === 1 ? '' : 's'}`;
+            ? t('common.loading')
+            : t('account.overview.items', { count: wishlistCount });
     const billingSummary = paymentMethodsError
-        ? 'Unavailable'
+        ? t('common.unavailable')
         : isPaymentMethodsLoading
-            ? 'Loading...'
-            : `${paymentMethodsCount} method${paymentMethodsCount === 1 ? '' : 's'}`;
+            ? t('common.loading')
+            : t('account.overview.methods', { count: paymentMethodsCount });
 
-    const handleInvoiceView = (orderId: string) => {
-        console.log(`TODO: open invoice for ${orderId}`);
+    // Кнопка вела в console.log. Открываем заказ там, где он показан целиком, — на «Orders»,
+    // отфильтрованных по его номеру: сервер ищет в том числе по OrderNumber.
+    const handleViewOrder = (orderId: string) => {
+        navigate(`/account/orders?q=${encodeURIComponent(orderId)}`);
     };
 
     const handleViewKeys = (keyId?: string) => {
@@ -110,9 +145,9 @@ const AccountOverviewPage: React.FC = () => {
 
     return (
         <AccountShell
-            title="Account overview"
-            sectionLabel="Account overview"
-            subtitle="Manage your purchases, keys, and account settings."
+            title={t('account.overview.title')}
+            sectionLabel={t('account.overview.title')}
+            subtitle={t('account.overview.subtitle')}
         >
             <div className="card account-card account-profile-card">
                 <div className="account-profile-summary">
@@ -121,64 +156,109 @@ const AccountOverviewPage: React.FC = () => {
                         <h2>{displayName}</h2>
                         <p className="account-profile-email">{email}</p>
                         {/* Честный бейдж: только при реальных покупках (раньше показывался всем из мока). */}
-                        {!isOrdersLoading && ordersTotal > 0 && <span className="badge">Verified buyer</span>}
+                        {!isOrdersLoading && ordersTotal > 0 && <span className="badge">{t('account.verifiedBuyer')}</span>}
                     </div>
                 </div>
                 <Link to="/account/settings" className="btn btn-primary account-action-btn">
-                    Edit profile
+                    {t('account.overview.editProfile')}
                 </Link>
             </div>
+
+            {/* Кэшбэк отдельной полосой, а не пятой плиткой среди «Orders/Keys/Saved/Billing»:
+                там всё — разделы, куда можно сходить, а тут число, ради которого сюда заходят.
+                Слева — сколько есть, справа — почему столько и сколько до следующего уровня.
+                Данные из того же хука, что и на /account/rewards. */}
+            <Link to="/account/rewards" className="card account-card cb-overview">
+                <span className="cb-icon" aria-hidden="true">
+                    <FontAwesomeIcon icon={faCoins} />
+                </span>
+                <div className="cb-overview-balance">
+                    <span className="cb-label">{t('account.overview.cashbackAvailable')}</span>
+                    <strong className="cb-overview-value">{cashbackMoney(cashback.available)}</strong>
+                    {cashback.pending > 0 && (
+                        <span className="cb-overview-pending">
+                            <FontAwesomeIcon icon={faHourglassHalf} />
+                            {t('account.overview.pending', { amount: cashbackMoney(cashback.pending) })}
+                            {cashback.nextUnlockAt && t('account.overview.unlocks', { date: formatShortDate(cashback.nextUnlockAt) })}
+                        </span>
+                    )}
+                </div>
+                <span className="cb-overview-sep" aria-hidden="true" />
+                <div className="cb-overview-level">
+                    <div className="cb-overview-level-row">
+                        <span className="cb-label">{t('account.overview.level')}</span>
+                        <span className="cb-tier-chip">
+                            <FontAwesomeIcon icon={tierIcon(cashbackTier.id)} />
+                            {tierName(cashbackTier)} · {cashbackTier.percent}%
+                        </span>
+                    </div>
+                    <div className="rewards-progress-bar" aria-hidden="true">
+                        <span style={{ width: `${Math.round(cashback.level.progress * 100)}%` }} />
+                    </div>
+                    <span className="cb-overview-next">
+                        {cashbackNext && cashback.level.remainingToNext !== null ? (
+                            <>
+                                {t('account.overview.moreTo', { amount: cashbackMoney(cashback.level.remainingToNext) })} <b>{tierName(cashbackNext)}</b>
+                                {' '}{t('account.overview.back', { percent: cashbackNext.percent })}
+                            </>
+                        ) : (
+                            <>{t('account.overview.topLevel', { percent: cashbackTier.percent })}</>
+                        )}
+                    </span>
+                </div>
+                <span className="btn btn-outline account-action-btn">{t('common.open')}</span>
+            </Link>
 
             <div className="account-quick-actions">
                 <div className="card account-card account-action-card">
                     <div className="account-action-header">
                         <FontAwesomeIcon icon={faBagShopping} />
-                        <h3>Orders</h3>
+                        <h3>{t('account.nav.orders')}</h3>
                     </div>
-                    <p>View your orders and invoices</p>
+                    <p>{t('account.overview.ordersText')}</p>
                     <div className="account-action-footer">
                         <strong>{ordersSummary}</strong>
                         <Link to="/account/orders" className="btn btn-outline account-action-btn">
-                            View
+                            {t('common.view')}
                         </Link>
                     </div>
                 </div>
                 <div className="card account-card account-action-card">
                     <div className="account-action-header">
                         <FontAwesomeIcon icon={faKey} />
-                        <h3>Keys &amp; activation</h3>
+                        <h3>{t('account.nav.keys')}</h3>
                     </div>
-                    <p>Reveal, copy and activate keys</p>
+                    <p>{t('account.overview.keysText')}</p>
                     <div className="account-action-footer">
                         <strong>{keysSummary}</strong>
                         <Link to="/account/keys" className="btn btn-outline account-action-btn">
-                            Open
+                            {t('common.open')}
                         </Link>
                     </div>
                 </div>
                 <div className="card account-card account-action-card">
                     <div className="account-action-header">
                         <FontAwesomeIcon icon={faHeart} />
-                        <h3>Saved items</h3>
+                        <h3>{t('account.nav.saved')}</h3>
                     </div>
-                    <p>Wishlist for future purchases</p>
+                    <p>{t('account.overview.savedText')}</p>
                     <div className="account-action-footer">
                         <strong>{savedSummary}</strong>
                         <Link to="/account/saved" className="btn btn-outline account-action-btn">
-                            Open
+                            {t('common.open')}
                         </Link>
                     </div>
                 </div>
                 <div className="card account-card account-action-card">
                     <div className="account-action-header">
                         <FontAwesomeIcon icon={faCreditCard} />
-                        <h3>Billing</h3>
+                        <h3>{t('account.nav.billing')}</h3>
                     </div>
-                    <p>Payment methods and invoices</p>
+                    <p>{t('account.overview.billingText')}</p>
                     <div className="account-action-footer">
                         <strong>{billingSummary}</strong>
                         <Link to="/account/billing" className="btn btn-outline account-action-btn">
-                            Manage
+                            {t('common.manage')}
                         </Link>
                     </div>
                 </div>
@@ -186,25 +266,25 @@ const AccountOverviewPage: React.FC = () => {
 
             <div className="card account-card">
                 <div className="account-section-header">
-                    <h3>Recent orders</h3>
-                    <Link to="/account/orders">View all</Link>
+                    <h3>{t('account.overview.recentOrders')}</h3>
+                    <Link to="/account/orders">{t('common.viewAll')}</Link>
                 </div>
                 <div className="account-table-wrapper">
                     <table className="account-table">
                         <thead>
                         <tr>
-                            <th>Order ID</th>
-                            <th>Game</th>
-                            <th>Date</th>
-                            <th>Amount</th>
-                            <th>Invoice</th>
+                            <th>{t('account.overview.orderId')}</th>
+                            <th>{t('account.overview.game')}</th>
+                            <th>{t('account.overview.date')}</th>
+                            <th>{t('account.overview.amount')}</th>
+                            <th>{t('account.overview.invoice')}</th>
                         </tr>
                         </thead>
                         <tbody>
                         {isOrdersLoading && (
                             <tr>
                                 <td colSpan={5} className="account-table-state">
-                                    Loading recent orders...
+                                    {t('account.overview.loadingOrders')}
                                 </td>
                             </tr>
                         )}
@@ -218,7 +298,7 @@ const AccountOverviewPage: React.FC = () => {
                                             className="btn btn-outline account-action-btn"
                                             onClick={reloadOrders}
                                         >
-                                            Retry
+                                            {t('common.retry')}
                                         </button>
                                     </div>
                                 </td>
@@ -227,25 +307,29 @@ const AccountOverviewPage: React.FC = () => {
                         {!isOrdersLoading && !ordersError && orders.length === 0 && (
                             <tr>
                                 <td colSpan={5} className="account-table-state">
-                                    No recent orders yet.
+                                    {t('account.overview.noRecentOrders')}
                                 </td>
                             </tr>
                         )}
                         {!isOrdersLoading && !ordersError && orders.map((order) => (
-                            <tr key={order.id}>
-                                <td>{order.id}</td>
-                                <td>{order.gameName}</td>
-                                <td>{new Date(order.orderDate).toLocaleDateString()}</td>
-                                <td>
-                                    {order.currency} {order.totalAmount.toFixed(2)}
+                            <tr key={order.internalId}>
+                                {/* Классы ячеек нужны узкой раскладке: там таблица становится
+                                    списком карточек, и каждая ячейка встаёт на своё место.
+                                    По порядку колонок этого делать нельзя — порядок меняется. */}
+                                <td className="account-cell-order">{order.orderId}</td>
+                                <td className="account-cell-game">
+                                    {order.preview.firstTitle || t('account.overview.gamePurchase')}
+                                    {order.preview.extraCount > 0 && ` +${order.preview.extraCount}`}
                                 </td>
-                                <td>
+                                <td className="account-cell-date">{formatOrderDate(order.createdAt)}</td>
+                                <td className="account-cell-amount">{formatOrderMoney(order.totalAmount, order.currency)}</td>
+                                <td className="account-cell-action">
                                     <button
                                         type="button"
                                         className="btn btn-outline account-action-btn"
-                                        onClick={() => handleInvoiceView(order.id)}
+                                        onClick={() => handleViewOrder(order.orderId)}
                                     >
-                                        View
+                                        {t('common.view')}
                                     </button>
                                 </td>
                             </tr>
@@ -257,27 +341,27 @@ const AccountOverviewPage: React.FC = () => {
 
             <div className="card account-card">
                 <div className="account-section-header">
-                    <h3>Recent keys</h3>
-                    <Link to="/account/keys">View all</Link>
+                    <h3>{t('account.overview.recentKeys')}</h3>
+                    <Link to="/account/keys">{t('common.viewAll')}</Link>
                 </div>
                 <div className="account-key-list">
                     {isKeysLoading && (
                         <div className="account-key-item">
-                            <div>
-                                <strong>Loading keys...</strong>
+                            <div className="account-key-main">
+                                <strong>{t('account.overview.loadingKeys')}</strong>
                                 <div className="account-key-meta">
-                                    <span>Please wait</span>
+                                    <span>{t('account.overview.pleaseWait')}</span>
                                 </div>
                             </div>
                         </div>
                     )}
                     {!isKeysLoading && keysError && (
                         <div className="account-key-item">
-                            <div>
+                            <div className="account-key-main">
                                 <strong>{keysError}</strong>
                                 <div className="account-key-meta">
                                     <button type="button" className="btn btn-outline account-action-btn" onClick={reloadKeys}>
-                                        Retry
+                                        {t('common.retry')}
                                     </button>
                                 </div>
                             </div>
@@ -286,23 +370,23 @@ const AccountOverviewPage: React.FC = () => {
                     {!isKeysLoading && !keysError && keys.length === 0 && (
                         <div className="account-key-item">
                             <div>
-                                <strong>No keys yet.</strong>{' '}
-                                <span className="account-key-meta">Complete a purchase to receive keys.</span>
+                                <strong>{t('account.overview.noKeys')}</strong>{' '}
+                                <span className="account-key-meta">{t('account.overview.completePurchase')}</span>
                             </div>
                         </div>
                     )}
                     {!isKeysLoading && !keysError && keys.slice(0, 3).map((keyItem, index) => {
-                        const title = keyItem.game?.title ?? keyItem.game?.name ?? 'Unknown game';
+                        const title = keyItem.game?.title ?? keyItem.game?.name ?? t('kind.game.unknownProduct');
                         const dateLabel = keyItem.issuedAt
-                            ? new Date(keyItem.issuedAt).toLocaleDateString()
-                            : 'Pending';
+                            ? formatDate(keyItem.issuedAt)
+                            : t('common.pending');
 
                         return (
                             <div key={`${keyItem.key}-${index}`} className="account-key-item">
-                                <div>
+                                <div className="account-key-main">
                                     <strong>{title}</strong>
                                     <div className="account-key-meta">
-                                        <span>{keyItem.keyType ?? 'Key'}</span>
+                                        <span>{keyItem.keyType ?? t('account.overview.key')}</span>
                                         <span>-</span>
                                         <span>{dateLabel}</span>
                                     </div>
@@ -312,7 +396,7 @@ const AccountOverviewPage: React.FC = () => {
                                     className="btn btn-outline account-action-btn"
                                     onClick={() => handleViewKeys(keyItem.game?.id)}
                                 >
-                                    View keys
+                                    {t('account.overview.viewKeys')}
                                 </button>
                             </div>
                         );
@@ -323,17 +407,17 @@ const AccountOverviewPage: React.FC = () => {
             {(wishlistError || paymentMethodsError) && (
                 <div className="account-overview-alert">
                     <p>
-                        Some account summaries could not be loaded.
+                        {t('account.overview.summariesFailed')}
                     </p>
                     <div className="account-overview-alert-actions">
                         {wishlistError && (
                             <button type="button" className="btn btn-outline account-action-btn" onClick={reloadWishlist}>
-                                Retry wishlist
+                                {t('account.overview.retryWishlist')}
                             </button>
                         )}
                         {paymentMethodsError && (
                             <button type="button" className="btn btn-outline account-action-btn" onClick={reloadPaymentMethods}>
-                                Retry billing
+                                {t('account.overview.retryBilling')}
                             </button>
                         )}
                     </div>
@@ -342,28 +426,30 @@ const AccountOverviewPage: React.FC = () => {
 
             <div className="card account-card">
                 <div className="account-section-header">
-                    <h3>Recommendations based on your wishlist</h3>
+                    <h3>{t('account.overview.recommendations')}</h3>
                 </div>
                 <RecommendationsSection
                     items={recommendations}
                     isLoading={isRecommendationsLoading}
                     error={recommendationsError}
                     onRetry={reloadRecommendations}
-                    emptyMessage="Add games to your wishlist or view a few games to get recommendations."
+                    emptyMessage={t('cart.recommendedEmpty')}
                     listClassName="account-recommendations"
                     stateClassName="account-recommendations-state"
                     renderSkeleton={(index) => (
                         <div key={`rec-skeleton-${index}`} className="account-recommendation-card is-skeleton" />
                     )}
                     renderItem={(item) => (
-                        <div key={item.game.id ?? item.game.title} className="account-recommendation-card">
-                            <div className="account-recommendation-media">
-                                <SafeGameImage src={item.game.imagePath} gameTitle={item.game.title} />
-                            </div>
+                        <div key={item.game.id ?? item.game.title} className="account-recommendation-card" data-hover-trailer-root="">
+                            <Cover className="account-recommendation-media" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
+                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
+                        </Cover>
                             <div className="account-recommendation-body">
-                                <strong>{item.game.title}</strong>
+                                {/* title: название обрезается двумя строками, полное
+                                    остаётся доступным при наведении. */}
+                                <strong title={item.game.title}>{item.game.title}</strong>
                                 <span className="account-recommendation-price">
-                                    {formatMoney(Number(item.game.price), currency)}
+                                    {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
                                 </span>
                             </div>
                             <button
@@ -379,7 +465,7 @@ const AccountOverviewPage: React.FC = () => {
                                 }
                                 disabled={!item.game.id}
                             >
-                                Add to cart
+                                {t('common.addToCart')}
                             </button>
                         </div>
                     )}
@@ -404,7 +490,7 @@ const AccountProfileSummary: React.FC = () => {
     return (
         <div className="account-avatar account-avatar-lg">
             {profile?.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={`${displayName} avatar`} />
+                <img src={profile.avatarUrl} alt={i18n.t('account.avatarAlt', { name: displayName })} />
             ) : (
                 initials
             )}

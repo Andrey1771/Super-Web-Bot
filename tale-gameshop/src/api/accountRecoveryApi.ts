@@ -1,11 +1,7 @@
-import container from '../inversify.config';
-import IDENTIFIERS from '../constants/identifiers';
-import type { IApiClient } from '../iterfaces/i-api-client';
+import { apiClient } from './client';
 
 // Публичная часть восстановления доступа: подача заявки работает без логина
 // (интерцептор добавляет токен только когда он есть), отмена — по токену из письма.
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 
 export type RecoveryRequestPayload = {
     accountEmail: string;

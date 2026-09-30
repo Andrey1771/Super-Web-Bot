@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React, {useState} from 'react';
 
 type DeleteAccountModalProps = {
@@ -13,6 +14,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     onClose,
     onConfirm
 }) => {
+    const {t} = useTranslation();
     const [confirmation, setConfirmation] = useState('');
     const [password, setPassword] = useState('');
     const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -24,11 +26,11 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
 
     const handleSubmit = () => {
         if (confirmation !== 'DELETE') {
-            setError('Type DELETE to confirm.');
+            setError(t('account.security.deleteAccount.errType'));
             return;
         }
         if (!password) {
-            setError('Enter your password.');
+            setError(t('account.security.deleteAccount.errPassword'));
             return;
         }
         setError('');
@@ -39,15 +41,15 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
         <div className="security-modal-overlay">
             <div className="security-modal">
                 <div className="security-modal-header">
-                    <h3>Delete account</h3>
+                    <h3>{t('account.security.deleteAccount.title')}</h3>
                     <button type="button" className="security-modal-close" onClick={onClose}>
                         ✕
                     </button>
                 </div>
                 <div className="security-modal-body">
-                    <p>This will permanently delete your account and data. This action cannot be undone.</p>
+                    <p>{t('account.security.deleteAccount.text')}</p>
                     <label className="security-field">
-                        <span>Type DELETE to confirm</span>
+                        <span>{t('account.security.deleteAccount.typeDelete')}</span>
                         <input
                             className="input"
                             value={confirmation}
@@ -56,7 +58,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         />
                     </label>
                     <label className="security-field">
-                        <span>Password</span>
+                        <span>{t('common.password')}</span>
                         <input
                             className="input"
                             type="password"
@@ -66,7 +68,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         />
                     </label>
                     <label className="security-field">
-                        <span>2FA code (if enabled)</span>
+                        <span>{t('account.security.deleteAccount.code')}</span>
                         <input
                             className="input"
                             value={twoFactorCode}
@@ -78,10 +80,10 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                 </div>
                 <div className="security-modal-footer">
                     <button type="button" className="btn btn-outline" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button type="button" className="btn btn-outline security-danger-btn" onClick={handleSubmit} disabled={isSubmitting}>
-                        Delete permanently
+                        {t('account.security.deleteAccount.confirm')}
                     </button>
                 </div>
             </div>

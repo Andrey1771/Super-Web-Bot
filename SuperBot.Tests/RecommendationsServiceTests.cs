@@ -99,8 +99,23 @@ namespace SuperBot.Tests
                 return Task.FromResult(_games.Where(game => idSet.Contains(game.Id)).ToList());
             }
 
+            public Task<List<Game>> GetWithRegionSettingsAsync() =>
+                Task.FromResult(_games.Where(game => game.RegionPolicy is not null || game.RegionPrices is not null).ToList());
+
             public Task<List<Game>> GetByCoverMediaIdAsync(string mediaId) =>
                 Task.FromResult(_games.Where(game => game.CoverMediaId == mediaId).ToList());
+
+            // Листание каталога этим тестам не нужно — они про рекомендации. Отдаём окно
+            // из своего набора, чтобы фейк отвечал интерфейсу.
+            public Task<(List<Game> Items, long Total)> GetPageAsync(
+                string? search,
+                IReadOnlyCollection<string>? onlyIds,
+                IReadOnlyCollection<string>? excludeIds,
+                string sortBy,
+                bool descending,
+                int skip,
+                int take,
+                bool onlyWithManualPrices = false) => Task.FromResult((_games.Skip(skip).Take(take).ToList(), (long)_games.Count));
 
             public Task CreateAsync(Game game) => Task.CompletedTask;
 
@@ -171,6 +186,7 @@ namespace SuperBot.Tests
                     .ToList());
 
             public Task<List<Order>> GetOrdersByUserAsync(string userName) => Task.FromResult(_orders.Where(order => order.UserName == userName).ToList());
+            public Task<List<Order>> GetOrdersByUsersAsync(IReadOnlyCollection<string> userNames) => Task.FromResult(_orders.Where(order => userNames.Contains(order.UserName)).ToList());
 
             public Task<List<Order>> GetUnfulfilledPaidOrdersAsync() => Task.FromResult(_orders.Where(order => order.IsPaid && !order.IsFulfilled).ToList());
 
@@ -204,6 +220,8 @@ namespace SuperBot.Tests
                 Task.FromResult<(IReadOnlyList<Order>, long)>((_orders, _orders.Count));
 
             public Task UpdateOrderAsync(Order order) => Task.CompletedTask;
+
+            public Task SetTaxAsync(string orderId, OrderTax tax, decimal taxTotal) => Task.CompletedTask;
 
             public Task DeleteOrderAsync(string orderId) => Task.CompletedTask;
         }

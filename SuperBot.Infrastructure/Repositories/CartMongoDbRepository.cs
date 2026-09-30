@@ -42,6 +42,9 @@ namespace SuperBot.Infrastructure.Repositories
                 .FirstOrDefaultAsync());
 
             var cartDb = _mapper.Map<CartDb>(cart);
+            // Отметка времени ставится здесь, а не в вызывающем коде: любой путь изменения
+            // корзины проходит через этот метод, и забыть её тут невозможно.
+            cartDb.UpdatedAt = DateTime.UtcNow;
 
             if (existingItem != null)
             {
@@ -50,7 +53,7 @@ namespace SuperBot.Infrastructure.Repositories
             }
             else
             {
-                await _cartCollection.InsertOneAsync(_mapper.Map<CartDb>(cart));
+                await _cartCollection.InsertOneAsync(cartDb);
             }
         }
 

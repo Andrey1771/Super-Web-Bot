@@ -1,11 +1,7 @@
-import container from '../inversify.config';
-import IDENTIFIERS from '../constants/identifiers';
-import type { IApiClient } from '../iterfaces/i-api-client';
+import { apiClient } from './client';
 
 // Админский workflow восстановления доступа (/api/account-recovery/admin).
 // Доступ — политика SupportAgent (роли admin/support), как у тикетов.
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 
 export type RecoveryStatus = 'Pending' | 'Approved' | 'Executed' | 'Rejected' | 'Cancelled';
 

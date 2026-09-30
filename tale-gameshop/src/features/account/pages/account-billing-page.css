@@ -70,8 +70,9 @@
 
 .billing-methods {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-16);
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-20);
+    align-items: start;
 }
 
 .billing-methods.is-highlighted {
@@ -91,7 +92,8 @@
 }
 
 .billing-method-card.is-skeleton {
-    min-height: 110px;
+    aspect-ratio: 1.586;
+    border-radius: 14px;
     background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
     background-size: 200% 100%;
     border-style: dashed;
@@ -157,10 +159,44 @@
     color: var(--color-text);
 }
 
-.billing-add-btn {
-    height: 100%;
-    min-height: 86px;
+/* «Add method» — пустой пластик той же формы, пунктиром. */
+.billing-methods .billing-add-btn {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    aspect-ratio: 1.586;
+    border-radius: 14px;
+    border: 2px dashed #d9d0f5;
+    background: #faf8ff;
+    color: #6f64a8;
     font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.billing-add-btn::before {
+    content: "+";
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #e5dcff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.billing-add-btn:hover {
+    background: #f3eefe;
+    border-color: var(--color-primary);
+    color: var(--color-primary);
 }
 
 .billing-card-footer {
@@ -215,13 +251,15 @@
 }
 
 .billing-table-wrapper {
+    container-type: inline-size;
+    container-name: billing-table;
+    /* Страховка на случай длинного идентификатора счёта; на узком экране до неё не доходит. */
     overflow-x: auto;
 }
 
 .billing-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 720px;
 }
 
 .billing-table th,
@@ -541,6 +579,59 @@
 @media (max-width: 1024px) {
     .billing-recommendations-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Счета на узкой колонке — карточками, как и заказы: прокрутка вбок внутри страницы
+   на телефоне не находится пальцем. */
+@container billing-table (max-width: 620px) {
+    .billing-table,
+    .billing-table tbody {
+        display: block;
+    }
+
+    .billing-table thead {
+        display: none;
+    }
+
+    .billing-table tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px var(--space-12);
+        align-items: center;
+        padding: var(--space-14) var(--space-16);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .billing-table td {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    .billing-cell-order {
+        grid-column: 1 / -1;
+        font-weight: 700;
+    }
+
+    .billing-cell-id,
+    .billing-cell-date {
+        color: var(--color-muted);
+        font-size: 13px;
+        /* Идентификатор счёта длинный — пусть переносится, а не растягивает карточку. */
+        overflow-wrap: anywhere;
+    }
+
+    .billing-cell-amount {
+        grid-column: 2;
+        grid-row: 2;
+        text-align: right;
+        font-weight: 700;
+    }
+
+    .billing-cell-action,
+    .billing-table-state {
+        grid-column: 1 / -1;
     }
 }
 

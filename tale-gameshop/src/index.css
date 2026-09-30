@@ -164,17 +164,58 @@ small {
   display: block;
 }
 
+/* Единственное определение бейджа на весь магазин. Отступ и прозрачная рамка — то, что
+   реально показывалось до этого: раньше их поверх этого правила задавала страница игры,
+   и бейджи всего сайта выглядели так, как решил её файл. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
   font-weight: 600;
   font-size: 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
   color: var(--color-primary);
+}
+
+/* Чип — короткая метка-«таблетка»: жанры, платформы, теги. Общий для карточки игры,
+   каталога, корзины и поддержки; своя версия есть только у блога (у него другой размер). */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f1edff;
+  color: #5c4ea3;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Обрезка текста по числу строк — утилита, а не стиль страницы. */
+.line-clamp-2,
+.line-clamp-3,
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  -webkit-line-clamp: 3;
+}
+
+.line-clamp-4 {
+  -webkit-line-clamp: 4;
 }
 
 .btn {
@@ -341,5 +382,58 @@ small {
 
   h2 {
     font-size: 22px;
+  }
+}
+
+/* Ссылка «смотреть всё» — одна на весь сайт.
+   Раньше это был текст со стрелкой прямо в строке и подчёркиванием на наведении: цель узкая
+   (попасть надо ровно в буквы), стрелка неподвижна, а с клавиатуры ссылка ничем не выделялась.
+
+   Профессиональные витрины делают из такой ссылки маленькую цель-«таблетку»: у неё есть форма,
+   на наведении проявляется фон, а стрелка уезжает вправо — движение подсказывает, что будет
+   переход, ещё до нажатия. Стрелка отдельным элементом именно ради этого: символ внутри текста
+   подвинуть нельзя. */
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.link-arrow:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  text-decoration: none;
+}
+
+.link-arrow__icon {
+  transition: transform 0.18s ease;
+}
+
+.link-arrow:hover .link-arrow__icon {
+  transform: translateX(3px);
+}
+
+/* Обводка при переходе с клавиатуры: у обычной ссылки её съедал сброс outline. */
+.link-arrow:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Уважаем системную настройку: стрелка просто стоит на месте. */
+@media (prefers-reduced-motion: reduce) {
+  .link-arrow,
+  .link-arrow__icon {
+    transition: none;
+  }
+
+  .link-arrow:hover .link-arrow__icon {
+    transform: none;
   }
 }

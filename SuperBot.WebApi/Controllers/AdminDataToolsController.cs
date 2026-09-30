@@ -71,7 +71,7 @@ public class AdminDataToolsController : ControllerBase
                     Description = "Legendary RPG adventure.",
                     Price = 499,
                     Currency = "UAH",
-                    GameType = "RolePlayingGames",
+                    Genre = "role-playing-games-rpgs",
                     ReleaseDate = "2015-05-19",
                     Tags = new[] { "RPG", "Open World" },
                     Media = new DataToolsMediaLinks
@@ -179,6 +179,7 @@ public class AdminDataToolsController : ControllerBase
                     Price = game.Price,
                     Currency = "RUB",
                     GameType = game.GameType.ToString(),
+                    Genre = game.Kind == ProductKind.Software ? null : GameGenres.TagOf(game),
                     ReleaseDate = game.ReleaseDate == default ? null : game.ReleaseDate.ToString("yyyy-MM-dd")
                 };
 
@@ -708,6 +709,14 @@ public class AdminDataToolsController : ControllerBase
                     game.Price = gameRecord.Price.Value;
                 }
                 game.GameType = ParseGameType(gameRecord.GameType, game.GameType);
+                // Код жанра важнее старого номера; архивы до переезда жанров несут только номер — из него и выводим.
+                game.Genre = !string.IsNullOrWhiteSpace(gameRecord.Genre)
+                    ? gameRecord.Genre.Trim().ToLowerInvariant()
+                    : !string.IsNullOrWhiteSpace(gameRecord.GameType) ? GameGenres.LegacyTag(game.GameType) : game.Genre;
+                if (GameGenres.LegacyType(game.Genre) is { } legacyType)
+                {
+                    game.GameType = legacyType;
+                }
                 game.ReleaseDate = ParseDate(gameRecord.ReleaseDate) ?? game.ReleaseDate;
                 if (coverAsset != null)
                 {
@@ -1128,7 +1137,10 @@ public class DataToolsGameRecord
     public string Description { get; set; }
     public decimal? Price { get; set; }
     public string Currency { get; set; }
+    /// <summary>Старый номер жанра именем перечисления — для архивов до переезда жанров.</summary>
     public string GameType { get; set; }
+    /// <summary>Код жанра из настроек (action, role-playing-games-rpgs).</summary>
+    public string Genre { get; set; }
     public string ReleaseDate { get; set; }
     public string[] Tags { get; set; }
     public DataToolsMediaLinks Media { get; set; }

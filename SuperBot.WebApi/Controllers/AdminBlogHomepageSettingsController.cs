@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Claims;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -63,7 +64,7 @@ public class AdminBlogHomepageSettingsController : ControllerBase
             Id = "default",
             MainHeroPostId = normalizedMainHeroPostId,
             UpdatedAt = DateTime.UtcNow,
-            UpdatedBy = GetCurrentUserId()
+            UpdatedBy = User.GetUserKey()
         };
 
         var saved = await _settingsRepository.UpsertAsync(settings);
@@ -75,15 +76,6 @@ public class AdminBlogHomepageSettingsController : ControllerBase
         });
     }
 
-    private string GetCurrentUserId()
-    {
-        return User?.FindFirst("email")?.Value
-               ?? User?.FindFirst(ClaimTypes.Email)?.Value
-               ?? User?.FindFirst("preferred_username")?.Value
-               ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? User?.FindFirst("sub")?.Value
-               ?? "admin";
-    }
 }
 
 public class UpdateMainHeroRequest

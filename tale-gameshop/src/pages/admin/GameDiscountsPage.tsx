@@ -1,4 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { REMOTE_PAGING_AND_SORTING } from "../../hooks/use-grid-window";
+import "devextreme/dist/css/dx.light.css";
+import { DataGrid } from "devextreme-react";
+import { Column, Scrolling, Selection, Sorting } from "devextreme-react/data-grid";
+import CustomStore from "devextreme/data/custom_store";
 import PageHeader, { GAMES_TABS } from "../../components/layout/PageHeader";
 import Card from "../../components/ui/Card";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -13,14 +18,23 @@ import { useSitePreferences } from "../../context/site-preferences";
 import { formatMoney } from "../../utils/format-money";
 
 // Конфиг баннера «Deal of the week» на главной: герой (его скидка = предложение) + кулисы.
+type DealGame = { gameId: string; title: string | null };
+
 type DealOfWeekConfig = {
   heroGameId?: string | null;
+  /** Название выбранного героя приходит с сервера: искать его в каталоге пришлось бы целиком. */
+  heroTitle?: string | null;
   wingGameIds: string[];
+  /** Выбранные крылья с названиями — чтобы показать выбор, не выкачивая каталог. */
+  wings?: DealGame[];
   maxWingGames: number;
   heroDealActive: boolean;
   heroDealEndsAt?: string | null;
   heroDealPercent?: number | null;
 };
+
+/** Сколько строк показывать в поиске игр для баннера. Больше человек всё равно не просмотрит. */
+const PICKER_LIMIT = 20;
 
 // «Карта удачи» (таро на главной): механика рандомного персонального промокода.
 type TarotTier = { percent: number; weight: number };
@@ -28,8 +42,6 @@ type TarotAdminResponse = {
   settings: { enabled: boolean; requirePurchase: boolean; cooldownHours: number; codeTtlHours: number; tiers: TarotTier[] };
   stats: { totalDraws: number; draws7d: number; redeemedInSample: number; sampleSize: number };
 };
-
-type SortKey = "title" | "basePrice" | "finalPrice" | "discountPercent" | "endDate";
 
 const statusLabels: Record<GameDiscountStatus, string> = {
   no_discount: "No discount",
@@ -45,13 +57,11 @@ const GameDiscountsPage: React.FC = () => {
   const service = container.get<IAdminGameDiscountsService>(IDENTIFIERS.IAdminGameDiscountsService);
   const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
   const { addToast } = useToast();
-  const { setHeaderActions, setPageTitle } = useAdminHeader();
+  const { setPageTitle } = useAdminHeader();
 
-  const [items, setItems] = useState<AdminGameDiscountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | GameDiscountStatus>("all");
-  const [sortBy, setSortBy] = useState<SortKey>("title");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [editing, setEditing] = useState<AdminGameDiscountRow | null>(null);
@@ -61,12 +71,24 @@ const GameDiscountsPage: React.FC = () => {
 
   const [bulkPercent, setBulkPercent] = useState<number>(10);
   const [bulkStartDate, setBulkStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [bulkEndDate, setBulkEndDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  // Конец периода — неделя вперёд. С «сегодня — сегодня» скидка применялась уже истёкшей:
+  // конец периода — это полночь текущего дня, то есть момент, который уже прошёл.
+  const [bulkEndDate, setBulkEndDate] = useState<string>(
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  );
 
   // «Deal of the week»: герой + кулисы для баннера главной.
   const apiClient = useMemo(() => container.get<IApiClient>(IDENTIFIERS.IApiClient), []);
   const [dealHeroId, setDealHeroId] = useState<string>("");
-  const [dealWingIds, setDealWingIds] = useState<string[]>([]);
+  const [dealHeroTitle, setDealHeroTitle] = useState<string | null>(null);
+  /** Крылья храним вместе с названиями: выбранное должно быть видно и без поиска. */
+  const [dealWings, setDealWings] = useState<DealGame[]>([]);
+  const [heroSearch, setHeroSearch] = useState("");
+  const [heroOptions, setHeroOptions] = useState<AdminGameDiscountRow[]>([]);
+  const [heroTotal, setHeroTotal] = useState(0);
+  const [wingSearch, setWingSearch] = useState("");
+  const [wingOptions, setWingOptions] = useState<AdminGameDiscountRow[]>([]);
+  const [wingTotal, setWingTotal] = useState(0);
   const [dealMaxWings, setDealMaxWings] = useState(6);
   const [dealStatus, setDealStatus] = useState<DealOfWeekConfig | null>(null);
   const [dealSaving, setDealSaving] = useState(false);
@@ -79,18 +101,121 @@ const GameDiscountsPage: React.FC = () => {
   const [tarotStats, setTarotStats] = useState<TarotAdminResponse["stats"] | null>(null);
   const [tarotSaving, setTarotSaving] = useState(false);
 
+  // Сколько строк тянуть за раз. Виртуальная прокрутка запрашивает окна по мере движения,
+  // так что размер влияет только на частоту запросов, а не на объём в памяти.
+  const WINDOW_SIZE = 50;
+
+/** Колонка грида → поле, по которому сортирует сервер. */
+const SORT_FIELDS: Record<string, string> = {
+  title: "title",
+  basePrice: "basePrice",
+  discountPercent: "discountPercent",
+  finalPrice: "finalPrice",
+  startDate: "period",
+  status: "status",
+};
+
+  // Что реально ушло в таблицу: набранное в поиске уезжает с задержкой, а не на каждую букву.
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [rowCount, setRowCount] = useState<number | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAppliedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  /**
+   * Источник строк для таблицы. Поиск, срез по статусу, сортировка и границы окна уходят
+   * на сервер — в браузер приезжает только то, что видно. Раньше сюда грузился весь каталог,
+   * и на большом магазине страница просто не открылась бы.
+   */
+  const gridSource = useMemo(() => {
+    const status = statusFilter;
+    const needle = appliedSearch;
+
+    return new CustomStore({
+      key: "gameId",
+      load: async (options: { skip?: number; take?: number; sort?: any }) => {
+        // Сортировка приходит от грида в его формате и уходит на сервер: он считает и
+        // скидку, и итоговую цену, и статус прямо в базе. Сортировать здесь, в браузере,
+        // значило бы упорядочить полсотни загруженных строк и выдать это за порядок каталога.
+        const sort = Array.isArray(options.sort) ? options.sort[0] : options.sort;
+        const sortBy = SORT_FIELDS[sort?.selector as string] ?? "title";
+
+        const page = await service.getPage({
+          search: needle,
+          status,
+          sortBy,
+          desc: Boolean(sort?.desc),
+          skip: options.skip ?? 0,
+          take: options.take ?? WINDOW_SIZE,
+        });
+
+        setRowCount(page.total);
+        return { data: page.items, totalCount: page.total };
+      },
+    });
+  }, [appliedSearch, service, statusFilter, reloadTick]);
+
   const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await service.getAll(search);
-      setItems(response);
-      setSelectedIds((prev) => prev.filter((id) => response.some((item) => item.gameId === id)));
-    } catch {
-      addToast("Failed to load game discounts", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [addToast, search, service]);
+    // Перезагрузка таблицы: пересобираем источник, грид сам заберёт первое окно.
+    setSelectedIds([]);
+    setReloadTick((tick) => tick + 1);
+  }, []);
+
+  /**
+   * Игры для баннера ищет сервер. Раньше сюда грузились «первые двести по названию», и на
+   * каталоге в тридцать тысяч это значило, что всё остальное выбрать нельзя — молча.
+   *
+   * Герой ищется среди игр с действующей скидкой: баннер берёт у него цену и обратный отсчёт,
+   * и игра без скидки героем быть не может.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const page = await service.getPage({ search: heroSearch.trim(), status: "active", skip: 0, take: PICKER_LIMIT });
+        if (!cancelled) {
+          setHeroOptions(page.items);
+          setHeroTotal(page.total);
+        }
+      } catch {
+        if (!cancelled) {
+          setHeroOptions([]);
+          setHeroTotal(0);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [heroSearch, service]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const page = await service.getPage({ search: wingSearch.trim(), skip: 0, take: PICKER_LIMIT });
+        if (!cancelled) {
+          setWingOptions(page.items);
+          setWingTotal(page.total);
+        }
+      } catch {
+        if (!cancelled) {
+          setWingOptions([]);
+          setWingTotal(0);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [wingSearch, service]);
 
   useEffect(() => {
     void load();
@@ -98,52 +223,28 @@ const GameDiscountsPage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle("Game discounts");
-    setHeaderActions([]);
-    return () => setHeaderActions([]);
-  }, [setHeaderActions, setPageTitle]);
+  }, [setPageTitle]);
 
-  const filtered = useMemo(() => {
-    const byStatus = statusFilter === "all" ? items : items.filter((item) => item.status === statusFilter);
-    const sorted = [...byStatus];
-    sorted.sort((a, b) => {
-      if (sortBy === "title") {
-        return a.title.localeCompare(b.title);
-      }
-      if (sortBy === "endDate") {
-        return (a.endDate ? new Date(a.endDate).getTime() : Number.MAX_SAFE_INTEGER) -
-          (b.endDate ? new Date(b.endDate).getTime() : Number.MAX_SAFE_INTEGER);
-      }
-      const left = Number(a[sortBy] ?? 0);
-      const right = Number(b[sortBy] ?? 0);
-      return right - left;
-    });
-    return sorted;
-  }, [items, sortBy, statusFilter]);
+  // Выделение ведёт сам грид (галки в строках и в шапке), поэтому своих переключателей
+  // здесь больше нет: раньше «Toggle select visible» означало «выделить весь каталог»,
+  // потому что видимым был он целиком.
 
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-
-  const toggleSelection = (gameId: string) => {
-    setSelectedIds((prev) => (prev.includes(gameId) ? prev.filter((id) => id !== gameId) : [...prev, gameId]));
-  };
-
-  const toggleSelectAllVisible = () => {
-    const visibleIds = filtered.map((item) => item.gameId);
-    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
-    if (allVisibleSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
-    } else {
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
-    }
-  };
+  /** Конфиг приходит с названиями выбранных игр — раскладываем его по состоянию. */
+  const applyDealConfig = useCallback((config: DealOfWeekConfig) => {
+    setDealHeroId(config.heroGameId ?? "");
+    setDealHeroTitle(config.heroTitle ?? null);
+    setDealWings(
+      config.wings ?? (config.wingGameIds ?? []).map((gameId) => ({ gameId, title: null })),
+    );
+    setDealStatus(config);
+  }, []);
 
   const loadDealOfWeek = useCallback(async () => {
     try {
       const response = await apiClient.api.get("/api/admin/deal-of-week");
       const config = response.data as DealOfWeekConfig;
-      setDealHeroId(config.heroGameId ?? "");
-      setDealWingIds(config.wingGameIds ?? []);
+      applyDealConfig(config);
       setDealMaxWings(config.maxWingGames ?? 6);
-      setDealStatus(config);
     } catch {
       addToast("Failed to load Deal of the week settings", "error");
     }
@@ -153,26 +254,25 @@ const GameDiscountsPage: React.FC = () => {
     void loadDealOfWeek();
   }, [loadDealOfWeek]);
 
-  const toggleDealWing = (gameId: string) => {
-    setDealWingIds((prev) => {
-      if (prev.includes(gameId)) {
-        return prev.filter((id) => id !== gameId);
+  const toggleDealWing = (game: DealGame) => {
+    setDealWings((prev) => {
+      if (prev.some((wing) => wing.gameId === game.gameId)) {
+        return prev.filter((wing) => wing.gameId !== game.gameId);
       }
-      return prev.length >= dealMaxWings ? prev : [...prev, gameId];
+      return prev.length >= dealMaxWings ? prev : [...prev, game];
     });
   };
+
+  const wingSelected = (gameId: string) => dealWings.some((wing) => wing.gameId === gameId);
 
   const saveDealOfWeek = async () => {
     setDealSaving(true);
     try {
       const response = await apiClient.api.put("/api/admin/deal-of-week", {
         heroGameId: dealHeroId || null,
-        wingGameIds: dealWingIds
+        wingGameIds: dealWings.map((wing) => wing.gameId)
       });
-      const config = response.data as DealOfWeekConfig;
-      setDealHeroId(config.heroGameId ?? "");
-      setDealWingIds(config.wingGameIds ?? []);
-      setDealStatus(config);
+      applyDealConfig(response.data as DealOfWeekConfig);
       addToast("Deal of the week saved", "success");
     } catch (error: any) {
       addToast(error?.response?.data?.message ?? "Failed to save Deal of the week", "error");
@@ -182,8 +282,6 @@ const GameDiscountsPage: React.FC = () => {
   };
 
   // В герои предлагаем игры с активной скидкой — у остальных предложения просто нет.
-  const activeDealRows = useMemo(() => items.filter((item) => item.status === "active"), [items]);
-
   const applyTarotResponse = useCallback((config: TarotAdminResponse) => {
     setTarotEnabled(config.settings.enabled);
     setTarotRequirePurchase(config.settings.requirePurchase);
@@ -291,7 +389,7 @@ const GameDiscountsPage: React.FC = () => {
 
   return (
     <div className="admin-grid">
-      <PageHeader title="Prices & discounts" description="Per-game discounts and the deal of the week. Promo codes live on their own tab." breadcrumbs={["Games", "Prices & discounts"]} tabs={GAMES_TABS} />
+      <PageHeader title="Prices & discounts" description="Per-game discounts and the deal of the week. Promo codes live on their own tab." breadcrumbs={["Marketing", "Discounts"]} tabs={GAMES_TABS} />
 
       <Card>
         <h3>Deal of the week — homepage banner</h3>
@@ -299,22 +397,63 @@ const GameDiscountsPage: React.FC = () => {
           The hero takes its price and countdown from its discount in the table below. Wing covers
           frame the banner edges (up to {dealMaxWings}).
         </p>
-        <div className="admin-grid admin-grid--2" style={{ marginTop: 12 }}>
-          <label>
-            Hero game (limited offer)
-            <select className="input" value={dealHeroId} onChange={(event) => setDealHeroId(event.target.value)}>
-              <option value="">Auto — deepest active discount</option>
-              {activeDealRows.map((row) => (
-                <option key={row.gameId} value={row.gameId}>
-                  {row.title} (−{Number(row.discountPercent ?? 0).toFixed(0)}%)
-                </option>
-              ))}
-              {dealHeroId && !activeDealRows.some((row) => row.gameId === dealHeroId) && (
-                <option value={dealHeroId}>
-                  {items.find((row) => row.gameId === dealHeroId)?.title ?? "Unknown game"} (no active discount)
-                </option>
+        {/* Две колонки одного устройства: подпись, выбранное, поиск, результаты, счётчик.
+            Строки везде одной высоты — иначе поля и списки слева и справа разъезжаются по
+            вертикали, и блок выглядит как два разных, случайно оказавшихся рядом. */}
+        <div className="admin-grid admin-grid--2 deal-picker-row" style={{ marginTop: 12 }}>
+          <div className="deal-picker">
+            <span className="deal-picker__label">Hero game (limited offer)</span>
+
+            <div className="deal-picker__current">
+              {dealHeroId ? (
+                <>
+                  <span className="bulk-bar__count">{dealHeroTitle ?? "Game not in the catalog"}</span>
+                  <button className="btn btn-outline" onClick={() => { setDealHeroId(""); setDealHeroTitle(null); }}>
+                    Clear
+                  </button>
+                </>
+              ) : (
+                <span className="deal-picker__muted">Auto — deepest active discount</span>
               )}
-            </select>
+            </div>
+
+            {/* Ищет сервер: раньше выпадающий список показывал игры из первых двухсот по
+                названию, и на большом каталоге остальные было просто не выбрать. */}
+            <input
+              className="input"
+              placeholder="Find a game with an active discount…"
+              value={heroSearch}
+              onChange={(event) => setHeroSearch(event.target.value)}
+            />
+
+            <div className="deal-picker__results">
+              {heroOptions.length === 0 ? (
+                <p className="deal-picker__muted" style={{ padding: 8 }}>
+                  {heroSearch.trim() ? "Nothing found with an active discount." : "No active discounts yet."}
+                </p>
+              ) : (
+                heroOptions.map((row) => (
+                  <button
+                    key={row.gameId}
+                    type="button"
+                    className="deal-picker__option"
+                    onClick={() => {
+                      setDealHeroId(row.gameId);
+                      setDealHeroTitle(row.title);
+                    }}
+                  >
+                    {row.title} (−{Number(row.discountPercent ?? 0).toFixed(0)}%)
+                  </button>
+                ))
+              )}
+            </div>
+
+            <p className="deal-picker__hint">
+              {heroTotal > heroOptions.length
+                ? `Showing ${heroOptions.length} of ${heroTotal} — keep typing to narrow it down.`
+                : ""}
+            </p>
+
             {dealHeroId && dealStatus && !dealStatus.heroDealActive && (
               <small className="text-red-500">
                 This game has no active discount — the banner will fall back to the deepest active
@@ -327,27 +466,63 @@ const GameDiscountsPage: React.FC = () => {
                 {new Date(dealStatus.heroDealEndsAt).toLocaleString()}
               </small>
             )}
-          </label>
-          <div>
-            <span className="text-sm font-semibold">
-              Wing covers ({dealWingIds.length}/{dealMaxWings})
+          </div>
+
+          <div className="deal-picker">
+            <span className="deal-picker__label">
+              Wing covers ({dealWings.length}/{dealMaxWings})
             </span>
-            <div className="admin-grid admin-grid--2" style={{ maxHeight: 190, overflowY: "auto", marginTop: 6 }}>
-              {items.map((row) => (
-                <label key={row.gameId} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={dealWingIds.includes(row.gameId)}
-                    disabled={
-                      row.gameId === dealHeroId ||
-                      (!dealWingIds.includes(row.gameId) && dealWingIds.length >= dealMaxWings)
-                    }
-                    onChange={() => toggleDealWing(row.gameId)}
-                  />
-                  <span>{row.title}</span>
-                </label>
-              ))}
+
+            {/* Выбранное показываем отдельно и всегда: иначе снять галку можно было бы только
+                с того, что нашлось поиском, — а найти нужно ещё суметь. */}
+            <div className="deal-picker__current">
+              {dealWings.length === 0 ? (
+                <span className="deal-picker__muted">Auto — the newest released games</span>
+              ) : (
+                dealWings.map((wing) => (
+                  <span key={wing.gameId} className="bulk-bar__count deal-picker__chip">
+                    {wing.title ?? "Game not in the catalog"}
+                    <button type="button" title="Remove from the banner" onClick={() => toggleDealWing(wing)}>
+                      ✕
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
+
+            <input
+              className="input"
+              placeholder="Find a game…"
+              value={wingSearch}
+              onChange={(event) => setWingSearch(event.target.value)}
+            />
+
+            <div className="deal-picker__results deal-picker__results--two-columns">
+              {wingOptions.length === 0 ? (
+                <p className="deal-picker__muted" style={{ padding: 8 }}>Nothing found.</p>
+              ) : (
+                wingOptions.map((row) => (
+                  <label key={row.gameId} className="deal-picker__check">
+                    <input
+                      type="checkbox"
+                      checked={wingSelected(row.gameId)}
+                      disabled={
+                        row.gameId === dealHeroId ||
+                        (!wingSelected(row.gameId) && dealWings.length >= dealMaxWings)
+                      }
+                      onChange={() => toggleDealWing({ gameId: row.gameId, title: row.title })}
+                    />
+                    <span>{row.title}</span>
+                  </label>
+                ))
+              )}
+            </div>
+
+            <p className="deal-picker__hint">
+              {wingTotal > wingOptions.length
+                ? `Showing ${wingOptions.length} of ${wingTotal} — keep typing to narrow it down.`
+                : ""}
+            </p>
           </div>
         </div>
         <div className="mt-3">
@@ -439,91 +614,198 @@ const GameDiscountsPage: React.FC = () => {
         </div>
       </Card>
 
+      {/* Поиск, фильтр и массовые действия — часть таблицы, а не отдельные карточки над ней:
+          они ничего не значат без строк, к которым относятся. */}
       <Card>
-        <div className="admin-grid admin-grid--4">
-          <input className="input" placeholder="Search by title" value={search} onChange={(event) => setSearch(event.target.value)} />
-          <select className="input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | GameDiscountStatus)}>
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <input
+            className="input w-full sm:w-64"
+            placeholder="Search by title"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <select
+            className="input w-full sm:w-48"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as "all" | GameDiscountStatus)}
+          >
             <option value="all">All statuses</option>
             <option value="active">Active</option>
             <option value="scheduled">Scheduled</option>
             <option value="expired">Expired</option>
             <option value="no_discount">No discount</option>
           </select>
-          <select className="input" value={sortBy} onChange={(event) => setSortBy(event.target.value as SortKey)}>
-            <option value="title">Sort: title</option>
-            <option value="basePrice">Sort: base price</option>
-            <option value="finalPrice">Sort: final price</option>
-            <option value="discountPercent">Sort: discount %</option>
-            <option value="endDate">Sort: end date</option>
-          </select>
-          <button className="btn btn-outline" onClick={() => void load()}>Refresh</button>
+          <span className="text-xs text-gray-500">
+            Tick rows to set a discount on several games at once.
+          </span>
+          <button className="btn btn-outline ml-auto" onClick={() => void load()}>Refresh</button>
         </div>
-      </Card>
 
-      <Card>
-        <div className="admin-grid admin-grid--4" style={{ marginBottom: 12 }}>
-          <div><strong>{selectedIds.length}</strong> selected</div>
-          <input className="input" type="number" min={1} max={95} value={bulkPercent} onChange={(event) => setBulkPercent(Number(event.target.value))} placeholder="Bulk %" />
-          <input className="input" type="date" value={bulkStartDate} onChange={(event) => setBulkStartDate(event.target.value)} />
-          <input className="input" type="date" value={bulkEndDate} onChange={(event) => setBulkEndDate(event.target.value)} />
-        </div>
-        <div className="flex gap-2">
-          <button className="btn btn-primary" onClick={() => void runBulkUpsert()} disabled={selectedIds.length === 0}>Apply % discount to selected</button>
-          <button className="btn btn-outline" onClick={() => void runBulkClear()} disabled={selectedIds.length === 0}>Clear selected discounts</button>
-          <button className="btn btn-outline" onClick={toggleSelectAllVisible}>Toggle select visible</button>
-        </div>
-      </Card>
+        {/* Панель массовых действий появляется только при непустом выделении: постоянная
+            строка отключённых кнопок над таблицей отвлекала бы в обычной работе. */}
+        {selectedIds.length > 0 && (
+          <div className="bulk-bar" style={{ marginBottom: 16 }}>
+            <span className="bulk-bar__count">{selectedIds.length} selected</span>
 
-      <Card>
-        {loading ? <p>Loading...</p> : (
-          <table className="w-full text-sm">
-            <thead>
-            <tr>
-              <th />
-              <th>Cover</th>
-              <th>Title</th>
-              <th>Base price</th>
-              <th>Discount type</th>
-              <th>Discount value</th>
-              <th>Final price</th>
-              <th>Start date</th>
-              <th>End date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody>
-            {filtered.map((item) => (
-              <tr key={item.gameId}>
-                <td><input type="checkbox" checked={selectedSet.has(item.gameId)} onChange={() => toggleSelection(item.gameId)} /></td>
-                <td>
-                  {item.imagePath ? (
-                    <img
-                      src={item.imagePath.startsWith("http") ? item.imagePath : `${urlService.apiBaseUrl}${item.imagePath}`}
-                      alt={item.title}
-                      width={52}
-                      height={52}
-                      style={{ borderRadius: 8, objectFit: "cover" }}
-                    />
-                  ) : "—"}
-                </td>
-                <td title={item.title}>{item.title}</td>
-                <td>{formatMoney(Number(item.basePrice), baseCurrency)}</td>
-                <td>{item.discountType ?? "—"}</td>
-                <td>{item.discountPercent ? `${Number(item.discountPercent).toFixed(0)}%` : "—"}</td>
-                <td>{formatMoney(Number(item.finalPrice), baseCurrency)}</td>
-                <td>{item.startDate?.slice(0, 10) ?? "—"}</td>
-                <td>{item.endDate?.slice(0, 10) ?? "—"}</td>
-                <td>{statusLabels[item.status]}</td>
-                <td>
-                  <button className="btn btn-outline" onClick={() => openEditor(item)}>{item.discountPercent ? "Edit discount" : "Set discount"}</button>
-                  {item.discountPercent && <button className="btn btn-outline" onClick={() => void clearDiscount(item.gameId)}>Clear</button>}
-                </td>
-              </tr>
-            ))}
-            </tbody>
-          </table>
+            <label className="bulk-bar__percent">
+              Discount
+              <input
+                className="input"
+                type="number"
+                min={1}
+                max={95}
+                value={bulkPercent}
+                onChange={(event) => setBulkPercent(Number(event.target.value))}
+              />
+              %
+            </label>
+
+            <label className="bulk-bar__field">
+              from
+              <input className="input" type="date" value={bulkStartDate} onChange={(event) => setBulkStartDate(event.target.value)} />
+            </label>
+
+            <label className="bulk-bar__field">
+              to
+              <input className="input" type="date" value={bulkEndDate} onChange={(event) => setBulkEndDate(event.target.value)} />
+            </label>
+
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                if (window.confirm(`Apply ${bulkPercent}% discount to ${selectedIds.length} game(s)?`)) {
+                  void runBulkUpsert();
+                }
+              }}
+            >
+              Apply to selected
+            </button>
+            <button
+              className="btn btn-outline"
+              onClick={() => {
+                if (window.confirm(`Clear discounts on ${selectedIds.length} game(s)?`)) {
+                  void runBulkClear();
+                }
+              }}
+            >
+              Clear discounts
+            </button>
+            <button className="btn btn-outline" onClick={() => setSelectedIds([])}>
+              Clear selection
+            </button>
+          </div>
         )}
+
+        {/* Таблица DevExtreme с виртуальной прокруткой: в DOM живут только видимые строки,
+            а сами строки приезжают окнами с сервера (см. gridSource). Раньше здесь была своя
+            <table>, рисовавшая ВЕСЬ каталог разом. */}
+        <DataGrid
+          dataSource={gridSource}
+          height={560}
+          width="100%"
+          showBorders={false}
+          columnAutoWidth={true}
+          hoverStateEnabled={true}
+          remoteOperations={REMOTE_PAGING_AND_SORTING}
+          noDataText={appliedSearch ? "Nothing found." : "No games yet."}
+          selectedRowKeys={selectedIds}
+          onSelectionChanged={(event) => setSelectedIds(event.selectedRowKeys as string[])}
+        >
+          <Scrolling mode="virtual" rowRenderingMode="virtual" showScrollbar="always" />
+          {/* Выделение — только по загруженным строкам: галка в шапке не должна означать
+              «весь магазин», иначе одно нажатие меняет цены тридцати тысячам игр. */}
+          <Selection mode="multiple" showCheckBoxesMode="always" selectAllMode="page" />
+          {/* Сортировать умеем по тем полям, которые сервер сортирует в базе. Остальные
+              колонки не кликаются: сортировка загруженного куска врала бы. */}
+          <Sorting mode="single" />
+
+          <Column
+            caption="Cover"
+            /* Обложка и кнопки не сортируются: упорядочивать картинку или пару кнопок не по чему. */
+            width={80}
+            allowSorting={false}
+            cellRender={({ data }: { data: AdminGameDiscountRow }) =>
+              data.imagePath ? (
+                <img
+                  src={data.imagePath.startsWith("http") ? data.imagePath : `${urlService.apiBaseUrl}${data.imagePath}`}
+                  alt={data.title}
+                  width={44}
+                  height={44}
+                  style={{ borderRadius: 8, objectFit: "cover" }}
+                />
+              ) : (
+                <span>—</span>
+              )
+            }
+          />
+          <Column dataField="title" caption="Title" allowSorting={true} />
+          <Column
+            dataField="basePrice"
+            caption="Base price"
+            width={110}
+            allowSorting={true}
+            cellRender={({ data }: { data: AdminGameDiscountRow }) => (
+              <span>{formatMoney(Number(data.basePrice), baseCurrency)}</span>
+            )}
+          />
+          <Column
+            dataField="discountPercent"
+            caption="Discount"
+            width={110}
+            allowSorting={true}
+            cellRender={({ data }: { data: AdminGameDiscountRow }) => (
+              <span>{data.discountPercent ? `${Number(data.discountPercent).toFixed(0)}%` : "—"}</span>
+            )}
+          />
+          <Column
+            dataField="finalPrice"
+            caption="Final price"
+            width={110}
+            allowSorting={true}
+            cellRender={({ data }: { data: AdminGameDiscountRow }) => (
+              <span>{formatMoney(Number(data.finalPrice), baseCurrency)}</span>
+            )}
+          />
+          <Column
+            dataField="startDate"
+            caption="Period"
+            width={190}
+            allowSorting={true}
+            cellRender={({ data }: { data: AdminGameDiscountRow }) => (
+              <span>
+                {data.startDate ? data.startDate.slice(0, 10) : "—"} — {data.endDate ? data.endDate.slice(0, 10) : "—"}
+              </span>
+            )}
+          />
+          <Column
+            dataField="status"
+            caption="Status"
+            width={110}
+            allowSorting={true}
+            cellRender={({ data }: { data: AdminGameDiscountRow }) => <span>{statusLabels[data.status]}</span>}
+          />
+          <Column
+            caption="Actions"
+            width={190}
+            allowSorting={false}
+            cellRender={({ data }: { data: AdminGameDiscountRow }) => (
+              <div className="flex gap-2">
+                <button className="btn btn-outline" onClick={() => openEditor(data)}>
+                  {data.discountPercent ? "Edit" : "Set discount"}
+                </button>
+                {data.discountPercent ? (
+                  <button className="btn btn-outline" onClick={() => void clearDiscount(data.gameId)}>
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            )}
+          />
+        </DataGrid>
+
+        <p className="text-xs text-gray-500 mt-3">
+          {rowCount === null ? "Loading…" : `${rowCount} game${rowCount === 1 ? "" : "s"} match the filters`}
+        </p>
       </Card>
 
       {editing && (

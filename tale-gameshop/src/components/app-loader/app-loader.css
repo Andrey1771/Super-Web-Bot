@@ -40,7 +40,9 @@
 /* Вращающееся кольцо с conic-градиентом */
 .app-loader__ring {
     position: absolute;
-    inset: 12px;
+    /* Без белой карточки логотип стал меньше, и кольцу нужен воздух: иначе оно читается
+       как рамка вокруг картинки, а не как индикатор загрузки. */
+    inset: 4px;
     border-radius: 50%;
     background: conic-gradient(
         from 90deg,
@@ -55,21 +57,25 @@
     animation: app-loader-spin 0.9s linear infinite;
 }
 
+/* Логотип лежит прямо на фоне, без белой карточки под ним.
+   Карточка появилась ради тени: у <img> тень можно было повесить только на прямоугольную
+   коробку. Но она же рисовала белый квадрат со скруглениями внутри круглого кольца — две
+   несовместимые формы, и в середине светлого градиента подложка ещё и не читалась как
+   намеренная. drop-shadow обходит коробку и повторяет контур самой картинки, поэтому тень
+   осталась, а квадрат исчез. */
 .app-loader__logo {
     position: relative;
-    width: 86px;
-    height: 86px;
-    border-radius: var(--radius-lg);
+    /* Это экран «сервис авторизации не отвечает» — единственное место, где заставка
+       осталась фирменной, потому что там уже не загрузка, а разговор с человеком.
+       Знак не квадратный, поэтому ведём по высоте. 78px, а не больше: вокруг крутится
+       кольцо диаметром 142px (сцена 150 минус inset 4 с каждой стороны), и знаку нужен
+       воздух — при 88px его углы подходили к кольцу вплотную и оно читалось рамкой
+       вокруг картинки, а не индикатором. */
+    height: 78px;
+    width: auto;
     object-fit: contain;
-    padding: 14px;
-    box-sizing: border-box;
-    background: #ffffff;
     z-index: 2;
-    /* Многослойная мягкая тень в фирменном фиолетовом, «дышит» вместе с лого */
-    box-shadow:
-        0 6px 16px rgba(124, 58, 237, 0.20),
-        0 18px 44px rgba(124, 58, 237, 0.28);
-    animation: app-loader-breath 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 6px 18px rgba(124, 58, 237, 0.30));
 }
 
 .app-loader__text {
@@ -104,24 +110,23 @@
     }
 }
 
-@keyframes app-loader-breath {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow:
-            0 6px 16px rgba(124, 58, 237, 0.18),
-            0 16px 40px rgba(124, 58, 237, 0.24);
-    }
-    50% {
-        transform: scale(1.06);
-        box-shadow:
-            0 10px 26px rgba(124, 58, 237, 0.28),
-            0 24px 62px rgba(124, 58, 237, 0.40);
-    }
-}
+/* Пульсация логотипа убрана намеренно. Одновременно двигались три вещи — ореол, кольцо и
+   сам логотип, — и заставка выглядела суетливой. Движение оставлено там, где оно несёт
+   смысл «идёт загрузка»: вращение кольца и медленное дыхание ореола. */
 
 @keyframes app-loader-spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+/* Человек попросил систему не анимировать интерфейс — заставка остаётся статичной
+   картинкой. Кольцо при этом не исчезает: оно всё равно показывает, что процесс идёт. */
+@media (prefers-reduced-motion: reduce) {
+    .app-loader,
+    .app-loader__glow,
+    .app-loader__ring {
+        animation: none;
     }
 }
 
@@ -131,5 +136,87 @@
     }
     to {
         opacity: 1;
+    }
+}
+
+/* Состояние «инициализация не удалась»: та же композиция, но без анимаций —
+   заставка не должна выглядеть живой, когда на самом деле всё встало. */
+.app-loader__glow--muted {
+    animation: none;
+    opacity: 0.28;
+}
+
+.app-loader__retry {
+    margin-top: 20px;
+    padding: 10px 22px;
+    border: 0;
+    border-radius: 999px;
+    background: #7c3aed;
+    color: #ffffff;
+    font: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.app-loader__retry:hover {
+    background: #6d28d9;
+}
+
+/* Тихое ожидание внутри страницы: шапка сайта остаётся на месте, а здесь проступает форма
+   того, что появится. В отличие от .app-loader, это НЕ полноэкранный слой — гейты кабинета
+   и админки показывают его под настоящей шапкой. */
+.app-loader-quiet {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+}
+
+.app-loader-quiet__line,
+.app-loader-quiet__card {
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: app-loader-quiet-shimmer 1.5s linear infinite;
+    border-radius: 999px;
+}
+
+.app-loader-quiet__line {
+    height: 12px;
+    width: 100%;
+}
+
+.app-loader-quiet__line.is-title {
+    height: 24px;
+    width: 40%;
+    margin-bottom: 6px;
+}
+
+.app-loader-quiet__line.is-short {
+    width: 60%;
+}
+
+.app-loader-quiet__card {
+    margin-top: 14px;
+    height: 220px;
+    border-radius: var(--radius-lg);
+}
+
+@keyframes app-loader-quiet-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-loader-quiet__line,
+    .app-loader-quiet__card {
+        animation: none;
     }
 }

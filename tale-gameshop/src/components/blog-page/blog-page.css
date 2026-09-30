@@ -10,7 +10,7 @@
   max-width: min(var(--container-max-width), 1180px);
 }
 
-.section {
+.blog-page .section {
   width: 100%;
 }
 
@@ -98,7 +98,7 @@
   align-items: start;
 }
 
-.surface {
+.blog-page .surface {
   background: #fff;
   border: 1px solid #e9e4fa;
   border-radius: var(--radius-lg);
@@ -310,13 +310,7 @@
   color: var(--color-text);
 }
 
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
+.blog-page .chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -331,20 +325,20 @@
   cursor: pointer;
 }
 
-.chip:hover {
+.blog-page .chip:hover {
   border-color: #ccb9fb;
   color: #5b31cf;
 }
 
 /* Выбранный тег залит целиком: бледная подложка была неотличима от обычного
    наведения, и казалось, что клик по тегу ничего не делает. */
-.chip-active {
+.blog-page .chip-active {
   background: #6b3ff2;
   color: #fff;
   border-color: #6b3ff2;
 }
 
-.chip-active:hover {
+.blog-page .chip-active:hover {
   background: #5a2dd1;
 }
 
@@ -877,26 +871,6 @@
 
 .measure-60ch {
   max-width: 60ch;
-}
-
-.line-clamp-2,
-.line-clamp-3,
-.line-clamp-4 {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  -webkit-line-clamp: 2;
-}
-
-.line-clamp-3 {
-  -webkit-line-clamp: 3;
-}
-
-.line-clamp-4 {
-  -webkit-line-clamp: 4;
 }
 
 .visually-hidden {

@@ -9,6 +9,10 @@ namespace SuperBot.Core.Entities
         public string Excerpt { get; set; }
         public string ContentMarkdown { get; set; }
         public string ContentHtml { get; set; }
+        public Dictionary<string, string>? TitleI18n { get; set; }
+        public Dictionary<string, string>? ExcerptI18n { get; set; }
+        public Dictionary<string, string>? ContentMarkdownI18n { get; set; }
+        public Dictionary<string, string>? ContentHtmlI18n { get; set; }
         public string CoverAssetId { get; set; }
         public DateTime CreatedAt { get; set; }
         public string CreatedBy { get; set; }

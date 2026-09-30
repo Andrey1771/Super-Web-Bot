@@ -46,13 +46,13 @@ import { AdminGameDiscountsService } from "./services/admin-game-discounts-servi
 
 const container = new Container();
 
-container.bind<IGameService>(IDENTIFIERS.IGameService).to(GameService);
-container.bind<ISettingsService>(IDENTIFIERS.ISettingsService).to(SettingsService);
-container.bind<IAuthStorageService>(IDENTIFIERS.IAuthStorageService).to(CookiesStorageService);
+container.bind<IGameService>(IDENTIFIERS.IGameService).to(GameService).inSingletonScope();
+container.bind<ISettingsService>(IDENTIFIERS.ISettingsService).to(SettingsService).inSingletonScope();
+container.bind<IAuthStorageService>(IDENTIFIERS.IAuthStorageService).to(CookiesStorageService).inSingletonScope();
 
-container.bind<IApiClient>(IDENTIFIERS.IApiClient).to(ApiClient);
+container.bind<IApiClient>(IDENTIFIERS.IApiClient).to(ApiClient).inSingletonScope();
 
-container.bind<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService).to(KeycloakAuthService);
+container.bind<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService).to(KeycloakAuthService).inSingletonScope();
 
 container.bind<IKeycloakService>(IDENTIFIERS.IKeycloakService).to(KeycloakService).inSingletonScope();
 container.bind<IUrlService>(IDENTIFIERS.IUrlService).to(UrlService).inSingletonScope();

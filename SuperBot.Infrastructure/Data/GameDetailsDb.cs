@@ -23,8 +23,16 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("tagline")]
         public string Tagline { get; set; }
 
+        [BsonElement("taglineI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? TaglineI18n { get; set; }
+
         [BsonElement("descriptionMarkdown")]
         public string DescriptionMarkdown { get; set; }
+
+        [BsonElement("descriptionMarkdownI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? DescriptionMarkdownI18n { get; set; }
 
         [BsonElement("cover")]
         public GameCoverDb Cover { get; set; }
@@ -35,8 +43,16 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("genres")]
         public List<string> Genres { get; set; } = new();
 
+        [BsonElement("genresI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, List<string>>? GenresI18n { get; set; }
+
         [BsonElement("tags")]
         public List<string> Tags { get; set; } = new();
+
+        [BsonElement("tagsI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, List<string>>? TagsI18n { get; set; }
 
         [BsonElement("developer")]
         public GameStudioInfoDb Developer { get; set; }
@@ -80,6 +96,11 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("isActive")]
         public bool IsActive { get; set; }
 
+        // Отсутствующий в документе элемент читается как false — «опубликована». Добавление
+        // поля безопасно: ломается десериализация только на ЛИШНИХ элементах, а не на недостающих.
+        [BsonElement("isDraft")]
+        public bool IsDraft { get; set; }
+
         [BsonElement("isNew")]
         public bool IsNew { get; set; }
 
@@ -95,8 +116,16 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("keyType")]
         public string KeyType { get; set; }
 
+        [BsonElement("activation")]
+        [BsonIgnoreIfNull]
+        public SoftwareActivationDb? Activation { get; set; }
+
         [BsonElement("keyFeatures")]
         public List<string> KeyFeatures { get; set; } = new();
+
+        [BsonElement("keyFeaturesI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, List<string>>? KeyFeaturesI18n { get; set; }
 
         [BsonElement("awards")]
         public List<GameAwardBadgeDb> Awards { get; set; } = new();
@@ -132,6 +161,12 @@ namespace SuperBot.Infrastructure.Data
         public string Alt { get; set; }
     }
 
+    // [BsonNoId] обязателен: у драйвера есть конвенция NamedIdMember — член с именем Id
+    // автоматически становится идентификатором документа и читается ТОЛЬКО из _id,
+    // молча игнорируя [BsonElement("id")] ниже. Для вложенного документа это неверно:
+    // элемент "id" тогда не матчится ни на что и падает десериализация всего батча,
+    // из-за чего 500 отдают и остальные записи коллекции.
+    [BsonNoId]
     public class GameMediaItemDb
     {
         [BsonElement("id")]
@@ -157,6 +192,10 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("caption")]
         public string Caption { get; set; }
+
+        [BsonElement("captionI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? CaptionI18n { get; set; }
 
         [BsonElement("isTrailer")]
         public bool IsTrailer { get; set; }
@@ -193,6 +232,39 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("linux")]
         public bool Linux { get; set; }
+
+        // Консоли раньше в документ не попадали вовсе: в сущности флаги были, а здесь нет, и при сохранении они терялись.
+        [BsonElement("playStation")]
+        public bool PlayStation { get; set; }
+
+        [BsonElement("xbox")]
+        public bool Xbox { get; set; }
+
+        [BsonElement("android")]
+        public bool Android { get; set; }
+
+        [BsonElement("ios")]
+        public bool Ios { get; set; }
+    }
+
+    [BsonIgnoreExtraElements]
+    public class SoftwareActivationDb
+    {
+        [BsonElement("target")]
+        [BsonRepresentation(BsonType.String)]
+        public SuperBot.Core.Entities.SoftwareActivationTarget Target { get; set; }
+
+        [BsonElement("url")]
+        [BsonIgnoreIfNull]
+        public string? Url { get; set; }
+
+        [BsonElement("label")]
+        [BsonIgnoreIfNull]
+        public string? Label { get; set; }
+
+        [BsonElement("labelI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? LabelI18n { get; set; }
     }
 
     public class GameLanguageSupportDb
@@ -212,6 +284,10 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("label")]
         public string Label { get; set; }
 
+        [BsonElement("labelI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? LabelI18n { get; set; }
+
         [BsonElement("iconUrl")]
         public string IconUrl { get; set; }
     }
@@ -224,8 +300,16 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("title")]
         public string Title { get; set; }
 
+        [BsonElement("titleI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? TitleI18n { get; set; }
+
         [BsonElement("description")]
         public string Description { get; set; }
+
+        [BsonElement("descriptionI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? DescriptionI18n { get; set; }
 
         [BsonElement("price")]
         public decimal Price { get; set; }
@@ -242,8 +326,26 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("isDefault")]
         public bool IsDefault { get; set; }
+
+        [BsonElement("licenseTermMonths")]
+        [BsonIgnoreIfNull]
+        public int? LicenseTermMonths { get; set; }
+
+        [BsonElement("licenseDevices")]
+        [BsonIgnoreIfNull]
+        public int? LicenseDevices { get; set; }
+
+        [BsonElement("isSubscription")]
+        [BsonIgnoreIfDefault]
+        public bool IsSubscription { get; set; }
     }
 
+    // [BsonNoId] обязателен: у драйвера есть конвенция NamedIdMember — член с именем Id
+    // автоматически становится идентификатором документа и читается ТОЛЬКО из _id,
+    // молча игнорируя [BsonElement("id")] ниже. Для вложенного документа это неверно:
+    // элемент "id" тогда не матчится ни на что и падает десериализация всего батча,
+    // из-за чего 500 отдают и остальные записи коллекции.
+    [BsonNoId]
     public class GameDlcItemDb
     {
         [BsonElement("id")]
@@ -270,6 +372,10 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("title")]
         public string Title { get; set; }
 
+        [BsonElement("titleI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? TitleI18n { get; set; }
+
         [BsonElement("year")]
         public int? Year { get; set; }
 
@@ -282,8 +388,9 @@ namespace SuperBot.Infrastructure.Data
 
     public class GameSystemRequirementsDb
     {
+        // Необязательна, как Mac и Linux: игра может не поддерживать Windows.
         [BsonElement("windows")]
-        public GameSystemRequirementBlockDb Windows { get; set; } = new();
+        public GameSystemRequirementBlockDb Windows { get; set; }
 
         [BsonElement("mac")]
         public GameSystemRequirementBlockDb Mac { get; set; }
@@ -320,6 +427,10 @@ namespace SuperBot.Infrastructure.Data
 
         [BsonElement("notes")]
         public string Notes { get; set; }
+
+        [BsonElement("notesI18n")]
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? NotesI18n { get; set; }
     }
 
     public class GameAutoRecommendRulesDb

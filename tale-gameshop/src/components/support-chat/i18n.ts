@@ -2,7 +2,7 @@
 // framework, so we keep a small RU/EN dictionary here and pick the language from the browser.
 // The backend agent already replies in the customer's language; this covers the static chrome.
 
-export type SupportLang = "ru" | "en";
+export type SupportLang = "ru" | "en" | "uk" | "pl";
 
 // The widget chrome follows the SITE language (the <html lang> attribute), not the visitor's
 // browser locale — so an English site shows an English widget even for a Russian-speaking browser.
@@ -11,6 +11,8 @@ export type SupportLang = "ru" | "en";
 export const detectSupportLang = (): SupportLang => {
   const siteLang = (document.documentElement.lang || "").toLowerCase();
   if (siteLang.startsWith("ru")) return "ru";
+  if (siteLang.startsWith("uk")) return "uk";
+  if (siteLang.startsWith("pl")) return "pl";
   return "en";
 };
 
@@ -225,6 +227,150 @@ const ru: Dict = {
   authorAgent: "Tale Support (Специалист)",
 };
 
-const dictionaries: Record<SupportLang, Dict> = { en, ru };
+const uk: Dict = {
+  title: "Підтримка Tale Shop",
+  statusOnline: "ШІ-асистент · онлайн",
+  statusQueue: "Підключаємо спеціаліста…",
+  statusAssigned: (name) => `${name || "Спеціаліст"} на зв'язку`,
+  statusClosed: "Чат закрито",
+  sessionCodeHint: "Код звернення — назвіть його, якщо писатимете нам іншим способом",
+  loadingHistory: "Завантажую попередні повідомлення…",
+  close: "Закрити чат",
+  newChat: "Новий діалог",
+  closedNotice: "Спеціаліст завершив цей діалог. Якщо залишилися запитання — почніть новий.",
+  chatRestarted: "Діалог вийшов довгим — почав новий. Надішліть повідомлення ще раз.",
+  titleAlert: "💬 Відповідь від підтримки",
+  soundOff: "Вимкнути звук відповіді",
+  soundOn: "Увімкнути звук відповіді",
+  scrollDown: "До останнього повідомлення",
+  resize: "Змінити розмір вікна",
+  today: "Сьогодні",
+  yesterday: "Учора",
+  feedbackHelpful: "Допомогло",
+  feedbackNotHelpful: "Не допомогло",
+  didNotHelp: "Не вирішилося? Покликати спеціаліста",
+  didNotHelpTitle: "Що зробити далі?",
+  rephrase: "Запитати інакше",
+  askHuman: "Передати спеціалісту",
+  handoffNotePlaceholder: "Що саме не так? Якщо є номер замовлення — додайте його.",
+  handoffSubmit: "Надіслати спеціалісту",
+  handoffCancel: "Не треба",
+  waitOpen: (minutes) => `Спеціаліст зазвичай відповідає протягом ${minutes} хвилин — я можу відповісти просто зараз.`,
+  waitClosed: (opensAt) =>
+    opensAt
+      ? `Зараз неробочий час — спеціаліст відповість після ${opensAt}. Я можу відповісти просто зараз.`
+      : "Зараз неробочий час — спеціаліст відповість, коли ми повернемося. Я можу відповісти просто зараз.",
+  waitUnknown: "Спеціаліст приєднається до чату — я можу відповісти просто зараз.",
+  welcomeTitle: "Вітаю! 👋",
+  welcomeBody:
+    "Я асистент Tale Shop. Допоможу із замовленнями, ключами, активацією, оплатою та поверненнями — і будь-якої миті підключу живого спеціаліста.",
+  quickRepliesLabel: "Популярні теми",
+  quickReplies: [
+    "Де мій ключ?",
+    "Проблема з оплатою",
+    "Хочу повернення",
+    "Обліковий запис і безпека",
+    "Як активувати ключ?",
+  ],
+  talkToHumanMessage: "Хочу зв'язатися зі спеціалістом.",
+  composerPlaceholder: "Введіть повідомлення…",
+  composerPlaceholderClosed: "Чат закрито",
+  composerPlaceholderBusy: "Пишу відповідь…",
+  send: "Надіслати",
+  typingAi: "Асистент друкує…",
+  typingAgent: "Спеціаліст друкує…",
+  retry: "Повторити",
+  talkToHuman: "Зв'язатися зі спеціалістом",
+  errorGeneric: "Щось пішло не так. Повторіть або зв'яжіться зі спеціалістом.",
+  verifying: "Секунду — перевіряємо, що ви не робот, потім надішліть ще раз.",
+  turnstileError: "Не вдалося підтвердити, що ви не робот.",
+  queueTitle: "Ви в черзі",
+  queueBody: "Спеціаліст Tale Shop незабаром приєднається до чату. Можете продовжувати писати — він побачить усе листування.",
+  contactTitle: "Допоможіть зв'язатися з вами швидше",
+  contactBody: "Залиште email або номер замовлення — спеціаліст продовжить з того самого місця.",
+  emailLabel: "Email",
+  emailPlaceholder: "you@email.com",
+  orderLabel: "Номер замовлення",
+  orderPlaceholder: "TKT-00000",
+  contactSubmit: "Надіслати спеціалісту",
+  contactSent: "Дякуємо — спеціаліст отримав ваші дані.",
+  leadContinue: "Продовжити",
+  authorAi: "Tale Support (ШІ)",
+  authorAgent: "Tale Support (Спеціаліст)",
+};
+
+const pl: Dict = {
+  title: "Pomoc Tale Shop",
+  statusOnline: "Asystent AI · online",
+  statusQueue: "Łączymy ze specjalistą…",
+  statusAssigned: (name) => `${name || "Specjalista"} jest z Tobą`,
+  statusClosed: "Czat zamknięty",
+  sessionCodeHint: "Kod zgłoszenia — podaj go, jeśli napiszesz do nas innym kanałem",
+  loadingHistory: "Wczytuję wcześniejsze wiadomości…",
+  close: "Zamknij czat",
+  newChat: "Nowy czat",
+  closedNotice: "Specjalista zakończył tę rozmowę. Jeśli nadal potrzebujesz pomocy, zacznij nową.",
+  chatRestarted: "Rozmowa zrobiła się długa, więc zacząłem nową — wyślij wiadomość ponownie.",
+  titleAlert: "💬 Nowa odpowiedź od pomocy",
+  soundOff: "Wyłącz dźwięk odpowiedzi",
+  soundOn: "Włącz dźwięk odpowiedzi",
+  scrollDown: "Przejdź do najnowszych",
+  resize: "Zmień rozmiar czatu",
+  today: "Dzisiaj",
+  yesterday: "Wczoraj",
+  feedbackHelpful: "Pomogło",
+  feedbackNotHelpful: "Nie pomogło",
+  didNotHelp: "Nadal problem? Porozmawiaj ze specjalistą",
+  didNotHelpTitle: "Co pomoże bardziej?",
+  rephrase: "Zapytaj inaczej",
+  askHuman: "Przekaż specjaliście",
+  handoffNotePlaceholder: "Co się dzieje? Dodaj numer zamówienia, jeśli go masz.",
+  handoffSubmit: "Wyślij do specjalisty",
+  handoffCancel: "Nieważne",
+  waitOpen: (minutes) => `Specjalista zwykle odpowiada w ciągu ${minutes} minut — ja mogę odpowiedzieć od razu.`,
+  waitClosed: (opensAt) =>
+    opensAt
+      ? `Jesteśmy poza godzinami pracy — specjalista odpowie po ${opensAt}. Ja mogę odpowiedzieć od razu.`
+      : "Jesteśmy poza godzinami pracy — specjalista odpowie, gdy wrócimy. Ja mogę odpowiedzieć od razu.",
+  waitUnknown: "Specjalista dołączy do czatu — ja mogę odpowiedzieć od razu.",
+  welcomeTitle: "Cześć! 👋",
+  welcomeBody:
+    "Jestem asystentem Tale Shop. Pomogę z zamówieniami, kluczami, aktywacją, płatnościami i zwrotami — i w każdej chwili przekażę Cię specjaliście.",
+  quickRepliesLabel: "Popularne tematy",
+  quickReplies: [
+    "Gdzie jest mój klucz?",
+    "Mam problem z płatnością",
+    "Prośba o zwrot",
+    "Konto i bezpieczeństwo",
+    "Jak aktywować klucz?",
+  ],
+  talkToHumanMessage: "Chcę porozmawiać ze specjalistą.",
+  composerPlaceholder: "Napisz wiadomość…",
+  composerPlaceholderClosed: "Ten czat jest zamknięty",
+  composerPlaceholderBusy: "Piszę odpowiedź…",
+  send: "Wyślij",
+  typingAi: "Asystent pisze…",
+  typingAgent: "Specjalista pisze…",
+  retry: "Ponów",
+  talkToHuman: "Porozmawiaj z człowiekiem",
+  errorGeneric: "Coś poszło nie tak. Ponów lub porozmawiaj z człowiekiem.",
+  verifying: "Chwileczkę — sprawdzamy, czy nie jesteś robotem, potem wyślij ponownie.",
+  turnstileError: "Nie udało się potwierdzić, że nie jesteś robotem.",
+  queueTitle: "Jesteś w kolejce",
+  queueBody: "Specjalista Tale Shop wkrótce dołączy do czatu. Możesz pisać dalej — zobaczy wszystko.",
+  contactTitle: "Pomóż nam szybciej się z Tobą skontaktować",
+  contactBody: "Zostaw e-mail lub numer zamówienia, aby specjalista mógł kontynuować od tego miejsca.",
+  emailLabel: "E-mail",
+  emailPlaceholder: "you@email.com",
+  orderLabel: "Numer zamówienia",
+  orderPlaceholder: "TKT-00000",
+  contactSubmit: "Wyślij do specjalisty",
+  contactSent: "Dzięki — specjalista ma Twoje dane.",
+  leadContinue: "Kontynuuj",
+  authorAi: "Tale Support (AI)",
+  authorAgent: "Tale Support (Specjalista)",
+};
+
+const dictionaries: Record<SupportLang, Dict> = { en, ru, uk, pl };
 
 export const getSupportDict = (lang: SupportLang): Dict => dictionaries[lang] ?? en;

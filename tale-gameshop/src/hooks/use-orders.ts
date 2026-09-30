@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { fetchAccountOrders } from '../api/accountApi';
 import type { AccountOrderListItem, FetchAccountOrdersParams } from '../types/account-orders';
@@ -46,7 +47,7 @@ export const useOrders = (options: UseOrdersOptions | null = {}) => {
       setTotalPages(data.totalPages);
     } catch (err) {
       console.error('Failed to load account orders:', err);
-      setError('Unable to load orders.');
+      setError(i18n.t('errors.loadOrders'));
       setItems([]);
       setTotalCount(0);
       setTotalPages(0);

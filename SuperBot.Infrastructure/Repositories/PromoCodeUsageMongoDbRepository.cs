@@ -32,4 +32,18 @@ public class PromoCodeUsageMongoDbRepository : IPromoCodeUsageRepository
         var db = _mapper.Map<PromoCodeUsageDb>(usage);
         return _collection.InsertOneAsync(db);
     }
+
+    public async Task<bool> TryRecordUsageAsync(PromoCodeUsage usage)
+    {
+        try
+        {
+            await _collection.InsertOneAsync(_mapper.Map<PromoCodeUsageDb>(usage));
+            return true;
+        }
+        catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            // Уникальный индекс ix_promo_usages_order_unique: заказ уже учтён (повтор вебхука или confirm).
+            return false;
+        }
+    }
 }

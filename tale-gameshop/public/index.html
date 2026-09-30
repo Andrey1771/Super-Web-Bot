@@ -4,7 +4,29 @@
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <!-- Цвет адресной строки на мобильных. Совпадает с фиолетовым тела лягушки
+         и с theme_color в manifest.json — раньше здесь оставался чёрный из шаблона CRA. -->
+    <meta name="theme-color" content="#6e2cf5" />
+    <!-- Язык страницы выставляется до первого кадра: сохранённый выбор, иначе язык браузера.
+         Та же логика, что в site-preferences.ts (readLang); без этого первый кадр всегда английский. -->
+    <script>
+      (function () {
+        var supported = ["en", "ru", "uk", "pl"];
+        var lang = null;
+        // Ссылка на языковую версию (?lang=ru из hreflang или карты сайта) главнее сохранённого выбора.
+        try { var fromQuery = new URLSearchParams(location.search).get("lang"); if (supported.indexOf(fromQuery) >= 0) lang = fromQuery; } catch (e) {}
+        if (!lang) { try { lang = localStorage.getItem("site_lang"); } catch (e) {} }
+        if (supported.indexOf(lang) < 0) {
+          var candidates = (navigator.languages || []).concat([navigator.language || ""]);
+          lang = null;
+          for (var i = 0; i < candidates.length && !lang; i++) {
+            var code = String(candidates[i]).toLowerCase().split("-")[0];
+            if (supported.indexOf(code) >= 0) lang = code;
+          }
+        }
+        document.documentElement.lang = lang || "en";
+      })();
+    </script>
     <meta
       name="description"
       content="Tale Shop — curated PC games with secure checkout and instant key delivery."
@@ -26,10 +48,224 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Tale Shop</title>
+    <style>
+      /* Первый экран — каркас САМОЙ страницы, а не фирменная заставка.
+         Полноэкранная карточка с логотипом на фиолетовом сиянии решала не ту задачу: она
+         появлялась на секунду и исчезала, и это читалось как сбой, а не как загрузка. Чем
+         быстрее становился сайт, тем нелепее выглядело окно — заявка на событие там, где
+         событие длится мгновение.
+         Здесь вместо окна сразу рисуется то, чем страница станет: та же шапка на том же
+         месте и форма первого экрана под ней. Смысл только в совпадении: пока заставка
+         гаснет, она полупрозрачна и сквозь неё видно уже отрисованную страницу. Всё, что
+         стоит не там же, где в живой вёрстке, в этот момент двоится.
+         Поэтому размеры взяты не на глаз, а из живой шапки и index.css: ряды 58px и 43px,
+         контейнер 1320px с полями 32px и теми же переломами, логотип 42px. */
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #f6f7fb;
+        opacity: 1;
+        /* Короткое затухание, а не плавное. Длительность перехода — это ровно то время,
+           которое зритель видит обе композиции сразу. 120мс снимают резкость переключения
+           и не успевают прочитаться как двоение. */
+        transition: opacity .12s ease;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        overflow: hidden;
+      }
+      #boot-splash.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      /* Шапка: два ряда, как у живой .site-header — 58px основного и 43px навигации,
+         вместе 101px. Раньше здесь был один ряд 60px, и нижняя граница белого поля
+         прыгала на 41px. */
+      .boot-header {
+        background: #ffffff;
+        box-shadow: rgba(87, 68, 144, .08) 0 6px 20px 0;
+      }
+      .boot-row {
+        display: flex;
+        align-items: center;
+      }
+      .boot-row.is-primary { height: 58px; }
+      .boot-row.is-nav {
+        height: 43px;
+        border-top: 1px solid #f0ecff;
+      }
+      /* Тот же контейнер, что .container в index.css. Раньше стояло просто padding: 0 20px
+         без max-width: на экране 1900px логотип заставки оказывался на 295px левее живого,
+         и при гашении было видно два логотипа в разных местах. */
+      .boot-inner {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        width: 100%;
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 0 32px;
+      }
+      /* Витрина шире шапки — ровно как .container-wide. */
+      .boot-wrap {
+        width: 100%;
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 0 32px;
+      }
+      .boot-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .boot-logo {
+        /* Как в живой шапке, вместе с компенсацией пустого правого края знака. */
+        height: 42px;
+        width: auto;
+        object-fit: contain;
+        margin-right: -6px;
+      }
+      .boot-name {
+        font-size: 20px;
+        font-weight: 800;
+        color: #3b2c66;
+        letter-spacing: -.01em;
+      }
+      /* Заглушки самой шапки не мерцают: это не содержимое, которое подгружается, а
+         органы управления, которые появятся целиком. Мерцает только тело страницы. */
+      .boot-search {
+        flex: 1 1 auto;
+        max-width: 520px;
+        height: 46px;
+        border-radius: 999px;
+        background: #f3f0ff;
+      }
+      .boot-tools {
+        margin-left: auto;
+        width: 476px;
+        height: 38px;
+        border-radius: 999px;
+        background: #f3f0ff;
+      }
+      .boot-nav-links {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+      .boot-link {
+        height: 12px;
+        border-radius: 999px;
+        background: #f3f0ff;
+      }
+      .boot-trust {
+        margin-left: auto;
+        width: 168px;
+        height: 12px;
+        border-radius: 999px;
+        background: #f3f0ff;
+      }
+      .boot-body { padding-top: 40px; }
+      /* Форма первого экрана — одна широкая панель, и одна на все маршруты.
+
+         Сначала здесь стояла сетка карточек, потом — выбор между сеткой и панелью по
+         адресу. От выбора отказались: каталог совпасть не может. На 1280px его карточки
+         начинаются на x=336 (слева колонка фильтров) и на y=333 (сверху заголовок и
+         панель сортировки), а на 700px фильтры разворачиваются во всю ширину и сетка
+         уезжает на y=1448. Повторить это — значит перенести саму страницу каталога в
+         index.html и потом чинить её в двух местах.
+
+         Панель же не притворяется конкретной раскладкой: на главной она ложится ровно
+         на .hero-stage, на остальных страницах просто отмечает область содержимого.
+         Дальше форму рисует сам маршрут — у каталога есть свои скелетоны в React. */
+      .boot-hero {
+        /* Пропорции сняты с живой .hero-stage на четырёх ширинах, а не подобраны:
+           1900px — 2.32, 1024px — 1.20, 900px — 1.15, 480px — 0.54. Ниже 1024px витрина
+           складывается в колонку и резко вытягивается, поэтому одной пропорцией не
+           обойтись — на телефоне блок оказался бы вчетверо короче настоящего. */
+        aspect-ratio: 1376 / 592;
+        border-radius: 24px;
+        display: block;
+        background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+        background-size: 200% 100%;
+        animation: boot-shimmer 1.5s linear infinite;
+      }
+      @keyframes boot-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      /* Переломы контейнера — те же, что у --container-padding в tokens.css. */
+      @media (max-width: 1200px) {
+        .boot-inner, .boot-wrap { padding: 0 24px; }
+      }
+      /* Ниже 1180px живая шапка прячет ряд навигации, поиск и кнопки входа и показывает
+         бургер (см. tale-gameshop-header.css). Заставка обязана прятать их тоже. */
+      @media (max-width: 1180px) {
+        .boot-row.is-primary { height: 60px; }
+        .boot-row.is-nav,
+        .boot-search { display: none; }
+        .boot-tools { width: 96px; }
+      }
+      @media (max-width: 992px) {
+        .boot-inner, .boot-wrap { max-width: 100%; padding: 0 20px; }
+      }
+      @media (max-width: 768px) {
+        .boot-inner, .boot-wrap { padding: 0 16px; }
+      }
+      @media (max-width: 1024px) {
+        .boot-hero { aspect-ratio: 1.2 / 1; }
+      }
+      @media (max-width: 768px) {
+        .boot-hero { aspect-ratio: 0.75 / 1; }
+      }
+      @media (max-width: 600px) {
+        .boot-hero { aspect-ratio: 0.55 / 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash { transition: none; }
+        .boot-hero { animation: none; }
+      }
+    </style>
+
+
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <!-- Каркас страницы до загрузки приложения. Лежит РЯДОМ с #root, а не внутри: React
+         его не стирает, приложение отрисовывается под ним, и гасим мы его сами — плавно и
+         уже поверх готового содержимого (см. index.tsx). -->
+    <div id="boot-splash" aria-hidden="true">
+      <div class="boot-header">
+        <div class="boot-row is-primary">
+          <div class="boot-inner">
+            <span class="boot-brand">
+              <img class="boot-logo" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjEuMiAzLjcgOTUuMiA4MC4xIiBmaWxsPSJub25lIiByb2xlPSJpbWciPgogIDx0aXRsZT5UYWxlIFNob3A8L3RpdGxlPgogIDxkZXNjPtCb0Y/Qs9GD0YjQutCwINGBINCz0LXQudC80L/QsNC00L7QvCDigJQg0LfQvdCw0Log0LzQsNCz0LDQt9C40L3QsCBUYWxlIFNob3AuPC9kZXNjPgogIDxnIGlkPSJnYW1lcGFkIj4KICAgIDxwYXRoIGlkPSJnYW1lcGFkLXNoZWxsIiBmaWxsPSIjRUVFNUZCIiBkPSJNMjQgNDIgSDY2IEM3MCA0MiA3MSA0NiA3MyA1NCBMNzQgNjUgQzc0LjUgNjguMSA3MyA3MS4yIDcwLjQgNzMuNiBDNjguNCA3NS44IDY0LjkgNzUuMSA2Mi40IDczLjggTDU2LjEgNzIuOCBMMzcuOCA3Mi45IEwzNC41IDc0LjEgQzMyLjkgNzYuMyAyOS45IDc1LjggMjcuNyA3NC4xIEwyMC44IDY4LjMgQzE4LjIgNjYuMyAxOS4yIDYyLjYgMjAuNCA1OS43IEwyMSA0OSBDMjEuNSA0NSAyMiA0MiAyNCA0MiBaIi8+CiAgPC9nPgogIDxnIGlkPSJmcm9nIiBmaWxsPSIjNkUyQ0Y1Ij4KICAgIDxwYXRoIGlkPSJib2R5LWFuZC1mZWV0IiBkPSJNMTguNDU2IDEyLjQ3IEMyMi4zNjkgMTEuMTQ3IDI3LjE5NyAxMS44OSAzMC4zNSAxNC41NCBDMzEuNTU3IDE1LjU1NSAzMi41MTkgMTYuODUgMzMuNTM5IDE4LjAzMyBDMzQuMTE2IDE4LjcwMyAzNC43MTEgMTkuMzM3IDM1LjQ5OSAxOS41NTMgQzM2LjA4NyAxOS43MTQgMzYuNzgxIDE5LjY0NCAzNy40NjYgMTkuNTU5IEMzOS44NTIgMTkuMjYzIDQyLjExOSAxOC43OTcgNDQuNDggMTguODk0IEM0Ni43MzQgMTguOTg3IDQ5LjA3NCAxOS41OTIgNTEuMjE0IDE5LjQ3MiBDNTIuMDA5IDE5LjQyNyA1Mi43NzcgMTkuMjgxIDUzLjM3NyAxOC44MzMgQzUzLjc5OCAxOC41MTkgNTQuMTM2IDE4LjA1NiA1NC40OTIgMTcuNTkyIEM1NS42MzcgMTYuMTAxIDU2Ljk2NSAxNC42IDU4LjUzNSAxMy41NjkgQzY0LjU5NSA5LjU5MSA3NC4yNjQgMTIuNjA0IDc2LjYxIDE5LjM5IEM3Ny4zNzIgMjEuNTk2IDc3LjM2MSAyNC4yMDEgNzYuNzE0IDI2LjU3OSBDNzYuMjM3IDI4LjMzMiA3NS40MTQgMjkuOTYyIDc1LjY4NCAzMS40NTMgQzc1Ljk0NiAzMi45MDQgNzcuMjQyIDM0LjIyNSA3OC4zODggMzUuNTQyIEM3OS40OTQgMzYuODE0IDgwLjQ1OSAzOC4wODMgODEuMjk0IDM5LjQ2MSBDODMuMjg0IDQyLjc0NyA4NC41MzEgNDYuNjU0IDg0LjM2MyA1MC40OTkgQzg0LjIwNiA1NC4wOTkgODIuODA4IDU3LjY0NSA4MC40MzQgNjAuNTI4IEM3OS4zMTUgNjEuODg2IDc3Ljk4IDYzLjA5NiA3Ny42MDYgNjQuNTY1IEM3Ny4xNjEgNjYuMzA5IDc4LjA3MyA2OC40MTcgNzguMTM5IDcwLjQ5NiBDNzguMjAzIDcyLjQ4MyA3Ny40OTYgNzQuNDQzIDc2LjQ0NSA3Ni4wNTkgQzc1LjU1OCA3Ny40MjQgNzQuNDI2IDc4LjU0NCA3My4wNTUgNzkuNDA1IEM2OS42ODYgODEuNTIyIDY0Ljg3NyA4Mi4wODEgNjEuNTEzIDc5Ljc1NSBDNTguNTU3IDc3LjcxMSA1Ni43MTggNzMuNDQgNTkuNDA0IDcxLjAxMiBDNjAuMDY4IDcwLjQxMiA2MS4wMDkgNjkuOTI0IDYxLjcyIDY5LjM1MiBDNjIuNDQ1IDY4Ljc3IDYyLjkzMSA2OC4xIDYzLjQ2NyA2Ny40NTEgQzY0LjAyMyA2Ni43NzggNjQuNjMyIDY2LjEyNyA2NS41MDggNjUuNzg0IEM2Ni4xNzcgNjUuNTIxIDY3LjAwMSA2NS40MzggNjcuNjcyIDY1LjE4MSBDNjkuNTU2IDY0LjQ2IDcwLjI0IDYyLjM3NSA3MC4xNzYgNjAuNDgxIEM3MC4xMTggNTguNzk1IDY5LjQ2NyA1Ny4yNjIgNjguNzY0IDU1LjU4NiBDNjcuNDUgNTIuNDUzIDY1Ljk1NyA0OC44MjIgNjMuNDI5IDQ3LjIzNCBDNjAuMjkxIDQ1LjI2MiA1NS41NTcgNDYuNDM5IDUxLjM0OCA0Ni44NzQgQzQ2LjU1MSA0Ny4zNjkgNDIuNDM2IDQ2LjkwMSAzNy42MjQgNDYuODI2IEMzMy40NzMgNDYuNzYxIDI4LjgwMyA0Ni45ODkgMjYuMTE1IDQ5LjUwMSBDMjMuNyA1MS43NTYgMjIuODgzIDU1Ljg1NCAyMS40MTUgNTkuNDM2IEMyMC42NzcgNjEuMjM3IDE5Ljc3NSA2Mi45MDcgMjAuNjk4IDY0LjAyMiBDMjEuMjQ0IDY0LjY4MiAyMi40MzEgNjUuMTQ3IDIzLjQyMyA2NS42NTEgQzI0LjA0OCA2NS45NjkgMjQuNTk2IDY2LjMwMiAyNS4xMTUgNjYuNjg3IEMyNi40MDQgNjcuNjQzIDI3LjUxNSA2OC45MTcgMjguNDIzIDcwLjM5NyBDMjkuNDI2IDcyLjAzMSAzMC4xODMgNzMuOTE1IDI5Ljk3IDc1LjU4OCBDMjkuNTggNzguNjY4IDI1LjkwNSA4MS4wMyAyMi40MTkgODEuNjI5IEMxOC42MzkgODIuMjc4IDE1LjA4MiA4MC44NTUgMTIuNTA1IDc4LjEgQzExLjI4MyA3Ni43OTUgMTAuMjgyIDc1LjE5IDkuODk5IDczLjQ4OCBDOS4zODYgNzEuMjA3IDkuOTg0IDY4Ljc1MyAxMC4zMTcgNjYuNDc1IEMxMC40MTggNjUuNzc5IDEwLjQ5NSA2NS4xIDEwLjMwNSA2NC40ODkgQzEwLjA3NiA2My43NTQgOS40NjIgNjMuMTE5IDguODUyIDYyLjQ3NyBDNy42NTMgNjEuMjE1IDYuNDcxIDU5LjkyOCA1LjU2NSA1OC40OTIgQzMuNTMxIDU1LjI3MSAyLjg4MyA1MS4zMDQgMy4yODIgNDcuNTAzIEMzLjY2NyA0My44NDIgNS4wMjMgNDAuMzM2IDcuNDk0IDM3LjQ5NCBDOC41MjYgMzYuMzA4IDkuNzUxIDM1LjIzNyAxMC42MSAzNC4wMzkgQzExLjY0MiAzMi41OTkgMTIuMTQ1IDMwLjk3NSAxMS43MTIgMjkuMjEzIEMxMS40MTMgMjggMTAuNjcxIDI2LjcyIDEwLjQ1MiAyNS40ODEgQzEwLjMzNyAyNC44MjkgMTAuMzY3IDI0LjE4OCAxMC40MzMgMjMuNTMyIEMxMC42MDYgMjEuODI3IDExLjAyNCAyMC4wMjIgMTEuNzc1IDE4LjQzNSBDMTMuMTIgMTUuNTk3IDE1LjUzMyAxMy40NTggMTguNDU2IDEyLjQ3IFoiLz4KICAgIDxwYXRoIGlkPSJsb3dlci1ib2R5IiBkPSJNMzcuNyA3My4xIEMzOS44IDcwLjEgNDAgNjcuNyA0NCA2Ny43IEg0OC40IEM1Mi4yIDY3LjcgNTMuNCA3MC4zIDU2LjEgNzMuMSBDNTAuNSA3NC4zIDQzLjIgNzQuNCAzNy43IDczLjEgWiIvPgogIDwvZz4KICA8ZyBpZD0iZXllcyI+CiAgICA8cGF0aCBpZD0iZXllLWxlZnQiIGZpbGw9IiNGMUU3RkMiIGQ9Ik0yOC4zOCAyMy4xNiBDMjguMzggMjYuNzc3IDI1LjU2OCAyOS43MSAyMi4xIDI5LjcxIEMxOC42MzIgMjkuNzEgMTUuODIgMjYuNzc3IDE1LjgyIDIzLjE2IEMxNS44MiAxOS41NDMgMTguNjMyIDE2LjYxIDIyLjEgMTYuNjEgQzI1LjU2OCAxNi42MSAyOC4zOCAxOS41NDMgMjguMzggMjMuMTYgWiIvPgogICAgPHBhdGggaWQ9ImV5ZS1yaWdodCIgZmlsbD0iI0YxRTdGQyIgZD0iTTcxLjg2IDIzLjE2IEM3MS44NiAyNi43OTQgNjguOTgxIDI5Ljc0IDY1LjQzIDI5Ljc0IEM2MS44NzkgMjkuNzQgNTkgMjYuNzk0IDU5IDIzLjE2IEM1OSAxOS41MjYgNjEuODc5IDE2LjU4IDY1LjQzIDE2LjU4IEM2OC45ODEgMTYuNTggNzEuODYgMTkuNTI2IDcxLjg2IDIzLjE2IFoiLz4KICAgIDxwYXRoIGlkPSJwdXBpbC1sZWZ0IiBmaWxsPSIjNjYzNkM0IiBkPSJNMjYuODEgMjMuNDcgQzI2LjgxIDI1LjIzNyAyNS40MTMgMjYuNjcgMjMuNjkgMjYuNjcgQzIxLjk2NyAyNi42NyAyMC41NyAyNS4yMzcgMjAuNTcgMjMuNDcgQzIwLjU3IDIxLjcwMyAyMS45NjcgMjAuMjcgMjMuNjkgMjAuMjcgQzI1LjQxMyAyMC4yNyAyNi44MSAyMS43MDMgMjYuODEgMjMuNDcgWiIvPgogICAgPHBhdGggaWQ9InB1cGlsLXJpZ2h0IiBmaWxsPSIjNjYzNkM0IiBkPSJNNjkuNjYgMjMuMzMgQzY5LjY2IDI1LjA0MiA2OC4zMDggMjYuNDMgNjYuNjQgMjYuNDMgQzY0Ljk3MiAyNi40MyA2My42MiAyNS4wNDIgNjMuNjIgMjMuMzMgQzYzLjYyIDIxLjYxOCA2NC45NzIgMjAuMjMgNjYuNjQgMjAuMjMgQzY4LjMwOCAyMC4yMyA2OS42NiAyMS42MTggNjkuNjYgMjMuMzMgWiIvPgogIDwvZz4KICA8ZyBpZD0iY29udHJvbHMiPgogICAgPHBhdGggaWQ9ImRpcmVjdGlvbi1wYWQiIGZpbGw9IiM5MDUwRUEiIGQ9Ik0zMy4yNiA1Mi45NSBIMzQuOTQgQzM1LjczIDUyLjk1IDM2LjEzIDUzLjQ0IDM2LjEzIDU0LjIzIFY1Ny4xOSBIMzguOTUgQzM5Ljc3IDU3LjE5IDQwLjE1IDU3LjY3IDQwLjE1IDU4LjQ0IFY2MC4wMyBDNDAuMTUgNjAuODUgMzkuNzIgNjEuMjQgMzguOTUgNjEuMjQgSDM2LjEzIFY2NC4yNiBDMzYuMTMgNjUuMDcgMzUuNzMgNjUuNTEgMzQuOTQgNjUuNTEgSDMzLjI2IEMzMi40NyA2NS41MSAzMi4wNCA2NS4wNyAzMi4wNCA2NC4yNiBWNjEuMjQgSDI5LjI2IEMyOC40OCA2MS4yNCAyOC4wMyA2MC44MiAyOC4wMyA2MC4wMyBWNTguNDQgQzI4LjAzIDU3LjY2IDI4LjQ4IDU3LjE5IDI5LjI2IDU3LjE5IEgzMi4wNCBWNTQuMjMgQzMyLjA0IDUzLjQ0IDMyLjQ3IDUyLjk1IDMzLjI2IDUyLjk1IFoiLz4KICAgIDxnIGlkPSJhY3Rpb24tYnV0dG9ucyIgZmlsbD0iI0E0NzJFNiI+CiAgICAgIDxwYXRoIGlkPSJidXR0b24tdG9wIiBkPSJNNjAuMjIgNTMuNzIgQzYwLjIyIDU0Ljg5NiA1OS4zMDIgNTUuODUgNTguMTcgNTUuODUgQzU3LjAzOCA1NS44NSA1Ni4xMiA1NC44OTYgNTYuMTIgNTMuNzIgQzU2LjEyIDUyLjU0NCA1Ny4wMzggNTEuNTkgNTguMTcgNTEuNTkgQzU5LjMwMiA1MS41OSA2MC4yMiA1Mi41NDQgNjAuMjIgNTMuNzIgWiIvPgogICAgICA8cGF0aCBpZD0iYnV0dG9uLWxlZnQiIGQ9Ik01NS44MSA1Ny45OSBDNTUuODEgNTkuMTE3IDU0Ljg5NyA2MC4wMyA1My43NyA2MC4wMyBDNTIuNjQzIDYwLjAzIDUxLjczIDU5LjExNyA1MS43MyA1Ny45OSBDNTEuNzMgNTYuODYzIDUyLjY0MyA1NS45NSA1My43NyA1NS45NSBDNTQuODk3IDU1Ljk1IDU1LjgxIDU2Ljg2MyA1NS44MSA1Ny45OSBaIi8+CiAgICAgIDxwYXRoIGlkPSJidXR0b24tcmlnaHQiIGQ9Ik02NC4xNSA1Ny44OSBDNjQuMTUgNTkuMDExIDYzLjI0NiA1OS45MiA2Mi4xMyA1OS45MiBDNjEuMDE0IDU5LjkyIDYwLjExIDU5LjAxMSA2MC4xMSA1Ny44OSBDNjAuMTEgNTYuNzY5IDYxLjAxNCA1NS44NiA2Mi4xMyA1NS44NiBDNjMuMjQ2IDU1Ljg2IDY0LjE1IDU2Ljc2OSA2NC4xNSA1Ny44OSBaIi8+CiAgICAgIDxwYXRoIGlkPSJidXR0b24tYm90dG9tIiBkPSJNNjAuMjEgNjIuMTUgQzYwLjIxIDYzLjMyMSA1OS4yOTIgNjQuMjcgNTguMTYgNjQuMjcgQzU3LjAyOCA2NC4yNyA1Ni4xMSA2My4zMjEgNTYuMTEgNjIuMTUgQzU2LjExIDYwLjk3OSA1Ny4wMjggNjAuMDMgNTguMTYgNjAuMDMgQzU5LjI5MiA2MC4wMyA2MC4yMSA2MC45NzkgNjAuMjEgNjIuMTUgWiIvPgogICAgPC9nPgogIDwvZz4KICA8cGF0aCBpZD0ic3BhcmtsZSIgZmlsbD0iIzc4M0JFQiIgZD0iTTg3LjYzIDUuNjUgQzg3LjAyIDEwLjIxIDg1LjAxIDEyLjQyIDgwLjA1IDEzLjggQzg1LjAxIDE0Ljc1IDg2LjcgMTcuNDIgODcuNiAyMS43MiBDODguNTggMTcuMzMgOTAuMTMgMTQuOSA5NC40MyAxMy44MyBDOTAuMSAxMi43NCA4OC4zNSAxMC40NyA4Ny42MyA1LjY1IFoiLz4KPC9zdmc+Cg==" alt="" />
+              <span class="boot-name">Tale Shop</span>
+            </span>
+            <span class="boot-search"></span>
+            <span class="boot-tools"></span>
+          </div>
+        </div>
+        <div class="boot-row is-nav">
+          <div class="boot-inner">
+            <span class="boot-nav-links">
+              <span class="boot-link" style="width: 41px"></span>
+              <span class="boot-link" style="width: 51px"></span>
+              <span class="boot-link" style="width: 41px"></span>
+              <span class="boot-link" style="width: 40px"></span>
+              <span class="boot-link" style="width: 42px"></span>
+              <span class="boot-link" style="width: 56px"></span>
+            </span>
+            <span class="boot-trust"></span>
+          </div>
+        </div>
+      </div>
+      <div class="boot-body">
+        <div class="boot-wrap">
+          <div class="boot-hero"></div>
+        </div>
+      </div>
+    </div>
+
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

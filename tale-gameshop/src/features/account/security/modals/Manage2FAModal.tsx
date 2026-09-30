@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import React from 'react';
 
 type Manage2FAModalProps = {
@@ -13,6 +14,7 @@ const Manage2FAModal: React.FC<Manage2FAModalProps> = ({
     accountConsoleUrl,
     onClose
 }) => {
+    const {t} = useTranslation();
     if (!isOpen) {
         return null;
     }
@@ -28,19 +30,19 @@ const Manage2FAModal: React.FC<Manage2FAModalProps> = ({
         <div className="security-modal-overlay">
             <div className="security-modal">
                 <div className="security-modal-header">
-                    <h3>Manage two-factor authentication</h3>
+                    <h3>{t('account.security.manage2fa.title')}</h3>
                     <button type="button" className="security-modal-close" onClick={onClose}>
                         ✕
                     </button>
                 </div>
                 <div className="security-modal-body">
                     <p>
-                        Update your authenticator app, regenerate backup codes, or disable 2FA from your account console.
+                        {t('account.security.manage2fa.text')}
                     </p>
                 </div>
                 <div className="security-modal-footer">
                     <button type="button" className="btn btn-outline" onClick={onClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button
                         type="button"
@@ -48,7 +50,7 @@ const Manage2FAModal: React.FC<Manage2FAModalProps> = ({
                         onClick={handleOpenAccount}
                         disabled={isSubmitting || !accountConsoleUrl}
                     >
-                        Open security settings
+                        {t('account.security.manage2fa.open')}
                     </button>
                 </div>
             </div>

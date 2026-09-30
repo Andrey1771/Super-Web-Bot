@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SuperBot.WebApi.Services;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers
 {
@@ -19,10 +20,14 @@ namespace SuperBot.WebApi.Controllers
             _configuration = configuration;
         }
 
+        /// <summary>Письма Keycloak уходят на языке атрибута locale — синхронизируем его с языком сайта перед отправкой.</summary>
+        private Task SyncLocaleAsync(string userId) =>
+            _keycloakAdminClient.TrySetLocaleAsync(userId, BuyerLanguage.Resolve(Request));
+
         [HttpGet("status")]
         public async Task<ActionResult<AccountSecurityStatusResponse>> GetStatus()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             var user = await _keycloakAdminClient.GetUserAsync(userId);
             if (user == null)
             {
@@ -86,7 +91,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("email/resend")]
         public async Task<IActionResult> ResendEmailVerification()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             var user = await _keycloakAdminClient.GetUserAsync(userId);
             if (user == null)
             {
@@ -98,6 +103,7 @@ namespace SuperBot.WebApi.Controllers
                 return NoContent();
             }
 
+            await SyncLocaleAsync(userId);
             await _keycloakAdminClient.SendVerifyEmailAsync(userId);
             return Ok();
         }
@@ -105,13 +111,14 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("email/change")]
         public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailRequest request)
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             if (!await ValidatePasswordAsync(request.Password))
             {
                 return BadRequest(new { message = "Invalid password." });
             }
 
             await _keycloakAdminClient.UpdateEmailAsync(userId, request.NewEmail, false);
+            await SyncLocaleAsync(userId);
             await _keycloakAdminClient.ExecuteActionsEmailAsync(
                 userId,
                 new[] { "VERIFY_EMAIL" },
@@ -124,7 +131,8 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("2fa/setup")]
         public async Task<ActionResult<SecurityActionResponse>> SetupTwoFactor()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
+            await SyncLocaleAsync(userId);
             await _keycloakAdminClient.ExecuteActionsEmailAsync(
                 userId,
                 new[] { "CONFIGURE_TOTP" },
@@ -143,7 +151,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("2fa/disable")]
         public async Task<IActionResult> DisableTwoFactor()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             var credentials = await _keycloakAdminClient.GetUserCredentialsAsync(userId);
             // Вместе с otp удаляем и recovery-коды: без 2FA они не имеют смысла, а при повторном
             // включении пользователь должен получить новый набор — старые коды могли утечь.
@@ -165,7 +173,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("password/change")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             if (!await ValidatePasswordAsync(request.CurrentPassword))
             {
                 return BadRequest(new { message = "Invalid password." });
@@ -183,7 +191,8 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("password/reset-email")]
         public async Task<IActionResult> SendResetPasswordEmail()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
+            await SyncLocaleAsync(userId);
             await _keycloakAdminClient.ExecuteActionsEmailAsync(
                 userId,
                 new[] { "UPDATE_PASSWORD" },
@@ -203,7 +212,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("sessions/logout-all")]
         public async Task<IActionResult> LogoutAllSessions()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             await _keycloakAdminClient.LogoutAllSessionsAsync(userId);
             return Ok();
         }
@@ -211,7 +220,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("report")]
         public async Task<IActionResult> DownloadReport()
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             var user = await _keycloakAdminClient.GetUserAsync(userId);
             if (user == null)
             {
@@ -236,7 +245,7 @@ namespace SuperBot.WebApi.Controllers
         [HttpPost("delete-account")]
         public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
         {
-            var userId = GetUserId();
+            var userId = User.GetUserId();
             if (!string.Equals(request.Confirmation, "DELETE", StringComparison.OrdinalIgnoreCase))
             {
                 return BadRequest(new { message = "Type DELETE to confirm." });
@@ -249,13 +258,6 @@ namespace SuperBot.WebApi.Controllers
             await _keycloakAdminClient.DisableUserAsync(userId);
             await _keycloakAdminClient.LogoutAllSessionsAsync(userId);
             return Ok();
-        }
-
-        private string GetUserId()
-        {
-            return User.FindFirstValue(ClaimTypes.NameIdentifier)
-                   ?? User.FindFirstValue("sub")
-                   ?? string.Empty;
         }
 
         private async Task<bool> ValidatePasswordAsync(string password)

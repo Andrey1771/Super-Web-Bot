@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './sort-select.css';
 
 export type SortOption = { value: string; label: string };
@@ -23,7 +24,8 @@ export type SortSelectProps = {
  * Клавиатура работает как у настоящего списка: стрелки водят по пунктам, Enter выбирает,
  * Escape закрывает и возвращает фокус на кнопку.
  */
-const SortSelect: React.FC<SortSelectProps> = ({ options, value, onChange, listLabel = 'Sort options', caption }) => {
+const SortSelect: React.FC<SortSelectProps> = ({ options, value, onChange, listLabel, caption }) => {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const rootRef = useRef<HTMLDivElement | null>(null);
@@ -99,7 +101,7 @@ const SortSelect: React.FC<SortSelectProps> = ({ options, value, onChange, listL
             </button>
 
             {isOpen && (
-                <ul className="sort-select-list" role="listbox" aria-label={listLabel}>
+                <ul className="sort-select-list" role="listbox" aria-label={listLabel ?? t('common.sortOptions')}>
                     {options.map((option, index) => (
                         <li
                             key={option.value}

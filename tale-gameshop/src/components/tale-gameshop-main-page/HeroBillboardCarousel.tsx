@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { Game } from "../../models/game";
 import SafeGameImage from "../common/SafeGameImage";
 import { slugify } from "../../utils/slugify";
+import { ITEM_LISTS, trackItemSelect, useItemListView } from "../../utils/item-list-tracking";
 import { discountPercentOf, finalPriceOf, hasVisibleDiscount } from "../../utils/game-pricing";
 import { useSitePreferences } from "../../context/site-preferences";
 import { formatMoney } from "../../utils/format-money";
@@ -34,7 +36,15 @@ const gamePrice = (game: Game) => ({
 const mod = (value: number, size: number) => ((value % size) + size) % size;
 
 export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: HeroBillboardCarouselProps) {
+    const { t } = useTranslation();
     const { currency } = useSitePreferences();
+
+    // Показ витрины первого экрана: без него клики по слайдам не с чем сравнивать.
+    useItemListView(
+        ITEM_LISTS.homeHero,
+        games.map((game) => ({ id: game.id, title: game.title ?? game.name, price: gamePrice(game).final })),
+        games[0]?.currency ?? currency,
+    );
     const count = games.length;
     // Позиция в расширенной ленте [клон последнего, ...игры, клон первого]:
     // -1 и count — клоны. Благодаря им обход края всегда едет в сторону движения
@@ -138,7 +148,7 @@ export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: 
         <div
             className="hero-billboard"
             aria-roledescription="carousel"
-            aria-label="Featured games"
+            aria-label={t("home.carousel.featured")}
             onMouseEnter={() => { pausedRef.current = true; }}
             onMouseLeave={() => { pausedRef.current = false; }}
             onTouchStart={handleTouchStart}
@@ -165,7 +175,15 @@ export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: 
                             key={clone ? `clone-${slideIndex === 0 ? "head" : "tail"}` : game.id ?? realIndex}
                             tabIndex={isActive ? 0 : -1}
                             aria-hidden={!isActive}
-                            aria-label={`Open game ${game.title}`}
+                            aria-label={t("home.carousel.open", { title: game.title })}
+                            onClick={() => trackItemSelect(
+                                ITEM_LISTS.homeHero,
+                                { id: game.id, title: game.title ?? game.name, price: price.final },
+                                // Позиция настоящего слайда, а не элемента разметки: по краям
+                                // карусели стоят копии для бесшовной прокрутки.
+                                realIndex,
+                                game.currency,
+                            )}
                         >
                             <div className="hb-media">
                                 {/* Первый слайд — LCP первого экрана, грузим сразу; остальные не торопим. */}
@@ -184,13 +202,13 @@ export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: 
                                         {price.hasDiscount && (
                                             <>
                                                 <span className="hb-deal">−{price.percent}%</span>
-                                                <span className="hb-price-old">{formatMoney(price.regular, currency)}</span>
+                                                <span className="hb-price-old">{formatMoney(price.regular, game.currency ?? currency)}</span>
                                             </>
                                         )}
-                                        <span className="hb-price">{formatMoney(price.final, currency)}</span>
+                                        <span className="hb-price">{formatMoney(price.final, game.currency ?? currency)}</span>
                                     </span>
                                     <span className="hb-cta">
-                                        View game
+                                        {t("common.viewGame")}
                                         <FontAwesomeIcon icon={faArrowRight} />
                                     </span>
                                 </span>
@@ -208,7 +226,7 @@ export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: 
                         type="button"
                         className="hb-edge hb-edge-prev"
                         onClick={() => advance(-1)}
-                        aria-label="Previous game"
+                        aria-label={t("home.carousel.previous")}
                     />
                     {/* Кликабельна только внутренняя полоса (.hb-edge-hit) у кромки видимого
                         арта; сама кнопка шире — несёт градиент затемнения до края ряда,
@@ -217,21 +235,21 @@ export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: 
                         type="button"
                         className="hb-edge hb-edge-next"
                         onClick={() => advance(1)}
-                        aria-label="Next game"
+                        aria-label={t("home.carousel.next")}
                     >
                         <span className="hb-edge-hit" aria-hidden="true" />
                     </button>
                 </>
             )}
             {count > 1 && (
-                <div className="hb-dots" role="tablist" aria-label="Choose game">
+                <div className="hb-dots" role="tablist" aria-label={t("home.carousel.choose")}>
                     {games.map((game, dotIndex) => (
                         <button
                             key={game.id ?? dotIndex}
                             type="button"
                             role="tab"
                             aria-selected={dotIndex === activeIndex}
-                            aria-label={`Show ${game.title}`}
+                            aria-label={t("home.carousel.show", { title: game.title })}
                             className={`hb-dot${dotIndex === activeIndex ? " is-active" : ""}`}
                             onClick={() => setPosition(dotIndex)}
                         />

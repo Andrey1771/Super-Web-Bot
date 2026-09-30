@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React from 'react';
 
 // Узнаваемые значки платёжных систем для сохранённых карт и списка принимаемых брендов.
@@ -34,13 +35,23 @@ const brandLabels: Record<string, string> = {
     diners: 'Diners Club'
 };
 
-const normalize = (brand?: string | null) => {
+export const normalizeCardBrand = (brand?: string | null) => {
     const value = (brand ?? '').toLowerCase().replace(/[^a-z]/g, '');
     if (value.includes('master')) return 'mastercard';
     if (value.includes('amex') || value.includes('american')) return 'amex';
     if (value.includes('union')) return 'unionpay';
     if (value.includes('diners')) return 'diners';
     return value;
+};
+
+/** Человеческое название системы для подписей; незнакомая — как пришла, с большой буквы. */
+export const cardBrandLabel = (brand?: string | null) => {
+    const normalized = normalizeCardBrand(brand);
+    if (brandLabels[normalized]) {
+        return brandLabels[normalized];
+    }
+    const raw = (brand ?? '').trim();
+    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : i18n.t('billing.card');
 };
 
 const renderMark = (brand: string) => {
@@ -105,8 +116,8 @@ const renderMark = (brand: string) => {
 };
 
 const CardBrandIcon: React.FC<CardBrandIconProps> = ({ brand, className }) => {
-    const normalized = normalize(brand);
-    const label = brandLabels[normalized] ?? (brand ? `${brand} card` : 'Payment card');
+    const normalized = normalizeCardBrand(brand);
+    const label = brandLabels[normalized] ?? (brand ? i18n.t('billing.brandCard', { brand }) : i18n.t('billing.paymentCard'));
     return (
         <span className={`card-brand-icon ${className ?? ''}`} role="img" aria-label={label} title={label}>
             {renderMark(normalized)}

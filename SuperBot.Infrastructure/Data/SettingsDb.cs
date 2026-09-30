@@ -7,6 +7,8 @@ namespace SuperBot.Infrastructure.Data
     {
         public string Tag { get; set; }
         public string Title { get; set; }
+        [BsonIgnoreIfNull]
+        public Dictionary<string, string>? Titles { get; set; }
     }
 
     public class SettingsDb
@@ -16,6 +18,9 @@ namespace SuperBot.Infrastructure.Data
         public string Id { get; set; }
 
         public GameCategoryDb[] GameCategories {  get; set; }
+
+        [BsonIgnoreIfNull]
+        public GameCategoryDb[]? SoftwareCategories { get; set; }
 
         [BsonIgnoreIfNull]
         public string? SupportEmail { get; set; }

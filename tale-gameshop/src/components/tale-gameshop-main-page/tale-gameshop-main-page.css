@@ -15,7 +15,7 @@
   inset: 0;
   transform: translateX(-100%);
   background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.82) 50%, transparent 100%);
-  animation: shimmer 1.6s infinite;
+  animation: main-page-shimmer 1.6s infinite;
 }
 
 .main-page .h-5 {
@@ -34,7 +34,10 @@
   margin-top: 8px;
 }
 
-@keyframes shimmer {
+/* Имя с приставкой: ключевые кадры в CSS глобальны на весь документ, и второй «shimmer»
+   молча заменяет первый по всему приложению. Так админские скелетоны начинали ездить
+   по экрану вместо того, чтобы переливаться на месте. */
+@keyframes main-page-shimmer {
   100% {
     transform: translateX(100%);
   }
@@ -62,19 +65,6 @@
 .main-page .hero-orb-2 {
   bottom: -160px;
   left: -70px;
-}
-
-/* Статусы формы рассылки. */
-.main-page .newsletter-done {
-  margin: 0;
-  color: #15803d;
-  font-weight: 600;
-}
-
-.main-page .newsletter-error {
-  margin: var(--space-8) 0 0;
-  color: #b91c1c;
-  font-size: 14px;
 }
 
 .main-page .hero::after {
@@ -137,6 +127,15 @@
 
 .main-page .hs-side .hs-promo {
   pointer-events: auto;
+}
+
+/* Карточка осталась одна (акции нет — есть только кэшбэк). Растянутая на всю высоту
+   колонки, она превращается в полупустую плашку: текст прижат к верху, арт к низу,
+   между ними дыра в полторы сотни пикселей. Поэтому в одиночку карточка сохраняет
+   свой обычный рост и встаёт по центру колонки — как и когда их две. */
+.main-page .hs-side:has(.hs-promo:only-child) {
+  grid-auto-rows: max-content;
+  align-content: center;
 }
 
 /* Нижний ряд — карточки-категории (переход в каталог с фильтром по платформе). */
@@ -650,161 +649,8 @@
   font-weight: 600;
 }
 
-/* Единый стиль заголовков секций: маленький цветной eyebrow + заголовок + подпись. */
-.main-page .heading-eyebrow {
-  color: var(--color-primary);
-  letter-spacing: 0.16em;
-  font-weight: 800;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.main-page .heading-eyebrow.is-light {
-  color: #cdb5ff;
-}
-
-/* Explore / blog */
-/* Товарные полки главной (New/Deals/Upcoming/Under $N): единый компонент GameShelf.
-   Карточка целиком — ссылка на страницу игры, покупки на полке нет. */
-.main-page .shelf-section {
-  background: var(--color-bg);
-  padding: 56px 0 0;
-}
-
-.main-page .shelf-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-16);
-  flex-wrap: wrap;
-}
-
-.main-page .shelf-head .section-heading {
-  margin-bottom: var(--space-16);
-}
-
-.main-page .shelf-head-side {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  margin-bottom: var(--space-16);
-}
-
-.main-page .shelf-view-all {
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.main-page .shelf-view-all:hover {
-  text-decoration: underline;
-}
-
-.main-page .shelf-countdown {
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.main-page .shelf-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-16);
-}
-
-.main-page .shelf-card {
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: var(--shadow-sm);
-}
-
-.main-page .shelf-cover {
-  position: relative;
-  /* Выше, чем классический 16:9 — карточка читается как «витринная» (референс difmark). */
-  aspect-ratio: 3 / 2;
-  overflow: hidden;
-}
-
-.main-page .shelf-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* Чип, бейдж скидки и ценовая полоса живут в common/game-cover-overlay.css:
-   ими пользуется и сетка каталога, поэтому стили не привязаны к главной странице. */
-
-.main-page .shelf-body {
-  padding: var(--space-12) var(--space-16);
-}
-
-.main-page .shelf-title {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Заглушка постоянной, но пока пустой полки (Upcoming, Latest news):
-   дизайн — как у прежнего пустого блога («Stories are on the way»). */
-.main-page .shelf-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 10px;
-  padding: var(--space-32) var(--space-24);
-  border: 1px dashed color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--color-primary) 3%, #ffffff);
-}
-
-.main-page .shelf-empty-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--color-primary) 12%, #f4f0ff);
-  color: var(--color-primary);
-  font-size: 17px;
-}
-
-.main-page .shelf-empty strong {
-  color: var(--color-text);
-}
-
-.main-page .shelf-empty p {
-  margin: 0;
-  font-size: 14px;
-  max-width: 340px;
-}
-
-@media (max-width: 991px) {
-  .main-page .shelf-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 575px) {
-  .main-page .shelf-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* Стили товарных полок (GameShelf) и eyebrow заголовков — в game-shelf.css: полка живёт
+   и на главной, и на странице игры («More like this»). */
 
 /* «Deal of the week»: единственная полноширинная (edge-to-edge) полоса страницы.
    «Расклад недели» — сказочное таро: три карты на тёмном «столе», в центре дил недели,
@@ -1674,9 +1520,13 @@
 
 /* Trust-полоса: перебивка между полками «New» и «Deals» — четыре обещания магазина,
    каждое своей карточкой с цветовым акцентом (--accent задаётся из reasons). */
+/* Нижний отступ здесь не для симметрии, а против стыка: следом идёт полка на белом фоне,
+   и без него смена цвета приходилась ровно на нижнюю кромку карточек — они выглядели
+   приклеенными к границе. Пока фон был один на всю страницу, этого не было видно;
+   полосы появились вместе с чередованием полок. */
 .main-page .trust-strip-section {
   background: var(--color-bg);
-  padding: 56px 0 0;
+  padding: 56px 0;
 }
 
 .main-page .trust-strip {
@@ -1937,10 +1787,12 @@
   z-index: 1;
 }
 
+/* Размер — общий для всех секций (h2 = clamp(26,2.2vw,32)). Здесь стоял отдельный
+   clamp до 38px: на широком экране это 38 против 32 у полок и 40 у баннеров — три
+   размера в шести пикселях друг от друга читаются как ошибка, а не как иерархия. */
 .main-page .mood-copy h2 {
   margin: 10px 0 8px;
   color: #ffffff;
-  font-size: clamp(28px, 3vw, 38px);
 }
 
 .main-page .mood-copy > p {
@@ -2084,92 +1936,6 @@
 .main-page .section-heading .muted {
   margin: 0;
 }
-
-/* Newsletter — последняя секция перед футером, поэтому несёт и нижний отступ страницы. */
-/* Подписка теперь в середине страницы: снизу отступ не нужен — следующая секция
-   отбивает себя сверху сама, как и все остальные. */
-.main-page .newsletter-section {
-  padding: 60px 0 0;
-}
-
-.main-page .newsletter-card {
-  background: linear-gradient(135deg, #f8f5ff 0%, #f4f7ff 80%);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, var(--color-border));
-  border-radius: var(--radius-lg);
-  padding: var(--space-32);
-  box-shadow: var(--shadow-md);
-  display: grid;
-  gap: var(--space-16);
-}
-
-.main-page .newsletter-copy h3 {
-  margin: 0 0 6px;
-  color: var(--color-text);
-}
-
-.main-page .newsletter-copy p {
-  margin: 0;
-}
-
-.main-page .newsletter-form {
-  display: grid;
-  gap: var(--space-12);
-}
-
-.main-page .input-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: var(--space-12);
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  padding: 6px 6px 6px 14px;
-  box-shadow: var(--shadow-sm);
-}
-
-.main-page .input-row input {
-  border: none;
-  outline: none;
-  font-size: 15px;
-  color: var(--color-text);
-  width: 100%;
-}
-
-.main-page .input-row input::placeholder {
-  color: var(--color-muted);
-}
-
-.main-page .input-icon {
-  color: var(--color-primary);
-  display: grid;
-  place-items: center;
-}
-
-.main-page .input-row .btn {
-  border-radius: 999px;
-  padding-inline: var(--space-16);
-  height: 42px;
-}
-
-.main-page .checkbox-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: var(--color-text);
-}
-
-.main-page .checkbox-row input {
-  accent-color: var(--color-primary);
-  width: 16px;
-  height: 16px;
-}
-
-.main-page .newsletter-copy h3 {
-  margin-top: 8px;
-}
-
 /* Responsive */
 @media (max-width: 1024px) {
   .main-page .hero-stage {
@@ -2228,37 +1994,6 @@
 
   .main-page .mood-card {
     grid-template-columns: 1fr;
-  }
-
-  .main-page .newsletter-card {
-    padding: var(--space-24);
-  }
-
-  /* Раньше три элемента (иконка, поле, кнопка) вставали в три отдельные строки — конверт
-     «висел» сам по себе. Теперь: иконка+поле на первой строке, кнопка во всю ширину под ними. */
-  .main-page .input-row {
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-      "icon input"
-      "button button";
-    border-radius: var(--radius-lg);
-    align-items: center;
-    row-gap: 10px;
-    padding: 10px 14px;
-  }
-
-  .main-page .input-icon {
-    grid-area: icon;
-  }
-
-  .main-page .input-row input {
-    grid-area: input;
-  }
-
-  .main-page .input-row .btn {
-    grid-area: button;
-    width: 100%;
-    height: 44px;
   }
 }
 

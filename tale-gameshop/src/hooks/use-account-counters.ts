@@ -50,10 +50,6 @@ const loadCounters = (): Promise<AccountCounters> => {
     return inflight;
 };
 
-export const invalidateAccountCounters = () => {
-    cache = null;
-};
-
 export const useAccountCounters = () => {
     const [counters, setCounters] = useState<AccountCounters | null>(cache?.value ?? null);
 

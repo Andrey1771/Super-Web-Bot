@@ -10,13 +10,38 @@ export type OrderStatus =
   | "REFUND_PENDING"
   | "FAILED";
 
-export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED" | "PARTIALLY_REFUNDED" | "DISPUTED" | "FAILED";
+export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED" | "PARTIALLY_REFUNDED" | "DISPUTED" | "DISPUTE_LOST" | "FAILED";
+
+/** Спор по оплате (чарджбек) — последний по платежу заказа. */
+export type OrderDispute = {
+  id: string;
+  /** Статус Stripe: needs_response, under_review, won, lost; warning_* — запрос банка без списания денег. */
+  status: string;
+  reason?: string | null;
+  amount: number;
+  currency: string;
+  /** Крайний срок отправки доказательств в Stripe, ISO. */
+  evidenceDueBy?: string | null;
+  hasEvidence: boolean;
+  openedAt: string;
+  closedAt?: string | null;
+  /** won | lost | warning_closed; нет — спор идёт. */
+  outcome?: string | null;
+};
 
 export type FulfillmentStatus = "NOT_STARTED" | "IN_PROGRESS" | "PARTIAL" | "PENDING_KEYS" | "DELIVERED" | "CANCELLED";
 
 export type OrderItem = {
+  /** Строка заказа — по ней возвращается позиция. */
+  itemId: string;
+  /** Стоимость строки целиком (все штуки), в валюте заказа. */
+  lineTotal: number;
+  /** Сколько штук уже возвращено по позиции. */
+  refundedQty: number;
   gameId: string;
   title: string;
+  /** Область активации купленного варианта ключа; пусто — вариантов у игры не было. */
+  region?: string | null;
   price: number;
   qty: number;
   keysDelivered: number;
@@ -60,7 +85,46 @@ export type Order = {
   requiresDeliveryVerification?: boolean;
   notes?: string;
   promoCode?: string;
+  /** Возвращено на карту, в валюте заказа (накопительно). */
+  refundedAmount?: number;
+  /** Оплачено кэшбэком, в валюте заказа; totalAmount — уже без этой части. */
+  cashbackApplied?: number;
+  /** То же в долларах — столько списано с баланса покупателя. */
+  cashbackUsd?: number;
+  /** Кэшбэк, начисленный за заказ (только в карточке заказа); нет — не начислялся. */
+  cashbackEarned?: {
+    amountUsd: number;
+    /** В валюте заказа — процент уровня от оплаченного картой. */
+    amount: number;
+    currency: string;
+    percent?: number | null;
+    status: "pending" | "available" | "spent" | "expired" | "reverted" | string;
+    unlocksAt?: string | null;
+    /** Забрано возвратом или спором, в долларах. */
+    reversedUsd: number;
+  } | null;
+  /** Спор по оплате; нет — споров не было. */
+  dispute?: OrderDispute | null;
+  /** Налог из Stripe Tax; нет — заказ до подключения налога или не через Stripe. */
+  tax?: OrderTax | null;
   events: OrderEvent[];
+};
+
+export type OrderTax = {
+  /** pending — транзакция ещё не записана (ежечасная сверка повторит), recorded — записана. */
+  status: 'pending' | 'recorded' | string;
+  /** Налог внутри итога, в валюте заказа. */
+  amount: number;
+  /** Сторнировано возвратами (с налогом), в валюте заказа. */
+  reversed: number;
+  country?: string | null;
+  state?: string | null;
+  taxType?: string | null;
+  ratePercent?: number | null;
+  taxabilityReason?: string | null;
+  locationSource?: string | null;
+  transactionId?: string | null;
+  lastError?: string | null;
 };
 
 export type OrderListResponse = {

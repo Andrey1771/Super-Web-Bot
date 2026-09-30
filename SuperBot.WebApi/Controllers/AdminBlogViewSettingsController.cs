@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
 using System.Security.Claims;
+using SuperBot.Common.Auth;
 
 namespace SuperBot.WebApi.Controllers;
 
@@ -44,7 +45,7 @@ public class AdminBlogViewSettingsController : ControllerBase
         var settings = await _settingsRepository.GetAsync() ?? new BlogViewSettings();
         settings.CountGuestViewsInPublicCounts = request?.CountGuestViewsInPublicCounts ?? true;
         settings.UpdatedAt = DateTime.UtcNow;
-        settings.UpdatedBy = GetCurrentUserId();
+        settings.UpdatedBy = User.GetUserKey();
         var saved = await _settingsRepository.UpsertAsync(settings);
         return Ok(new { countGuestViewsInPublicCounts = saved.CountGuestViewsInPublicCounts });
     }
@@ -70,15 +71,6 @@ public class AdminBlogViewSettingsController : ControllerBase
         return Ok(new { deleted });
     }
 
-    private string GetCurrentUserId()
-    {
-        return User?.FindFirst("email")?.Value
-               ?? User?.FindFirst(ClaimTypes.Email)?.Value
-               ?? User?.FindFirst("preferred_username")?.Value
-               ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? User?.FindFirst("sub")?.Value
-               ?? "admin";
-    }
 }
 
 public class UpdateBlogViewSettingsRequest

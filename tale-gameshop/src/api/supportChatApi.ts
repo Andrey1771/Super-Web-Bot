@@ -1,7 +1,9 @@
+import i18n from "../i18n";
+import { apiErrorText } from "../utils/api-error";
 import container from "../inversify.config";
 import IDENTIFIERS from "../constants/identifiers";
-import type { IApiClient } from "../iterfaces/i-api-client";
 import type { IUrlService } from "../iterfaces/i-url-service";
+import { currentLang } from "../context/site-preferences";
 import type {
   ChatConfig,
   ChatFeedback,
@@ -10,8 +12,8 @@ import type {
   ChatSessionListResponse,
   SupportChatStats,
 } from "../types/support-chat";
+import { apiClient } from "./client";
 
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 const apiBaseUrl = () => container.get<IUrlService>(IDENTIFIERS.IUrlService).apiBaseUrl;
 
 // Защита от «не-JSON» ответов (например, HTML в окно рестарта бэкенда):
@@ -113,14 +115,15 @@ export const streamChatMessage = async (
   // status — код из события ошибки: у потока свой 200, и по нему судить о судьбе диалога нельзя.
   onError: (error: string, status?: number) => void
 ) => {
+  // Поток идёт мимо axios — язык сайта добавляем вручную, как делает перехватчик для остальных запросов.
   const response = await fetch(`${apiBaseUrl()}/api/support/chat/sessions/${sessionId}/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Accept-Language": currentLang() },
     body: JSON.stringify({ text }),
   });
 
   if (!response.ok || !response.body) {
-    onError("Unable to start streaming.");
+    onError(i18n.t("errors.streamStart"));
     return;
   }
 
@@ -154,7 +157,8 @@ export const streamChatMessage = async (
       }
       if (eventLine?.includes("error")) {
         const payload = JSON.parse(data);
-        onError(payload?.error ?? "Streaming error.", payload?.status);
+        // Код ошибки потока переводится так же, как у обычных ответов; error — английский запас.
+        onError(apiErrorText(payload, i18n.t("errors.streamError")), payload?.status);
         return;
       }
       const payload = JSON.parse(data);

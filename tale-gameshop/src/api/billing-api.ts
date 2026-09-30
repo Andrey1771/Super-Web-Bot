@@ -1,6 +1,4 @@
-import container from '../inversify.config';
-import type { IApiClient } from '../iterfaces/i-api-client';
-import IDENTIFIERS from '../constants/identifiers';
+import { apiClient } from './client';
 
 export interface PaymentMethodDto {
     id: string;
@@ -46,8 +44,6 @@ export interface InvoicePageDto {
 export interface SetupIntentResponse {
     clientSecret: string;
 }
-
-const apiClient = () => container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
 
 export const fetchBillingProfile = async (): Promise<BillingProfileDto> => {
     const response = await apiClient().get<BillingProfileDto>('/api/billing/profile');

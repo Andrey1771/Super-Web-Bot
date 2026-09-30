@@ -16,6 +16,7 @@ using SuperBot.Infrastructure.Models;
 using SuperBot.Infrastructure.Repositories;
 using SuperBot.Infrastructure.Services;
 using Telegram.Bot;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +58,7 @@ builder.Services.AddScoped<IGameDiscountRepository, GameDiscountMongoDbRepositor
 builder.Services.AddScoped<IOrderRepository, OrderMongoDbRepository>();
 builder.Services.AddScoped<IUserRepository, UserMongoDbRepository>();
 builder.Services.AddScoped<IWishlistRepository, WishlistMongoDbRepository>();
+builder.Services.AddSingleton<SuperBot.Core.Regions.IRegionCatalogProvider, SuperBot.Core.Regions.DefaultRegionCatalogProvider>();
 builder.Services.AddScoped<IGameKeyRepository, GameKeyMongoDbRepository>();
 builder.Services.AddScoped<ITelegramLinkRepository, TelegramLinkMongoDbRepository>();
 
@@ -99,10 +101,40 @@ builder.Services.AddScoped<ISupportEscalationNotifier, SupportEscalationNotifier
 // Единственный консюмер outbox — здесь, в бот-сервисе.
 builder.Services.AddHostedService<BotOutboxWorker>();
 
+// Состояние вебхука: один разбор на всех — стартовый лог и ручка для админки сайта.
+builder.Services.AddSingleton<SuperBot.BotApi.Services.WebhookHealthChecker>();
+builder.Services.AddHostedService<SuperBot.BotApi.Services.WebhookHealthReporter>();
+
 // --- Auth (те же Keycloak-токены, что у сайта; нужен для admin/аккаунт эндпоинтов) ---
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddTransient<IClaimsTransformation, KeycloakClaimsTransformation>();
 builder.Services.AddAuthorization();
+
+
+// Ключи DataProtection — на диск, а не в память контейнера.
+//
+// По умолчанию ASP.NET складывает их во временную папку контейнера и честно предупреждает об
+// этом в логе при каждом старте: «Storing keys in a directory that may not be persisted».
+// Пока вход идёт по JWT из Keycloak, это почти незаметно — но всё, что шифруется или
+// подписывается DataProtection (antiforgery, защищённые ссылки, куки), между перезапусками и
+// между несколькими инстансами не переживёт: у каждого свой набор ключей.
+//
+// SetApplicationName обязателен: без него имя берётся из пути к приложению, и два инстанса
+// одного сервиса считают ключи чужими даже на общем томе.
+var dataProtectionKeys = builder.Configuration["DataProtection:KeysPath"] ?? "/app/keys";
+try
+{
+    Directory.CreateDirectory(dataProtectionKeys);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeys))
+        .SetApplicationName("tale-shop-bot");
+}
+catch (Exception exception)
+{
+    // Каталог недоступен (права, только-чтение) — работаем как раньше, во временной папке.
+    // Ронять из-за этого запуск нельзя: сервис без DataProtection всё равно обслуживает магазин.
+    Console.WriteLine($"DataProtection: keys stay in the container ({exception.Message}).");
+}
 
 var app = builder.Build();
 
