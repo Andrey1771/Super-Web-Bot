@@ -14,6 +14,7 @@ namespace SuperBot.Core.Services
         private readonly IWishlistRepository _wishlistRepository;
         private readonly IViewedGameRepository _viewedGameRepository;
         private readonly IOrderRepository _orderRepository;
+        private readonly IGameDetailsRepository _gameDetailsRepository;
         private readonly ILogger<RecommendationsService> _logger;
 
         public RecommendationsService(
@@ -21,8 +22,10 @@ namespace SuperBot.Core.Services
             IWishlistRepository wishlistRepository,
             IViewedGameRepository viewedGameRepository,
             IOrderRepository orderRepository,
+            IGameDetailsRepository gameDetailsRepository,
             ILogger<RecommendationsService> logger)
         {
+            _gameDetailsRepository = gameDetailsRepository;
             _gameRepository = gameRepository;
             _wishlistRepository = wishlistRepository;
             _viewedGameRepository = viewedGameRepository;
@@ -50,7 +53,9 @@ namespace SuperBot.Core.Services
             // «трендовом» варианте они могут снова всплыть.
             var protectedIds = new HashSet<string>(excludeIds);
 
-            var allGames = await _gameRepository.GetAllAsync();
+            // Черновики — недоделанные карточки, снятые с витрины, — не рекомендуем: по ссылке
+            // покупатель получил бы 404. Раньше подборка шла по всему каталогу вместе с ними.
+            var allGames = await WithoutDraftsAsync(await _gameRepository.GetAllAsync());
             if (!wishlistIds.Any() && viewed.Count == 0)
             {
                 var fallback = BuildFallbackRecommendations(allGames, excludeIds, normalizedLimit);
@@ -204,6 +209,21 @@ namespace SuperBot.Core.Services
             var days = Math.Max((DateTime.UtcNow - releaseDate).TotalDays, 0);
             var normalized = Math.Clamp(1 - (days / 365d), 0, 1);
             return normalized * 0.5;
+        }
+
+        private async Task<List<Game>> WithoutDraftsAsync(List<Game> games)
+        {
+            var ids = games.Where(game => !string.IsNullOrWhiteSpace(game?.Id)).Select(game => game.Id!).ToList();
+            if (ids.Count == 0)
+            {
+                return games;
+            }
+
+            var drafts = (await _gameDetailsRepository.GetByGameIdsAsync(ids))
+                .Where(details => details.IsDraft && !string.IsNullOrWhiteSpace(details.GameId))
+                .Select(details => details.GameId!)
+                .ToHashSet(StringComparer.Ordinal);
+            return drafts.Count == 0 ? games : games.Where(game => game?.Id == null || !drafts.Contains(game.Id)).ToList();
         }
 
         private static IReadOnlyList<RecommendationItem> BuildFallbackRecommendations(

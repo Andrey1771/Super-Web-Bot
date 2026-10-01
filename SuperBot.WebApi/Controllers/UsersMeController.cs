@@ -67,7 +67,7 @@ namespace SuperBot.WebApi.Controllers
         }
 
         [HttpGet("viewed")]
-        public async Task<IActionResult> GetViewedGames([FromQuery] int limit = 12)
+        public async Task<IActionResult> GetViewedGames([FromServices] IGameDetailsRepository gameDetails, [FromQuery] int limit = 12, [FromQuery] string? currency = null)
         {
             var currentUserId = User.GetUserKey();
             if (string.IsNullOrWhiteSpace(currentUserId))
@@ -84,14 +84,27 @@ namespace SuperBot.WebApi.Controllers
 
             var gameIds = viewedGames.Select(item => item.GameId).Distinct().ToList();
             var games = await _gameRepository.GetByIdsAsync(gameIds);
-            var gameMap = games.Where(game => !string.IsNullOrWhiteSpace(game.Id))
-                .ToDictionary(game => game.Id, game => game);
+
+            // Черновик снят с витрины — в истории его тоже нет: карточка по ссылке отвечает 404.
+            var drafts = (await gameDetails.GetByGameIdsAsync(games.Select(game => game.Id!).Where(id => !string.IsNullOrWhiteSpace(id))))
+                .Where(details => details.IsDraft && !string.IsNullOrWhiteSpace(details.GameId))
+                .Select(details => details.GameId!)
+                .ToHashSet(StringComparer.Ordinal);
+            var gameMap = games.Where(game => !string.IsNullOrWhiteSpace(game.Id) && !drafts.Contains(game.Id))
+                .ToDictionary(game => game.Id!, game => game);
+
+            // Цена — в валюте покупателя, как у рекомендаций: раньше лента отдавала базовую сумму,
+            // а витрина рисовала её со значком выбранной валюты.
+            var resolvedCurrency = _currencies.Resolve(currency);
+            var rates = _fxRates.Current();
+            var trailers = await SuperBot.Core.Catalog.CatalogTrailer.ForGamesAsync(gameDetails, gameMap.Keys);
 
             var response = viewedGames
                 .Where(item => gameMap.ContainsKey(item.GameId))
                 .Select(item => new ViewedGameResponse
                 {
-                    Game = gameMap[item.GameId],
+                    Game = ToPricedGame(gameMap[item.GameId], resolvedCurrency, rates,
+                        trailers.TryGetValue(item.GameId, out var trailer) ? trailer : default),
                     LastViewedAt = item.LastViewedAt,
                     ViewCount = item.ViewCount,
                     Source = item.Source
@@ -172,6 +185,8 @@ namespace SuperBot.WebApi.Controllers
                 gameType = game.GameType,
                 genre = game.Kind == ProductKind.Software ? null : GameGenres.TagOf(game),
                 releaseDate = game.ReleaseDate,
+                // Предзаказа нет: до выхода кнопку «В корзину» карточка показывает неактивной.
+                isComingSoon = SuperBot.Core.Services.GameRelease.IsUpcoming(game.ReleaseDate, DateTime.UtcNow),
                 // Цены нет в этой валюте — отдаём null, а не базовую сумму: витрина покажет
                 // «цена недоступна», и это честнее подставленной чужой валюты.
                 price,
@@ -256,7 +271,8 @@ namespace SuperBot.WebApi.Controllers
 
     public class ViewedGameResponse
     {
-        public Game Game { get; set; }
+        /// <summary>Игра с ценой в валюте покупателя (см. ToPricedGame).</summary>
+        public object Game { get; set; }
         public DateTime LastViewedAt { get; set; }
         public int ViewCount { get; set; }
         public string Source { get; set; }

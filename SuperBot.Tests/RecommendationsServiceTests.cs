@@ -31,6 +31,7 @@ namespace SuperBot.Tests
                 wishlistRepository,
                 viewedRepository,
                 orderRepository,
+                new TestGameDetailsRepository(),
                 NullLogger<RecommendationsService>.Instance);
 
             var recommendations = await service.GetRecommendationsAsync("user", 2);
@@ -66,12 +67,39 @@ namespace SuperBot.Tests
                 wishlistRepository,
                 viewedRepository,
                 orderRepository,
+                new TestGameDetailsRepository(),
                 NullLogger<RecommendationsService>.Instance);
 
             var recommendations = await service.GetRecommendationsAsync("user", 3);
 
             Assert.Single(recommendations);
             Assert.Equal("candidate", recommendations[0].Game.Id);
+        }
+
+        [Fact]
+        public async Task NeverRecommendsDrafts()
+        {
+            // Черновик снят с витрины: по ссылке из рекомендации покупатель получил бы 404.
+            var games = new List<Game>
+            {
+                new Game { Id = "published", Title = "Published", Name = "Published", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) },
+                new Game { Id = "draft", Title = "Draft", Name = "Draft", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) }
+            };
+            var details = new TestGameDetailsRepository();
+            details.DraftIds.Add("draft");
+
+            var service = new RecommendationsService(
+                new TestGameRepository(games),
+                new TestWishlistRepository(new HashSet<string>()),
+                new TestViewedRepository(new List<ViewedGame>()),
+                new TestOrderRepository(new List<Order>()),
+                details,
+                NullLogger<RecommendationsService>.Instance);
+
+            // Пустая история — сервис идёт в запасную «трендовую» подборку; черновика нет и там.
+            var recommendations = await service.GetRecommendationsAsync("user", 5);
+
+            Assert.Equal(new[] { "published" }, recommendations.Select(item => item.Game.Id).ToArray());
         }
 
         private class TestGameRepository : IGameRepository
@@ -142,6 +170,22 @@ namespace SuperBot.Tests
             public Task<HashSet<string>> MergeAsync(string userId, IEnumerable<string> guestIds) => Task.FromResult(_ids);
 
             public Task<List<string>> GetUserIdsByGameAsync(string gameId) => Task.FromResult(new List<string>());
+
+            public Task<long> RemoveGameEverywhereAsync(string gameId) => Task.FromResult(0L);
+        }
+
+        private class TestGameDetailsRepository : IGameDetailsRepository
+        {
+            public HashSet<string> DraftIds { get; } = new();
+
+            public Task<List<GameDetails>> GetByGameIdsAsync(IEnumerable<string> gameIds) =>
+                Task.FromResult(gameIds.Where(DraftIds.Contains).Select(id => new GameDetails { GameId = id, IsDraft = true }).ToList());
+
+            public Task<GameDetails> GetByGameIdAsync(string gameId) => throw new NotSupportedException();
+            public Task<GameDetails> GetBySlugAsync(string slug) => throw new NotSupportedException();
+            public Task CreateAsync(GameDetails details) => throw new NotSupportedException();
+            public Task UpsertAsync(GameDetails details) => throw new NotSupportedException();
+            public Task UpdateAsync(string id, GameDetails details) => throw new NotSupportedException();
         }
 
         private class TestViewedRepository : IViewedGameRepository

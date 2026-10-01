@@ -12,5 +12,8 @@ namespace SuperBot.Core.Interfaces.IRepositories
 
         /// <summary>Обратный запрос: кто добавил игру в wishlist (для алертов о скидках).</summary>
         Task<List<string>> GetUserIdsByGameAsync(string gameId);
+
+        /// <summary>Убрать игру из всех списков желаний — когда её удалили из каталога. Возвращает число записей.</summary>
+        Task<long> RemoveGameEverywhereAsync(string gameId);
     }
 }

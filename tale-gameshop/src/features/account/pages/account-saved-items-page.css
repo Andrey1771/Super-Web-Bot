@@ -319,7 +319,7 @@
     color: var(--color-muted);
 }
 
-.saved-recommendations,
+
 .saved-recently-viewed {
     display: flex;
     flex-direction: column;
@@ -345,17 +345,72 @@
     padding: 0;
 }
 
+/* Лента в один ряд: карточек больше, чем видно, — листается стрелками в шапке или прокруткой.
+   Раньше здесь была сетка на 4 колонки, и шесть карточек переносились во второй ряд. */
 .saved-horizontal-list {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    --saved-row-visible: 4;
+    display: flex;
     gap: var(--space-16);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    padding-bottom: var(--space-8);
+    /* Полосу прокрутки прячем, как в карусели «О нас»: листают стрелками в шапке, а системная
+       полоса рядом с ними читалась вторым, конкурирующим управлением. Свайп, тачпад, Shift+колесо
+       и клавиатура по-прежнему листают ленту. */
+    scrollbar-width: none;
+    /* Без полосы подсказку «дальше есть ещё» даёт затухание края — только с той стороны,
+       где лента действительно продолжается (классы ставит страница). */
+    --fade-start: 0px;
+    --fade-end: 0px;
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--fade-start),
+        #000 calc(100% - var(--fade-end)),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--fade-start),
+        #000 calc(100% - var(--fade-end)),
+        transparent 100%
+    );
 }
+
+.saved-horizontal-list::-webkit-scrollbar {
+    display: none;
+}
+
+.saved-horizontal-list.is-fade-start { --fade-start: 28px; }
+.saved-horizontal-list.is-fade-end { --fade-end: 28px; }
 
 .saved-horizontal-card {
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
     padding: var(--space-16);
+    /* Ровно --saved-row-visible карточек на видимую ширину ленты. */
+    flex: 0 0 calc((100% - (var(--saved-row-visible) - 1) * var(--space-16)) / var(--saved-row-visible));
+    min-width: 0;
+    scroll-snap-align: start;
+}
+
+.saved-horizontal-link {
+    display: block;
+}
+
+.saved-horizontal-title {
+    font-weight: 700;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.saved-horizontal-title:hover {
+    color: var(--color-primary);
 }
 
 .saved-horizontal-cover {
@@ -474,7 +529,7 @@
 
 @media (max-width: 1024px) {
     .saved-horizontal-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        --saved-row-visible: 2;
     }
 }
 
@@ -493,16 +548,13 @@
         align-items: flex-start;
     }
 
-    .saved-horizontal-list {
-        display: flex;
-        overflow-x: auto;
-        padding-bottom: var(--space-8);
-        gap: var(--space-16);
-        scroll-snap-type: x mandatory;
+    /* Стрелки на телефоне не нужны: ленту листают пальцем. */
+    .saved-section-arrows {
+        display: none;
     }
 
+    /* На телефоне видна одна карточка и край следующей — понятно, что ряд листается. */
     .saved-horizontal-card {
-        min-width: 220px;
-        scroll-snap-align: start;
+        flex-basis: 70%;
     }
 }

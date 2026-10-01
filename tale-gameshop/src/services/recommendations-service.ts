@@ -26,8 +26,9 @@ export class RecommendationsService implements IRecommendationsService {
     }
 
     async getViewed(limit = 8): Promise<ViewedGameItem[]> {
+        // Валюта — как у рекомендаций: сервер отдаёт цену уже в ней.
         const response = await this._apiClient.api.get(`${API_URL}/viewed`, {
-            params: { limit }
+            params: { limit, currency: currentCurrency() }
         });
         return response.data;
     }

@@ -57,6 +57,17 @@ namespace SuperBot.Infrastructure.Repositories
             await _wishlistCollection.DeleteOneAsync(filter);
         }
 
+        public async Task<long> RemoveGameEverywhereAsync(string gameId)
+        {
+            if (string.IsNullOrWhiteSpace(gameId))
+            {
+                return 0;
+            }
+
+            var result = await _wishlistCollection.DeleteManyAsync(item => item.GameId == gameId);
+            return result.DeletedCount;
+        }
+
         public async Task<List<string>> GetUserIdsByGameAsync(string gameId)
         {
             if (string.IsNullOrWhiteSpace(gameId))

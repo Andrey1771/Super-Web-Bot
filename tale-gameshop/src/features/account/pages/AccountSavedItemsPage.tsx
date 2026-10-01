@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate as formatLocalDate } from '../../../i18n/format';
 import {Link} from 'react-router-dom';
@@ -6,7 +6,9 @@ import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
     faMagnifyingGlass,
     faChevronLeft,
-    faChevronRight
+    faChevronRight,
+    faArrowLeft,
+    faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import IDENTIFIERS from '../../../constants/identifiers';
@@ -16,7 +18,6 @@ import type { IGameService } from '../../../iterfaces/i-game-service';
 import { useWishlist } from '../../../context/wishlist-context';
 import { useCart } from '../../../context/cart-context';
 import { Product } from '../../../reducers/cart-reducer';
-import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useViewedGames } from '../../../hooks/use-viewed-games';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
 import { useSitePreferences } from '../../../context/site-preferences';
@@ -27,6 +28,53 @@ import { slugify } from '../../../utils/slugify';
 import './account-saved-items-page.css';
 
 const PAGE_SIZE = 6;
+
+/** Сколько недавно просмотренных игр в ленте: она листается, так что можно больше, чем помещается. */
+const VIEWED_LIMIT = 12;
+
+/**
+ * Стрелки для горизонтальной ленты: листают на видимую ширину и гаснут у краёв.
+ * Лента рисуется внутри RecommendationsSection, поэтому ищем её в обёртке по классу.
+ */
+const useHorizontalScroll = (containerRef: React.RefObject<HTMLElement | null>, itemCount: number) => {
+    const [edges, setEdges] = useState({ start: true, end: true });
+
+    const list = useCallback(
+        () => containerRef.current?.querySelector<HTMLElement>('.saved-horizontal-list') ?? null,
+        [containerRef]
+    );
+
+    const update = useCallback(() => {
+        const element = list();
+        if (!element) {
+            setEdges({ start: true, end: true });
+            return;
+        }
+        const maxScroll = element.scrollWidth - element.clientWidth;
+        setEdges({ start: element.scrollLeft <= 1, end: element.scrollLeft >= maxScroll - 1 });
+    }, [list]);
+
+    useEffect(() => {
+        const element = list();
+        update();
+        if (!element) {
+            return;
+        }
+        element.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        return () => {
+            element.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+        };
+    }, [list, update, itemCount]);
+
+    const scrollBy = (direction: 1 | -1) => {
+        const element = list();
+        element?.scrollBy({ left: direction * element.clientWidth, behavior: 'smooth' });
+    };
+
+    return { atStart: edges.start, atEnd: edges.end, scrollBy };
+};
 
 const AccountSavedItemsPage: React.FC = () => {
     const { t } = useTranslation();
@@ -39,18 +87,16 @@ const AccountSavedItemsPage: React.FC = () => {
     const { ids: wishlistIds, remove } = useWishlist();
     const gameService = container.get<IGameService>(IDENTIFIERS.IGameService);
     const { dispatch } = useCart();
-    const {
-        items: recommendations,
-        isLoading: isRecommendationsLoading,
-        error: recommendationsError,
-        reload: reloadRecommendations
-    } = useRecommendations(6);
+    // Рекомендаций здесь нет: тот же блок есть на обзоре кабинета, а на странице списка он
+    // дублировал его и вместе с «Недавно просмотренными» давал два ряда по шесть карточек.
     const {
         items: viewedItems,
         isLoading: isViewedLoading,
         error: viewedError,
         reload: reloadViewed
-    } = useViewedGames(6);
+    } = useViewedGames(VIEWED_LIMIT);
+    const viewedRowRef = useRef<HTMLElement>(null);
+    const viewedScroll = useHorizontalScroll(viewedRowRef, viewedItems.length);
 
     // Тянем только то, что в списке желаний, а не весь каталог: страница показывает ровно
     // эти игры, а каталог магазина растёт независимо от размера списка.
@@ -64,7 +110,17 @@ const AccountSavedItemsPage: React.FC = () => {
         (async () => {
             const loaded = await Promise.all(
                 // Игру могли снять с продажи — пропускаем её, а не роняем всю страницу.
-                ids.map((id) => gameService.getGameById(id).catch(() => null))
+                ids.map((id) =>
+                    gameService.getGameById(id).catch((error) => {
+                        // Игры больше нет в каталоге — убираем её из списка. Иначе счётчик в меню
+                        // кабинета продолжал бы её считать (у гостя список живёт в браузере, и
+                        // сервер его не почистит). Сетевую ошибку за удаление не принимаем.
+                        if (error?.response?.status === 404) {
+                            void remove(id);
+                        }
+                        return null;
+                    })
+                )
             );
             if (!cancelled) {
                 setGames(loaded.filter(Boolean) as Game[]);
@@ -73,7 +129,7 @@ const AccountSavedItemsPage: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [gameService, wishlistIds]);
+    }, [gameService, wishlistIds, remove]);
 
     const wishlistGames = useMemo(
         () => games.filter((game) => game.id && wishlistIds.has(game.id)),
@@ -354,43 +410,31 @@ const AccountSavedItemsPage: React.FC = () => {
                 </div>
             )}
 
-            <section className="saved-recommendations" data-testid="saved-recommendations">
+            <section className="saved-recently-viewed" data-testid="saved-recently-viewed" ref={viewedRowRef}>
                 <div className="saved-section-header">
-                    <h3>{t('account.overview.recommendations')}</h3>
-                </div>
-                <RecommendationsSection
-                    items={recommendations}
-                    isLoading={isRecommendationsLoading}
-                    error={recommendationsError}
-                    onRetry={reloadRecommendations}
-                    emptyMessage={t('cart.recommendedEmpty')}
-                    listClassName="saved-horizontal-list"
-                    stateClassName="saved-recommendations-state"
-                    renderSkeleton={(index) => (
-                        <div key={`rec-skeleton-${index}`} className="card saved-horizontal-card is-skeleton" />
-                    )}
-                    renderItem={(item) => (
-                        <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card" data-hover-trailer-root="">
-                            <Cover className="saved-horizontal-cover" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
-                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
-                        </Cover>
-                            <div className="saved-horizontal-body">
-                                <strong>{item.game.title}</strong>
-                                <span className="saved-horizontal-price">
-                                    {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
-                                </span>
-                            </div>
-                            <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>
-                                {t('common.addToCart')}
+                    <h3>{t('account.saved.recentlyViewed')}</h3>
+                    {!(viewedScroll.atStart && viewedScroll.atEnd) && (
+                        <div className="saved-section-arrows">
+                            <button
+                                type="button"
+                                className="btn btn-outline saved-arrow-btn"
+                                aria-label={t('common.scrollLeft')}
+                                onClick={() => viewedScroll.scrollBy(-1)}
+                                disabled={viewedScroll.atStart}
+                            >
+                                <FontAwesomeIcon icon={faArrowLeft} />
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline saved-arrow-btn"
+                                aria-label={t('common.scrollRight')}
+                                onClick={() => viewedScroll.scrollBy(1)}
+                                disabled={viewedScroll.atEnd}
+                            >
+                                <FontAwesomeIcon icon={faArrowRight} />
                             </button>
                         </div>
                     )}
-                />
-            </section>
-
-            <section className="saved-recently-viewed" data-testid="saved-recently-viewed">
-                <div className="saved-section-header">
-                    <h3>{t('account.saved.recentlyViewed')}</h3>
                 </div>
                 <RecommendationsSection
                     items={viewedItems}
@@ -398,26 +442,36 @@ const AccountSavedItemsPage: React.FC = () => {
                     error={viewedError}
                     onRetry={reloadViewed}
                     emptyMessage={t('account.saved.browseToSee')}
-                    listClassName="saved-horizontal-list"
+                    listClassName={`saved-horizontal-list${viewedScroll.atStart ? '' : ' is-fade-start'}${viewedScroll.atEnd ? '' : ' is-fade-end'}`}
                     stateClassName="saved-recommendations-state"
                     renderSkeleton={(index) => (
                         <div key={`viewed-skeleton-${index}`} className="card saved-horizontal-card is-skeleton" />
                     )}
                     renderItem={(item) => (
                         <div key={item.game.id ?? item.game.title} className="card saved-horizontal-card" data-hover-trailer-root="">
-                            <Cover className="saved-horizontal-cover" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
-                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
-                        </Cover>
+                            <Link to={gameHref(item.game)} className="saved-horizontal-link" aria-label={t('account.orders.openItem', { title: item.game.title })}>
+                                <Cover className="saved-horizontal-cover" ratio="landscape" sizes="(max-width: 640px) 70vw, 220px" src={item.game.imagePath} title={item.game.title}>
+                                    <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
+                                </Cover>
+                            </Link>
                             <div className="saved-horizontal-body">
-                                <strong>{item.game.title}</strong>
+                                <Link to={gameHref(item.game)} className="saved-horizontal-title">{item.game.title}</Link>
                                 <span className="saved-horizontal-subtitle">
                                     {formatLocalDate(item.lastViewedAt)}
                                 </span>
                                 <span className="saved-horizontal-price">
-                                    {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
+                                    {/* Цены в выбранной валюте нет — сервер отдаёт null; это не «бесплатно». */}
+                                    {item.game.price == null
+                                        ? t('common.unavailable')
+                                        : formatMoney(Number(item.game.price), item.game.currency ?? currency)}
                                 </span>
                             </div>
-                            <button type="button" className="btn btn-primary saved-horizontal-btn" disabled={!item.game.id}>
+                            <button
+                                type="button"
+                                className="btn btn-primary saved-horizontal-btn"
+                                disabled={!item.game.id || Boolean(item.game.isComingSoon) || item.game.price == null}
+                                onClick={() => handleAddToCart(item.game)}
+                            >
                                 {t('common.addToCart')}
                             </button>
                         </div>

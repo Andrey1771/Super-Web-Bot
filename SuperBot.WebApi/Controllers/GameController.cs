@@ -852,7 +852,7 @@ namespace SuperBot.WebApi.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> DeleteGame(string id)
+        public async Task<IActionResult> DeleteGame(string id, [FromServices] IWishlistRepository wishlists)
         {
             var game = await _gameRepository.GetByIdAsync(id);
             if (game == null)
@@ -862,6 +862,9 @@ namespace SuperBot.WebApi.Controllers
 
             await _gameRepository.DeleteAsync(id);
             await _gameDiscountRepository.DeleteByGameIdAsync(id);
+            // Иначе удалённая игра оставалась в чужих списках желаний: счётчик «Saved items» в кабинете
+            // считал её, а страница списка показать уже не могла.
+            await wishlists.RemoveGameEverywhereAsync(id);
             _catalogSnapshot.Invalidate();
             return NoContent();
         }
