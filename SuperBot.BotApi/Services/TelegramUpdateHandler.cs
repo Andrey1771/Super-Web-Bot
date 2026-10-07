@@ -144,8 +144,25 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
 
     // ---- Telegram Stars ----
 
+    /// <summary>
+    /// Демо-сайт для портфолио (Demo:Enabled): звёзды — настоящие деньги, поэтому в чате бота демо их не берёт
+    /// (покупки в мини-приложении закрывает DemoBotGuard). Покупку показывает сайт — тестовой картой.
+    /// </summary>
+    private bool DemoMode => _configuration.GetValue<bool>("Demo:Enabled");
+
+    private const string DemoStarsDisabled =
+        "Это демо-версия магазина: оплата звёздами отключена, настоящие деньги здесь не списываются. " +
+        "Покупку можно попробовать на сайте тестовой картой.\n\n" +
+        "This is a demo store: Telegram Stars payments are disabled. Try a purchase on the website with the test card.";
+
     private async Task SendStarsInvoice(long chatId, string gameId, CancellationToken cancellationToken)
     {
+        if (DemoMode)
+        {
+            await _bot.SendMessage(chatId, DemoStarsDisabled, cancellationToken: cancellationToken);
+            return;
+        }
+
         using var scope = _scopeFactory.CreateScope();
         var gameRepository = scope.ServiceProvider.GetRequiredService<IGameRepository>();
 
@@ -180,6 +197,13 @@ public class TelegramUpdateHandler(ITelegramBotClient _bot, ILogger<TelegramUpda
 
     private async Task HandlePreCheckoutQuery(PreCheckoutQuery query, CancellationToken cancellationToken)
     {
+        // Страховка: счёт, выставленный до включения демо, всё равно не оплатится.
+        if (DemoMode)
+        {
+            await _bot.AnswerPreCheckoutQuery(query.Id, errorMessage: "Demo store: Telegram Stars payments are disabled.", cancellationToken: cancellationToken);
+            return;
+        }
+
         using var scope = _scopeFactory.CreateScope();
         var gameRepository = scope.ServiceProvider.GetRequiredService<IGameRepository>();
 

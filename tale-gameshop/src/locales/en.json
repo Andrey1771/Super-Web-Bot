@@ -3040,5 +3040,42 @@
         ]
       }
     }
+  },
+  "demo": {
+    "badge": "Demo",
+    "barLabel": "Demo site",
+    "templateHint": "This is a demo store. Look around freely — to buy and use the admin panel, open your own copy.",
+    "ownCopy": "Your own copy of the store · {{hours}} h {{minutes}} min left",
+    "open": "Open my copy",
+    "opening": "Opening…",
+    "mailbox": "Demo mailbox",
+    "accountsAndCard": "Accounts & test card",
+    "reset": "Start over",
+    "resetConfirm": "Discard all your changes?",
+    "resetYes": "Yes, start over",
+    "resetFailed": "Could not reset the copy. Please try again.",
+    "openFailed": "Could not open a copy. Please try again.",
+    "full": "All demo copies are taken right now. Please try again in a while.",
+    "ipLimit": "You have opened several copies today — please continue in the one you have.",
+    "readonly": "Disabled in the demo: this would change the site for every visitor, not just your copy.",
+    "welcomeTitle": "This is a demo store",
+    "welcomeText": "Everything works for real: catalog, cart, test-card checkout, account and admin panel. Open your own copy of the store — it is yours for {{hours}} hours: change prices, add games, make purchases. Only you see your changes.",
+    "roleAdmin": "Administrator",
+    "roleBuyer": "Buyer",
+    "login": "Login",
+    "password": "Password",
+    "signInAdmin": "Sign in as admin",
+    "signInBuyer": "Sign in as buyer",
+    "copy": "Copy",
+    "copied": "Copied",
+    "testCard": "Test card",
+    "testCardNote": "Any future expiry date and any CVC. No real money is charged.",
+    "continue": "Continue",
+    "justLook": "Just look around",
+    "mailboxText": "Emails the store sent from your copy: keys after purchase, confirmations, cashback. Nothing leaves the demo.",
+    "mailboxEmpty": "No emails yet — buy something and the key will arrive here.",
+    "collapse": "Collapse",
+    "expand": "Show demo panel",
+    "resetting": "Restoring…"
   }
 }

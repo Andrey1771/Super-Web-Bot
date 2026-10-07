@@ -428,3 +428,6 @@ stripe.exe
 /deploy/rclone/rclone.conf
 # Скрипты резервного копирования — код, а не копии (правило Backup*/ выше их бы спрятало)
 !/deploy/backup/
+
+# Пакет демо-сайта (deploy/demo/build-demo-pack.sh): архив базы и медиа, гигабайты.
+demo-pack/

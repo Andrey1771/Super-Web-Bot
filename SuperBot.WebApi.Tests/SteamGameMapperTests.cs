@@ -133,6 +133,29 @@ public class SteamGameMapperTests
         Assert.Contains("software", result.SkipReason);
     }
 
+    [Theory]
+    [InlineData(new[] { "Casual", "Animation & Modeling", "Design & Illustration", "Utilities" }, "utilities")]
+    [InlineData(new[] { "Animation & Modeling", "Design & Illustration", "Game Development" }, "design")]
+    [InlineData(new[] { "Accounting" }, "office")]
+    public void Software_import_maps_programs_to_software_categories(string[] genres, string category)
+    {
+        var result = SteamGameMapper.Map(App(b => b.Genres = genres), new Dictionary<string, SteamApp>(), [], null, Now, asSoftware: true);
+
+        Assert.Null(result.SkipReason);
+        Assert.Equal(ProductKind.Software, result.Game!.Kind);
+        Assert.Equal(category, result.Game.SoftwareCategory);
+        Assert.Null(result.Game.Genre);
+    }
+
+    [Fact]
+    public void Software_import_skips_games()
+    {
+        var result = SteamGameMapper.Map(App(b => b.Genres = ["Action", "RPG"]), new Dictionary<string, SteamApp>(), [], null, Now, asSoftware: true);
+
+        Assert.Null(result.Game);
+        Assert.Contains("not software", result.SkipReason);
+    }
+
     [Fact]
     public void Upcoming_game_with_exact_date_and_price_is_a_preorder()
     {

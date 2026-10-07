@@ -57,7 +57,8 @@ public static partial class SteamGameMapper
         IReadOnlyList<string> tags,
         string? coverUrl,
         DateTime utcNow,
-        bool asDlc = false)
+        bool asDlc = false,
+        bool asSoftware = false)
     {
         // DLC — отдельный товар, но только при импорте к своей игре (asDlc): сам по себе в каталог игр он не попадает.
         var expectedType = asDlc ? "dlc" : "game";
@@ -65,9 +66,16 @@ public static partial class SteamGameMapper
         {
             return SteamMapResult.Skip(asDlc ? $"not a DLC ({en.Type})" : $"not a game ({en.Type})");
         }
-        if (en.Genres.Any(g => SoftwareGenres.Contains(g, StringComparer.OrdinalIgnoreCase)))
+        // Программы Steam помечает типом game, отличить их можно только по жанрам. Обычный импорт их пропускает,
+        // импорт программ (asSoftware) — наоборот, берёт только их.
+        var isSoftware = en.Genres.Any(g => SoftwareGenres.Contains(g, StringComparer.OrdinalIgnoreCase));
+        if (isSoftware && !asSoftware)
         {
             return SteamMapResult.Skip("software, not a game");
+        }
+        if (asSoftware && !isSoftware)
+        {
+            return SteamMapResult.Skip("not software: no software genres on Steam");
         }
         if (en.IsFree)
         {
@@ -107,9 +115,10 @@ public static partial class SteamGameMapper
             Currency = "USD",
             Description = shortText,
             DescriptionI18n = LocalizedText(localized, app => PlainText(app.ShortDescription), shortText),
-            GameType = type,
-            Genre = GameGenres.LegacyTag(type),
-            Kind = ProductKind.Game,
+            GameType = asSoftware ? default : type,
+            Genre = asSoftware ? null : GameGenres.LegacyTag(type),
+            Kind = asSoftware ? ProductKind.Software : ProductKind.Game,
+            SoftwareCategory = asSoftware ? SoftwareCategoryFor(en.Genres) : null,
             ImagePath = coverUrl ?? "",
             ReleaseDate = releaseDate.Value,
         };
@@ -157,6 +166,20 @@ public static partial class SteamGameMapper
         };
 
         return new SteamMapResult(game, details, null);
+    }
+
+    /// <summary>
+    /// Категория программы из жанров Steam. Утилиты — раньше графики: у Wallpaper Engine есть и то и другое,
+    /// а это всё-таки утилита. Операционных систем, антивирусов и VPN в Steam нет — эти категории заводятся вручную.
+    /// </summary>
+    public static string SoftwareCategoryFor(IReadOnlyList<string> genres)
+    {
+        bool Genre(params string[] names) => genres.Any(g => names.Any(n => g.Equals(n, StringComparison.OrdinalIgnoreCase)));
+
+        if (Genre("Utilities")) return "utilities";
+        if (Genre("Accounting")) return "office";
+        if (Genre("Design & Illustration", "Animation & Modeling", "Photo Editing", "Video Production", "Audio Production", "Game Development")) return "design";
+        return "utilities";
     }
 
     /// <summary>

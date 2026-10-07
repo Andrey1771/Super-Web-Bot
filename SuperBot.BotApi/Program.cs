@@ -149,6 +149,8 @@ if (!botTokenUsable)
 }
 
 app.UseForwardedHeaders();
+// Демо-сайт: всё, что меняет общего бота или списывает Telegram Stars, — только просмотр (см. DemoBotGuard).
+app.UseDemoBotGuard(app.Configuration);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

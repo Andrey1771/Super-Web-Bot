@@ -1,0 +1,527 @@
+{
+  "_comment": "Демо-каталог для портфолио: игры (Steam appid) и выбранные DLC. Собирается deploy/demo/build-demo-pack.sh.",
+  "games": [
+    {
+      "appId": "1174180",
+      "title": "Red Dead Redemption 2",
+      "group": "Экшен"
+    },
+    {
+      "appId": "2215430",
+      "title": "Ghost of Tsushima DIRECTOR'S CUT",
+      "group": "Экшен"
+    },
+    {
+      "appId": "3240220",
+      "title": "Grand Theft Auto V Enhanced",
+      "group": "Экшен",
+      "genre": "action"
+    },
+    {
+      "appId": "3751950",
+      "title": "Assassin's Creed Black Flag Resynced",
+      "group": "Экшен",
+      "dlc": [
+        "4496490",
+        "4496530",
+        "4496510",
+        "4496550",
+        "4496580"
+      ]
+    },
+    {
+      "appId": "1790600",
+      "title": "DRAGON BALL: Sparking! ZERO",
+      "group": "Экшен",
+      "dlc": [
+        "4433900",
+        "3310650",
+        "2957490",
+        "2957480",
+        "2957470"
+      ]
+    },
+    {
+      "appId": "548430",
+      "title": "Deep Rock Galactic",
+      "group": "Экшен",
+      "dlc": [
+        "2291670",
+        "801860",
+        "3481460",
+        "2934390",
+        "4207910"
+      ]
+    },
+    {
+      "appId": "208650",
+      "title": "Batman: Arkham Knight",
+      "group": "Экшен",
+      "dlc": [
+        "367480",
+        "401635",
+        "313102",
+        "313100",
+        "313101",
+        "350172",
+        "350171",
+        "401620",
+        "401621",
+        "401622",
+        "401623",
+        "401624",
+        "401625",
+        "401626",
+        "401628",
+        "401629",
+        "401630",
+        "401631",
+        "401632",
+        "401633",
+        "405032",
+        "356470",
+        "405030",
+        "405031"
+      ]
+    },
+    {
+      "appId": "367520",
+      "title": "Hollow Knight",
+      "group": "Экшен"
+    },
+    {
+      "appId": "814380",
+      "title": "Sekiro: Shadows Die Twice - GOTY Edition",
+      "group": "Экшен"
+    },
+    {
+      "appId": "553850",
+      "title": "HELLDIVERS 2",
+      "group": "Экшен"
+    },
+    {
+      "appId": "782330",
+      "title": "DOOM Eternal",
+      "group": "Экшен",
+      "dlc": [
+        "4764470"
+      ]
+    },
+    {
+      "appId": "2001120",
+      "title": "Split Fiction",
+      "group": "Экшен"
+    },
+    {
+      "appId": "4435490",
+      "title": "Call of Duty: Modern Warfare 4",
+      "group": "Экшен"
+    },
+    {
+      "appId": "3259780",
+      "title": "FINAL FANTASY RESONANCE",
+      "group": "Экшен"
+    },
+    {
+      "appId": "1245620",
+      "title": "ELDEN RING",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "1091500",
+      "title": "Cyberpunk 2077",
+      "group": "Ролевые",
+      "dlc": [
+        "2138330"
+      ]
+    },
+    {
+      "appId": "292030",
+      "title": "The Witcher 3: Wild Hunt — Remastered",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "1086940",
+      "title": "Baldur's Gate 3",
+      "group": "Ролевые",
+      "dlc": [
+        "2378500"
+      ]
+    },
+    {
+      "appId": "990080",
+      "title": "Hogwarts Legacy",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "1145350",
+      "title": "Hades II",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "413150",
+      "title": "Stardew Valley",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "105600",
+      "title": "Terraria",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "892970",
+      "title": "Valheim",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "2358720",
+      "title": "Black Myth: Wukong",
+      "group": "Ролевые",
+      "dlc": [
+        "2672610"
+      ]
+    },
+    {
+      "appId": "1771300",
+      "title": "Kingdom Come: Deliverance II",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "489830",
+      "title": "The Elder Scrolls V: Skyrim Special Edition",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "1687950",
+      "title": "Persona 5 Royal",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "2246340",
+      "title": "Monster Hunter Wilds",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "1158310",
+      "title": "Crusader Kings III",
+      "group": "Ролевые",
+      "dlc": [
+        "1296730",
+        "2311930",
+        "1303182",
+        "2311920",
+        "3315530"
+      ]
+    },
+    {
+      "appId": "4115450",
+      "title": "Phantom Blade Zero",
+      "group": "Ролевые"
+    },
+    {
+      "appId": "289070",
+      "title": "Sid Meier’s Civilization VI",
+      "group": "Стратегии"
+    },
+    {
+      "appId": "1142710",
+      "title": "Total War: WARHAMMER III",
+      "group": "Стратегии"
+    },
+    {
+      "appId": "281990",
+      "title": "Stellaris",
+      "group": "Стратегии"
+    },
+    {
+      "appId": "294100",
+      "title": "RimWorld",
+      "group": "Стратегии"
+    },
+    {
+      "appId": "526870",
+      "title": "Satisfactory",
+      "group": "Стратегии"
+    },
+    {
+      "appId": "323190",
+      "title": "Frostpunk",
+      "group": "Стратегии"
+    },
+    {
+      "appId": "1313140",
+      "title": "Cult of the Lamb",
+      "group": "Стратегии",
+      "dlc": [
+        "3840050",
+        "2890190",
+        "2015880",
+        "2646130",
+        "2331540"
+      ]
+    },
+    {
+      "appId": "933110",
+      "title": "Age of Empires III: Definitive Edition",
+      "group": "Стратегии",
+      "dlc": [
+        "2154361",
+        "1817370",
+        "2154362",
+        "2477660",
+        "1581450"
+      ]
+    },
+    {
+      "appId": "107410",
+      "title": "Arma 3",
+      "group": "Стратегии",
+      "dlc": [
+        "1021790",
+        "395180",
+        "1042220",
+        "1227700",
+        "1175380"
+      ]
+    },
+    {
+      "appId": "3219030",
+      "title": "Planet Zoo 2",
+      "group": "Стратегии"
+    },
+    {
+      "appId": "2050650",
+      "title": "Resident Evil 4",
+      "group": "Хорроры"
+    },
+    {
+      "appId": "239140",
+      "title": "Dying Light",
+      "group": "Хорроры",
+      "dlc": [
+        "435111",
+        "325724",
+        "325724",
+        "2971380",
+        "302101"
+      ]
+    },
+    {
+      "appId": "739630",
+      "title": "Phasmophobia",
+      "group": "Хорроры"
+    },
+    {
+      "appId": "1966720",
+      "title": "Lethal Company",
+      "group": "Хорроры"
+    },
+    {
+      "appId": "1092790",
+      "title": "Inscryption",
+      "group": "Хорроры"
+    },
+    {
+      "appId": "264710",
+      "title": "Subnautica",
+      "group": "Хорроры"
+    },
+    {
+      "appId": "949230",
+      "title": "Cities: Skylines II",
+      "group": "Симуляторы",
+      "dlc": [
+        "2427743",
+        "2427741",
+        "2945610",
+        "2945630",
+        "2945640",
+        "3579760",
+        "2427742",
+        "3579770",
+        "3579780",
+        "3579790",
+        "2427745",
+        "2427744",
+        "2427746",
+        "3579800",
+        "3055040",
+        "3055080",
+        "3054840",
+        "3579810",
+        "3579820",
+        "3579830"
+      ]
+    },
+    {
+      "appId": "2537590",
+      "title": "Microsoft Flight Simulator 2024",
+      "group": "Симуляторы"
+    },
+    {
+      "appId": "227300",
+      "title": "Euro Truck Simulator 2",
+      "group": "Симуляторы"
+    },
+    {
+      "appId": "270880",
+      "title": "American Truck Simulator",
+      "group": "Симуляторы",
+      "dlc": [
+        "1465750",
+        "1104880",
+        "1015160",
+        "1209470",
+        "1209471"
+      ]
+    },
+    {
+      "appId": "39210",
+      "title": "FINAL FANTASY XIV Online",
+      "group": "MMO"
+    },
+    {
+      "appId": "2344520",
+      "title": "Diablo IV",
+      "group": "MMO",
+      "dlc": [
+        "3043530",
+        "3958690"
+      ]
+    },
+    {
+      "appId": "1172710",
+      "title": "Dune: Awakening",
+      "group": "MMO",
+      "dlc": [
+        "3596810",
+        "3596900",
+        "3596930",
+        "3596920",
+        "4857580"
+      ]
+    },
+    {
+      "appId": "454650",
+      "title": "DRAGON BALL XENOVERSE 2",
+      "group": "MMO",
+      "dlc": [
+        "3905290",
+        "507510",
+        "740141",
+        "2814240",
+        "2161560"
+      ]
+    },
+    {
+      "appId": "1551360",
+      "title": "Forza Horizon 5",
+      "group": "Спорт и гонки"
+    },
+    {
+      "appId": "4080220",
+      "title": "EA SPORTS FC 27",
+      "group": "Спорт и гонки"
+    },
+    {
+      "appId": "4356430",
+      "title": "NBA 2K27",
+      "group": "Спорт и гонки"
+    },
+    {
+      "appId": "1222680",
+      "title": "Need for Speed Heat",
+      "group": "Спорт и гонки"
+    },
+    {
+      "appId": "620",
+      "title": "Portal 2",
+      "group": "Головоломки"
+    },
+    {
+      "appId": "1426210",
+      "title": "It Takes Two",
+      "group": "Головоломки"
+    },
+    {
+      "appId": "1003590",
+      "title": "Tetris Effect: Connected",
+      "group": "Головоломки"
+    },
+    {
+      "appId": "477160",
+      "title": "Human Fall Flat",
+      "group": "Головоломки"
+    },
+    {
+      "appId": "361420",
+      "title": "ASTRONEER",
+      "group": "Приключения",
+      "dlc": [
+        "2566990",
+        "2567000",
+        "2567010",
+        "2876620",
+        "3884830"
+      ]
+    },
+    {
+      "appId": "683320",
+      "title": "GRIS",
+      "group": "Приключения"
+    },
+    {
+      "appId": "1332010",
+      "title": "Stray",
+      "group": "Приключения"
+    },
+    {
+      "appId": "646570",
+      "title": "Slay the Spire",
+      "group": "Карточные и настольные"
+    },
+    {
+      "appId": "2379780",
+      "title": "Balatro",
+      "group": "Карточные и настольные"
+    },
+    {
+      "appId": "1282730",
+      "title": "Loop Hero",
+      "group": "Карточные и настольные"
+    },
+    {
+      "appId": "945360",
+      "title": "Among Us",
+      "group": "Казуальные"
+    },
+    {
+      "appId": "1135690",
+      "title": "Unpacking",
+      "group": "Казуальные",
+      "genre": "casual-games"
+    }
+  ],
+  "software": [
+    {
+      "appId": "431960",
+      "title": "Wallpaper Engine"
+    },
+    {
+      "appId": "431730",
+      "title": "Aseprite"
+    },
+    {
+      "appId": "993090",
+      "title": "Lossless Scaling"
+    },
+    {
+      "appId": "1096900",
+      "title": "RPG Maker MZ"
+    },
+    {
+      "appId": "280680",
+      "title": "Krita"
+    }
+  ]
+}

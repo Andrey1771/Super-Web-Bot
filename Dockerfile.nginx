@@ -16,7 +16,8 @@ FROM nginx:alpine
 
 # openssl — временный самоподписанный сертификат, пока Let's Encrypt не выдал настоящий.
 RUN apk add --no-cache openssl \
-    && rm -f /etc/nginx/conf.d/default.conf
+    && rm -f /etc/nginx/conf.d/default.conf \
+    && : > /etc/nginx/trusted-proxies.conf
 
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/security-headers.conf /etc/nginx/security-headers.conf

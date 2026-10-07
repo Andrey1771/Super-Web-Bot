@@ -49,19 +49,29 @@ public class SeoController : ControllerBase
     private readonly IBlogRepository _blogRepository;
     private readonly IMemoryCache _memoryCache;
 
+    private readonly bool _demo;
+
     public SeoController(
         ICatalogSnapshotService catalogSnapshot,
         IBlogRepository blogRepository,
-        IMemoryCache memoryCache)
+        IMemoryCache memoryCache,
+        Microsoft.Extensions.Options.IOptions<SuperBot.WebApi.Demo.DemoOptions> demo)
     {
         _catalogSnapshot = catalogSnapshot;
         _blogRepository = blogRepository;
         _memoryCache = memoryCache;
+        _demo = demo.Value.Enabled;
     }
 
     [HttpGet("/robots.txt")]
     public ContentResult Robots()
     {
+        // Демо-сайт для портфолио в поиске не нужен: вымышленный продавец и чужие игры не должны выглядеть магазином.
+        if (_demo)
+        {
+            return Content("User-agent: *\nDisallow: /\n", "text/plain; charset=utf-8");
+        }
+
         var builder = new StringBuilder();
         builder.AppendLine("User-agent: *");
         foreach (var path in DisallowedPaths)

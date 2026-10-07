@@ -3118,5 +3118,42 @@
         ]
       }
     }
+  },
+  "demo": {
+    "badge": "Demo",
+    "barLabel": "Strona demo",
+    "templateHint": "To wersja demo sklepu. Oglądaj wszystko — a żeby kupować i wypróbować panel admina, otwórz własną kopię.",
+    "ownCopy": "Twoja kopia sklepu · zostało {{hours}} godz. {{minutes}} min",
+    "open": "Otwórz własną kopię",
+    "opening": "Otwieramy…",
+    "mailbox": "Poczta demo",
+    "accountsAndCard": "Konta i karta testowa",
+    "reset": "Zacznij od nowa",
+    "resetConfirm": "Odrzucić wszystkie zmiany?",
+    "resetYes": "Tak, od nowa",
+    "resetFailed": "Nie udało się zresetować kopii. Spróbuj ponownie.",
+    "openFailed": "Nie udało się otworzyć kopii. Spróbuj ponownie.",
+    "full": "Wszystkie kopie demo są teraz zajęte. Spróbuj za chwilę.",
+    "ipLimit": "Otworzyłeś dziś już kilka kopii — kontynuuj w swojej.",
+    "readonly": "W demo to wyłączone: zmieniłoby stronę dla wszystkich odwiedzających, a nie tylko twoją kopię.",
+    "welcomeTitle": "To wersja demo sklepu",
+    "welcomeText": "Wszystko działa naprawdę: katalog, koszyk, płatność kartą testową, konto i panel admina. Otwórz własną kopię sklepu — jest twoja przez {{hours}} godziny: zmieniaj ceny, dodawaj gry, kupuj. Twoje zmiany widzisz tylko ty.",
+    "roleAdmin": "Administrator",
+    "roleBuyer": "Kupujący",
+    "login": "Login",
+    "password": "Hasło",
+    "signInAdmin": "Zaloguj jako admin",
+    "signInBuyer": "Zaloguj jako kupujący",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "testCard": "Karta testowa",
+    "testCardNote": "Dowolna przyszła data ważności i dowolny CVC. Prawdziwe pieniądze nie są pobierane.",
+    "continue": "Dalej",
+    "justLook": "Tylko pooglądam",
+    "mailboxText": "E-maile, które sklep wysłał z twojej kopii: klucze po zakupie, potwierdzenia, cashback. Nic nie wychodzi poza demo.",
+    "mailboxEmpty": "Na razie brak e-maili — kup coś, a klucz przyjdzie tutaj.",
+    "collapse": "Zwiń",
+    "expand": "Pokaż panel demo",
+    "resetting": "Przywracamy…"
   }
 }

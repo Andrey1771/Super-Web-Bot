@@ -1,0 +1,71 @@
+# Демо-сайт для портфолио — слой поверх продакшена:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml:docker-compose.demo.yml
+#
+# Отличия от магазина (подробно — docs/demo.md):
+#  - у каждого посетителя своя копия базы на сутки (Demo__*), письма — в «демо-почту», оплата — тестовый Stripe;
+#  - сайт делит маленький сервер с другими: 80/443 держит системный nginx сервера и проксирует домен демо сюда,
+#    на 127.0.0.1:8081 (TLS снимает он же); лимиты памяти — под сервер на 2 ГБ (+ swap);
+#  - поисковикам закрыт; резервные копии и выпуск сертификата не запускаются (данные демо пересобираются из пакета).
+
+services:
+  backend:
+    mem_limit: 450m
+    environment:
+      - Demo__Enabled=true
+      - Demo__MaxSandboxes=${DEMO_MAX_SANDBOXES:-10}
+      - Demo__SpareSandboxes=${DEMO_SPARE_SANDBOXES:-2}
+      - Demo__Accounts__0__Role=admin
+      - Demo__Accounts__0__Username=demo-admin
+      - Demo__Accounts__0__Password=${DEMO_ADMIN_PASSWORD:?задайте DEMO_ADMIN_PASSWORD в .env}
+      - Demo__Accounts__1__Role=buyer
+      - Demo__Accounts__1__Username=demo-buyer
+      - Demo__Accounts__1__Password=${DEMO_BUYER_PASSWORD:?задайте DEMO_BUYER_PASSWORD в .env}
+      # .NET бережёт память агрессивнее (сборщик мусора чаще возвращает её системе).
+      - DOTNET_GCConserveMemory=7
+
+  bot:
+    mem_limit: 200m
+    environment:
+      - Demo__Enabled=true
+      - DOTNET_GCConserveMemory=7
+
+  mongo1:
+    mem_limit: 450m
+    # Кэш WiredTiger по умолчанию — половина памяти контейнера; демо-база — десятки мегабайт.
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/configdb/keyfile", "--wiredTigerCacheSizeGB", "0.25"]
+
+  mongo-setup:
+    environment:
+      # Права приложения на базы песочниц tsdemo_* (см. deploy/mongo/setup.js).
+      - DEMO_MODE=true
+
+  keycloak-db:
+    mem_limit: 160m
+
+  keycloak:
+    mem_limit: 700m
+    environment:
+      # Куча JVM — половина лимита контейнера (по умолчанию 70%, с метаданными классов это упиралось бы в лимит).
+      - JAVA_OPTS_KC_HEAP=-XX:MaxRAMPercentage=50 -XX:InitialRAMPercentage=10
+
+  nginx:
+    mem_limit: 96m
+    environment:
+      # http внутри: TLS снимает системный nginx сервера (docs/demo.md → «Системный nginx»).
+      - NGINX_SITE=dev
+      - TALESHOP_DEMO=true
+      # Системный nginx стучится через docker-proxy — с адреса шлюза docker-сети.
+      - TALESHOP_TRUSTED_PROXY=${TALESHOP_TRUSTED_PROXY:-172.16.0.0/12}
+    ports: !override
+      - "127.0.0.1:${DEMO_HTTP_PORT:-8081}:80"
+
+  # Не нужны демо: сертификат выпускает системный nginx, данные пересобираются из пакета демо.
+  certbot:
+    profiles: ["demo-off"]
+  mongo-backup:
+    profiles: ["demo-off"]
+  keycloak-db-backup:
+    profiles: ["demo-off"]
+  backup-offsite:
+    profiles: ["demo-off"]

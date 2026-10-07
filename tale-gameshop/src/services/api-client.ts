@@ -5,6 +5,7 @@ import { IApiClient } from '../iterfaces/i-api-client';
 import container from "../inversify.config";
 import { IKeycloakService } from '../iterfaces/i-keycloak-service';
 import {IUrlService} from "../iterfaces/i-url-service";
+import { DEMO_EVENT, demoRefusalCode } from "../features/demo/demoEvents";
 import { currentCountry, currentLang } from "../context/site-preferences";
 
 /** Сколько раз повторять запрос, отбитый лимитом частоты nginx. */
@@ -93,6 +94,11 @@ export class ApiClient implements IApiClient {
                     config.__edgeRetries = (config.__edgeRetries ?? 0) + 1;
                     await new Promise((resolve) => setTimeout(resolve, retry));
                     return this._api.request(config);
+                }
+                // Демо-сайт отказал по своим правилам: объяснит DemoLayer (открыть свою копию / только просмотр).
+                const demoCode = demoRefusalCode(error.response?.status, error.response?.data);
+                if (demoCode) {
+                    window.dispatchEvent(new CustomEvent(DEMO_EVENT, { detail: { code: demoCode } }));
                 }
                 if (error.response && error.response.status === 401 && this._keycloakService.keycloak?.authenticated) {
                     // 401 у вошедшего — токен мёртв, обновить перед запросом не удалось: сессия закончилась.

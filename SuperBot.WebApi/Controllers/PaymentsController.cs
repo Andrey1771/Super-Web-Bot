@@ -156,6 +156,12 @@ namespace SuperBot.WebApi.Controllers
                 metadata["promoCode"] = pricing.NormalizedPromoCode;
             }
 
+            // Демо: вебхук Stripe по этому платежу придёт без cookie — песочница заказа едет в метаданных.
+            if (SuperBot.Core.Demo.DemoSandbox.CurrentId is { } sandbox)
+            {
+                metadata["sandbox"] = sandbox;
+            }
+
             // Намерение этой кассы решается ОДИН раз и до кэшбэка: переиспользуем только то, что Stripe ещё даёт менять.
             // Раньше резерв ставился под любое незакрытое намерение, и если покупатель уже подтверждал по нему оплату,
             // второй запрос кассы создавал новое намерение и уводил резерв с оплачиваемого — заказ получал скидку,
@@ -232,6 +238,13 @@ namespace SuperBot.WebApi.Controllers
             if (cashback.Reference != null && cashback.Reference != paymentIntent.Id)
             {
                 await _cashback.RebindReservationAsync(cashback.Reference, paymentIntent.Id);
+            }
+
+            // Демо: вебхуки о возвратах и спорах приходят без метаданных платежа — песочницу найдут по его id.
+            if (SuperBot.Core.Demo.DemoSandbox.CurrentId is { } demoSandbox)
+            {
+                await HttpContext.RequestServices.GetRequiredService<SuperBot.WebApi.Demo.DemoSandboxService>()
+                    .RememberPaymentAsync(paymentIntent.Id, demoSandbox, HttpContext.RequestAborted);
             }
 
             await _finalization.RecordIntentCreatedAsync(new IntentCreatedRecord

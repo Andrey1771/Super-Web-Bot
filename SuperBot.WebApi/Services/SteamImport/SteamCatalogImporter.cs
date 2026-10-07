@@ -31,6 +31,9 @@ public sealed record SteamImportOptions
 
     /// <summary>Качать трейлер. У DLC по умолчанию нет: ролик весит десятки мегабайт.</summary>
     public bool IncludeTrailers { get; init; } = true;
+
+    /// <summary>Заводить программы (Wallpaper Engine, Aseprite…) товарами вида «ПО»; игры при этом пропускаются.</summary>
+    public bool AsSoftware { get; init; }
 }
 
 public enum SteamImportOutcome { Created, Updated, Skipped, Failed }
@@ -110,7 +113,7 @@ public sealed class SteamCatalogImporter(
             }
 
             // Сначала дешёвая проверка: не тянуть переводы, метки и картинки игры, которую всё равно не возьмём.
-            var probe = SteamGameMapper.Map(en, new Dictionary<string, SteamApp>(), [], null, DateTime.UtcNow, isDlc);
+            var probe = SteamGameMapper.Map(en, new Dictionary<string, SteamApp>(), [], null, DateTime.UtcNow, isDlc, options.AsSoftware);
             if (probe.SkipReason is not null)
             {
                 return new(appId, SteamImportOutcome.Skipped, en.Name, existing?.Id, probe.SkipReason);
@@ -134,7 +137,7 @@ public sealed class SteamCatalogImporter(
             var existingDetails = existing?.Id is null ? null : await gameDetails.GetByGameIdAsync(existing.Id);
             var coverUrl = KeepsCover(existing, options) ? existing!.ImagePath : await coverBuilder.BuildAsync(appId, en.Name, ct);
 
-            var mapped = SteamGameMapper.Map(en, localized, tags, coverUrl, DateTime.UtcNow, isDlc);
+            var mapped = SteamGameMapper.Map(en, localized, tags, coverUrl, DateTime.UtcNow, isDlc, options.AsSoftware);
             if (mapped.Game is null || mapped.Details is null)
             {
                 return new(appId, SteamImportOutcome.Skipped, en.Name, existing?.Id, mapped.SkipReason);

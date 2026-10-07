@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Hangfire;
 using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies.Backup;
@@ -102,6 +104,17 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddMemoryCache();
+// Кэш раскладывается по песочницам демо (на обычном магазине ключи те же, что были): см. SandboxAwareMemoryCache.
+builder.Services.Replace(ServiceDescriptor.Singleton<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp =>
+    new SuperBot.WebApi.Demo.SandboxAwareMemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCache(
+        sp.GetRequiredService<IOptions<Microsoft.Extensions.Caching.Memory.MemoryCacheOptions>>()))));
+
+// Демо-сайт для портфолио: песочницы, демо-почта, правила «только просмотр». На магазине выключено.
+builder.Services.Configure<SuperBot.WebApi.Demo.DemoOptions>(builder.Configuration.GetSection(SuperBot.WebApi.Demo.DemoOptions.SectionName));
+var demoEnabled = builder.Configuration.GetValue<bool>("Demo:Enabled");
+var sandboxDatabasePrefix = builder.Configuration["Demo:SandboxDatabasePrefix"] ?? new SuperBot.WebApi.Demo.DemoOptions().SandboxDatabasePrefix;
+builder.Services.AddSingleton<SuperBot.WebApi.Demo.DemoSandboxService>();
+builder.Services.AddHostedService<SuperBot.WebApi.Demo.DemoSandboxCleanupWorker>();
 
 
 // CORS: фронт с того же домена за nginx и дев-сервер на :3000.
@@ -213,8 +226,20 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     var mongoClient = sp.GetRequiredService<IMongoClient>();
 
     var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
+    // В демо у посетителя своя копия базы: метку ставит DemoSandboxMiddleware. Только для области самого запроса:
+    // долгоживущие сервисы (настройки сайта, курсы, кэши), создающие свою область посреди запроса из песочницы,
+    // получают базу сайта — иначе их общие для всех данные читались бы из копии одного посетителя.
+    if (SuperBot.Core.Demo.DemoSandbox.CurrentId is { } sandbox && IsRequestScope(sp))
+    {
+        return mongoClient.GetDatabase(sandboxDatabasePrefix + sandbox);
+    }
     return mongoClient.GetDatabase(mongoName);
 });
+// Область запроса — та, что у HttpContext; вне запроса (консольные команды, тесты) метка песочницы решает сама.
+static bool IsRequestScope(IServiceProvider scope) =>
+    scope.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()?.HttpContext is not { } http
+    || ReferenceEquals(http.RequestServices, scope);
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<MongoDbInitializer>();
 builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddScoped<AdminPeriodReportService>();
@@ -394,7 +419,15 @@ builder.Services.AddOptions<SuperBot.WebApi.Mail.MailOptions>()
     .Validate(mail => mail.Validate() is null,
         "Invalid Mail settings: port 465 is not supported (use 587 with Mail:SmtpUseTls=true), and Mail:SmtpUsername needs Mail:SmtpPassword.")
     .ValidateOnStart();
-builder.Services.AddScoped<SuperBot.WebApi.Mail.IMailSender, SuperBot.WebApi.Mail.SmtpMailSender>();
+if (demoEnabled)
+{
+    // Демо ничего не шлёт наружу: письма ложатся в «демо-почту» копии посетителя.
+    builder.Services.AddScoped<SuperBot.WebApi.Mail.IMailSender, SuperBot.WebApi.Demo.DemoMailboxSender>();
+}
+else
+{
+    builder.Services.AddScoped<SuperBot.WebApi.Mail.IMailSender, SuperBot.WebApi.Mail.SmtpMailSender>();
+}
 builder.Services.AddScoped<SuperBot.WebApi.Newsletter.INewsletterService, SuperBot.WebApi.Newsletter.NewsletterService>();
 builder.Services.AddScoped<SuperBot.WebApi.Newsletter.INewsletterDispatcher, SuperBot.WebApi.Newsletter.NewsletterDispatcher>();
 builder.Services.AddHostedService<SuperBot.WebApi.Newsletter.NewsletterSendWorker>();
@@ -514,6 +547,13 @@ builder.Services.AddLogging(logging =>
 builder.Logging.AddProvider(new SuperBot.WebApi.Services.SupportChatConsoleLoggerProvider());
 
 var app = builder.Build();
+
+// Демо-ключи для шаблона демо-сайта (см. DemoKeysCli): выполняется и завершает процесс.
+if (args.Length > 0 && args[0] == SuperBot.WebApi.Demo.DemoKeysCli.Command)
+{
+    Environment.ExitCode = await SuperBot.WebApi.Demo.DemoKeysCli.RunAsync(app.Services, args[1..]);
+    return;
+}
 
 // Консольный импорт каталога из Steam (см. SteamImportCli): выполняется и завершает процесс, сайт не поднимается.
 if (args.Length > 0 && args[0] == SuperBot.WebApi.Services.SteamImport.SteamImportCli.Command)
@@ -655,6 +695,8 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetSection("Diagnostics
 }
 
 app.UseForwardedHeaders();
+// Песочницы демо — раньше всего, что берёт базу (вход, контроллеры): им достаётся уже копия посетителя.
+app.UseMiddleware<SuperBot.WebApi.Demo.DemoSandboxMiddleware>();
 
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 

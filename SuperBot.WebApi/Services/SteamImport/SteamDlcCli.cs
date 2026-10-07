@@ -71,6 +71,9 @@ public static class SteamDlcCli
         async IAsyncEnumerable<DlcTask> AllTasks()
         {
             var index = 0;
+            // Одно DLC — одна задача. Steam иногда перечисляет DLC дважды (или у двух игр), и две параллельные
+            // задачи обе не находили его в каталоге и обе заводили: так появились дубли с одним steam-id.
+            var queued = new HashSet<string>(StringComparer.Ordinal);
             foreach (var parent in parents)
             {
                 index++;
@@ -84,7 +87,7 @@ public static class SteamDlcCli
                 var family = listing.Select(d => d.AppId).Append(parentAppId).ToHashSet(StringComparer.Ordinal);
                 var picked = Pick(listing, minPriceCents);
                 logger.LogInformation("[{Index}/{Total}] {Game}: {Picked} of {All} DLC", index, parents.Count, parent.Name, picked.Count, listing.Count);
-                foreach (var dlc in picked)
+                foreach (var dlc in picked.Where(d => queued.Add(d.AppId)))
                 {
                     yield return new DlcTask(parent, family, dlc);
                 }

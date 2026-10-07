@@ -8,6 +8,7 @@ namespace SuperBot.WebApi.Services.SteamImport;
 ///
 ///   docker compose run --rm --no-deps backend import-steam starter [--update] [--refresh-prices] [--refresh-covers]
 ///   docker compose run --rm --no-deps backend import-steam 1091500,292030 --update
+///   docker compose run --rm --no-deps backend import-steam 431960,431730 --software
 ///
 /// «starter» — стартовый каталог из сборки (около 550 игр). Задача видна и на странице Steam import
 /// в админке. Импорт долгий (лимит Steam), поэтому для большого списка удобнее запускать с -d
@@ -23,7 +24,7 @@ public static class SteamImportCli
         var source = args.FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal));
         if (string.IsNullOrWhiteSpace(source))
         {
-            Console.Error.WriteLine($"Usage: {Command} starter|<app ids or file> [--update] [--refresh-prices] [--refresh-covers]");
+            Console.Error.WriteLine($"Usage: {Command} starter|<app ids or file> [--update] [--refresh-prices] [--refresh-covers] [--software]");
             return 2;
         }
 
@@ -53,6 +54,8 @@ public static class SteamImportCli
             UpdateExisting = update,
             RefreshPrices = update && args.Contains("--refresh-prices"),
             RefreshCovers = update && args.Contains("--refresh-covers"),
+            // Программы: Steam помечает их играми, и обычный импорт их пропускает.
+            AsSoftware = args.Contains("--software"),
         };
 
         using var scope = services.CreateScope();

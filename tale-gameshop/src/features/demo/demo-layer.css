@@ -1,0 +1,358 @@
+/* Демо-сайт: полоска сверху, приглашение открыть копию, демо-почта. Цвета — из токенов сайта. */
+
+/* Плавающая «пилюля» внизу по центру: шапка сайта закреплена сверху, а справа внизу — кнопка чата. */
+.demo-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 1050;
+  width: max-content;
+  max-width: min(920px, calc(100vw - 180px));
+  background: linear-gradient(90deg, var(--color-accent-indigo), var(--color-accent-violet));
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+}
+
+.demo-bar__inner {
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+}
+
+.demo-bar.is-collapsed .demo-bar__inner {
+  padding: 6px;
+}
+
+.demo-bar__toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.demo-bar__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.demo-dialog .demo-bar__badge {
+  align-self: flex-start;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.demo-bar__text {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.demo-bar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px 14px;
+  flex-wrap: wrap;
+}
+
+.demo-bar__link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+.demo-bar__link:hover {
+  text-decoration-color: #fff;
+}
+
+.demo-bar__link--strong {
+  font-weight: 700;
+}
+
+.demo-bar__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.demo-bar__cta {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 14px;
+  background: #fff;
+  color: var(--color-accent-indigo);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.demo-bar__cta:disabled,
+.demo-bar__link:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.demo-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.demo-dialog__card {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.demo-dialog__card h2 {
+  margin: 0;
+  font-size: 22px;
+  text-wrap: balance;
+}
+
+.demo-dialog__lead {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.demo-dialog__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: 0;
+  background: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.demo-accounts {
+  display: grid;
+  gap: 10px;
+}
+
+.demo-account {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  align-items: center;
+}
+
+.demo-account__role,
+.demo-account__signin {
+  grid-column: 1 / -1;
+}
+
+.demo-account__role {
+  font-weight: 700;
+}
+
+.demo-account__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.demo-account__label {
+  color: var(--color-muted);
+  font-size: 12px;
+  width: 52px;
+  flex: 0 0 auto;
+}
+
+.demo-account__row code,
+.demo-card-hint code {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.demo-account__signin {
+  justify-self: start;
+  margin-top: 2px;
+}
+
+.demo-copy {
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.demo-copy:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.demo-card-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  font-size: 14px;
+}
+
+.demo-card-hint .demo-copy {
+  margin-left: 0;
+}
+
+.demo-card-hint__note {
+  flex-basis: 100%;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.demo-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.demo-mail {
+  width: min(960px, 100%);
+}
+
+.demo-mail__empty {
+  color: var(--color-muted);
+}
+
+.demo-mail__layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 300px) minmax(0, 1fr);
+  gap: 14px;
+  min-height: 360px;
+}
+
+.demo-mail__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.demo-mail__item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: none;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.demo-mail__item.is-active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.demo-mail__subject {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.demo-mail__meta {
+  font-size: 12px;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.demo-mail__view {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.demo-mail__frame {
+  width: 100%;
+  height: 60vh;
+  border: 0;
+  background: #fff;
+}
+
+.demo-mail__text {
+  margin: 0;
+  padding: 14px;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+@media (max-width: 720px) {
+  .demo-bar {
+    left: 12px;
+    right: 84px;
+    bottom: 12px;
+    transform: none;
+    width: auto;
+    max-width: none;
+  }
+
+  .demo-bar.is-collapsed {
+    right: auto;
+  }
+
+  .demo-account {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-mail__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-dialog__card {
+    padding: 22px 18px;
+  }
+}
