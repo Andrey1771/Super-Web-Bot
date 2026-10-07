@@ -93,6 +93,10 @@ public sealed record CatalogItem(
     public Dictionary<string, string>? DescriptionI18n { get; init; }
     /// <summary>Переводы жанров карточки по позициям (GameDetails.GenresI18n); подставляются на выходе.</summary>
     public Dictionary<string, List<string>>? GenresI18n { get; init; }
+    /// <summary>Сколько опубликованных DLC у игры — пометка «+N DLC» на плитке. Считается при сборке снимка.</summary>
+    public int DlcCount { get; init; }
+    /// <summary>У DLC — название его игры: подпись «DLC of …» в админке и поиск дополнений по имени игры.</summary>
+    public string? ParentTitle { get; init; }
 }
 
 /// <summary>
@@ -234,7 +238,7 @@ public sealed class CatalogSnapshotService : ICatalogSnapshotService
         var snapshot = await _cache.GetOrCreateAsync(CacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheTtl;
-            var all = await BuildAsync();
+            var all = WithDlcCounts(await BuildAsync());
             // Черновики витрине не отдаются. Фильтр здесь, а не в каждом запросе: снимок — единственный источник
             // для витрины, полок главной и поиска, поэтому одного места достаточно и нельзя забыть закрыть ещё одно.
             return new Snapshot(all, all.Where(item => !item.IsDraft).ToList());
@@ -244,6 +248,41 @@ public sealed class CatalogSnapshotService : ICatalogSnapshotService
     }
 
     public void Invalidate() => _cache.Remove(CacheKey);
+
+    /// <summary>
+    /// Связи игр и DLC в снимке. Каждой игре — число её DLC: черновики не считаются, витрина их не показывает, и
+    /// «+3 DLC» на плитке при двух видимых на странице игры было бы враньём. Каждому DLC — название его игры, и оно же
+    /// попадает в текст поиска: «Season Pass» без имени игры в названии находится по «Crimson».
+    /// </summary>
+    public static IReadOnlyList<CatalogItem> WithDlcCounts(IReadOnlyList<CatalogItem> items)
+    {
+        var counts = items
+            .Where(item => !item.IsDraft && !string.IsNullOrWhiteSpace(item.ParentGameId))
+            .GroupBy(item => item.ParentGameId!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        var titles = items
+            .Where(item => item.Id is not null && string.IsNullOrWhiteSpace(item.ParentGameId))
+            .GroupBy(item => item.Id!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        if (counts.Count == 0 && !items.Any(item => !string.IsNullOrWhiteSpace(item.ParentGameId)))
+        {
+            return items;
+        }
+        return items.Select(item =>
+        {
+            if (item.Id is not null && counts.TryGetValue(item.Id, out var count))
+            {
+                return item with { DlcCount = count };
+            }
+            if (!string.IsNullOrWhiteSpace(item.ParentGameId) && titles.TryGetValue(item.ParentGameId, out var parent))
+            {
+                var parentTitle = string.IsNullOrWhiteSpace(parent.Title) ? parent.Name : parent.Title;
+                var own = item.SearchText ?? CatalogQuery.SearchText(item.Title, item.Name, item.Slug);
+                return item with { ParentTitle = parentTitle, SearchText = $"{own} {CatalogQuery.SearchText(parentTitle, null, null)}" };
+            }
+            return item;
+        }).ToList();
+    }
 
     private async Task<IReadOnlyList<CatalogItem>> BuildAsync()
     {

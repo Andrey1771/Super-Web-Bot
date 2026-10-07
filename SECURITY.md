@@ -14,9 +14,9 @@ the working tree does **not** undo the exposure — you must invalidate/rotate e
 | --- | --- | --- |
 | Telegram bot token | `appsettings.json` (WebApi, BotApi, Development) | @BotFather → your bot → **API Token → Revoke current token**. Put the new token in `.env` → `BOT_TOKEN`. |
 | JWT signing key (`JwtSettings:SecretKey`) | `appsettings*.json` | Generate a new one (`openssl rand -base64 48`) → `.env` `JWT_SECRET`. Rotating invalidates all existing user tokens (everyone re-logs in). |
-| Keycloak admin client secret | `docker-compose.yml`, `keycloak/import/TaleShop-realm.json` | Set a new strong value in **both** `.env` (`KEYCLOAK_ADMIN_CLIENT_SECRET`) and the realm export's client `tale-shop-admin` (they must match). |
+| Keycloak admin client secret | `docker-compose.yml`, `keycloak/import/TaleShop-realm.json` | The realm file now holds a `${KEYCLOAK_ADMIN_CLIENT_SECRET}` placeholder filled from `.env` on the first import. On an existing Keycloak, change it in the console (TaleShop → Clients → tale-shop-admin → Credentials) and in `.env` together. |
 | Stripe keys | `appsettings*.json` | Test keys (`sk_test_`/`pk_test_`) — low risk, but roll them in the Stripe dashboard and set `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY`. |
-| Mongo / Keycloak DB / admin passwords | `.env` (previously tracked) | Change any of these that are reused elsewhere. (Not wired into the current active compose stack, but were exposed.) |
+| Mongo / Keycloak DB / admin passwords | `.env` (previously tracked) | Change any of these that are reused elsewhere. They are now used by `docker-compose.prod.yml` — production must get fresh values. |
 
 ## Setup
 

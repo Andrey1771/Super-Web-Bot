@@ -10,5 +10,7 @@ namespace SuperBot.Core.Interfaces.IRepositories
         Task CreateAsync(GameDetails details);
         Task UpsertAsync(GameDetails details);
         Task UpdateAsync(string id, GameDetails details);
+        /// <summary>Удалить карточку товара — вместе с самим товаром, иначе его страница оставалась открытой по адресу.</summary>
+        Task DeleteByGameIdAsync(string gameId);
     }
 }

@@ -14,17 +14,15 @@ import {
     faHourglassHalf
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import AccountRecommendationCard from '../components/AccountRecommendationCard';
 import {accountProfile} from '../mockAccountData';
 import { useAccountProfile } from '../context/AccountProfileContext';
-import {useCart} from '../../../context/cart-context';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useGameKeys } from '../../../hooks/use-game-keys';
 import { useOrders } from '../../../hooks/use-orders';
 import { useWishlistSummary } from '../../../hooks/use-wishlist-summary';
 import { usePaymentMethodsSummary } from '../../../hooks/use-payment-methods-summary';
 import RecommendationsSection from '../../../components/recommendations/recommendations-section';
-import Cover from '../../../components/common/Cover';
-import HoverTrailer from '../../../components/common/HoverTrailer';
 import { useSitePreferences } from '../../../context/site-preferences';
 import { formatMoney, formatOrderMoney } from '../../../utils/format-money';
 import { useCashbackStatus } from '../../../hooks/use-cashback-status';
@@ -57,7 +55,6 @@ const AccountOverviewPage: React.FC = () => {
     const cashbackMoney = (value: number) => formatMoney(value, cashback.currency);
     const cashbackTier = cashback.level.tiers.find((item) => item.id === cashback.level.tierId) ?? cashback.level.tiers[0];
     const cashbackNext = cashback.level.tiers.find((item) => item.id === cashback.level.nextTierId) ?? null;
-    const {dispatch} = useCart();
     const navigate = useNavigate();
     const {
         items: orders,
@@ -124,19 +121,6 @@ const AccountOverviewPage: React.FC = () => {
             return;
         }
         navigate('/account/keys');
-    };
-
-    const handleAddToCart = (id: string, title: string, price: number, image: string) => {
-        dispatch({
-            type: 'ADD_TO_CART',
-            payload: {
-                gameId: id,
-                name: title,
-                price,
-                quantity: 1,
-                image
-            }
-        });
     };
 
     const { profile } = useAccountProfile();
@@ -439,36 +423,7 @@ const AccountOverviewPage: React.FC = () => {
                     renderSkeleton={(index) => (
                         <div key={`rec-skeleton-${index}`} className="account-recommendation-card is-skeleton" />
                     )}
-                    renderItem={(item) => (
-                        <div key={item.game.id ?? item.game.title} className="account-recommendation-card" data-hover-trailer-root="">
-                            <Cover className="account-recommendation-media" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
-                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
-                        </Cover>
-                            <div className="account-recommendation-body">
-                                {/* title: название обрезается двумя строками, полное
-                                    остаётся доступным при наведении. */}
-                                <strong title={item.game.title}>{item.game.title}</strong>
-                                <span className="account-recommendation-price">
-                                    {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
-                                </span>
-                            </div>
-                            <button
-                                type="button"
-                                className="btn btn-primary account-recommendation-btn"
-                                onClick={() =>
-                                    handleAddToCart(
-                                        item.game.id ?? '',
-                                        item.game.title,
-                                        Number(item.game.price),
-                                        item.game.imagePath
-                                    )
-                                }
-                                disabled={!item.game.id}
-                            >
-                                {t('common.addToCart')}
-                            </button>
-                        </div>
-                    )}
+                    renderItem={(item) => <AccountRecommendationCard key={item.game.id ?? item.game.title} game={item.game} />}
                 />
             </div>
         </AccountShell>

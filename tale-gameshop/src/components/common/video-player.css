@@ -315,3 +315,69 @@
     transition: none;
   }
 }
+
+/* ---- качество (только у потоков HLS) ---- */
+.vp__quality {
+  position: relative;
+}
+
+.vp__quality-btn {
+  width: auto;
+  min-width: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.vp__quality-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 128px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: var(--radius-md);
+  background: rgba(17, 17, 24, 0.94);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+}
+
+.vp__quality-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vp__quality-item:hover,
+.vp__quality-item:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+
+.vp__quality-item[aria-checked='true'] {
+  color: var(--color-primary-soft, #c4b5fd);
+}
+
+.vp__quality-hd {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}

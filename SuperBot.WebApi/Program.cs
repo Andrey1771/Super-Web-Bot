@@ -389,11 +389,33 @@ builder.Services.AddOptions<SuperBot.WebApi.Mail.MailOptions>()
         if (string.IsNullOrWhiteSpace(mail.FromAddress)) mail.FromAddress = recovery.Value.FromAddress;
         if (string.IsNullOrWhiteSpace(mail.FromName)) mail.FromName = recovery.Value.FromName;
         if (string.IsNullOrWhiteSpace(mail.PublicBaseUrl)) mail.PublicBaseUrl = recovery.Value.PublicBaseUrl;
-    });
+    })
+    // Неверные SMTP-настройки должны ронять старт, а не тихо терять письма с ключами.
+    .Validate(mail => mail.Validate() is null,
+        "Invalid Mail settings: port 465 is not supported (use 587 with Mail:SmtpUseTls=true), and Mail:SmtpUsername needs Mail:SmtpPassword.")
+    .ValidateOnStart();
 builder.Services.AddScoped<SuperBot.WebApi.Mail.IMailSender, SuperBot.WebApi.Mail.SmtpMailSender>();
 builder.Services.AddScoped<SuperBot.WebApi.Newsletter.INewsletterService, SuperBot.WebApi.Newsletter.NewsletterService>();
 builder.Services.AddScoped<SuperBot.WebApi.Newsletter.INewsletterDispatcher, SuperBot.WebApi.Newsletter.NewsletterDispatcher>();
 builder.Services.AddHostedService<SuperBot.WebApi.Newsletter.NewsletterSendWorker>();
+
+// Импорт каталога из Steam (админка → Steam import): карточки, переводы, медиа, обложки.
+// Задачи идут фоном по одной — см. SteamImportWorker.
+builder.Services.AddHttpClient<SuperBot.WebApi.Services.SteamImport.ISteamStoreClient, SuperBot.WebApi.Services.SteamImport.SteamStoreClient>(client =>
+{
+    client.BaseAddress = new Uri("https://store.steampowered.com/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddHttpClient<SuperBot.WebApi.Services.SteamImport.ISteamSpyClient, SuperBot.WebApi.Services.SteamImport.SteamSpyClient>(client =>
+    client.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddHttpClient<SuperBot.WebApi.Services.SteamImport.ISteamCoverBuilder, SuperBot.WebApi.Services.SteamImport.SteamCoverBuilder>(client =>
+    client.Timeout = TimeSpan.FromSeconds(60));
+builder.Services.AddHttpClient<SuperBot.WebApi.Services.SteamImport.ISteamMediaLocalizer, SuperBot.WebApi.Services.SteamImport.SteamMediaLocalizer>(client =>
+    client.Timeout = TimeSpan.FromSeconds(120));
+builder.Services.AddScoped<SuperBot.WebApi.Services.SteamImport.ISteamCatalogImporter, SuperBot.WebApi.Services.SteamImport.SteamCatalogImporter>();
+builder.Services.AddSingleton<SuperBot.WebApi.Services.SteamImport.SteamImportWorker>();
+builder.Services.AddSingleton<SuperBot.WebApi.Services.SteamImport.ISteamImportQueue>(sp => sp.GetRequiredService<SuperBot.WebApi.Services.SteamImport.SteamImportWorker>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SuperBot.WebApi.Services.SteamImport.SteamImportWorker>());
 
 
 
@@ -492,6 +514,23 @@ builder.Services.AddLogging(logging =>
 builder.Logging.AddProvider(new SuperBot.WebApi.Services.SupportChatConsoleLoggerProvider());
 
 var app = builder.Build();
+
+// Консольный импорт каталога из Steam (см. SteamImportCli): выполняется и завершает процесс, сайт не поднимается.
+if (args.Length > 0 && args[0] == SuperBot.WebApi.Services.SteamImport.SteamImportCli.Command)
+{
+    Environment.ExitCode = await SuperBot.WebApi.Services.SteamImport.SteamImportCli.RunAsync(app.Services, args[1..]);
+    return;
+}
+if (args.Length > 0 && args[0] == SuperBot.WebApi.Services.SteamImport.SteamDlcCli.Command)
+{
+    Environment.ExitCode = await SuperBot.WebApi.Services.SteamImport.SteamDlcCli.RunAsync(app.Services, args[1..]);
+    return;
+}
+if (args.Length > 0 && args[0] == SuperBot.WebApi.Services.SteamImport.SteamMediaCli.Command)
+{
+    Environment.ExitCode = await SuperBot.WebApi.Services.SteamImport.SteamMediaCli.RunAsync(app.Services, args[1..]);
+    return;
+}
 var startupLogger = app.Logger;
 
 app.Lifetime.ApplicationStarted.Register(() =>

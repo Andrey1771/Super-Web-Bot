@@ -1,9 +1,19 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { GameDetails } from "../../types/game-details";
+import { useTranslation } from "react-i18next";
+import type { DlcProduct, GameDetails, ParentGameRef } from "../../types/game-details";
 import GameHero, { orderMedia } from "../game-details-page/components/GameHero";
 import GameAbout from "../game-details-page/components/GameAbout";
 import OverviewTab from "../game-details-page/components/OverviewTab";
+import PurchaseCard from "../game-details-page/components/PurchaseCard";
+import GameTabs, { type GameTabDef, type GameTabId } from "../game-details-page/components/GameTabs";
+import SystemRequirementsTab, { hasSystemRequirements } from "../game-details-page/components/SystemRequirementsTab";
+import { ratingLabelFor } from "../game-details-page/components/shared";
+import Breadcrumbs from "../../components/common/Breadcrumbs";
+import { getGameDlc } from "../../api/adminDlcApi";
+import { getKeyInventory } from "../../api/adminKeysApi";
+import { kindLabels } from "../../utils/product-kind-labels";
+import { slugify } from "../../utils/slugify";
 // Стили витрины должны попасть в сборку и в родительский документ: copyStyles клонирует
 // в iframe именно то, что есть в head страницы. Без импорта превью осталось бы без оформления.
 // Протечки в админку нет: единственный общий класс .btn-small ограничен .game-details-page.
@@ -84,7 +94,50 @@ const PreviewFrame: React.FC<{
   );
 };
 
-const PreviewBody: React.FC<{ details: GameDetails }> = ({ details }) => {
+/**
+ * То, чего нет в черновике формы, но есть на живой странице: игра-родитель (у DLC), опубликованные DLC игры и остаток
+ * ключей. Берётся из админского API — черновик ещё может быть не опубликован, и витринный API его не отдал бы.
+ */
+const usePreviewContext = (gameId: string) => {
+  const [context, setContext] = useState<{ parentGame: ParentGameRef | null; dlc: DlcProduct[]; keys: number | null }>({
+    parentGame: null,
+    dlc: [],
+    keys: null,
+  });
+  useEffect(() => {
+    if (!gameId) return;
+    let cancelled = false;
+    Promise.all([getGameDlc(gameId).catch(() => null), getKeyInventory(gameId).catch(() => null)]).then(([dlcInfo, inventory]) => {
+      if (cancelled) return;
+      setContext({
+        parentGame: dlcInfo?.parent ? { id: dlcInfo.parent.id, slug: dlcInfo.parent.slug, title: dlcInfo.parent.title } : null,
+        // На витрине черновиков нет — и в превью их нет.
+        dlc: (dlcInfo?.items ?? [])
+          .filter((item) => !item.isDraft)
+          .map((item) => ({
+            id: item.id,
+            slug: item.slug,
+            title: item.title,
+            coverUrl: item.imagePath,
+            releaseDate: item.releaseDate,
+            isComingSoon: item.isComingSoon,
+            inStock: item.keysAvailable > 0,
+            pricing: { price: item.price, currency: item.currency },
+          })),
+        keys: inventory ? inventory.available : null,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId]);
+  return context;
+};
+
+const PreviewBody: React.FC<{ details: GameDetails; software: boolean }> = ({ details, software }) => {
+  const { t } = useTranslation();
+  const context = usePreviewContext(details.gameId);
+  const [activeTab, setActiveTab] = useState<GameTabId>("overview");
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -135,30 +188,105 @@ const PreviewBody: React.FC<{ details: GameDetails }> = ({ details }) => {
     }
   };
 
+  // Те же данные, что собирает живая страница (GameDetailsPage), — из черновика и контекста выше.
+  const currency = details.currency || "USD";
+  const editions = details.editions ?? [];
+  const selectedEdition = editions.find((edition) => edition.isDefault) ?? editions[0];
+  const editionPricing = Object.fromEntries(editions.map((edition) => [edition.code, { price: edition.price, currency }]));
+  const pricing = selectedEdition
+    ? editionPricing[selectedEdition.code]
+    : Number(details.basePrice) > 0
+      ? { price: Number(details.basePrice), currency }
+      : null;
+  const isComingSoon = Boolean(details.releaseDate && new Date(details.releaseDate).getTime() > Date.now());
+  const tabs: GameTabDef[] = [
+    { id: "overview", label: t("product.tabs.overview") },
+    { id: "reviews", label: t("product.tabs.reviews"), count: details.reviewsCount ?? 0 },
+    ...(hasSystemRequirements(details.systemRequirements) ? [{ id: "system-requirements" as const, label: t("product.tabs.sysreq") }] : []),
+  ];
+  const effectiveTab: GameTabId = tabs.some((tab) => tab.id === activeTab) ? activeTab : "overview";
+  const breadcrumbItems = [
+    { label: t("common.nav.home"), to: "/" },
+    { label: software ? t("common.nav.software") : t("product.gameKeys"), to: "/games" },
+    ...(context.parentGame
+      ? [{ label: context.parentGame.title, to: `/games/${context.parentGame.slug}` }]
+      : !software && details.genres?.[0]
+        ? [{ label: details.genres[0], to: `/games/category/${slugify(details.genres[0])}` }]
+        : []),
+    { label: details.title },
+  ];
+  const rating = {
+    summary: { average: details.ratingAvg ?? 0, totalReviews: details.reviewsCount ?? 0, label: ratingLabelFor(details.ratingAvg ?? 0, details.reviewsCount ?? 0) },
+    isTopRated: details.isTopRated,
+  };
+
   const card = (
     <div className="game-details-page" onClickCapture={swallowLinks}>
       <div className="container game-details-container">
+        <Breadcrumbs items={breadcrumbItems} />
         {/* Каждый блок под своей границей ошибок: если карточка не собирается, панель называет
             виновника по имени, а соседние блоки продолжают показываться. */}
         <Block label="Hero (gallery, facts, tags)">
           <GameHero
             game={details}
             media={orderMedia(details)}
-            purchase={<PurchaseStub />}
+            software={software}
+            parentGame={context.parentGame}
+            rating={rating}
+            purchase={
+              <Block label="Purchase card">
+                {/* Настоящая карточка покупки, но без нажатий: из превью ничего не должно попадать в корзину. */}
+                <div className="game-preview__inert" aria-hidden="true">
+                  <PurchaseCard
+                    gameId={details.gameId}
+                    slug={details.slug}
+                    gameTitle={details.title}
+                    coverUrl={details.cover?.url}
+                    pricing={pricing}
+                    siteCurrency={currency}
+                    editions={editions}
+                    editionPricing={editionPricing}
+                    selectedEditionCode={selectedEdition?.code ?? ""}
+                    onSelectEdition={() => undefined}
+                    availability={context.keys === null ? undefined : { status: context.keys > 0 ? "inStock" : "outOfStock" }}
+                    parentGame={context.parentGame}
+                    keyType={details.keyType}
+                    isComingSoon={isComingSoon}
+                    releaseDate={details.releaseDate}
+                    software={software}
+                    activation={details.activation}
+                  />
+                </div>
+              </Block>
+            }
             about={
               <Block label="Description">
                 <GameAbout
                   descriptionMarkdown={details.descriptionMarkdown}
                   features={details.keyFeatures ?? []}
                   awards={details.awards ?? []}
+                  noun={context.parentGame ? "dlc" : kindLabels(software).noun}
                 />
               </Block>
             }
           />
         </Block>
-        <Block label="Overview tab (languages, details, DLC, studios)">
-          <OverviewTab game={details} dlc={[]} />
-        </Block>
+        <div className="gd-tabs-anchor">
+          <GameTabs tabs={tabs} active={effectiveTab} onChange={setActiveTab} />
+          {effectiveTab === "overview" && (
+            <Block label="Overview tab (DLC, languages, details, studios)">
+              <OverviewTab game={details} dlc={context.dlc} software={software} />
+            </Block>
+          )}
+          {effectiveTab === "reviews" && (
+            <div className="card game-preview__note">Reviews come from buyers and are shown on the live page.</div>
+          )}
+          {effectiveTab === "system-requirements" && (
+            <Block label="System requirements">
+              <SystemRequirementsTab requirements={details.systemRequirements} />
+            </Block>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -221,16 +349,6 @@ const PreviewBody: React.FC<{ details: GameDetails }> = ({ details }) => {
   );
 };
 
-/**
- * Заглушка карточки покупки. Настоящая ходит в API за способами оплаты — в превью это лишний
- * запрос и лишняя точка отказа, а на раскладку она влияет только шириной колонки.
- */
-const PurchaseStub: React.FC = () => (
-  <div className="card game-preview__purchase">
-    <strong>Purchase card</strong>
-    <p>Price, stock and buttons are rendered on the live page.</p>
-  </div>
-);
 
 /**
  * Превью — вспомогательная панель, и падать вместе с ней редактор не должен: правки формы
@@ -292,9 +410,9 @@ const Block: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
   <PreviewBoundary label={label}>{children}</PreviewBoundary>
 );
 
-const GameCardPreview: React.FC<{ details: GameDetails }> = ({ details }) => (
+const GameCardPreview: React.FC<{ details: GameDetails; software?: boolean }> = ({ details, software = false }) => (
   <PreviewBoundary label="Preview">
-    <PreviewBody details={details} />
+    <PreviewBody details={details} software={software} />
   </PreviewBoundary>
 );
 

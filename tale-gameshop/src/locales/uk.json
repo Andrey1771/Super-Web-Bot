@@ -181,7 +181,13 @@
     "viewsCount_one": "{{count}} перегляд",
     "viewsCount_few": "{{count}} перегляди",
     "viewsCount_many": "{{count}} переглядів",
-    "viewsCount_other": "{{count}} переглядів"
+    "viewsCount_other": "{{count}} переглядів",
+    "dlcCount": "+{{count}} DLC",
+    "dlcCountTitle_one": "{{count}} доповнення до гри",
+    "dlcCountTitle_few": "{{count}} доповнення до гри",
+    "dlcCountTitle_many": "{{count}} доповнень до гри",
+    "dlcCountTitle_other": "{{count}} доповнень до гри",
+    "dlcTag": "DLC"
   },
   "header": {
     "brandHome": "Tale Shop — на головну",
@@ -534,7 +540,18 @@
       "gamesDesc": "Усі ключі PC-ігор у Tale Shop — дібрані ігри, безпечна оплата та миттєва видача.",
       "allDesc": "Ключі PC-ігор і справжні ліцензії програм у Tale Shop — безпечна оплата та миттєва видача."
     },
-    "productsPlural": "товари"
+    "productsPlural": "товари",
+    "pages": "Сторінки каталогу",
+    "pageWord": "Сторінка",
+    "ofPages": "з {{total}}",
+    "pageNumber": "Номер сторінки",
+    "dlc": "DLC",
+    "dlcHas": "Є DLC",
+    "dlcOnly": "Лише DLC",
+    "addons_one": "{{count}} доповнення",
+    "addons_few": "{{count}} доповнення",
+    "addons_many": "{{count}} доповнень",
+    "addons_other": "{{count}} доповнень"
   },
   "dealWeek": {
     "eyebrow": "Розклад тижня · Знижка тижня",
@@ -600,7 +617,8 @@
     "controller": "Геймпад",
     "about": {
       "game": "Про гру",
-      "software": "Про програму"
+      "software": "Про програму",
+      "dlc": "Про це доповнення"
     },
     "keyFeatures": "Особливості",
     "awards": "Нагороди та номінації",
@@ -632,7 +650,15 @@
     "supported": "Підтримуються",
     "recommendations": "Рекомендації",
     "moreLikeThis": "Схоже",
-    "allSoftware": "Усі програми"
+    "allSoftware": "Усі програми",
+    "dlcSelectAll": "Вибрати всі",
+    "dlcClearSelection": "Зняти вибір",
+    "dlcSelect": "Вибрати {{title}}",
+    "dlcOwned": "Уже є",
+    "dlcSelected": "Вибрано: {{count}}",
+    "dlcPickHint": "Позначте доповнення, щоб купити їх разом",
+    "dlcAddSelected": "Додати вибрані в кошик",
+    "dlcFor": "Доповнення до гри"
   },
   "sysreq": {
     "os": "ОС",
@@ -848,7 +874,9 @@
     "mute": "Вимкнути звук",
     "unmute": "Увімкнути звук",
     "volume": "Гучність",
-    "failed": "Не вдалося завантажити відео."
+    "failed": "Не вдалося завантажити відео.",
+    "quality": "Якість",
+    "qualityAuto": "Авто"
   },
   "cart": {
     "title": "Ваш кошик",
@@ -978,8 +1006,8 @@
   },
   "cashback": {
     "badge": "+{{amount}} кешбек",
-    "atTier": "· {{percent}}% на рівні {{tier}}",
-    "signInToEarn": "щоб отримувати",
+    "atTier": "{{percent}}% на рівні {{tier}}",
+    "signInToEarn": ", щоб отримати",
     "comesBack": "+{{amount}} повернеться з цього замовлення",
     "atYourLevel": "{{percent}}% на вашому рівні {{tier}} ·",
     "howItWorks": "Як працює кешбек",
@@ -997,7 +1025,8 @@
       "veteran": "Ветеран",
       "elite": "Еліта",
       "legend": "Легенда"
-    }
+    },
+    "signInAction": "Увійдіть"
   },
   "success": {
     "finalizing": "Завершуємо ваше замовлення...",

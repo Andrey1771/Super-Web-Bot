@@ -272,7 +272,12 @@ export interface DlcProduct {
   slug: string;
   title: string;
   coverUrl?: string;
+  releaseDate?: string;
   isComingSoon?: boolean;
+  /** Есть ли ключи на складе. Нет поля (старый ответ) — считаем, что есть. */
+  inStock?: boolean;
+  /** Посетитель уже купил это DLC — выбирать его в список покупки незачем. */
+  owned?: boolean;
   pricing: Pricing | null;
 }
 

@@ -323,64 +323,10 @@
     flex-wrap: wrap;
 }
 
-.orders-recommendations-arrows {
-    display: flex;
-    gap: 8px;
-}
-
-.orders-arrow-btn {
-    height: 36px;
-    width: 36px;
-    padding: 0;
-}
-
 .orders-recommendations-list {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-16);
-}
-
-.orders-recommendation-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-    padding: var(--space-16);
-}
-
-.orders-recommendation-media {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(59, 130, 246, 0.4));
-    overflow: hidden;
-}
-
-.orders-recommendation-media img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.orders-recommendation-fallback {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, rgba(167, 139, 250, 0.4), rgba(59, 130, 246, 0.4));
-}
-
-.orders-recommendation-body {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.orders-recommendation-price {
-    color: var(--color-muted);
-    font-size: 14px;
-}
-
-.orders-recommendation-btn {
-    height: 40px;
-    font-size: 14px;
 }
 
 .orders-recommendation-card.is-skeleton {

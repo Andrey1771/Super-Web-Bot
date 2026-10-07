@@ -5,7 +5,6 @@ import React, {
     useState
 } from "react";
 import "./tale-gameshop-main-page.css";
-import "../../font-awesome";
 import {
     FontAwesomeIcon
 } from "@fortawesome/react-fontawesome";

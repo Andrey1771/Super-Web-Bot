@@ -393,7 +393,7 @@ public sealed class AdminDashboardService
         var baseUri = _configuration["Keycloak:InternalUri"]
             ?? _configuration["Keycloak:Admin:BaseUrl"]
             ?? _configuration["Keycloak:Uri"]
-            ?? "http://localhost:8088";
+            ?? "http://localhost/auth";
         var realm = _configuration["Keycloak:Realm"] ?? "TaleShop";
         return $"{baseUri.TrimEnd('/')}/realms/{realm}/.well-known/openid-configuration";
     }
@@ -638,7 +638,10 @@ public sealed class AdminDashboardService
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(4));
+            // DeepSeek со своим ключом отвечает на список моделей за 1–5 секунд: при четырёх проверка
+            // через раз «падала», и каждые 5–10 минут уходило письмо «сломалось»/«починилось».
+            // Десять — как у соседней пробы вебхука; пробы идут параллельно, дашборд дольше не ждёт.
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
 
             using var client = _http.CreateClient("dashboard-probe");
             using var request = new HttpRequestMessage(HttpMethod.Get, url);

@@ -332,10 +332,29 @@ const AccountShell: React.FC<AccountShellProps> = ({
                         </div>
                         <div className="account-header-actions">
                             {/* Единое действие шапки: помощь (тикеты/FAQ). Редактирование профиля —
-                                в сайдбаре (Settings) и в карточке на Overview, без дублей. */}
+                                в сайдбаре (Settings) и в карточке на Overview, без дублей. Тихим значком без рамки:
+                                яркая кнопка, а потом круг с обводкой спорили с заголовком страницы, хотя это не главное её действие.
+                                Точка — поддержка ответила и ждёт ответа (тот же счётчик, что у «Help» в меню). */}
                             {actions ?? (
-                                <Link to="/account/help" className="btn btn-primary account-action-btn">
-                                    {t('account.nav.help')}
+                                <Link
+                                    to="/account/help"
+                                    className="account-help-link"
+                                    aria-label={counterValue('help') > 0 ? `${t('account.nav.help')}: ${t('account.replyNeeded')}` : t('account.nav.help')}
+                                    title={counterValue('help') > 0 ? t('account.replyNeeded') : t('account.nav.help')}
+                                >
+                                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                                        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                                        <path
+                                            d="M9.7 9.5a2.4 2.4 0 0 1 4.6.8c0 1.6-2.3 2.1-2.3 3.6"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="1.7"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                        <circle cx="12" cy="16.9" r="1.05" fill="currentColor" />
+                                    </svg>
+                                    {counterValue('help') > 0 && <span className="account-help-link__dot" aria-hidden="true" />}
                                 </Link>
                             )}
                         </div>

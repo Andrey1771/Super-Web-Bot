@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import GameSwitcher from "../../../pages/admin/GameSwitcher";
+import DlcManager from "../../../pages/admin/DlcManager";
 import { useNavigate } from "react-router-dom";
 import container from "../../../inversify.config";
 import type { IApiClient } from "../../../iterfaces/i-api-client";
@@ -6,7 +8,7 @@ import type { IUrlService } from "../../../iterfaces/i-url-service";
 import IDENTIFIERS from "../../../constants/identifiers";
 import { useDispatch, useSelector } from "react-redux";
 import { Form } from "../../../store";
-import { buildAdminCatalogParams } from "./admin-catalog-params";
+import { buildAdminCatalogParams, type AdminCatalogKind } from "./admin-catalog-params";
 import PageHeader, { GAMES_TABS } from "../../layout/PageHeader";
 import { useSitePreferences } from "../../../context/site-preferences";
 import { formatMoney } from "../../../utils/format-money";
@@ -54,6 +56,8 @@ type GameItem = {
   isComingSoon?: boolean;
   /** Для DLC — id базовой игры. */
   parentGameId?: string | null;
+  /** Для DLC — название базовой игры (подпись «DLC of …»). */
+  parentTitle?: string | null;
   /** Игра или ПО и категория раздела /software. */
   kind?: "Game" | "Software";
   softwareCategory?: string | null;
@@ -107,12 +111,14 @@ const CardAdderPage: React.FC = () => {
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
   const [search, setSearch] = useState("");
   // Вид товара в списке: тот же kind, что у каталога витрины (all | game | software).
-  const [kindFilter, setKindFilter] = useState<"all" | "game" | "software">("all");
+  const [kindFilter, setKindFilter] = useState<AdminCatalogKind>("all");
   // Публикация в списке: все, только опубликованные или только черновики.
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
   // Как создать товар: черновиком (по умолчанию) или сразу опубликованным. Черновик не виден в магазине, пока его
   // не опубликуют в редакторе карточки, — раньше новый товар попадал на витрину без описания, обложки и ключей.
   const [createAsDraft, setCreateAsDraft] = useState(true);
+  // Название выбранной базовой игры — для подписи «DLC of …»: её может не быть среди загруженных строк таблицы.
+  const [parentTitle, setParentTitle] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
   // Массовые операции. Выделение живёт по id и переживает подгрузку следующих страниц,
   // но сбрасывается при смене поиска: иначе легко применить скидку к тому, чего не видишь.
@@ -841,7 +847,7 @@ const CardAdderPage: React.FC = () => {
               <span>🔎</span>
               <input
                 type="text"
-                placeholder="Search games and software..."
+                placeholder={kindFilter === "dlc" ? "Search DLC by its name or the game's name..." : kindFilter === "software" ? "Search software..." : kindFilter === "game" ? "Search games..." : "Search games and software..."}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -855,6 +861,7 @@ const CardAdderPage: React.FC = () => {
               {([
                 ["all", "All"],
                 ["game", "Games"],
+                ["dlc", "DLC"],
                 ["software", "Software"],
               ] as const).map(([value, label]) => (
                 <button
@@ -1007,7 +1014,9 @@ const CardAdderPage: React.FC = () => {
                       {renderReleaseStatus(cell.data)}
                       {cell.data.parentGameId && (
                         <span className="admin-release-pills">
-                          <span className="admin-release-pill" title="DLC — sold from the base game page">DLC</span>
+                          <span className="admin-release-pill" title="DLC — sold from the base game page">
+                            {cell.data.parentTitle ? `DLC of ${cell.data.parentTitle}` : "DLC"}
+                          </span>
                         </span>
                       )}
                       {cell.data.isDraft && (
@@ -1271,17 +1280,37 @@ const CardAdderPage: React.FC = () => {
             <h3>DLC</h3>
             {/* DLC — отдельный товар с базовой игрой: в каталоге он не в общем списке, а в блоке
                 «DLC» базовой игры; на его странице — «требуется базовая игра». */}
-            <label className="text-sm font-semibold">DLC of (base game)</label>
-            <select name="parentGameId" value={form.parentGameId ?? ""} onChange={handleChange} className="w-full p-2 border rounded-sm">
-              <option value="">— not a DLC —</option>
-              {items
-                .filter((item) => item.id !== form.id && !item.parentGameId)
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title || item.name}
-                  </option>
-                ))}
-            </select>
+            <label className="text-sm font-semibold" htmlFor="game-switch">DLC of (base game)</label>
+            {/* Поиск по всему каталогу, а не по загруженным строкам таблицы: список подгружается страницами, и игры
+                дальше первых страниц в прежнем выпадающем списке просто не было. DLC и сами-DLC в выдачу не попадают. */}
+            {form.parentGameId ? (
+              <div className="dlc-manager__parent">
+                <span className="dlc-chip is-dlc">DLC</span>
+                <span>of {parentTitle || items.find((item) => item.id === form.parentGameId)?.title || "the selected game"}</span>
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  onClick={() => {
+                    setParentTitle("");
+                    dispatch({ type: "SET_GAME_TYPE_FORM", payload: { ...form, parentGameId: "" } });
+                  }}
+                >
+                  Not a DLC
+                </button>
+              </div>
+            ) : (
+              <GameSwitcher
+                currentTitle=""
+                placeholder="Not a DLC — search for the base game…"
+                params={{ kind: "game" }}
+                exclude={(hit) => hit.id === form.id || Boolean(hit.parentGameId)}
+                onPick={(id, title) => {
+                  setParentTitle(title);
+                  dispatch({ type: "SET_GAME_TYPE_FORM", payload: { ...form, parentGameId: id } });
+                }}
+              />
+            )}
+            <small className="text-gray-500">DLC of a game can also be added from the game's card editor (DLC section).</small>
           </Card>
           )}
 
@@ -1426,6 +1455,18 @@ const CardAdderPage: React.FC = () => {
                 ? <p><strong>Category:</strong> {categoryTitle(selectedGame.softwareCategory) || "—"}</p>
                 : <p><strong>Genre:</strong> {selectedGame.category || "—"}</p>}
             </Card>
+            {/* DLC — отдельные товары со ссылкой на эту игру: здесь видно, какие у неё есть, и здесь их добавляют.
+                У самого DLC вместо списка — его игра. */}
+            {selectedGame.kind !== "Software" && (
+              <Card>
+                <h3>DLC</h3>
+                <DlcManager
+                  gameId={selectedGame.id}
+                  gameTitle={selectedGame.title || selectedGame.name || ""}
+                  onChanged={reloadList}
+                />
+              </Card>
+            )}
             <Card>
               <h3>Date</h3>
               <p>{selectedGame.releaseDate?.split("T")[0] ?? "—"}</p>

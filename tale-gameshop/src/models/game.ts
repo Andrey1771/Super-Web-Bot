@@ -37,6 +37,8 @@ export interface Game {
         allowed?: boolean | null;
     } | null;
     isDlc?: boolean;
+    /** Сколько DLC у игры в магазине: пометка «+N DLC» на плитке. */
+    dlcCount?: number;
     genres?: string[];
     /** Ярлыки платформ («PC», «PlayStation», «Xbox», …) — сервер отдаёт минимум ["PC"]. */
     platforms?: string[];

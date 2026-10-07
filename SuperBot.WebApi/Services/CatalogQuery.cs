@@ -45,12 +45,20 @@ public sealed record CatalogQueryOptions(
     /// <summary>Число устройств: «1», «3», «10+» (<see cref="SuperBot.Core.Entities.SoftwareCatalog.DevicesKey"/>).</summary>
     IReadOnlyList<string>? Devices = null,
     /// <summary>Где активируется: имена <see cref="SuperBot.Core.Entities.SoftwareActivationTarget"/>.</summary>
-    IReadOnlyList<string>? Activation = null);
+    IReadOnlyList<string>? Activation = null,
+    /// <summary>
+    /// Фильтр «DLC»: <see cref="CatalogQuery.DlcHas"/> — игры, у которых есть дополнения; <see cref="CatalogQuery.DlcOnly"/> —
+    /// сами дополнения. null — как обычно: DLC в общем списке нет (или есть, если <see cref="IncludeDlc"/>).
+    /// </summary>
+    string? Dlc = null);
 
 /// <summary>Вариант фильтра и число результатов, которое он даст.</summary>
 public sealed record FacetCount(string Value, int Count);
 
 public sealed record AvailabilityFacets(int InStock, int OnSale, int ComingSoon);
+
+/// <summary>Счётчики фильтра «DLC»: игр с дополнениями и самих дополнений — при остальных выбранных фильтрах.</summary>
+public sealed record DlcFacets(int HasDlc, int DlcOnly);
 
 /// <summary>Столбик гистограммы цен: сколько игр стоит от <paramref name="From"/> до <paramref name="To"/>.</summary>
 public sealed record PriceBucket(decimal From, decimal To, int Count);
@@ -69,7 +77,8 @@ public sealed record CatalogFacets(
     /// <summary>Фильтры ПО. У игр пустые: у них нет лицензий, категорий раздела и места активации.</summary>
     SoftwareFacets Software,
     /// <summary>Сколько совпадений по поиску у каждого вида — чтобы Enter в общем поиске вёл туда, где их больше.</summary>
-    IReadOnlyList<FacetCount> Kinds);
+    IReadOnlyList<FacetCount> Kinds,
+    DlcFacets? Dlc = null);
 
 public sealed record SoftwareFacets(
     IReadOnlyList<FacetCount> Categories,
@@ -260,11 +269,11 @@ public static class CatalogQuery
             ["inStock"] = item => !options.InStockOnly || item.InStock,
             ["comingSoon"] = item => !options.ComingSoonOnly || item.IsComingSoon,
             ["studio"] = item => string.IsNullOrWhiteSpace(options.Studio)
-                || string.Equals(item.Developer, options.Studio, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(item.Publisher, options.Studio, StringComparison.OrdinalIgnoreCase),
+                || IsStudio(item.Developer, options.Studio)
+                || IsStudio(item.Publisher, options.Studio),
             ["tag"] = item => string.IsNullOrWhiteSpace(options.Tag)
                 || (item.Tags?.Any(tag => string.Equals(tag, options.Tag, StringComparison.OrdinalIgnoreCase)) ?? false),
-            ["dlc"] = item => options.IncludeDlc || item.ParentGameId is null,
+            ["dlc"] = DlcPredicate(options),
             ["softwareCategory"] = item => string.IsNullOrWhiteSpace(options.SoftwareCategory)
                 || string.Equals(item.SoftwareCategory, options.SoftwareCategory, StringComparison.OrdinalIgnoreCase),
             // Срок и устройства проверяются на ОДНОЙ лицензии: «1 year» у одной и «3 devices» у другой — не совпадение.
@@ -272,6 +281,22 @@ public static class CatalogQuery
             ["activation"] = item => activation is null
                 || (item.Activation is { } target && activation.Contains(target.ToString()))
         };
+    }
+
+    /// <summary>
+    /// Студия в карточке может быть списком через запятую — так их отдаёт Steam:
+    /// «Firaxis Games, Feral Interactive (Mac)». Фильтр «ещё игры студии» находит игру по любой
+    /// из них целиком, но не по части названия («Firaxis» — нет).
+    /// </summary>
+    public static bool IsStudio(string? field, string studio)
+    {
+        if (string.IsNullOrWhiteSpace(field))
+        {
+            return false;
+        }
+        var wanted = studio.Trim();
+        return string.Equals(field.Trim(), wanted, StringComparison.OrdinalIgnoreCase)
+            || field.Split(',').Any(part => string.Equals(part.Trim(), wanted, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Скидка, которую покупатель действительно видит на карточке.</summary>
@@ -373,6 +398,16 @@ public static class CatalogQuery
 
     // ---------- счётчики ----------
 
+    public const string DlcHas = "has";
+    public const string DlcOnly = "only";
+
+    private static Func<CatalogItem, bool> DlcPredicate(CatalogQueryOptions options) => options.Dlc switch
+    {
+        DlcHas => item => item.ParentGameId is null && item.DlcCount > 0,
+        DlcOnly => item => item.ParentGameId is not null,
+        _ => item => options.IncludeDlc || item.ParentGameId is null,
+    };
+
     private static CatalogFacets BuildFacets(
         IReadOnlyList<CatalogItem> catalog,
         PredicateMasks masks,
@@ -430,7 +465,10 @@ public static class CatalogQuery
             BuildPriceHistogram(pricedItems, priceRange),
             presets,
             BuildSoftwareFacets(catalog, CountExcept, options),
-            kinds);
+            kinds,
+            new DlcFacets(
+                CountExcept("dlc", item => item.ParentGameId is null && item.DlcCount > 0),
+                CountExcept("dlc", item => item.ParentGameId is not null)));
     }
 
     private static SoftwareFacets BuildSoftwareFacets(

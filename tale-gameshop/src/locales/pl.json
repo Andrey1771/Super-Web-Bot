@@ -181,7 +181,13 @@
     "viewsCount_one": "{{count}} wyświetlenie",
     "viewsCount_few": "{{count}} wyświetlenia",
     "viewsCount_many": "{{count}} wyświetleń",
-    "viewsCount_other": "{{count}} wyświetleń"
+    "viewsCount_other": "{{count}} wyświetleń",
+    "dlcCount": "+{{count}} DLC",
+    "dlcCountTitle_one": "{{count}} dodatek do gry",
+    "dlcCountTitle_few": "{{count}} dodatki do gry",
+    "dlcCountTitle_many": "{{count}} dodatków do gry",
+    "dlcCountTitle_other": "{{count}} dodatków do gry",
+    "dlcTag": "DLC"
   },
   "header": {
     "brandHome": "Tale Shop — strona główna",
@@ -534,7 +540,18 @@
       "gamesDesc": "Wszystkie klucze do gier PC w Tale Shop — wyselekcjonowane tytuły, bezpieczna płatność i natychmiastowa dostawa.",
       "allDesc": "Klucze do gier PC i oryginalne licencje na programy w Tale Shop — bezpieczna płatność i natychmiastowa dostawa."
     },
-    "productsPlural": "produkty"
+    "productsPlural": "produkty",
+    "pages": "Strony katalogu",
+    "pageWord": "Strona",
+    "ofPages": "z {{total}}",
+    "pageNumber": "Numer strony",
+    "dlc": "DLC",
+    "dlcHas": "Ma DLC",
+    "dlcOnly": "Tylko DLC",
+    "addons_one": "{{count}} dodatek",
+    "addons_few": "{{count}} dodatki",
+    "addons_many": "{{count}} dodatków",
+    "addons_other": "{{count}} dodatków"
   },
   "dealWeek": {
     "eyebrow": "Rozkład tygodnia · Promocja tygodnia",
@@ -600,7 +617,8 @@
     "controller": "Kontroler",
     "about": {
       "game": "O grze",
-      "software": "O programie"
+      "software": "O programie",
+      "dlc": "O tym dodatku"
     },
     "keyFeatures": "Najważniejsze cechy",
     "awards": "Nagrody i nominacje",
@@ -632,7 +650,15 @@
     "supported": "Obsługiwane",
     "recommendations": "Polecane",
     "moreLikeThis": "Podobne",
-    "allSoftware": "Wszystkie programy"
+    "allSoftware": "Wszystkie programy",
+    "dlcSelectAll": "Zaznacz wszystkie",
+    "dlcClearSelection": "Odznacz",
+    "dlcSelect": "Zaznacz {{title}}",
+    "dlcOwned": "Masz już",
+    "dlcSelected": "Zaznaczono: {{count}}",
+    "dlcPickHint": "Zaznacz dodatki, aby kupić je razem",
+    "dlcAddSelected": "Dodaj zaznaczone do koszyka",
+    "dlcFor": "Dodatek do gry"
   },
   "sysreq": {
     "os": "System",
@@ -848,7 +874,9 @@
     "mute": "Wycisz",
     "unmute": "Włącz dźwięk",
     "volume": "Głośność",
-    "failed": "Nie udało się wczytać wideo."
+    "failed": "Nie udało się wczytać wideo.",
+    "quality": "Jakość",
+    "qualityAuto": "Auto"
   },
   "cart": {
     "title": "Twój koszyk",
@@ -978,8 +1006,8 @@
   },
   "cashback": {
     "badge": "+{{amount}} cashback",
-    "atTier": "· {{percent}}% na poziomie {{tier}}",
-    "signInToEarn": "aby zbierać",
+    "atTier": "{{percent}}% na poziomie {{tier}}",
+    "signInToEarn": ", aby go otrzymać",
     "comesBack": "+{{amount}} wróci z tego zamówienia",
     "atYourLevel": "{{percent}}% na Twoim poziomie {{tier}} ·",
     "howItWorks": "Jak działa cashback",
@@ -997,7 +1025,8 @@
       "veteran": "Weteran",
       "elite": "Elita",
       "legend": "Legenda"
-    }
+    },
+    "signInAction": "Zaloguj się"
   },
   "success": {
     "finalizing": "Finalizujemy zamówienie...",

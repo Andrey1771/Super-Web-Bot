@@ -56,10 +56,12 @@
 /* Факты — горизонтальная лента под галереей, а не колонка. Переносятся по мере надобности,
    на широком экране укладываются в один-два ряда. Разделители рисуем границей у пары,
    а не отдельными элементами, чтобы перенос строки не оставлял висящую палочку. */
+/* Сетка, а не ряд с переносом: подписи второй строки встают под подписи первой,
+   а длинное значение («Firaxis Games, Feral Interactive (Mac)») переносится внутри своей колонки. */
 .gd-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+  gap: 14px 24px;
   margin: 0;
   padding: 14px 18px;
   font-size: 14px;
@@ -1012,11 +1014,12 @@
 
 /* Нативный скроллбар спрятан: вместо него под лентой свой скроллер (.thumbnail-scroller),
    и только когда миниатюры не влезают. Прокрутка колесом и пальцем работает как раньше. */
+/* Без scroll-behavior: smooth — иначе перетаскивание бегунка и колесо догоняют каждое движение
+   анимацией. Плавно листают только стрелки и переход к активному кадру (behavior: 'smooth' в коде). */
 .thumbnail-strip {
   display: flex;
   gap: var(--space-12);
   overflow-x: auto;
-  scroll-behavior: smooth;
   scrollbar-width: none;
 }
 
@@ -1139,8 +1142,14 @@
   background: var(--color-primary);
 }
 
-.thumbnail-track__thumb:active {
+.thumbnail-track__thumb:active,
+.thumbnail-track.is-dragging,
+.thumbnail-track.is-dragging .thumbnail-track__thumb {
   cursor: grabbing;
+}
+
+.thumbnail-track.is-dragging .thumbnail-track__thumb {
+  background: var(--color-primary);
 }
 
 .game-title {
@@ -1152,6 +1161,53 @@
 .game-tagline {
   font-size: 18px;
   color: #6d5f99;
+}
+
+/* «DLC · Дополнение к игре [обложка] 7 Days to Die» — под названием DLC. */
+.gd-dlc-of {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 15px;
+  color: var(--color-muted);
+}
+
+.gd-dlc-of__badge {
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gd-dlc-of__game {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.gd-dlc-of__game:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.gd-dlc-of__cover {
+  width: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex: none;
 }
 
 /* Рейтинг под названием — кнопка: ведёт на вкладку отзывов. Как у Epic: звёзды, оценка, число отзывов. */
@@ -1388,36 +1444,6 @@
   color: var(--color-muted);
   text-align: right;
 }
-.dlc-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-}
-
-.dlc-item {
-  display: grid;
-  grid-template-columns: 56px 1fr auto;
-  gap: var(--space-12);
-  align-items: center;
-}
-
-.dlc-item img {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-md);
-  object-fit: cover;
-}
-
-.dlc-title {
-  font-weight: 600;
-  margin: 0;
-}
-
-.dlc-price {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
 .studio-list {
   display: flex;
   flex-direction: column;
@@ -2464,9 +2490,15 @@
   object-fit: contain;
 }
 
+/* У .btn высота фиксированная — длинное название студии в две строки упиралось бы в рамку. */
 .studio-more {
   margin-top: var(--space-12);
   width: 100%;
+  height: auto;
+  min-height: 48px;
+  padding: 10px var(--space-16);
+  text-align: center;
+  line-height: 1.35;
 }
 
 .chip--tag {
@@ -2547,48 +2579,263 @@
   border-top: 0;
 }
 
-/* DLC как товары: обложка-ссылка, название-ссылка, цена, кнопка «Add». */
-.dlc-item {
+/* DLC списком с галочками (как «Content for this game» в Steam): галочка, обложка 16:9, название с датой,
+   цена. Вся строка — label: клик по ней ставит галочку, клик по названию ведёт на страницу DLC. */
+.dlc-checklist__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-8);
+}
+
+.dlc-checklist__head h2 {
+  margin: 0;
+}
+
+.dlc-checklist__count {
+  margin-left: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.dlc-checklist__select-all,
+.dlc-checklist__more {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dlc-checklist__select-all:hover,
+.dlc-checklist__more:hover {
+  text-decoration: underline;
+}
+
+.dlc-checklist__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dlc-checklist__list > li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.dlc-row {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 20px 128px minmax(0, 1fr) auto;
+  gap: var(--space-14);
   align-items: center;
+  padding: var(--space-12) var(--space-8);
+  margin-inline: calc(-1 * var(--space-8));
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.dlc-cover img,
-.dlc-item > img {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 8px;
+.dlc-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
-.dlc-body {
+.dlc-row.is-checked.is-selectable {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.dlc-row:not(.is-selectable) {
+  cursor: default;
+}
+
+.dlc-row:not(.is-selectable):hover {
+  background: none;
+}
+
+/* Настоящий чекбокс остаётся для клавиатуры и чтения с экрана, рисуем свой квадрат рядом. */
+.dlc-row__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dlc-row__box {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid color-mix(in srgb, var(--color-border) 60%, #94a3b8 40%);
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.dlc-row.is-checked .dlc-row__box {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.dlc-row.is-inCart .dlc-row__box {
+  background: color-mix(in srgb, var(--color-primary) 45%, #fff);
+  border-color: transparent;
+}
+
+.dlc-row:not(.is-selectable):not(.is-inCart) .dlc-row__box {
+  background: var(--color-bg);
+  border-style: dashed;
+}
+
+.dlc-row__input:focus-visible + .dlc-row__box {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.dlc-row__cover {
+  display: block;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.dlc-row__body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
-a.dlc-title {
-  color: inherit;
+.dlc-row__title {
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-text);
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
-a.dlc-title:hover {
+a.dlc-row__title:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.dlc-row__date {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.dlc-row__price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dlc-row__amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dlc-row__amount.is-muted {
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.dlc-row__old {
+  margin-right: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.dlc-row__sale {
+  background: #fff0e6;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.dlc-row__note {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.dlc-row__note.is-inCart,
+.dlc-row__note.is-owned {
   color: var(--color-primary);
 }
 
-.dlc-old {
-  margin-left: 6px;
-  color: var(--color-muted);
-  text-decoration: line-through;
-  font-weight: 400;
+/* Купленное и недоступное приглушено целиком, кроме подписи-причины. */
+.dlc-row.is-owned .dlc-row__cover,
+.dlc-row.is-owned .dlc-row__body,
+.dlc-row.is-outOfStock .dlc-row__cover,
+.dlc-row.is-soon .dlc-row__cover,
+.dlc-row.is-noPrice .dlc-row__cover,
+.dlc-row.is-notSold .dlc-row__cover {
+  opacity: 0.55;
 }
 
-.dlc-price--soon,
-.dlc-price--na {
+.dlc-checklist__more {
+  margin-top: var(--space-8);
+}
+
+.dlc-checklist__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-top: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+}
+
+.dlc-checklist__sum {
+  font-size: 14px;
   color: var(--color-muted);
-  font-weight: 500;
+}
+
+.dlc-checklist__sum b {
+  font-size: 18px;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dlc-checklist__add {
+  height: 44px;
+}
+
+/* Телефон: обложка меньше, цена переезжает под название — четыре колонки в 360px не влезают. */
+@media (max-width: 640px) {
+  .dlc-row {
+    grid-template-columns: 20px 88px minmax(0, 1fr);
+    gap: var(--space-10);
+  }
+
+  .dlc-row__price {
+    grid-column: 3;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    text-align: left;
+  }
+
+  .dlc-checklist__add {
+    width: 100%;
+  }
 }
 
 .purchase-facts__dlc {

@@ -250,7 +250,9 @@ export default function AboutUs() {
                             магазина» было бы подменой — низкая оценка игре ничего не говорит о
                             том, как отработал магазин. Оценка магазина — отдельная история и
                             собирается опросом после доставки. */}
-                        <div className="about-rating-head flex items-start justify-between gap-4">
+                        {/* Пока точной оценки нет, бейдж — под текстом: рядом с длинным «Отзывов пока мало» он
+                            сжимался в узкий столбик из четырёх строк, и карточка выглядела развалившейся. */}
+                        <div className={`about-rating-head flex items-start justify-between gap-4${rating?.state === "ready" ? "" : " is-stacked"}`}>
                             <div>
                                 <p className="text-sm font-semibold text-slate-500 uppercase tracking-[0.12em]">{t("about.playerRatings")}</p>
 

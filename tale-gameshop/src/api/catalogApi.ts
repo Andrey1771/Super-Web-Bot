@@ -16,6 +16,8 @@ export type CatalogFacets = {
   categories: FacetCount[];
   platforms: FacetCount[];
   availability: { inStock: number; onSale: number; comingSoon: number };
+  /** Фильтр «DLC»: сколько игр с дополнениями и сколько самих дополнений при остальных фильтрах. */
+  dlc?: { has: number; only: number };
   /** Распределение цен по всему каталогу — строится БЕЗ учёта самого ценового фильтра. */
   priceHistogram: PriceBucket[];
   /** Диапазоны в один клик. Пустые сервер не присылает. */

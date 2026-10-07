@@ -24,17 +24,33 @@ import { formatMoney } from '../../../utils/format-money';
 
 type PaymentMethodInfo = { method: string; available: boolean };
 
+/**
+ * Ответы о способах оплаты по валютам: пять минут на вкладку. Карточка покупки пересоздаётся при каждой смене языка
+ * (LanguageScope) и при переходе к другой игре, а список способов оплаты от этого не меняется.
+ */
+const PAYMENT_METHODS_TTL_MS = 5 * 60 * 1000;
+const paymentMethodsCache = new Map<string, { at: number; promise: Promise<PaymentMethodInfo[]> }>();
+
+const loadPaymentMethods = (currency: string): Promise<PaymentMethodInfo[]> => {
+  const cached = paymentMethodsCache.get(currency);
+  if (cached && Date.now() - cached.at < PAYMENT_METHODS_TTL_MS) return cached.promise;
+  const api = container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
+  const promise = api
+    .get(`/api/storefront/payment-methods?currency=${encodeURIComponent(currency)}`)
+    .then(({ data }) => (Array.isArray(data?.methods) ? (data.methods as PaymentMethodInfo[]) : []));
+  paymentMethodsCache.set(currency, { at: Date.now(), promise });
+  promise.catch(() => paymentMethodsCache.delete(currency));
+  return promise;
+};
+
 /** Способы оплаты, включённые для этой валюты, — тот же ответ, что читает чекаут. */
 const usePaymentMethods = (currency: string) => {
   const [methods, setMethods] = useState<PaymentMethodInfo[]>([]);
   useEffect(() => {
     let cancelled = false;
-    const api = container.get<IApiClient>(IDENTIFIERS.IApiClient).api;
-    api
-      .get(`/api/storefront/payment-methods?currency=${encodeURIComponent(currency)}`)
-      .then(({ data }) => {
+    loadPaymentMethods(currency)
+      .then((list) => {
         if (cancelled) return;
-        const list: PaymentMethodInfo[] = Array.isArray(data?.methods) ? data.methods : [];
         setMethods(list.filter((item) => item.available));
       })
       .catch(() => {

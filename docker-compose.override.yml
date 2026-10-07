@@ -1,0 +1,118 @@
+# Стенд разработчика. `docker compose up -d` подхватывает этот файл сам, поверх docker-compose.yml.
+# Здесь всё, чего не должно быть в продакшене: сборка образов из исходников, реплика Mongo из трёх
+# узлов без паролей, ловушка писем Mailpit, демо-сид и порты для отладки (только на 127.0.0.1).
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  backend:
+    # Локальное имя образа: стенд собирает его сам и не тянет из ghcr.io.
+    image: super-web-bot-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    # Снаружи API доступен через nginx; прямой порт — только для этой машины (отладка, дев-фронт).
+    ports:
+      - "127.0.0.1:7002:7002"
+    depends_on:
+      - mongo2
+      - mongo3
+
+  bot:
+    image: super-web-bot-bot
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    depends_on:
+      - mongo2
+      - mongo3
+
+  nginx:
+    image: super-web-bot-nginx
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    ports:
+      - "80:80"
+
+  # База без аутентификации: наружу её не публикуем, порт — только для этой машины.
+  mongo1:
+    ports:
+      - "127.0.0.1:27017:27017"
+
+  mongo2:
+    image: mongo:8.2
+    restart: always
+    logging: *logging
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb_data2:/data/db
+    networks:
+      - app_network
+
+  mongo3:
+    image: mongo:8.2
+    restart: always
+    logging: *logging
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb_data3:/data/db
+    networks:
+      - app_network
+
+  # Собирает реплику rs0 из трёх узлов. На уже собранной реплике rs.initiate просто вернёт
+  # ошибку «already initialized», и контейнер завершится.
+  mongo-init:
+    image: mongo:8.2
+    logging: *logging
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - app_network
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      mongosh --host mongo1:27017 --eval 'rs.initiate({_id: \"rs0\", members: [{ _id: 0, host: \"mongo1:27017\" }, { _id: 1, host: \"mongo2:27017\" }, { _id: 2, host: \"mongo3:27017\" }]})';
+      exit 0;
+      "
+
+  # Демо-сид стенда: наполняет базу и uploads-том правдоподобными данными.
+  # В обычный `up` не входит — запускается вручную:
+  #   docker compose --profile demo run --rm -e ALLOW_DEMO_SEED=1 demo-seeder
+  # Флаг ALLOW_DEMO_SEED сюда намеренно не прописан: без него сиды откажутся работать.
+  # Подробности и принципы — в seeds/README.md.
+  demo-seeder:
+    image: mongo:8.2
+    profiles:
+      - demo
+    depends_on:
+      - mongo3
+    volumes:
+      - ./seeds:/seeds:ro
+      - uploads_data:/seed-uploads
+    networks:
+      - app_network
+    entrypoint: ["bash", "/seeds/run-all.sh"]
+
+  # Ловушка писем: сайт и Keycloak отправляют сюда всё (заказы, 2FA, подтверждение, сброс пароля).
+  # Веб-интерфейс с письмами — http://localhost:8025. Настоящая почта — SMTP_* в .env сервера.
+  # Mailpit вместо заброшенного MailHog: те же порты (SMTP 1025, веб 8025), но живой проект.
+  mailpit:
+    image: axllent/mailpit:v1.31.3
+    restart: always
+    logging: *logging
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+    networks:
+      - app_network
+
+volumes:
+  mongodb_data2:
+  mongodb_data3:

@@ -379,6 +379,7 @@ namespace SuperBot.Tests
 
         private sealed class FakeGameDetailsRepository : IGameDetailsRepository
         {
+            public Task DeleteByGameIdAsync(string gameId) => Task.CompletedTask;
             private readonly List<GameDetails> _details;
             public FakeGameDetailsRepository(IEnumerable<GameDetails> details) => _details = details.ToList();
             public Task<GameDetails> GetByGameIdAsync(string gameId) => Task.FromResult(_details.FirstOrDefault(d => d.GameId == gameId)!);

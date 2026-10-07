@@ -464,11 +464,28 @@
     display: inline-flex;
     align-items: center;
     gap: 12px;
+    /* Рядом с оценкой бейдж не сжимается в столбик: держит ширину, достаточную для двух-трёх строк. */
+    flex: 0 0 auto;
+    max-width: 240px;
     padding: 12px 14px;
     border-radius: var(--radius-md);
     background: #f4f1ff;
     border: 1px solid #e5ddff;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* Нет точной оценки (мало отзывов или ни одного): текст длинный, бейдж — под ним во всю ширину. */
+.about-rating-head.is-stacked {
+    flex-direction: column;
+}
+
+.about-rating-head.is-stacked .about-score-badge {
+    width: 100%;
+    max-width: none;
+}
+
+.about-rating-head.is-stacked .about-score-value {
+    text-wrap: balance;
 }
 
 .about-verification-banner {

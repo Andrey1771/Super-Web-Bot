@@ -181,7 +181,13 @@
     "viewsCount_one": "{{count}} просмотр",
     "viewsCount_few": "{{count}} просмотра",
     "viewsCount_many": "{{count}} просмотров",
-    "viewsCount_other": "{{count}} просмотров"
+    "viewsCount_other": "{{count}} просмотров",
+    "dlcCount": "+{{count}} DLC",
+    "dlcCountTitle_one": "{{count}} дополнение к игре",
+    "dlcCountTitle_few": "{{count}} дополнения к игре",
+    "dlcCountTitle_many": "{{count}} дополнений к игре",
+    "dlcCountTitle_other": "{{count}} дополнений к игре",
+    "dlcTag": "DLC"
   },
   "header": {
     "brandHome": "Tale Shop — на главную",
@@ -534,7 +540,18 @@
       "gamesDesc": "Все ключи PC-игр в Tale Shop — отобранные игры, безопасная оплата и мгновенная выдача.",
       "allDesc": "Ключи PC-игр и подлинные лицензии программ в Tale Shop — безопасная оплата и мгновенная выдача."
     },
-    "productsPlural": "товары"
+    "productsPlural": "товары",
+    "pages": "Страницы каталога",
+    "pageWord": "Страница",
+    "ofPages": "из {{total}}",
+    "pageNumber": "Номер страницы",
+    "dlc": "DLC",
+    "dlcHas": "Есть DLC",
+    "dlcOnly": "Только DLC",
+    "addons_one": "{{count}} дополнение",
+    "addons_few": "{{count}} дополнения",
+    "addons_many": "{{count}} дополнений",
+    "addons_other": "{{count}} дополнений"
   },
   "dealWeek": {
     "eyebrow": "Расклад недели · Скидка недели",
@@ -600,7 +617,8 @@
     "controller": "Геймпад",
     "about": {
       "game": "Об игре",
-      "software": "О программе"
+      "software": "О программе",
+      "dlc": "Об этом дополнении"
     },
     "keyFeatures": "Особенности",
     "awards": "Награды и номинации",
@@ -632,7 +650,15 @@
     "supported": "Поддерживаются",
     "recommendations": "Рекомендации",
     "moreLikeThis": "Похожее",
-    "allSoftware": "Все программы"
+    "allSoftware": "Все программы",
+    "dlcSelectAll": "Выбрать все",
+    "dlcClearSelection": "Снять выбор",
+    "dlcSelect": "Выбрать {{title}}",
+    "dlcOwned": "Уже есть",
+    "dlcSelected": "Выбрано: {{count}}",
+    "dlcPickHint": "Отметьте дополнения, чтобы купить их разом",
+    "dlcAddSelected": "Добавить выбранные в корзину",
+    "dlcFor": "Дополнение к игре"
   },
   "sysreq": {
     "os": "ОС",
@@ -848,7 +874,9 @@
     "mute": "Выключить звук",
     "unmute": "Включить звук",
     "volume": "Громкость",
-    "failed": "Не удалось загрузить видео."
+    "failed": "Не удалось загрузить видео.",
+    "quality": "Качество",
+    "qualityAuto": "Авто"
   },
   "cart": {
     "title": "Ваша корзина",
@@ -978,8 +1006,8 @@
   },
   "cashback": {
     "badge": "+{{amount}} кэшбэк",
-    "atTier": "· {{percent}}% на уровне {{tier}}",
-    "signInToEarn": "чтобы получать",
+    "atTier": "{{percent}}% на уровне {{tier}}",
+    "signInToEarn": ", чтобы получить",
     "comesBack": "+{{amount}} вернётся с этого заказа",
     "atYourLevel": "{{percent}}% на вашем уровне {{tier}} ·",
     "howItWorks": "Как работает кэшбэк",
@@ -997,7 +1025,8 @@
       "veteran": "Ветеран",
       "elite": "Элита",
       "legend": "Легенда"
-    }
+    },
+    "signInAction": "Войдите"
   },
   "success": {
     "finalizing": "Завершаем ваш заказ...",

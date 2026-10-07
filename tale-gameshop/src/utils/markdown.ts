@@ -15,6 +15,15 @@ import { marked } from "marked";
  */
 export const sanitizeHtml = (html: string): string => DOMPurify.sanitize(html ?? "");
 
+// Картинки в описаниях игр и статьях почти всегда ниже первого экрана: грузятся по мере прокрутки
+// и не отнимают канал у главного кадра (у некоторых игр Steam это мегабайты анимаций).
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName === "IMG") {
+    node.setAttribute("loading", "lazy");
+    node.setAttribute("decoding", "async");
+  }
+});
+
 export const renderMarkdown = (markdown: string): string => {
   // marked.parse объявлен как string | Promise<string> — асинхронным он становится только
   // при async-расширениях, которых здесь нет. Приводим явно, иначе DOMPurify получает

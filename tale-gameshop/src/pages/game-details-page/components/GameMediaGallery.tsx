@@ -3,11 +3,14 @@ import { useTranslation } from 'react-i18next';
 import type { MediaItem } from '../../../types/game-details';
 import SafeGameImage from '../../../components/common/SafeGameImage';
 import MediaLightbox from './MediaLightbox';
-import VideoPlayer from '../../../components/common/VideoPlayer';
+import VideoPlayer, { preloadHlsPlayer } from '../../../components/common/VideoPlayer';
 import { Chevron, FullscreenGlyph, PlayGlyph, TheaterGlyph } from '../../../components/common/MediaGlyphs';
 
-/** Положение окна ленты миниатюр в долях от всей её длины. overflow=false — влезли все, скроллер не нужен. */
-type StripState = { overflow: boolean; start: number; size: number };
+/**
+ * Что из положения ленты нужно React: есть ли прокрутка и упёрлась ли она в края (стрелки).
+ * Само положение бегунка в состояние не попадает — см. measureStrip.
+ */
+type StripFlags = { overflow: boolean; atStart: boolean; atEnd: boolean };
 
 /**
  * Галерея: одно большое окно + лента миниатюр. Порядок задаёт родитель (все видео первыми,
@@ -36,7 +39,11 @@ const GameMediaGallery = ({
   const isLightboxOpen = lightbox !== 'closed';
   const thumbnailRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const [strip, setStrip] = useState<StripState>({ overflow: false, start: 0, size: 1 });
+  const thumbRef = useRef<HTMLDivElement | null>(null);
+  /** Окно ленты в долях от всей её длины: где начинается и сколько занимает. */
+  const geometryRef = useRef({ start: 0, size: 1 });
+  const frameRef = useRef<number | null>(null);
+  const [strip, setStrip] = useState<StripFlags>({ overflow: false, atStart: true, atEnd: true });
 
   const selectedIndex = Math.max(
     0,
@@ -44,20 +51,58 @@ const GameMediaGallery = ({
   );
   const selectedMedia = media[selectedIndex] ?? media[0];
 
-  const updateStrip = useCallback(() => {
+  /**
+   * Положение бегунка — прямо в его style, без React: раньше каждое событие прокрутки
+   * (десятки в секунду) перерисовывало всю галерею с плеером и миниатюрами, и лента тормозила.
+   * В состояние уходят только флаги, которые меняются редко.
+   */
+  const measureStrip = useCallback(() => {
+    frameRef.current = null;
     const node = thumbnailRef.current;
     if (!node) return;
     const { scrollLeft, clientWidth, scrollWidth } = node;
     const overflow = scrollWidth > clientWidth + 1;
-    setStrip({
-      overflow,
-      start: overflow ? scrollLeft / scrollWidth : 0,
-      size: overflow ? clientWidth / scrollWidth : 1
-    });
+    const start = overflow ? scrollLeft / scrollWidth : 0;
+    const size = overflow ? clientWidth / scrollWidth : 1;
+    geometryRef.current = { start, size };
+    const thumb = thumbRef.current;
+    if (thumb) {
+      thumb.style.left = `${start * 100}%`;
+      thumb.style.width = `${size * 100}%`;
+    }
+    const atStart = start <= 0.001;
+    const atEnd = start + size >= 0.999;
+    setStrip((previous) =>
+      previous.overflow === overflow && previous.atStart === atStart && previous.atEnd === atEnd
+        ? previous
+        : { overflow, atStart, atEnd }
+    );
   }, []);
 
+  /** Не чаще раза за кадр экрана: событий прокрутки бывает больше, чем кадров. */
+  const updateStrip = useCallback(() => {
+    if (frameRef.current === null) {
+      frameRef.current = window.requestAnimationFrame(measureStrip);
+    }
+  }, [measureStrip]);
+
+  // Трейлеры Steam — потоки HLS: плеер для них грузится отдельно. Прогреваем его, когда страница
+  // уже показана и браузер свободен, — тогда play сразу качает ролик, а картинки первого экрана
+  // не делят канал с библиотекой.
+  const hasStream = media.some((item) => item.type === 'video' && /\.m3u8(\?|#|$)/i.test(item.url ?? ''));
   useEffect(() => {
-    updateStrip();
+    if (!hasStream) return;
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (idle) {
+      const handle = idle(preloadHlsPlayer, { timeout: 4000 });
+      return () => (window as Window & { cancelIdleCallback?: (handle: number) => void }).cancelIdleCallback?.(handle);
+    }
+    const timer = window.setTimeout(preloadHlsPlayer, 2000);
+    return () => window.clearTimeout(timer);
+  }, [hasStream]);
+
+  useEffect(() => {
+    measureStrip();
     const node = thumbnailRef.current;
     if (!node) return;
     node.addEventListener('scroll', updateStrip);
@@ -69,8 +114,12 @@ const GameMediaGallery = ({
       node.removeEventListener('scroll', updateStrip);
       window.removeEventListener('resize', updateStrip);
       observer?.disconnect();
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
     };
-  }, [media.length, updateStrip]);
+  }, [media.length, measureStrip, updateStrip]);
 
   useEffect(() => {
     // Смена кадра останавливает видео и подтягивает активную миниатюру в окно ленты — только по
@@ -134,10 +183,15 @@ const GameMediaGallery = ({
     if (!target.classList.contains('thumbnail-track__thumb')) {
       const rect = track.getBoundingClientRect();
       const ratio = (event.clientX - rect.left) / Math.max(rect.width, 1);
-      scrollStrip(ratio < strip.start ? -1 : 1);
+      scrollStrip(ratio < geometryRef.current.start ? -1 : 1);
       return;
     }
+    // Бегунок идёт за курсором один к одному: лента прокручивается мгновенно (плавная прокрутка
+    // в CSS догоняла каждое движение мыши своей анимацией — бегунок «плыл» за рукой как на резинке),
+    // указатель захвачен — курсор, ушедший с полосы, не теряет бегунок и не выделяет текст страницы.
     event.preventDefault();
+    target.setPointerCapture?.(event.pointerId);
+    track.classList.add('is-dragging');
     const startX = event.clientX;
     const startScroll = node.scrollLeft;
     const scale = node.scrollWidth / Math.max(track.clientWidth, 1);
@@ -145,6 +199,7 @@ const GameMediaGallery = ({
       node.scrollLeft = startScroll + (moveEvent.clientX - startX) * scale;
     };
     const stop = () => {
+      track.classList.remove('is-dragging');
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
       window.removeEventListener('pointercancel', stop);
@@ -168,8 +223,7 @@ const GameMediaGallery = ({
     );
   }
 
-  const atStart = strip.start <= 0.001;
-  const atEnd = strip.start + strip.size >= 0.999;
+  const { atStart, atEnd } = strip;
 
   return (
     <div className="game-media-gallery" onKeyDown={handleKeyDown}>
@@ -184,6 +238,11 @@ const GameMediaGallery = ({
                 title={t('media.trailer', { title })}
                 autoPlay
                 onFullscreen={() => openLightbox('fullscreen')}
+                extraControls={
+                  <button type="button" className="vp__btn" aria-label={t('media.theater')} title={t('media.theater')} onClick={() => openLightbox('theater')}>
+                    <TheaterGlyph />
+                  </button>
+                }
               />
             ) : (
               <button
@@ -192,7 +251,13 @@ const GameMediaGallery = ({
                 onClick={() => setIsPlaying(true)}
                 aria-label={t('media.playTrailer')}
               >
-                <SafeGameImage src={selectedMedia.posterUrl ?? selectedMedia.thumbUrl} gameTitle={title} fallbackAlt={t('media.trailerPoster')} />
+                <SafeGameImage
+                  src={selectedMedia.posterUrl ?? selectedMedia.thumbUrl}
+                  gameTitle={title}
+                  fallbackAlt={t('media.trailerPoster')}
+                  fetchPriority="high"
+                  decoding="async"
+                />
                 <span className="video-play" aria-hidden="true">
                   <PlayGlyph size={28} />
                 </span>
@@ -203,18 +268,22 @@ const GameMediaGallery = ({
           <div className="game-media-image">
             {/* Картинка — кнопка: клик открывает её на весь экран. */}
             <button type="button" className="game-media-zoom" onClick={() => openLightbox()} aria-label={t('media.openFullscreen')}>
-              <SafeGameImage src={selectedMedia?.url} gameTitle={title} />
+              <SafeGameImage src={selectedMedia?.url} gameTitle={title} fetchPriority="high" decoding="async" />
             </button>
           </div>
         )}
-        <div className="game-media-tools">
-          <button type="button" className="game-media-tool" aria-label={t('media.theater')} title={t('media.theater')} onClick={() => openLightbox('theater')}>
-            <TheaterGlyph />
-          </button>
-          <button type="button" className="game-media-tool" aria-label={t('media.openFullscreenTool')} title={t('media.fullscreen')} onClick={() => openLightbox('fullscreen')}>
-            <FullscreenGlyph />
-          </button>
-        </div>
+        {/* Пока ролик играет, кинотеатр и полный экран — в панели самого плеера: кнопки поверх кадра
+            легли бы на его панель (качество, полный экран) и перехватывали бы клики. */}
+        {!(selectedMedia?.type === 'video' && isPlaying) && (
+          <div className="game-media-tools">
+            <button type="button" className="game-media-tool" aria-label={t('media.theater')} title={t('media.theater')} onClick={() => openLightbox('theater')}>
+              <TheaterGlyph />
+            </button>
+            <button type="button" className="game-media-tool" aria-label={t('media.openFullscreenTool')} title={t('media.fullscreen')} onClick={() => openLightbox('fullscreen')}>
+              <FullscreenGlyph />
+            </button>
+          </div>
+        )}
         {media.length > 1 && (
           <>
             <button
@@ -247,7 +316,7 @@ const GameMediaGallery = ({
               aria-pressed={selectedId === item.id}
               onClick={() => setSelectedId(item.id)}
             >
-              <SafeGameImage src={item.thumbUrl} gameTitle={title} fallbackAlt={t('media.preview')} loading="lazy" />
+              <SafeGameImage src={item.thumbUrl} gameTitle={title} fallbackAlt={t('media.preview')} loading="lazy" fetchPriority="low" decoding="async" />
               {item.type === 'video' && (
                 // Только кнопка play, без длительности: в ленте она шумит, а в Steam её тоже нет.
                 <span className="thumbnail-video" aria-hidden="true">
@@ -272,8 +341,9 @@ const GameMediaGallery = ({
             </button>
             <div className="thumbnail-track" ref={trackRef} onPointerDown={handleTrackPointerDown} aria-hidden="true">
               <div
+                ref={thumbRef}
                 className="thumbnail-track__thumb"
-                style={{ left: `${strip.start * 100}%`, width: `${strip.size * 100}%` }}
+                style={{ left: `${geometryRef.current.start * 100}%`, width: `${geometryRef.current.size * 100}%` }}
               />
             </div>
             <button

@@ -290,6 +290,44 @@
     padding-inline: var(--space-16);
 }
 
+/* «Помощь» в шапке кабинета — только серый знак вопроса, без рамки и фона: светлый кружок-фон
+   появляется при наведении. Подпись — в подсказке. */
+.account-help-link {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    color: var(--color-muted);
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.account-help-link:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+}
+
+.account-help-link:active {
+    transform: scale(0.95);
+}
+
+.account-help-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+.account-help-link__dot {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 2px var(--color-surface);
+}
+
 @media (max-width: 1024px) {
     .account-layout {
         grid-template-columns: 1fr;

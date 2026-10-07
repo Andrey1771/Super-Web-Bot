@@ -14,11 +14,31 @@ import type { IApiClient } from "../../iterfaces/i-api-client";
 const RESULT_LIMIT = 10;
 const DEBOUNCE_MS = 250;
 
-type Hit = { id: string; name?: string; title?: string; slug?: string };
+export type GameHit = { id: string; name?: string; title?: string; slug?: string; parentGameId?: string | null; dlcCount?: number; kind?: string };
+type Hit = GameHit;
 
-const GameSwitcher: React.FC<{ currentTitle: string; onPick: (id: string, title: string) => void }> = ({
+type GameSwitcherProps = {
+  currentTitle: string;
+  onPick: (id: string, title: string, hit: GameHit) => void;
+  /** Свои параметры запроса к каталогу поверх обычных (например, kind=game&includeDlc=true для выбора DLC). */
+  params?: Record<string, string>;
+  /** Что не показывать в выдаче (сама игра, уже привязанные DLC…). */
+  exclude?: (hit: GameHit) => boolean;
+  /** Подпись справа у найденного вместо адреса (например, «DLC of …»). */
+  describe?: (hit: GameHit) => string | null | undefined;
+  placeholder?: string;
+  /** id поля: на странице бывает два поиска (переключение игры и выбор DLC). */
+  inputId?: string;
+};
+
+const GameSwitcher: React.FC<GameSwitcherProps> = ({
   currentTitle,
   onPick,
+  params,
+  exclude,
+  describe,
+  placeholder,
+  inputId = "game-switch",
 }) => {
   const apiClient = useMemo(() => container.get<IApiClient>(IDENTIFIERS.IApiClient), []);
   const [query, setQuery] = useState("");
@@ -42,16 +62,19 @@ const GameSwitcher: React.FC<{ currentTitle: string; onPick: (id: string, title:
     // Десять записей стоят ровно столько же, сколько поисковая выдача, так что на
     // масштабируемости это не сказывается.
     // kind=all: по умолчанию каталог отдаёт только игры, а редактор правит и ПО. includeDrafts — черновики тоже правят.
-    const url = text
-      ? `/api/game/catalog?page=1&pageSize=${RESULT_LIMIT}&kind=all&includeDrafts=true&q=${encodeURIComponent(text)}`
-      : `/api/game/catalog?page=1&pageSize=${RESULT_LIMIT}&kind=all&includeDrafts=true&sort=name-asc`;
+    const search = new URLSearchParams({ page: "1", pageSize: String(RESULT_LIMIT), kind: "all", includeDrafts: "true" });
+    if (text) search.set("q", text);
+    else search.set("sort", "name-asc");
+    Object.entries(params ?? {}).forEach(([key, value]) => search.set(key, value));
+    const url = `/api/game/catalog?${search.toString()}`;
     // Задержка, чтобы не слать запрос на каждую букву. Для пустого ввода ждать нечего:
     // список открывается по щелчку и должен появиться сразу.
     const timer = window.setTimeout(async () => {
       try {
         const response = await apiClient.api.get(url);
         if (!cancelled) {
-          setHits(response.data?.items ?? []);
+          const items: Hit[] = response.data?.items ?? [];
+          setHits(exclude ? items.filter((hit) => !exclude(hit)) : items);
           setTotal(response.data?.total ?? 0);
         }
       } catch {
@@ -69,7 +92,9 @@ const GameSwitcher: React.FC<{ currentTitle: string; onPick: (id: string, title:
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [apiClient, query, open]);
+    // params и exclude приходят новыми объектами на каждый рендер — зависимость по их содержимому.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiClient, query, open, JSON.stringify(params ?? {})]);
 
   // Клик мимо закрывает выдачу — иначе она перекрывает поля формы под собой.
   useEffect(() => {
@@ -88,17 +113,17 @@ const GameSwitcher: React.FC<{ currentTitle: string; onPick: (id: string, title:
   const pick = (hit: Hit) => {
     setOpen(false);
     setQuery("");
-    onPick(hit.id, hit.title || hit.name || "");
+    onPick(hit.id, hit.title || hit.name || "", hit);
   };
 
   return (
     <div className="game-switch" ref={boxRef}>
       <input
-        id="game-switch"
+        id={inputId}
         className="input"
         type="search"
         value={query}
-        placeholder={currentTitle || "Search games…"}
+        placeholder={currentTitle || placeholder || "Search games…"}
         onChange={(event) => {
           setQuery(event.target.value);
           setOpen(true);
@@ -138,7 +163,7 @@ const GameSwitcher: React.FC<{ currentTitle: string; onPick: (id: string, title:
             <li key={hit.id}>
               <button type="button" className="game-switch__hit" onClick={() => pick(hit)}>
                 <span>{hit.title || hit.name}</span>
-                {hit.slug && <span className="game-switch__slug">{hit.slug}</span>}
+                {(describe ? describe(hit) : hit.slug) && <span className="game-switch__slug">{describe ? describe(hit) : hit.slug}</span>}
               </button>
             </li>
           ))}

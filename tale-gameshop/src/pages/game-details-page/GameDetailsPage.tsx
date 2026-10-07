@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { isSoftware, productHref, softwareCatalogPath } from '../../utils/software';
 import { kindLabels } from '../../utils/product-kind-labels';
 import { useSoftwareCategories } from '../../hooks/use-software-categories';
@@ -31,6 +31,12 @@ import { useKeycloak } from '@react-keycloak/web';
 
 const TAB_IDS: GameTabId[] = ['overview', 'reviews', 'system-requirements'];
 
+
+/**
+ * Заходы на страницы игр, просмотр которых уже засчитан: «игра@запись истории». Вне компонента — смена языка
+ * пересоздаёт страницу (LanguageScope), и состояние компонента этого не переживает.
+ */
+export const trackedGameVisits = new Set<string>();
 const GameDetailsPage: React.FC = () => {
   const { t } = useTranslation();
   // Страна — в заголовке каждого запроса; при её смене карточку перечитываем: регион активации зависит от неё.
@@ -123,10 +129,18 @@ const GameDetailsPage: React.FC = () => {
     };
   }, [gameDetailsService, slug, reloadKey, siteCurrency, buyerCountry, isAuthenticated]);
 
+  // Заход на страницу — запись истории браузера: при смене языка LanguageScope пересоздаёт страницу, но запись та же,
+  // а новый переход (в том числе назад-вперёд) — другая. Раньше каждое переключение языка считалось новым просмотром.
+  const { key: visitKey } = useLocation();
   useEffect(() => {
     if (!data?.game?.gameId) {
       return;
     }
+    const visit = `${data.game.gameId}@${visitKey}`;
+    if (trackedGameVisits.has(visit)) {
+      return;
+    }
+    trackedGameVisits.add(visit);
     gameDetailsService.trackGameView({ gameId: data.game.gameId, anonId: getAnonId() });
     // view_item для GA — начало воронки до add_to_cart (карточка покупки) и begin_checkout (чекаут).
     if (data.pricing) {
@@ -137,7 +151,7 @@ const GameDetailsPage: React.FC = () => {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.game?.gameId, gameDetailsService]);
+  }, [data?.game?.gameId, gameDetailsService, visitKey]);
 
   // Сброс вкладки при переходе на другую игру — иначе с «Reviews» одной игры попадаешь в «Reviews» другой.
   useEffect(() => {
@@ -257,7 +271,12 @@ const GameDetailsPage: React.FC = () => {
     : [
         { label: t('common.nav.home'), to: '/' },
         { label: t('product.gameKeys'), to: '/games' },
-        ...(game.genres?.[0] ? [{ label: data.genreLabels?.[0] ?? game.genres[0], to: `/games/category/${slugify(game.genres[0])}` }] : []),
+        // У DLC вместо жанра — его игра: «Игры › 7 Days to Die › Working Stiff Armor Set».
+        ...(data.parentGame
+          ? [{ label: data.parentGame.title, to: `/games/${data.parentGame.slug}` }]
+          : game.genres?.[0]
+            ? [{ label: data.genreLabels?.[0] ?? game.genres[0], to: `/games/category/${slugify(game.genres[0])}` }]
+            : []),
         { label: game.title }
       ];
   const breadcrumbStructuredData = {
@@ -289,6 +308,7 @@ const GameDetailsPage: React.FC = () => {
           software={software}
           genreLabels={data.genreLabels}
           tagLabels={data.tagLabels}
+          parentGame={data.parentGame}
           rating={{ summary: ratingSummary, isTopRated: game.isTopRated, onClick: openReviews }}
           onMediaPlay={(item) => {
             gameDetailsService.trackMediaPlay({ gameId: game.gameId, mediaId: item.id, mediaType: item.type, anonId: getAnonId() });
@@ -322,7 +342,7 @@ const GameDetailsPage: React.FC = () => {
               descriptionMarkdown={game.descriptionMarkdown}
               features={game.keyFeatures ?? []}
               awards={game.awards ?? []}
-              noun={kindLabels(software).noun}
+              noun={data.parentGame ? 'dlc' : kindLabels(software).noun}
             />
           }
         />

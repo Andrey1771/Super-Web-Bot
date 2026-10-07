@@ -1,0 +1,7 @@
+#!/bin/sh
+# Выбрать актуальный сертификат и перезагрузить nginx без разрыва соединений.
+set -eu
+taleshop-pick-cert
+nginx -t -q
+nginx -s reload
+echo "taleshop: nginx перечитал конфигурацию"

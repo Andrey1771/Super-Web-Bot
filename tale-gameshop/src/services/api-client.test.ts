@@ -27,7 +27,8 @@ jest.mock('../inversify.config', () => ({
 
 jest.mock('../context/site-preferences', () => ({ currentCountry: () => 'US', currentLang: () => 'pl' }));
 
-import { ApiClient } from './api-client';
+import type { AxiosError } from 'axios';
+import { ApiClient, EDGE_RETRY_LIMIT, edgeRetryDelayMs } from './api-client';
 
 type Handler = { fulfilled: (config: { headers?: Record<string, string> }) => Promise<{ headers: Record<string, string> }> };
 const requestHandler = (client: ApiClient): Handler =>
@@ -82,4 +83,27 @@ it('does not touch Keycloak for a guest', async () => {
   const config = await requestHandler(client).fulfilled({ headers: {} });
   expect(mockKeycloak.updateToken).not.toHaveBeenCalled();
   expect(config.headers.Authorization).toBeUndefined();
+});
+
+describe('retry after the nginx rate limit', () => {
+  const error = (status: number, data: unknown, retries = 0, retryAfter?: string) => ({
+    config: { __edgeRetries: retries },
+    response: { status, data, headers: retryAfter ? { 'retry-after': retryAfter } : {} },
+  }) as unknown as AxiosError;
+
+  it('waits and repeats a request that nginx turned away', () => {
+    const delay = edgeRetryDelayMs(error(429, { code: 'RATE_LIMITED', edge: true }, 0, '1'));
+    expect(delay).toBeGreaterThanOrEqual(1000);
+    expect(delay).toBeLessThanOrEqual(1500);
+  });
+
+  it('does not repeat refusals of the backend itself', () => {
+    // «Повторная отправка ключей раз в 10 минут» — 429 бэкенда без пометки edge: повтор ничего не даст.
+    expect(edgeRetryDelayMs(error(429, { code: 'order.resendCooldown' }))).toBeNull();
+    expect(edgeRetryDelayMs(error(500, { edge: true }))).toBeNull();
+  });
+
+  it('gives up after a couple of attempts', () => {
+    expect(edgeRetryDelayMs(error(429, { edge: true }, EDGE_RETRY_LIMIT))).toBeNull();
+  });
 });

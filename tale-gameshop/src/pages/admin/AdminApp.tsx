@@ -12,6 +12,7 @@ import OrdersPage from "./OrdersPage";
 import ProfilePage from "./ProfilePage";
 import SettingsPage from "./SettingsPage";
 import DataToolsPage from "./DataToolsPage";
+import SteamImportPage from "./SteamImportPage";
 import GameDetailsEditorPage from "./GameDetailsEditorPage";
 import AdminGameKeysPage from "./AdminGameKeysPage";
 import BlogPostsPage from "./blog/BlogPostsPage";
@@ -90,6 +91,7 @@ export default function AdminApp() {
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="data-tools" element={<DataToolsPage />} />
+                <Route path="steam-import" element={<SteamImportPage />} />
                 {/* Игра — в адресе, как у постов блога. Карточку можно дать ссылкой, открыть
                     в новой вкладке и вернуться «назад». Старый games/details?gameId= остаётся
                     рабочим: на него ведут закладки и ссылки из тостов. */}

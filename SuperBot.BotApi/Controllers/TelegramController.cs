@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,7 @@ namespace SuperBot.BotApi.Controllers
     public class TelegramController(IOptions<BotConfiguration> Config) : ControllerBase
     {
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Update update, [FromServices] TelegramUpdateHandler handleUpdateService, CancellationToken ct)
+        public async Task<IActionResult> Post([FromServices] TelegramUpdateHandler handleUpdateService, CancellationToken ct)
         {
             // Секрет из настройки вебхука: чужие POST-ы отбрасываем.
             var secretToken = Config.Value.SecretToken;
@@ -24,6 +25,22 @@ namespace SuperBot.BotApi.Controllers
                 Request.Headers["X-Telegram-Bot-Api-Secret-Token"] != secretToken)
             {
                 return Forbid();
+            }
+
+            // Тело — в формате Telegram (snake_case): разбираем его настройками самой библиотеки, а не
+            // общими настройками сервиса, которые остаются camelCase для ответов сайту.
+            Update? update;
+            try
+            {
+                update = await JsonSerializer.DeserializeAsync<Update>(Request.Body, JsonBotAPI.Options, ct);
+            }
+            catch (JsonException)
+            {
+                return BadRequest();
+            }
+            if (update is null)
+            {
+                return BadRequest();
             }
 
             try

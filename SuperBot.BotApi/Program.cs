@@ -76,8 +76,9 @@ builder.Services.AddHttpClient("tgwebhook").RemoveAllLoggers().AddTypedClient<IT
     httpClient => botTokenUsable
         ? new TelegramBotClient(botToken!, httpClient)
         : new SuperBot.BotApi.Services.UnconfiguredTelegramBotClient(botTokenProblem));
-// Типы Telegram (Update и т.п.) в теле вебхука разбираются настройками JSON самой библиотеки.
-builder.Services.ConfigureTelegramBot<Microsoft.AspNetCore.Mvc.JsonOptions>(options => options.JsonSerializerOptions);
+// Формат JSON самой библиотеки Telegram (snake_case) нужен только телу вебхука, и TelegramController
+// разбирает его сам. Раньше он стоял здесь на весь сервис — и ответы админки, привязки Telegram и
+// Mini App уходили как bot_ok / deep_link / invoice_link, а сайт ждёт botOk / deepLink / invoiceLink.
 
 builder.Services.AddSingleton<IResourceService, MongoResourceService>();
 builder.Services.AddSingleton<IUrlService, UrlProvider>();

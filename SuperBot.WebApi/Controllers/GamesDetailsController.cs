@@ -130,7 +130,9 @@ public class GamesDetailsController : ControllerBase
 
         var availability = await BuildAvailabilityAsync(linkedGame, isComingSoon);
         var editionAvailability = await BuildEditionAvailabilityAsync(details, linkedGame, isComingSoon);
-        var dlc = await BuildDlcAsync(details.GameId, resolvedCurrency);
+        // Покупки посетителя — один запрос заказов на страницу: по ним и форма отзыва, и отметка «уже есть» у DLC.
+        var purchased = await LoadPurchasedAsync();
+        var dlc = await BuildDlcAsync(details.GameId, resolvedCurrency, purchased);
         var parentGame = await BuildParentGameAsync(linkedGame);
         var buyerCountryForRegions = SuperBot.WebApi.Services.Regions.BuyerCountry.Resolve(Request);
         var regionInfo = await BuildRegionInfoAsync(linkedGame, buyerCountryForRegions);
@@ -141,7 +143,7 @@ public class GamesDetailsController : ControllerBase
             moreLikeThis = await BuildRecommendations(details, resolvedCurrency)
         };
 
-        var userContext = await BuildUserContext(details.GameId);
+        var userContext = await BuildUserContext(details.GameId, purchased);
 
         // Тексты карточки — на языке покупателя; объект per-request, админка читает своим маршрутом.
         var buyerLanguage = SuperBot.WebApi.Services.BuyerLanguage.Resolve(Request);
@@ -314,7 +316,7 @@ public class GamesDetailsController : ControllerBase
     /// DLC этой игры — отдельные товары каталога с ParentGameId = игра (как в Steam): у каждого своя
     /// страница, цена, скидка и пул ключей. Цена — в валюте покупателя, по тем же правилам, что у игры.
     /// </summary>
-    private async Task<List<object>> BuildDlcAsync(string? gameId, string currency)
+    private async Task<List<object>> BuildDlcAsync(string? gameId, string currency, IReadOnlySet<string> purchased)
     {
         var result = new List<object>();
         if (string.IsNullOrWhiteSpace(gameId))
@@ -325,7 +327,9 @@ public class GamesDetailsController : ControllerBase
         // и обложка. Черновики в снимке витрины отсутствуют — на странице их и не должно быть.
         var dlcItems = (await _catalogSnapshot.GetAsync())
             .Where(item => string.Equals(item.ParentGameId, gameId, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(item => item.ReleaseDate);
+            // Дорогие — первыми: у игры с сотней DLC в видимые строки попадают расширения, а не косметика.
+            .OrderByDescending(item => item.Price)
+            .ThenBy(item => item.ReleaseDate);
         var rates = _fxRates.Current();
         foreach (var dlc in dlcItems)
         {
@@ -336,7 +340,12 @@ public class GamesDetailsController : ControllerBase
                 slug = dlc.Slug,
                 title = string.IsNullOrWhiteSpace(dlc.Title) ? dlc.Name : dlc.Title,
                 coverUrl = dlc.ImagePath,
+                releaseDate = dlc.ReleaseDate,
                 isComingSoon = dlc.IsComingSoon,
+                // Список DLC на странице игры — с галочками «добавить выбранные»: без ключей на складе
+                // и уже купленное выбрать нельзя, как нельзя положить в корзину саму игру без ключей.
+                inStock = dlc.InStock,
+                owned = purchased.Contains(dlc.Id),
                 pricing = priced is null
                     ? null
                     : new
@@ -604,7 +613,22 @@ public class GamesDetailsController : ControllerBase
     }
 
 
-    private async Task<object> BuildUserContext(string gameId)
+    /// <summary>
+    /// Игры из оплаченных заказов посетителя; у гостя — пусто. По всем именам из токена: заказ записан
+    /// по email, а Identity.Name у настоящего токена — отображаемое имя; поиск по нему одному не находил
+    /// покупку. Через PurchasedGames, а не по order.GameId: то поле хранит только первую позицию заказа.
+    /// </summary>
+    private async Task<IReadOnlySet<string>> LoadPurchasedAsync()
+    {
+        if (!User.Identity?.IsAuthenticated ?? true)
+        {
+            return new HashSet<string>();
+        }
+        var orders = await _orderRepository.GetOrdersByUsersAsync(User.GetOrderOwnerAliases());
+        return SuperBot.Core.Services.PurchasedGames.From(orders);
+    }
+
+    private async Task<object> BuildUserContext(string gameId, IReadOnlySet<string> purchased)
     {
         if (!User.Identity?.IsAuthenticated ?? true)
         {
@@ -613,12 +637,7 @@ public class GamesDetailsController : ControllerBase
 
         var userId = GetUserId();
         var wishlistIds = await _wishlistRepository.GetGameIdsAsync(userId);
-        // По всем именам из токена: заказ записан по email, а Identity.Name у настоящего токена —
-        // отображаемое имя; поиск по нему одному не находил покупку, и форма отзыва не появлялась.
-        var orders = await _orderRepository.GetOrdersByUsersAsync(User.GetOrderOwnerAliases());
-        // Через PurchasedGames, а не по order.GameId: то поле хранит только первую позицию заказа,
-        // и у покупателя набора форма отзыва не появлялась ни на одной игре, кроме первой.
-        var hasPurchased = SuperBot.Core.Services.PurchasedGames.Contains(orders, gameId);
+        var hasPurchased = !string.IsNullOrWhiteSpace(gameId) && purchased.Contains(gameId);
         var review = await _gameReviewRepository.GetByUserAsync(gameId, userId);
 
         return new

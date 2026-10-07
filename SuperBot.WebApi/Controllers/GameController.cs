@@ -398,6 +398,7 @@ namespace SuperBot.WebApi.Controllers
             [FromQuery] string? studio = null,
             [FromQuery] string? tag = null,
             [FromQuery] bool includeDlc = false,
+            [FromQuery] string? dlc = null,
             [FromQuery] string? kind = null,
             [FromQuery] string? softwareCategory = null,
             [FromQuery] string terms = "",
@@ -448,7 +449,8 @@ namespace SuperBot.WebApi.Controllers
                     softwareCategory,
                     SplitList(terms),
                     SplitList(devices),
-                    SplitList(activation)),
+                    SplitList(activation),
+                    Dlc: dlc),
                 popularityRank);
 
             // Страна покупателя нужна здесь, а не в снимке: снимок общий, а вердикт личный.
@@ -477,6 +479,11 @@ namespace SuperBot.WebApi.Controllers
                         inStock = result.Facets.Availability.InStock,
                         onSale = result.Facets.Availability.OnSale,
                         comingSoon = result.Facets.Availability.ComingSoon
+                    },
+                    dlc = new
+                    {
+                        has = result.Facets.Dlc?.HasDlc ?? 0,
+                        only = result.Facets.Dlc?.DlcOnly ?? 0
                     },
                     priceHistogram = result.Facets.PriceHistogram.Select(bucket => new
                     {
@@ -759,6 +766,11 @@ namespace SuperBot.WebApi.Controllers
             {
                 game.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
             }
+            if (!string.IsNullOrWhiteSpace(game.ParentGameId)
+                && SuperBot.WebApi.Services.DlcLinks.CheckAttach(game, await _gameRepository.GetByIdAsync(game.ParentGameId), dlcHasOwnDlc: false) is { } dlcError)
+            {
+                return BadRequest(new { message = dlcError });
+            }
             await _gameRepository.CreateAsync(game);
             if (draft)
             {
@@ -841,9 +853,16 @@ namespace SuperBot.WebApi.Controllers
                     return BadRequest(new { message = genreError });
                 }
             }
-            if (string.Equals(game.ParentGameId, id, StringComparison.OrdinalIgnoreCase))
+            // Привязка к игре — по общим правилам (DlcLinks): одна ступень, только игры.
+            if (!string.IsNullOrWhiteSpace(updatedGame.ParentGameId) && game.ParentGameId is { } parentId)
             {
-                return BadRequest(new { message = "A game cannot be a DLC of itself." });
+                var parent = await _gameRepository.GetByIdAsync(parentId);
+                var hasOwnDlc = (await _catalogSnapshot.GetWithDraftsAsync())
+                    .Any(item => string.Equals(item.ParentGameId, id, StringComparison.OrdinalIgnoreCase));
+                if (SuperBot.WebApi.Services.DlcLinks.CheckAttach(game, parent, hasOwnDlc) is { } dlcError)
+                {
+                    return BadRequest(new { message = dlcError });
+                }
             }
             await _gameRepository.UpdateAsync(id, game);
             _catalogSnapshot.Invalidate();
@@ -861,6 +880,8 @@ namespace SuperBot.WebApi.Controllers
             }
 
             await _gameRepository.DeleteAsync(id);
+            // Карточку — тоже: без неё страница удалённого товара открывалась по старому адресу.
+            await _gameDetailsRepository.DeleteByGameIdAsync(id);
             await _gameDiscountRepository.DeleteByGameIdAsync(id);
             // Иначе удалённая игра оставалась в чужих списках желаний: счётчик «Saved items» в кабинете
             // считал её, а страница списка показать уже не могла.

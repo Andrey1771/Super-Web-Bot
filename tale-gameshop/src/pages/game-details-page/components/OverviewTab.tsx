@@ -3,12 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { catalogHref } from '../../../utils/software';
 import { kindLabels } from '../../../utils/product-kind-labels';
-import type { DLC, DlcProduct, GameDetails, GameStudioInfo } from '../../../types/game-details';
-import { useCart } from '../../../context/cart-context';
-import { cartLineKey } from '../../../reducers/cart-reducer';
-import SafeGameImage from '../../../components/common/SafeGameImage';
-import { useSitePreferences } from '../../../context/site-preferences';
-import { formatMoney } from '../../../utils/format-money';
+import type { DlcProduct, GameDetails, GameStudioInfo } from '../../../types/game-details';
+import DlcChecklist from './DlcChecklist';
 
 type DetailRow = { id: string; label: string; value: string | string[] };
 
@@ -70,79 +66,6 @@ const LanguagesCard = ({ languages }: { languages?: { text?: string[]; audio?: s
   );
 };
 
-/**
- * DLC базовой игры — отдельные товары (как в Steam): карточка ведёт на страницу DLC, «Add» кладёт его
- * в корзину. Старый список GameDetails.DlcItems (без товара за ним) остаётся только как запасной вариант.
- */
-const DLCList = ({ products, legacy }: { products: DlcProduct[]; legacy: DLC[] }) => {
-  const { t } = useTranslation();
-  const { currency: siteCurrency } = useSitePreferences();
-  const { state: cartState, dispatch } = useCart();
-  if (products.length === 0 && legacy.length === 0) return null;
-
-  return (
-    <div className="card">
-      <h2>{t('product.dlc')}</h2>
-      <div className="dlc-list">
-        {products.map((dlc) => {
-          const inCart = cartState.items.some((item) => cartLineKey(item) === dlc.id);
-          return (
-            <div key={dlc.id} className="dlc-item">
-              <Link to={`/games/${dlc.slug}`} className="dlc-cover">
-                <SafeGameImage src={dlc.coverUrl} gameTitle={dlc.title} />
-              </Link>
-              <div className="dlc-body">
-                <Link to={`/games/${dlc.slug}`} className="dlc-title">
-                  {dlc.title}
-                </Link>
-                {dlc.isComingSoon ? (
-                  <span className="dlc-price dlc-price--soon">{t('common.comingSoon')}</span>
-                ) : dlc.pricing ? (
-                  <span className="dlc-price">
-                    {formatMoney(dlc.pricing.price, dlc.pricing.currency)}
-                    {dlc.pricing.oldPrice != null && <small className="dlc-old">{formatMoney(dlc.pricing.oldPrice, dlc.pricing.currency)}</small>}
-                  </span>
-                ) : (
-                  <span className="dlc-price dlc-price--na">{t('product.notInCurrency', { currency: siteCurrency })}</span>
-                )}
-              </div>
-              <button
-                type="button"
-                className={`btn ${inCart ? 'btn-outline' : 'btn-primary'} btn-small`}
-                disabled={dlc.isComingSoon || !dlc.pricing}
-                onClick={() =>
-                  inCart
-                    ? dispatch({ type: 'REMOVE_FROM_CART', payload: dlc.id })
-                    : dispatch({
-                        type: 'ADD_TO_CART',
-                        payload: { gameId: dlc.id, slug: dlc.slug, name: dlc.title, price: dlc.pricing!.price, quantity: 1, image: dlc.coverUrl ?? '' }
-                      })
-                }
-              >
-                {inCart ? t('common.inCart') : t('common.add')}
-              </button>
-            </div>
-          );
-        })}
-        {products.length === 0 &&
-          legacy.map((dlc) => (
-            <div key={dlc.id} className="dlc-item">
-              <SafeGameImage src={dlc.coverUrl} gameTitle={dlc.title} />
-              <div className="dlc-body">
-                <p className="dlc-title">{dlc.title}</p>
-                <span className="dlc-price">{formatMoney(dlc.price, siteCurrency)}</span>
-              </div>
-              <button type="button" className="btn btn-outline btn-small" disabled title={t('product.notSoldSeparately')}>
-                {t('product.soon')}
-              </button>
-            </div>
-          ))}
-      </div>
-    </div>
-  );
-};
-
-
 const StudioRow = ({ role, studio }: { role: string; studio: GameStudioInfo }) => {
   const inner = (
     <>
@@ -169,7 +92,9 @@ const DeveloperPublisherCard = ({ developer, publisher, software = false }: { de
   const hasPublisher = Boolean(publisher?.name);
   if (!hasDeveloper && !hasPublisher) return null;
   const samePublisher = hasDeveloper && hasPublisher && developer!.name === publisher!.name;
-  const studioName = (developer ?? publisher)!.name;
+  // Steam перечисляет студии через запятую («Firaxis Games, Feral Interactive (Mac)»): ссылка — на первую,
+  // основную; каталог находит игры по любой студии из такого списка.
+  const studioName = (developer ?? publisher)!.name.split(',')[0].trim();
 
   return (
     <div className="card">
@@ -205,13 +130,14 @@ const OverviewTab = ({ game, dlc, software = false, softwareBlocks }: OverviewTa
 
   // Описание переехало в левую колонку хиро (GameAbout) — над вкладками, а не под ними.
   // Здесь остаётся то, что дополняет его, а не дублирует.
+  // DLC — первыми и во всю ширину основной колонки: список с галочками, датой и ценой в узкую боковую не помещается.
   const main = [
     ...(software ? [<React.Fragment key="software">{softwareBlocks}</React.Fragment>] : []),
+    ...(software ? [] : [<DlcChecklist key="dlc" products={dlc} legacy={game.dlcItems ?? []} />]),
     <LanguagesCard key="languages" languages={game.languages} />,
     <GameDetailsCard key="details" details={detailRows} />
   ];
   const side = [
-    ...(software ? [] : [<DLCList key="dlc" products={dlc} legacy={game.dlcItems ?? []} />]),
     <DeveloperPublisherCard key="studio" developer={game.developer} publisher={game.publisher} software={software} />
   ];
 

@@ -39,12 +39,11 @@
 
 .cbh-badge {
     display: inline-flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 4px 8px;
+    gap: 10px;
     margin-top: var(--space-10, 10px);
-    padding: 5px 12px 5px 5px;
-    border-radius: 999px;
+    padding: 7px 14px 7px 7px;
+    border-radius: 14px;
     background: #e9f8f0;
     color: #15803d;
     font-size: 13.5px;
@@ -61,10 +60,22 @@
     box-shadow: none;
 }
 
+.cbh-badge__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.cbh-badge__text b {
+    font-weight: 700;
+}
+
 .cbh-badge em {
     color: #4b5563;
     font-style: normal;
     font-weight: 500;
+    font-size: 12.5px;
 }
 
 .cbh-badge.is-guest {

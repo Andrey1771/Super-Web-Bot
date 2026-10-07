@@ -91,4 +91,43 @@ public class EditionsAndDlcTests
         Assert.Equal(baseId, dlcPage.GetProperty("parentGame").GetProperty("id").GetString());
         Assert.Equal(baseSlug, dlcPage.GetProperty("parentGame").GetProperty("slug").GetString());
     }
+
+    [Fact]
+    public async Task Dlc_list_tells_release_date_stock_and_what_the_buyer_already_owns()
+    {
+        var (baseId, baseSlug) = await SeedGameAsync(prefix: "base");
+        var (ownedId, _) = await SeedGameAsync(parentGameId: baseId, prefix: "dlc");
+        var (stockedId, _) = await SeedGameAsync(parentGameId: baseId, prefix: "dlc");
+        var email = $"dlc-{Guid.NewGuid():N}@example.test";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var keys = scope.ServiceProvider.GetRequiredService<IGameKeyRepository>();
+            await keys.AddPoolKeysAsync(stockedId, "Steam", new[] { $"DLC-{Guid.NewGuid():N}"[..19] });
+            var orders = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+            await orders.CreateOrderAsync(new Order
+            {
+                Id = Guid.NewGuid(), OrderNumber = $"TS-DLC-{Guid.NewGuid():N}"[..14], UserId = email, UserName = email, GameId = ownedId, GameName = "DLC",
+                IsPaid = true, IsFulfilled = true, OrderDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow,
+                Status = "DELIVERED", PaymentStatus = "PAID", Currency = "USD", TotalAmount = 50m, Totals = new MoneyTotals { Total = 50m },
+                Items = new List<OrderItemSnapshot> { new() { GameId = ownedId, Title = "DLC", Quantity = 1, UnitPrice = 50m, FinalUnitPrice = 50m, LineTotal = 50m } }
+            });
+            scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>().Remove(SuperBot.WebApi.Services.CatalogSnapshotService.CacheKey);
+        }
+
+        var buyer = _factory.CreateClient();
+        buyer.DefaultRequestHeaders.Add(TestAuthHandler.EmailHeader, email);
+        var page = await Body(await buyer.GetAsync($"/api/games/{baseSlug}"));
+        var list = page.GetProperty("dlc").EnumerateArray().ToDictionary(item => item.GetProperty("id").GetString()!);
+        Assert.True(list[ownedId].GetProperty("owned").GetBoolean());
+        Assert.False(list[ownedId].GetProperty("inStock").GetBoolean());
+        Assert.False(list[stockedId].GetProperty("owned").GetBoolean());
+        Assert.True(list[stockedId].GetProperty("inStock").GetBoolean());
+        Assert.True(list[stockedId].GetProperty("releaseDate").GetDateTime() < DateTime.UtcNow);
+        // Своя покупка игры — не покупка базовой: форма отзыва на базовой игре не появляется.
+        Assert.False(page.GetProperty("userContext").GetProperty("hasPurchased").GetBoolean());
+
+        // Гость ничего не «имеет».
+        var guest = await Body(await _factory.CreateClient().GetAsync($"/api/games/{baseSlug}"));
+        Assert.All(guest.GetProperty("dlc").EnumerateArray(), item => Assert.False(item.GetProperty("owned").GetBoolean()));
+    }
 }

@@ -422,3 +422,9 @@ secrets.json
 stripe-cli/
 stripe.zip
 stripe.exe
+
+# Резервные копии продакшена (каталог BACKUP_DIR по умолчанию) и доступ к внешнему хранилищу копий
+/backups/
+/deploy/rclone/rclone.conf
+# Скрипты резервного копирования — код, а не копии (правило Backup*/ выше их бы спрятало)
+!/deploy/backup/

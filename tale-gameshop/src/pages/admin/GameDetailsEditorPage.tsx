@@ -1,6 +1,6 @@
 import { kindLabels } from "../../utils/product-kind-labels";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import container from "../../inversify.config";
 import IDENTIFIERS from "../../constants/identifiers";
 import type { IAdminGameDetailsService } from "../../iterfaces/i-admin-game-details-service";
@@ -21,6 +21,8 @@ import DateTimeField from "./DateTimeField";
 // правило «трейлер первым» здесь: иначе админка показывала бы один порядок, а магазин другой.
 import { orderMedia } from "../game-details-page/components/GameHero";
 import GameSwitcher from "./GameSwitcher";
+import DlcManager from "./DlcManager";
+import { getGameDlc } from "../../api/adminDlcApi";
 import Drawer from "../../components/ui/Drawer";
 import KeyInventorySection from "../../components/admin/KeyInventorySection";
 import { getKeyInventory } from "../../api/adminKeysApi";
@@ -219,7 +221,9 @@ const reportUnmappedIssues = (list: CardIssue[] | null) => {
 const STEPS = [
   { key: "basics", label: "Basics", hint: "Type, title, studio, platforms", softwareHint: "Type, category, activation, vendor, OS", sections: ["product", "general", "credits", "platforms"] },
   { key: "media", label: "Media", hint: "Cover, gallery, trailer", softwareHint: "Cover, screenshots", sections: ["media"] },
-  { key: "commerce", label: "Commerce", hint: "Price, editions, DLC", softwareHint: "Price, licenses, keys", sections: ["pricing", "editions", "dlc"] },
+  { key: "commerce", label: "Commerce", hint: "Price, editions, keys", softwareHint: "Price, licenses, keys", sections: ["pricing", "editions"] },
+  // DLC — своим шагом: в «Commerce» блок терялся (редактор открывается на «Basics»). У ПО шага нет.
+  { key: "dlc", label: "DLC", hint: "Add-ons of this game", softwareHint: "", sections: ["dlc"] },
   { key: "requirements", label: "Requirements", hint: "System requirements", softwareHint: "System requirements", sections: ["sysreq"] },
   { key: "discovery", label: "Discovery", hint: "Storefront, awards, recommendations", softwareHint: "Storefront, awards, recommendations", sections: ["featured", "awards", "recommendations"] },
 ] as const;
@@ -303,7 +307,8 @@ const GameDetailsEditorPage: React.FC = () => {
   const [imageInsertSize, setImageInsertSize] = useState<ImageInsertSize>("full");
   // Раскрытые секции хранит страница, а не каждая карточка сама: иначе клик по замечанию
   // в панели полноты не смог бы раскрыть нужную.
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ general: true });
+  // DLC открыт сразу: свёрнутый в шаге «Commerce», он терялся, и казалось, что дополнений у игры не видно.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ general: true, dlc: true });
   // "all" — показать сразу все разделы. Переключать по одному удобно, когда знаешь, что
   // правишь; когда карточку осматривают целиком, это лишние пять кликов.
   const [step, setStep] = useState<StepFilter>("basics");
@@ -389,6 +394,29 @@ const GameDetailsEditorPage: React.FC = () => {
     });
   };
   const [discount, setDiscount] = useState<AdminGameDiscount>({ gameId: "", isActive: false });
+  // Сколько DLC у игры — для шага и заголовка блока «DLC»; null — ещё не знаем.
+  const [dlcCount, setDlcCount] = useState<number | null>(null);
+  // Открыто само DLC — название его игры: «DLC of …» вместо «no DLCs» в заголовке и на шаге.
+  const [dlcParent, setDlcParent] = useState<{ id: string; title: string } | null>(null);
+  const dlcParentTitle = dlcParent?.title ?? null;
+  // Число — сразу при открытии карточки, а не когда откроют шаг: по нему видно, что у игры есть дополнения.
+  const dlcGameId = details?.gameId;
+  useEffect(() => {
+    setDlcCount(null);
+    setDlcParent(null);
+    if (!dlcGameId) return;
+    let cancelled = false;
+    getGameDlc(dlcGameId)
+      .then((data) => {
+        if (cancelled) return;
+        setDlcCount(data.items.length);
+        setDlcParent(data.parent ? { id: data.parent.id, title: data.parent.title } : null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [dlcGameId]);
 
   // Игра берётся из адреса. Прежде здесь грузился ВЕСЬ каталог одним запросом только ради
   // выпадающего списка — на 10 000 игр это мегабайты трафика и неработоспособный <select>.
@@ -398,6 +426,14 @@ const GameDetailsEditorPage: React.FC = () => {
     const fromQuery = new URLSearchParams(location.search).get("gameId");
     setSelectedGameId(fromPath ?? fromQuery ?? "");
   }, [routeGameId, location.search]);
+
+  // Другой товар — с начала: шаг Basics и верх страницы. Раньше выбранный шаг переживал переход между карточками,
+  // и «Open» у соседнего DLC показывал тот же шаг DLC — казалось, что ничего не открылось.
+  useEffect(() => {
+    if (!selectedGameId) return;
+    setStep("basics");
+    window.scrollTo({ top: 0 });
+  }, [selectedGameId]);
 
   useEffect(() => {
     getAdminSoftwareCategories()
@@ -768,12 +804,6 @@ const GameDetailsEditorPage: React.FC = () => {
   const removeAward = (index: number) =>
     updateDetails({ awards: (details?.awards ?? []).filter((_, position) => position !== index) });
 
-  const updateDlc = (index: number, patch: Partial<GameDetails["dlcItems"][number]>) => {
-    if (!details) return;
-    const next = [...details.dlcItems];
-    next[index] = { ...next[index], ...patch };
-    updateDetails({ dlcItems: next });
-  };
 
 
 
@@ -809,22 +839,6 @@ const GameDetailsEditorPage: React.FC = () => {
     }
   };
 
-  const addDlc = () => {
-    if (!details) return;
-    updateDetails({
-      dlcItems: [
-        ...details.dlcItems,
-        {
-          id: `dlc-${Date.now()}`,
-          title: "New DLC",
-          coverUrl: "",
-          price: 0,
-          discountPercent: undefined,
-          isBundle: false
-        }
-      ]
-    });
-  };
 
   if (!details) {
     return (
@@ -958,6 +972,17 @@ const GameDetailsEditorPage: React.FC = () => {
             />
           </label>
         </div>
+        {/* Открыто дополнение — сразу видно, чьё оно: поле «Product» выше — поиск для перехода, а не заголовок, и
+            карточки DLC и игры иначе выглядят одинаково. Всё остальное правится в шагах ниже, как у любого товара. */}
+        {dlcParent && (
+          <div className="editor-dlc-of">
+            <span className="dlc-chip is-dlc">DLC</span>
+            <span>
+              You're editing an add-on of <Link to={`/admin/games/${dlcParent.id}/edit`}>{dlcParent.title}</Link>. Its description,
+              media, price and keys are in the steps below — the same as for a game.
+            </span>
+          </div>
+        )}
         {/* Копия — для похожего товара: ещё один VPN с той же линейкой лицензий не собирают с нуля. */}
         <div className="editor-duplicate">
           <button type="button" className="btn btn-outline btn-small" disabled={duplicating} onClick={duplicate}>
@@ -993,7 +1018,7 @@ const GameDetailsEditorPage: React.FC = () => {
             </span>
           )}
         </button>
-        {STEPS.map((item) => {
+        {STEPS.filter((item) => !(software && item.key === "dlc")).map((item) => {
           const stepIssues = (issues ?? []).filter((issue) => {
             const section = ISSUE_SECTION[issue.code];
             return section ? SECTION_STEP[section] === item.key : false;
@@ -1016,7 +1041,15 @@ const GameDetailsEditorPage: React.FC = () => {
               <span className={`editor-steps__dot editor-steps__dot--${worst}`} aria-hidden="true" />
               <span className="editor-steps__body">
                 <span className="editor-steps__label">{item.label}</span>
-                <span className="editor-steps__hint">{software ? item.softwareHint : item.hint}</span>
+                <span className="editor-steps__hint">
+                  {software
+                    ? item.softwareHint
+                    : item.key === "dlc" && dlcParentTitle
+                      ? `DLC of ${dlcParentTitle}`
+                      : item.key === "dlc" && dlcCount
+                        ? `${dlcCount} add-on${dlcCount === 1 ? "" : "s"}`
+                        : item.hint}
+                </span>
               </span>
               {stepIssues.length > 0 && <span className="editor-steps__count">{stepIssues.length}</span>}
               {/* Несохранённое — в скобках и другим цветом, чтобы не путать с числом пробелов
@@ -1725,20 +1758,28 @@ const GameDetailsEditorPage: React.FC = () => {
         </Drawer>
       </div>
 
-      {!software && (
-      <CollapsibleCard id="dlc" open={!!openSections["dlc"]} onToggle={() => toggleSection("dlc")} title="DLC & bundles" summary={countSummary(details.dlcItems?.length, "item")}>
-        {renderSectionIssues("dlc")}
-        {details.dlcItems.map((dlc, index) => (
-          <div key={dlc.id} className="admin-grid admin-grid--3">
-            <input className="input" value={dlc.title} onChange={(event) => updateDlc(index, { title: event.target.value })} />
-            <input className="input" value={dlc.coverUrl} onChange={(event) => updateDlc(index, { coverUrl: event.target.value })} />
-            <input className="input" type="number" value={dlc.price} onChange={(event) => updateDlc(index, { price: Number(event.target.value) })} />
-          </div>
-        ))}
-        <button className="btn btn-outline" onClick={addDlc}>Add DLC</button>
-      </CollapsibleCard>
-      )}
         </>
+      )}
+
+      {(step === "all" || step === "dlc") && !software && (
+      <CollapsibleCard id="dlc" open={!!openSections["dlc"]} onToggle={() => toggleSection("dlc")} title="DLC" summary={dlcParentTitle ? `DLC of ${dlcParentTitle}` : dlcCount === null ? undefined : countSummary(dlcCount, "DLC")}>
+        {/* DLC — отдельные товары со ссылкой на эту игру; список и привязка — с сервера, не часть карточки.
+            Раньше здесь были строчки «название, обложка, цена» внутри карточки, которые нельзя было купить. */}
+        {renderSectionIssues("dlc")}
+        <DlcManager
+          gameId={details.gameId}
+          gameTitle={details.title}
+          onCountChange={setDlcCount}
+          onCurrentSaved={() => {
+            // Только поля быстрой правки — остальные несохранённые правки карточки остаются как были.
+            void adminService.getGameDetails(details.gameId).then((fresh) => {
+              const pick = { title: fresh.title, basePrice: fresh.basePrice, releaseDate: fresh.releaseDate, isDraft: fresh.isDraft };
+              setDetails((prev) => (prev ? { ...prev, ...pick } : prev));
+              setSavedDetails((prev) => (prev ? { ...prev, ...pick } : prev));
+            });
+          }}
+        />
+      </CollapsibleCard>
       )}
 
       {(step === "all" || step === "requirements") && (
@@ -1916,7 +1957,7 @@ const GameDetailsEditorPage: React.FC = () => {
 
         {descriptionPreview && (
           <aside className="editor-split__preview">
-            <GameCardPreview details={details} />
+            <GameCardPreview details={details} software={software} />
           </aside>
         )}
       </div>

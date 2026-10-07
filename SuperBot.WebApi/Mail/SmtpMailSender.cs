@@ -27,7 +27,7 @@ public class SmtpMailSender : IMailSender
 
     public async Task SendAsync(string to, string subject, string textBody, string? htmlBody = null, CancellationToken cancellationToken = default)
     {
-        using var client = new SmtpClient(_options.SmtpHost, _options.SmtpPort);
+        using var client = SmtpClients.Create(_options);
         using var message = new MailMessage
         {
             From = new MailAddress(_options.FromAddress, _options.FromName),

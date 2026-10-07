@@ -72,19 +72,27 @@ export const GameCashbackBadge: React.FC<{ price: number; currency: string }> = 
     }
     const amount = formatMoney(cashbackForOrder(price, offer.tier), currency);
 
+    // Сумма — первой строкой, пояснение — второй, всегда. В одну строку с разделителем «·» на
+    // русском, украинском и польском не помещалось и переносилось как попало: точка начинала
+    // вторую строку прямо под монеткой.
     return offer.member ? (
         <span className="cbh-badge">
-            <Coin />{t('cashback.badge', { amount })}
-            <em>{t('cashback.atTier', { percent: offer.tier.percent, tier: tierName(offer.tier) })}</em>
+            <Coin />
+            <span className="cbh-badge__text">
+                <b>{t('cashback.badge', { amount })}</b>
+                <em>{t('cashback.atTier', { percent: offer.tier.percent, tier: tierName(offer.tier) })}</em>
+            </span>
         </span>
     ) : (
         <span className="cbh-badge is-guest">
-            <Coin />{t('cashback.badge', { amount })}
-            <em>
-                ·{' '}
-                <button type="button" className="cbh-link" onClick={offer.signIn}>{t('common.signIn')}</button>
-                {' '}{t('cashback.signInToEarn')}
-            </em>
+            <Coin />
+            <span className="cbh-badge__text">
+                <b>{t('cashback.badge', { amount })}</b>
+                <em>
+                    <button type="button" className="cbh-link" onClick={offer.signIn}>{t('cashback.signInAction')}</button>
+                    {t('cashback.signInToEarn')}
+                </em>
+            </span>
         </span>
     );
 };

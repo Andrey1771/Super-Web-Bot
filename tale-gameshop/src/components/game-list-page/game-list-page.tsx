@@ -38,6 +38,7 @@ import PageMeta from '../common/PageMeta';
 import StoreGameCard from '../common/StoreGameCard';
 import Breadcrumbs, { type Crumb } from '../common/Breadcrumbs';
 import PriceRangeFilter from './PriceRangeFilter';
+import CatalogPager from './CatalogPager';
 import SortSelect, { type SortOption } from '../common/SortSelect';
 import {
     EMPTY_CATALOG_PAGE,
@@ -112,6 +113,14 @@ const trackCatalogFilters = (params: URLSearchParams) => {
 };
 
 /**
+ * Фильтр «DLC» в адресе: `?dlc=has` — игры, у которых есть дополнения, `?dlc=only` — сами дополнения.
+ * Одно значение, а не две галочки: «игры с DLC» и «только DLC» вместе дали бы пустую выдачу.
+ */
+const DLC_PARAM = 'dlc';
+type DlcMode = 'has' | 'only';
+const dlcModeOf = (value: string | null): DlcMode | null => (value === 'has' || value === 'only' ? value : null);
+
+/**
  * Всё, что сбрасывает «Reset filters». Один список на весь файл: добавили фильтр —
  * добавили сюда, иначе сброс тихо оставит его включённым.
  */
@@ -127,6 +136,7 @@ const FILTER_PARAM_NAMES = [
     'comingSoon',
     'onSale',
     'inStock',
+    DLC_PARAM,
     'studio',
     'tag',
     'terms',
@@ -287,8 +297,14 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
     const software = kind === 'software';
     const gamesOnly = kind === 'game';
     const section = software ? softwareCatalogPath() : gamesOnly ? gamesCatalogPath() : '/games';
-    // Что лежит в выдаче — для подписей: «12 games» только когда в ней одни игры, иначе «12 products».
-    const noun = (count: number) => (gamesOnly ? t('catalog.games', { count }) : t('catalog.products', { count }));
+    // Что лежит в выдаче — для подписей: «12 games» только когда в ней одни игры (в том числе «Есть DLC»: у ПО
+    // дополнений не бывает), «12 add-ons» — одни дополнения, иначе «12 products».
+    const noun = (count: number) =>
+        dlcMode === 'only'
+            ? t('catalog.addons', { count })
+            : gamesOnly || dlcMode === 'has'
+              ? t('catalog.games', { count })
+              : t('catalog.products', { count });
     const nounPlural = gamesOnly ? t('kind.game.nounPlural') : t('catalog.productsPlural');
     const softwareCategories = useSoftwareCategories();
     // Жанры — ради страницы жанра: её адрес — код жанра, а название приходит из админки и может меняться.
@@ -298,6 +314,7 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
     const [catalog, setCatalog] = useState<CatalogPage>(EMPTY_CATALOG_PAGE);
     const [isLoading, setIsLoading] = useState(true);
     const [searchParams, setSearchParams] = useSearchParams();
+    const dlcMode = software ? null : dlcModeOf(searchParams.get(DLC_PARAM));
     // Непусто — открыта посадочная страница жанра (/games/category/action) или категория софта (?softwareCategory=security).
     const { categorySlug: routeCategorySlug } = useParams<{ categorySlug: string }>();
     const categorySlug = software ? searchParams.get(SOFTWARE_CATEGORY_PARAM) || undefined : routeCategorySlug;
@@ -389,6 +406,11 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
         flag('onSale', 'onSale');
         flag('inStock', 'inStock');
         flag('comingSoon', 'comingSoon');
+        // DLC — только у игр: в разделе ПО параметр из старой ссылки ничего бы не нашёл.
+        const dlc = dlcModeOf(searchParams.get(DLC_PARAM));
+        if (dlc && !software) {
+            request.set('dlc', dlc);
+        }
         copy('studio', 'studio');
         copy('tag', 'tag');
         // Валюта из адресной строки важнее выбранной в шапке — так ссылкой на каталог в евро
@@ -762,6 +784,7 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
         comingSoonOnly ||
         onSaleOnly ||
         inStockOnly ||
+        Boolean(dlcMode) ||
         priceNarrowed ||
         sortBy !== DEFAULT_SORT;
 
@@ -785,6 +808,18 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
             }
         ],
         [inStockOnly, onSaleOnly, comingSoonOnly, catalog.facets.availability, t]
+    );
+
+    /** Пункты фильтра «DLC»: выбор одного снимает другой (см. DLC_PARAM). */
+    const dlcFilters = useMemo(
+        () =>
+            software
+                ? []
+                : [
+                      { mode: 'has' as const, label: t('catalog.dlcHas'), active: dlcMode === 'has', count: catalog.facets.dlc?.has ?? 0 },
+                      { mode: 'only' as const, label: t('catalog.dlcOnly'), active: dlcMode === 'only', count: catalog.facets.dlc?.only ?? 0 }
+                  ],
+        [software, dlcMode, catalog.facets.dlc, t]
     );
 
     /** Счётчик у варианта фильтра. Отсутствие варианта в ответе означает ноль результатов. */
@@ -884,6 +919,24 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
         };
     }, [software, gamesOnly, landingCategory, categorySlug, hasFiltersBeyondType, safeCurrentPage, paginatedGames, totalResults, catalog.pageSize, gameGenres, t]);
 
+    /** Начало выдачи (панель над сеткой): к нему возвращаемся при смене страницы. */
+    const resultsTopRef = useRef<HTMLDivElement | null>(null);
+
+    /**
+     * Переход на другую страницу каталога. Новая страница начинается сверху сетки — прокручиваем
+     * туда, иначе после клика внизу человек видел бы конец новой страницы и искал бы её начало.
+     * Прокрутка — только если начало выдачи ушло за верх экрана: со страницы, где сетка и так
+     * видна целиком, дёргать экран незачем. Мгновенно, без анимации: плавную прокрутку обрывает
+     * перерисовка сетки, которая начинается в тот же момент, и человек оставался внизу.
+     */
+    const goToPage = (page: number) => {
+        updateParams((params) => params.set('page', String(page)));
+        const top = resultsTopRef.current;
+        if (top && top.getBoundingClientRect().top < 0) {
+            top.scrollIntoView?.({ block: 'start' });
+        }
+    };
+
     const updateParams = (patchFn: (params: URLSearchParams) => void) => {
         patchSearchParams((params) => {
             patchFn(params);
@@ -923,6 +976,18 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
                 params.set(name, next.join(','));
             } else {
                 params.delete(name);
+            }
+            params.set('page', '1');
+        });
+    };
+
+    /** Пункт фильтра «DLC»: включённый — снимается, другой — заменяет текущий. */
+    const toggleDlc = (mode: DlcMode) => {
+        updateParams((params) => {
+            if (params.get(DLC_PARAM) === mode) {
+                params.delete(DLC_PARAM);
+            } else {
+                params.set(DLC_PARAM, mode);
             }
             params.set('page', '1');
         });
@@ -1057,6 +1122,10 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
                 })
             );
 
+        dlcFilters
+            .filter((filter) => filter.active)
+            .forEach((filter) => chips.push({ key: DLC_PARAM, label: filter.label, remove: () => toggleDlc(filter.mode) }));
+
         if (priceNarrowed) {
             chips.push({
                 key: 'price',
@@ -1074,7 +1143,7 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
         // Обработчики создаются заново на каждый рендер — это дешевле, чем мемоизировать
         // их поимённо, а список чипов короткий.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [kind, sortBy, filterName, studioFilter, tagFilter, activeCategories, selectedPlatforms, selectedTerms, selectedDevices, selectedActivation, availabilityFilters, priceNarrowed, minPriceFilter, maxPriceFilter, sortOptions, t]);
+    }, [kind, sortBy, filterName, studioFilter, tagFilter, activeCategories, selectedPlatforms, selectedTerms, selectedDevices, selectedActivation, availabilityFilters, dlcFilters, priceNarrowed, minPriceFilter, maxPriceFilter, sortOptions, t]);
 
     return (
         <div className="min-h-screen bg-[#f6f2fb] text-[#2b2350]">
@@ -1175,6 +1244,25 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
                                 ))}
                             </div>
                         </div>
+
+                        {/* DLC в общем списке не показываются — здесь их можно найти: игры, к которым они есть,
+                            или сами дополнения (поиск, жанры и цена работают и по ним). Нет ни того ни другого — раздела нет. */}
+                        {dlcFilters.some((filter) => filter.count > 0 || filter.active) && (
+                            <div className="catalog-filter-group">
+                                <h3 className="catalog-filter-title">{t('catalog.dlc')}</h3>
+                                <div className="catalog-filter-options">
+                                    {dlcFilters.map((filter) => (
+                                        <FilterOption
+                                            key={filter.mode}
+                                            label={filter.label}
+                                            checked={filter.active}
+                                            count={filter.count}
+                                            onToggle={() => toggleDlc(filter.mode)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="catalog-filter-group">
                             <h3 className="catalog-filter-title">{t('catalog.price')}</h3>
@@ -1325,7 +1413,7 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
                         {/* Панель управления выдачей в три уровня: сначала действия
                             (поиск, порядок, вид), затем то, что сейчас применено, и только
                             потом счётчик. Строка с чипами появляется лишь когда есть чипы. */}
-                        <div className="catalog-toolbar">
+                        <div className="catalog-toolbar" ref={resultsTopRef}>
                             <div className="catalog-toolbar-row">
                                 <label className="catalog-search">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1505,43 +1593,9 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
                             )}
                         </div>
 
-                        <div className="mt-8 flex items-center justify-center gap-2">
-                            <button
-                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#e6e1ff] bg-white text-[#6b64a8] disabled:opacity-50"
-                                onClick={() =>
-                                    updateParams((params) => {
-                                        params.set('page', String(Math.max(1, safeCurrentPage - 1)));
-                                    })
-                                }
-                                disabled={safeCurrentPage <= 1}
-                            >
-                                ‹
-                            </button>
-                            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                                <button
-                                    key={page}
-                                    className={`flex h-10 min-w-10 items-center justify-center rounded-[12px] px-3 text-sm font-semibold ${
-                                        page === safeCurrentPage
-                                            ? 'bg-[#6b3ff2] text-white'
-                                            : 'border border-[#e6e1ff] bg-white text-[#6b64a8]'
-                                    }`}
-                                    onClick={() => updateParams((params) => params.set('page', String(page)))}
-                                >
-                                    {page}
-                                </button>
-                            ))}
-                            <button
-                                className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#e6e1ff] bg-white text-[#6b64a8] disabled:opacity-50"
-                                onClick={() =>
-                                    updateParams((params) => {
-                                        params.set('page', String(Math.min(totalPages, safeCurrentPage + 1)));
-                                    })
-                                }
-                                disabled={safeCurrentPage >= totalPages}
-                            >
-                                ›
-                            </button>
-                        </div>
+                        {/* Листание «плавает» у нижнего края экрана, пока видна сетка, — не нужно
+                            докручивать до конца страницы, чтобы перейти дальше (см. CatalogPager). */}
+                        <CatalogPager page={safeCurrentPage} totalPages={totalPages} onChange={goToPage} />
 
                     </div>
                 </section>

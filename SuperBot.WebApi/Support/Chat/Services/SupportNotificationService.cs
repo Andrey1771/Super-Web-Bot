@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Events;
 using SuperBot.Core.Interfaces;
-using SuperBot.WebApi.Recovery;
+using SuperBot.WebApi.Mail;
 using SuperBot.WebApi.Support.Chat.Models;
 
 namespace SuperBot.WebApi.Support.Chat.Services;
@@ -23,13 +23,13 @@ public interface ISupportNotificationService
 public class SupportNotificationService : ISupportNotificationService
 {
     private readonly IBotEventPublisher _botEvents;
-    private readonly RecoveryOptions _mailOptions;
+    private readonly MailOptions _mailOptions;
     private readonly SupportChatOptions _chatOptions;
     private readonly ILogger<SupportNotificationService> _logger;
 
     public SupportNotificationService(
         IBotEventPublisher botEvents,
-        IOptions<RecoveryOptions> mailOptions,
+        IOptions<MailOptions> mailOptions,
         IOptionsSnapshot<SupportChatOptions> chatOptions,
         ILogger<SupportNotificationService> logger)
     {
@@ -108,7 +108,7 @@ public class SupportNotificationService : ISupportNotificationService
                 .AppendLine($"Open the conversation: {BuildSessionLink(session)}")
                 .ToString();
 
-            using var client = new SmtpClient(_mailOptions.SmtpHost, _mailOptions.SmtpPort);
+            using var client = SmtpClients.Create(_mailOptions);
             using var message = new MailMessage
             {
                 From = new MailAddress(_mailOptions.FromAddress, _mailOptions.FromName),

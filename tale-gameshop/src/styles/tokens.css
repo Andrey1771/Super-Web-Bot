@@ -63,7 +63,7 @@
   --container-padding: 32px;
 
   /* Typography */
-  --font-family-base: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-family-base: 'Inter Variable', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 @media (max-width: 1200px) {

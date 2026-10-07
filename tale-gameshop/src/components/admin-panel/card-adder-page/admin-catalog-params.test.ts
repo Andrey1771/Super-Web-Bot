@@ -23,3 +23,15 @@ it('passes the status filter and search only when set', () => {
     expect(params.get('q')).toBe('vpn');
     expect(params.get('includeDlc')).toBe('true');
 });
+
+it('shows only DLC in the DLC view and games without DLC in the Games view', () => {
+    const dlc = buildAdminCatalogParams({ page: 1, pageSize: 20, kind: 'dlc', status: 'all', search: 'crimson' });
+    expect(dlc.get('kind')).toBe('game');
+    expect(dlc.get('dlc')).toBe('only');
+    expect(dlc.get('q')).toBe('crimson');
+
+    const games = buildAdminCatalogParams({ page: 1, pageSize: 20, kind: 'game', status: 'all', search: '' });
+    expect(games.get('kind')).toBe('game');
+    expect(games.has('includeDlc')).toBe(false);
+    expect(games.has('dlc')).toBe(false);
+});

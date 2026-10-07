@@ -2653,3 +2653,334 @@ textarea.admin-md__area {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Импорт из Steam: список appid — моноширинным, по строке на игру. */
+.data-tools__textarea {
+  width: 100%;
+  min-height: 180px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface, transparent);
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* ---- DLC игры в редакторе карточки (DlcManager) ---- */
+
+.dlc-manager {
+  display: grid;
+  gap: 12px;
+}
+
+.dlc-manager__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.dlc-manager__row {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dlc-manager__row.is-expanded {
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.08);
+}
+
+.dlc-manager__row-head {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Строку раскрывают кликом по названию — подсветка подсказывает, что она нажимается. */
+.dlc-manager__info.is-toggle {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.dlc-manager__info.is-toggle:hover .dlc-manager__title,
+.dlc-manager__info.is-toggle:focus-visible .dlc-manager__title {
+  color: var(--color-primary);
+}
+
+.dlc-manager__info.is-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Правка DLC на месте. */
+.dlc-edit {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.dlc-edit__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px 12px;
+}
+
+.dlc-edit__grid label,
+.dlc-edit__grid > div {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.dlc-edit__wide {
+  grid-column: 1 / -1;
+}
+
+.dlc-edit__segment {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f1eefb;
+  width: fit-content;
+}
+
+.dlc-edit__segment button {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.dlc-edit__segment button.is-active {
+  background: #fff;
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.dlc-edit__keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  font-size: 14px;
+}
+
+.dlc-edit__keys-panel {
+  padding: 12px;
+  border: 1px dashed var(--color-border, #e5e7eb);
+  border-radius: 10px;
+}
+
+.dlc-edit__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.dlc-edit__full {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.dlc-manager__cover {
+  display: block;
+  width: 64px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--color-border, #e5e7eb);
+}
+
+.dlc-manager__info {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.dlc-manager__title {
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dlc-manager__title:hover {
+  color: var(--color-primary);
+}
+
+.dlc-manager__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.dlc-manager__row-actions,
+.dlc-manager__actions,
+.dlc-manager__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dlc-manager__form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--color-border, #e5e7eb);
+  border-radius: 10px;
+}
+
+.dlc-manager__form label {
+  display: grid;
+  gap: 4px;
+}
+
+.dlc-manager__note,
+.dlc-manager__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.dlc-manager__confirm {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dlc-manager__parent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.dlc-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.dlc-chip.is-live {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.dlc-chip.is-draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.dlc-chip.is-warn {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.dlc-chip.is-dlc {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .dlc-manager__row-head {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .dlc-edit__full {
+    margin-left: 0;
+  }
+
+  .dlc-manager__row-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+.dlc-manager__subtitle {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.dlc-manager__row.is-current {
+  border-color: var(--color-primary);
+  background: rgba(124, 58, 237, 0.05);
+}
+
+/* Шапка редактора у DLC: чьё это дополнение. */
+.editor-dlc-of {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.06);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.dlc-edit__spacer {
+  flex: 1;
+}
+
+.dlc-edit__delete {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.dlc-edit__delete:hover {
+  background: #fef2f2;
+}
+
+.btn-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+/* Ссылка на полный редактор — отдельной строкой под кнопками, справа. */
+.dlc-edit > .dlc-edit__full {
+  justify-self: end;
+  margin-left: 0;
+}
+
+/* Карточка покупки в превью — настоящая, но без нажатий: из превью ничего не попадает в корзину. */
+.game-preview__inert {
+  pointer-events: none;
+  user-select: none;
+}
+
+.game-preview__note {
+  padding: 24px;
+  color: var(--color-muted, #4b5563);
+}

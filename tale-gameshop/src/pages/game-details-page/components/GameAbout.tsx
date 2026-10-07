@@ -20,8 +20,8 @@ type GameAboutProps = {
   descriptionMarkdown: string;
   features: string[];
   awards: AwardBadge[];
-  /** Чем назвать товар в заголовке: «About this game» или «About this software». */
-  noun?: 'game' | 'software';
+  /** Чем назвать товар в заголовке: «About this game», «About this software» или «About this DLC». */
+  noun?: 'game' | 'software' | 'dlc';
 };
 
 const GameAbout = ({ descriptionMarkdown, features, awards, noun = 'game' }: GameAboutProps) => {

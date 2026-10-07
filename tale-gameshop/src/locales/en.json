@@ -163,7 +163,11 @@
     "gameCover": "Game cover",
     "blogCover": "Blog post cover",
     "viewsCount_one": "{{count}} view",
-    "viewsCount_other": "{{count}} views"
+    "viewsCount_other": "{{count}} views",
+    "dlcCount": "+{{count}} DLC",
+    "dlcCountTitle_one": "{{count}} add-on for this game",
+    "dlcCountTitle_other": "{{count}} add-ons for this game",
+    "dlcTag": "DLC"
   },
   "header": {
     "brandHome": "Tale Shop — home",
@@ -504,7 +508,16 @@
       "gamesDesc": "Browse every PC game key at Tale Shop — hand-picked titles, secure checkout and instant delivery.",
       "allDesc": "Browse PC game keys and genuine software licenses at Tale Shop — secure checkout and instant delivery."
     },
-    "productsPlural": "products"
+    "productsPlural": "products",
+    "pages": "Catalog pages",
+    "pageWord": "Page",
+    "ofPages": "of {{total}}",
+    "pageNumber": "Page number",
+    "dlc": "DLC",
+    "dlcHas": "Has DLC",
+    "dlcOnly": "DLC only",
+    "addons_one": "{{count}} add-on",
+    "addons_other": "{{count}} add-ons"
   },
   "dealWeek": {
     "eyebrow": "Weekly spread · Deal of the week",
@@ -568,7 +581,8 @@
     "controller": "Controller",
     "about": {
       "game": "About this game",
-      "software": "About this software"
+      "software": "About this software",
+      "dlc": "About this DLC"
     },
     "keyFeatures": "Key features",
     "awards": "Awards & nominations",
@@ -600,7 +614,15 @@
     "supported": "Supported",
     "recommendations": "Recommendations",
     "moreLikeThis": "More like this",
-    "allSoftware": "All software"
+    "allSoftware": "All software",
+    "dlcSelectAll": "Select all",
+    "dlcClearSelection": "Clear selection",
+    "dlcSelect": "Select {{title}}",
+    "dlcOwned": "You own this",
+    "dlcSelected": "{{count}} selected",
+    "dlcPickHint": "Tick the add-ons you want to buy them together",
+    "dlcAddSelected": "Add selected to cart",
+    "dlcFor": "Add-on for"
   },
   "sysreq": {
     "os": "OS",
@@ -812,7 +834,9 @@
     "mute": "Mute",
     "unmute": "Unmute",
     "volume": "Volume",
-    "failed": "Video failed to load."
+    "failed": "Video failed to load.",
+    "quality": "Quality",
+    "qualityAuto": "Auto"
   },
   "cart": {
     "title": "Your cart",
@@ -936,8 +960,8 @@
   },
   "cashback": {
     "badge": "+{{amount}} cashback",
-    "atTier": "· {{percent}}% at {{tier}}",
-    "signInToEarn": "to earn",
+    "atTier": "{{percent}}% at {{tier}} level",
+    "signInToEarn": " to earn it",
     "comesBack": "+{{amount}} comes back on this order",
     "atYourLevel": "{{percent}}% at your {{tier}} level ·",
     "howItWorks": "How cashback works",
@@ -955,7 +979,8 @@
       "veteran": "Veteran",
       "elite": "Elite",
       "legend": "Legend"
-    }
+    },
+    "signInAction": "Sign in"
   },
   "success": {
     "finalizing": "Finalizing your order...",

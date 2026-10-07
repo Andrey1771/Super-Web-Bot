@@ -16,6 +16,12 @@ import { clamp } from "../../utils/clamp";
  *
  * Панель прячется через IDLE_HIDE_MS бездействия во время воспроизведения и возвращается по движению
  * мыши, касанию или фокусу; на паузе видна всегда.
+ *
+ * Потоки HLS (.m3u8) — так Steam отдаёт трейлеры, mp4 у него больше нет. Играет их hls.js (отдельный
+ * чанк, страница с трейлером прогревает его заранее — см. preloadHlsPlayer), даже там, где браузер
+ * умеет HLS сам (Safari, свежий Chrome): встроенный плеер выбирает качество сам и не даёт его сменить.
+ * Встроенный — только запасной путь, когда hls.js в браузере не работает. У потока есть меню
+ * качества: «Авто» или конкретная высота кадра, выбор запоминается между роликами.
  */
 export type VideoPlayerProps = {
   src: string;
@@ -35,6 +41,7 @@ export type VideoPlayerProps = {
 };
 
 export const VIDEO_VOLUME_STORAGE_KEY = 'taleshop:video-volume';
+export const VIDEO_QUALITY_STORAGE_KEY = 'taleshop:video-quality';
 export const IDLE_HIDE_MS = 2500;
 export const SEEK_STEP_SEC = 5;
 
@@ -72,6 +79,66 @@ const writeStoredVolume = (value: StoredVolume) => {
   } catch {
     // Молча: запоминание громкости — удобство, а не функция.
   }
+};
+
+type Quality = number | 'auto';
+type QualityLevel = { index: number; height: number };
+
+/** Выбранное качество: высота кадра (720) или 'auto'. */
+const readStoredQuality = (): Quality => {
+  try {
+    const raw = window.localStorage.getItem(VIDEO_QUALITY_STORAGE_KEY);
+    const height = raw ? Number(raw) : NaN;
+    return Number.isFinite(height) && height > 0 ? height : 'auto';
+  } catch {
+    return 'auto';
+  }
+};
+
+const writeStoredQuality = (value: Quality) => {
+  try {
+    window.localStorage.setItem(VIDEO_QUALITY_STORAGE_KEY, String(value));
+  } catch {
+    // Молча, как и громкость.
+  }
+};
+
+/** Та часть hls.js, которой пользуется плеер: уровни качества и переключение между ними. */
+type HlsPlayer = {
+  levels: { height: number; width: number }[];
+  currentLevel: number;
+  autoLevelCapping: number;
+  destroy: () => void;
+};
+
+/**
+ * Прогреть hls.js заранее: страница с HLS-трейлером зовёт это в простое, и по нажатию play
+ * браузер сразу качает сам ролик, а не сначала библиотеку.
+ */
+export const preloadHlsPlayer = () => {
+  void import('hls.js').catch(() => undefined);
+};
+
+/**
+ * Запас резкости для «Авто»: поток с кадром ровно по ширине плеера на деле мылит — трейлеры Steam
+ * в 480p сжаты сильно. Берём качество на ступень выше размера плеера.
+ */
+export const AUTO_QUALITY_HEADROOM = 1.4;
+
+/**
+ * Потолок «Авто»: наименьшее качество, которое шире плеера на экране с запасом (с учётом плотности
+ * пикселей). Без потолка автоматика тянула бы 1080p в маленькую карточку. -1 — без ограничения
+ * (плеер шире всех уровней: полный экран).
+ */
+export const autoCapIndex = (levels: { width: number }[], playerWidth: number, pixelRatio: number): number => {
+  const needed = playerWidth * Math.max(1, pixelRatio) * AUTO_QUALITY_HEADROOM;
+  let best = -1;
+  levels.forEach((level, index) => {
+    if (level.width >= needed && (best === -1 || level.width < levels[best].width)) {
+      best = index;
+    }
+  });
+  return best;
 };
 
 const Icon = ({ name }: { name: 'play' | 'pause' | 'replay' | 'volume' | 'volume-low' | 'muted' | 'expand' | 'compress' }) => {
@@ -120,6 +187,8 @@ const Icon = ({ name }: { name: 'play' | 'pause' | 'replay' | 'volume' | 'volume
   );
 };
 
+const isHlsSource = (src: string) => /\.m3u8(\?|#|$)/i.test(src);
+
 const VideoPlayer = ({
   src,
   poster,
@@ -148,6 +217,126 @@ const VideoPlayer = ({
   const [scrubbing, setScrubbing] = useState(false);
 
   const playing = status === 'playing';
+  const hls = isHlsSource(src);
+  const hlsRef = useRef<HlsPlayer | null>(null);
+  const [levels, setLevels] = useState<QualityLevel[]>([]);
+  const [quality, setQuality] = useState<Quality>(readStoredQuality);
+  const [activeHeight, setActiveHeight] = useState<number | null>(null);
+  const [qualityOpen, setQualityOpen] = useState(false);
+  const qualityRef = useRef<HTMLDivElement | null>(null);
+
+  const capAuto = useCallback((player: HlsPlayer) => {
+    const width = videoRef.current?.clientWidth ?? 0;
+    player.autoLevelCapping = width > 0 ? autoCapIndex(player.levels, width, window.devicePixelRatio || 1) : -1;
+  }, []);
+
+  const applyQuality = useCallback(
+    (player: HlsPlayer, choice: Quality) => {
+      if (choice === 'auto') {
+        player.currentLevel = -1;
+        capAuto(player);
+        return;
+      }
+      // Ровно такой высоты может не быть у другого ролика — берём ближайшую не выше выбранной.
+      const candidates = player.levels
+        .map((level, index) => ({ index, height: level.height }))
+        .filter((level) => level.height > 0 && level.height <= choice)
+        .sort((a, b) => b.height - a.height);
+      const target = candidates[0] ?? { index: 0 };
+      player.autoLevelCapping = -1;
+      player.currentLevel = target.index;
+    },
+    [capAuto]
+  );
+
+  // Плеер меняет размер (полный экран, поворот телефона) — пересчитать потолок «Авто».
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !hls || quality !== 'auto' || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      if (hlsRef.current) capAuto(hlsRef.current);
+    });
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [hls, quality, capAuto]);
+
+  // Меню качества закрывается кликом мимо него.
+  useEffect(() => {
+    if (!qualityOpen) return;
+    const close = (event: PointerEvent) => {
+      if (!qualityRef.current?.contains(event.target as Node)) setQualityOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [qualityOpen]);
+
+  const chooseQuality = (choice: Quality) => {
+    setQuality(choice);
+    writeStoredQuality(choice);
+    setQualityOpen(false);
+    if (hlsRef.current) applyQuality(hlsRef.current, choice);
+  };
+
+  // ---- источник HLS: родной (Safari) или через hls.js ----
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !hls) return;
+    const startIfAsked = () => {
+      if (autoPlay) {
+        video.play?.()?.catch(() => setStatus('paused'));
+      }
+    };
+    const playNatively = () => {
+      if (!video.canPlayType?.('application/vnd.apple.mpegurl')) return false;
+      video.src = src;
+      startIfAsked();
+      return true;
+    };
+    let disposed = false;
+    let instance: { destroy: () => void } | null = null;
+    import('hls.js')
+      .then(({ default: Hls }) => {
+        if (disposed) return;
+        if (!Hls.isSupported()) {
+          if (!playNatively()) setStatus('error');
+          return;
+        }
+        // Первый кусок — сразу в приличном качестве: по умолчанию hls.js считает канал медленным
+        // (500 Кбит/с) и начинает с 360p. Дальше качество подстраивается под реальную скорость.
+        const player = new Hls({ abrEwmaDefaultEstimate: 5_000_000 });
+        instance = player;
+        hlsRef.current = player;
+        player.on(Hls.Events.MANIFEST_PARSED, () => {
+          setLevels(
+            player.levels
+              .map((level, index) => ({ index, height: level.height }))
+              .filter((level) => level.height > 0)
+              .sort((a, b) => b.height - a.height)
+          );
+          applyQuality(player, readStoredQuality());
+          startIfAsked();
+        });
+        player.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+          setActiveHeight(player.levels[data.level]?.height ?? null);
+        });
+        player.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) setStatus('error');
+        });
+        player.loadSource(src);
+        player.attachMedia(video);
+      })
+      .catch(() => {
+        if (!disposed && !playNatively()) setStatus('error');
+      });
+    return () => {
+      disposed = true;
+      instance?.destroy();
+      hlsRef.current = null;
+      setLevels([]);
+      setActiveHeight(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- автозапуск решается при смене ролика, не позже
+  }, [hls, src]);
 
   // ---- панель: показать, спрятать через паузу бездействия ----
   const clearIdleTimer = () => {
@@ -190,11 +379,12 @@ const VideoPlayer = ({
   // ---- автозапуск ----
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !autoPlay) return;
+    // Для HLS запуск — после разбора плейлиста (см. выше), иначе play() упадёт на пустом источнике.
+    if (!video || !autoPlay || hls) return;
     // Браузер может не пустить (нет недавнего клика): честно остаёмся на паузе с большой кнопкой play,
     // а не гоняем ролик без звука.
     video.play?.()?.catch(() => setStatus('paused'));
-  }, [autoPlay, src]);
+  }, [autoPlay, src, hls]);
 
   // ---- управление ----
   const play = () => {
@@ -291,6 +481,12 @@ const VideoPlayer = ({
   // ---- клавиатура плеера: без стрелок, они за галереей ----
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
+    if (event.key === 'Escape' && qualityOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      setQualityOpen(false);
+      return;
+    }
     // Внутри ползунка громкости стрелки — его собственные; пробел на кнопке — её собственный клик.
     if (target.tagName === 'INPUT') return;
     const key = event.key.toLowerCase();
@@ -334,7 +530,9 @@ const VideoPlayer = ({
   const loaded = duration > 0 ? clamp(buffered / duration, 0, 1) : 0;
   const effectiveMuted = muted || volume === 0;
   const volumeIcon = effectiveMuted ? 'muted' : volume < 0.5 ? 'volume-low' : 'volume';
-  const idle = playing && !controlsVisible && !scrubbing;
+  const idle = playing && !controlsVisible && !scrubbing && !qualityOpen;
+  const qualityLabel =
+    quality === 'auto' ? (activeHeight ? `${t('video.qualityAuto')} · ${activeHeight}p` : t('video.qualityAuto')) : `${quality}p`;
 
   return (
     <div
@@ -352,7 +550,7 @@ const VideoPlayer = ({
       <video
         ref={videoRef}
         className="vp__video"
-        src={src}
+        src={hls ? undefined : src}
         poster={poster ?? undefined}
         playsInline
         preload="metadata"
@@ -464,6 +662,39 @@ const VideoPlayer = ({
           </span>
 
           <span className="vp__spacer" />
+
+          {levels.length > 1 && (
+            <div className="vp__quality" ref={qualityRef}>
+              <button
+                type="button"
+                className="vp__btn vp__quality-btn"
+                aria-label={`${t('video.quality')}: ${qualityLabel}`}
+                aria-haspopup="menu"
+                aria-expanded={qualityOpen}
+                onClick={() => setQualityOpen((open) => !open)}
+              >
+                {qualityLabel}
+              </button>
+              {qualityOpen && (
+                <ul className="vp__quality-menu" role="menu" aria-label={t('video.quality')}>
+                  {[{ key: 'auto', value: 'auto' as Quality, label: t('video.qualityAuto') }, ...levels.map((level) => ({ key: String(level.index), value: level.height as Quality, label: `${level.height}p` }))].map((item) => (
+                    <li key={item.key} role="none">
+                      <button
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={quality === item.value}
+                        className="vp__quality-item"
+                        onClick={() => chooseQuality(item.value)}
+                      >
+                        {item.label}
+                        {typeof item.value === 'number' && item.value >= 1080 ? <span className="vp__quality-hd">HD</span> : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {extraControls}
 

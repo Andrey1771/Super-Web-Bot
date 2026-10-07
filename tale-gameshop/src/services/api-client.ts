@@ -7,6 +7,26 @@ import { IKeycloakService } from '../iterfaces/i-keycloak-service';
 import {IUrlService} from "../iterfaces/i-url-service";
 import { currentCountry, currentLang } from "../context/site-preferences";
 
+/** Сколько раз повторять запрос, отбитый лимитом частоты nginx. */
+export const EDGE_RETRY_LIMIT = 2;
+
+/**
+ * Пауза перед повтором запроса, который nginx отбил лимитом частоты (429 с пометкой edge), или null — повторять
+ * не нужно. Лимит отбивает запрос до бэкенда, поэтому повтор безопасен и для POST; ответы 429 самого бэкенда
+ * (повторная отправка ключей раз в 10 минут, перебор промокодов) пометки не имеют — их показываем как есть.
+ */
+export const edgeRetryDelayMs = (error: AxiosError): number | null => {
+    const response = error.response;
+    const config = error.config as ({ __edgeRetries?: number } | undefined);
+    if (!response || response.status !== 429 || !config) return null;
+    if ((response.data as { edge?: boolean } | undefined)?.edge !== true) return null;
+    if ((config.__edgeRetries ?? 0) >= EDGE_RETRY_LIMIT) return null;
+    const retryAfter = Number(response.headers?.['retry-after']);
+    const base = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000;
+    // Разброс — чтобы повторы десятка запросов страницы не ушли одной пачкой и не упёрлись снова.
+    return base + Math.round(Math.random() * 500);
+};
+
 @injectable()
 export class ApiClient implements IApiClient {
     private readonly _api: AxiosInstance;
@@ -66,7 +86,14 @@ export class ApiClient implements IApiClient {
             (response: AxiosResponse) => {
                 return response;
             },
-            (error: AxiosError) => {
+            async (error: AxiosError) => {
+                const retry = edgeRetryDelayMs(error);
+                if (retry !== null) {
+                    const config = error.config as (typeof error.config & { __edgeRetries?: number });
+                    config.__edgeRetries = (config.__edgeRetries ?? 0) + 1;
+                    await new Promise((resolve) => setTimeout(resolve, retry));
+                    return this._api.request(config);
+                }
                 if (error.response && error.response.status === 401 && this._keycloakService.keycloak?.authenticated) {
                     // 401 у вошедшего — токен мёртв, обновить перед запросом не удалось: сессия закончилась.
                     // Снимаем вход и показываем плашку «Session expired» вместо молчаливых ошибок.

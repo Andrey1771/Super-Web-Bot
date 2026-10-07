@@ -20,13 +20,15 @@
   "eventsEnabled": true,
   "eventsExpiration": 604800,
   "smtpServer": {
-    "host": "mailpit",
-    "port": "1025",
-    "from": "no-reply@taleshop.local",
+    "host": "${SMTP_HOST}",
+    "port": "${SMTP_PORT}",
+    "from": "${MAIL_FROM}",
     "fromDisplayName": "Tale Shop",
     "ssl": "false",
-    "starttls": "false",
-    "auth": "false"
+    "starttls": "${SMTP_USE_TLS}",
+    "auth": "${SMTP_AUTH}",
+    "user": "${SMTP_USERNAME}",
+    "password": "${SMTP_PASSWORD}"
   },
   "roles": {
     "realm": [
@@ -50,17 +52,17 @@
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
       "protocol": "openid-connect",
-      "rootUrl": "http://localhost",
-      "baseUrl": "http://localhost",
+      "rootUrl": "${PUBLIC_URL}",
+      "baseUrl": "${PUBLIC_URL}",
       "redirectUris": [
-        "http://localhost/*"
+        "${PUBLIC_URL}/*"
       ],
       "webOrigins": [
-        "http://localhost",
+        "${PUBLIC_URL}",
         "+"
       ],
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost/*"
+        "post.logout.redirect.uris": "${PUBLIC_URL}/*"
       },
       "protocolMappers": [
         {
@@ -86,7 +88,7 @@
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
       "clientAuthenticatorType": "client-secret",
-      "secret": "local-dev-admin-secret-change-me"
+      "secret": "${KEYCLOAK_ADMIN_CLIENT_SECRET}"
     }
   ],
   "users": [

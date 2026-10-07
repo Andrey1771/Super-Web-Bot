@@ -1,0 +1,234 @@
+# Продакшен, поверх docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# На сервере проще прописать в .env строку COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml —
+# тогда хватает обычного `docker compose ...`. Порядок установки и обновления — docs/deploy.md.
+#
+# Отличия от стенда: готовые образы из ghcr.io (сервер ничего не собирает), https с сертификатом
+# Let's Encrypt, Mongo из одного узла с паролями, закрытая админ-консоль Keycloak, ежедневные
+# резервные копии. Обязательные переменные записаны как ${VAR:?…}: без них compose не запустится
+# и скажет, чего не хватает, — вместо сайта с паролем admin или без базы.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+# Потолки памяти: один сбойный сервис (утечка, тяжёлый запрос) упирается в свой лимит и перезапускается
+# (restart: always), а не съедает память соседей — базы, Keycloak и других сайтов на том же сервере.
+# Значения — с запасом над обычным потреблением (Keycloak ~600 МБ, Mongo ~400 МБ, остальное ~300 МБ);
+# .NET, JVM Keycloak и кэш Mongo сами подстраиваются под лимит контейнера.
+
+services:
+  backend:
+    mem_limit: 1g
+    environment:
+      # Логин приложения в Mongo: только своя база, без прав администратора сервера.
+      # Пароль — из букв и цифр (openssl rand -hex 24): он стоит внутри URL без экранирования.
+      - ConnectionStrings__MongoDb=mongodb://${MONGO_APP_USER:-taleshop}:${MONGO_APP_PASSWORD:?задайте MONGO_APP_PASSWORD в .env}@mongo1:27017/${MONGO_DB:-SteamShopDatabase}?replicaSet=rs0&authSource=${MONGO_DB:-SteamShopDatabase}
+      - Keycloak__Uri=${PUBLIC_URL:?задайте PUBLIC_URL в .env, например https://shop.example.com}/auth
+      - Keycloak__Admin__ClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET:?задайте KEYCLOAK_ADMIN_CLIENT_SECRET в .env}
+      - JwtSettings__SecretKey=${JWT_SECRET:?задайте JWT_SECRET в .env}
+      # Без настоящего SMTP письма с ключами и восстановлением доступа не уйдут никому.
+      - Mail__SmtpHost=${SMTP_HOST:?задайте SMTP_HOST в .env}
+      - Mail__SmtpPort=${SMTP_PORT:-587}
+      - Mail__SmtpUseTls=${SMTP_USE_TLS:-true}
+      - Mail__FromAddress=${MAIL_FROM:?задайте MAIL_FROM в .env}
+    depends_on:
+      mongo-setup:
+        condition: service_completed_successfully
+
+  bot:
+    mem_limit: 512m
+    environment:
+      - ConnectionStrings__MongoDb=mongodb://${MONGO_APP_USER:-taleshop}:${MONGO_APP_PASSWORD:?задайте MONGO_APP_PASSWORD в .env}@mongo1:27017/${MONGO_DB:-SteamShopDatabase}?replicaSet=rs0&authSource=${MONGO_DB:-SteamShopDatabase}
+      - Keycloak__Uri=${PUBLIC_URL:?задайте PUBLIC_URL в .env}/auth
+      - JwtSettings__SecretKey=${JWT_SECRET:?задайте JWT_SECRET в .env}
+    depends_on:
+      mongo-setup:
+        condition: service_completed_successfully
+
+  # Один узел: реплика из одного участника нужна ради транзакций и потоков изменений, а три узла
+  # на одном сервере не защищают ни от чего — они умирают вместе с ним. Защита — резервные копии ниже.
+  # Пароли: MONGO_ROOT_* — администратор сервера (создаётся при первом запуске на пустом томе),
+  # приложение ходит своим логином. Файл ключа реплики создаётся сам в томе mongodb_config1.
+  mongo1:
+    mem_limit: 1g
+    entrypoint:
+      - bash
+      - -c
+      - |
+        key=/data/configdb/keyfile
+        [ -s "$$key" ] || head -c 756 /dev/urandom | base64 -w0 > "$$key"
+        chmod 400 "$$key" && chown 999:999 "$$key"
+        exec docker-entrypoint.sh "$$@"
+      - --
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/configdb/keyfile"]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:?задайте MONGO_ROOT_USER в .env}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:?задайте MONGO_ROOT_PASSWORD в .env}
+    volumes:
+      - mongodb_config1:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # Собирает реплику и заводит логин приложения. Безопасен при каждом запуске: уже сделанное
+  # пропускает, а пароль приложения сверяет с .env (смена — поменять и перезапустить стек).
+  mongo-setup:
+    image: mongo:8.2
+    mem_limit: 256m
+    logging: *logging
+    restart: "no"
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    environment:
+      - MONGO_ROOT_USER=${MONGO_ROOT_USER}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - MONGO_DB=${MONGO_DB:-SteamShopDatabase}
+      - MONGO_APP_USER=${MONGO_APP_USER:-taleshop}
+      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
+    volumes:
+      - ./deploy/mongo:/scripts:ro
+    entrypoint:
+      - bash
+      - -c
+      - exec mongosh --quiet --host mongo1 -u "$$MONGO_ROOT_USER" -p "$$MONGO_ROOT_PASSWORD" --authenticationDatabase admin --file /scripts/setup.js
+    networks:
+      - app_network
+
+  keycloak-db:
+    mem_limit: 256m
+    environment:
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:?задайте KEYCLOAK_DB_PASSWORD в .env}
+
+  keycloak:
+    mem_limit: 1200m
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN:?задайте KEYCLOAK_ADMIN в .env}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:?задайте KEYCLOAK_ADMIN_PASSWORD в .env}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:?задайте KEYCLOAK_DB_PASSWORD в .env}
+      - KC_HOSTNAME=${PUBLIC_URL:?задайте PUBLIC_URL в .env}/auth
+      # Админ-консоль наружу закрыта (nginx отвечает 404 на /auth/admin) и открывается только
+      # через SSH-туннель: ssh -L 8088:127.0.0.1:8088 сервер → http://localhost:8088/auth/admin
+      - KC_HOSTNAME_ADMIN=http://localhost:8088/auth
+      - PUBLIC_URL=${PUBLIC_URL:?задайте PUBLIC_URL в .env}
+      - TALESHOP_ADMIN_USER=${TALESHOP_ADMIN_USER:?задайте TALESHOP_ADMIN_USER в .env}
+      - TALESHOP_ADMIN_PASSWORD=${TALESHOP_ADMIN_PASSWORD:?задайте TALESHOP_ADMIN_PASSWORD в .env}
+      - TALESHOP_ADMIN_EMAIL=${TALESHOP_ADMIN_EMAIL:?задайте TALESHOP_ADMIN_EMAIL в .env}
+      - SMTP_HOST=${SMTP_HOST:?задайте SMTP_HOST в .env}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - MAIL_FROM=${MAIL_FROM:?задайте MAIL_FROM в .env}
+    # Только для SSH-туннеля к админ-консоли: на 127.0.0.1 сервера, не наружу.
+    ports:
+      - "127.0.0.1:8088:8080"
+
+  nginx:
+    mem_limit: 256m
+    environment:
+      - NGINX_SITE=prod
+      - DOMAIN=${DOMAIN:?задайте DOMAIN в .env, например shop.example.com}
+      - PUBLIC_URL=${PUBLIC_URL:?задайте PUBLIC_URL в .env}
+      # Ссылки «Keycloak console» в админке сайта ведут на туннель (см. keycloak выше).
+      - KEYCLOAK_ADMIN_CONSOLE_URL=http://localhost:8088/auth
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+
+  # Продление сертификата Let's Encrypt: проверка дважды в сутки, обновляет за 30 дней до конца.
+  # nginx перечитывает сертификат сам раз в 6 часов. Первый выпуск — deploy/issue-cert.sh.
+  certbot:
+    image: certbot/certbot:v5.1.0
+    mem_limit: 128m
+    restart: always
+    logging: *logging
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint:
+      - sh
+      - -c
+      - trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done
+
+  # Резервные копии раз в сутки (BACKUP_HOUR по UTC) в каталог BACKUP_DIR на сервере:
+  # база магазина, загруженные файлы и база Keycloak. Хранятся последние BACKUP_KEEP копий.
+  # Восстановление — deploy/restore.sh, порядок — docs/backup-restore.md.
+  mongo-backup:
+    image: mongo:8.2
+    mem_limit: 512m
+    restart: always
+    logging: *logging
+    # После mongo-setup: до сборки реплики узел не отдаёт данные, и первая копия упала бы.
+    depends_on:
+      mongo-setup:
+        condition: service_completed_successfully
+    environment:
+      - MONGO_ROOT_USER=${MONGO_ROOT_USER}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - MONGO_DB=${MONGO_DB:-SteamShopDatabase}
+      - BACKUP_HOUR=${BACKUP_HOUR:-3}
+      - BACKUP_KEEP=${BACKUP_KEEP:-14}
+      - BACKUP_UPLOADS_KEEP=${BACKUP_UPLOADS_KEEP:-7}
+    volumes:
+      - ./deploy/backup:/scripts:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+      - uploads_data:/uploads:ro
+    entrypoint: ["bash", "/scripts/mongo-backup.sh"]
+    networks:
+      - app_network
+
+  keycloak-db-backup:
+    image: postgres:18-alpine
+    mem_limit: 256m
+    restart: always
+    logging: *logging
+    # После Keycloak: на пустой базе первая копия вышла бы без таблиц.
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      - PGHOST=keycloak-db
+      - PGDATABASE=${KEYCLOAK_DB:-keycloak}
+      - PGUSER=${KEYCLOAK_DB_USER:-keycloak}
+      - PGPASSWORD=${KEYCLOAK_DB_PASSWORD}
+      - BACKUP_HOUR=${BACKUP_HOUR:-3}
+      - BACKUP_KEEP=${BACKUP_KEEP:-14}
+    volumes:
+      - ./deploy/backup:/scripts:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    entrypoint: ["sh", "/scripts/keycloak-backup.sh"]
+    networks:
+      - app_network
+
+  # Копия резервных копий за пределами сервера (по желанию): сервер может умереть вместе с ними.
+  # Включается профилем: COMPOSE_PROFILES=offsite в .env и deploy/rclone/rclone.conf с хранилищем
+  # (S3, Backblaze B2, Яндекс Облако, Google Drive…). Настройка — docs/backup-restore.md.
+  backup-offsite:
+    image: rclone/rclone:1.71
+    mem_limit: 256m
+    profiles:
+      - offsite
+    restart: always
+    logging: *logging
+    environment:
+      # Куда копировать, в формате rclone: имя_хранилища:путь, например b2:taleshop-backups.
+      - RCLONE_REMOTE=${RCLONE_REMOTE:-}
+      - BACKUP_HOUR=${BACKUP_HOUR:-3}
+    volumes:
+      - ./deploy/backup:/scripts:ro
+      - ./deploy/rclone:/config/rclone:ro
+      - ${BACKUP_DIR:-./backups}:/backups:ro
+    entrypoint: ["sh", "/scripts/offsite.sh"]
+
+volumes:
+  mongodb_config1:
+  letsencrypt:
+  certbot_www:

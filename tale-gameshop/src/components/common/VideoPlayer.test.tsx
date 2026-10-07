@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import VideoPlayer, { IDLE_HIDE_MS, VIDEO_VOLUME_STORAGE_KEY, formatTime } from './VideoPlayer';
+import VideoPlayer, { IDLE_HIDE_MS, VIDEO_QUALITY_STORAGE_KEY, VIDEO_VOLUME_STORAGE_KEY, autoCapIndex, formatTime } from './VideoPlayer';
 
 /**
  * Свой видеоплеер. jsdom не воспроизводит видео, поэтому play/pause/load подменены в setupTests:
@@ -275,5 +275,143 @@ describe('fullscreen and idle controls', () => {
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
     video().dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+// Трейлеры Steam — только потоком HLS. Браузеры без родного HLS получают hls.js отдельным чанком.
+const mockHlsSupported = { value: true };
+// Уровни — как у трейлеров Steam: hls.js хранит их по возрастанию битрейта.
+const mockHandlers: Record<string, (event: string, data: { level: number }) => void> = {};
+const mockHls = {
+  loadSource: jest.fn(),
+  attachMedia: jest.fn(),
+  on: jest.fn((event: string, handler: (event: string, data: { level: number }) => void) => {
+    mockHandlers[event] = handler;
+  }),
+  destroy: jest.fn(),
+  levels: [
+    { height: 360, width: 640 },
+    { height: 480, width: 854 },
+    { height: 720, width: 1280 },
+    { height: 1080, width: 1920 }
+  ],
+  currentLevel: -1,
+  autoLevelCapping: -1
+};
+jest.mock('hls.js', () => {
+  const Hls = jest.fn(() => mockHls) as unknown as { isSupported: () => boolean; Events: Record<string, string> };
+  Hls.isSupported = () => mockHlsSupported.value;
+  Hls.Events = { MANIFEST_PARSED: 'hlsManifestParsed', ERROR: 'hlsError', LEVEL_SWITCHED: 'hlsLevelSwitched' };
+  return { __esModule: true, default: Hls };
+});
+
+describe('HLS stream', () => {
+  const stream = 'https://video.example/trailer/hls_264_master.m3u8?t=1';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockHls.currentLevel = -1;
+    mockHls.autoLevelCapping = -1;
+  });
+
+  const startStream = async () => {
+    render(<VideoPlayer src={stream} title="Trailer" />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => mockHandlers.hlsManifestParsed('hlsManifestParsed', { level: 0 }));
+  };
+
+  it('offers quality levels and switches to the chosen one, remembering it', async () => {
+    await startStream();
+
+    await userEvent.click(screen.getByRole('button', { name: /Quality/ }));
+    const items = screen.getAllByRole('menuitemradio').map((item) => item.textContent);
+    expect(items).toEqual(['Auto', '1080pHD', '720p', '480p', '360p']);
+
+    await userEvent.click(screen.getByRole('menuitemradio', { name: '720p' }));
+    expect(mockHls.currentLevel).toBe(2);
+    expect(window.localStorage.getItem(VIDEO_QUALITY_STORAGE_KEY)).toBe('720');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.getByRole('button', { name: /Quality/ })).toHaveTextContent('720p');
+  });
+
+  it('applies the remembered quality to the next stream', async () => {
+    window.localStorage.setItem(VIDEO_QUALITY_STORAGE_KEY, '1080');
+    await startStream();
+    expect(mockHls.currentLevel).toBe(3);
+  });
+
+  it('shows the level auto mode is playing', async () => {
+    await startStream();
+    act(() => mockHandlers.hlsLevelSwitched('hlsLevelSwitched', { level: 2 }));
+    expect(screen.getByRole('button', { name: /Quality/ })).toHaveTextContent('Auto · 720p');
+  });
+
+  it('plays through hls.js where the browser has no native HLS', async () => {
+    const { unmount } = render(<VideoPlayer src={stream} title="Trailer" />);
+
+    // Сам <video> без src: источник подключает hls.js.
+    expect(video().getAttribute('src')).toBeNull();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mockHls.loadSource).toHaveBeenCalledWith(stream);
+    expect(mockHls.attachMedia).toHaveBeenCalledWith(video());
+
+    unmount();
+    expect(mockHls.destroy).toHaveBeenCalled();
+  });
+
+  it('prefers hls.js even where the browser plays HLS itself, so quality can be chosen', async () => {
+    const canPlay = jest.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('maybe');
+    try {
+      render(<VideoPlayer src={stream} title="Trailer" />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mockHls.loadSource).toHaveBeenCalledWith(stream);
+      expect(video().getAttribute('src')).toBeNull();
+    } finally {
+      canPlay.mockRestore();
+    }
+  });
+
+  it('falls back to native HLS when hls.js cannot run', async () => {
+    mockHlsSupported.value = false;
+    const canPlay = jest.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('maybe');
+    try {
+      render(<VideoPlayer src={stream} title="Trailer" />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(video().src).toBe(stream);
+      expect(mockHls.loadSource).not.toHaveBeenCalled();
+    } finally {
+      canPlay.mockRestore();
+      mockHlsSupported.value = true;
+    }
+  });
+
+  it('keeps plain files as a regular source', () => {
+    render(<VideoPlayer src="/uploads/media/trailer.mp4" title="Trailer" />);
+    expect(video().getAttribute('src')).toBe('/uploads/media/trailer.mp4');
+  });
+});
+
+describe('autoCapIndex', () => {
+  const levels = [{ width: 640 }, { width: 854 }, { width: 1280 }, { width: 1920 }];
+
+  it('caps auto quality one step above the player size', () => {
+    // Карточка игры ~800 px: 480p (854) по ширине впритык и мылит — потолок 720p.
+    expect(autoCapIndex(levels, 803, 1)).toBe(2);
+    expect(autoCapIndex(levels, 400, 1)).toBe(0);
+  });
+
+  it('accounts for pixel density and leaves auto uncapped in fullscreen', () => {
+    // Экран 2x: карточке в 800 px нужно больше 1080p — без ограничения.
+    expect(autoCapIndex(levels, 800, 2)).toBe(-1);
+    expect(autoCapIndex(levels, 1400, 1)).toBe(-1);
+    expect(autoCapIndex(levels, 1100, 1)).toBe(3);
   });
 });

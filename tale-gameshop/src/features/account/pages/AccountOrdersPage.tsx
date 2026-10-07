@@ -10,12 +10,11 @@ import {
   faChevronLeft,
   faChevronRight,
   faMagnifyingGlass,
-  faArrowLeft,
-  faArrowRight,
   faStar,
   faPenToSquare,
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import AccountRecommendationCard from '../components/AccountRecommendationCard';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useOrders } from '../../../hooks/use-orders';
 import useDebouncedValue from '../../../hooks/useDebouncedValue';
@@ -24,7 +23,6 @@ import { fetchAccountOrderDetails, resendAccountOrderKeys, revealAccountOrderKey
 import ConfirmPasswordModal from '../components/ConfirmPasswordModal';
 import type { AccountOrderDetails, AccountOrderDetailItem, AccountOrderListItem } from '../../../types/account-orders';
 import Cover from '../../../components/common/Cover';
-import HoverTrailer from '../../../components/common/HoverTrailer';
 import { useSitePreferences } from '../../../context/site-preferences';
 import { formatMoney, formatOrderMoney } from '../../../utils/format-money';
 import { taxLabel } from '../../../utils/tax-label';
@@ -580,14 +578,6 @@ const AccountOrdersPage: React.FC = () => {
       <section className="orders-recommendations">
         <div className="orders-recommendations-header">
           <h3>{t('account.overview.recommendations')}</h3>
-          <div className="orders-recommendations-arrows">
-            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label={t('common.scrollLeft')}>
-              <FontAwesomeIcon icon={faArrowLeft} />
-            </button>
-            <button type="button" className="btn btn-outline orders-arrow-btn" aria-label={t('common.scrollRight')}>
-              <FontAwesomeIcon icon={faArrowRight} />
-            </button>
-          </div>
         </div>
         <RecommendationsSection
           items={recommendations}
@@ -600,26 +590,7 @@ const AccountOrdersPage: React.FC = () => {
           renderSkeleton={(index) => (
             <div key={`rec-skeleton-${index}`} className="card orders-recommendation-card is-skeleton" />
           )}
-          renderItem={(item) => (
-            <div key={item.game.id ?? item.game.title} className="card orders-recommendation-card" data-hover-trailer-root="">
-              <Cover className="orders-recommendation-media" ratio="landscape" sizes="(max-width: 640px) 45vw, 220px" src={item.game.imagePath} title={item.game.title}>
-                            <HoverTrailer src={item.game.trailerUrl} poster={item.game.trailerPosterUrl} title={item.game.title} />
-                        </Cover>
-              <div className="orders-recommendation-body">
-                <strong>{item.game.title}</strong>
-                <span className="orders-recommendation-price">
-                  {formatMoney(Number(item.game.price), item.game.currency ?? currency)}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="btn btn-primary orders-recommendation-btn"
-                disabled={!item.game.id}
-              >
-                {t('common.addToCart')}
-              </button>
-            </div>
-          )}
+          renderItem={(item) => <AccountRecommendationCard key={item.game.id ?? item.game.title} game={item.game} />}
         />
       </section>
     </AccountShell>

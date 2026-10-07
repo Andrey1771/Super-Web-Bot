@@ -20,6 +20,7 @@ const pageTitles: Record<string, string> = {
   "/admin/settings": "Settings",
   "/admin/cashback": "Cashback",
   "/admin/data-tools": "Import / Export",
+  "/admin/steam-import": "Steam import",
   "/admin/support/live-chat": "Support / Live Chat",
   "/admin/support/chat-stats": "Support / Chat stats",
   "/admin/support/knowledge": "Support / Knowledge",

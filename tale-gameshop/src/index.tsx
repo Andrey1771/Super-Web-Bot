@@ -1,5 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// Inter раздаётся с нашего сервера: без него сайт тихо падал на Segoe UI/системный шрифт.
+// Вариативная версия — один файл на все начертания 100–900; браузер качает только нужные алфавиты.
+import '@fontsource-variable/inter';
 import './index.css';
 import App from './app/tale-gameshop/App';
 import reportWebVitals from './reportWebVitals';

@@ -106,13 +106,14 @@ const usePendingChatCount = (enabled: boolean) => {
 };
 
 // Роли и сессии живут в Keycloak, и делать это лучше него мы не станем — ведём в его консоль.
-// Адрес — тот же, которым логинится сайт, поэтому в докере и на проде он всегда верный.
+// Адрес — тот же, которым логинится сайт, если конфиг не задаёт отдельный: в продакшене консоль
+// наружу закрыта и открывается через SSH-туннель (keycloak.adminConsoleUrl, см. docs/deploy.md).
 export const keycloakConsoleUrl = (section: "" | "users" | "roles" | "sessions" = ""): string | undefined => {
   const cfg = typeof window !== "undefined" ? window.__APP_CONFIG__?.keycloak : undefined;
   if (!cfg?.url || !cfg?.realm) {
     return undefined;
   }
-  const base = String(cfg.url).replace(/\/+$/, "");
+  const base = String(cfg.adminConsoleUrl || cfg.url).replace(/\/+$/, "");
   return `${base}/admin/master/console/#/${encodeURIComponent(cfg.realm)}${section ? `/${section}` : ""}`;
 };
 
@@ -284,6 +285,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           // Настройка счётчика, а не отчёт: сами отчёты — в разделе «Reports».
           { label: "Tracking (Google Analytics)", to: "/admin/analytics/settings", icon: faSliders },
           { label: "Import / Export", to: "/admin/data-tools", icon: faBoxArchive, roles: ["admin"] },
+          { label: "Steam import", to: "/admin/steam-import", icon: faBoxArchive, roles: ["admin"] },
           { label: "Keycloak console", href: keycloakConsoleUrl(), icon: faUserShield, roles: ["admin"] },
         ],
       },

@@ -53,12 +53,13 @@ const GameCoverOverlay: React.FC<GameCoverOverlayProps> = ({ game, chip, discoun
     // следующим запросом: если форматировать по настройке, в этот промежуток на экране висит
     // прежнее число с новым значком — то есть цена, которой не существует.
     const currency = game.currency ?? preferredCurrency;
+    const dlcCount = game.dlcCount ?? 0;
 
     return (
         <>
             {/* Левый верхний угол — одной строкой: метка, скидка и пометка «Software». По отдельности
                 они стояли бы в одной точке и перекрывали друг друга. */}
-            {(chip || software || (discounted && discountCorner === 'left')) && (
+            {(chip || software || game.isDlc || dlcCount > 0 || (discounted && discountCorner === 'left')) && (
                 <span className="gco-corner">
                     {chip && <span className="gco-chip">{chip}</span>}
                     {discounted && discountCorner === 'left' && (
@@ -66,6 +67,15 @@ const GameCoverOverlay: React.FC<GameCoverOverlayProps> = ({ game, chip, discoun
                     )}
                     {/* Каталог общий: без пометки программу на обложке легко принять за игру. */}
                     {software && <span className="gco-kind">{t('common.software')}</span>}
+                    {/* Само DLC (в «Похожем», в админке): без пометки его легко принять за игру. */}
+                    {game.isDlc && <span className="gco-kind is-dlc">{t('common.dlcTag')}</span>}
+                    {/* DLC в общем каталоге не показываются — они списком на странице игры; пометка говорит,
+                        что они есть, до клика. В нижней строке плитки ей места нет: там она вытесняла жанр. */}
+                    {dlcCount > 0 && (
+                        <span className="gco-dlc" title={t('common.dlcCountTitle', { count: dlcCount })}>
+                            {t('common.dlcCount', { count: dlcCount })}
+                        </span>
+                    )}
                 </span>
             )}
             {discounted && discountCorner === 'right' && (

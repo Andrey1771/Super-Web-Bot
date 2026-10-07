@@ -34,6 +34,8 @@ public static class StorefrontCards
         title = item.Title,
         parentGameId = item.ParentGameId,
         isDlc = item.ParentGameId is not null,
+        dlcCount = item.DlcCount,
+        parentTitle = item.ParentTitle,
         gameType = item.GameType,
         genre = item.Genre,
         kind = item.Kind.ToString(),

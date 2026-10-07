@@ -1,21 +1,25 @@
 # Super-Web-Bot
-Запуск проекта:
+Запуск стенда разработчика:
 
-1) docker-compose up --build
+1) `cp .env.example .env` и заполнить нужное (см. комментарии в файле)
+2) `docker compose up -d --build`
+3) сайт — http://localhost/, Keycloak — http://localhost/auth (консоль: /auth/admin),
+   письма — http://localhost:8025
 
-### Примечание: пока не работает до конца keycloak в prod из под docker (проблема с сертификатами), альтернативный способ его запуска
-2) скачать keycloak [Google Drive Link](https://drive.google.com/drive/folders/1ibd1OYW1uvTO3xLvmvBEuFm9hBY-LEP2?usp=sharing)
-3) В папке keycloak-26.0.6\bin выполнить: ./start_keycloak.bat
+Keycloak поднимается в том же compose, с базой в Postgres; realm TaleShop и администратор сайта
+(по умолчанию admin/admin, `TALESHOP_ADMIN_*` в .env) создаются при первом запуске.
 
-4) перейти http://localhost/
-
-PS необходимо настроить пользователей в keycloak и импортировать realm-export из "keyckoak settings (temp)"
-В дальнейшем необходимо создать пользователя с tale-shop-app "admin" в "TaleShop" (realm) для появления возможностей редактирования карточек товаров и добавления их, настроек бота и сайта
+Продакшен — [docs/deploy.md](docs/deploy.md), резервные копии — [docs/backup-restore.md](docs/backup-restore.md),
+что проверить перед запуском — [docs/pre-launch.md](docs/pre-launch.md).
 
 # Super-Web-Bot
-Project Launch:
+Local launch:
 
-1) docker-compose up --build
+1) `cp .env.example .env` and fill in what you need
+2) `docker compose up -d --build`
+3) site — http://localhost/, Keycloak — http://localhost/auth, mail trap — http://localhost:8025
+
+Production setup: [docs/deploy.md](docs/deploy.md).
 
 ## FFmpeg install (required for video thumbnails)
 
@@ -48,15 +52,10 @@ brew install ffmpeg
 choco install ffmpeg -y
 ```
 
-### Note: Keycloak is not fully functional in production under Docker yet (certificate issues). Here is an alternative way to run it:
-2) Download Keycloak: [Google Drive Link](https://drive.google.com/drive/folders/1ibd1OYW1uvTO3xLvmvBEuFm9hBY-LEP2?usp=sharing)
-
-3) In the keycloak-26.0.6\bin folder, run: ./start_keycloak.bat
-
-4) Open http://localhost/ in your browser.
-
-PS: You need to configure users in Keycloak and import the realm-export from "keycloak settings (temp)"
-In the future, you must create a user with the tale-shop-app role "admin" in the "TaleShop" (realm) to enable editing product cards, adding new products, and configuring the bot and website.
+### Keycloak
+Keycloak runs in the same compose stack (production mode, Postgres storage) behind nginx at
+`/auth`. The TaleShop realm and the site admin (default admin/admin, `TALESHOP_ADMIN_*` in `.env`)
+are created on the first start with an empty database.
 
 ## Support Chat (AI replies)
 

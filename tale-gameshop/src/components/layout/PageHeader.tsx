@@ -66,6 +66,7 @@ const CRUMB_ROUTES: Record<string, string> = {
   "Site settings": "/admin/settings",
   Tracking: "/admin/analytics/settings",
   "Import / Export": "/admin/data-tools",
+  "Steam import": "/admin/steam-import",
 
   Account: "/admin/profile",
   Profile: "/admin/profile",

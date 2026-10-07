@@ -173,4 +173,40 @@ describe('thumbnail scroller', () => {
     const thumb = document.querySelector<HTMLElement>('.thumbnail-track__thumb')!;
     expect(thumb.style.width).toBe(`${(400 / 1200) * 100}%`);
   });
+
+  it('moves the thumb with the strip once per frame', async () => {
+    layout(1200, 400);
+    render(<GameMediaGallery media={media} title="Lanternfall" />);
+    const strip = document.querySelector<HTMLDivElement>('.thumbnail-strip')!;
+    const thumb = document.querySelector<HTMLElement>('.thumbnail-track__thumb')!;
+
+    strip.scrollLeft = 300;
+    fireEvent.scroll(strip);
+    await act(() => new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined))));
+    expect(thumb.style.left).toBe('25%');
+    expect(screen.getByRole('button', { name: 'Scroll thumbnails right' })).toBeEnabled();
+
+    // Лента 1200, окно 400: конец — на 800.
+    strip.scrollLeft = 800;
+    fireEvent.scroll(strip);
+    fireEvent.scroll(strip);
+    await act(() => new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined))));
+    expect(thumb.style.left).toBe(`${(800 / 1200) * 100}%`);
+    expect(screen.getByRole('button', { name: 'Scroll thumbnails right' })).toBeDisabled();
+  });
+
+  it('drags the strip one to one with the thumb', () => {
+    layout(1200, 400);
+    render(<GameMediaGallery media={media} title="Lanternfall" />);
+    const strip = document.querySelector<HTMLDivElement>('.thumbnail-strip')!;
+    const thumb = document.querySelector<HTMLElement>('.thumbnail-track__thumb')!;
+
+    // Полоса шириной 400 (clientWidth из layout) на ленту в 1200: сдвиг бегунка на 50px — 150px ленты.
+    fireEvent.pointerDown(thumb, { clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 150 });
+    expect(strip.scrollLeft).toBe(150);
+    fireEvent.pointerUp(window);
+    fireEvent.pointerMove(window, { clientX: 300 });
+    expect(strip.scrollLeft).toBe(150);
+  });
 });

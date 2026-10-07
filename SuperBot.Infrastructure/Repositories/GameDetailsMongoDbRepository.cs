@@ -28,6 +28,15 @@ namespace SuperBot.Infrastructure.Repositories
             return _mapper.Map<GameDetails>(detailsDb);
         }
 
+        public async Task DeleteByGameIdAsync(string gameId)
+        {
+            if (string.IsNullOrWhiteSpace(gameId))
+            {
+                return;
+            }
+            await _details.DeleteManyAsync(item => item.GameId == gameId);
+        }
+
         public async Task<GameDetails> GetBySlugAsync(string slug)
         {
             if (string.IsNullOrWhiteSpace(slug))

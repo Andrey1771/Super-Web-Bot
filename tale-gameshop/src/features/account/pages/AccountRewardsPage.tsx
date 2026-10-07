@@ -17,6 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
 import { tierIcon } from '../cashback-icons';
+import TileIcon from '../components/TileIcon';
 import SafeGameImage from '../../../components/common/SafeGameImage';
 import { formatMoney } from '../../../context/site-preferences';
 import { CashbackEntry, CashbackEntryStatus, useCashbackStatus } from '../../../hooks/use-cashback-status';
@@ -201,7 +202,7 @@ const AccountRewardsPage: React.FC = () => {
                     <div className="cb-level">
                         <div className="cb-level-now">
                             <span className="cb-level-badge" aria-hidden="true">
-                                <FontAwesomeIcon icon={tierIcon(tier.id)} />
+                                <TileIcon icon={tierIcon(tier.id)} size={24} />
                             </span>
                             <div>
                                 <span className="cb-label">{t('account.rewards.current')}</span>
@@ -275,7 +276,7 @@ const AccountRewardsPage: React.FC = () => {
                         const icon = state === 'is-done' ? faCheck : state === 'is-current' ? tierIcon(item.id) : faLock;
                         return (
                             <li key={item.id} className={`cb-tier ${state}`} aria-current={index === tierIndex ? 'step' : undefined}>
-                                <span className="cb-tier-icon" aria-hidden="true"><FontAwesomeIcon icon={icon} /></span>
+                                <span className="cb-tier-icon" aria-hidden="true"><TileIcon icon={icon} size={14} /></span>
                                 <div>
                                     <strong>{tierName(item)}</strong>
                                     <span className="muted">

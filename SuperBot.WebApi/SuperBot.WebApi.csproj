@@ -12,6 +12,7 @@
     <PackageReference Include="Hangfire" Version="1.8.25" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.25" />
     <PackageReference Include="Hangfire.Mongo" Version="1.17.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.13.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
     <!-- Картинки: SkiaSharp (MIT). ImageSharp 4 требует платный ключ даже для сборки. -->
     <PackageReference Include="SkiaSharp" Version="4.153.1" />
@@ -38,6 +39,8 @@
     <!-- Логотип для шапки писем: раздаётся самим бэкендом (см. EmailAssetsController),
          чтобы письмо не зависело от деплоя фронта. Едет вместе с DLL. -->
     <EmbeddedResource Include="Mail\Assets\*.png" />
+    <!-- Стартовый каталог для импорта из Steam: список appid, на сервере доступен без репозитория. -->
+    <EmbeddedResource Include="Services\SteamImport\starter-catalog.txt" LogicalName="SteamImport.starter-catalog.txt" />
   </ItemGroup>
 
 </Project>

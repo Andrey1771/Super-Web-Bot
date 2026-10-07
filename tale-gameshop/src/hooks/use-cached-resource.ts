@@ -6,12 +6,19 @@ import { currentLang, useSitePreferences } from '../context/site-preferences';
  * редко: жанры, категории софта. Один запрос на всех и короткий кэш в памяти вкладки; сбой не кэшируется — следующий
  * показ попробует ещё раз и до тех пор живёт с запасным значением.
  */
-export const createCachedResource = <T,>(load: () => Promise<T>, fallback: T, cacheMs = 5 * 60 * 1000) => {
-  // Ответ зависит от языка сайта (подписи жанров и категорий), поэтому кэш — на каждый язык свой.
+export const createCachedResource = <T,>(
+  load: () => Promise<T>,
+  fallback: T,
+  cacheMs = 5 * 60 * 1000,
+  { perLanguage = true }: { perLanguage?: boolean } = {}
+) => {
+  // Ответ обычно зависит от языка сайта (подписи жанров и категорий), поэтому кэш — на каждый язык свой.
+  // perLanguage: false — для ответов без текстов (ссылки на соцсети): смена языка их не перезапрашивает.
   const cached = new Map<string, { at: number; promise: Promise<T> }>();
+  const keyOf = () => (perLanguage ? currentLang() : '*');
 
   const get = () => {
-    const lang = currentLang();
+    const lang = keyOf();
     const entry = cached.get(lang);
     if (!entry || Date.now() - entry.at > cacheMs) {
       const promise = load().catch(() => {
@@ -27,7 +34,8 @@ export const createCachedResource = <T,>(load: () => Promise<T>, fallback: T, ca
   /** Значение и признак, что ответ уже пришёл. До него — запасное значение. */
   const useResource = () => {
     const [state, setState] = useState<{ data: T; loaded: boolean }>({ data: fallback, loaded: false });
-    const { lang } = useSitePreferences();
+    const { lang: siteLang } = useSitePreferences();
+    const lang = perLanguage ? siteLang : '*';
 
     useEffect(() => {
       let cancelled = false;

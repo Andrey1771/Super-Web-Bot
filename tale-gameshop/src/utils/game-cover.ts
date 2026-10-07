@@ -1,5 +1,5 @@
 import i18n from "../i18n";
-import gameCoverFallback from "../assets/images/placeholders/game-cover-fallback.png";
+import gameCoverFallback from "../assets/images/placeholders/game-cover-fallback.webp";
 
 const ABSOLUTE_URL_RE = /^(?:[a-z]+:)?\/\//i;
 

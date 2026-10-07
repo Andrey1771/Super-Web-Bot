@@ -4,6 +4,11 @@ export type AppConfig = {
     stripePublishableKey?: string;
     keycloak?: {
         url?: string;
+        /**
+         * Адрес админ-консоли Keycloak, если он не совпадает с url. В продакшене консоль наружу
+         * закрыта (nginx отвечает 404 на /auth/admin) и открывается через SSH-туннель.
+         */
+        adminConsoleUrl?: string;
         realm?: string;
         clientId?: string;
         redirectUri?: string;

@@ -5,8 +5,9 @@ import { catalogHref } from '../../../utils/software';
 import { kindLabels } from '../../../utils/product-kind-labels';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAndroid, faApple, faLinux, faPlaystation, faWindows, faXbox } from '@fortawesome/free-brands-svg-icons';
-import { faCalendarDays, faGamepad, faGlobe, faUserShield } from '@fortawesome/free-solid-svg-icons';
-import type { GameDetails, MediaItem } from '../../../types/game-details';
+import { faBuilding, faCalendarDays, faCode, faDesktop, faGamepad, faGlobe, faUserShield } from '@fortawesome/free-solid-svg-icons';
+import type { GameDetails, MediaItem, ParentGameRef } from '../../../types/game-details';
+import Cover from '../../../components/common/Cover';
 import { formatReleaseDate } from '../../../utils/format-release-date';
 import { slugify } from '../../../utils/slugify';
 import GameMediaGallery from './GameMediaGallery';
@@ -58,6 +59,8 @@ type GameHeroProps = {
   /** Подписи жанров и тегов на языке сайта, по позициям game.genres / game.tags. */
   genreLabels?: string[];
   tagLabels?: string[];
+  /** Для DLC — игра, к которой оно: под названием пишем, что это дополнение и к чему. */
+  parentGame?: ParentGameRef | null;
 };
 
 /**
@@ -66,7 +69,7 @@ type GameHeroProps = {
  * у двух текстовых колонок; факты переехали из колонки в горизонтальную строку под галереей,
  * и освободившаяся ширина ушла галерее.
  */
-const GameHero = ({ game, media, rating, onMediaPlay, purchase, about, software = false, genreLabels, tagLabels }: GameHeroProps) => {
+const GameHero = ({ game, media, rating, onMediaPlay, purchase, about, software = false, genreLabels, tagLabels, parentGame }: GameHeroProps) => {
   const { t } = useTranslation();
   const labels = kindLabels(software);
   const platforms = PLATFORM_ICONS.filter(({ key }) => Boolean((game.platforms as unknown as Record<string, boolean | undefined>)?.[key]));
@@ -88,6 +91,18 @@ const GameHero = ({ game, media, rating, onMediaPlay, purchase, about, software 
           и в карточке покупки ему было тесно. */}
       <div className="gd-hero__head">
         <h1 className="game-title">{game.title}</h1>
+        {/* DLC отдельно не запустить — это видно сразу под названием, а не только в мелком пункте карточки
+            покупки: по одному названию «Working Stiff Armor Set» не понять, что это и к какой игре. */}
+        {parentGame && (
+          <p className="gd-dlc-of">
+            <span className="gd-dlc-of__badge">{t('common.dlcTag')}</span>
+            <span>{t('product.dlcFor')}</span>
+            <Link to={`/games/${parentGame.slug}`} className="gd-dlc-of__game">
+              <Cover as="span" ratio="square" sizes="28px" src={parentGame.coverUrl} title={parentGame.title} className="gd-dlc-of__cover" />
+              {parentGame.title}
+            </Link>
+          </p>
+        )}
         {game.tagline && <p className="game-tagline">{game.tagline}</p>}
         {rating && <TitleRating summary={rating.summary} isTopRated={rating.isTopRated} onClick={rating.onClick} />}
       </div>
@@ -100,7 +115,9 @@ const GameHero = ({ game, media, rating, onMediaPlay, purchase, about, software 
         <dl className="gd-facts">
           {platforms.length > 0 && (
             <div className="gd-fact">
-              <dt>{labels.platforms}</dt>
+              <dt>
+                <FontAwesomeIcon icon={faDesktop} /> {labels.platforms}
+              </dt>
               <dd className="gd-fact__platforms">
                 {platforms.map((platform) => (
                   <span key={platform.key} className="platform-chip" title={platform.label}>
@@ -121,13 +138,17 @@ const GameHero = ({ game, media, rating, onMediaPlay, purchase, about, software 
           )}
           {game.developer?.name && (
             <div className="gd-fact">
-              <dt>{labels.developer}</dt>
+              <dt>
+                <FontAwesomeIcon icon={faCode} /> {labels.developer}
+              </dt>
               <dd>{game.developer.name}</dd>
             </div>
           )}
           {game.publisher?.name && game.publisher.name !== game.developer?.name && (
             <div className="gd-fact">
-              <dt>{t('product.publisher')}</dt>
+              <dt>
+                <FontAwesomeIcon icon={faBuilding} /> {t('product.publisher')}
+              </dt>
               <dd>{game.publisher.name}</dd>
             </div>
           )}

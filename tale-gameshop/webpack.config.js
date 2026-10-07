@@ -119,6 +119,14 @@ export default (env, { mode }) => {
                 generator: {
                     filename: 'assets/images/[name].[contenthash][ext]',
                 },
+            },
+            {
+                // Шрифты (Inter из @fontsource-variable) — со своего сервера, без обращений к Google.
+                test: /.(woff2?|ttf|otf|eot)$/i,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/fonts/[name].[contenthash][ext]',
+                },
             }
         ],
     },

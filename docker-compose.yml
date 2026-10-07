@@ -1,23 +1,33 @@
-services:
-  frontend:
-    build:
-      context: ./tale-gameshop
-      dockerfile: Dockerfile
-    restart: always
-    volumes:
-      - ./tale-gameshop/dist:/frontend_build
-    networks:
-      - frontend_network
+# Базовое описание стека — общее для стенда и продакшена. Само по себе не запускается:
+#   стенд (эта машина):  docker compose up -d
+#                        compose сам добавит docker-compose.override.yml — сборку образов
+#                        из исходников, реплику Mongo из трёх узлов, Mailpit, отладочные порты;
+#   продакшен (сервер):  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#                        (или COMPOSE_FILE в .env сервера, см. docs/deploy.md) — готовые образы
+#                        из ghcr.io, https, Mongo с паролями, резервные копии.
+#
+# Портов наружу здесь нет: в списке ports compose складывает значения из всех файлов, а убрать
+# порт, объявленный в базе, нельзя. Поэтому каждый файл публикует своё.
 
+# Ротация логов для всех сервисов. По умолчанию Docker пишет json-логи без ограничения, и
+# за месяцы работы они съедают диск сервера целиком.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
+    image: ghcr.io/andrey1771/super-web-bot-backend:${IMAGE_TAG:-latest}
     restart: always
+    logging: *logging
     environment:
       - ASPNETCORE_URLS=http://+:7002
-      # Имя переменной должно совпадать с конфигом, который реально читает код: ConnectionStrings:MongoDb
-      - ConnectionStrings__MongoDb=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+      # Имя переменной должно совпадать с конфигом, который реально читает код: ConnectionStrings:MongoDb.
+      # По умолчанию — реплика стенда без паролей; продакшен задаёт свою строку с логином.
+      - ConnectionStrings__MongoDb=${MONGO_URL:-mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0}
+      - ConnectionStrings__Name=${MONGO_DB:-SteamShopDatabase}
       # Валюты витрины. Базовая — USD; каждая валюта из списка появляется в переключателе в шапке,
       # а стартовая угадывается по региону браузера. Курс — стартовый (ManualRates), дальше его
       # правит админка (Currencies & FX) или суточный импорт, если задан Storefront__Fx__Source__Url.
@@ -45,26 +55,37 @@ services:
       # - Legal__I18n__ru__GoverningLawCountry=${LEGAL_GOVERNING_LAW_COUNTRY_RU:-}
       # Пока текст не вычитал юрист, держите true: витрина покажет пометку «черновик».
       # - Legal__Draft=true
-      # Keycloak: issuer (внешний, как видит браузер) и адрес метаданных (внутренний, как видит бэкенд)
-      - Keycloak__Uri=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}
+      # Keycloak живёт на том же домене под /auth (его проксирует nginx).
+      # Uri — issuer токенов, как его видит браузер; MetadataAddress — тот же Keycloak изнутри сети.
+      - Keycloak__Uri=${PUBLIC_URL:-http://localhost}/auth
       - Keycloak__Realm=TaleShop
       - Keycloak__Audience=account
-      - Keycloak__MetadataAddress=http://keycloak:8080/realms/TaleShop/.well-known/openid-configuration
+      - Keycloak__MetadataAddress=http://keycloak:8080/auth/realms/TaleShop/.well-known/openid-configuration
       # Admin-API Keycloak для страницы Security (сервисный аккаунт tale-shop-admin, ходит изнутри сети)
-      - Keycloak__Admin__BaseUrl=http://keycloak:8080
+      - Keycloak__Admin__BaseUrl=http://keycloak:8080/auth
       - Keycloak__Admin__Realm=TaleShop
       - Keycloak__Admin__ClientId=tale-shop-admin
-      # Secret comes from .env (must match the client secret in keycloak/import/TaleShop-realm.json)
+      # Секрет из .env; при первом запуске Keycloak тот же секрет попадает в клиент tale-shop-admin
+      # (плейсхолдер в keycloak/import/TaleShop-realm.json).
       - Keycloak__Admin__ClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET}
       - Keycloak__Admin__PublicClientId=tale-shop-app
       # Внешний URL, куда Keycloak вернёт пользователя после действия из письма (2FA/verify/reset)
       - Keycloak__Admin__SecurityRedirectUri=${PUBLIC_URL:-http://localhost}/account/security
       # Внешний (браузерный) адрес account-консоли Keycloak для управления 2FA
-      - Keycloak__Admin__AccountConsoleUrl=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}/realms/TaleShop/account
-      # Восстановление доступа: письма шлём через mailpit, ссылки в письмах — на внешний адрес сайта
-      - Recovery__SmtpHost=mailpit
-      - Recovery__SmtpPort=1025
+      - Keycloak__Admin__AccountConsoleUrl=${PUBLIC_URL:-http://localhost}/auth/realms/TaleShop/account
+      # Почта: одна SMTP-настройка на все письма сайта (заказы, рассылка, восстановление доступа,
+      # поддержка). По умолчанию — Mailpit стенда; в продакшене — почтовый сервис с логином и
+      # STARTTLS на порту 587 (465 клиент .NET не умеет — бэкенд откажется стартовать).
+      - Mail__SmtpHost=${SMTP_HOST:-mailpit}
+      - Mail__SmtpPort=${SMTP_PORT:-1025}
+      - Mail__SmtpUsername=${SMTP_USERNAME:-}
+      - Mail__SmtpPassword=${SMTP_PASSWORD:-}
+      - Mail__SmtpUseTls=${SMTP_USE_TLS:-false}
+      - Mail__FromAddress=${MAIL_FROM:-no-reply@taleshop.local}
+      - Mail__PublicBaseUrl=${PUBLIC_URL:-http://localhost}
+      # Восстановление доступа: ссылки в письмах — на внешний адрес сайта
       - Recovery__PublicBaseUrl=${PUBLIC_URL:-http://localhost}
+      - Recovery__FromAddress=${MAIL_FROM:-no-reply@taleshop.local}
       - Recovery__WaitingPeriodHours=72
       # Письмо «расскажите, как вам игра» через неделю после выдачи ключа. Выключено, пока
       # не выставите true: рассылка идёт живым покупателям, и включаться сама она не должна.
@@ -82,16 +103,18 @@ services:
       # По умолчанию deepseek. Ollama остаётся резервом при любом выборе — на неё чат уходит
       # сам, если ключа нет, внешний API недоступен или исчерпан дневной бюджет, — поэтому
       # адрес нужен всегда. Вернуться на локальную модель: SUPPORT_CHAT_PROVIDER=ollama.
-      - SupportChat__OllamaBaseUrl=http://host.docker.internal:11434
+      - SupportChat__OllamaBaseUrl=${OLLAMA_URL:-http://host.docker.internal:11434}
       - SupportChat__Provider=${SUPPORT_CHAT_PROVIDER:-deepseek}
-      - SupportChat__DeepSeekApiKey=${DEEPSEEK_API_KEY}
+      - SupportChat__DeepSeekApiKey=${DEEPSEEK_API_KEY:-}
       # Имя модели берётся из актуального прайса провайдера; reasoning-версию не используем.
       - SupportChat__DeepSeekModel=${DEEPSEEK_MODEL:-deepseek-chat}
       # Метка приложения в запросах: одним ключом могут пользоваться несколько наших проектов.
       - SupportChat__AppTag=${SUPPORT_CHAT_APP_TAG:-tale-shop-support}
-      # Дневной потолок расходов в USD. 0 = без ограничения; при исчерпании чат уходит на Ollama.
-      - SupportChat__DailyBudgetUsd=${SUPPORT_CHAT_DAILY_BUDGET_USD:-0}
-      # Ящик, куда падает уведомление о передаче диалога человеку. Пусто — на Recovery__FromAddress.
+      # Потолок расходов на ИИ-чат в сутки, $. По умолчанию 5: без потолка чат с ботами за прокси
+      # тратит деньги без ограничения. 0 — без ограничения; при исчерпании чат уходит на Ollama.
+      # Перекрывается и полем в админке (Settings).
+      - SupportChat__DailyBudgetUsd=${SUPPORT_CHAT_DAILY_BUDGET_USD:-5}
+      # Ящик, куда падает уведомление о передаче диалога человеку. Пусто — на адрес отправителя.
       - SupportChat__SpecialistEmail=${SUPPORT_SPECIALIST_EMAIL:-}
       # Доступ на ЧТЕНИЕ отчётов Google Analytics внутрь админки. К сбору данных отношения не
       # имеет: витрине хватает Measurement ID из настроек. Пусто — страница Analytics overview
@@ -99,7 +122,7 @@ services:
       - Analytics__Google__ClientId=${GA_OAUTH_CLIENT_ID:-}
       - Analytics__Google__ClientSecret=${GA_OAUTH_CLIENT_SECRET:-}
       - Analytics__Google__RefreshToken=${GA_OAUTH_REFRESH_TOKEN:-}
-      # Public site URLs — set PUBLIC_URL in .env to your real domain (defaults to localhost for dev).
+      # Публичный адрес сайта — PUBLIC_URL в .env (на стенде по умолчанию http://localhost).
       - MainUrl=${PUBLIC_URL:-http://localhost}
       # Кому бот пишет о заказах и эскалациях. Личные идентификаторы владельца — держим
       # в .env, а не в appsettings.json: тот лежит в репозитории и уезжает на GitHub.
@@ -112,9 +135,9 @@ services:
       # BOT_WEBHOOK_URL нужен, когда они не совпадают: например, локально сайт живёт на
       # localhost, а Telegram требует https и стучится через туннель.
       - BotConfiguration__BotWebhookUrl=${BOT_WEBHOOK_URL:-${PUBLIC_URL:-http://localhost}/api/Telegram}
-      # Application secrets — sourced from .env (gitignored), never from committed appsettings.
-      - BotConfiguration__BotToken=${BOT_TOKEN}
-      - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET}
+      # Секреты приложения — только из .env (он не в git), никогда не из appsettings в репозитории.
+      - BotConfiguration__BotToken=${BOT_TOKEN:-}
+      - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET:-}
       # Общий токен для служебных вызовов между нашими же сервисами (проверки здоровья).
       # Пустой — служебный вход закрыт, остаётся только вход по правам админа.
       - Internal__ServiceToken=${INTERNAL_SERVICE_TOKEN:-}
@@ -125,23 +148,22 @@ services:
       # Крипто-рельс выключен по решению: код и интеграция остались на месте, магазин их
       # не предлагает. Включается сюда же — BTCPAY_ENABLED=true вместе с ключами ниже.
       - BtcPay__Enabled=${BTCPAY_ENABLED:-false}
-      - BtcPay__BaseUrl=${BTCPAY_URL}
-      - BtcPay__ApiKey=${BTCPAY_API_KEY}
-      - BtcPay__StoreId=${BTCPAY_STORE_ID}
-      - BtcPay__WebhookSecret=${BTCPAY_WEBHOOK_SECRET}
+      - BtcPay__BaseUrl=${BTCPAY_URL:-}
+      - BtcPay__ApiKey=${BTCPAY_API_KEY:-}
+      - BtcPay__StoreId=${BTCPAY_STORE_ID:-}
+      - BtcPay__WebhookSecret=${BTCPAY_WEBHOOK_SECRET:-}
       - JwtSettings__SecretKey=${JWT_SECRET}
-      - Stripe__SecretKey=${STRIPE_SECRET_KEY}
-      - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+      - Stripe__SecretKey=${STRIPE_SECRET_KEY:-}
+      - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY:-}
       # Подписной секрет вебхука (whsec_…). Из `stripe listen` (локально) или Dashboard → Webhooks (боевой). Пусто = вебхук отклоняется.
-      - Stripe__WebhookSecret=${STRIPE_WEBHOOK_SECRET}
+      - Stripe__WebhookSecret=${STRIPE_WEBHOOK_SECRET:-}
       # Cloudflare Turnstile (bot check on chat session creation). Empty = disabled.
-      - SupportChat__TurnstileSiteKey=${TURNSTILE_SITE_KEY}
-      - SupportChat__TurnstileSecretKey=${TURNSTILE_SECRET_KEY}
+      # Локально в .env стоят тестовые ключи Cloudflare (всегда пропускают): проверяется сама цепочка.
+      # На сервере — только настоящие ключи сайта из панели Cloudflare, привязанные к домену.
+      - SupportChat__TurnstileSiteKey=${TURNSTILE_SITE_KEY:-}
+      - SupportChat__TurnstileSecretKey=${TURNSTILE_SECRET_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Снаружи API доступен через nginx; прямой порт — только для этой машины (отладка, дев-фронт).
-    ports:
-      - "127.0.0.1:7002:7002"
     volumes:
       # Загруженные файлы (аватары и т.п.) должны переживать пересборку контейнера.
       - uploads_data:/app/wwwroot/uploads
@@ -149,8 +171,6 @@ services:
       - dp_keys_backend:/app/keys
     depends_on:
       - mongo1
-      - mongo2
-      - mongo3
       - keycloak
     networks:
       - app_network
@@ -159,18 +179,18 @@ services:
   # только через Mongo (event-outbox). nginx направляет сюда /api/Telegram, /api/admin/bot,
   # /api/miniapp, /api/account/telegram.
   bot:
-    build:
-      context: .
-      dockerfile: Dockerfile.bot
+    image: ghcr.io/andrey1771/super-web-bot-bot:${IMAGE_TAG:-latest}
     restart: always
+    logging: *logging
     environment:
       - ASPNETCORE_URLS=http://+:7003
-      - ConnectionStrings__MongoDb=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+      - ConnectionStrings__MongoDb=${MONGO_URL:-mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0}
+      - ConnectionStrings__Name=${MONGO_DB:-SteamShopDatabase}
       # Keycloak (проверка admin/аккаунт токенов) — как у backend
-      - Keycloak__Uri=${KEYCLOAK_PUBLIC_URL:-http://localhost:8088}
+      - Keycloak__Uri=${PUBLIC_URL:-http://localhost}/auth
       - Keycloak__Realm=TaleShop
       - Keycloak__Audience=account
-      - Keycloak__MetadataAddress=http://keycloak:8080/realms/TaleShop/.well-known/openid-configuration
+      - Keycloak__MetadataAddress=http://keycloak:8080/auth/realms/TaleShop/.well-known/openid-configuration
       - JwtSettings__Issuer=${PUBLIC_URL:-http://localhost}
       - JwtSettings__Audience=${PUBLIC_URL:-http://localhost}
       - JwtSettings__SecretKey=${JWT_SECRET}
@@ -184,113 +204,102 @@ services:
       # BOT_WEBHOOK_URL нужен, когда они не совпадают: например, локально сайт живёт на
       # localhost, а Telegram требует https и стучится через туннель.
       - BotConfiguration__BotWebhookUrl=${BOT_WEBHOOK_URL:-${PUBLIC_URL:-http://localhost}/api/Telegram}
-      - BotConfiguration__BotToken=${BOT_TOKEN}
-      - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET}
+      - BotConfiguration__BotToken=${BOT_TOKEN:-}
+      - BotConfiguration__SecretToken=${BOT_WEBHOOK_SECRET:-}
       # Общий токен для служебных вызовов между нашими же сервисами (проверки здоровья).
       # Пустой — служебный вход закрыт, остаётся только вход по правам админа.
       - Internal__ServiceToken=${INTERNAL_SERVICE_TOKEN:-}
       - BotPayments__StarsPerUsd=${STARS_PER_USD:-50}
+    volumes:
+      # Ключи DataProtection: см. backend.
+      - dp_keys_bot:/app/keys
     depends_on:
       - mongo1
-      - mongo2
-      - mongo3
       - keycloak
     networks:
       - app_network
 
-    volumes:
-      # Ключи DataProtection: см. backend.
-      - dp_keys_bot:/app/keys
   mongo1:
     image: mongo:8.2
     restart: always
+    logging: *logging
     command: mongod --replSet rs0 --bind_ip_all
     volumes:
       - mongodb_data1:/data/db
-    # База без аутентификации: наружу её не публикуем, порт — только для этой машины.
-    ports:
-      - "127.0.0.1:27017:27017"
     networks:
       - app_network
 
-  mongo2:
-    image: mongo:8.2
+  # База Keycloak: пользователи, пароли, сессии, настройки realm. Раньше Keycloak работал
+  # в режиме разработки со встроенной H2 внутри контейнера, и каждое пересоздание контейнера
+  # стирало всех пользователей. Версия 18 — та, на которой Keycloak 26.7 проверен.
+  keycloak-db:
+    image: postgres:18-alpine
     restart: always
-    command: mongod --replSet rs0 --bind_ip_all
+    logging: *logging
+    environment:
+      - POSTGRES_DB=${KEYCLOAK_DB:-keycloak}
+      - POSTGRES_USER=${KEYCLOAK_DB_USER:-keycloak}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:-keycloak}
     volumes:
-      - mongodb_data2:/data/db
+      # С 18-й версии образ хранит данные в подкаталоге по версии, поэтому том — на уровень выше
+      # (/var/lib/postgresql, а не /var/lib/postgresql/data).
+      - keycloak_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
       - app_network
-
-  mongo3:
-    image: mongo:8.2
-    restart: always
-    command: mongod --replSet rs0 --bind_ip_all
-    volumes:
-      - mongodb_data3:/data/db
-    networks:
-      - app_network
-
-  # Демо-сид стенда: наполняет базу и uploads-том правдоподобными данными.
-  # В обычный `up` не входит — запускается вручную:
-  #   docker compose --profile demo run --rm -e ALLOW_DEMO_SEED=1 demo-seeder
-  # Флаг ALLOW_DEMO_SEED сюда намеренно не прописан: без него сиды откажутся работать.
-  # Подробности и принципы — в seeds/README.md.
-  demo-seeder:
-    image: mongo:8.2
-    profiles:
-      - demo
-    depends_on:
-      - mongo3
-    volumes:
-      - ./seeds:/seeds:ro
-      - uploads_data:/seed-uploads
-    networks:
-      - app_network
-    entrypoint: ["bash", "/seeds/run-all.sh"]
-
-  mongo-init:
-    image: mongo:8.2
-    depends_on:
-      - mongo1
-      - mongo2
-      - mongo3
-    networks:
-      - app_network
-    entrypoint: >
-      /bin/sh -c "
-      sleep 10;
-      mongosh --host mongo1:27017 --eval 'rs.initiate({_id: \"rs0\", members: [{ _id: 0, host: \"mongo1:27017\" }, { _id: 1, host: \"mongo2:27017\" }, { _id: 2, host: \"mongo3:27017\" }]})';
-      exit 0;
-      "
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.4
     restart: always
+    logging: *logging
+    # Боевой режим (start) и на стенде, и в продакшене: одинаковое поведение и данные в Postgres.
+    # --import-realm создаёт realm TaleShop из keycloak/import при первом запуске на пустой базе;
+    # если realm уже есть, файл не применяется (изменения в нём — через админ-консоль).
     # recovery-codes — preview-фича Keycloak: включает backup-коды (kc_action=CONFIGURE_RECOVERY_AUTHN_CODES).
-    # Required action регистрируется при создании realm, поэтому после включения фичи контейнер надо
-    # пересоздать: docker compose up -d --force-recreate keycloak (данные не персистятся, realm импортнётся заново).
-    command: start-dev --import-realm --features=recovery-codes
+    command: start --import-realm --features=recovery-codes
     environment:
-      # Учётка админ-консоли Keycloak (master realm) — http://localhost:8088/admin
+      # Учётка админ-консоли Keycloak (master realm). Создаётся только при первом запуске на
+      # пустой базе — потом смена пароля здесь ничего не меняет, только в самой консоли.
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN:-admin}
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      # Публичный адрес (issuer токенов) — как его видит браузер
-      - KC_HOSTNAME=http://localhost:8088
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB:-keycloak}
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER:-keycloak}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-keycloak}
+      # Один экземпляр — без кластерного кэша и поиска соседей.
+      - KC_CACHE=local
+      # Keycloak на том же домене, что и сайт, под /auth: nginx проксирует его как есть.
+      # Публичный адрес (issuer токенов) — как его видит браузер.
+      - KC_HOSTNAME=${PUBLIC_URL:-http://localhost}/auth
+      - KC_HTTP_RELATIVE_PATH=/auth
+      # Здоровье остаётся на management-порту без префикса: :9000/health/ready.
+      - KC_HTTP_MANAGEMENT_RELATIVE_PATH=/
+      # Схему и хост клиента берём из заголовков nginx (TLS снимает он).
+      - KC_PROXY_HEADERS=xforwarded
+      - KC_HTTP_ENABLED=true
       # JWKS/backchannel отдаются по адресу запроса → бэкенд из контейнера получит keycloak:8080
       - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
-      - KC_HTTP_ENABLED=true
       - KC_HEALTH_ENABLED=true
+      # Значения для плейсхолдеров ${...} в keycloak/import/TaleShop-realm.json. Применяются
+      # только при первом импорте realm, то есть на пустой базе Keycloak.
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost}
+      - KEYCLOAK_ADMIN_CLIENT_SECRET=${KEYCLOAK_ADMIN_CLIENT_SECRET}
       # Админ САЙТА (не админ-консоли Keycloak выше) — пользователь realm'а TaleShop.
-      # Realm импортируется из keycloak/import/TaleShop-realm.json, где эти три значения
-      # подставляются вместо плейсхолдеров. По умолчанию admin/admin, как и было.
       - TALESHOP_ADMIN_USER=${TALESHOP_ADMIN_USER:-admin}
       - TALESHOP_ADMIN_PASSWORD=${TALESHOP_ADMIN_PASSWORD:-admin}
       - TALESHOP_ADMIN_EMAIL=${TALESHOP_ADMIN_EMAIL:-admin@taleshop.local}
-    # Админ-консоль Keycloak с учёткой по умолчанию не должна быть видна в сети — только на этой машине.
-    # В проде Keycloak публикуется через обратный прокси с TLS.
-    ports:
-      - "127.0.0.1:8088:8080"
+      # Почта Keycloak (подтверждение адреса, сброс пароля, настройка 2FA) — тот же SMTP, что у сайта.
+      - SMTP_HOST=${SMTP_HOST:-mailpit}
+      - SMTP_PORT=${SMTP_PORT:-1025}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_AUTH=${SMTP_USERNAME:+true}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-false}
+      - MAIL_FROM=${MAIL_FROM:-no-reply@taleshop.local}
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
       # Кастомная тема логина монтируется рядом со встроенными (не перекрывая их — нужен parent keycloak.v2)
@@ -301,37 +310,32 @@ services:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n' >&3 && grep -q UP <&3"]
       interval: 5s
       timeout: 5s
-      retries: 40
-      start_period: 20s
+      retries: 60
+      start_period: 30s
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
     networks:
       - app_network
 
-  # Dev-ловушка писем: Keycloak отправляет письма (2FA-setup, верификация, сброс пароля) сюда.
-  # Веб-интерфейс с письмами — http://localhost:8025. Реальная почта в проде настраивается отдельно.
-  # Mailpit вместо заброшенного MailHog: те же порты (SMTP 1025, веб 8025), но живой проект.
-  mailpit:
-    image: axllent/mailpit:v1.31.3
-    restart: always
-    ports:
-      - "127.0.0.1:8025:8025"
-      - "127.0.0.1:1025:1025"
-    networks:
-      - app_network
-
+  # Сайт: собранный фронт + обратный прокси на backend, bot и Keycloak (см. nginx/).
   nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.nginx
+    image: ghcr.io/andrey1771/super-web-bot-nginx:${IMAGE_TAG:-latest}
     restart: always
-    ports:
-      - "80:80"
+    logging: *logging
+    volumes:
+      # Медиа игр (/uploads/steam) nginx отдаёт сам, прямо из тома — только чтение.
+      - uploads_data:/srv/uploads:ro
+    environment:
+      # dev — http на 80-м порту; prod — домен, https и закрытая админ-консоль Keycloak.
+      - NGINX_SITE=${NGINX_SITE:-dev}
+      # Публичный ключ Stripe попадает в рантайм-конфиг фронта при старте контейнера.
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
     # Длинная форма: nginx не поднимается, пока Keycloak не станет healthy.
     # Иначе сайт начинает отдаваться раньше авторизации, фронт ловит отказ
     # check-sso и навсегда виснет на заставке (провайдер @react-keycloak при
     # неудачном init не выставляет initialized).
     depends_on:
-      frontend:
-        condition: service_started
       backend:
         condition: service_started
       bot:
@@ -344,13 +348,10 @@ services:
 networks:
   app_network:
     driver: bridge
-  frontend_network:
-    driver: bridge
 
 volumes:
   dp_keys_backend:
   dp_keys_bot:
   mongodb_data1:
-  mongodb_data2:
-  mongodb_data3:
   uploads_data:
+  keycloak_db_data:

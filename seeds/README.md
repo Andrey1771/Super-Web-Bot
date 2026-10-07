@@ -20,8 +20,21 @@ docker compose restart backend
 скрипт по отдельности. Флаг намеренно не прописан в `docker-compose.yml`: его передают руками
 при каждом запуске.
 
-Если сиды когда-то запускались на базе, которая уйдёт в прод, почистите демо-данные по
-`docs/pre-launch.md`: там описаны отзывы и команда.
+## Удаление демо-данных
+
+`remove-demo.js` убирает всё, что записали сиды, по их меткам: выдуманные товары (витринная игра,
+апкаминги, демо-ПО) со всеми ссылками на них, ключи `TALE-`/`demo-cost-`, заказы `DEMO-`, отзывы,
+комментарии и просмотры от `seed-*`, демо-посты, скидки и команду «О нас». Настоящие игры с теми же
+названиями остаются — их карточки заполняет импорт из Steam (админка → Steam import). Ключи,
+выданные по настоящим заказам, тоже остаются.
+
+```bash
+docker compose exec -T mongo1 mongosh --quiet "mongodb://mongo1:27017,mongo2:27017,mongo3:27017/SteamShopDatabase?replicaSet=rs0" \
+  --eval "const ALLOW_DEMO_CLEANUP=1" --file /dev/stdin < seeds/remove-demo.js
+docker compose exec backend sh -c 'cd /app/wwwroot/uploads && rm -rf demo-covers demo-upcoming demo-media demo-team demo-reviews'
+```
+
+Перед запуском — резервная копия. На стенде это сделано 2026-10-01.
 
 ## Принципы
 

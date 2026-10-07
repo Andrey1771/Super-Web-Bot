@@ -173,6 +173,12 @@
 }
 
 .support-action-card {
+  /* Кнопка по умолчанию центрирует содержимое по вертикали: у карточек с описанием в две строки
+     иконка и заголовок съезжали ниже, чем у соседних с тремя. Содержимое — от верхнего края. */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   text-align: left;
   cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;

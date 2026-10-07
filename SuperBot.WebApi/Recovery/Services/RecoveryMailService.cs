@@ -11,11 +11,13 @@ namespace SuperBot.WebApi.Recovery.Services;
 public class RecoveryMailService
 {
     private readonly RecoveryOptions _options;
+    private readonly MailOptions _mail;
     private readonly ILogger<RecoveryMailService> _logger;
 
-    public RecoveryMailService(IOptions<RecoveryOptions> options, ILogger<RecoveryMailService> logger)
+    public RecoveryMailService(IOptions<RecoveryOptions> options, IOptions<MailOptions> mail, ILogger<RecoveryMailService> logger)
     {
         _options = options.Value;
+        _mail = mail.Value;
         _logger = logger;
     }
 
@@ -71,10 +73,11 @@ public class RecoveryMailService
 
         try
         {
-            using var client = new SmtpClient(_options.SmtpHost, _options.SmtpPort);
+            // Сервер, логин и шифрование — общие для всей почты (секция Mail).
+            using var client = SmtpClients.Create(_mail);
             using var message = new MailMessage
             {
-                From = new MailAddress(_options.FromAddress, _options.FromName),
+                From = new MailAddress(_mail.FromAddress, _mail.FromName),
                 Subject = subject,
                 Body = body
             };

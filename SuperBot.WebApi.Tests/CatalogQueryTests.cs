@@ -560,18 +560,29 @@ public class CatalogQueryTests
     {
         var marker = NewMarker();
         var byStudio = await SeedGameAsync($"{marker} Studio Game");
+        var coDeveloped = await SeedGameAsync($"{marker} Ported Game");
         var other = await SeedGameAsync($"{marker} Other Game");
         using (var scope = _factory.Services.CreateScope())
         {
             var details = scope.ServiceProvider.GetRequiredService<IGameDetailsRepository>();
             await details.UpsertAsync(new GameDetails { GameId = byStudio, Slug = $"{marker}-studio", Title = "Studio Game", Developer = new GameStudioInfo { Name = $"{marker} Works" }, Tags = new List<string> { $"{marker}-tag" } });
+            // Steam перечисляет студии через запятую — игра должна найтись по каждой из них.
+            await details.UpsertAsync(new GameDetails { GameId = coDeveloped, Slug = $"{marker}-ported", Title = "Ported Game", Developer = new GameStudioInfo { Name = $"{marker} Works, Port House (Mac)" } });
             await details.UpsertAsync(new GameDetails { GameId = other, Slug = $"{marker}-other", Title = "Other Game", Publisher = new GameStudioInfo { Name = "Someone Else" } });
         }
         RefreshCatalog();
 
         var studio = await GetCatalogAsync($"studio={Uri.EscapeDataString($"{marker} Works")}");
-        Assert.Equal(1, studio.GetProperty("total").GetInt32());
-        Assert.Equal(byStudio, studio.GetProperty("items")[0].GetProperty("id").GetString());
+        Assert.Equal(2, studio.GetProperty("total").GetInt32());
+        Assert.Equal(
+            new[] { byStudio, coDeveloped }.OrderBy(id => id),
+            studio.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetString()).OrderBy(id => id));
+
+        var porter = await GetCatalogAsync($"studio={Uri.EscapeDataString("Port House (Mac)")}");
+        Assert.Equal(coDeveloped, Assert.Single(porter.GetProperty("items").EnumerateArray()).GetProperty("id").GetString());
+
+        // Часть названия — не студия.
+        Assert.Equal(0, (await GetCatalogAsync($"studio={Uri.EscapeDataString($"{marker} Wor")}")).GetProperty("total").GetInt32());
 
         var tag = await GetCatalogAsync($"tag={Uri.EscapeDataString($"{marker}-TAG")}");
         Assert.Equal(1, tag.GetProperty("total").GetInt32());

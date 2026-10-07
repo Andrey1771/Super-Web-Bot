@@ -302,6 +302,10 @@ const ChatWidget: React.FC = () => {
   // 409 — диалог закрыт специалистом: переписку показываем, писать не даём.
   // 410 — диалог исчерпан по длине: заводим новый сами и говорим об этом одной строкой.
   // 404 — сессии нет вовсе (например, чистили базу): молча начинаем новую.
+  // Текст про перезапуск — через ref: в зависимостях он тянул за собой loadSession и эффект открытия, и смена
+  // языка заново грузила настройки чата и переписку.
+  const chatRestartedRef = useRef(dict.chatRestarted);
+  chatRestartedRef.current = dict.chatRestarted;
   const handleSessionGone = useCallback(
     (error: unknown): boolean => {
       const status = responseStatus(error);
@@ -312,7 +316,7 @@ const ChatWidget: React.FC = () => {
       }
       if (status === 410) {
         startNewChat();
-        setError(dict.chatRestarted);
+        setError(chatRestartedRef.current);
         return true;
       }
       if (status === 404) {
@@ -321,7 +325,7 @@ const ChatWidget: React.FC = () => {
       }
       return false;
     },
-    [dict.chatRestarted, startNewChat]
+    [startNewChat]
   );
 
   const loadSession = useCallback(

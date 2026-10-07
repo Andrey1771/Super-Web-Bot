@@ -94,6 +94,29 @@ public sealed class RasterImage : IDisposable
     }
 
     /// <summary>Средний цвет всех пикселей, «#rrggbb». Прозрачные пиксели в среднее не входят.</summary>
+    /// <summary>
+    /// Насколько в картинке есть рисунок: средняя разница яркости соседних пикселей (0..255) на
+    /// уменьшенной копии. Заливка и плавный градиент дают почти 0, настоящий арт — единицы и десятки.
+    /// </summary>
+    public double DetailLevel()
+    {
+        using var small = FitWithin(160);
+        var bitmap = small._bitmap;
+        double sum = 0;
+        long count = 0;
+        static double Luma(SKColor c) => 0.299 * c.Red + 0.587 * c.Green + 0.114 * c.Blue;
+        for (var y = 0; y < bitmap.Height - 1; y++)
+        {
+            for (var x = 0; x < bitmap.Width - 1; x++)
+            {
+                var here = Luma(bitmap.GetPixel(x, y));
+                sum += Math.Abs(here - Luma(bitmap.GetPixel(x + 1, y))) + Math.Abs(here - Luma(bitmap.GetPixel(x, y + 1)));
+                count += 2;
+            }
+        }
+        return count == 0 ? 0 : sum / count;
+    }
+
     public string AverageColorHex()
     {
         long red = 0, green = 0, blue = 0, alpha = 0;
@@ -128,6 +151,9 @@ public sealed class RasterImage : IDisposable
             ".webp" => SaveAsync(path, SKEncodedImageFormat.Webp, 85, ct),
             _ => SaveAsync(path, SKEncodedImageFormat.Jpeg, 88, ct)
         };
+
+    /// <summary>Картинка для рисования поверх (сборка обложек из нескольких слоёв).</summary>
+    public SKImage ToSkImage() => SKImage.FromBitmap(_bitmap);
 
     public void Dispose() => _bitmap.Dispose();
 

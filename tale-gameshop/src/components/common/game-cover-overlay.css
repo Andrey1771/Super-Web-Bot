@@ -61,6 +61,23 @@
     text-transform: uppercase;
 }
 
+/* «+12 DLC» — белая пилюля, как чип рядом, но текст в цвет сайта: это свойство товара, а не акция. */
+.gco-dlc {
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(30, 20, 70, 0.16);
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.gco-kind.is-dlc {
+    background: var(--color-primary);
+    color: #fff;
+}
+
 .gco-discount-right {
     right: 12px;
 }

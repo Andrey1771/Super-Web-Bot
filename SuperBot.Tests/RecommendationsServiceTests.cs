@@ -176,6 +176,7 @@ namespace SuperBot.Tests
 
         private class TestGameDetailsRepository : IGameDetailsRepository
         {
+            public Task DeleteByGameIdAsync(string gameId) => Task.CompletedTask;
             public HashSet<string> DraftIds { get; } = new();
 
             public Task<List<GameDetails>> GetByGameIdsAsync(IEnumerable<string> gameIds) =>
