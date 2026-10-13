@@ -36,10 +36,19 @@ namespace SuperBot.Infrastructure.Data
         [BsonElement("username")]
         public string Username { get; set; }
 
+        [BsonElement("wishlistGameIds")]
+        public List<string> WishlistGameIds { get; set; } = new();
+
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }
 
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; }
+
+        [BsonElement("avatarPath")]
+        public string? AvatarPath { get; set; }
+
+        [BsonElement("avatarUpdatedAt")]
+        public DateTime? AvatarUpdatedAt { get; set; }
     }
 }

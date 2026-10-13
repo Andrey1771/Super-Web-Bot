@@ -17,19 +17,58 @@ import {IUrlService} from "./iterfaces/i-url-service";
 import { UrlService } from "./services/url-service";
 import {IAdminService} from "./iterfaces/i-admin-service";
 import { AdminService } from "./services/admin-service";
+import { IWishlistService } from "./iterfaces/i-wishlist-service";
+import { WishlistService } from "./services/wishlist-service";
+import { IRecommendationsService } from "./iterfaces/i-recommendations-service";
+import { RecommendationsService } from "./services/recommendations-service";
+import { IGameDetailsService } from "./iterfaces/i-game-details-service";
+import { GameDetailsService } from "./services/game-details-service";
+import { IGameKeysService } from "./iterfaces/i-game-keys-service";
+import { GameKeysService } from "./services/game-keys-service";
+import { IOrdersService } from "./iterfaces/i-orders-service";
+import { OrdersService } from "./services/orders-service";
+import { IAdminOrdersService } from "./iterfaces/i-admin-orders-service";
+import { AdminOrdersService } from "./services/admin-orders-service";
+import { IBlogService } from "./iterfaces/i-blog-service";
+import { BlogService } from "./services/blog-service";
+import { IAdminBlogService } from "./iterfaces/i-admin-blog-service";
+import { AdminBlogService } from "./services/admin-blog-service";
+import { AnalyticsService } from "./services/analytics-service";
+import { AdminAnalyticsService } from "./services/admin-analytics-service";
+import { IAnalyticsService } from "./iterfaces/i-analytics-service";
+import { IAdminAnalyticsService } from "./iterfaces/i-admin-analytics-service";
+import { IAdminGameDetailsService } from "./iterfaces/i-admin-game-details-service";
+import { AdminGameDetailsService } from "./services/admin-game-details-service";
+import { IAdminPromoCodesService } from "./iterfaces/i-admin-promo-codes-service";
+import { AdminPromoCodesService } from "./services/admin-promo-codes-service";
+import { IAdminGameDiscountsService } from "./iterfaces/i-admin-game-discounts-service";
+import { AdminGameDiscountsService } from "./services/admin-game-discounts-service";
 
 const container = new Container();
 
-container.bind<IGameService>(IDENTIFIERS.IGameService).to(GameService);
-container.bind<ISettingsService>(IDENTIFIERS.ISettingsService).to(SettingsService);
-container.bind<IAuthStorageService>(IDENTIFIERS.IAuthStorageService).to(CookiesStorageService);
+container.bind<IGameService>(IDENTIFIERS.IGameService).to(GameService).inSingletonScope();
+container.bind<ISettingsService>(IDENTIFIERS.ISettingsService).to(SettingsService).inSingletonScope();
+container.bind<IAuthStorageService>(IDENTIFIERS.IAuthStorageService).to(CookiesStorageService).inSingletonScope();
 
-container.bind<IApiClient>(IDENTIFIERS.IApiClient).to(ApiClient);
+container.bind<IApiClient>(IDENTIFIERS.IApiClient).to(ApiClient).inSingletonScope();
 
-container.bind<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService).to(KeycloakAuthService);
+container.bind<IKeycloakAuthService>(IDENTIFIERS.IKeycloakAuthService).to(KeycloakAuthService).inSingletonScope();
 
 container.bind<IKeycloakService>(IDENTIFIERS.IKeycloakService).to(KeycloakService).inSingletonScope();
 container.bind<IUrlService>(IDENTIFIERS.IUrlService).to(UrlService).inSingletonScope();
 container.bind<IAdminService>(IDENTIFIERS.IAdminService).to(AdminService).inSingletonScope();
+container.bind<IWishlistService>(IDENTIFIERS.IWishlistService).to(WishlistService).inSingletonScope();
+container.bind<IRecommendationsService>(IDENTIFIERS.IRecommendationsService).to(RecommendationsService).inSingletonScope();
+container.bind<IGameDetailsService>(IDENTIFIERS.IGameDetailsService).to(GameDetailsService).inSingletonScope();
+container.bind<IGameKeysService>(IDENTIFIERS.IGameKeysService).to(GameKeysService).inSingletonScope();
+container.bind<IOrdersService>(IDENTIFIERS.IOrdersService).to(OrdersService).inSingletonScope();
+container.bind<IAdminOrdersService>(IDENTIFIERS.IAdminOrdersService).to(AdminOrdersService).inSingletonScope();
+container.bind<IBlogService>(IDENTIFIERS.IBlogService).to(BlogService).inSingletonScope();
+container.bind<IAdminBlogService>(IDENTIFIERS.IAdminBlogService).to(AdminBlogService).inSingletonScope();
+container.bind<IAnalyticsService>(IDENTIFIERS.IAnalyticsService).to(AnalyticsService).inSingletonScope();
+container.bind<IAdminAnalyticsService>(IDENTIFIERS.IAdminAnalyticsService).to(AdminAnalyticsService).inSingletonScope();
+container.bind<IAdminGameDetailsService>(IDENTIFIERS.IAdminGameDetailsService).to(AdminGameDetailsService).inSingletonScope();
+container.bind<IAdminPromoCodesService>(IDENTIFIERS.IAdminPromoCodesService).to(AdminPromoCodesService).inSingletonScope();
+container.bind<IAdminGameDiscountsService>(IDENTIFIERS.IAdminGameDiscountsService).to(AdminGameDiscountsService).inSingletonScope();
 
 export default container;

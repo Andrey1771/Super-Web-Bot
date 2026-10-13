@@ -1,0 +1,229 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SuperBot.WebApi.Services;
+using SuperBot.WebApi.Support.Chat.Dto;
+using SuperBot.WebApi.Support.Chat.Services;
+using SuperBot.WebApi.Support.Infrastructure;
+
+namespace SuperBot.WebApi.Controllers;
+
+[ApiController]
+[Route("api/support/chat")]
+public class SupportChatController : ControllerBase
+{
+    // SSE пишем в поток вручную, мимо MVC — значит и camelCase нужно задать самим,
+    // иначе фронт получает Text/Id вместо text/id и падает на разборе ответа.
+    private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
+
+    private readonly ISupportChatService _chatService;
+    private readonly ILogger _streamLogger;
+    private readonly ILogger _pollLogger;
+
+    public SupportChatController(ISupportChatService chatService, ILoggerFactory loggerFactory)
+    {
+        _chatService = chatService;
+        _streamLogger = loggerFactory.CreateLogger("SupportChat.Stream");
+        _pollLogger = loggerFactory.CreateLogger("SupportChat.Poll");
+    }
+
+    [HttpGet("config")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ChatConfigDto>> GetConfig()
+    {
+        var config = await _chatService.GetConfigAsync();
+        return Ok(config);
+    }
+
+    [HttpPost("sessions")]
+    [AllowAnonymous]
+    public async Task<ActionResult<CreateChatSessionResponse>> CreateSession([FromBody] CreateChatSessionRequest request)
+    {
+        try
+        {
+            var userContext = User.Identity?.IsAuthenticated == true
+                ? SupportUserContext.FromClaims(User)
+                : null;
+            var response = await _chatService.CreateSessionAsync(userContext, request, ClientAddress.ResolveOrUnknown(HttpContext));
+            return Ok(response);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
+        }
+    }
+
+    [HttpGet("sessions/{sessionId}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ChatSessionDetailDto>> GetSession(
+        [FromRoute] string sessionId,
+        [FromQuery] int messageLimit = 50,
+        [FromQuery] bool viewing = false)
+    {
+        try
+        {
+            var result = await _chatService.GetSessionAsync(sessionId, messageLimit, viewing);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
+        }
+    }
+
+    [HttpGet("sessions/{sessionId}/messages")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IReadOnlyList<ChatMessageDto>>> GetMessages(
+        [FromRoute] string sessionId,
+        [FromQuery] DateTime? after,
+        // Курсор прокрутки вверх: страница сообщений старше указанного момента. Взаимно
+        // исключается с after — тот отдаёт всё новое и предназначен для опроса.
+        [FromQuery] DateTime? before,
+        [FromQuery] int limit = 50,
+        // Открыто ли сейчас окно чата у клиента. Приходит с обычным опросом за сообщениями —
+        // по нему специалист видит, читает ли клиент переписку прямо сейчас.
+        [FromQuery] bool viewing = false)
+    {
+        try
+        {
+            if (before.HasValue)
+            {
+                return Ok(await _chatService.GetOlderMessagesAsync(sessionId, before.Value, limit));
+            }
+
+            _pollLogger.LogInformation("Support chat poll started. SessionId={SessionId} After={After}", sessionId, after);
+            var result = await _chatService.GetMessagesAsync(sessionId, after, viewing);
+            _pollLogger.LogInformation("Support chat poll finished. SessionId={SessionId} Count={Count}", sessionId, result.Count);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
+        }
+    }
+
+    [HttpPost("sessions/{sessionId}/messages")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AddChatMessageResponse>> AddMessage(
+        [FromRoute] string sessionId,
+        [FromBody] AddChatMessageRequest request)
+    {
+        try
+        {
+            var userContext = User.Identity?.IsAuthenticated == true
+                ? SupportUserContext.FromClaims(User)
+                : null;
+            var result = await _chatService.AddUserMessageAsync(sessionId, userContext, request.Text, ClientAddress.ResolveOrUnknown(HttpContext));
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
+        }
+    }
+
+    /// <summary>Явная просьба клиента передать диалог специалисту (кнопка в чате).</summary>
+    [HttpPost("sessions/{sessionId}/handoff")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AddChatMessageResponse>> RequestHandoff(
+        [FromRoute] string sessionId,
+        [FromBody] RequestHandoffRequest request)
+    {
+        try
+        {
+            var userContext = User.Identity?.IsAuthenticated == true
+                ? SupportUserContext.FromClaims(User)
+                : null;
+            var result = await _chatService.RequestHandoffAsync(sessionId, userContext, request);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
+        }
+    }
+
+    /// <summary>
+    /// Оценка ответа бота. Доступна анонимно, как и сам чат: клиент оценивает свой же диалог,
+    /// а идентификатор сессии у него уже есть.
+    /// </summary>
+    [HttpPost("sessions/{sessionId}/messages/{messageId}/feedback")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ChatMessageDto>> SetMessageFeedback(
+        [FromRoute] string sessionId,
+        [FromRoute] string messageId,
+        [FromBody] ChatMessageFeedbackRequest request)
+    {
+        try
+        {
+            var result = await _chatService.SetMessageFeedbackAsync(sessionId, messageId, request.Feedback);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
+        }
+    }
+
+    [HttpPost("sessions/{sessionId}/contact")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ChatSessionDto>> UpdateContact(
+        [FromRoute] string sessionId,
+        [FromBody] UpdateChatContactRequest request)
+    {
+        try
+        {
+            var result = await _chatService.UpdateContactAsync(sessionId, request);
+            return Ok(result);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            return this.ApiProblem(ex.Message, ex.StatusCode, ex.Code, ex.Args);
+        }
+    }
+
+    [HttpPost("sessions/{sessionId}/stream")]
+    [AllowAnonymous]
+    public async Task StreamMessage(
+        [FromRoute] string sessionId,
+        [FromBody] AddChatMessageRequest request,
+        CancellationToken cancellationToken)
+    {
+        Response.ContentType = "text/event-stream";
+        try
+        {
+            _streamLogger.LogInformation("Support chat stream started. SessionId={SessionId}", sessionId);
+            var userContext = User.Identity?.IsAuthenticated == true
+                ? SupportUserContext.FromClaims(User)
+                : null;
+
+            var message = await _chatService.StreamAssistantResponseAsync(
+                sessionId,
+                userContext,
+                request.Text,
+                ClientAddress.ResolveOrUnknown(HttpContext),
+                async chunk =>
+                {
+                    var payload = JsonSerializer.Serialize(new { text = chunk }, StreamJsonOptions);
+                    await Response.WriteAsync($"data: {payload}\n\n", cancellationToken);
+                    await Response.Body.FlushAsync(cancellationToken);
+                },
+                cancellationToken);
+
+            var donePayload = JsonSerializer.Serialize(new { message }, StreamJsonOptions);
+            await Response.WriteAsync($"event: done\ndata: {donePayload}\n\n", cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
+            _streamLogger.LogInformation("Support chat stream finished. SessionId={SessionId}", sessionId);
+        }
+        catch (SupportChatRequestException ex)
+        {
+            // Код кладём в событие: поток уже отдаёт 200, и HTTP-статуса у этой ошибки нет.
+            // Без него виджет не отличит «диалог исчерпан» от обычного сбоя.
+            var errorPayload = JsonSerializer.Serialize(new { error = ex.Message, code = ex.Code, args = ex.Args, status = ex.StatusCode }, StreamJsonOptions);
+            await Response.WriteAsync($"event: error\ndata: {errorPayload}\n\n", cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
+            _streamLogger.LogWarning("Support chat stream failed. SessionId={SessionId} Error={Error}", sessionId, ex.Message);
+        }
+    }
+
+}

@@ -1,0 +1,560 @@
+/*
+ * Список желаний в кабинете.
+ *
+ * Рамок нет: тулбар — строка на фоне страницы, список разделён линиями, плитки держит воздух и тень при
+ * наведении. Раньше здесь были три вложенные карточки (тулбар, панель списка, карточка товара), и страница
+ * читалась как набор коробок в коробке.
+ */
+
+.saved-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-12);
+}
+
+.saved-search {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    flex: 1;
+    min-width: 220px;
+    height: 42px;
+    padding: 0 var(--space-14);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--color-muted);
+}
+
+.saved-search:focus-within {
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.saved-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 14.5px;
+    color: var(--color-text);
+}
+
+.saved-search input:focus {
+    outline: none;
+}
+
+.saved-search-icon {
+    color: var(--color-muted);
+}
+
+/* Переключатель вида — сегменты в одной пилюле: два состояния одного выбора, а не две отдельные кнопки. */
+.saved-view-toggle {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 7%, #eceaf5);
+}
+
+.saved-view-btn {
+    height: 32px;
+    padding: 0 var(--space-14);
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-muted);
+    cursor: pointer;
+}
+
+.saved-view-btn.is-active {
+    background: #ffffff;
+    color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.saved-select {
+    height: 38px;
+    padding: 0 var(--space-12);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    font-weight: 600;
+}
+
+.saved-toolbar-note {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+/* ---------- Список строк ---------- */
+
+.saved-list {
+    border-top: 1px solid var(--color-border);
+}
+
+.saved-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-16);
+    padding: var(--space-14) var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* При наведении строка «всплывает» белой карточкой — граница для этого не нужна. */
+.saved-row:hover {
+    border-bottom-color: transparent;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+.saved-row-cover {
+    display: block;
+    aspect-ratio: 16 / 10;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: linear-gradient(140deg, rgba(124, 58, 237, 0.25), rgba(59, 130, 246, 0.4));
+}
+
+.saved-row-main {
+    min-width: 0;
+}
+
+.saved-row-main strong {
+    display: block;
+    font-size: 15.5px;
+}
+
+.saved-row-price {
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.saved-row-actions,
+.saved-tile-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+/* «Remove» — тихое действие: рамка ему не нужна, иначе спорит с «Add to cart». */
+.saved-item-remove {
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-muted);
+}
+
+.saved-item-remove:hover {
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+
+/* ---------- Плитки ---------- */
+
+.saved-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--space-20);
+}
+
+/* Плитка — карточка, как в прежней вёрстке: белая поверхность, рамка и поля. Разница в том, что теперь она
+   единственная рамка на странице: панели-обёртки вокруг списка больше нет. Поднимается целиком при наведении. */
+.saved-tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-14);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface, #ffffff);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.saved-tile:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+    box-shadow: var(--shadow-md);
+}
+
+.saved-tile-cover {
+    display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: linear-gradient(140deg, rgba(124, 58, 237, 0.25), rgba(59, 130, 246, 0.4));
+}
+
+.saved-tile-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-10);
+}
+
+.saved-tile-title {
+    min-width: 0;
+}
+
+.saved-tile-title strong {
+    display: block;
+    font-size: 15.5px;
+}
+
+.saved-tile-actions {
+    margin-top: auto;
+}
+
+.saved-tile-actions .btn-primary,
+.saved-tile-actions .btn-outline {
+    flex: 1;
+}
+
+.saved-tile-actions .saved-item-remove {
+    flex: 0 0 auto;
+}
+
+.saved-item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.saved-item-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.saved-item-title-link:hover strong {
+    color: var(--color-primary);
+}
+
+.saved-item-date {
+    display: block;
+    margin-top: 2px;
+    font-size: 12.5px;
+    color: var(--color-muted);
+}
+
+.saved-item-btn {
+    height: 36px;
+    font-size: 14px;
+    padding-inline: var(--space-16);
+}
+
+.saved-empty-state {
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-border);
+    padding: var(--space-24);
+    text-align: center;
+    color: var(--color-muted);
+}
+
+@media (max-width: 760px) {
+    .saved-toolbar-note {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .saved-row {
+        grid-template-columns: 72px minmax(0, 1fr);
+        row-gap: var(--space-10);
+    }
+
+    .saved-row-price {
+        grid-column: 2;
+    }
+
+    .saved-row-actions {
+        grid-column: 1 / -1;
+    }
+
+    .saved-row-actions .btn {
+        flex: 1;
+    }
+}
+
+.saved-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-16);
+}
+
+.saved-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.saved-page-btn {
+    height: 36px;
+    min-width: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+}
+
+.saved-page-btn.is-active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+}
+
+.saved-page-ellipsis {
+    color: var(--color-muted);
+    padding: 0 4px;
+}
+
+.saved-pagination-note {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+
+.saved-recently-viewed {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+}
+
+.saved-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.saved-section-arrows {
+    display: flex;
+    gap: 8px;
+}
+
+.saved-arrow-btn {
+    height: 36px;
+    width: 36px;
+    padding: 0;
+}
+
+/* Лента в один ряд: карточек больше, чем видно, — листается стрелками в шапке или прокруткой.
+   Раньше здесь была сетка на 4 колонки, и шесть карточек переносились во второй ряд. */
+.saved-horizontal-list {
+    --saved-row-visible: 4;
+    display: flex;
+    gap: var(--space-16);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    padding-bottom: var(--space-8);
+    /* Полосу прокрутки прячем, как в карусели «О нас»: листают стрелками в шапке, а системная
+       полоса рядом с ними читалась вторым, конкурирующим управлением. Свайп, тачпад, Shift+колесо
+       и клавиатура по-прежнему листают ленту. */
+    scrollbar-width: none;
+    /* Без полосы подсказку «дальше есть ещё» даёт затухание края — только с той стороны,
+       где лента действительно продолжается (классы ставит страница). */
+    --fade-start: 0px;
+    --fade-end: 0px;
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--fade-start),
+        #000 calc(100% - var(--fade-end)),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--fade-start),
+        #000 calc(100% - var(--fade-end)),
+        transparent 100%
+    );
+}
+
+.saved-horizontal-list::-webkit-scrollbar {
+    display: none;
+}
+
+.saved-horizontal-list.is-fade-start { --fade-start: 28px; }
+.saved-horizontal-list.is-fade-end { --fade-end: 28px; }
+
+.saved-horizontal-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-16);
+    /* Ровно --saved-row-visible карточек на видимую ширину ленты. */
+    flex: 0 0 calc((100% - (var(--saved-row-visible) - 1) * var(--space-16)) / var(--saved-row-visible));
+    min-width: 0;
+    scroll-snap-align: start;
+}
+
+.saved-horizontal-link {
+    display: block;
+}
+
+.saved-horizontal-title {
+    font-weight: 700;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.saved-horizontal-title:hover {
+    color: var(--color-primary);
+}
+
+.saved-horizontal-cover {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(59, 130, 246, 0.4));
+    overflow: hidden;
+}
+
+.saved-horizontal-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.saved-horizontal-fallback {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.35), rgba(124, 58, 237, 0.4));
+}
+
+.saved-horizontal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.saved-horizontal-subtitle {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.saved-horizontal-price {
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.saved-horizontal-btn {
+    height: 40px;
+    font-size: 14px;
+}
+
+.saved-horizontal-card.is-skeleton {
+    min-height: 190px;
+    border: 1px dashed var(--color-border);
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: saved-horizontal-shimmer 1.5s infinite;
+}
+
+.saved-recommendations-state {
+    padding: var(--space-16);
+}
+
+@keyframes saved-horizontal-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.saved-cover-hades {
+    background: linear-gradient(135deg, rgba(251, 113, 133, 0.35), rgba(124, 58, 237, 0.4));
+}
+
+.saved-cover-elden {
+    background: linear-gradient(135deg, rgba(14, 116, 144, 0.35), rgba(14, 165, 233, 0.4));
+}
+
+.saved-cover-hogwarts {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(148, 163, 184, 0.4));
+}
+
+.saved-cover-remnant {
+    background: linear-gradient(135deg, rgba(71, 85, 105, 0.35), rgba(148, 163, 184, 0.4));
+}
+
+.saved-cover-control {
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.35), rgba(124, 58, 237, 0.4));
+}
+
+.saved-cover-sekiro {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(239, 68, 68, 0.4));
+}
+
+.saved-cover-dying-light {
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.35), rgba(239, 68, 68, 0.4));
+}
+
+.saved-cover-dark-souls {
+    background: linear-gradient(135deg, rgba(71, 85, 105, 0.35), rgba(15, 23, 42, 0.6));
+}
+
+.saved-cover-witcher {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(30, 41, 59, 0.6));
+}
+
+.saved-cover-god-of-war {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(14, 116, 144, 0.5));
+}
+
+.saved-cover-baldurs {
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.35), rgba(124, 58, 237, 0.5));
+}
+
+.saved-cover-resident {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.45), rgba(239, 68, 68, 0.4));
+}
+
+.saved-cover-lies {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.45), rgba(59, 130, 246, 0.4));
+}
+
+@media (max-width: 1024px) {
+    .saved-horizontal-list {
+        --saved-row-visible: 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .saved-search {
+        order: -1;
+        width: 100%;
+    }
+
+    .saved-select {
+        flex: 1;
+    }
+
+    .saved-pagination {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    /* Стрелки на телефоне не нужны: ленту листают пальцем. */
+    .saved-section-arrows {
+        display: none;
+    }
+
+    /* На телефоне видна одна карточка и край следующей — понятно, что ряд листается. */
+    .saved-horizontal-card {
+        flex-basis: 70%;
+    }
+}

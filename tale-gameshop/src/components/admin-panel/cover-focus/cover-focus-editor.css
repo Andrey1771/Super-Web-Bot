@@ -1,0 +1,134 @@
+/* Редактор точки фокуса обложки — см. CoverFocusEditor.tsx. */
+.cover-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #ece8f7;
+}
+
+.cover-focus__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.cover-focus__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.cover-focus__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  display: inline-block;
+}
+
+.cover-focus__hint,
+.cover-focus__unavailable {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.cover-focus__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 12px;
+  align-items: start;
+}
+
+.cover-focus__stage {
+  position: relative;
+  max-height: 260px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f0fb;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  outline-offset: 2px;
+}
+
+.cover-focus__stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.cover-focus__marker {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: rgba(124, 58, 237, 0.85);
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.cover-focus__marker::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.cover-focus__frames {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cover-focus__frames li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.cover-focus__frame {
+  display: block;
+  width: 96px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f3f0fb;
+  border: 1px solid #ece8f7;
+}
+
+.cover-focus__frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-focus__warnings {
+  margin: 0;
+  padding: 8px 10px 8px 26px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+}
+
+.cover-focus__actions {
+  display: flex;
+  gap: 8px;
+}

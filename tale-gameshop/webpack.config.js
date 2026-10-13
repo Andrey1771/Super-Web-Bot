@@ -1,25 +1,71 @@
-import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import CopyWebpackPlugin from 'copy-webpack-plugin';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import createBabelOptions from './config/babel-options.cjs';
 
+const __filename = fileURLToPath(import.meta.url);
 // Получаем полный путь к `node_modules`
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = path.dirname(__filename);
 
-export default (env, { mode }) => ({
+export default (env, { mode }) => {
+    const appConfigEnv = env?.appConfigEnv ?? (mode === 'production' ? 'prod' : 'dev');
+    const appConfigFile = `public/app-config.${appConfigEnv}.js`;
+
+    if (!fs.existsSync(path.resolve(__dirname, appConfigFile))) {
+        throw new Error(`[webpack] Missing ${appConfigFile}.`);
+    }
+
+    const mkcertKeyPath = path.resolve(__dirname, 'certs/localhost-key.pem');
+    const mkcertCertPath = path.resolve(__dirname, 'certs/localhost.pem');
+    // Старый самоподписанный сертификат — в certs/ (игнорируется git), а не в public/, откуда всё публикуется.
+    const legacyKeyPath = path.resolve(__dirname, 'certs/private.key');
+    const legacyCertPath = path.resolve(__dirname, 'certs/private.crt');
+    const hasMkcert = fs.existsSync(mkcertKeyPath) && fs.existsSync(mkcertCertPath);
+
+    if (!hasMkcert) {
+        console.warn(
+            '[webpack-dev-server] mkcert files not found. Run `npm run cert:dev` to generate trusted localhost certs.'
+        );
+    }
+
+    return ({
     mode: mode === 'production' ? 'production' : 'development',
+    cache: mode === 'production'
+        ? false
+        : {
+            type: 'filesystem',
+            buildDependencies: {
+                config: [__filename],
+            },
+        },
+    experiments: mode === 'production'
+        ? undefined
+        : {
+            lazyCompilation: true,
+        },
+    infrastructureLogging: {
+        level: 'warn',
+    },
+    stats: 'errors-warnings',
     optimization: {
         minimize: mode === 'production',
+        moduleIds: mode === 'production' ? 'deterministic' : 'named',
+        chunkIds: mode === 'production' ? 'deterministic' : 'named',
     },
     entry: './src/index.tsx',
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: (mode === 'production') ? 'bundle.[contenthash].js' : 'bundle.js',
+        // Lazy-чанки (админка): в проде — с contenthash, чтобы после деплоя браузеры
+        // не цеплялись за закэшированную старую версию чанка.
+        chunkFilename: (mode === 'production') ? 'chunk.[name].[contenthash].js' : 'chunk.[name].js',
         publicPath: '/',
         assetModuleFilename: 'images/[hash][ext][query]',
+        // Папка сборки очищается перед каждой сборкой (раньше это делал clean-webpack-plugin).
+        clean: true,
     },
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
@@ -27,23 +73,13 @@ export default (env, { mode }) => ({
     module: {
         rules: [
             {
+                // TypeScript собирает Babel с теми же настройками, что и у тестов. Типы проверяет
+                // `npx tsc --noEmit` — сборка их не проверяла и раньше (ts-loader шёл transpileOnly).
                 test: /\.tsx?$/,
-                use: [
-                    {
-                        loader: 'babel-loader',
-                        options: {
-                            presets: [],
-                            plugins: [],
-                        },
-                    },
-                    {
-                        loader: 'ts-loader',
-                        options: {
-                            transpileOnly: true,
-                            experimentalWatchApi: true,
-                        },
-                    },
-                ],
+                use: {
+                    loader: 'babel-loader',
+                    options: { ...createBabelOptions({ development: mode !== 'production' }), cacheDirectory: mode !== 'production' },
+                },
                 exclude: /node_modules/,
             },
             {
@@ -56,6 +92,9 @@ export default (env, { mode }) => ({
             },
             {
                 test: /\.json$/,
+                // Словари переводов (src/locales) — обычные JSON-модули: их читает i18next.
+                // Остальные .json по-прежнему уходят файлами в assets/resources.
+                exclude: /[\\/]src[\\/]locales[\\/]/,
                 type: 'asset/resource',
                 generator: {
                     filename: 'assets/resources/[name].[contenthash].json',
@@ -74,21 +113,24 @@ export default (env, { mode }) => ({
                 ],
             },
             {
-                test: /\.(png|jpe?g|gif|svg|ico|webp|jpg)$/i,
-                use: [
-                    {
-                        loader: 'file-loader',
-                        options: {
-                            regExp: /\/([a-z0-9]+)\/[a-z0-9]+\.png$/i,
-                            name: 'assets/images/[name].[contenthash].[ext]',
-                        },
-                    },
-                ],
+                // Встроенные asset-модули webpack 5 вместо file-loader: импорт картинки даёт её адрес.
+                test: /\.(png|jpe?g|gif|svg|ico|webp)$/i,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/images/[name].[contenthash][ext]',
+                },
+            },
+            {
+                // Шрифты (Inter из @fontsource-variable) — со своего сервера, без обращений к Google.
+                test: /.(woff2?|ttf|otf|eot)$/i,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/fonts/[name].[contenthash][ext]',
+                },
             }
         ],
     },
     plugins: [
-        new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
             template: './public/index.html',
             favicon: './public/favicon.svg',
@@ -96,6 +138,16 @@ export default (env, { mode }) => ({
         new CopyWebpackPlugin({
             patterns: [
                 { from: 'public/silent-check-sso.html', to: '' },
+                { from: 'public/manifest.json', to: '' },
+                { from: appConfigFile, to: 'app-config.js' },
+                // Статические картинки (фото-арты карточек платформ и т.п.): кладутся в
+                // public/images и доступны по /images/... README не тащим в сборку.
+                {
+                    from: 'public/images',
+                    to: 'images',
+                    noErrorOnMissing: true,
+                    globOptions: { ignore: ['**/*.md'] },
+                },
             ],
         }),
         ...((mode === 'production')
@@ -110,15 +162,43 @@ export default (env, { mode }) => ({
         historyApiFallback: true,
         compress: false,
         port: 3000,
-        server: {
-            type: 'https',
-            options: {
-                key: fs.readFileSync('./public/private.key'),
-                cert: fs.readFileSync('./public/private.crt'),
-                passphrase: 'webpack-dev-server',
-                requestCert: false,
-            },
+        hot: true,
+        devMiddleware: {
+            writeToDisk: false,
         },
+        client: {
+            overlay: {
+                errors: true,
+                warnings: false,
+            },
+            webSocketURL: hasMkcert
+                ? {
+                    protocol: 'wss',
+                    hostname: 'localhost',
+                    port: 3000,
+                    pathname: '/ws',
+                }
+                : {
+                    protocol: 'ws',
+                    hostname: 'localhost',
+                    port: 3000,
+                    pathname: '/ws',
+                },
+        },
+        server: hasMkcert
+            ? {
+                type: 'https',
+                options: {
+                    key: fs.readFileSync(mkcertKeyPath),
+                    cert: fs.readFileSync(mkcertCertPath),
+                    requestCert: false,
+                },
+            }
+            : {
+                type: 'http',
+            },
     },
-    devtool: (mode === 'production') ? 'source-map' : 'cheap-module-source-map',
-});
+    // hidden-source-map: карты собираются для отладки, но бандл на них не ссылается, а nginx их не отдаёт.
+    devtool: (mode === 'production') ? 'hidden-source-map' : 'eval-cheap-module-source-map',
+    });
+};

@@ -1,0 +1,220 @@
+/*
+ * Вопросы о кэшбэке: лавандовая подложка секции, карточки с номерами, раскрыт один вопрос.
+ * Цвета — токены сайта (tokens.css).
+ */
+
+.cfaq {
+    padding: clamp(64px, 7vw, 96px) 0;
+    background:
+        radial-gradient(700px 260px at 85% 0%, color-mix(in srgb, var(--color-accent-fuchsia) 7%, transparent), transparent 70%),
+        radial-gradient(700px 300px at 10% 100%, color-mix(in srgb, var(--color-accent-indigo) 8%, transparent), transparent 70%),
+        linear-gradient(180deg, var(--color-surface), #f1eefb 55%, var(--color-bg));
+}
+
+/* Заголовок по центру, список на всю ширину контейнера — края те же, что у блоков выше. */
+.cfaq-inner {
+    width: 100%;
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--container-padding, 24px);
+    text-align: center;
+}
+
+.cfaq-list {
+    text-align: left;
+}
+
+.cfaq-label {
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.cfaq-inner h2 {
+    margin: 10px 0;
+    color: var(--color-text);
+    font-size: clamp(28px, 3.3vw, 38px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+}
+
+.cfaq-sub {
+    margin: 0 0 34px;
+    color: var(--color-muted);
+    font-size: 16.5px;
+}
+
+.cfaq-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cfaq-item {
+    border: 1px solid #e7e3f3;
+    border-radius: 18px;
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgba(26, 20, 54, 0.04);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.cfaq-item:hover {
+    border-color: #d8cff5;
+}
+
+.cfaq-item.is-open {
+    border-color: #c4b5fd;
+    background: linear-gradient(180deg, #ffffff, #faf7ff);
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--color-primary) 8%, transparent),
+        0 24px 40px -30px color-mix(in srgb, var(--color-primary) 50%, transparent);
+}
+
+.cfaq-question {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 16px 18px;
+    border: 0;
+    border-radius: 18px;
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cfaq-question:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+    outline-offset: 2px;
+}
+
+.cfaq-num {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 10px;
+    background: #f3f0fb;
+    color: #7c6bb0;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.cfaq-q {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.cfaq-chevron {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #e7e3f3;
+    border-radius: 10px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.cfaq-chevron::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #8f89ad;
+    border-bottom: 2px solid #8f89ad;
+    rotate: 45deg;
+    translate: 0 -2px;
+    transition: rotate 0.2s ease, translate 0.2s ease;
+}
+
+.cfaq-item.is-open .cfaq-num {
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+.cfaq-item.is-open .cfaq-q {
+    color: #4c1d95;
+}
+
+.cfaq-item.is-open .cfaq-chevron {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.cfaq-item.is-open .cfaq-chevron::before {
+    border-color: #ffffff;
+    rotate: 225deg;
+    translate: 0 2px;
+}
+
+/* Ответ выровнен по тексту вопроса: 18px отступ + 40px номер + 16px зазор. */
+.cfaq-answer {
+    margin: 0 18px 0 74px;
+    padding: 14px 0 18px;
+    border-top: 1px solid #ece7f8;
+    animation: cfaqReveal 0.25s ease-out;
+}
+
+.cfaq-answer p {
+    max-width: 720px;
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 15.5px;
+    line-height: 1.65;
+}
+
+.cfaq-answer strong {
+    color: var(--color-text);
+}
+
+@keyframes cfaqReveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 600px) {
+    .cfaq {
+        padding: 56px 0 60px;
+    }
+
+    .cfaq-question {
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .cfaq-num {
+        min-width: 34px;
+        height: 28px;
+    }
+
+    .cfaq-q {
+        font-size: 16px;
+    }
+
+    .cfaq-answer {
+        margin: 0 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cfaq-item,
+    .cfaq-chevron,
+    .cfaq-chevron::before {
+        transition: none;
+    }
+
+    .cfaq-answer {
+        animation: none;
+    }
+}

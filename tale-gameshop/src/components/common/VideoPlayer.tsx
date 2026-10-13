@@ -1,0 +1,781 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import './video-player.css';
+import { clamp } from "../../utils/clamp";
+
+/**
+ * Свой видеоплеер в стиле магазина — как у Steam и GOG: браузерный <video> без родных контролов,
+ * а вся панель управления нарисована нами. Так плеер выглядит одинаково в любом браузере, у него
+ * нет меню со «Скачать», «Скорость» и «Картинка в картинке», а стиль — наш.
+ *
+ * Что умеет: play/pause кликом по кадру, кнопкой, пробелом или K; полоса прогресса с буфером,
+ * перемоткой мышью, пальцем и стрелками (только когда полоса в фокусе — иначе стрелки нужны
+ * галерее для переключения кадров); громкость с mute (M), запоминается между роликами; полный
+ * экран (F) — если родитель дал, куда его открывать; автозапуск с честным откатом в паузу, когда
+ * браузер не пускает звук без клика; загрузка, конец ролика и ошибка показываются явно.
+ *
+ * Панель прячется через IDLE_HIDE_MS бездействия во время воспроизведения и возвращается по движению
+ * мыши, касанию или фокусу; на паузе видна всегда.
+ *
+ * Потоки HLS (.m3u8) — так Steam отдаёт трейлеры, mp4 у него больше нет. Играет их hls.js (отдельный
+ * чанк, страница с трейлером прогревает его заранее — см. preloadHlsPlayer), даже там, где браузер
+ * умеет HLS сам (Safari, свежий Chrome): встроенный плеер выбирает качество сам и не даёт его сменить.
+ * Встроенный — только запасной путь, когда hls.js в браузере не работает. У потока есть меню
+ * качества: «Авто» или конкретная высота кадра, выбор запоминается между роликами.
+ */
+export type VideoPlayerProps = {
+  src: string;
+  poster?: string | null;
+  /** Название ролика для читалок экрана и подписи кнопок. */
+  title: string;
+  autoPlay?: boolean;
+  /** Ролик реально пошёл (не просто нажали play): для аналитики. */
+  onPlay?: () => void;
+  onEnded?: () => void;
+  /** Панель спряталась или вернулась: родитель прячет вместе с ней свои кнопки поверх кадра (стрелки). */
+  onIdleChange?: (idle: boolean) => void;
+  /** Куда открывать полный экран решает родитель; без обработчика кнопки нет. */
+  onFullscreen?: () => void;
+  /** Полный экран страницы недоступен (iPhone: Safari разворачивает только само видео) — кнопка открывает
+      встроенный плеер iOS, как у YouTube в Safari. Свою панель он не покажет, зато ролик — на весь экран. */
+  nativeFullscreenFallback?: boolean;
+  isFullscreen?: boolean;
+  /** Кнопки родителя в правой части панели, перед полным экраном (например, «театр»). */
+  extraControls?: React.ReactNode;
+  className?: string;
+};
+
+export const VIDEO_VOLUME_STORAGE_KEY = 'taleshop:video-volume';
+export const VIDEO_QUALITY_STORAGE_KEY = 'taleshop:video-quality';
+export const IDLE_HIDE_MS = 2500;
+export const SEEK_STEP_SEC = 5;
+
+type Status = 'idle' | 'playing' | 'paused' | 'ended' | 'error';
+
+const pad = (value: number) => value.toString().padStart(2, '0');
+
+/** 0:07, 1:19, 1:02:03 — как в плеерах, без миллисекунд и без ведущих нулей у минут. */
+export const formatTime = (seconds: number) => {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = total % 60;
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(rest)}` : `${minutes}:${pad(rest)}`;
+};
+
+type StoredVolume = { volume: number; muted: boolean };
+
+// localStorage может быть недоступен (приватный режим, запрет cookie) — тогда громкость просто не запоминается.
+const readStoredVolume = (): StoredVolume | null => {
+  try {
+    const raw = window.localStorage.getItem(VIDEO_VOLUME_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredVolume>;
+    if (typeof parsed.volume !== 'number' || !Number.isFinite(parsed.volume)) return null;
+    return { volume: clamp(parsed.volume, 0, 1), muted: Boolean(parsed.muted) };
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredVolume = (value: StoredVolume) => {
+  try {
+    window.localStorage.setItem(VIDEO_VOLUME_STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // Молча: запоминание громкости — удобство, а не функция.
+  }
+};
+
+type Quality = number | 'auto';
+type QualityLevel = { index: number; height: number };
+
+/** Выбранное качество: высота кадра (720) или 'auto'. */
+const readStoredQuality = (): Quality => {
+  try {
+    const raw = window.localStorage.getItem(VIDEO_QUALITY_STORAGE_KEY);
+    const height = raw ? Number(raw) : NaN;
+    return Number.isFinite(height) && height > 0 ? height : 'auto';
+  } catch {
+    return 'auto';
+  }
+};
+
+const writeStoredQuality = (value: Quality) => {
+  try {
+    window.localStorage.setItem(VIDEO_QUALITY_STORAGE_KEY, String(value));
+  } catch {
+    // Молча, как и громкость.
+  }
+};
+
+/** Та часть hls.js, которой пользуется плеер: уровни качества и переключение между ними. */
+type HlsPlayer = {
+  levels: { height: number; width: number }[];
+  currentLevel: number;
+  autoLevelCapping: number;
+  destroy: () => void;
+};
+
+/**
+ * Прогреть hls.js заранее: страница с HLS-трейлером зовёт это в простое, и по нажатию play
+ * браузер сразу качает сам ролик, а не сначала библиотеку.
+ */
+export const preloadHlsPlayer = () => {
+  void import('hls.js').catch(() => undefined);
+};
+
+/**
+ * Запас резкости для «Авто»: поток с кадром ровно по ширине плеера на деле мылит — трейлеры Steam
+ * в 480p сжаты сильно. Берём качество на ступень выше размера плеера.
+ */
+export const AUTO_QUALITY_HEADROOM = 1.4;
+
+/**
+ * Потолок «Авто»: наименьшее качество, которое шире плеера на экране с запасом (с учётом плотности
+ * пикселей). Без потолка автоматика тянула бы 1080p в маленькую карточку. -1 — без ограничения
+ * (плеер шире всех уровней: полный экран).
+ */
+export const autoCapIndex = (levels: { width: number }[], playerWidth: number, pixelRatio: number): number => {
+  const needed = playerWidth * Math.max(1, pixelRatio) * AUTO_QUALITY_HEADROOM;
+  let best = -1;
+  levels.forEach((level, index) => {
+    if (level.width >= needed && (best === -1 || level.width < levels[best].width)) {
+      best = index;
+    }
+  });
+  return best;
+};
+
+const Icon = ({ name }: { name: 'play' | 'pause' | 'replay' | 'volume' | 'volume-low' | 'muted' | 'expand' | 'compress' }) => {
+  const paths: Record<typeof name, React.ReactNode> = {
+    play: <path d="M8 5v14l11-7z" fill="currentColor" />,
+    pause: <path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor" />,
+    replay: (
+      <path
+        d="M12 5a7 7 0 1 1-6.3 4M12 5H8m4 0V1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    ),
+    volume: (
+      <>
+        <path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />
+        <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </>
+    ),
+    'volume-low': (
+      <>
+        <path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />
+        <path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </>
+    ),
+    muted: (
+      <>
+        <path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />
+        <path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </>
+    ),
+    expand: (
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    ),
+    compress: (
+      <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    )
+  };
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+      {paths[name]}
+    </svg>
+  );
+};
+
+const isHlsSource = (src: string) => /\.m3u8(\?|#|$)/i.test(src);
+
+const VideoPlayer = ({
+  src,
+  poster,
+  title,
+  autoPlay = false,
+  onPlay,
+  onEnded,
+  onIdleChange,
+  onFullscreen,
+  nativeFullscreenFallback = false,
+  isFullscreen = false,
+  extraControls,
+  className
+}: VideoPlayerProps) => {
+  const { t } = useTranslation();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const idleTimer = useRef<number | null>(null);
+  const [status, setStatus] = useState<Status>('idle');
+  const [waiting, setWaiting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [buffered, setBuffered] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  // Чем управляют плеером. Пальцем — как в YouTube: касание кадра показывает и прячет панель, а не ставит паузу;
+  // пауза — кнопкой по центру, которая появляется вместе с панелью.
+  const lastPointerRef = useRef<string>('mouse');
+  const [touchUi, setTouchUi] = useState(false);
+  const [hoverRatio, setHoverRatio] = useState<number | null>(null);
+  const [scrubbing, setScrubbing] = useState(false);
+
+  const playing = status === 'playing';
+  const hls = isHlsSource(src);
+  const hlsRef = useRef<HlsPlayer | null>(null);
+  const [levels, setLevels] = useState<QualityLevel[]>([]);
+  const [quality, setQuality] = useState<Quality>(readStoredQuality);
+  const [activeHeight, setActiveHeight] = useState<number | null>(null);
+  const [qualityOpen, setQualityOpen] = useState(false);
+  const qualityRef = useRef<HTMLDivElement | null>(null);
+
+  const capAuto = useCallback((player: HlsPlayer) => {
+    const width = videoRef.current?.clientWidth ?? 0;
+    player.autoLevelCapping = width > 0 ? autoCapIndex(player.levels, width, window.devicePixelRatio || 1) : -1;
+  }, []);
+
+  const applyQuality = useCallback(
+    (player: HlsPlayer, choice: Quality) => {
+      if (choice === 'auto') {
+        player.currentLevel = -1;
+        capAuto(player);
+        return;
+      }
+      // Ровно такой высоты может не быть у другого ролика — берём ближайшую не выше выбранной.
+      const candidates = player.levels
+        .map((level, index) => ({ index, height: level.height }))
+        .filter((level) => level.height > 0 && level.height <= choice)
+        .sort((a, b) => b.height - a.height);
+      const target = candidates[0] ?? { index: 0 };
+      player.autoLevelCapping = -1;
+      player.currentLevel = target.index;
+    },
+    [capAuto]
+  );
+
+  // Плеер меняет размер (полный экран, поворот телефона) — пересчитать потолок «Авто».
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !hls || quality !== 'auto' || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      if (hlsRef.current) capAuto(hlsRef.current);
+    });
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [hls, quality, capAuto]);
+
+  // Меню качества закрывается кликом мимо него.
+  useEffect(() => {
+    if (!qualityOpen) return;
+    const close = (event: PointerEvent) => {
+      if (!qualityRef.current?.contains(event.target as Node)) setQualityOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [qualityOpen]);
+
+  const chooseQuality = (choice: Quality) => {
+    setQuality(choice);
+    writeStoredQuality(choice);
+    setQualityOpen(false);
+    if (hlsRef.current) applyQuality(hlsRef.current, choice);
+  };
+
+  // ---- источник HLS: родной (Safari) или через hls.js ----
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !hls) return;
+    const startIfAsked = () => {
+      if (autoPlay) {
+        video.play?.()?.catch(() => setStatus('paused'));
+      }
+    };
+    const playNatively = () => {
+      if (!video.canPlayType?.('application/vnd.apple.mpegurl')) return false;
+      video.src = src;
+      startIfAsked();
+      return true;
+    };
+    let disposed = false;
+    let instance: { destroy: () => void } | null = null;
+    import('hls.js')
+      .then(({ default: Hls }) => {
+        if (disposed) return;
+        if (!Hls.isSupported()) {
+          if (!playNatively()) setStatus('error');
+          return;
+        }
+        // Первый кусок — сразу в приличном качестве: по умолчанию hls.js считает канал медленным
+        // (500 Кбит/с) и начинает с 360p. Дальше качество подстраивается под реальную скорость.
+        const player = new Hls({ abrEwmaDefaultEstimate: 5_000_000 });
+        instance = player;
+        hlsRef.current = player;
+        player.on(Hls.Events.MANIFEST_PARSED, () => {
+          setLevels(
+            player.levels
+              .map((level, index) => ({ index, height: level.height }))
+              .filter((level) => level.height > 0)
+              .sort((a, b) => b.height - a.height)
+          );
+          applyQuality(player, readStoredQuality());
+          startIfAsked();
+        });
+        player.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+          setActiveHeight(player.levels[data.level]?.height ?? null);
+        });
+        player.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) setStatus('error');
+        });
+        player.loadSource(src);
+        player.attachMedia(video);
+      })
+      .catch(() => {
+        if (!disposed && !playNatively()) setStatus('error');
+      });
+    return () => {
+      disposed = true;
+      instance?.destroy();
+      hlsRef.current = null;
+      setLevels([]);
+      setActiveHeight(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- автозапуск решается при смене ролика, не позже
+  }, [hls, src]);
+
+  // ---- панель: показать, спрятать через паузу бездействия ----
+  const clearIdleTimer = () => {
+    if (idleTimer.current !== null) {
+      window.clearTimeout(idleTimer.current);
+      idleTimer.current = null;
+    }
+  };
+
+  const wakeControls = useCallback(() => {
+    setControlsVisible(true);
+    clearIdleTimer();
+    idleTimer.current = window.setTimeout(() => setControlsVisible(false), IDLE_HIDE_MS);
+  }, []);
+
+  useEffect(() => {
+    if (!playing) {
+      // На паузе, в конце и при ошибке панель нужна всегда.
+      clearIdleTimer();
+      setControlsVisible(true);
+      return;
+    }
+    wakeControls();
+    return clearIdleTimer;
+  }, [playing, wakeControls]);
+
+  // ---- громкость: применить запомненную при первом рендере ----
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const stored = readStoredVolume();
+    if (stored) {
+      video.volume = stored.volume;
+      video.muted = stored.muted;
+      setVolume(stored.volume);
+      setMuted(stored.muted);
+    }
+  }, []);
+
+  // ---- автозапуск ----
+  useEffect(() => {
+    const video = videoRef.current;
+    // Для HLS запуск — после разбора плейлиста (см. выше), иначе play() упадёт на пустом источнике.
+    if (!video || !autoPlay || hls) return;
+    // Браузер может не пустить (нет недавнего клика): честно остаёмся на паузе с большой кнопкой play,
+    // а не гоняем ролик без звука.
+    video.play?.()?.catch(() => setStatus('paused'));
+  }, [autoPlay, src, hls]);
+
+  // ---- управление ----
+  const play = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (status === 'error') {
+      video.load?.();
+    }
+    video.play?.()?.catch(() => setStatus('paused'));
+  };
+
+  const pause = () => videoRef.current?.pause?.();
+
+  const togglePlay = () => (playing ? pause() : play());
+
+  type IosVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+  const canNativeFullscreen =
+    nativeFullscreenFallback && typeof HTMLVideoElement !== 'undefined' && 'webkitEnterFullscreen' in HTMLVideoElement.prototype;
+  const handleFullscreen = onFullscreen ?? (canNativeFullscreen ? () => (videoRef.current as IosVideo | null)?.webkitEnterFullscreen?.() : undefined);
+
+  const handleRootPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    lastPointerRef.current = event.pointerType;
+    if (event.pointerType !== 'touch') {
+      wakeControls();
+      return;
+    }
+    setTouchUi(true);
+    // Касание панели или центральной кнопки — работа с плеером: панель не должна исчезнуть посреди неё.
+    if (event.target instanceof Element && event.target.closest('.vp__controls, .vp__big-play')) {
+      wakeControls();
+    }
+  };
+
+  const handleSurfaceClick = () => {
+    if (lastPointerRef.current !== 'touch') {
+      togglePlay();
+      return;
+    }
+    if (playing) {
+      if (controlsVisible) {
+        clearIdleTimer();
+        setControlsVisible(false);
+      } else {
+        wakeControls();
+      }
+    } else if (status === 'idle' || status === 'ended') {
+      play();
+    }
+  };
+
+  const seekTo = (seconds: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const next = clamp(seconds, 0, duration || 0);
+    video.currentTime = next;
+    setCurrentTime(next);
+  };
+
+  const seekBy = (delta: number) => seekTo(currentTime + delta);
+
+  const applyVolume = (nextVolume: number, nextMuted: boolean) => {
+    const video = videoRef.current;
+    const level = clamp(nextVolume, 0, 1);
+    if (video) {
+      video.volume = level;
+      video.muted = nextMuted;
+    }
+    setVolume(level);
+    setMuted(nextMuted);
+    writeStoredVolume({ volume: level, muted: nextMuted });
+  };
+
+  const toggleMute = () => {
+    // Снять mute при нулевой громкости — вернуть слышимый уровень, иначе кнопка «ничего не делает».
+    if (muted || volume === 0) {
+      applyVolume(volume === 0 ? 0.5 : volume, false);
+    } else {
+      applyVolume(volume, true);
+    }
+  };
+
+  // ---- полоса прогресса ----
+  const ratioFromPointer = (clientX: number) => {
+    const track = trackRef.current;
+    if (!track) return 0;
+    const rect = track.getBoundingClientRect();
+    return clamp((clientX - rect.left) / Math.max(rect.width, 1), 0, 1);
+  };
+
+  const handleTrackPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!duration) return;
+    event.preventDefault();
+    const track = trackRef.current;
+    track?.setPointerCapture?.(event.pointerId);
+    setScrubbing(true);
+    seekTo(ratioFromPointer(event.clientX) * duration);
+  };
+
+  const handleTrackPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const ratio = ratioFromPointer(event.clientX);
+    setHoverRatio(ratio);
+    if (scrubbing && duration) {
+      seekTo(ratio * duration);
+    }
+  };
+
+  const handleTrackPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    trackRef.current?.releasePointerCapture?.(event.pointerId);
+    setScrubbing(false);
+  };
+
+  const handleTrackKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    // Стрелки здесь — перемотка. Наружу не отдаём: у галереи и просмотрщика те же клавиши листают кадры.
+    const handled: Record<string, () => void> = {
+      ArrowLeft: () => seekBy(-SEEK_STEP_SEC),
+      ArrowRight: () => seekBy(SEEK_STEP_SEC),
+      ArrowDown: () => seekBy(-SEEK_STEP_SEC),
+      ArrowUp: () => seekBy(SEEK_STEP_SEC),
+      Home: () => seekTo(0),
+      End: () => seekTo(duration)
+    };
+    const action = handled[event.key];
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  };
+
+  // ---- клавиатура плеера: без стрелок, они за галереей ----
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (event.key === 'Escape' && qualityOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      setQualityOpen(false);
+      return;
+    }
+    // Внутри ползунка громкости стрелки — его собственные; пробел на кнопке — её собственный клик.
+    if (target.tagName === 'INPUT') return;
+    const key = event.key.toLowerCase();
+    if (event.key === ' ' || key === 'k') {
+      if (target.tagName === 'BUTTON' && event.key === ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      togglePlay();
+    } else if (key === 'm') {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleMute();
+    } else if (key === 'f' && onFullscreen) {
+      event.preventDefault();
+      event.stopPropagation();
+      onFullscreen();
+    }
+  };
+
+  // ---- события <video> ----
+  const syncBuffered = (video: HTMLVideoElement) => {
+    const ranges = video.buffered;
+    if (!ranges || ranges.length === 0) {
+      setBuffered(0);
+      return;
+    }
+    // Диапазон, в котором сейчас стоит курсор, иначе последний: столько уже скачано впереди.
+    let end = ranges.end(ranges.length - 1);
+    for (let i = 0; i < ranges.length; i++) {
+      if (ranges.start(i) <= video.currentTime && video.currentTime <= ranges.end(i)) {
+        end = ranges.end(i);
+        break;
+      }
+    }
+    setBuffered(end);
+  };
+
+  const showBigButton = (status !== 'playing' && status !== 'error') || (touchUi && playing && controlsVisible);
+  const bigButtonLabel = status === 'ended' ? t('video.replay') : t('video.play');
+  const played = duration > 0 ? clamp(currentTime / duration, 0, 1) : 0;
+  const loaded = duration > 0 ? clamp(buffered / duration, 0, 1) : 0;
+  const effectiveMuted = muted || volume === 0;
+  const volumeIcon = effectiveMuted ? 'muted' : volume < 0.5 ? 'volume-low' : 'volume';
+  const idle = playing && !controlsVisible && !scrubbing && !qualityOpen;
+
+  const onIdleChangeRef = useRef(onIdleChange);
+  onIdleChangeRef.current = onIdleChange;
+  useEffect(() => {
+    onIdleChangeRef.current?.(idle);
+  }, [idle]);
+  // Плеер убрали (другой кадр, закрыли просмотр) — кнопки родителя должны вернуться.
+  useEffect(() => () => onIdleChangeRef.current?.(false), []);
+  const qualityLabel =
+    quality === 'auto' ? (activeHeight ? `${t('video.qualityAuto')} · ${activeHeight}p` : t('video.qualityAuto')) : `${quality}p`;
+
+  return (
+    <div
+      className={`vp${idle ? ' is-idle' : ''}${className ? ` ${className}` : ''}`}
+      role="region"
+      aria-label={t('video.player', { title })}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onPointerMove={(event) => {
+        if (event.pointerType !== 'touch') wakeControls();
+      }}
+      onPointerDown={handleRootPointerDown}
+      onFocus={wakeControls}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      {/* Без controls: панель ниже — своя. playsInline — на iPhone ролик играет в кадре, а не уводит в свой плеер. */}
+      <video
+        ref={videoRef}
+        className="vp__video"
+        src={hls ? undefined : src}
+        poster={poster ?? undefined}
+        playsInline
+        preload="metadata"
+        aria-label={title}
+        onClick={handleSurfaceClick}
+        onPlay={() => {
+          setStatus('playing');
+          onPlay?.();
+        }}
+        onPause={() => setStatus((current) => (current === 'ended' ? current : 'paused'))}
+        onEnded={() => {
+          setStatus('ended');
+          onEnded?.();
+        }}
+        onTimeUpdate={(event) => {
+          if (!scrubbing) setCurrentTime(event.currentTarget.currentTime);
+        }}
+        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)}
+        onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
+        onProgress={(event) => syncBuffered(event.currentTarget)}
+        onWaiting={() => setWaiting(true)}
+        onPlaying={() => setWaiting(false)}
+        onCanPlay={() => setWaiting(false)}
+        onSeeked={() => setWaiting(false)}
+        onError={() => {
+          setStatus('error');
+          setWaiting(false);
+        }}
+        onVolumeChange={(event) => {
+          setVolume(event.currentTarget.volume);
+          setMuted(event.currentTarget.muted);
+        }}
+      />
+
+      {/* Большая кнопка — визуальная подсказка; для клавиатуры и читалок есть кнопка в панели, поэтому эта скрыта от них. */}
+      {showBigButton && (
+        <button type="button" className="vp__big-play" aria-hidden="true" tabIndex={-1} onClick={togglePlay}>
+          <Icon name={playing ? 'pause' : status === 'ended' ? 'replay' : 'play'} />
+        </button>
+      )}
+
+      {waiting && playing && <span className="vp__spinner" role="status" aria-label={t('video.loading')} />}
+
+      {status === 'error' && (
+        <div className="vp__error" role="alert">
+          <p>{t('video.failed')}</p>
+          <button type="button" className="vp__retry" onClick={play}>
+            {t('common.tryAgain')}
+          </button>
+        </div>
+      )}
+
+      <div className="vp__controls" aria-hidden={idle}>
+        <div
+          ref={trackRef}
+          className="vp__track"
+          role="slider"
+          tabIndex={0}
+          aria-label={t('video.seek')}
+          aria-valuemin={0}
+          aria-valuemax={Math.round(duration)}
+          aria-valuenow={Math.round(currentTime)}
+          aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
+          onPointerDown={handleTrackPointerDown}
+          onPointerMove={handleTrackPointerMove}
+          onPointerUp={handleTrackPointerUp}
+          onPointerCancel={handleTrackPointerUp}
+          onPointerLeave={() => setHoverRatio(null)}
+          onKeyDown={handleTrackKeyDown}
+        >
+          <span className="vp__track-loaded" style={{ width: `${loaded * 100}%` }} />
+          <span className="vp__track-played" style={{ width: `${played * 100}%` }} />
+          <span className="vp__track-thumb" style={{ left: `${played * 100}%` }} />
+          {hoverRatio !== null && duration > 0 && (
+            <span className="vp__track-tip" style={{ left: `${hoverRatio * 100}%` }} aria-hidden="true">
+              {formatTime(hoverRatio * duration)}
+            </span>
+          )}
+        </div>
+
+        <div className="vp__bar">
+          <button type="button" className="vp__btn" aria-label={playing ? t('video.pause') : bigButtonLabel} onClick={togglePlay}>
+            <Icon name={playing ? 'pause' : status === 'ended' ? 'replay' : 'play'} />
+          </button>
+
+          <div className="vp__volume">
+            <button type="button" className="vp__btn" aria-label={effectiveMuted ? t('video.unmute') : t('video.mute')} onClick={toggleMute}>
+              <Icon name={volumeIcon} />
+            </button>
+            <input
+              type="range"
+              className="vp__volume-range"
+              aria-label={t('video.volume')}
+              min={0}
+              max={1}
+              step={0.05}
+              value={effectiveMuted ? 0 : volume}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                applyVolume(next, next === 0);
+              }}
+            />
+          </div>
+
+          <span className="vp__time" aria-live="off">
+            <span>{formatTime(currentTime)}</span>
+            <span className="vp__time-sep">/</span>
+            <span>{formatTime(duration)}</span>
+          </span>
+
+          <span className="vp__spacer" />
+
+          {levels.length > 1 && (
+            <div className="vp__quality" ref={qualityRef}>
+              <button
+                type="button"
+                className="vp__btn vp__quality-btn"
+                aria-label={`${t('video.quality')}: ${qualityLabel}`}
+                aria-haspopup="menu"
+                aria-expanded={qualityOpen}
+                onClick={() => setQualityOpen((open) => !open)}
+              >
+                {/* «Auto · » — отдельно: в узком плеере (телефон) CSS прячет его и оставляет «720p». */}
+                {quality === 'auto' && activeHeight ? (
+                  <>
+                    <span className="vp__quality-auto">{t('video.qualityAuto')} · </span>
+                    {activeHeight}p
+                  </>
+                ) : (
+                  qualityLabel
+                )}
+              </button>
+              {qualityOpen && (
+                <ul className="vp__quality-menu" role="menu" aria-label={t('video.quality')}>
+                  {[{ key: 'auto', value: 'auto' as Quality, label: t('video.qualityAuto') }, ...levels.map((level) => ({ key: String(level.index), value: level.height as Quality, label: `${level.height}p` }))].map((item) => (
+                    <li key={item.key} role="none">
+                      <button
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={quality === item.value}
+                        className="vp__quality-item"
+                        onClick={() => chooseQuality(item.value)}
+                      >
+                        {item.label}
+                        {typeof item.value === 'number' && item.value >= 1080 ? <span className="vp__quality-hd">HD</span> : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {extraControls}
+
+          {handleFullscreen && (
+            <button
+              type="button"
+              className="vp__btn"
+              aria-label={isFullscreen ? t('media.exitFullscreen') : t('media.fullscreen')}
+              onClick={handleFullscreen}
+            >
+              <Icon name={isFullscreen ? 'compress' : 'expand'} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VideoPlayer;

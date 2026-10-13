@@ -1,0 +1,498 @@
+/* Демо-сайт: кружок «Демо», его панель, окно приглашения, демо-почта, подсказка на кассе. Цвета — из токенов сайта. */
+
+/* --- Кружок «Демо»: левый нижний угол (правый занят чатом поддержки), на всех страницах --- */
+.demo-fab {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 1050;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-accent-indigo), var(--color-accent-violet));
+  color: #fff;
+  /* Ровное фиолетовое свечение вокруг, а не тёмная тень вниз: на телефоне она читалась как грязь под кружком. */
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-accent-violet) 38%, transparent);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.demo-fab:hover,
+.demo-fab.is-open {
+  transform: scale(1.06);
+}
+
+.demo-fab:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-accent-violet) 45%, transparent);
+  outline-offset: 3px;
+}
+
+/* letter-spacing добавляет отступ и после последней буквы — такой же слева, иначе надпись смещена влево. */
+.demo-fab__text {
+  position: relative;
+  padding-left: 0.06em;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Лучи вокруг кружка: тонкие штрихи по кругу, медленно вращаются и гаснут к краю. */
+.demo-fab__rays {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--color-accent-violet) 70%, transparent) 0deg 3deg,
+    transparent 3deg 22.5deg
+  );
+  -webkit-mask: radial-gradient(circle closest-side, transparent 72%, #000 76%, transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent 72%, #000 76%, transparent 100%);
+  opacity: 0.75;
+  animation: demo-fab-rays 16s linear infinite;
+}
+
+@keyframes demo-fab-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Подсказка справа от кружка — один раз в браузере. */
+.demo-fab-hint {
+  position: fixed;
+  left: 92px;
+  bottom: 26px;
+  z-index: 1050;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: min(260px, calc(100vw - 112px));
+  padding: 10px 8px 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-hero-surface);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  animation: demo-fab-hint-in 0.35s ease-out;
+}
+
+.demo-fab-hint::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  bottom: 16px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.demo-fab-hint__body {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-fab-hint__close {
+  position: relative;
+  flex: none;
+  border: 0;
+  background: none;
+  padding: 0 4px;
+  color: var(--color-hero-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@keyframes demo-fab-hint-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+
+/* Пульс — расходящееся кольцо: заметно, но без мигания самого кружка. */
+.demo-fab.is-pulsing::before,
+.demo-fab.is-pulsing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent-violet);
+  animation: demo-fab-ring 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.demo-fab.is-pulsing::after {
+  animation-delay: 0.9s;
+}
+
+@keyframes demo-fab-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-fab.is-pulsing::before,
+  .demo-fab.is-pulsing::after,
+  .demo-fab__rays,
+  .demo-fab-hint {
+    animation: none;
+  }
+}
+
+/* --- Панель кружка: над ним, компактная --- */
+.demo-panel {
+  position: fixed;
+  left: 20px;
+  bottom: 88px;
+  z-index: 1051;
+  width: min(380px, calc(100vw - 40px));
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: demo-panel-in 0.18s ease-out;
+}
+
+@keyframes demo-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+.demo-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-panel__status {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.demo-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-panel__link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* --- Аккаунты и тестовая карта: строки «подпись — значение — копировать», значения без переносов --- */
+.demo-credentials {
+  display: grid;
+  gap: 10px;
+}
+
+.demo-account {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.demo-account__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.demo-account__role {
+  font-weight: 700;
+}
+
+.demo-account__signin {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-account__signin:hover {
+  text-decoration: underline;
+}
+
+.demo-account__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.demo-account__label {
+  color: var(--color-muted);
+  font-size: 12px;
+  min-width: 52px;
+}
+
+.demo-account__row code,
+.demo-checkout-hint code {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.demo-copy {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.demo-copy:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.demo-card-hint {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  display: grid;
+  gap: 4px;
+}
+
+/* Подпись карты — строкой выше: номер карты на узком экране не обрезается. */
+.demo-card-hint .demo-account__row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: 2px;
+}
+
+.demo-card-hint .demo-account__label {
+  grid-column: 1 / -1;
+}
+
+.demo-card-hint__note {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* --- Окно приглашения --- */
+.demo-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* Ширина — «вся доступная, но не больше 560», без min(): Safari на iPhone растягивал по содержимому окно,
+   заданное через min(), шире экрана (справа обрезались крестик и «Copy»). */
+.demo-dialog__card {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  min-width: 0;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transform-origin: center;
+}
+
+.demo-dialog__card h2 {
+  margin: 0;
+  font-size: 22px;
+  text-wrap: balance;
+}
+
+.demo-dialog__lead {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.demo-dialog__footnote {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.demo-dialog__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: 0;
+  background: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.demo-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* --- Подсказка на кассе, над полем карты --- */
+.demo-checkout-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  font-size: 14px;
+}
+
+.demo-checkout-hint__badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.demo-checkout-hint__text {
+  color: var(--color-text);
+}
+
+/* Срок, CVC и остальные поля — строкой под номером карты: подпись приглушённая, значение — как сам номер. */
+.demo-checkout-hint__fields {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.demo-checkout-hint__fields > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.demo-checkout-hint__fields dt {
+  color: var(--color-muted);
+}
+
+.demo-checkout-hint__fields dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+@media (max-width: 720px) {
+  /* Лучи выходят за кружок на 12 px: при отступе 12 px они упирались в нижнюю панель Safari и обрезались.
+     Отступы — с запасом под лучи; центр — на одной линии с кнопкой чата (см. support-chat.css). */
+  .demo-fab {
+    left: 20px;
+    bottom: max(20px, calc(env(safe-area-inset-bottom) + 12px));
+    width: 50px;
+    height: 50px;
+  }
+
+  .demo-fab__rays {
+    inset: -12px;
+  }
+
+  /* Подсказка — над кружком, стрелкой вниз: справа от него она упиралась в кнопку чата. */
+  .demo-fab-hint {
+    left: 12px;
+    bottom: calc(max(20px, calc(env(safe-area-inset-bottom) + 12px)) + 50px + 18px);
+    max-width: min(300px, calc(100vw - 24px));
+  }
+
+  .demo-fab-hint::before {
+    left: 27px;
+    bottom: -6px;
+  }
+
+  .demo-panel {
+    left: 12px;
+    bottom: calc(max(20px, calc(env(safe-area-inset-bottom) + 12px)) + 50px + 12px);
+    width: calc(100vw - 24px);
+  }
+
+  .demo-dialog__card {
+    padding: 22px 18px;
+  }
+}

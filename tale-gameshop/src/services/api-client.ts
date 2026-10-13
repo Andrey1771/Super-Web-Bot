@@ -5,6 +5,28 @@ import { IApiClient } from '../iterfaces/i-api-client';
 import container from "../inversify.config";
 import { IKeycloakService } from '../iterfaces/i-keycloak-service';
 import {IUrlService} from "../iterfaces/i-url-service";
+import { DEMO_EVENT, demoRefusalCode } from "../features/demo/demoEvents";
+import { currentCountry, currentLang } from "../context/site-preferences";
+
+/** Сколько раз повторять запрос, отбитый лимитом частоты nginx. */
+export const EDGE_RETRY_LIMIT = 2;
+
+/**
+ * Пауза перед повтором запроса, который nginx отбил лимитом частоты (429 с пометкой edge), или null — повторять
+ * не нужно. Лимит отбивает запрос до бэкенда, поэтому повтор безопасен и для POST; ответы 429 самого бэкенда
+ * (повторная отправка ключей раз в 10 минут, перебор промокодов) пометки не имеют — их показываем как есть.
+ */
+export const edgeRetryDelayMs = (error: AxiosError): number | null => {
+    const response = error.response;
+    const config = error.config as ({ __edgeRetries?: number } | undefined);
+    if (!response || response.status !== 429 || !config) return null;
+    if ((response.data as { edge?: boolean } | undefined)?.edge !== true) return null;
+    if ((config.__edgeRetries ?? 0) >= EDGE_RETRY_LIMIT) return null;
+    const retryAfter = Number(response.headers?.['retry-after']);
+    const base = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000;
+    // Разброс — чтобы повторы десятка запросов страницы не ушли одной пачкой и не упёрлись снова.
+    return base + Math.round(Math.random() * 500);
+};
 
 @injectable()
 export class ApiClient implements IApiClient {
@@ -25,14 +47,34 @@ export class ApiClient implements IApiClient {
 
 // Перехватчик запросов
         this._api.interceptors.request.use(
-            (config: any) => {
-                const token = this._keycloakService.keycloak.token; // Получаем токен (если он существует)
+            async (config: any) => {
+                const keycloak = this._keycloakService.keycloak;
+                // Токен доступа живёт пять минут. Перед запросом обновляем его, если он истёк или истечёт
+                // в ближайшие 30 секунд, — иначе после пяти минут на странице любой вход в API давал 401,
+                // хотя человек оставался «вошедшим». Не получилось обновить — шлём как есть: сервер
+                // ответит 401 сам, а не мы заранее.
+                if (keycloak?.authenticated && typeof keycloak.updateToken === 'function') {
+                    try {
+                        await keycloak.updateToken(30);
+                    } catch {
+                        // Сессия Keycloak могла закончиться — решает сервер по токену ниже.
+                    }
+                }
+                const token = keycloak?.token;
                 if (token) {
                     config.headers = {
                         ...config.headers,
                         Authorization: `Bearer ${token}`,
                     };
                 }
+                // Страна покупателя — сервер по ней говорит, где активируется ключ, и выдаёт подходящий.
+                const country = currentCountry();
+                if (country) {
+                    config.headers = { ...config.headers, 'X-Buyer-Country': country };
+                }
+                // Язык сайта — сервер записывает его в заказ и шлёт письма на нём. Язык браузера
+                // тут не подходит: покупатель мог выбрать в шапке другой.
+                config.headers = { ...config.headers, 'Accept-Language': currentLang() };
                 return config;
             },
             (error: AxiosError) => {
@@ -45,10 +87,27 @@ export class ApiClient implements IApiClient {
             (response: AxiosResponse) => {
                 return response;
             },
-            (error: AxiosError) => {
-                if (error.response && error.response.status === 401) {
-                    // Логика при 401 Unauthorized, например, разлогин пользователя
-                    console.error('Unauthorized, redirecting to login...');
+            async (error: AxiosError) => {
+                const retry = edgeRetryDelayMs(error);
+                if (retry !== null) {
+                    const config = error.config as (typeof error.config & { __edgeRetries?: number });
+                    config.__edgeRetries = (config.__edgeRetries ?? 0) + 1;
+                    await new Promise((resolve) => setTimeout(resolve, retry));
+                    return this._api.request(config);
+                }
+                // Демо-сайт отказал по своим правилам: объяснит DemoLayer (открыть свою копию / только просмотр).
+                const demoCode = demoRefusalCode(error.response?.status, error.response?.data);
+                // Корзина сохраняется на сервер сама (после входа и при каждом изменении): у демо-админа это фоновый
+                // отказ, и пояснение всплывало сразу после входа ни с того ни с сего. Корзина у него живёт в браузере,
+                // а пояснение он увидит, когда попробует оплатить.
+                const backgroundCartSync = (error.config?.url ?? '').startsWith('/api/cart/');
+                if (demoCode && !backgroundCartSync) {
+                    window.dispatchEvent(new CustomEvent(DEMO_EVENT, { detail: { code: demoCode } }));
+                }
+                if (error.response && error.response.status === 401 && this._keycloakService.keycloak?.authenticated) {
+                    // 401 у вошедшего — токен мёртв, обновить перед запросом не удалось: сессия закончилась.
+                    // Снимаем вход и показываем плашку «Session expired» вместо молчаливых ошибок.
+                    this._keycloakService.markSessionExpired();
                 }
                 return Promise.reject(error);
             }

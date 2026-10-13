@@ -1,6 +1,7 @@
 import {injectable} from "inversify";
 import {IKeycloakAuthService} from "../iterfaces/i-keycloak-auth-service";
 import {KeycloakInstance} from "keycloak-js";
+import {currentLang} from "../context/site-preferences";
 
 @injectable()
 export class KeycloakAuthService implements IKeycloakAuthService {
@@ -8,6 +9,8 @@ export class KeycloakAuthService implements IKeycloakAuthService {
         try {
             await keycloak.login({
                 redirectUri: uri, // Укажите URL для редиректа после логина
+                // Язык сайта → kc_locale: страница входа Keycloak открывается на нём.
+                locale: currentLang(),
             });
         } catch (error) {
             console.error('Ошибка при логине:', error);
@@ -28,6 +31,7 @@ export class KeycloakAuthService implements IKeycloakAuthService {
         try {
             await keycloak.register({
                 redirectUri: uri,
+                locale: currentLang(),
             });
         } catch (error) {
             console.error('Ошибка при логине:', error);

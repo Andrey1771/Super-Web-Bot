@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using SuperBot.Application.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Application.Commands;
 using SuperBot.Core.Interfaces.IRepositories;

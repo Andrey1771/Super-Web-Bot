@@ -1,0 +1,48 @@
+/* Обложка, летящая в корзину: см. cart-flight.ts. */
+.cart-flyer {
+    position: fixed;
+    z-index: 1200;
+    width: 64px;
+    height: 64px;
+    pointer-events: none;
+    transition: transform 0.65s cubic-bezier(0.4, 0, 0.6, 1), opacity 0.2s ease 0.5s;
+}
+
+.cart-flyer.is-go {
+    opacity: 0;
+}
+
+/* Дуга — на внутреннем слое: внешний едет по прямой, внутренний подпрыгивает и чуть поворачивается. */
+.cart-flyer-cover {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, #6d3ee8, #3b2b8f);
+    color: #fff;
+    font-weight: 900;
+    font-size: 22px;
+    box-shadow: 0 12px 30px rgba(30, 20, 70, 0.35);
+    animation: cart-flyer-arc 0.65s ease-in-out forwards;
+}
+
+.cart-flyer-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+@keyframes cart-flyer-arc {
+    0% { transform: translateY(0) rotate(0); }
+    50% { transform: translateY(-150px) rotate(10deg); }
+    100% { transform: translateY(0) rotate(20deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cart-flyer { transition: none; }
+    .cart-flyer-cover { animation: none; }
+}

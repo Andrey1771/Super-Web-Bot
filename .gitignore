@@ -403,3 +403,31 @@ testem.log
 Thumbs.db
 
 .angular
+
+# Local dev TLS certificates (mkcert)
+/tale-gameshop/certs/
+
+# Secrets — never commit real credentials. Use .env (docker) or `dotnet user-secrets` (local).
+# Only the *.example templates are tracked.
+.env
+.env.*
+!.env.example
+# Local per-machine config overrides holding secrets
+**/appsettings.*.Local.json
+**/appsettings.Local.json
+secrets.json
+
+# Stripe CLI — локальный инструмент, а не часть приложения.
+# Используй docker-сервис: docker compose --profile dev up stripe-cli
+stripe-cli/
+stripe.zip
+stripe.exe
+
+# Резервные копии продакшена (каталог BACKUP_DIR по умолчанию) и доступ к внешнему хранилищу копий
+/backups/
+/deploy/rclone/rclone.conf
+# Скрипты резервного копирования — код, а не копии (правило Backup*/ выше их бы спрятало)
+!/deploy/backup/
+
+# Пакет демо-сайта (deploy/demo/build-demo-pack.sh): архив базы и медиа, гигабайты.
+demo-pack/

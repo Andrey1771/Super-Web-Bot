@@ -1,0 +1,300 @@
+.support-live-chat__grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+}
+
+/* Фильтры списка сессий: выбор статуса, поиск и «Refresh».
+   Было тремя жёсткими колонками (1fr 1.5fr auto). В сетке элементы по умолчанию не сжимаются
+   уже собственного содержимого, а у select и input оно немаленькое: в узкой левой колонке
+   первые два занимали всю ширину и выдавливали кнопку за край карточки — её просто не было
+   видно. Теперь это флекс с переносом: поля ужимаются, а кнопка при нехватке места уходит
+   на свою строку, но остаётся на экране. */
+.support-live-chat__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.support-live-chat__filters input,
+.support-live-chat__filters select {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid #e1e4f2;
+  /* min-width: 0 обязателен: без него флекс-элемент тоже упирается в свою внутреннюю
+     ширину и переполняет контейнер вместо того, чтобы сжаться. */
+  min-width: 0;
+}
+
+.support-live-chat__filters select {
+  flex: 1 1 130px;
+}
+
+.support-live-chat__filters input {
+  flex: 2 1 150px;
+}
+
+/* Кнопка не сжимается: «Refresh» с обрезанной надписью хуже переноса на новую строку. */
+.support-live-chat__filters .btn {
+  flex: 0 0 auto;
+}
+
+.support-live-chat__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.support-live-chat__item {
+  border: 1px solid #eef0ff;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff;
+}
+
+.support-live-chat__item.active {
+  border-color: #6d3bff;
+  box-shadow: 0 0 0 1px rgba(109, 59, 255, 0.3);
+}
+
+.support-live-chat__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+  color: #5f5f75;
+  gap: 6px;
+}
+
+.support-live-chat__muted {
+  color: #7b7b91;
+  font-size: 12px;
+}
+
+/* Имя и код обращения в одну строку. Код — единственное, чем строки гостей отличаются
+   друг от друга, поэтому он стоит рядом с именем, а не прячется в подпись. */
+.support-live-chat__who {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Длинный адрес почты — один неразрывный кусок текста: без принудительного переноса он
+   распирал строку списка и выдавливал статус за её правый край. */
+.support-live-chat__who strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.support-live-chat__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #6d3bff;
+  background: #f3efff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.support-live-chat__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.support-live-chat__detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.support-live-chat__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.support-live-chat__meta-row {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #5f5f75;
+  /* Строка выросла с четырёх полей до шести и в узкой колонке перестала помещаться. */
+  flex-wrap: wrap;
+}
+
+.support-live-chat__presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Присутствие клиента. Зелёный — читает переписку прямо сейчас, жёлтый — страница открыта,
+   но чат свёрнут, серый — ушёл или не отмечался ни разу. */
+.support-live-chat__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c9c9d6;
+  flex-shrink: 0;
+}
+
+.support-live-chat__dot--viewing {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.support-live-chat__dot--online {
+  background: #f5b53f;
+}
+
+/* Контекст передачи: причина, категория и стенограмма из уведомления — перед перепиской,
+   чтобы специалист прочитал «почему это у меня» раньше, чем начнёт листать диалог. */
+.support-live-chat__handoff {
+  border: 1px solid #e6e0ff;
+  border-left: 3px solid #6d3bff;
+  border-radius: var(--radius-md);
+  background: #faf8ff;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.support-live-chat__handoff-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.support-live-chat__handoff p {
+  margin: 0 0 8px;
+  color: #43435a;
+}
+
+.support-live-chat__handoff summary {
+  cursor: pointer;
+  color: #5a2cff;
+}
+
+.support-live-chat__handoff pre {
+  margin: 8px 0 0;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #eceaf7;
+  border-radius: var(--radius-md);
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-family: inherit;
+  font-size: 12px;
+  color: #4a4a63;
+}
+
+.support-live-chat__messages {
+  background: #f7f8ff;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* Подпись на время подгрузки предыдущей страницы. flex-shrink: 0 — лента выложена колонкой
+   флексом, и без него строка сплющилась бы в полоску. */
+.support-live-chat__history-loading {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #7b7b91;
+}
+
+.support-live-chat__bubble {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: #fff;
+  border: 1px solid #e6e8f8;
+}
+
+.support-live-chat__bubble--user {
+  align-self: flex-end;
+  background: #f1f1f7;
+}
+
+.support-live-chat__bubble--assistant {
+  background: #ece3ff;
+}
+
+.support-live-chat__bubble--agent {
+  background: #e4f7f2;
+}
+
+.support-live-chat__bubble-author {
+  font-size: 11px;
+  color: #6d6d82;
+  margin-bottom: 4px;
+}
+
+.support-live-chat__reply,
+.support-live-chat__tags {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.support-live-chat__reply input,
+.support-live-chat__tags input {
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid #e1e4f2;
+}
+
+.support-live-chat__empty {
+  padding: 16px;
+  color: #6d6d82;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: #edf0ff;
+  color: #5a2cff;
+}
+
+.tag--high {
+  background: #ffe3ea;
+  color: #b83b5c;
+}
+
+.tag--low {
+  background: #e3f1ff;
+  color: #2c5da8;
+}
+
+@media (max-width: 1024px) {
+  .support-live-chat__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.support-live-chat__customer-link {
+  font-size: 12px;
+  color: #6d3bff;
+  white-space: nowrap;
+}

@@ -1,0 +1,604 @@
+.support-doc-page {
+    background: var(--color-bg);
+    padding: var(--space-32) 0 var(--space-64);
+}
+
+.support-doc-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--color-muted);
+    margin-bottom: var(--space-20);
+}
+
+.support-doc-breadcrumbs a {
+    color: var(--color-muted);
+}
+
+.support-doc-breadcrumbs a:hover {
+    color: var(--color-primary);
+}
+
+.support-doc-breadcrumbs span:last-child {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.support-doc-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: var(--space-24);
+    align-items: start;
+}
+
+.support-doc-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+    min-width: 0;
+}
+
+/* Шапка документа */
+.support-doc-hero {
+    padding: var(--space-24) var(--space-24) var(--space-20);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.support-doc-kind {
+    align-self: flex-start;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.support-doc-kind.is-guide {
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--color-primary);
+}
+
+.support-doc-kind.is-policy {
+    background: rgba(217, 119, 6, 0.1);
+    color: #b45309;
+}
+
+.support-doc-hero h1 {
+    margin: 0;
+    font-size: 32px;
+    line-height: 1.2;
+}
+
+/* Длина строки одна на весь документ — см. --doc-measure ниже. */
+.support-doc-lead {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: var(--doc-measure);
+}
+
+.support-doc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-8) var(--space-16);
+    color: var(--color-muted);
+    font-size: 13px;
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+}
+
+.support-doc-meta svg {
+    margin-right: 4px;
+    color: var(--color-primary);
+}
+
+/* Надпись в одну строку, высота растёт, а не обрезает текст: на телефоне в ряду с «2 min read» и датой кнопке
+   не хватало ширины, «Open recovery form» ломалось на три строки и вылезало за кнопку фиксированной высоты. */
+.support-doc-action {
+    margin-left: auto;
+    height: auto;
+    min-height: 36px;
+    padding-inline: var(--space-16);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Телефон: кнопка — отдельной строкой во всю ширину под «время чтения · дата». */
+@media (max-width: 560px) {
+    .support-doc-action {
+        flex-basis: 100%;
+        margin-left: 0;
+        min-height: 44px;
+        font-size: 14px;
+    }
+}
+
+/* Callout-блоки */
+.support-doc-callout {
+    display: flex;
+    gap: var(--space-12);
+    padding: var(--space-16);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.support-doc-callout.is-info {
+    background: rgba(124, 58, 237, 0.07);
+    border: 1px solid rgba(124, 58, 237, 0.18);
+}
+
+.support-doc-callout.is-warning {
+    background: rgba(217, 119, 6, 0.07);
+    border: 1px solid rgba(217, 119, 6, 0.22);
+}
+
+.support-doc-callout-icon {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.support-doc-callout.is-info .support-doc-callout-icon {
+    color: var(--color-primary);
+}
+
+.support-doc-callout.is-warning .support-doc-callout-icon {
+    color: #b45309;
+}
+
+.support-doc-callout strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.support-doc-callout p {
+    margin: 0;
+    color: var(--color-text);
+    max-width: var(--doc-measure);
+}
+
+/* Длина строки.
+
+   На коротких гайдах это не мешало, но у условий продажи строка вышла в 112 символов
+   при ширине карточки 932px: на такой строке глаз теряет начало следующей, а юридический
+   текст и без того читают через силу. 70ch — верх обычного диапазона (45–75), в наших
+   шрифте и кегле это около 70 символов.
+
+   Ограничиваем текст, а не карточку: сузив карточку, мы оставили бы пустую полосу
+   между ней и боковой колонкой. */
+.support-doc-page {
+    --doc-measure: 70ch;
+}
+
+/* Секции */
+.support-doc-section {
+    padding: var(--space-20) var(--space-24);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    scroll-margin-top: 110px;
+}
+
+.support-doc-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+}
+
+.support-doc-section-num {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--color-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.support-doc-section-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+/* Якорь проступает при наведении на заголовок — постоянная решётка рядом с каждым
+   пунктом только шумит. С клавиатуры он виден по фокусу, а не только мышью. */
+.support-doc-section-anchor {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--color-muted);
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.support-doc-section-header:hover .support-doc-section-anchor,
+.support-doc-section-anchor:focus-visible {
+    opacity: 1;
+}
+
+.support-doc-section-anchor:hover {
+    background: #f1edff;
+    color: var(--color-primary);
+}
+
+.support-doc-section-anchor:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Заголовок, к которому только что перешли по ссылке, не должен прятаться под шапкой. */
+.support-doc-section {
+    scroll-margin-top: 120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .support-doc-section-anchor {
+        transition: none;
+    }
+}
+
+.support-doc-section-intro {
+    margin: 0;
+    color: var(--color-muted);
+    line-height: 1.55;
+    max-width: var(--doc-measure);
+}
+
+/* Маркированный список с фирменным маркером */
+.support-doc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-12);
+    max-width: var(--doc-measure);
+}
+
+.support-doc-list li {
+    position: relative;
+    padding-left: 22px;
+    color: var(--color-text);
+    line-height: 1.55;
+}
+
+.support-doc-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    opacity: 0.55;
+}
+
+/* Нумерованные шаги */
+.support-doc-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-12);
+    counter-reset: none;
+    /* Шире номера шага, чтобы текст шагов имел ту же меру, что и остальной. */
+    max-width: calc(var(--doc-measure) + 42px);
+}
+
+.support-doc-steps li {
+    display: flex;
+    gap: var(--space-12);
+    line-height: 1.55;
+}
+
+.support-doc-step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(124, 58, 237, 0.4);
+    color: var(--color-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* Финальный CTA */
+.support-doc-cta {
+    padding: var(--space-20) var(--space-24);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-20);
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(236, 72, 153, 0.05));
+}
+
+.support-doc-cta h2 {
+    margin: 0 0 6px;
+    font-size: 20px;
+}
+
+.support-doc-cta p {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.support-doc-cta-actions {
+    display: flex;
+    gap: var(--space-12);
+    flex-wrap: wrap;
+}
+
+/* Правая колонка */
+/* Колонка липнет целиком, обе карточки в ней движутся как одно.
+
+   Двух неверных попыток тут стоит избежать в будущем. Первая: липкая колонка со своей
+   прокруткой — рядом с прокруткой страницы появлялась вторая полоса. Вторая: липким
+   сделать только оглавление — тогда список документов уезжал ПОД него, и было видно
+   карточку со срезанным верхом.
+
+   Здесь у колонки нет своей прокрутки, а высоту отдаёт оглавление: если содержимое
+   не помещается, ужимается и прокручивается внутри себя именно оно, а список остаётся
+   целым. При двенадцати разделах не ужимается ничего. */
+/* Колонка тянется на всю высоту страницы — это «дорожка», по которой едет липкий блок.
+   Липкой её саму делать нельзя: липкий элемент живёт только внутри своей коробки, а она
+   была высотой со своё содержимое, и на середине документа оглавление отклеивалось. */
+.support-doc-aside {
+    align-self: stretch;
+}
+
+.support-doc-sticky {
+    position: sticky;
+    top: 110px;
+    max-height: calc(100vh - 130px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+}
+
+/* Прокрутка внутри — только на случай документа разделов на тридцать. При двенадцати
+   оглавление занимает 437px и не ужимается ни в каком разумном окне: в колонке оно
+   теперь одно и высоту ни с кем не делит. */
+.support-doc-toc {
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.support-doc-toc,
+.support-doc-related {
+    padding: var(--space-20);
+}
+
+/* В статье карточка вдвое шире, чем была в колонке: ссылки идут в два столбца,
+   иначе шесть строк тянутся узкой лентой по левому краю. */
+.support-doc-related ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-12) var(--space-24);
+}
+
+@media (max-width: 640px) {
+    .support-doc-related ul {
+        grid-template-columns: 1fr;
+    }
+}
+
+.support-doc-toc h3,
+.support-doc-related h3 {
+    margin: 0 0 var(--space-12);
+    font-size: 15px;
+}
+
+.support-doc-toc ul,
+.support-doc-related ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.support-doc-toc a {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    color: var(--color-muted);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.support-doc-toc a:hover {
+    color: var(--color-primary);
+}
+
+/* Текущий раздел. Полоска слева, а не только цвет: по длинному оглавлению глаз ищет
+   место, а не оттенок, и одного цвета для этого мало. */
+.support-doc-toc a.is-active {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.support-doc-toc a.is-active::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--color-primary);
+}
+
+.support-doc-toc a.is-active span {
+    opacity: 1;
+}
+
+.support-doc-toc li {
+    position: relative;
+}
+
+.support-doc-toc a span {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-primary);
+    opacity: 0.7;
+}
+
+/* Кнопка «наверх». Появляется, когда до верха уже далеко. */
+.support-doc-backtotop {
+    position: fixed;
+    left: 24px;
+    bottom: 24px;
+    z-index: 40;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #e4dbff;
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-primary);
+    box-shadow: 0 10px 26px rgba(84, 58, 193, 0.22);
+    cursor: pointer;
+    animation: support-doc-backtotop-in 0.18s ease;
+    transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.support-doc-backtotop:hover {
+    transform: translateY(-2px);
+    background: #faf7ff;
+}
+
+.support-doc-backtotop:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+@keyframes support-doc-backtotop-in {
+    from { opacity: 0; transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .support-doc-backtotop,
+    .support-doc-backtotop:hover {
+        animation: none;
+        transition: none;
+        transform: none;
+    }
+}
+
+.support-doc-related li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.support-doc-related-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--color-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.support-doc-related a {
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.support-doc-related a:hover {
+    color: var(--color-primary);
+}
+
+/* Страница «не найдено» */
+.support-doc-notfound {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: var(--space-32);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    align-items: center;
+}
+
+.support-doc-notfound h1 {
+    margin: 0;
+    font-size: 26px;
+}
+
+.support-doc-notfound p {
+    margin: 0;
+    color: var(--color-muted);
+}
+
+@media (max-width: 960px) {
+    .support-doc-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .support-doc-aside {
+        align-self: auto;
+    }
+
+    .support-doc-sticky {
+        position: static;
+        max-height: none;
+    }
+
+    /* На мобильном оглавление и так скрыто, а список документов должен быть виден
+       при любой высоте окна — здесь колонка обычный блок в потоке. */
+    .support-doc-toc {
+        overflow-y: visible;
+    }
+
+    .support-doc-related {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Оглавление на мобильном не критично — прячем, чтобы не дублировать структуру. */
+    .support-doc-toc {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .support-doc-hero h1 {
+        font-size: 26px;
+    }
+
+    .support-doc-section {
+        padding: var(--space-16) var(--space-16);
+    }
+
+    .support-doc-cta {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

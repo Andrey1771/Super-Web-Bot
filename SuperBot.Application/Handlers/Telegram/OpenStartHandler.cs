@@ -1,10 +1,9 @@
-﻿using MediatR;
+using SuperBot.Application.Messaging;
 using SuperBot.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using SuperBot.Core.Interfaces.IRepositories;
 using Telegram.Bot.Types;
 using Telegram.Bot;
-using SuperBot.Core.Entities;
 using Telegram.Bot.Types.Enums;
 using System.Text;
 using SuperBot.Application.Commands.Telegram;
@@ -34,13 +33,47 @@ namespace SuperBot.Application.Handlers.Telegram
                 await userRepository.AddUserAsync(newUser);
             }
 
-            await _botClient.SendTextMessageAsync(
+            // Deep-link привязки аккаунта: /start <token> связывает этот чат с сайтовым аккаунтом.
+            if (!string.IsNullOrWhiteSpace(request.StartPayload))
+            {
+                await TryLinkAccountAsync(serviceScope.ServiceProvider, request, cancellationToken);
+            }
+
+            await _botClient.SendMessage(
                 chatId: request.ChatId,
                 text: GetStartText(),
                 parseMode: ParseMode.Html,
                 cancellationToken: cancellationToken);
 
             return await GetMainMenu(request.ChatId);
+        }
+
+        private async Task TryLinkAccountAsync(IServiceProvider services, OpenStartCommand request, CancellationToken cancellationToken)
+        {
+            var linkRepository = services.GetService(typeof(ITelegramLinkRepository)) as ITelegramLinkRepository;
+            if (linkRepository == null)
+            {
+                return;
+            }
+
+            var link = await linkRepository.ConsumeTokenAndLinkAsync(
+                request.StartPayload.Trim(),
+                request.UserId,
+                request.ChatId,
+                request.Username);
+
+            var message = link != null
+                ? _translationsService.Translation.AccountLinkedSuccess
+                : _translationsService.Translation.AccountLinkFailed;
+
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                await _botClient.SendMessage(
+                    chatId: request.ChatId,
+                    text: message,
+                    parseMode: ParseMode.Html,
+                    cancellationToken: cancellationToken);
+            }
         }
 
         private Task<Message> GetMainMenu(long chatId)

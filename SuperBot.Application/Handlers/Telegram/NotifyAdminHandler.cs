@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using SuperBot.Application.Messaging;
 using SuperBot.Application.Commands.Telegram;
 using SuperBot.Core.Interfaces;
 using Telegram.Bot;
@@ -20,7 +20,7 @@ namespace SuperBot.Application.Handlers.Telegram
         private Task<Message> NotifyAdminAsync(string phone, string name, string email, string question)
         {
             string adminMessage = string.Format(_translationsService.Translation.NotifyAdmin, phone, name, email, question);
-            return _botClient.SendTextMessageAsync(adminChatId, adminMessage, parseMode: ParseMode.Html);
+            return _botClient.SendMessage(adminChatId, adminMessage, parseMode: ParseMode.Html);
         }
     }
 }

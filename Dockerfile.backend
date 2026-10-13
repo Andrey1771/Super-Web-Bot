@@ -1,5 +1,5 @@
 # Базовый образ для сборки
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
 # Добавляем кастомный NuGet-репозиторий
@@ -9,11 +9,9 @@ RUN dotnet nuget add source "https://pkgs.dev.azure.com/tgbots/Telegram.Bot/_pac
 #RUN dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 
 # Копируем файлы проекта
-COPY SuperBot.Telegram/SuperBot.Telegram.csproj SuperBot.Telegram/
 COPY SuperBot.Application/SuperBot.Application.csproj SuperBot.Application/
 COPY SuperBot.Core/SuperBot.Core.csproj SuperBot.Core/
 COPY SuperBot.Infrastructure/SuperBot.Infrastructure.csproj SuperBot.Infrastructure/
-COPY SuperBot.BotApi/SuperBot.BotApi.csproj SuperBot.BotApi/
 COPY SuperBot.Common.Auth/SuperBot.Common.Auth.csproj SuperBot.Common.Auth/
 COPY SuperBot.WebApi/SuperBot.WebApi.csproj SuperBot.WebApi/
 
@@ -27,8 +25,16 @@ COPY . .
 RUN dotnet publish SuperBot.WebApi/SuperBot.WebApi.csproj -c Release -o /app/published
 
 # Базовый образ для запуска
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
+
+# ffmpeg нужен самому приложению: из видео вынимается кадр для превью и его длительность
+# (ffprobe). Без него загруженное видео показывается в медиатеке заглушкой «Preview missing»,
+# а кнопка «Generate preview» отвечает ошибкой — код это проверяет и честно об этом говорит,
+# но лечится это здесь, а не в коде.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 # Копируем собранное приложение
 COPY --from=build /app/published ./ 

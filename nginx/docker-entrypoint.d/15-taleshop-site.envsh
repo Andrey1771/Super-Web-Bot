@@ -1,0 +1,25 @@
+#!/bin/sh
+# Выбирает конфиг сервера по NGINX_SITE (dev — стенд на 80-м порту, prod — домен и https)
+# и кладёт его в /etc/nginx/templates: следующий скрипт образа (20-envsubst-on-templates.sh)
+# подставит переменные окружения и запишет результат в /etc/nginx/conf.d.
+# Файл с расширением .envsh исполняется через source, поэтому здесь set -e нельзя.
+
+site="${NGINX_SITE:-dev}"
+case "$site" in
+    dev|prod) ;;
+    *) echo "taleshop: NGINX_SITE должен быть dev или prod, а не '$site'" >&2; exit 1 ;;
+esac
+
+if [ "$site" = "prod" ]; then
+    if [ -z "${DOMAIN:-}" ] || [ -z "${PUBLIC_URL:-}" ]; then
+        echo "taleshop: для NGINX_SITE=prod нужны DOMAIN и PUBLIC_URL" >&2
+        exit 1
+    fi
+    /usr/local/bin/taleshop-pick-cert || exit 1
+fi
+
+mkdir -p /etc/nginx/templates
+rm -f /etc/nginx/templates/*.template
+cp "/etc/nginx/site-templates/site.$site.conf.template" /etc/nginx/templates/site.conf.template
+# Подставлять только наши переменные: остальные $... в конфиге принадлежат самому nginx.
+export NGINX_ENVSUBST_FILTER='^(DOMAIN|PUBLIC_URL)$'

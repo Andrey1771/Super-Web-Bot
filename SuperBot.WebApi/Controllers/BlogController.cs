@@ -1,0 +1,370 @@
+using Microsoft.AspNetCore.Mvc;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IRepositories;
+using System.Security.Claims;
+using System.Linq;
+using SuperBot.WebApi.Services;
+using SuperBot.WebApi.Services.Storefront;
+using SuperBot.Common.Auth;
+
+namespace SuperBot.WebApi.Controllers;
+
+[ApiController]
+[Route("api/blog/posts")]
+public class BlogController : ControllerBase
+{
+    private readonly IBlogRepository _blogRepository;
+    private readonly IBlogRecommendationsService _blogRecommendationsService;
+    private readonly IBlogPostUniqueViewRepository _blogPostUniqueViewRepository;
+    private readonly IBlogViewSettingsRepository _blogViewSettingsRepository;
+
+    public BlogController(
+        IBlogRepository blogRepository,
+        IBlogRecommendationsService blogRecommendationsService,
+        IBlogPostUniqueViewRepository blogPostUniqueViewRepository,
+        IBlogViewSettingsRepository blogViewSettingsRepository)
+    {
+        _blogRepository = blogRepository;
+        _blogRecommendationsService = blogRecommendationsService;
+        _blogPostUniqueViewRepository = blogPostUniqueViewRepository;
+        _blogViewSettingsRepository = blogViewSettingsRepository;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetPosts(
+        [FromQuery] string status = "PUBLISHED",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12,
+        [FromQuery] string tag = "",
+        [FromQuery] string search = "",
+        [FromQuery] bool? featured = null)
+    {
+        var query = new BlogQueryParameters
+        {
+            Page = page,
+            PageSize = pageSize,
+            Tag = tag,
+            Search = search,
+            Status = status,
+            Featured = featured
+        };
+
+        var (items, total) = await _blogRepository.GetPublicPagedAsync(query);
+        var statsMap = await BuildStatsMapAsync(items.Select(item => item.Id));
+        var language = BuyerLanguage.Resolve(Request);
+        var list = items.Select(post => new
+        {
+            post.Id,
+            post.Slug,
+            Title = BlogLocalizer.Title(post, language),
+            Excerpt = BlogLocalizer.Excerpt(post, language),
+            post.CoverUrl,
+            post.Tags,
+            TagLabels = BlogLocalizer.TagLabels(post, language),
+            post.PublishedAt,
+            post.ReadingTime,
+            post.Featured,
+            ViewsCount = statsMap.TryGetValue(post.Id, out var stats) ? stats.ViewsCount : 0,
+            CompletedReadsCount = statsMap.TryGetValue(post.Id, out stats) ? stats.CompletedReadsCount : 0
+        });
+
+        return Ok(new { items = list, total });
+    }
+
+    [HttpGet("{slug}")]
+    public async Task<IActionResult> GetPostBySlug(string slug)
+    {
+        var post = await _blogRepository.GetBySlugAsync(slug);
+        if (post == null || post.Status != "PUBLISHED")
+        {
+            return NotFound();
+        }
+
+        var version = await _blogRepository.GetVersionByIdAsync(post.Id, post.CurrentVersionId);
+        var stats = await BuildStatsAsync(post.Id);
+        var language = BuyerLanguage.Resolve(Request);
+        return Ok(new
+        {
+            post = new
+            {
+                post.Id,
+                post.Slug,
+                Title = BlogLocalizer.Title(post, language),
+                Excerpt = BlogLocalizer.Excerpt(post, language),
+                post.CoverUrl,
+                ImageUrl = post.CoverUrl,
+                post.Status,
+                post.PublishedAt,
+                post.ScheduledAt,
+                post.CreatedAt,
+                post.UpdatedAt,
+                post.AuthorId,
+                post.AuthorName,
+                post.Tags,
+                TagLabels = BlogLocalizer.TagLabels(post, language),
+                post.Topics,
+                post.ReadingTime,
+                post.CurrentVersionId,
+                post.EditorScore,
+                post.Featured,
+                post.BlogHomeFeatured,
+                ViewCount = stats.ViewsCount,
+                CompletedReadsCount = stats.CompletedReadsCount
+            },
+            version = BlogLocalizer.Localize(version, language),
+            stats
+        });
+    }
+
+    [HttpGet("{slug}/stats")]
+    public async Task<IActionResult> GetPostStats(string slug)
+    {
+        var post = await _blogRepository.GetBySlugAsync(slug);
+        if (post == null || post.Status != "PUBLISHED")
+        {
+            return NotFound();
+        }
+
+        var stats = await BuildStatsAsync(post.Id);
+        return Ok(stats);
+    }
+
+    [HttpPost("{slug}/track-view")]
+    public async Task<IActionResult> TrackView(string slug, [FromBody] BlogTrackRequest request)
+    {
+        return await TrackEventBySlug(slug, request, "POST_OPEN");
+    }
+
+    [HttpPost("{slug}/register-unique-view")]
+    public async Task<IActionResult> RegisterUniqueView(string slug, [FromBody] RegisterUniqueViewRequest request)
+    {
+        var post = await _blogRepository.GetBySlugAsync(slug);
+        if (post == null || post.Status != "PUBLISHED")
+        {
+            return NotFound();
+        }
+
+        request ??= new RegisterUniqueViewRequest();
+        if (!request.IsVisible || !request.HasInteraction || request.ActiveDwellMs < 5000)
+        {
+            return BadRequest("View validation requirements are not met.");
+        }
+
+        var userId = User.GetUserKey();
+        var viewerKey = BuildViewerKey(userId, request.AnonId);
+        if (string.IsNullOrWhiteSpace(viewerKey))
+        {
+            return BadRequest("Identity is required.");
+        }
+
+        var ipHash = ComputeHash((ClientAddress.Resolve(HttpContext) ?? string.Empty));
+        var userAgentHash = ComputeHash(Request.Headers.UserAgent.ToString());
+        if (IsIpRateLimited(ipHash))
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, "Too many view registrations.");
+        }
+
+        var existing = await _blogPostUniqueViewRepository.GetByPostAndViewerKeyAsync(post.Id, viewerKey);
+        if (existing == null)
+        {
+            var now = DateTime.UtcNow;
+            var settings = await _blogViewSettingsRepository.GetAsync();
+            var countGuestInPublicCounts = settings?.CountGuestViewsInPublicCounts ?? true;
+            var isGuest = string.IsNullOrWhiteSpace(userId);
+            await _blogPostUniqueViewRepository.CreateAsync(new BlogPostUniqueView
+            {
+                PostId = post.Id,
+                ViewerKey = viewerKey,
+                UserId = userId,
+                AnonId = request.AnonId,
+                IsGuest = isGuest,
+                FirstViewedAt = now,
+                LastViewedAt = now,
+                FirstSessionId = request.SessionId,
+                LastSessionId = request.SessionId,
+                UserAgentHash = userAgentHash,
+                IpHash = ipHash,
+                CountedInPublicCounts = !isGuest || countGuestInPublicCounts,
+                IsExcludedFromPublicCounts = false,
+                Source = "blog-detail",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            await _blogPostUniqueViewRepository.TouchAsync(existing.Id, DateTime.UtcNow, request.SessionId, userAgentHash, ipHash);
+        }
+
+        var stats = await BuildStatsAsync(post.Id);
+        return Ok(stats);
+    }
+
+    [HttpPost("{slug}/track-read")]
+    public async Task<IActionResult> TrackRead(string slug, [FromBody] BlogTrackRequest request)
+    {
+        return await TrackEventBySlug(slug, request, "POST_READ_COMPLETE");
+    }
+
+    private async Task<IActionResult> TrackEventBySlug(string slug, BlogTrackRequest request, string eventType)
+    {
+        var post = await _blogRepository.GetBySlugAsync(slug);
+        if (post == null || post.Status != "PUBLISHED")
+        {
+            return NotFound();
+        }
+
+        request ??= new BlogTrackRequest();
+        var userId = User.GetUserKey();
+        var actorKey = BlogActorKey.For(userId, request.AnonId, request.SessionKey);
+        if (string.IsNullOrWhiteSpace(actorKey))
+        {
+            return BadRequest("Identity is required.");
+        }
+
+        var fromUtc = DateTime.UnixEpoch;
+        var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, fromUtc);
+        var alreadyTracked = events.Any(item =>
+            string.Equals(item.EventType, eventType, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(BlogActorKey.For(item.UserId, item.AnonId, item.SessionId), actorKey, StringComparison.Ordinal));
+
+        if (alreadyTracked)
+        {
+            var dedupedStats = await BuildStatsAsync(post.Id);
+            return Ok(dedupedStats);
+        }
+
+        await _blogRecommendationsService.TrackEventAsync(new BlogEvent
+        {
+            PostId = post.Id,
+            EventType = eventType,
+            Timestamp = DateTime.UtcNow,
+            UserId = userId,
+            AnonId = request.AnonId ?? string.Empty,
+            SessionId = request.SessionKey ?? string.Empty
+        });
+
+        var stats = await BuildStatsAsync(post.Id);
+        return Ok(stats);
+    }
+
+    /// <summary>За сколько лет считаются дочитывания. Столько же было и раньше.</summary>
+    private const int StatsWindowYears = 3;
+
+    /// <summary>Событие «статья дочитана» — по нему считается второй счётчик.</summary>
+    private const string ReadCompleteEvent = "POST_READ_COMPLETE";
+
+    private async Task<BlogPostStatsResponse> BuildStatsAsync(string postId)
+    {
+        var map = await BuildStatsMapAsync(new[] { postId });
+        return map.TryGetValue(postId, out var stats)
+            ? stats
+            : new BlogPostStatsResponse { PostId = postId, UpdatedAt = DateTime.UtcNow };
+    }
+
+    /// <summary>
+    /// Статистика сразу по списку статей: два запроса на весь список, независимо от его длины.
+    ///
+    /// Раньше здесь был цикл: на каждую статью свой подсчёт просмотров (хотя строкой выше уже
+    /// лежал готовый на всех) и своя выборка ВСЕХ её событий за три года — ради одного числа.
+    /// На шести статьях это незаметно, но растёт и от числа статей в ленте, и от накопленных
+    /// событий: обе величины со временем только увеличиваются.
+    /// </summary>
+    private async Task<Dictionary<string, BlogPostStatsResponse>> BuildStatsMapAsync(IEnumerable<string> postIds)
+    {
+        var ids = postIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var viewsMap = await _blogPostUniqueViewRepository.CountPublicViewsByPostIdsAsync(ids);
+        var readsMap = await _blogRecommendationsService.CountDistinctActorsByPostsAsync(
+            ids, ReadCompleteEvent, DateTime.UtcNow.AddYears(-StatsWindowYears));
+
+        var now = DateTime.UtcNow;
+        return ids.ToDictionary(
+            postId => postId,
+            postId => new BlogPostStatsResponse
+            {
+                PostId = postId,
+                ViewsCount = viewsMap.TryGetValue(postId, out var views) ? views : 0,
+                CompletedReadsCount = readsMap.TryGetValue(postId, out var reads) ? reads : 0,
+                UpdatedAt = now
+            },
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string BuildViewerKey(string userId, string anonId)
+    {
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            return $"u:{userId}";
+        }
+        if (!string.IsNullOrWhiteSpace(anonId))
+        {
+            return $"a:{anonId}";
+        }
+        return string.Empty;
+    }
+
+    private static readonly Dictionary<string, DateTime> _ipRateLimitCache = new(StringComparer.Ordinal);
+    private static readonly object _ipRateLimitSync = new();
+
+    private static bool IsIpRateLimited(string ipHash)
+    {
+        if (string.IsNullOrWhiteSpace(ipHash))
+        {
+            return false;
+        }
+
+        lock (_ipRateLimitSync)
+        {
+            var now = DateTime.UtcNow;
+            if (_ipRateLimitCache.TryGetValue(ipHash, out var last) && (now - last).TotalSeconds < 2)
+            {
+                return true;
+            }
+            _ipRateLimitCache[ipHash] = now;
+            return false;
+        }
+    }
+
+    private static string ComputeHash(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(value.Trim());
+        var hash = sha.ComputeHash(bytes);
+        return Convert.ToHexString(hash);
+    }
+
+}
+
+/// <summary>
+/// Кто дочитал статью. Пользователь берётся из токена, поэтому в запросе его нет: раньше здесь было
+/// ненулевое UserId, которого фронт не присылает, — [ApiController] отвечал 400 на каждый запрос,
+/// дочитывания не засчитывались вовсе, а страница поста повторяла запрос каждые полсекунды.
+/// </summary>
+public class BlogTrackRequest
+{
+    public string? AnonId { get; set; }
+    public string? SessionKey { get; set; }
+}
+
+public class BlogPostStatsResponse
+{
+    public string PostId { get; set; }
+    public int ViewsCount { get; set; }
+    public int CompletedReadsCount { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class RegisterUniqueViewRequest
+{
+    public string AnonId { get; set; }
+    public string SessionId { get; set; }
+    public bool IsVisible { get; set; }
+    public bool HasInteraction { get; set; }
+    public int ActiveDwellMs { get; set; }
+}

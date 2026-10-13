@@ -1,0 +1,801 @@
+/*
+ * Кэшбэк в личном кабинете (и его карточка в обзоре — классы cb-* общие).
+ *
+ * Оформление как у остальных разделов кабинета: белые карточки, иконки в фиолетовых
+ * квадратах, фильтры и таблица как на «Orders». Префикс cb-, а не rewards-: публичная
+ * страница /rewards живёт в том же бандле, и одинаковые имена классов цеплялись бы друг к другу.
+ */
+
+.cb-demo-note {
+    margin: 0;
+    padding: var(--space-10) var(--space-16);
+    border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 5%, #ffffff);
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.cb-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.cb-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+    color: var(--color-primary);
+    font-size: 16px;
+}
+
+.cb-section-header {
+    align-items: flex-start;
+}
+
+.cb-section-header h3 {
+    margin: 0;
+}
+
+.cb-section-header p {
+    margin: 2px 0 0;
+    font-size: 14px;
+}
+
+/* ---------- Балансы ---------- */
+
+.cb-balances {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+.cb-balance {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.cb-balance-top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    margin-bottom: var(--space-8);
+}
+
+.cb-balance-value {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.cb-balance-hint {
+    font-size: 13.5px;
+    color: var(--color-muted);
+}
+
+.cb-balance-hint b {
+    color: var(--color-text);
+}
+
+.cb-balance.is-primary {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 8%, #ffffff), #ffffff);
+    border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+}
+
+/* Зелёный — только у денег, которые можно тратить. */
+.cb-balance.has-money .cb-balance-value {
+    color: #15803d;
+}
+
+.cb-balance-btn {
+    align-self: flex-start;
+    margin-top: var(--space-12);
+}
+
+/* ---------- Уровень ---------- */
+
+.cb-level {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-28, 28px);
+    padding: 18px 20px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fbfaff;
+}
+
+.cb-level-now {
+    display: flex;
+    align-items: center;
+    gap: var(--space-14);
+}
+
+.cb-level-now > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.cb-level-now strong {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--color-text);
+}
+
+.cb-level-badge {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+    border-radius: 14px;
+    background: var(--color-primary);
+    color: #ffffff;
+    font-size: 22px;
+    box-shadow: 0 10px 20px -10px color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+
+.cb-level-percent {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.cb-level-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    min-width: 0;
+}
+
+.cb-level-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-12);
+    font-size: 14px;
+}
+
+.cb-level-text {
+    font-size: 14px;
+    color: var(--color-muted);
+}
+
+.cb-level-text b,
+.cb-level-row b {
+    color: var(--color-text);
+}
+
+.rewards-progress-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 12%, #f1f0f8);
+    overflow: hidden;
+}
+
+.rewards-progress-bar span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-primary), #a855f7);
+    transition: width 0.3s ease;
+}
+
+.cb-bar {
+    height: 10px;
+}
+
+.cb-tiers {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-10);
+    margin: var(--space-16) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cb-tier {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-10);
+    padding: 12px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+}
+
+.cb-tier > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.cb-tier strong {
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.cb-tier .muted {
+    font-size: 12px;
+}
+
+.cb-tier-icon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: #f3f4f6;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+.cb-tier-percent {
+    font-size: 18px;
+    font-weight: 800;
+    color: #9ca3af;
+}
+
+.cb-tier.is-done .cb-tier-icon {
+    background: #e7f7ee;
+    color: #15803d;
+}
+
+.cb-tier.is-done .cb-tier-percent {
+    color: var(--color-text);
+}
+
+.cb-tier.is-current {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.cb-tier.is-current .cb-tier-icon {
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+.cb-tier.is-current .cb-tier-percent {
+    color: var(--color-primary);
+}
+
+.cb-tier-flag {
+    position: absolute;
+    top: -9px;
+    right: 12px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+/* ---------- История ---------- */
+
+.cb-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    margin-bottom: var(--space-14);
+}
+
+.cb-search {
+    flex: 0 1 340px;
+    cursor: text;
+}
+
+.cb-count {
+    margin-left: 6px;
+    font-size: 12px;
+    opacity: 0.65;
+}
+
+.cb-table td {
+    vertical-align: middle;
+}
+
+.cb-month td {
+    padding: 14px 16px 6px;
+    border-bottom: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.cb-game {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    min-width: 0;
+}
+
+.cb-game > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.35;
+}
+
+.cb-game .muted {
+    font-size: 13px;
+}
+
+.cb-cover {
+    width: 36px;
+    height: 48px;
+    flex: 0 0 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #f1f0f8;
+}
+
+.cb-amount {
+    font-weight: 800;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.cb-amount.is-available {
+    color: #15803d;
+}
+
+.cb-amount.is-pending {
+    color: var(--color-primary);
+}
+
+.cb-amount.is-spent {
+    color: var(--color-text);
+}
+
+.cb-amount.is-reverted {
+    color: #9ca3af;
+    text-decoration: line-through;
+}
+
+.cb-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f1f0f8;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cb-status.is-available {
+    background: #e7f7ee;
+    color: #15803d;
+}
+
+.cb-status.is-pending {
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+    color: #6d28d9;
+}
+
+.cb-status.is-reverted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* ---------- Пусто ---------- */
+
+.rewards-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-10);
+    padding: var(--space-40) var(--space-24);
+    text-align: center;
+}
+
+.rewards-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 10%, #f4f0ff);
+    color: var(--color-primary);
+    font-size: 22px;
+}
+
+.rewards-empty h4 {
+    margin: var(--space-6) 0 0;
+    font-size: 18px;
+    color: var(--color-text);
+}
+
+.rewards-empty p {
+    max-width: 420px;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.rewards-empty .btn {
+    margin-top: var(--space-10);
+}
+
+/* ---------- Карточка в обзоре кабинета ---------- */
+
+.cb-overview {
+    display: flex;
+    align-items: center;
+    gap: var(--space-20);
+    color: inherit;
+    text-decoration: none;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 8%, #ffffff), #ffffff);
+    border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.cb-overview:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.cb-overview .cb-icon {
+    align-self: flex-start;
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+    font-size: 18px;
+}
+
+.cb-overview-balance {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.cb-overview-value {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.cb-overview-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.cb-overview-pending svg {
+    font-size: 11px;
+    color: var(--color-primary);
+}
+
+.cb-overview-sep {
+    align-self: stretch;
+    width: 1px;
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+}
+
+.cb-overview-level {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-8);
+    min-width: 0;
+}
+
+.cb-overview-level-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+}
+
+.cb-tier-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+    color: #5b21b6;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cb-overview-next {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.cb-overview-next b {
+    color: var(--color-text);
+}
+
+/* ---------- Узкие экраны ---------- */
+
+@media (max-width: 1100px) {
+    .cb-tiers {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        row-gap: var(--space-16);
+    }
+}
+
+@media (max-width: 900px) {
+    .cb-balances {
+        grid-template-columns: 1fr;
+    }
+
+    .cb-level {
+        grid-template-columns: 1fr;
+        gap: var(--space-16);
+    }
+}
+
+@media (max-width: 768px) {
+    .cb-overview {
+        flex-wrap: wrap;
+    }
+
+    .cb-overview-sep {
+        display: none;
+    }
+
+    .cb-overview-level {
+        flex-basis: 100%;
+        order: 3;
+    }
+
+    .cb-search {
+        flex-basis: 100%;
+    }
+
+    .cb-section-header {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .cb-tiers {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Таблица на узкой колонке становится списком карточек — как «Recent orders» в обзоре.
+   Раскладка своя: у истории другие колонки. */
+@container account-table (max-width: 620px) {
+    .cb-table tr {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .cb-table .cb-month {
+        display: block;
+        padding: var(--space-14) var(--space-16) 4px;
+        border-bottom: 0;
+    }
+
+    .cb-table .cb-month td {
+        padding: 0;
+    }
+
+    .cb-cell-game {
+        grid-column: 1 / -1;
+    }
+
+    .cb-cell-date {
+        grid-column: 1;
+        font-size: 13px;
+        color: var(--color-muted);
+    }
+
+    .cb-cell-amount {
+        grid-column: 2;
+        grid-row: 2;
+        text-align: right;
+    }
+
+    .cb-cell-total,
+    .cb-cell-rate {
+        display: none !important;
+    }
+
+    .cb-cell-status {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cb-overview,
+    .rewards-progress-bar span {
+        transition: none;
+    }
+}
+
+/* ---------- Верхний уровень ----------
+   Идти некуда: ни полосы, ни суммы трат — число без цели перестаёт быть прогрессом. Слева текст, справа процент
+   как награда: жетон-шестигранник со своей колонкой, табличными цифрами и запретом переноса, поэтому он не
+   сжимается вместе с текстом. Уровни ниже верхнего оформлены прежней светлой карточкой с прогрессом (.cb-level). */
+
+.cb-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(18px, 3vw, 30px);
+    padding: 24px 26px;
+    border: 1px solid #ece7fb;
+    border-radius: var(--radius-lg);
+    background: radial-gradient(130% 150% at 0% 0%, #faf8ff, #ffffff 60%);
+}
+
+.cb-top-text {
+    min-width: 0;
+}
+
+.cb-top-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+}
+
+.cb-top-kicker svg,
+.cb-top-chip svg {
+    width: 11px;
+    height: 11px;
+}
+
+.cb-top-title {
+    display: block;
+    margin: 8px 0 6px;
+    font-size: clamp(20px, 2.2vw, 26px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--color-text);
+}
+
+.cb-top-sub {
+    margin: 0;
+    max-width: 48ch;
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+/* Зелёный на сайте — только про деньги покупателя, поэтому «уровень не понизится» остаётся фиолетовым. */
+.cb-top-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 13px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 9%, #ffffff);
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ---------- Жетон ---------- */
+
+.cb-top-award {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    min-width: 176px;
+}
+
+/* Шестигранник рисуется стилями, без картинки: два слоя clip-path дают рамку и светлое поле внутри. */
+.cb-top-token {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 140px;
+    height: 140px;
+}
+
+.cb-top-token::before,
+.cb-top-token-face {
+    content: "";
+    position: absolute;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
+
+.cb-top-token::before {
+    inset: 0;
+    background: linear-gradient(150deg, #a855f7, #6d28d9 65%, #4c1d95);
+    filter: drop-shadow(0 16px 26px color-mix(in srgb, var(--color-primary) 55%, transparent));
+}
+
+.cb-top-token-face {
+    inset: 8px;
+    background: linear-gradient(150deg, #fbf8ff, #efe6ff);
+}
+
+.cb-top-num {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+    font-size: 44px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    background: linear-gradient(140deg, var(--color-primary), var(--color-accent-indigo));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.cb-top-num sup {
+    margin-top: 5px;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.cb-top-cap {
+    color: #574c74;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+}
+
+@media (max-width: 760px) {
+    .cb-top {
+        grid-template-columns: 1fr;
+    }
+
+    .cb-top-award {
+        justify-items: start;
+        min-width: 0;
+    }
+
+    .cb-top-cap {
+        text-align: left;
+    }
+
+    .cb-top-token {
+        width: 118px;
+        height: 118px;
+    }
+
+    .cb-top-num {
+        font-size: 37px;
+    }
+
+    .cb-top-num sup {
+        font-size: 16px;
+    }
+}

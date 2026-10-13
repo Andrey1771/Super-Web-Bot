@@ -1,0 +1,222 @@
+.app-loader {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f4fc 55%, #edeef4 100%);
+    z-index: 9999;
+    animation: app-loader-fade-in 220ms ease-out;
+}
+
+.app-loader__stage {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Пульсирующее свечение-ореол за логотипом — даёт «дыхание» и глубину */
+.app-loader__glow {
+    position: absolute;
+    width: 210px;
+    height: 210px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(124, 58, 237, 0.42) 0%,
+        rgba(124, 58, 237, 0.14) 45%,
+        rgba(124, 58, 237, 0) 70%
+    );
+    filter: blur(6px);
+    z-index: 0;
+    animation: app-loader-glow 2.4s ease-in-out infinite;
+}
+
+/* Вращающееся кольцо с conic-градиентом */
+.app-loader__ring {
+    position: absolute;
+    /* Без белой карточки логотип стал меньше, и кольцу нужен воздух: иначе оно читается
+       как рамка вокруг картинки, а не как индикатор загрузки. */
+    inset: 4px;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 90deg,
+        rgba(124, 58, 237, 0) 0deg,
+        rgba(124, 58, 237, 0.10) 110deg,
+        #7c3aed 300deg,
+        #a855f7 360deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+    z-index: 1;
+    animation: app-loader-spin 0.9s linear infinite;
+}
+
+/* Логотип лежит прямо на фоне, без белой карточки под ним.
+   Карточка появилась ради тени: у <img> тень можно было повесить только на прямоугольную
+   коробку. Но она же рисовала белый квадрат со скруглениями внутри круглого кольца — две
+   несовместимые формы, и в середине светлого градиента подложка ещё и не читалась как
+   намеренная. drop-shadow обходит коробку и повторяет контур самой картинки, поэтому тень
+   осталась, а квадрат исчез. */
+.app-loader__logo {
+    position: relative;
+    /* Это экран «сервис авторизации не отвечает» — единственное место, где заставка
+       осталась фирменной, потому что там уже не загрузка, а разговор с человеком.
+       Знак не квадратный, поэтому ведём по высоте. 78px, а не больше: вокруг крутится
+       кольцо диаметром 142px (сцена 150 минус inset 4 с каждой стороны), и знаку нужен
+       воздух — при 88px его углы подходили к кольцу вплотную и оно читалось рамкой
+       вокруг картинки, а не индикатором. */
+    height: 78px;
+    width: auto;
+    object-fit: contain;
+    z-index: 2;
+    filter: drop-shadow(0 6px 18px rgba(124, 58, 237, 0.30));
+}
+
+.app-loader__text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.app-loader__brand {
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #111827;
+    font-size: 20px;
+}
+
+.app-loader__tagline {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+@keyframes app-loader-glow {
+    0%, 100% {
+        opacity: 0.45;
+        transform: scale(0.9);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.1);
+    }
+}
+
+/* Пульсация логотипа убрана намеренно. Одновременно двигались три вещи — ореол, кольцо и
+   сам логотип, — и заставка выглядела суетливой. Движение оставлено там, где оно несёт
+   смысл «идёт загрузка»: вращение кольца и медленное дыхание ореола. */
+
+@keyframes app-loader-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Человек попросил систему не анимировать интерфейс — заставка остаётся статичной
+   картинкой. Кольцо при этом не исчезает: оно всё равно показывает, что процесс идёт. */
+@media (prefers-reduced-motion: reduce) {
+    .app-loader,
+    .app-loader__glow,
+    .app-loader__ring {
+        animation: none;
+    }
+}
+
+@keyframes app-loader-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Состояние «инициализация не удалась»: та же композиция, но без анимаций —
+   заставка не должна выглядеть живой, когда на самом деле всё встало. */
+.app-loader__glow--muted {
+    animation: none;
+    opacity: 0.28;
+}
+
+.app-loader__retry {
+    margin-top: 20px;
+    padding: 10px 22px;
+    border: 0;
+    border-radius: 999px;
+    background: #7c3aed;
+    color: #ffffff;
+    font: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.app-loader__retry:hover {
+    background: #6d28d9;
+}
+
+/* Тихое ожидание внутри страницы: шапка сайта остаётся на месте, а здесь проступает форма
+   того, что появится. В отличие от .app-loader, это НЕ полноэкранный слой — гейты кабинета
+   и админки показывают его под настоящей шапкой. */
+.app-loader-quiet {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+}
+
+.app-loader-quiet__line,
+.app-loader-quiet__card {
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: app-loader-quiet-shimmer 1.5s linear infinite;
+    border-radius: 999px;
+}
+
+.app-loader-quiet__line {
+    height: 12px;
+    width: 100%;
+}
+
+.app-loader-quiet__line.is-title {
+    height: 24px;
+    width: 40%;
+    margin-bottom: 6px;
+}
+
+.app-loader-quiet__line.is-short {
+    width: 60%;
+}
+
+.app-loader-quiet__card {
+    margin-top: 14px;
+    height: 220px;
+    border-radius: var(--radius-lg);
+}
+
+@keyframes app-loader-quiet-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-loader-quiet__line,
+    .app-loader-quiet__card {
+        animation: none;
+    }
+}

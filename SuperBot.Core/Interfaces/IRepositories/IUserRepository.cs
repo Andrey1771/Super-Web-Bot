@@ -1,4 +1,5 @@
-﻿using SuperBot.Core.Entities;
+﻿using System.Collections.Generic;
+using SuperBot.Core.Entities;
 
 namespace SuperBot.Core.Interfaces.IRepositories
 {
@@ -11,7 +12,6 @@ namespace SuperBot.Core.Interfaces.IRepositories
         public Task DeleteUserAsync(string userId);
         public Task<bool> UserExistsAsync(string userId);
 
-        public Task<User> FindByUsernameAsync(string username);
         public Task<IEnumerable<User>> GetAllAsync();
     }
 }

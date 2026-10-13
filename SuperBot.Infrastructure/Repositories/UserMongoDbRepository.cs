@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using SuperBot.Infrastructure.Mapping;
+using System.Collections.Generic;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;
 using SuperBot.Core.Interfaces.IRepositories;
@@ -53,6 +54,9 @@ namespace SuperBot.Infrastructure.Repositories
                 .Set(u => u.CountOfInvited, user.CountOfInvited)
                 .Set(u => u.Discount, user.Discount)
                 .Set(u => u.QuantityBeforeIncrease, user.QuantityBeforeIncrease)
+                .Set(u => u.WishlistGameIds, user.WishlistGameIds)
+                .Set(u => u.AvatarPath, user.AvatarPath)
+                .Set(u => u.AvatarUpdatedAt, user.AvatarUpdatedAt)
                 .Set(u => u.UpdatedAt, DateTime.UtcNow);
 
             await _usersCollection.UpdateOneAsync(filter, update);
@@ -73,12 +77,6 @@ namespace SuperBot.Infrastructure.Repositories
         }
 
 
-
-        public async Task<User> FindByUsernameAsync(string username)
-        {
-            var userDb = await _usersCollection.Find(u => u.Username == username).FirstOrDefaultAsync();
-            return _mapper.Map<User>(userDb);
-        }
 
         public async Task<IEnumerable<User>> GetAllAsync()
         {

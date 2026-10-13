@@ -1,0 +1,403 @@
+import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import PageHeader from "../../components/layout/PageHeader";
+import Card from "../../components/ui/Card";
+import EmptyState from "../../components/ui/EmptyState";
+import { useAdminHeader } from "../../components/layout/AdminHeaderContext";
+import { useToast } from "../../components/ui/ToastProvider";
+import container from "../../inversify.config";
+import IDENTIFIERS from "../../constants/identifiers";
+import type { IApiClient } from "../../iterfaces/i-api-client";
+
+type BotWebhookStatus = {
+  url: string;
+  isSet: boolean;
+  matchesConfig: boolean;
+  pendingUpdateCount: number;
+  lastErrorDate: string | null;
+  lastErrorMessage: string | null;
+};
+
+type BotStatus = {
+  botOk: boolean;
+  botId?: number;
+  botUsername?: string;
+  botName?: string;
+  error?: string;
+  configuredWebhookUrl: string;
+  secretConfigured: boolean;
+  webhook?: BotWebhookStatus;
+};
+
+const StatusPill: React.FC<{ ok: boolean; okLabel: string; failLabel: string }> = ({ ok, okLabel, failLabel }) => (
+  <span
+    className={`px-2 py-1 rounded-full text-xs ${
+      ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+    }`}
+  >
+    {ok ? okLabel : failLabel}
+  </span>
+);
+
+/**
+ * Текст ошибки из ответа сервера. Раньше в тост шло тело ответа как есть: у 500 это
+ * пустая строка или объект, и человек получал пустое красное окно без единого слова.
+ */
+const errorText = (error: any, fallback: string): string => {
+  const data = error?.response?.data;
+  if (typeof data === "string" && data.trim()) {
+    return data;
+  }
+  if (data && typeof data === "object") {
+    const message = data.message ?? data.title ?? data.detail;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  const status = error?.response?.status;
+  return status ? `${fallback} (HTTP ${status})` : fallback;
+};
+
+type SelfTestCheck = { name: string; ok: boolean; detail: string };
+
+const AdminBotStatusPage: React.FC = () => {
+  const { setPageTitle } = useAdminHeader();
+  const { addToast } = useToast();
+  const [status, setStatus] = useState<BotStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
+  const [selfTest, setSelfTest] = useState<{ ok: boolean; checks: SelfTestCheck[] } | null>(null);
+  const [selfTesting, setSelfTesting] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastSegment, setBroadcastSegment] = useState<"linked" | "all">("linked");
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
+  // Чем именно кончился запрос статуса, когда он не удался. «Сервис не ответил» и «сервис
+  // ответил ошибкой» — разные проблемы с разными действиями, и одна общая надпись
+  // «Could not reach the backend» их смешивала: при пустом BOT_TOKEN бэкенд был жив.
+  const [loadFailure, setLoadFailure] = useState<string | null>(null);
+
+  const loadStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.get<BotStatus>("/api/admin/bot/status");
+      setStatus(response.data);
+      setLoadFailure(null);
+    } catch (error: any) {
+      console.error("Failed to load bot status", error);
+      setStatus(null);
+      const httpStatus: number | undefined = error?.response?.status;
+      const body = error?.response?.data;
+      const bodyText = typeof body === "string" ? body : body?.title || body?.detail || body?.error;
+      setLoadFailure(
+        httpStatus === undefined
+          ? "The bot service did not respond. Check that the bot container is running (docker compose ps)."
+          : httpStatus === 401 || httpStatus === 403
+            ? "You are signed in, but this account is not allowed to see bot status (admin role required)."
+            : `The bot service answered ${httpStatus}${bodyText ? `: ${bodyText}` : ""}. Check the bot container logs.`
+      );
+      addToast("Failed to load bot status.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    setPageTitle("Bot status");
+  }, [setPageTitle]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  const handleBroadcast = async () => {
+    const message = broadcastMessage.trim();
+    if (!message) {
+      addToast("Broadcast message is empty.", "error");
+      return;
+    }
+    try {
+      setBroadcastSending(true);
+      setBroadcastResult(null);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.post("/api/admin/bot/broadcast", {
+        message,
+        segment: broadcastSegment,
+      });
+      const result = response.data as { total: number; sent: number; failed: number };
+      setBroadcastResult(result);
+      setBroadcastMessage("");
+      addToast(`Broadcast sent: ${result.sent}/${result.total}.`, "success");
+    } catch (error: any) {
+      console.error("Broadcast failed", error);
+      addToast(errorText(error, "Broadcast failed."), "error");
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
+
+  const handleApplyWebhook = async () => {
+    try {
+      setApplying(true);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      await apiClient.api.post("/api/admin/bot/webhook");
+      addToast("Webhook applied.", "success");
+      await loadStatus();
+    } catch (error: any) {
+      console.error("Failed to apply webhook", error);
+      addToast(errorText(error, "Failed to apply webhook."), "error");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  /**
+   * Снять вебхук. Нужно при смене адреса или бота: у бота в Telegram вебхук ровно один,
+   * и пока он висит, обновления идут туда, а не в опрос. На сервере метод был давно,
+   * а нажать было нечем.
+   */
+  const handleRemoveWebhook = async () => {
+    if (!window.confirm("Remove the webhook? The bot will stop receiving messages until a new one is applied.")) {
+      return;
+    }
+
+    try {
+      setApplying(true);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      await apiClient.api.delete("/api/admin/bot/webhook");
+      addToast("Webhook removed — the bot receives no updates until a new one is applied.", "success");
+      await loadStatus();
+    } catch (error: any) {
+      console.error("Failed to remove webhook", error);
+      addToast(errorText(error, "Failed to remove webhook."), "error");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  /**
+   * Самопроверка: пять шагов от токена до настоящего запроса снаружи. «Connected» вверху
+   * страницы означает лишь «токен верный» — этого мало, чтобы бот слышал людей.
+   */
+  const handleSelfTest = async () => {
+    try {
+      setSelfTesting(true);
+      const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+      const response = await apiClient.api.get("/api/admin/bot/selftest");
+      setSelfTest(response.data as { ok: boolean; checks: SelfTestCheck[] });
+    } catch (error: any) {
+      console.error("Bot self-test failed", error);
+      addToast(errorText(error, "Self-test failed."), "error");
+    } finally {
+      setSelfTesting(false);
+    }
+  };
+
+  // Годится ли настроенный адрес для Telegram: только https и только не localhost.
+  const configured = status?.configuredWebhookUrl ?? "";
+  const isHttpsWebhook = configured.startsWith("https://") && !configured.includes("localhost");
+
+  return (
+    <div className="admin-grid">
+      <PageHeader
+        title="Bot status"
+        description="Telegram bot health: identity, webhook state, and quick actions."
+        breadcrumbs={["Bot", "Status"]}
+        primaryAction={
+          <button className="btn btn-outline" onClick={loadStatus} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+        }
+      />
+
+      {loading && !status && (
+        <Card>
+          <div className="stack-y-3">
+            <div className="skeleton h-10" />
+            <div className="skeleton h-10" />
+          </div>
+        </Card>
+      )}
+
+      {!loading && !status && (
+        <EmptyState
+          title="Status unavailable"
+          description={loadFailure ?? "Could not load bot status."}
+          action={
+            <button className="btn btn-primary" onClick={loadStatus}>
+              Retry
+            </button>
+          }
+        />
+      )}
+
+      {status && (
+        <>
+          <Card>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Bot</h3>
+                {status.botOk ? (
+                  <p className="text-sm text-slate-600 mt-1">
+                    @{status.botUsername} · {status.botName} · ID {status.botId}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-600 mt-1">
+                    {status.error || "Bot token is missing or invalid."}
+                  </p>
+                )}
+              </div>
+              <StatusPill ok={status.botOk} okLabel="Connected" failLabel="Unavailable" />
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <h3 className="text-sm font-semibold text-slate-800">Webhook</h3>
+                {status.webhook && (
+                  <StatusPill
+                    ok={status.webhook.isSet && status.webhook.matchesConfig}
+                    okLabel="Active"
+                    failLabel={status.webhook?.isSet ? "URL mismatch" : "Not set"}
+                  />
+                )}
+              </div>
+
+              <div className="text-sm text-slate-600 stack-y-1">
+                <p>
+                  <span className="text-slate-400">Configured URL:</span>{" "}
+                  {status.configuredWebhookUrl || "—"}
+                </p>
+                {status.webhook && (
+                  <>
+                    <p>
+                      <span className="text-slate-400">Registered in Telegram:</span>{" "}
+                      {status.webhook.url || "—"}
+                    </p>
+                    <p>
+                      <span className="text-slate-400">Pending updates:</span>{" "}
+                      {status.webhook.pendingUpdateCount}
+                    </p>
+                    {status.webhook.lastErrorMessage && (
+                      <p className="text-red-600">
+                        Last error: {status.webhook.lastErrorMessage}
+                        {status.webhook.lastErrorDate
+                          ? ` (${new Date(status.webhook.lastErrorDate).toLocaleString()})`
+                          : ""}
+                      </p>
+                    )}
+                  </>
+                )}
+                <p>
+                  <span className="text-slate-400">Secret token:</span>{" "}
+                  {status.secretConfigured ? "configured" : "not configured (dev only)"}
+                </p>
+              </div>
+
+              {/* Telegram шлёт обновления только на публичный HTTPS-адрес. Пока настроен
+                  http:// или localhost, кнопка не сработает никогда — говорим об этом до
+                  нажатия, а не отказом Telegram после. */}
+              {!isHttpsWebhook && (
+                <p className="text-amber-700 text-sm">
+                  Telegram delivers updates only to a public <strong>https://</strong> address, so this
+                  webhook cannot be registered from a local machine. Expose the site through a tunnel
+                  (ngrok, cloudflared) and put that address into <code>BOT_WEBHOOK_URL</code>; on the
+                  server set <code>PUBLIC_URL</code> to your domain instead. Until a webhook is
+                  registered the bot receives nothing — this project has no polling mode.
+                </p>
+              )}
+
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleApplyWebhook}
+                  disabled={applying || !status.botOk || !isHttpsWebhook}
+                  title={isHttpsWebhook ? undefined : "Telegram requires a public https:// address"}
+                >
+                  {applying ? "Applying..." : "Apply webhook"}
+                </button>
+                {Boolean(status.webhook?.url) && (
+                  <button
+                    className="btn btn-outline"
+                    onClick={handleRemoveWebhook}
+                    disabled={applying || !status.botOk}
+                  >
+                    Remove webhook
+                  </button>
+                )}
+                <button className="btn btn-outline" onClick={handleSelfTest} disabled={selfTesting}>
+                  {selfTesting ? "Checking…" : "Run self-test"}
+                </button>
+              </div>
+
+              {selfTest && (
+                <ul className="bot-selftest">
+                  {selfTest.checks.map((check) => (
+                    <li key={check.name} className={check.ok ? "bot-selftest__ok" : "bot-selftest__fail"}>
+                      <strong>{check.ok ? "✓" : "✕"} {check.name}</strong> — {check.detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold text-slate-800">Broadcast</h3>
+              <p className="text-sm text-slate-600">
+                Send a message to bot users. HTML formatting is supported (&lt;b&gt;, &lt;a&gt;, &lt;code&gt;).
+              </p>
+              <textarea
+                className="w-full border border-gray-200 rounded-md px-3 py-2 min-h-[100px]"
+                placeholder="Message text..."
+                value={broadcastMessage}
+                onChange={(event) => setBroadcastMessage(event.target.value)}
+                maxLength={4000}
+              />
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <select
+                  className="p-2 border rounded-sm"
+                  value={broadcastSegment}
+                  onChange={(event) => setBroadcastSegment(event.target.value as "linked" | "all")}
+                >
+                  <option value="linked">Linked accounts only</option>
+                  <option value="all">Everyone who started the bot</option>
+                </select>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleBroadcast}
+                  disabled={broadcastSending || !status.botOk || !broadcastMessage.trim()}
+                >
+                  {broadcastSending ? "Sending..." : "Send broadcast"}
+                </button>
+              </div>
+              {broadcastResult && (
+                <p className="text-sm text-slate-600">
+                  Delivered {broadcastResult.sent} of {broadcastResult.total}
+                  {broadcastResult.failed > 0 ? `, failed ${broadcastResult.failed} (blocked the bot, etc.)` : ""}.
+                </p>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <h3 className="text-sm font-semibold text-slate-800">Content</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              Bot texts and keyboard keys are stored in the database and editable from the admin.
+            </p>
+            <div className="mt-3">
+              <Link className="btn btn-outline" to="/admin/botChanger">
+                Edit bot texts
+              </Link>
+            </div>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default AdminBotStatusPage;

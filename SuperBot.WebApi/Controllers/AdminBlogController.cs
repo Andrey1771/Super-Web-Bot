@@ -1,0 +1,940 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IRepositories;
+using System.Text.RegularExpressions;
+using SuperBot.WebApi.Services;
+using SuperBot.WebApi.Services.Storefront;
+
+namespace SuperBot.WebApi.Controllers;
+
+[ApiController]
+[Route("api/admin/blog/posts")]
+[Authorize(Roles = "admin")]
+public class AdminBlogController : ControllerBase
+{
+    private readonly IBlogRepository _blogRepository;
+    private readonly IBlogRecommendationsService _blogRecommendationsService;
+    private readonly IBlogPostUniqueViewRepository _blogPostUniqueViewRepository;
+    private readonly IMediaAssetRepository _mediaRepository;
+    private readonly IImageMetadataReader _imageMetadataReader;
+    private const int TitleMinLength = 10;
+    private const int TitleMaxLength = 80;
+    private const int ExcerptMaxLength = 160;
+    private const int TagsMaxCount = 8;
+    private const int TagMinLength = 2;
+    private const int TagMaxLength = 24;
+    private const long CoverMaxSizeBytes = 5 * 1024 * 1024;
+    private const int CoverMinWidth = 1000;
+    private const int CoverMinHeight = 560;
+    private const int ReadingTimeMinMinutes = 1;
+    private const int ReadingTimeMaxMinutes = 120;
+    private static readonly HashSet<string> AllowedCoverTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    };
+
+    public AdminBlogController(
+        IBlogRepository blogRepository,
+        IBlogRecommendationsService blogRecommendationsService,
+        IBlogPostUniqueViewRepository blogPostUniqueViewRepository,
+        IMediaAssetRepository mediaRepository,
+        IImageMetadataReader imageMetadataReader)
+    {
+        _blogRepository = blogRepository;
+        _blogRecommendationsService = blogRecommendationsService;
+        _blogPostUniqueViewRepository = blogPostUniqueViewRepository;
+        _mediaRepository = mediaRepository;
+        _imageMetadataReader = imageMetadataReader;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetPosts(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string status = "",
+        [FromQuery] string search = "",
+        [FromQuery] string tag = "",
+        [FromQuery] string sort = "updatedAt:desc")
+    {
+        var query = new BlogQueryParameters
+        {
+            Page = page,
+            PageSize = pageSize,
+            Status = status,
+            Search = search,
+            Tag = tag,
+            Sort = sort
+        };
+
+        var (items, total) = await _blogRepository.GetPagedAsync(query);
+        return Ok(new { items, total });
+    }
+
+    /// <summary>Теги для фильтра: по всем постам, а не по загруженной странице.</summary>
+    [HttpGet("tags")]
+    public async Task<IActionResult> GetTags()
+    {
+        return Ok(await _blogRepository.GetAllTagsAsync());
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetPost(string id)
+    {
+        var post = await _blogRepository.GetByIdAsync(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        var version = await _blogRepository.GetVersionByIdAsync(post.Id, post.CurrentVersionId);
+        return Ok(new { post, version });
+    }
+
+    [HttpGet("{id}/analytics")]
+    public async Task<IActionResult> GetPostAnalytics(string id)
+    {
+        var post = await _blogRepository.GetByIdAsync(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        var analytics = await BuildPostAnalyticsAsync(post, includeDetails: true);
+        return Ok(analytics);
+    }
+
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetPostsAnalytics([FromQuery] string postIds)
+    {
+        var ids = (postIds ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(50)
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            return Ok(new { items = Array.Empty<object>() });
+        }
+
+        var list = new List<object>(ids.Count);
+        foreach (var id in ids)
+        {
+            var post = await _blogRepository.GetByIdAsync(id);
+            if (post == null)
+            {
+                continue;
+            }
+
+            list.Add(await BuildPostAnalyticsAsync(post, includeDetails: false));
+        }
+
+        return Ok(new { items = list });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreatePost([FromBody] SaveBlogPostRequest request)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest("Title is required.");
+        }
+
+        var titleValidation = ValidateTitle(request.Title);
+        if (!string.IsNullOrWhiteSpace(titleValidation))
+        {
+            return BadRequest(titleValidation);
+        }
+
+        var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return BadRequest("Slug is required.");
+        }
+        if (await _blogRepository.GetBySlugAsync(slug) != null)
+        {
+            return Conflict("Slug already exists.");
+        }
+
+        var normalizedExcerpt = NormalizeExcerpt(request.Excerpt, request.ContentMarkdown, request.ContentHtml);
+        var excerptValidation = ValidateExcerpt(normalizedExcerpt);
+        if (!string.IsNullOrWhiteSpace(excerptValidation))
+        {
+            return BadRequest(excerptValidation);
+        }
+
+        var tagsValidation = ValidateTags(request.Tags);
+        if (!string.IsNullOrWhiteSpace(tagsValidation))
+        {
+            return BadRequest(tagsValidation);
+        }
+
+        var coverValidation = await ValidateCoverAsync(request.CoverAssetId);
+        if (!string.IsNullOrWhiteSpace(coverValidation))
+        {
+            return BadRequest(coverValidation);
+        }
+
+        var readingTimeValidation = ValidateReadingTime(request.ReadingTime);
+        if (!string.IsNullOrWhiteSpace(readingTimeValidation))
+        {
+            return BadRequest(readingTimeValidation);
+        }
+
+        var now = DateTime.UtcNow;
+        var shouldBeBlogHomeFeatured = request.BlogHomeFeatured ?? false;
+        var post = new BlogPost
+        {
+            Title = request.Title,
+            Slug = slug,
+            Excerpt = normalizedExcerpt,
+            TitleI18n = request.TitleI18n,
+            ExcerptI18n = request.ExcerptI18n,
+            TagsI18n = request.TagsI18n,
+            CoverAssetId = request.CoverAssetId,
+            CoverUrl = await ResolveCoverUrlAsync(request.CoverAssetId, request.CoverUrl),
+            Status = NormalizeStatus(request.Status),
+            PublishedAt = ResolvePublishedAt(request.Status, request.PublishedAt),
+            ScheduledAt = request.ScheduledAt,
+            CreatedAt = now,
+            UpdatedAt = now,
+            AuthorId = request.AuthorId,
+            AuthorName = request.AuthorName,
+            Tags = request.Tags ?? Array.Empty<string>(),
+            Topics = request.Topics ?? Array.Empty<string>(),
+            ReadingTime = request.ReadingTime,
+            CurrentVersionId = string.Empty,
+            ViewCount = 0,
+            EditorScore = request.EditorScore ?? 0,
+            Featured = request.Featured ?? false,
+            BlogHomeFeatured = shouldBeBlogHomeFeatured
+        };
+
+        var scheduleError = ValidateSchedule(post);
+        if (!string.IsNullOrWhiteSpace(scheduleError))
+        {
+            return BadRequest(scheduleError);
+        }
+
+        var version = new BlogPostVersion
+        {
+            PostId = post.Id,
+            VersionNumber = 1,
+            Title = request.Title,
+            Excerpt = normalizedExcerpt,
+            ContentMarkdown = request.ContentMarkdown ?? "",
+            ContentHtml = request.ContentHtml ?? "",
+            TitleI18n = request.TitleI18n,
+            ExcerptI18n = request.ExcerptI18n,
+            ContentMarkdownI18n = request.ContentMarkdownI18n,
+            ContentHtmlI18n = request.ContentHtmlI18n,
+            CoverAssetId = request.CoverAssetId,
+            CreatedAt = now,
+            CreatedBy = request.AuthorName,
+            ChangeNote = request.ChangeNote ?? "Initial version"
+        };
+        BlogLocalizer.NormalizeForSave(post);
+        BlogLocalizer.NormalizeForSave(version);
+
+        if (shouldBeBlogHomeFeatured)
+        {
+            await _blogRepository.ClearBlogHomeFeaturedAsync();
+        }
+
+        await _blogRepository.CreateAsync(post, version);
+
+        return Ok(post);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdatePost(string id, [FromBody] SaveBlogPostRequest request)
+    {
+        var post = await _blogRepository.GetByIdAsync(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest("Title is required.");
+        }
+
+        var titleValidation = ValidateTitle(request.Title);
+        if (!string.IsNullOrWhiteSpace(titleValidation))
+        {
+            return BadRequest(titleValidation);
+        }
+
+        var slug = string.IsNullOrWhiteSpace(request.Slug) ? GenerateSlug(request.Title) : GenerateSlug(request.Slug);
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return BadRequest("Slug is required.");
+        }
+        var existingSlug = await _blogRepository.GetBySlugAsync(slug);
+        if (existingSlug != null && existingSlug.Id != post.Id)
+        {
+            return Conflict("Slug already exists.");
+        }
+
+        var normalizedExcerpt = NormalizeExcerpt(request.Excerpt, request.ContentMarkdown, request.ContentHtml);
+        var excerptValidation = ValidateExcerpt(normalizedExcerpt);
+        if (!string.IsNullOrWhiteSpace(excerptValidation))
+        {
+            return BadRequest(excerptValidation);
+        }
+
+        var tagsValidation = ValidateTags(request.Tags);
+        if (!string.IsNullOrWhiteSpace(tagsValidation))
+        {
+            return BadRequest(tagsValidation);
+        }
+
+        var coverValidation = await ValidateCoverAsync(request.CoverAssetId);
+        if (!string.IsNullOrWhiteSpace(coverValidation))
+        {
+            return BadRequest(coverValidation);
+        }
+
+        var readingTimeValidation = ValidateReadingTime(request.ReadingTime);
+        if (!string.IsNullOrWhiteSpace(readingTimeValidation))
+        {
+            return BadRequest(readingTimeValidation);
+        }
+
+        var versions = await _blogRepository.GetVersionsAsync(post.Id);
+        var nextVersion = versions.Count == 0 ? 1 : versions.Max(item => item.VersionNumber) + 1;
+
+        post.Title = request.Title;
+        post.Slug = slug;
+        post.Excerpt = normalizedExcerpt;
+        post.TitleI18n = request.TitleI18n;
+        post.ExcerptI18n = request.ExcerptI18n;
+        post.TagsI18n = request.TagsI18n;
+        post.CoverAssetId = request.CoverAssetId;
+        post.CoverUrl = await ResolveCoverUrlAsync(request.CoverAssetId, request.CoverUrl);
+        post.Status = NormalizeStatus(request.Status);
+        post.PublishedAt = ResolvePublishedAt(request.Status, request.PublishedAt, post.PublishedAt);
+        post.ScheduledAt = request.ScheduledAt;
+        post.Tags = request.Tags ?? Array.Empty<string>();
+        post.Topics = request.Topics ?? Array.Empty<string>();
+        post.ReadingTime = request.ReadingTime;
+        post.EditorScore = request.EditorScore ?? post.EditorScore;
+        post.Featured = request.Featured ?? post.Featured;
+        post.BlogHomeFeatured = request.BlogHomeFeatured ?? post.BlogHomeFeatured;
+        post.UpdatedAt = DateTime.UtcNow;
+
+        var scheduleError = ValidateSchedule(post);
+        if (!string.IsNullOrWhiteSpace(scheduleError))
+        {
+            return BadRequest(scheduleError);
+        }
+
+        var version = new BlogPostVersion
+        {
+            PostId = post.Id,
+            VersionNumber = nextVersion,
+            Title = request.Title,
+            Excerpt = normalizedExcerpt,
+            ContentMarkdown = request.ContentMarkdown ?? "",
+            ContentHtml = request.ContentHtml ?? "",
+            TitleI18n = request.TitleI18n,
+            ExcerptI18n = request.ExcerptI18n,
+            ContentMarkdownI18n = request.ContentMarkdownI18n,
+            ContentHtmlI18n = request.ContentHtmlI18n,
+            CoverAssetId = request.CoverAssetId,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = request.AuthorName,
+            ChangeNote = request.ChangeNote ?? "Updated"
+        };
+        BlogLocalizer.NormalizeForSave(post);
+        BlogLocalizer.NormalizeForSave(version);
+
+        if (post.BlogHomeFeatured)
+        {
+            await _blogRepository.ClearBlogHomeFeaturedAsync(post.Id);
+        }
+
+        await _blogRepository.UpdateAsync(post, version);
+
+        return Ok(post);
+    }
+
+    [HttpGet("{id}/versions")]
+    public async Task<IActionResult> GetVersions(string id)
+    {
+        var post = await _blogRepository.GetByIdAsync(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        var versions = await _blogRepository.GetVersionsAsync(id);
+        var list = versions.Select(version => new
+        {
+            version.Id,
+            version.VersionNumber,
+            version.CreatedAt,
+            version.CreatedBy,
+            version.ChangeNote
+        });
+        return Ok(list);
+    }
+
+    [HttpGet("{id}/versions/{versionId}")]
+    public async Task<IActionResult> GetVersion(string id, string versionId)
+    {
+        var version = await _blogRepository.GetVersionByIdAsync(id, versionId);
+        if (version == null)
+        {
+            return NotFound();
+        }
+        return Ok(version);
+    }
+
+    [HttpPost("{id}/restore")]
+    public async Task<IActionResult> RestoreVersion(string id, [FromBody] RestoreBlogPostRequest request)
+    {
+        var post = await _blogRepository.GetByIdAsync(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        var version = await _blogRepository.GetVersionByIdAsync(id, request.VersionId);
+        if (version == null)
+        {
+            return NotFound();
+        }
+
+        var versions = await _blogRepository.GetVersionsAsync(post.Id);
+        var nextVersion = versions.Count == 0 ? 1 : versions.Max(item => item.VersionNumber) + 1;
+
+        var restored = new BlogPostVersion
+        {
+            PostId = post.Id,
+            VersionNumber = nextVersion,
+            Title = version.Title,
+            Excerpt = version.Excerpt,
+            ContentMarkdown = version.ContentMarkdown,
+            ContentHtml = version.ContentHtml,
+            TitleI18n = version.TitleI18n,
+            ExcerptI18n = version.ExcerptI18n,
+            ContentMarkdownI18n = version.ContentMarkdownI18n,
+            ContentHtmlI18n = version.ContentHtmlI18n,
+            CoverAssetId = version.CoverAssetId,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = request.RestoredBy,
+            ChangeNote = request.ChangeNote ?? $"Restored version {version.VersionNumber}"
+        };
+
+        post.Title = version.Title;
+        post.Excerpt = version.Excerpt;
+        post.TitleI18n = version.TitleI18n;
+        post.ExcerptI18n = version.ExcerptI18n;
+        post.CoverAssetId = version.CoverAssetId;
+        post.UpdatedAt = DateTime.UtcNow;
+        await _blogRepository.UpdateAsync(post, restored);
+
+        return Ok(post);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> ArchivePost(string id)
+    {
+        var post = await _blogRepository.GetByIdAsync(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        post.Status = "ARCHIVED";
+        post.UpdatedAt = DateTime.UtcNow;
+        await _blogRepository.UpdateAsync(post, new BlogPostVersion
+        {
+            PostId = post.Id,
+            VersionNumber = (await _blogRepository.GetVersionsAsync(post.Id)).Count + 1,
+            Title = post.Title,
+            Excerpt = post.Excerpt,
+            ContentMarkdown = string.Empty,
+            ContentHtml = string.Empty,
+            CoverAssetId = post.CoverAssetId,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = post.AuthorName,
+            ChangeNote = "Archived"
+        });
+
+        return Ok(post);
+    }
+
+    private static string NormalizeStatus(string status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return "DRAFT";
+        }
+
+        var normalized = status.Trim().ToUpperInvariant();
+        return normalized switch
+        {
+            "PUBLISHED" => "PUBLISHED",
+            "SCHEDULED" => "SCHEDULED",
+            "ARCHIVED" => "ARCHIVED",
+            _ => "DRAFT"
+        };
+    }
+
+    private static DateTime? ResolvePublishedAt(string status, DateTime? publishedAt, DateTime? existing = null)
+    {
+        if (NormalizeStatus(status) != "PUBLISHED")
+        {
+            return existing;
+        }
+
+        return publishedAt ?? DateTime.UtcNow;
+    }
+
+    private static string ValidateSchedule(BlogPost post)
+    {
+        if (post.Status == "SCHEDULED" && (!post.ScheduledAt.HasValue || post.ScheduledAt <= DateTime.UtcNow))
+        {
+            return "Scheduled posts require a future scheduledAt value.";
+        }
+        return null;
+    }
+
+    private async Task<string> ResolveCoverUrlAsync(string coverAssetId, string fallbackUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(coverAssetId))
+        {
+            var asset = await _mediaRepository.GetByIdAsync(coverAssetId);
+            return asset?.Url ?? fallbackUrl ?? string.Empty;
+        }
+        return fallbackUrl ?? string.Empty;
+    }
+
+    private static string ValidateTitle(string title)
+    {
+        var trimmed = title?.Trim() ?? string.Empty;
+        if (trimmed.Length < TitleMinLength || trimmed.Length > TitleMaxLength)
+        {
+            return $"Title must be between {TitleMinLength} and {TitleMaxLength} characters.";
+        }
+        return string.Empty;
+    }
+
+    private static string ValidateExcerpt(string excerpt)
+    {
+        if (!string.IsNullOrWhiteSpace(excerpt) && excerpt.Length > ExcerptMaxLength)
+        {
+            return $"Excerpt must be {ExcerptMaxLength} characters or less.";
+        }
+        return string.Empty;
+    }
+
+    private static string ValidateTags(string[] tags)
+    {
+        if (tags == null)
+        {
+            return string.Empty;
+        }
+
+        if (tags.Length > TagsMaxCount)
+        {
+            return $"No more than {TagsMaxCount} tags are allowed.";
+        }
+
+        foreach (var tag in tags)
+        {
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                continue;
+            }
+
+            var length = tag.Trim().Length;
+            if (length < TagMinLength || length > TagMaxLength)
+            {
+                return $"Tags must be between {TagMinLength} and {TagMaxLength} characters.";
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string ValidateReadingTime(int? readingTime)
+    {
+        if (!readingTime.HasValue)
+        {
+            return string.Empty;
+        }
+
+        if (readingTime.Value < ReadingTimeMinMinutes || readingTime.Value > ReadingTimeMaxMinutes)
+        {
+            return $"Reading time must be between {ReadingTimeMinMinutes} and {ReadingTimeMaxMinutes} minutes.";
+        }
+
+        return string.Empty;
+    }
+
+    private async Task<string> ValidateCoverAsync(string coverAssetId)
+    {
+        if (string.IsNullOrWhiteSpace(coverAssetId))
+        {
+            return string.Empty;
+        }
+
+        var asset = await _mediaRepository.GetByIdAsync(coverAssetId);
+        if (asset == null)
+        {
+            return "Cover asset not found.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(asset.ContentType) && !AllowedCoverTypes.Contains(asset.ContentType))
+        {
+            return "Cover image must be a JPG, PNG, or WebP file.";
+        }
+
+        if (asset.SizeBytes > CoverMaxSizeBytes)
+        {
+            return "Cover image must be 5MB or smaller.";
+        }
+
+        if (!asset.Width.HasValue || !asset.Height.HasValue)
+        {
+            var recoveredDimensions = await _imageMetadataReader.TryReadImageSizeAsync(asset, HttpContext?.RequestAborted ?? CancellationToken.None);
+            if (recoveredDimensions.HasValue)
+            {
+                asset.Width = recoveredDimensions.Value.Width;
+                asset.Height = recoveredDimensions.Value.Height;
+                await _mediaRepository.UpdateDimensionsAsync(asset.Id, asset.Width.Value, asset.Height.Value);
+            }
+            else
+            {
+                return "Cover image dimensions are missing. Please upload/regenerate this image.";
+            }
+        }
+
+        if (asset.Width.Value < CoverMinWidth || asset.Height.Value < CoverMinHeight)
+        {
+            return $"Cover image must be at least {CoverMinWidth}x{CoverMinHeight}px.";
+        }
+
+        return string.Empty;
+    }
+
+    private static string NormalizeExcerpt(string excerpt, string contentMarkdown, string contentHtml)
+    {
+        var normalized = excerpt?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            var source = !string.IsNullOrWhiteSpace(contentMarkdown)
+                ? StripMarkdown(contentMarkdown)
+                : StripHtml(contentHtml);
+            normalized = source?.Trim() ?? string.Empty;
+        }
+
+        normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+        if (normalized.Length > ExcerptMaxLength)
+        {
+            normalized = normalized.Substring(0, ExcerptMaxLength).Trim();
+        }
+
+        return normalized;
+    }
+
+    private static string StripMarkdown(string markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown))
+        {
+            return string.Empty;
+        }
+
+        var withoutImages = Regex.Replace(markdown, @"!\[[^\]]*\]\([^\)]*\)", " ");
+        var withoutLinks = Regex.Replace(withoutImages, @"\[[^\]]*\]\([^\)]*\)", " ");
+        var withoutFormatting = Regex.Replace(withoutLinks, @"[#>*_`~\-]", " ");
+        return withoutFormatting;
+    }
+
+    private static string StripHtml(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return string.Empty;
+        }
+
+        return Regex.Replace(html, "<.*?>", " ");
+    }
+
+    private static string GenerateSlug(string value)
+    {
+        var slug = value.ToLowerInvariant();
+        slug = Regex.Replace(slug, @"[^\p{L}\p{N}\s-]", "");
+        slug = Regex.Replace(slug, @"\s+", "-");
+        slug = Regex.Replace(slug, @"-+", "-");
+        return slug.Trim('-');
+    }
+
+    private async Task<object> BuildPostAnalyticsAsync(BlogPost post, bool includeDetails)
+    {
+        var uniqueViewCounters = await _blogPostUniqueViewRepository.GetCountersByPostIdAsync(post.Id);
+        var viewTimeline = await _blogPostUniqueViewRepository.GetPublicViewTimelineByPostIdAsync(post.Id);
+        var latestUniqueViews = await _blogPostUniqueViewRepository.GetLatestViewsByPostIdAsync(post.Id, 40);
+        var events = await _blogRecommendationsService.GetEventsByPostAsync(post.Id, DateTime.UtcNow.AddYears(-5));
+        var readsCount = events
+            .Where(item => string.Equals(item.EventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
+            .Select(item => BlogActorKey.For(item.UserId, item.AnonId, item.SessionId))
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+
+        var reactionsByEmoji = BuildReactionCounts(events);
+        var totalReactions = reactionsByEmoji.Values.Sum();
+        var topReaction = reactionsByEmoji
+            .OrderByDescending(item => item.Value)
+            .ThenBy(item => item.Key, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        var viewPoints = BuildViewTimeline(viewTimeline);
+        var reactionPoints = BuildReactionTimeline(events);
+        var latestEvents = events
+            .OrderByDescending(item => item.Timestamp)
+            .Take(40)
+            .Select(item => new AdminLatestEventItem
+            {
+                timestamp = item.Timestamp,
+                actorType = string.IsNullOrWhiteSpace(item.UserId) ? "guest" : "authenticated",
+                actorDisplay = BuildActorDisplay(item),
+                eventType = NormalizeEventType(item.EventType),
+                reaction = GetReaction(item)
+            })
+            .Concat(latestUniqueViews.Select(item => new AdminLatestEventItem
+            {
+                timestamp = item.LastViewedAt,
+                actorType = string.IsNullOrWhiteSpace(item.UserId) ? "guest" : "authenticated",
+                actorDisplay = BuildActorDisplay(item.UserId, item.AnonId, item.LastSessionId),
+                eventType = "view",
+                reaction = string.Empty
+            }))
+            .OrderByDescending(item => item.timestamp)
+            .Take(40)
+            .Cast<object>()
+            .ToList();
+
+        var result = new
+        {
+            postId = post.Id,
+            title = post.Title,
+            slug = post.Slug,
+            publicUniqueViews = uniqueViewCounters.PublicUniqueViews,
+            authenticatedUniqueViews = uniqueViewCounters.AuthenticatedUniqueViews,
+            guestUniqueViewsTotal = uniqueViewCounters.GuestUniqueViewsTotal,
+            guestUniqueViewsCounted = uniqueViewCounters.GuestUniqueViewsCounted,
+            guestUniqueViewsExcluded = uniqueViewCounters.GuestUniqueViewsExcluded,
+            completedReads = readsCount,
+            totalReactions,
+            reactionsByEmoji,
+            topReaction = topReaction.Value > 0 ? topReaction.Key : string.Empty,
+            viewsTimeline = viewPoints,
+            reactionsTimeline = reactionPoints,
+            latestEvents
+        };
+
+        if (!includeDetails)
+        {
+            return new
+            {
+                result.postId,
+                result.title,
+                result.slug,
+                result.publicUniqueViews,
+                result.authenticatedUniqueViews,
+                result.guestUniqueViewsTotal,
+                result.guestUniqueViewsCounted,
+                result.guestUniqueViewsExcluded,
+                result.completedReads,
+                result.totalReactions,
+                result.topReaction
+            };
+        }
+
+        return result;
+    }
+
+    private static string GetReaction(BlogEvent item)
+    {
+        if (item.Meta == null)
+        {
+            return string.Empty;
+        }
+
+        return item.Meta.TryGetValue("reaction", out var reaction) ? reaction : string.Empty;
+    }
+
+    private static Dictionary<string, int> BuildReactionCounts(IReadOnlyList<BlogEvent> events)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["👍"] = 0,
+            ["❤️"] = 0,
+            ["🔥"] = 0,
+            ["🎮"] = 0,
+            ["👀"] = 0
+        };
+
+        var latestByActor = events
+            .Where(item =>
+                string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(item => BlogActorKey.For(item.UserId, item.AnonId, item.SessionId))
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key))
+            .Select(group => group.OrderByDescending(item => item.Timestamp).First())
+            .ToList();
+
+        foreach (var item in latestByActor)
+        {
+            if (string.Equals(item.EventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var reaction = GetReaction(item);
+            if (!string.IsNullOrWhiteSpace(reaction) && counts.ContainsKey(reaction))
+            {
+                counts[reaction] += 1;
+            }
+        }
+
+        return counts;
+    }
+
+    private static List<object> BuildViewTimeline(IReadOnlyList<(DateTime BucketStart, int Count)> timeline)
+    {
+        return timeline
+            .OrderBy(item => item.BucketStart)
+            .Select(item => (object)new
+            {
+                bucketStart = item.BucketStart,
+                count = item.Count
+            })
+            .ToList();
+    }
+
+    private static List<object> BuildReactionTimeline(IReadOnlyList<BlogEvent> events)
+    {
+        return events
+            .Where(item => string.Equals(item.EventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(item => new DateTime(item.Timestamp.Year, item.Timestamp.Month, item.Timestamp.Day, item.Timestamp.Hour, 0, 0, DateTimeKind.Utc))
+            .OrderBy(group => group.Key)
+            .Select(group => (object)new
+            {
+                bucketStart = group.Key,
+                count = group.Count(),
+                reactionsByEmoji = new Dictionary<string, int>(StringComparer.Ordinal)
+                {
+                    ["👍"] = group.Count(item => GetReaction(item) == "👍"),
+                    ["❤️"] = group.Count(item => GetReaction(item) == "❤️"),
+                    ["🔥"] = group.Count(item => GetReaction(item) == "🔥"),
+                    ["🎮"] = group.Count(item => GetReaction(item) == "🎮"),
+                    ["👀"] = group.Count(item => GetReaction(item) == "👀")
+                }
+            })
+            .ToList();
+    }
+
+    private static string NormalizeEventType(string eventType)
+    {
+        if (string.Equals(eventType, "POST_OPEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return "view";
+        }
+
+        if (string.Equals(eventType, "POST_READ_COMPLETE", StringComparison.OrdinalIgnoreCase))
+        {
+            return "completed_read";
+        }
+
+        if (string.Equals(eventType, "POST_REACTION_SET", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(eventType, "POST_REACTION_REMOVE", StringComparison.OrdinalIgnoreCase))
+        {
+            return "reaction";
+        }
+
+        return eventType?.ToLowerInvariant() ?? string.Empty;
+    }
+
+    private static string BuildActorDisplay(BlogEvent item)
+    {
+        return BuildActorDisplay(item.UserId, item.AnonId, item.SessionId);
+    }
+
+    private static string BuildActorDisplay(string userId, string anonId, string sessionId)
+    {
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            return userId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(anonId))
+        {
+            var suffix = anonId.Length <= 8 ? anonId : anonId.Substring(0, 8);
+            return $"Guest a:{suffix}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            var suffix = sessionId.Length <= 6 ? sessionId : sessionId.Substring(0, 6);
+            return $"Guest #{suffix}";
+        }
+
+        return "Guest";
+    }
+
+    private sealed class AdminLatestEventItem
+    {
+        public DateTime timestamp { get; set; }
+        public string actorType { get; set; } = "guest";
+        public string actorDisplay { get; set; } = string.Empty;
+        public string eventType { get; set; } = string.Empty;
+        public string reaction { get; set; } = string.Empty;
+    }
+}
+
+public class SaveBlogPostRequest
+{
+    public string? Title { get; set; }
+    public string? Slug { get; set; }
+    public string? Excerpt { get; set; }
+    public string? ContentMarkdown { get; set; }
+    public string? ContentHtml { get; set; }
+    /// <summary>Переводы (ru/uk/pl → текст) заголовка, анонса и тела; теги — списки по позициям.</summary>
+    public Dictionary<string, string>? TitleI18n { get; set; }
+    public Dictionary<string, string>? ExcerptI18n { get; set; }
+    public Dictionary<string, string>? ContentMarkdownI18n { get; set; }
+    public Dictionary<string, string>? ContentHtmlI18n { get; set; }
+    public Dictionary<string, List<string>>? TagsI18n { get; set; }
+    public string? CoverAssetId { get; set; }
+    public string? CoverUrl { get; set; }
+    public string? Status { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public DateTime? ScheduledAt { get; set; }
+    public string[]? Tags { get; set; }
+    public string[]? Topics { get; set; }
+    public string? AuthorId { get; set; }
+    public string? AuthorName { get; set; }
+    public int? ReadingTime { get; set; }
+    public int? EditorScore { get; set; }
+    public bool? Featured { get; set; }
+    public bool? BlogHomeFeatured { get; set; }
+    public string? ChangeNote { get; set; }
+}
+
+public class RestoreBlogPostRequest
+{
+    public string VersionId { get; set; }
+    public string ChangeNote { get; set; }
+    public string RestoredBy { get; set; }
+}

@@ -1,0 +1,61 @@
+# Продакшен. Шаблон разворачивает entrypoint образа nginx: ${DOMAIN}, ${PUBLIC_URL} и пути
+# сертификата подставляются из окружения, переменные самого nginx ($host, $uri) не трогаются.
+
+# Обращения не к нашему домену (сканеры по IP, чужие DNS-записи) — закрываем соединение молча.
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+server {
+    listen 443 ssl default_server;
+    server_name _;
+    ssl_reject_handshake on;
+}
+
+# http: только проверка домена для Let's Encrypt, остальное — на https.
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+    }
+
+    location / {
+        return 301 ${PUBLIC_URL}$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    # Ссылка current/ указывает на сертификат Let's Encrypt, а пока его нет — на временный
+    # самоподписанный (см. docker-entrypoint.d/15-taleshop-site.envsh).
+    ssl_certificate     /etc/nginx/certs/current/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/current/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    include /etc/nginx/security-headers.conf;
+
+    # Админ-консоль Keycloak и realm master (его администраторы) наружу закрыты: перебор паролей
+    # администратора — первое, что делают боты. Консоль открывается через SSH-туннель
+    # к 127.0.0.1:8088, см. docs/deploy.md. Бэкенд ходит в Admin API напрямую, мимо nginx.
+    location ^~ /auth/admin/ {
+        return 404;
+    }
+    location ^~ /auth/realms/master/ {
+        return 404;
+    }
+
+    include /etc/nginx/locations.conf;
+}

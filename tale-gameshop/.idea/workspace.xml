@@ -4,7 +4,22 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ebdefccf-080a-49dd-b409-f048c9f75ca1" name="Changes" comment="" />
+    <list default="true" id="ebdefccf-080a-49dd-b409-f048c9f75ca1" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportAdminController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportAdminController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportTicketsController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Controllers/SupportTicketsController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Dto/SupportDtos.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Dto/SupportDtos.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/ISupportTicketService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/ISupportTicketService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/SupportTicketService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../SuperBot.WebApi/Support/Services/SupportTicketService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/supportApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/supportApi.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/header/tale-gameshop-header/tale-gameshop-header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/tale-gameshop-main-window/tale-gameshop-main-window.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/features/account/pages/AccountHelpPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/features/account/pages/AccountHelpPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/account/help/components/TicketDetailsModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/account/help/components/TicketDetailsModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/account/help/components/TicketSidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/account/help/components/TicketSidebar.tsx" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -22,6 +37,9 @@
       </list>
     </option>
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
 }</component>
@@ -33,17 +51,24 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "DefaultHtmlFileTemplate": "HTML File",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "javascript.nodejs.core.library.configured.version": "20.15.0",
-    "javascript.nodejs.core.library.typings.version": "20.15.0",
-    "last_opened_file_path": "C:/projects/2/7/5/Super-Bot/tale-gameshop",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "feature__editors-picks",
+    "ignore.virus.scanning.warn.message": "true",
+    "javascript.nodejs.core.library.configured.version": "24.18.0",
+    "javascript.nodejs.core.library.typings.version": "24.13.2",
+    "javascript.preferred.runtime.type.id": "node",
+    "last_opened_file_path": "C:/Projects/Super-Web-Bot/tale-gameshop",
     "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "C:\\projects\\2\\7\\5\\Super-Bot\\tale-gameshop\\node_modules\\typescript\\lib",
+    "ts.external.directory.path": "C:\\Projects\\Super-Web-Bot\\tale-gameshop\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -59,7 +84,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-1d06a55b98c1-2e7d6887c066-JavaScript-WS-241.15989.47" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.24374.125" />
       </set>
     </attachedChunks>
   </component>
@@ -124,6 +149,21 @@
       <workItem from="1765828473561" duration="697000" />
       <workItem from="1765983910039" duration="344000" />
       <workItem from="1766550457769" duration="6443000" />
+      <workItem from="1768358442185" duration="26000" />
+      <workItem from="1768358470421" duration="910000" />
+      <workItem from="1768521360185" duration="253000" />
+      <workItem from="1768572504011" duration="317000" />
+      <workItem from="1768706234968" duration="2772000" />
+      <workItem from="1768990416117" duration="629000" />
+      <workItem from="1769247423248" duration="11000" />
+      <workItem from="1769429500593" duration="14000" />
+      <workItem from="1769429516705" duration="503000" />
+      <workItem from="1773417354514" duration="501000" />
+      <workItem from="1773601706242" duration="700000" />
+      <workItem from="1773604941249" duration="9662000" />
+      <workItem from="1774683273569" duration="21000" />
+      <workItem from="1782819660326" duration="2443000" />
+      <workItem from="1783019513217" duration="28000" />
     </task>
     <servers />
   </component>
@@ -150,46 +190,6 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/callback-page/callback-page.tsx</url>
           <option name="timeStamp" value="6" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>264</line>
-          <option name="timeStamp" value="7" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>265</line>
-          <option name="timeStamp" value="8" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>266</line>
-          <option name="timeStamp" value="9" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>267</line>
-          <option name="timeStamp" value="10" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>268</line>
-          <option name="timeStamp" value="11" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>147</line>
-          <option name="timeStamp" value="12" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>148</line>
-          <option name="timeStamp" value="13" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/src/components/tale-gameshop-main-page/tale-gameshop-main-page.tsx</url>
-          <line>149</line>
-          <option name="timeStamp" value="14" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/src/components/cart/cart-icon/cart-icon.tsx</url>

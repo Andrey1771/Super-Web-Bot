@@ -1,0 +1,468 @@
+.account-page {
+    background: #ffffff;
+    padding: var(--space-32) 0 var(--space-64);
+}
+
+.account-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: var(--space-32);
+    align-items: start;
+}
+
+.account-sidebar {
+    position: sticky;
+    top: 110px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+    align-self: start;
+    /* Без этого элемент сетки не может стать уже своего содержимого: у него
+       min-width: auto, то есть минимум по самому широкому ребёнку. На узком экране
+       навигация превращается в ряд чипов с nowrap, её минимальная ширина — сумма всех
+       чипов (около 840px), и колонка растягивала под себя ВСЮ страницу: горизонтально
+       уезжали и шапка, и карточки, и кнопки. С нулём колонка сжимается до экрана, а
+       чипы прокручиваются внутри своего overflow-x, как и задумано. */
+    min-width: 0;
+}
+
+/* Кнопка «разделы» и крестик в панели живут только на узких экранах. */
+.account-nav-toggle,
+.account-nav-close,
+.account-nav-backdrop {
+    display: none;
+}
+
+.account-profile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    padding: var(--space-16);
+}
+
+.account-avatar {
+    /* flex: none — длинная почта рядом не должна сжимать круг в овал. */
+    flex: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    overflow: hidden;
+}
+
+.account-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.account-profile-details {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+}
+
+/* Бейдж — по ширине текста: во flex-колонке дети иначе растягиваются на всю ширину. */
+.account-profile-details .badge {
+    align-self: flex-start;
+}
+
+/* Имя + галочка «Verified buyer» одной строкой (галочка приходит позже и не должна добавлять строку). */
+.account-profile-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    min-width: 0;
+}
+
+.account-profile-name__text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.verified-buyer {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-primary);
+    line-height: 1;
+}
+
+.verified-buyer svg {
+    width: 16px;
+    height: 16px;
+}
+
+.verified-buyer--label {
+    padding: 4px 10px 4px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.account-email {
+    color: var(--color-muted);
+    font-size: 13px;
+    /* В узкой панели — одной строкой: высота блока одна и та же и пока профиль грузится, и с длинной почтой.
+       Полный адрес — в подсказке и на карточке обзора. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Баннер активной заявки на восстановление доступа — красный, потому что это
+   потенциальный угон аккаунта; отмена должна быть в один клик. */
+.account-recovery-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-16) var(--space-20);
+    margin-bottom: var(--space-20);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    background: rgba(220, 38, 38, 0.06);
+    flex-wrap: wrap;
+}
+
+.account-recovery-alert-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 14px;
+    color: #7f1d1d;
+    min-width: 0;
+}
+
+.account-recovery-alert-btn {
+    background: #dc2626;
+    color: #ffffff;
+    border: none;
+    height: 38px;
+    padding-inline: var(--space-16);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.account-recovery-alert-btn:hover {
+    background: #b91c1c;
+}
+
+/* Скелетон профиля — вместо моковых имени/почты до ответа сервера. */
+.account-avatar.is-skeleton {
+    background: linear-gradient(90deg, #ece8ff 0%, #f5f3ff 50%, #ece8ff 100%);
+    background-size: 200% 100%;
+    animation: account-skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes account-skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Навигация — единая карточка с явными блоками-группами. */
+.account-nav {
+    display: grid;
+    background: #ffffff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-8) var(--space-8) var(--space-12);
+    box-shadow: var(--shadow-sm);
+}
+
+.account-nav-group {
+    display: grid;
+    gap: 2px;
+    padding-top: var(--space-8);
+}
+
+.account-nav-group + .account-nav-group {
+    margin-top: var(--space-8);
+    border-top: 1px solid #f1edff;
+}
+
+.account-nav-group-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #8a7fb4;
+    padding: 4px 14px 6px;
+}
+
+.account-nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    color: #423561;
+    background: transparent;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Живой счётчик раздела (заказы/ключи/вишлист). */
+.account-nav-count {
+    min-width: 22px;
+    text-align: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.12);
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* «Поддержка ответила» — акцентный счётчик. */
+.account-nav-count.is-attention {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.account-signout {
+    margin-top: var(--space-12);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: #ffffff;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: center;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.account-signout:hover,
+.account-signout:focus-visible {
+    color: #b91c1c;
+    border-color: rgba(185, 28, 28, 0.35);
+}
+
+.account-nav-link:hover,
+.account-nav-link:focus-visible {
+    color: var(--color-primary);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.account-nav-link.active {
+    color: var(--color-primary);
+    background: rgba(124, 58, 237, 0.12);
+}
+
+.account-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-24);
+    /* Тот же капкан, что и у сайдбара: вторая колонка той же сетки. Виноват был он,
+       но правило одинаково нужно обоим — иначе любой широкий потомок снова растянет
+       страницу. */
+    min-width: 0;
+}
+
+.account-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--color-muted);
+}
+
+.account-breadcrumbs a {
+    color: inherit;
+}
+
+.account-breadcrumbs span:last-child {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.account-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-24);
+    flex-wrap: wrap;
+}
+
+.account-subtitle {
+    margin: var(--space-8) 0 0;
+}
+
+.account-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    flex-wrap: wrap;
+}
+
+/* Подпись в одну строку и кнопка не ужимается: на телефоне длинное название рядом отбирало место, «View keys»
+   переносилось на две строки и вылезало за кнопку фиксированной высоты. Переносится текст слева, не кнопка. */
+.account-action-btn {
+    min-height: 40px;
+    font-size: 14px;
+    padding-inline: var(--space-16);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* «Помощь» в шапке кабинета — только серый знак вопроса, без рамки и фона: светлый кружок-фон
+   появляется при наведении. Подпись — в подсказке. */
+.account-help-link {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    color: var(--color-muted);
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.account-help-link:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+}
+
+.account-help-link:active {
+    transform: scale(0.95);
+}
+
+.account-help-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+.account-help-link__dot {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+@media (max-width: 1024px) {
+    .account-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .account-sidebar {
+        position: static;
+    }
+
+    /* Навигация уезжает в выдвижную панель.
+       До этого она превращалась в ленту чипов с горизонтальной прокруткой, и это было
+       плохо дважды. Во-первых, половина разделов оставалась за краем экрана, а понять,
+       что ленту можно листать, было неоткуда. Во-вторых, лента с nowrap задавала колонке
+       минимальную ширину около 840px, и вбок уезжала вся страница целиком.
+       В панели — ровно то же меню, что на десктопе: с заголовками групп, карточкой
+       профиля и выходом, которые на мобильном раньше просто прятались. */
+    .account-nav-toggle {
+        display: flex;
+        align-items: center;
+        gap: var(--space-10);
+        width: 100%;
+        padding: var(--space-12) var(--space-16);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: #ffffff;
+        color: var(--color-text);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .account-nav-toggle-label {
+        flex: 1;
+        text-align: left;
+        /* Название раздела может быть длинным («Keys & activation»): режем его, а не
+           растягиваем кнопку. */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .account-nav-toggle-hint {
+        color: var(--color-muted);
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .account-nav-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 59;
+        background: rgba(17, 24, 39, 0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+
+    .account-nav-backdrop.is-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .account-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 60;
+        width: min(320px, 86vw);
+        padding: var(--space-20);
+        background: #ffffff;
+        box-shadow: 0 18px 48px rgba(87, 68, 144, 0.18);
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+
+    .account-sidebar.is-open {
+        transform: translateX(0);
+    }
+
+    .account-nav-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-end;
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--color-muted);
+        cursor: pointer;
+    }
+}
+
+/* Панель выезжает мгновенно, если человек просил не анимировать интерфейс. */
+@media (prefers-reduced-motion: reduce) {
+    .account-sidebar,
+    .account-nav-backdrop {
+        transition: none;
+    }
+}

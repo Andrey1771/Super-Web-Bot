@@ -11,35 +11,59 @@
   --color-hero-surface: #161b2c;
   --color-hero-muted: #d3d7e3;
 
+  /* Акценты — ТОЛЬКО соседи основного фиолетового по цветовому кругу, чтобы различать
+     однотипные элементы (шаги, уровни), не выходя из палитры. Фуксия уже живёт в
+     свечениях тёмных шапок (.fx-orb.is-magenta). Синий, розовый, жёлтый и т.п. сюда
+     не добавлять: пробовали — страница перестаёт выглядеть нашей. */
+  --color-accent-indigo: #6366f1;
+  --color-accent-violet: #7c3aed;
+  --color-accent-fuchsia: #d946ef;
+  /* Зелёный — один и только для денег, которые возвращаются покупателю (кэшбэк). */
+  --color-cashback: #22b36a;
+
   /* Radius scale */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  /* Крупные поверхности-подложки (сцена витрины на главной и т.п.). */
+  --radius-xl: 24px;
 
   /* Shadow scale */
   --shadow-sm: 0 6px 18px rgba(17, 24, 39, 0.06);
   --shadow-md: 0 10px 30px rgba(17, 24, 39, 0.08);
   --shadow-lg: 0 18px 48px rgba(17, 24, 39, 0.12);
 
-  /* Spacing scale */
+  /* Spacing scale.
+     ВАЖНО: несуществующий var(--space-N) молча схлопывает отступ в 0 —
+     если добавляешь новый шаг в разметке, сначала объяви его здесь. */
   --space-4: 4px;
+  --space-6: 6px;
   --space-8: 8px;
   --space-10: 10px;
   --space-12: 12px;
+  --space-14: 14px;
   --space-16: 16px;
+  --space-18: 18px;
   --space-20: 20px;
   --space-24: 24px;
+  --space-28: 28px;
   --space-32: 32px;
+  --space-36: 36px;
+  --space-40: 40px;
   --space-48: 48px;
   --space-56: 56px;
   --space-64: 64px;
 
   /* Layout */
   --container-max-width: 1320px;
+  /* Витринные страницы (главная, каталог) шире — плитка товаров любит простор.
+     Текстовые страницы остаются на --container-max-width ради читаемости.
+     Ширина ~как у Epic Games Store (заметные поля по краям, не во всю ширину). */
+  --container-wide-max-width: 1440px;
   --container-padding: 32px;
 
   /* Typography */
-  --font-family-base: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-family-base: 'Inter Variable', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 @media (max-width: 1200px) {
@@ -51,6 +75,7 @@
 @media (max-width: 992px) {
   :root {
     --container-max-width: 100%;
+    --container-wide-max-width: 100%;
     --container-padding: 20px;
   }
 }

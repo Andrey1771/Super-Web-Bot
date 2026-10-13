@@ -10,5 +10,8 @@ namespace SuperBot.Infrastructure.Models
     {
         public string SecretKey { get; set; }
         public string PublishableKey { get; set; }
+
+        /// <summary>whsec_… из Stripe Dashboard → Webhooks. Нужен для проверки подписи вебхука.</summary>
+        public string WebhookSecret { get; set; }
     }
 }

@@ -1,0 +1,694 @@
+.settings-title {
+    margin: var(--space-8) 0 0;
+    font-size: clamp(22px, 2vw, 28px);
+    color: var(--color-text);
+}
+
+.settings-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.settings-card-header h3 {
+    margin: 0;
+}
+
+.settings-avatar-block {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-16);
+    align-items: center;
+    padding: var(--space-12) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.settings-avatar {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: var(--color-primary);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.settings-avatar:hover {
+    border-color: rgba(124, 58, 237, 0.6);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.settings-avatar-edit {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    background: rgba(17, 24, 39, 0.75);
+    color: #ffffff;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+.settings-avatar-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.settings-avatar-buttons {
+    display: flex;
+    gap: var(--space-8);
+    flex-wrap: wrap;
+}
+
+.settings-avatar-hint {
+    margin: 4px 0 0;
+    color: var(--color-muted);
+    font-size: 12px;
+}
+
+.settings-avatar-input {
+    display: none;
+}
+
+.settings-form-grid,
+.settings-preferences-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.settings-field input,
+.settings-field select {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    font-size: 14px;
+    background: #ffffff;
+}
+
+.settings-input-with-icon {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0 12px;
+    background: #ffffff;
+}
+
+.settings-input-with-icon input {
+    border: none;
+    padding: 10px 0;
+    flex: 1;
+    background: transparent;
+}
+
+.settings-input-with-icon input:focus {
+    outline: none;
+}
+
+.settings-input-with-icon svg {
+    color: var(--color-muted);
+}
+
+.settings-select-with-flag {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0 12px;
+    background: #ffffff;
+}
+
+.settings-select-with-flag select {
+    border: none;
+    padding: 10px 0;
+    background: transparent;
+    flex: 1;
+}
+
+.settings-select-with-flag select:focus {
+    outline: none;
+}
+
+.settings-flag {
+    font-size: 18px;
+}
+
+.settings-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.settings-card-footer--end {
+    justify-content: flex-end;
+}
+
+.settings-link {
+    color: var(--color-primary);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.settings-save-btn {
+    height: 38px;
+    padding-inline: var(--space-20);
+    font-size: 14px;
+}
+
+.settings-preferences-grid {
+    margin-bottom: var(--space-4);
+}
+
+.settings-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+}
+
+.settings-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.settings-checkbox input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+}
+
+/* Настройка внутри подписки: сдвиг показывает, что она подчинена галочке над ней. */
+.settings-checkbox--nested {
+    margin-left: 26px;
+}
+
+/* Транзакционные письма: галка всегда включена и недоступна — визуально приглушаем. */
+.settings-checkbox--locked {
+    color: var(--color-text-muted, #6b7280);
+    cursor: default;
+}
+
+.settings-checkbox--locked input {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.settings-lower-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+@media (max-width: 768px) {
+    .settings-avatar-block {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-avatar-actions {
+        align-items: flex-start;
+    }
+}
+
+.settings-privacy-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+}
+
+.settings-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.settings-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.settings-switch-slider {
+    width: 42px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.2);
+    position: relative;
+    transition: background 0.2s ease;
+}
+
+.settings-switch-slider::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: #ffffff;
+    transition: transform 0.2s ease;
+}
+
+.settings-switch input:checked + .settings-switch-slider {
+    background: var(--color-primary);
+}
+
+.settings-switch input:checked + .settings-switch-slider::after {
+    transform: translateX(20px);
+}
+
+.settings-muted-link {
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.settings-helper-link {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--color-primary);
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.settings-helper-link:hover {
+    text-decoration: underline;
+}
+
+/* «Аккаунт и безопасность»: разделы строками на всю ширину карточки (как в настройках iPhone). Нижний отступ
+   карточки отдан строкам, чтобы последняя строка доходила до её края. */
+.settings-pointer-card {
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+.settings-pointer-list {
+    display: grid;
+    margin: 0 calc(-1 * var(--space-24));
+    border-top: 1px solid var(--color-border);
+}
+
+.settings-pointer-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-16) var(--space-24);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+/* «Download my data» — та же строка, но кнопка: сбрасываем вид кнопки. */
+button.settings-pointer-row {
+    width: 100%;
+    border: 0;
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.settings-pointer-row:disabled {
+    cursor: progress;
+}
+
+.settings-pointer-row + .settings-pointer-row {
+    border-top: 1px solid var(--color-border);
+}
+
+.settings-pointer-row:hover,
+.settings-pointer-row:focus-visible {
+    background: rgba(124, 58, 237, 0.04);
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.settings-pointer-row:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.settings-pointer-main {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.settings-pointer-title {
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.settings-pointer-text {
+    color: var(--color-muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.settings-pointer-chevron {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.settings-pointer-row:hover .settings-pointer-chevron {
+    color: var(--color-primary);
+    transform: translateX(2px);
+}
+
+/* Telegram — строка интеграции: логотип, текст, справа статус и действие. */
+.settings-telegram-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+}
+
+.settings-telegram-icon {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 12px;
+    background: #2aabee;
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+}
+
+.settings-telegram-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-telegram-text h3 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.settings-telegram-text p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-muted);
+}
+
+.settings-telegram-side {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10, 10px);
+    flex: none;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.settings-telegram-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.settings-telegram-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a78bfa, #2aabee);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+}
+
+.settings-telegram-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--color-surface-muted, rgba(148, 163, 184, 0.16));
+    color: var(--color-muted);
+}
+
+.settings-telegram-badge--on {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+}
+
+.settings-telegram-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.settings-telegram-btn {
+    height: 36px;
+    min-height: 0;
+    padding: 0 14px;
+    font-size: 13px;
+}
+
+.settings-telegram-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.settings-telegram-link:hover:not(:disabled) {
+    color: var(--color-primary);
+}
+
+.settings-telegram-link:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.settings-telegram-note {
+    margin: var(--space-12) 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #b42318;
+}
+
+/* Пояснение, а не ошибка (демо-админу привязка закрыта намеренно) — спокойным цветом. */
+.settings-telegram-note--info {
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-sm);
+    background: rgba(124, 58, 237, 0.06);
+    color: var(--color-muted);
+}
+
+@media (max-width: 640px) {
+    .settings-telegram-row {
+        flex-wrap: wrap;
+    }
+
+    .settings-telegram-side {
+        width: 100%;
+        justify-content: flex-start;
+        padding-left: calc(44px + var(--space-16));
+    }
+}
+
+.settings-checkbox--danger input {
+    accent-color: #b42318;
+}
+
+.settings-danger-btn {
+    height: 40px;
+    font-size: 14px;
+    padding-inline: var(--space-20);
+    border-color: rgba(176, 70, 70, 0.4);
+    color: #a13c3c;
+}
+
+.settings-recommendations {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+}
+
+.settings-recommendations-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.settings-recommendations-arrows {
+    display: flex;
+    gap: 8px;
+}
+
+.settings-arrow-btn {
+    height: 36px;
+    width: 36px;
+    padding: 0;
+}
+
+.settings-recommendations-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+.settings-recommendation-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-16);
+}
+
+.settings-recommendation-media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(59, 130, 246, 0.4));
+    overflow: hidden;
+}
+
+.settings-recommendation-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.settings-recommendation-fallback {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.4), rgba(59, 130, 246, 0.4));
+}
+
+.settings-recommendation-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settings-recommendation-price {
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.settings-recommendation-btn {
+    height: 40px;
+    font-size: 14px;
+}
+
+.settings-recommendation-card.is-skeleton {
+    min-height: 190px;
+    border: 1px dashed var(--color-border);
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: settings-recommendation-shimmer 1.5s infinite;
+}
+
+.settings-recommendations-state {
+    padding: var(--space-16);
+}
+
+@keyframes settings-recommendation-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (max-width: 1024px) {
+    .settings-form-grid,
+    .settings-preferences-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-lower-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-recommendations-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .settings-card-footer--end {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+    .settings-card-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .settings-save-btn,
+    .settings-danger-btn {
+        width: 100%;
+    }
+
+    .settings-recommendations-list {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: var(--space-8);
+        gap: var(--space-16);
+        scroll-snap-type: x mandatory;
+    }
+
+    .settings-recommendation-card {
+        min-width: 220px;
+        scroll-snap-align: start;
+    }
+}

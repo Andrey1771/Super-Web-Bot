@@ -16,6 +16,29 @@ export class AdminService implements IAdminService {
     }
 
     // Получение всех игр
+    async getLoginEventsPage(options: {
+        skip: number;
+        take: number;
+        type?: string;
+        user?: string;
+        client?: string;
+        dateFrom?: string;
+        dateTo?: string;
+    }): Promise<any[]> {
+        const response = await this._apiClient.api.get(API_URL, {
+            params: {
+                skip: options.skip,
+                take: options.take,
+                type: options.type || undefined,
+                user: options.user?.trim() || undefined,
+                client: options.client?.trim() || undefined,
+                dateFrom: options.dateFrom || undefined,
+                dateTo: options.dateTo || undefined,
+            },
+        });
+        return response.data ?? [];
+    }
+
     async getAllMappedLoginEvents(): Promise<any> {
         try {
             const response = await this._apiClient.api.get(API_URL);

@@ -1,0 +1,249 @@
+/*
+ * Карточка товара витрины: обложка с ценой поверх неё, под обложкой название и строка
+ * «жанр + оценка». Стили принадлежат компоненту common/StoreGameCard и не привязаны к
+ * странице — их делят каталог и страница скидок.
+ *
+ * Классы называются catalog-game-*, потому что карточка выросла из каталога и на эти же
+ * имена опираются его правила списочного вида (.catalog-grid.is-list ...). Ширину задаёт
+ * сетка страницы, здесь её нет.
+ */
+.catalog-game-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid #ece8ff;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(92, 69, 160, 0.1);
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    /* Появление волной: задержка растёт с номером карточки, но упирается в потолок,
+       иначе последняя в ряду из 24 ждала бы почти секунду. */
+    animation: catalog-card-in 0.32s ease both;
+    animation-delay: calc(min(var(--card-index, 0), 11) * 28ms);
+}
+
+@keyframes catalog-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+.catalog-game-card:hover {
+    box-shadow: 0 18px 36px rgba(92, 69, 160, 0.16);
+    transform: translateY(-3px);
+    border-color: #d8d0ff;
+}
+
+/* Прозрачная ссылка поверх всей карточки. Лежит выше содержимого, но ниже кнопки
+   вишлиста (у той свой слой) — поэтому сердечко продолжает работать, а клик в любое
+   другое место открывает товар. */
+.catalog-game-hit {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+}
+
+/* Обложка чуть наезжает при наведении. Двигается только картинка — текст остаётся
+   на месте и не замыливается, как было бы при масштабировании всей карточки. */
+.catalog-game-card img {
+    transition: transform 0.35s ease;
+}
+
+.catalog-game-card:hover img {
+    transform: scale(1.05);
+}
+
+/* Обложка — главное на карточке: по ней товар и узнают, поэтому низ ужат до двух строк.
+   Квадрат, а не портрет: при четырёх колонках карточка широкая, и вытянутая вверх обложка
+   съедала бы почти весь экран. Квадрат ещё и терпимее к исходникам — и широкие, и высокие
+   картинки кадрируются без большой потери. */
+.catalog-game-image {
+    position: relative;
+    overflow: hidden;
+    /* Пропорцию держит рамка Cover (--cover-ratio); список меняет её в game-list-page.css. */
+}
+
+.catalog-game-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.6rem 0.7rem 0.7rem;
+}
+
+/* Одна строка: заголовки разной длины не разъезжают сетку и не отъедают у обложки. */
+.catalog-game-title {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.92rem;
+    line-height: 1.3;
+    font-weight: 600;
+    color: #2c2354;
+}
+
+.catalog-game-subtitle {
+    margin-top: -0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #8a81b5;
+    font-size: 0.74rem;
+    font-weight: 500;
+}
+
+.catalog-game-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.75rem;
+}
+
+.catalog-game-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: #ede9fe;
+    color: #5b21b6;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.66rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 55%;
+}
+
+/* Лицензия ПО вместо жанра: зелёная — разовая, голубая — подписка. */
+.catalog-game-chip.is-license {
+    background: #dcfce7;
+    color: #166534;
+    max-width: 70%;
+}
+
+.catalog-game-chip.is-subscription {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+.catalog-game-more {
+    color: #8a81b5;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.catalog-game-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    color: #5a5286;
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.catalog-game-rating svg {
+    color: #f0a02f;
+}
+
+/* Кнопку и статус прижимаем вправо — левый край строки занимает жанр. */
+.catalog-game-cta,
+.catalog-game-note {
+    margin-left: auto;
+}
+
+.catalog-game-cta {
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: #6b3ff2;
+    color: #fff;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 8px 16px rgba(107, 63, 242, 0.22);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.catalog-game-cta:active {
+    transform: scale(0.96);
+}
+
+.catalog-game-cta:hover {
+    background: #5a2dd1;
+}
+
+/* Место кнопки покупки занимает причина, по которой купить нельзя:
+   дата релиза у невышедшей игры или отсутствие ключей. */
+.catalog-game-note {
+    border-radius: 999px;
+    border: 1px dashed #d9d3ff;
+    background: #f6f2ff;
+    color: #5a2dd1;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.catalog-game-note-out {
+    border-color: #e2ddf2;
+    background: #f4f2f8;
+    color: #8a81b5;
+}
+
+/* Малый остаток — единственный случай, когда запас называется вслух. */
+.catalog-game-low {
+    color: #b4520f;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Регион товара в карточке: свойство ключа, а не настройка покупателя. Красным только тогда,
+   когда страна покупателя известна и точно не подходит, — иначе это пугало бы на пустом месте. */
+.catalog-game-region {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #e4def6;
+    background: #f6f4ff;
+    color: #5c4ea3;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.catalog-game-region.is-blocked {
+    border-color: #f3c6c6;
+    background: #fdf0f0;
+    color: #a03434;
+}
+
+/* Движение — украшение, а не смысл: при prefers-reduced-motion карточка работает так же,
+   только без появления и наездов. */
+@media (prefers-reduced-motion: reduce) {
+    .catalog-game-card,
+    .catalog-game-card img {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .catalog-game-card:hover,
+    .catalog-game-card:hover img {
+        transform: none;
+    }
+}

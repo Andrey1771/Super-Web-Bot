@@ -1,531 +1,722 @@
-import React, {useMemo, useState} from "react";
+import PageMeta from "../common/PageMeta";
+import { useTranslation } from "react-i18next";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
-    faArrowRightLong,
     faCompass,
+    faFilter,
     faGamepad,
     faMagnifyingGlass,
-    faChevronLeft,
-    faChevronRight,
     faShieldHalved,
+    faWandMagicSparkles,
     faTags,
-    faUserGroup
+    faXmark
 } from "@fortawesome/free-solid-svg-icons";
-import {Link} from "react-router-dom";
+import {Link, useLocation} from "react-router-dom";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
+import container from "../../inversify.config";
+import IDENTIFIERS from "../../constants/identifiers";
+import type {IBlogService} from "../../iterfaces/i-blog-service";
+import type {BlogEngagementSummary, BlogListItem, BlogRecommendationsResponse} from "../../types/blog";
+import PostCard from "../../pages/blog/components/PostCard";
+import SortSelect from "../common/SortSelect";
+import {getAnonId, getSessionId} from "../../hooks/use-blog-tracking";
+import {subscribeNewsletter} from "../../api/newsletterApi";
+import {
+    rememberNewsletterSubscription,
+    useKnownNewsletterSubscription
+} from "../../hooks/use-newsletter-subscribed";
 import "./blog-page.css";
 
-interface BlogPost {
-    title: string;
-    description: string;
-    category: "Deals" | "Guides" | "Reviews" | "Updates";
-    date: string;
-    readTime: string;
-    image: string;
-}
+const RECOMMENDATION_LIMIT = 8;
+/**
+ * Размер порции ленты. Строка-карточка высокая (~250px), так что четыре штуки — это
+ * примерно полтора экрана: следующая порция успевает приехать за пол-экрана до конца,
+ * и швов между порциями не видно. Заодно подгрузку видно уже на маленьком блоге.
+ */
+const POSTS_PAGE_SIZE = 4;
+const sortOptions = ["Newest", "Most popular", "Editor's picks"] as const;
+// Подписи сортировки — в словаре blog.sort.*; значения остаются английскими ключами состояния.
+const SORT_KEYS: Record<(typeof sortOptions)[number], string> = { "Newest": "newest", "Most popular": "popular", "Editor's picks": "editors" };
 
-const filters: Array<BlogPost["category"] | "All"> = ["All", "Deals", "Guides", "Reviews", "Updates"];
+type SortOption = (typeof sortOptions)[number];
 
-const blogPosts: BlogPost[] = [
-    {
-        title: "How to build a budget-friendly gaming rig",
-        description: "Pick the right GPU, CPU, and storage without overspending on extras you do not need.",
-        category: "Guides",
-        date: "April 23",
-        readTime: "7 min read",
-        image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Cozy co-op gems for your next game night",
-        description: "Chill adventures, light puzzles, and teamwork-first titles that keep everyone smiling.",
-        category: "Reviews",
-        date: "April 20",
-        readTime: "6 min read",
-        image: "https://images.unsplash.com/photo-1527443224154-d27e43401652?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Indie highlights: narrative worlds worth binging",
-        description: "Short, story-rich campaigns that deliver memorable characters and surprising twists.",
-        category: "Guides",
-        date: "April 18",
-        readTime: "5 min read",
-        image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Weekend wishlist: tactical RPGs under $20",
-        description: "Turn-based battles, deep builds, and exploration that will not drain your wallet.",
-        category: "Deals",
-        date: "April 16",
-        readTime: "4 min read",
-        image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Performance tips: smoother frames on any setup",
-        description: "Simple tweaks for drivers, overlays, and settings to keep your favorite games sharp.",
-        category: "Guides",
-        date: "April 12",
-        readTime: "8 min read",
-        image: "https://images.unsplash.com/photo-1551033406-611cf9a28f67?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Indie studio spotlight: crafting worlds with heart",
-        description: "A behind-the-scenes chat about storytelling, art direction, and player-first design.",
-        category: "Reviews",
-        date: "April 10",
-        readTime: "6 min read",
-        image: "https://images.unsplash.com/photo-1523966211575-eb4a017e3cc5?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Patch notes: quality-of-life fixes worth trying",
-        description: "A quick roundup of optimizations, controller tweaks, and UI passes shipping this week.",
-        category: "Updates",
-        date: "April 8",
-        readTime: "4 min read",
-        image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Designing your co-op session zero",
-        description: "Session rules, safety tools, and character hooks to make the first night smooth and fun.",
-        category: "Guides",
-        date: "April 6",
-        readTime: "5 min read",
-        image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Hardware drops: week in accessories and add-ons",
-        description: "Controllers, headsets, and SSDs that pair well with spring releases.",
-        category: "Deals",
-        date: "April 4",
-        readTime: "3 min read",
-        image: "https://images.unsplash.com/photo-1512499617640-c2f999098c01?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Early impressions: cozy builder sandbox",
-        description: "A serene island loop with charming quests, crafting chains, and a relaxed pace.",
-        category: "Reviews",
-        date: "April 2",
-        readTime: "6 min read",
-        image: "https://images.unsplash.com/photo-1472457897821-70d3819a0e24?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Accessibility spotlight: small settings that matter",
-        description: "Remappable keys, subtitle polish, and contrast modes that keep more players in the loop.",
-        category: "Updates",
-        date: "March 30",
-        readTime: "5 min read",
-        image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80"
-    }
-];
+type LoadedData = {
+    recommendations: BlogRecommendationsResponse | null;
+    featuredPool: BlogListItem[];
+    fallbackPosts: BlogListItem[];
+};
 
-const popularPosts: BlogPost[] = [
-    {
-        title: "Community picks: couch co-op stars",
-        description: "Wholesome runs, puzzle duos, and story modes the Tale team replays weekly.",
-        category: "Reviews",
-        date: "April 22",
-        readTime: "5 min read",
-        image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Speedy storage upgrades for lighter load times",
-        description: "Entry-level NVMe picks, install steps, and how to trim the price tag.",
-        category: "Deals",
-        date: "April 18",
-        readTime: "4 min read",
-        image: "https://images.unsplash.com/photo-1472457897821-70d3819a0e24?auto=format&fit=crop&w=1200&q=80"
-    },
-    {
-        title: "Control settings to reduce motion fatigue",
-        description: "Camera curves, FOV tweaks, and HUD trims that make long sessions easier on the eyes.",
-        category: "Guides",
-        date: "April 15",
-        readTime: "6 min read",
-        image: "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1200&q=80"
-    }
-];
-
-const topicFilters = ["Steam", "RPG", "Co-op", "Indie", "Under $20", "Key safety"];
-
-const topicCards = [
-    {
-        title: "Buying guides",
-        description: "Builds, bundles, and platform picks tailored to your play style.",
-        highlights: ["Budget builds", "Platform picks"],
-        icon: faCompass
-    },
-    {
-        title: "Deals",
-        description: "Fresh discounts on games, DLC, and hardware worth bookmarking.",
-        highlights: ["Fresh cuts", "Bundles"],
-        icon: faTags
-    },
-    {
-        title: "Reviews",
-        description: "Hands-on impressions that focus on feel, pacing, and replayability.",
-        highlights: ["Feel & pacing", "Replayability"],
-        icon: faGamepad
-    },
-    {
-        title: "Security & refunds",
-        description: "Stay safe with keys, receipts, and store policies that protect you.",
-        highlights: ["Receipts & protection", "Key safety"],
-        icon: faShieldHalved
-    },
-    {
-        title: "Updates",
-        description: "Patch notes, quality-of-life fixes, and roadmap highlights.",
-        highlights: ["Roadmaps", "QoL fixes"],
-        icon: faUserGroup
-    },
-    {
-        title: "Community",
-        description: "Spotlights on co-op nights, fan creations, and friendly servers.",
-        highlights: ["Co-op events", "Player tips"],
-        icon: faArrowRightLong
-    }
-];
-
-const editorsPicks = {
-    featured: {
-        title: "Worldbuilding on a budget: standout indie RPGs",
-        description: "Explore rich narratives, flexible builds, and co-op friendly quests without breaking the bank.",
-        tag: "RPG",
-        date: "May 2",
-        readTime: "6 min read",
-        image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1600&q=80"
-    },
-    list: [
-        {
-            title: "Fresh co-op arrivals for weekend raids",
-            date: "May 1",
-            readTime: "4 min read",
-            image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80"
-        },
-        {
-            title: "Indie dev diaries: crafting meaningful choices",
-            date: "April 30",
-            readTime: "5 min read",
-            image: "https://images.unsplash.com/photo-1527443224154-d27e43401652?auto=format&fit=crop&w=900&q=80"
-        },
-        {
-            title: "Accessibility wins we loved this month",
-            date: "April 28",
-            readTime: "6 min read",
-            image: "https://images.unsplash.com/photo-1523966211575-eb4a017e3cc5?auto=format&fit=crop&w=900&q=80"
+const uniqById = (posts: BlogListItem[]): BlogListItem[] => {
+    const seen = new Set<string>();
+    const result: BlogListItem[] = [];
+    posts.forEach((post) => {
+        if (!seen.has(post.id)) {
+            seen.add(post.id);
+            result.push(post);
         }
-    ]
+    });
+    return result;
+};
+
+const toTime = (publishedAt?: string) => (publishedAt ? new Date(publishedAt).getTime() : 0);
+
+const sortByNewest = (posts: BlogListItem[]) => [...posts].sort((a, b) => toTime(b.publishedAt) - toTime(a.publishedAt));
+
+const sortPosts = (posts: BlogListItem[], sort: SortOption, popularIds: string[], editorIds: string[]): BlogListItem[] => {
+    if (sort === "Newest") {
+        return sortByNewest(posts);
+    }
+
+    if (sort === "Most popular") {
+        const rankMap = new Map(popularIds.map((id, index) => [id, index]));
+        return [...posts].sort((a, b) => {
+            const rankA = rankMap.has(a.id) ? rankMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
+            const rankB = rankMap.has(b.id) ? rankMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
+            if (rankA !== rankB) {
+                return rankA - rankB;
+            }
+            return toTime(b.publishedAt) - toTime(a.publishedAt);
+        });
+    }
+
+    const rankMap = new Map(editorIds.map((id, index) => [id, index]));
+    return [...posts].sort((a, b) => {
+        const rankA = rankMap.has(a.id) ? rankMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
+        const rankB = rankMap.has(b.id) ? rankMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
+        if (rankA !== rankB) {
+            return rankA - rankB;
+        }
+        return toTime(b.publishedAt) - toTime(a.publishedAt);
+    });
+};
+
+const tagIcons: Record<string, typeof faWandMagicSparkles> = {
+    Deals: faTags,
+    Guides: faCompass,
+    Reviews: faGamepad,
+    Security: faShieldHalved,
+    Updates: faWandMagicSparkles
+};
+
+const getTagIcon = (tag: string) => {
+    return tagIcons[tag] ?? faWandMagicSparkles;
 };
 
 export default function BlogPage() {
-    const [activeFilter, setActiveFilter] = useState<typeof filters[number]>("All");
-    const [search, setSearch] = useState("");
-    const [sort, setSort] = useState("Newest");
+    const { t } = useTranslation();
+    const blogService = container.get<IBlogService>(IDENTIFIERS.IBlogService);
+    const location = useLocation();
+    // Выбранные теги. Пустой список — «All». Мультивыбор: у поста тегов несколько,
+    // и фильтр «только один тег за раз» заставлял выбирать между Guides и Support.
+    // Стартовое значение — из ?tag= адреса: сюда ведут чипы тегов со страницы
+    // статьи, и без этого они «не работали» — просто открывали ленту.
+    const [activeTags, setActiveTags] = useState<string[]>(() => {
+        const tagFromUrl = new URLSearchParams(window.location.search).get("tag");
+        return tagFromUrl ? [tagFromUrl] : [];
+    });
 
-    const filteredPosts = useMemo(() => {
-        return blogPosts
-            .filter((post) => activeFilter === "All" || post.category === activeFilter)
-            .filter((post) => post.title.toLowerCase().includes(search.toLowerCase()) || post.description.toLowerCase().includes(search.toLowerCase()));
-    }, [activeFilter, search]);
+    // Подписка на еженедельный дайджест из нижнего баннера.
+    // "pending" — гостю ушло письмо-подтверждение; "confirmed" — владелец аккаунта, подписан сразу.
+    const [newsletterEmail, setNewsletterEmail] = useState("");
+    const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+    const [newsletterResult, setNewsletterResult] = useState<"pending" | "confirmed">("pending");
+    const knownSubscription = useKnownNewsletterSubscription();
+    const [searchInput, setSearchInput] = useState("");
+    const [sort, setSort] = useState<SortOption>("Newest");
+    const [data, setData] = useState<LoadedData>({
+        recommendations: null,
+        featuredPool: [],
+        fallbackPosts: []
+    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    // Мягкая деградация (часть запросов не доехала, лента всё равно работает) —
+    // отдельно от error: это заметка мелким шрифтом, а не тревожная плашка.
+    const [notice, setNotice] = useState<string | null>(null);
+    const [headerOffset, setHeaderOffset] = useState(88);
+    const [engagementMap, setEngagementMap] = useState<Record<string, BlogEngagementSummary>>({});
+    const [refreshTick, setRefreshTick] = useState(0);
+    const debouncedSearch = useDebouncedValue(searchInput, 320);
 
-    const sortedPosts = useMemo(() => {
-        const withSortableDate = filteredPosts.map((post) => ({
-            ...post,
-            sortDate: new Date(`${post.date} 2024`).getTime(),
-            sortReadTime: Number.parseInt(post.readTime, 10) || 0
-        }));
+    // Догруженные прокруткой страницы ленты (вторая и дальше). Первая живёт в data.fallbackPosts.
+    const [extraPosts, setExtraPosts] = useState<BlogListItem[]>([]);
+    const [totalPosts, setTotalPosts] = useState(0);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const feedPageRef = useRef(1);
+    const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-        return withSortableDate.sort((a, b) => {
-            if (sort === "Newest") {
-                return b.sortDate - a.sortDate;
+    // «Прилипла» ли панель фильтров. В покое это карточка среди карточек, а при
+    // прокрутке она сворачивается в маленькую таблетку: полноразмерная панель,
+    // висящая поверх постов, читалась как оторванный кусок интерфейса.
+    const [isToolbarStuck, setIsToolbarStuck] = useState(false);
+    // Развёрнута ли панель ИЗ таблетки. Живёт отдельно от прилипания: клик по таблетке
+    // раскрывает полную панель на месте, клик мимо или Escape сворачивает обратно.
+    const [isPillExpanded, setIsPillExpanded] = useState(false);
+    const stuckSentinelRef = useRef<HTMLDivElement | null>(null);
+    const toolbarWrapRef = useRef<HTMLElement | null>(null);
+    // Естественная высота блока панели в потоке. Когда панель сворачивается в
+    // таблетку (fixed), блок без этого схлопывался в ноль, и лента прыгала вверх
+    // на его высоту — держим место спейсером той же высоты.
+    const [toolbarHolderHeight, setToolbarHolderHeight] = useState(0);
+
+    useEffect(() => {
+        const wrap = toolbarWrapRef.current;
+        // Меряем только в развёрнутом «потоковом» состоянии: в прилипшем высота
+        // блока — это и есть наш спейсер, мерить его бессмысленно.
+        if (!wrap || isToolbarStuck) {
+            return;
+        }
+
+        const measure = () => setToolbarHolderHeight(wrap.offsetHeight);
+        measure();
+        // Высота панели зависит от переноса строки чипов — следим за изменениями.
+        const resizeObserver = new ResizeObserver(measure);
+        resizeObserver.observe(wrap);
+        return () => resizeObserver.disconnect();
+    }, [isToolbarStuck]);
+
+    useEffect(() => {
+        const sentinel = stuckSentinelRef.current;
+        if (!sentinel) {
+            return;
+        }
+
+        const stickLine = headerOffset + 12;
+        const observer = new IntersectionObserver(
+            // «Прилипла» = метка ушла ЗА линию шапки. Сравнивать надо именно с линией
+            // (top <= stickLine), а не с верхом окна: датчик перестаёт пересекаться уже
+            // на линии и больше событий не шлёт — условие «top < 0» не наступало никогда,
+            // и таблетка не появлялась вовсе.
+            ([entry]) => setIsToolbarStuck(!entry.isIntersecting && entry.boundingClientRect.top <= stickLine),
+            { rootMargin: `-${stickLine}px 0px 0px 0px`, threshold: 0 }
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [headerOffset]);
+
+    // Вернулись к началу страницы — таблетки больше нет, развёрнутость сбрасывается.
+    useEffect(() => {
+        if (!isToolbarStuck) {
+            setIsPillExpanded(false);
+        }
+    }, [isToolbarStuck]);
+
+    // Развёрнутая из таблетки панель ведёт себя как всплывающая: клик мимо неё
+    // или Escape сворачивают обратно — иначе она снова зависала бы над постами.
+    useEffect(() => {
+        if (!isToolbarStuck || !isPillExpanded) {
+            return;
+        }
+
+        const onOutsideClick = (event: MouseEvent) => {
+            if (toolbarWrapRef.current && !toolbarWrapRef.current.contains(event.target as Node)) {
+                setIsPillExpanded(false);
+            }
+        };
+        const onEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsPillExpanded(false);
+            }
+        };
+
+        document.addEventListener("mousedown", onOutsideClick);
+        document.addEventListener("keydown", onEscape);
+        return () => {
+            document.removeEventListener("mousedown", onOutsideClick);
+            document.removeEventListener("keydown", onEscape);
+        };
+    }, [isToolbarStuck, isPillExpanded]);
+
+    useEffect(() => {
+        const updateHeaderOffset = () => {
+            const header = document.querySelector(".site-header") as HTMLElement | null;
+            const nextOffset = header?.offsetHeight ?? 96;
+            setHeaderOffset(nextOffset + 10);
+        };
+
+        updateHeaderOffset();
+        window.addEventListener("resize", updateHeaderOffset);
+        return () => window.removeEventListener("resize", updateHeaderOffset);
+    }, []);
+
+    useEffect(() => {
+        const handleFocus = () => setRefreshTick((value) => value + 1);
+        window.addEventListener("focus", handleFocus);
+        window.addEventListener("pageshow", handleFocus);
+        return () => {
+            window.removeEventListener("focus", handleFocus);
+            window.removeEventListener("pageshow", handleFocus);
+        };
+    }, []);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
+            setNotice(null);
+
+            const [recommendationsResult, featuredResult, fallbackResult] = await Promise.allSettled([
+                blogService.getHomeRecommendations({anonId: getAnonId(), limit: RECOMMENDATION_LIMIT}),
+                blogService.getPosts({page: 1, pageSize: 6, featured: true}),
+                blogService.getPosts({page: 1, pageSize: POSTS_PAGE_SIZE})
+            ]);
+
+            const recommendations = recommendationsResult.status === "fulfilled" ? recommendationsResult.value : null;
+            const featuredPool = featuredResult.status === "fulfilled" ? featuredResult.value.items : [];
+            const fallbackPosts = fallbackResult.status === "fulfilled" ? fallbackResult.value.items : [];
+
+            // Перезагрузка страницы начинает ленту заново — накопленные прокруткой
+            // страницы к новому списку уже не относятся.
+            feedPageRef.current = 1;
+            setExtraPosts([]);
+            setTotalPosts(fallbackResult.status === "fulfilled" ? fallbackResult.value.total : fallbackPosts.length);
+
+            if (!recommendations && fallbackPosts.length === 0 && featuredPool.length === 0) {
+                setError(t("blog.loadFailed"));
+            } else if (recommendationsResult.status === "rejected" || featuredResult.status === "rejected" || fallbackResult.status === "rejected") {
+                setNotice(t("blog.picksUnavailable"));
             }
 
-            if (sort === "Most popular") {
-                return b.sortReadTime - a.sortReadTime;
+            setData({recommendations, featuredPool, fallbackPosts});
+            setLoading(false);
+        };
+
+        fetchData();
+    }, [blogService, location.key, refreshTick]);
+
+    const featuredPost = useMemo(() => {
+        return data.recommendations?.heroPost
+            ?? data.featuredPool[0]
+            ?? data.recommendations?.editorsPicks[0]
+            ?? data.recommendations?.latestPosts[0]
+            ?? data.fallbackPosts[0];
+    }, [data]);
+
+    const compactEditorPicks = useMemo(() => {
+        const picks = uniqById([
+            ...(data.recommendations?.editorsPicks ?? []),
+            ...data.featuredPool,
+            ...(data.recommendations?.forYou ?? []),
+            ...data.fallbackPosts
+        ]);
+
+        const withoutFeatured = featuredPost ? picks.filter((post) => post.id !== featuredPost.id) : picks;
+        const finalPicks = withoutFeatured.length >= 3 ? withoutFeatured : picks;
+        return finalPicks.slice(0, 3);
+    }, [data, featuredPost]);
+
+    /**
+     * Лента — ТОЛЬКО постраничный список с сервера. Раньше сюда подмешивались списки
+     * рекомендаций, и это дважды ломало страницу: рекомендации приносят до восьми постов
+     * разом (порционная подгрузка теряла смысл — всё видно с первого экрана), а их
+     * пересечение с запасным списком однажды дало каждый пост по два раза.
+     * Рекомендации остались там, где им место, — в ранжировании сортировок ниже.
+     */
+    const baseFeed = useMemo(
+        () => uniqById([...data.fallbackPosts, ...extraPosts]),
+        [data.fallbackPosts, extraPosts]
+    );
+
+    const loadedFeedCount = data.fallbackPosts.length + extraPosts.length;
+    const hasMorePosts = loadedFeedCount < totalPosts;
+
+    /**
+     * Следующая порция ленты. Зовётся, когда метка конца списка попадает в экран.
+     * Порция может целиком оказаться дублями рекомендаций — тогда видимого прироста
+     * не будет, но счётчик страниц сдвинется и следующий вызов возьмёт дальше.
+     */
+    const loadMorePosts = useCallback(async () => {
+        if (loading || loadingMore || !hasMorePosts) {
+            return;
+        }
+
+        setLoadingMore(true);
+        try {
+            const nextPage = feedPageRef.current + 1;
+            const response = await blogService.getPosts({page: nextPage, pageSize: POSTS_PAGE_SIZE});
+            feedPageRef.current = nextPage;
+            setExtraPosts((previous) => uniqById([...previous, ...response.items]));
+            setTotalPosts(response.total);
+        } catch (loadError) {
+            // Не дотянулись — метка останется на экране, и прокрутка попробует ещё раз.
+            console.warn("Failed to load more posts", loadError);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [blogService, hasMorePosts, loading, loadingMore]);
+
+    useEffect(() => {
+        const sentinel = sentinelRef.current;
+        if (!sentinel || !hasMorePosts) {
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    loadMorePosts();
+                }
+            },
+            // Начинаем грузить за пол-экрана до конца: к моменту, когда человек
+            // долистает, посты уже на месте и лента не «упирается».
+            {rootMargin: "50% 0px"}
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasMorePosts, loadMorePosts]);
+
+    useEffect(() => {
+        const fetchEngagement = async () => {
+            const anonId = getAnonId();
+            const ids = uniqById([
+                ...baseFeed,
+                ...compactEditorPicks,
+                ...(featuredPost ? [featuredPost] : [])
+            ]).map((post) => post.id);
+
+            if (!ids.length) {
+                setEngagementMap({});
+                return;
             }
 
-            return a.title.localeCompare(b.title);
+            try {
+                const items = await blogService.getEngagementSummary(ids, anonId);
+                const nextMap = items.reduce<Record<string, BlogEngagementSummary>>((acc, item) => {
+                    acc[item.postId] = item;
+                    return acc;
+                }, {});
+                setEngagementMap(nextMap);
+            } catch (engagementError) {
+                console.warn("Failed to load engagement summary", engagementError);
+            }
+        };
+
+        fetchEngagement();
+    }, [baseFeed, blogService, compactEditorPicks, featuredPost]);
+
+    const tagFilters = useMemo(() => {
+        const allTags = new Set<string>();
+        [...baseFeed, ...compactEditorPicks, ...(featuredPost ? [featuredPost] : [])]
+            .forEach((post) => post.tags.forEach((tag) => allTags.add(tag)));
+        return ["All", ...Array.from(allTags).slice(0, 8)];
+    }, [baseFeed, compactEditorPicks, featuredPost]);
+
+    // Подписи тегов на языке сайта: значение фильтра английское, чип показывает перевод из постов.
+    const tagLabels = useMemo(() => {
+        const labels: Record<string, string> = {};
+        [...baseFeed, ...compactEditorPicks, ...(featuredPost ? [featuredPost] : [])].forEach((post) =>
+            post.tags.forEach((tag, index) => {
+                const label = post.tagLabels?.[index];
+                if (label && label !== tag && !labels[tag]) {
+                    labels[tag] = label;
+                }
+            })
+        );
+        return labels;
+    }, [baseFeed, compactEditorPicks, featuredPost]);
+
+    const filteredFeed = useMemo(() => {
+        const q = debouncedSearch.trim().toLowerCase();
+        const filtered = baseFeed.filter((post) => {
+            // Достаточно совпадения по ЛЮБОМУ из выбранных тегов: отметив Guides и Deals,
+            // человек расширяет выдачу, а не требует постов сразу с обоими тегами.
+            const matchesTag = activeTags.length === 0 || post.tags.some((tag) => activeTags.includes(tag));
+            if (!matchesTag) {
+                return false;
+            }
+
+            if (!q) {
+                return true;
+            }
+
+            const haystack = `${post.title} ${post.excerpt} ${post.tags.join(" ")} ${(post.tagLabels ?? []).join(" ")}`.toLowerCase();
+            return haystack.includes(q);
         });
-    }, [filteredPosts, sort]);
+
+        const popularIds = (data.recommendations?.popularThisWeek ?? []).map((post) => post.id);
+        const editorIds = uniqById([...(data.recommendations?.editorsPicks ?? []), ...compactEditorPicks]).map((post) => post.id);
+
+        return sortPosts(filtered, sort, popularIds, editorIds);
+    }, [activeTags, baseFeed, compactEditorPicks, data.recommendations, debouncedSearch, sort]);
+
+    const isFiltering = activeTags.length > 0 || debouncedSearch.trim().length > 0;
+
+    // Число на таблетке: сколько условий сейчас сужает ленту (теги + поиск).
+    const activeFilterCount = activeTags.length + (debouncedSearch.trim() ? 1 : 0);
+    const showFeedEmpty = !loading && isFiltering && filteredFeed.length === 0;
+
+    const toolbarSummary = useMemo(() => {
+        if (!isFiltering) {
+            return t("blog.showingPosts", { items: t("common.posts", { count: filteredFeed.length }) });
+        }
+
+        const parts = [t("common.results", { count: filteredFeed.length })];
+        if (activeTags.length > 0) {
+            parts.push(t("blog.inTopics", { topics: activeTags.join(", ") }));
+        }
+        if (debouncedSearch.trim()) {
+            parts.push(t("blog.matching", { query: debouncedSearch.trim() }));
+        }
+        return parts.join(" • ");
+    }, [activeTags, debouncedSearch, filteredFeed.length, isFiltering, t]);
+
+    const handleClearFilters = () => {
+        setSearchInput("");
+        setActiveTags([]);
+    };
+
+    const handleNewsletterSubmit = async (event: React.FormEvent) => {
+        event.preventDefault();
+        const email = newsletterEmail.trim();
+        if (!email || newsletterStatus === "sending") {
+            return;
+        }
+
+        setNewsletterStatus("sending");
+        try {
+            const status = await subscribeNewsletter(email, "news");
+            rememberNewsletterSubscription(status);
+            setNewsletterResult(status === "confirmed" ? "confirmed" : "pending");
+            setNewsletterStatus("done");
+        } catch (subscribeError) {
+            console.warn("Failed to subscribe from news page", subscribeError);
+            setNewsletterStatus("error");
+        }
+    };
+
+    /** «All» очищает выбор; любой другой тег добавляется или снимается кликом. */
+    const toggleTag = (tag: string) => {
+        if (tag === "All") {
+            setActiveTags([]);
+            return;
+        }
+
+        setActiveTags((previous) =>
+            previous.includes(tag) ? previous.filter((item) => item !== tag) : [...previous, tag]
+        );
+    };
+
+    const handleReaction = async (postId: string, reaction: string) => {
+        try {
+            const summary = await blogService.setReaction({
+                postId,
+                reaction,
+                anonId: getAnonId(),
+                sessionId: getSessionId()
+            });
+            setEngagementMap((prev) => ({...prev, [postId]: summary}));
+        } catch (reactionError) {
+            console.warn("Failed to set reaction", reactionError);
+        }
+    };
 
     return (
-        <main className="blog-page">
+        <main
+            className="blog-page"
+            style={{
+                ["--blog-header-offset" as string]: `${headerOffset}px`
+            }}
+        >
+            {/* Шапка в одну строку, как у каталога: заголовок и подпись на одной базовой линии.
+                Плакатная плашка и этажерка «Featured + Top picks» убраны: они трижды
+                повторяли посты из ленты и отодвигали саму ленту за экран. */}
             <section className="blog-hero section">
-                <div className="container blog-hero__inner">
-                    <div className="blog-hero__copy">
-                        <div className="eyebrow">TALE SHOP BLOG</div>
-                        <h1>News, guides &amp; weekly picks</h1>
-                        <p className="hero-subtitle">Curated gaming news, practical guides, and weekly deals picked by the Tale team to keep you ahead of the drop.</p>
+                <PageMeta title={t("blog.title")} description={t("blog.subtitle")} canonicalPath="/news" />
+                <div className="container">
+                    <div className="blog-head">
+                        <h1>{t("blog.title")}</h1>
+                        <span className="blog-head__sub">{t("blog.subtitle")}</span>
                     </div>
-                    <div className="blog-hero__actions">
-                        <label className="search-field" aria-label="Search articles">
+                </div>
+            </section>
+
+            <div ref={stuckSentinelRef} aria-hidden="true" />
+            <section
+                ref={toolbarWrapRef}
+                className={`blog-toolbar-wrap section${isToolbarStuck ? " is-stuck" : ""}`}
+                /* Спейсер: в прилипшем состоянии блок держит свою «потоковую» высоту,
+                   чтобы контент под ним не прыгал при переключении на таблетку. */
+                style={isToolbarStuck && toolbarHolderHeight > 0 ? { minHeight: toolbarHolderHeight } : undefined}
+            >
+                <div className="container">
+                    {isToolbarStuck && !isPillExpanded ? (
+                        /* Свёрнутое состояние: маленькая таблетка вместо панели во всю ширину.
+                           Показывает суть — поиск, фильтр со счётчиком включённого и текущий
+                           порядок; клик разворачивает полную панель на месте. */
+                        <button
+                            type="button"
+                            className="blog-toolbar-pill"
+                            aria-expanded={false}
+                            aria-label={t("blog.showFilters")}
+                            onClick={() => setIsPillExpanded(true)}
+                        >
+                            {/* Вертикальная колонка из двух иконок — без подписи сортировки:
+                                в узком поле у края окна текст не помещается, а суть
+                                («здесь поиск и фильтры, включено N») передают значки. */}
+                            <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
+                            <span className="blog-toolbar-pill__divider" aria-hidden="true" />
+                            <FontAwesomeIcon icon={faFilter} aria-hidden="true" />
+                            {activeFilterCount > 0 && (
+                                <span className="blog-toolbar-pill__count">{activeFilterCount}</span>
+                            )}
+                        </button>
+                    ) : (
+                    <div className={`blog-toolbar surface${isToolbarStuck ? " blog-toolbar--floating" : ""}`}>
+                        {/* Кнопка «свернуть» существует только у панели, развёрнутой из таблетки. */}
+                        {isToolbarStuck && (
+                            <button
+                                type="button"
+                                className="blog-toolbar__collapse"
+                                aria-label={t("blog.collapseFilters")}
+                                onClick={() => setIsPillExpanded(false)}
+                            >
+                                <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
+                            </button>
+                        )}
+                        <label className="search-field" aria-label={t("blog.searchArticles")}>
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                             <input
                                 type="search"
-                                placeholder="Search articles…"
-                                value={search}
-                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder={t("blog.searchPlaceholder")}
+                                value={searchInput}
+                                onChange={(event) => setSearchInput(event.target.value)}
+                                // Фокус сразу в поле, но ТОЛЬКО когда панель развернули из
+                                // таблетки: сама кнопка-таблетка к этому моменту исчезла из
+                                // документа, и без переноса фокус улетал в пустоту.
+                                // При обычной загрузке страницы прилипания нет — автофокус молчит.
+                                autoFocus={isToolbarStuck}
                             />
                         </label>
+
                         <div className="chip-row" role="list">
-                            {filters.map((filter) => (
-                                <button
-                                    key={filter}
-                                    className={`chip ${filter === activeFilter ? "chip-active" : ""}`}
-                                    onClick={() => setActiveFilter(filter)}
-                                    type="button"
-                                    role="listitem"
-                                >
-                                    {filter}
-                                </button>
-                            ))}
+                            {tagFilters.map((tag) => {
+                                const isActive = tag === "All" ? activeTags.length === 0 : activeTags.includes(tag);
+                                return (
+                                    <button
+                                        key={tag}
+                                        className={`chip ${isActive ? "chip-active" : ""}`}
+                                        onClick={() => toggleTag(tag)}
+                                        type="button"
+                                        role="listitem"
+                                        aria-pressed={isActive}
+                                    >
+                                        {tag !== "All" ? <FontAwesomeIcon icon={getTagIcon(tag)} /> : null}
+                                        <span>{tag === "All" ? t("blog.allTags") : tagLabels[tag] ?? tag}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
-                    </div>
-                </div>
-            </section>
 
-            <section className="blog-featured section">
-                <div className="container">
-                    <div className="featured-card">
-                        <div className="featured-media" aria-hidden="true">
-                            <div className="media-overlay" />
-                            <img
-                                src="https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1600&q=80"
-                                alt="Collage of colorful game controllers and accessories"
-                            />
-                        </div>
-                        <div className="featured-content">
-                            <div className="featured-top">
-                                <span className="badge featured-badge">Featured</span>
-                            </div>
-                            <h2>Weekly Deals: Top 10 picks under $15</h2>
-                            <div className="meta-row">
-                                <span>April 25</span>
-                                <span className="divider-dot" aria-hidden="true">•</span>
-                                <span>5 min read</span>
-                                <span className="meta-pill">Deals</span>
-                            </div>
-                            <p className="featured-text">Handpicked discounts on fan favorites, indie surprises, and DLC bundles so you can stack your backlog without stretching the budget.</p>
-                            <div className="featured-actions">
-                                <button className="btn btn-primary" type="button">Read article</button>
-                                <Link className="btn btn-link" to="#">
-                                    View all deals
-                                    <FontAwesomeIcon icon={faArrowRightLong} />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                        {/* Общий SortSelect вместо системного <select>: системная
+                            панель выпадала синей и выбивалась из оформления сайта. */}
+                        <SortSelect
+                            options={sortOptions.map((option) => ({ value: option, label: t("blog.sort." + SORT_KEYS[option]) }))}
+                            value={sort}
+                            onChange={(value) => setSort(value as SortOption)}
+                            listLabel={t("blog.sortPosts")}
+                        />
 
-            <section className="latest-posts section">
-                <div className="container">
-                    <div className="latest-header">
-                        <h2>Latest posts</h2>
-                        <label className="sort-select">
-                            <span className="visually-hidden">Sort posts</span>
-                            <select value={sort} onChange={(event) => setSort(event.target.value)}>
-                                <option>Newest</option>
-                                <option>Most popular</option>
-                                <option>Editor's picks</option>
-                            </select>
-                        </label>
-                    </div>
-                    <div className="posts-grid">
-                        {sortedPosts.map((post) => (
-                            <article className="post-card" key={post.title}>
-                                <div className="post-media" aria-hidden="true">
-                                    <span className="badge category-badge">{post.category}</span>
-                                    <div className="media-overlay" />
-                                    <img src={post.image} alt="" />
-                                </div>
-                                <div className="post-body">
-                                    <h3>{post.title}</h3>
-                                    <div className="meta-row">
-                                        <span>{post.date}</span>
-                                        <span className="divider-dot" aria-hidden="true">•</span>
-                                        <span>{post.readTime}</span>
-                                    </div>
-                                    <p>{post.description}</p>
-                                    <div className="post-footer">
-                                        <Link className="link-primary" to="#">
-                                            Read more
-                                            <FontAwesomeIcon icon={faArrowRightLong} />
-                                        </Link>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
-                    <div className="posts-actions">
-                        <button className="btn btn-ghost" type="button">
-                            Load more posts
-                            <FontAwesomeIcon icon={faArrowRightLong} />
-                        </button>
-                        <nav className="pagination" aria-label="Blog pagination">
-                            <button className="page-btn active" type="button">1</button>
-                            <button className="page-btn" type="button">2</button>
-                            <button className="page-btn" type="button">3</button>
-                            <span className="page-ellipsis">…</span>
-                        </nav>
-                    </div>
-                </div>
-            </section>
-
-            <section className="popular-posts section">
-                <div className="container">
-                    <div className="popular-header">
-                        <h2>Popular this week</h2>
-                        <Link className="link-primary" to="#">
-                            View all
-                            <FontAwesomeIcon icon={faArrowRightLong} />
-                        </Link>
-                    </div>
-                    <div className="posts-grid popular-grid">
-                        {popularPosts.map((post) => (
-                            <article className="post-card" key={post.title}>
-                                <div className="post-media" aria-hidden="true">
-                                    <span className="badge category-badge">{post.category}</span>
-                                    <div className="media-overlay" />
-                                    <img src={post.image} alt="" />
-                                </div>
-                                <div className="post-body">
-                                    <h3>{post.title}</h3>
-                                    <div className="meta-row">
-                                        <span>{post.date}</span>
-                                        <span className="divider-dot" aria-hidden="true">•</span>
-                                        <span>{post.readTime}</span>
-                                    </div>
-                                    <p>{post.description}</p>
-                                    <div className="post-footer">
-                                        <Link className="link-primary" to="#">
-                                            Read more
-                                            <FontAwesomeIcon icon={faArrowRightLong} />
-                                        </Link>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="browse-topics section">
-                <div className="container">
-                    <div className="section-header">
-                        <div>
-                            <h2>Browse by topic</h2>
-                            <p className="section-subtitle">
-                                Find what you need faster: guides, deals, reviews and updates.
-                            </p>
-                        </div>
-                        <div className="chip-row topic-chips" role="list">
-                            {topicFilters.map((topic) => (
-                                <button key={topic} className="chip" type="button" role="listitem">
-                                    {topic}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="topic-grid">
-                        {topicCards.map((topic) => (
-                            <article className="topic-card" key={topic.title}>
-                                <div className="topic-icon" aria-hidden="true">
-                                    <FontAwesomeIcon icon={topic.icon} />
-                                </div>
-                                <div className="topic-body">
-                                    <h3>{topic.title}</h3>
-                                    <p>{topic.description}</p>
-                                    <ul className="topic-bullets">
-                                        {topic.highlights.map((item) => (
-                                            <li key={item}>{item}</li>
-                                        ))}
-                                    </ul>
-                                    <Link className="link-primary" to="#">
-                                        Explore
-                                        <FontAwesomeIcon icon={faArrowRightLong} />
-                                    </Link>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="editors-picks section">
-                <div className="container editors-layout">
-                    <div className="editors-featured">
-                        <div className="post-media" aria-hidden="true">
-                            <span className="badge category-badge">{editorsPicks.featured.tag}</span>
-                            <div className="media-overlay" />
-                            <img src={editorsPicks.featured.image} alt="" />
-                        </div>
-                        <div className="post-body">
-                            <h3>{editorsPicks.featured.title}</h3>
-                            <p>{editorsPicks.featured.description}</p>
-                            <div className="meta-row">
-                                <span>{editorsPicks.featured.date}</span>
-                                <span className="divider-dot" aria-hidden="true">•</span>
-                                <span>{editorsPicks.featured.readTime}</span>
-                            </div>
-                            <Link className="link-primary" to="#">
-                                Read more
-                                <FontAwesomeIcon icon={faArrowRightLong} />
-                            </Link>
-                        </div>
-                    </div>
-                    <div className="editors-list">
-                        <div className="editors-list-header">
-                            <h2>Editor&apos;s picks</h2>
-                            <Link className="link-primary" to="#">
-                                View all
-                                <FontAwesomeIcon icon={faArrowRightLong} />
-                            </Link>
-                        </div>
-                        <div className="editors-list-items">
-                            {editorsPicks.list.map((item) => (
-                                <article className="mini-post" key={item.title}>
-                                    <div className="mini-thumb" aria-hidden="true">
-                                        <img src={item.image} alt="" />
-                                    </div>
-                                    <div>
-                                        <h4>{item.title}</h4>
-                                        <div className="meta-row">
-                                            <span>{item.date}</span>
-                                            <span className="divider-dot" aria-hidden="true">•</span>
-                                            <span>{item.readTime}</span>
-                                        </div>
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
-                        <div className="editors-dots" aria-hidden="true">
-                            <button className="dot-btn" type="button">
-                                <FontAwesomeIcon icon={faChevronLeft} />
+                        {isFiltering ? (
+                            <button className="btn btn-outline blog-toolbar__clear" type="button" onClick={handleClearFilters}>
+                                {t("common.clearFilters")}
                             </button>
-                            <div className="dot-track">
-                                <span className="dot active" />
-                                <span className="dot" />
-                                <span className="dot" />
-                                <span className="dot" />
-                            </div>
-                            <button className="dot-btn" type="button">
-                                <FontAwesomeIcon icon={faChevronRight} />
-                            </button>
-                        </div>
+                        ) : null}
+
+                        <p className="blog-toolbar__summary muted">{toolbarSummary}</p>
                     </div>
+                    )}
                 </div>
             </section>
 
+            <section className="blog-feed section">
+                <div className="container">
+                    {error ? <p className="blog-feed__warning">{error}</p> : null}
+                    {notice ? <p className="blog-feed__notice">{notice}</p> : null}
+
+                    {loading ? (
+                        <div className="posts-grid posts-grid--rows">
+                            {Array.from({length: 4}).map((_, index) => (
+                                <div className="post-card post-card--row" key={`feed-skeleton-${index}`}>
+                                    <div className="post-card__media post-card__media--row"><div className="skeleton h-32" /></div>
+                                    <div className="post-card__body post-card__body--row"><div className="skeleton h-6" /><div className="skeleton h-4 mt-3" /></div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : showFeedEmpty ? (
+                        <div className="blog-feed-empty surface">
+                            <h3>{t("blog.noPosts")}</h3>
+                            <p className="muted">{t("blog.noPostsText")}</p>
+                            <button className="btn btn-primary" type="button" onClick={handleClearFilters}>{t("common.clearFilters")}</button>
+                        </div>
+                    ) : filteredFeed.length > 0 ? (
+                        <>
+                            {/* Одна новость — одна широкая строка на весь объём, обложка сбоку;
+                                стороны чередуются, как в новостных лентах магазинов. */}
+                            <div className="posts-grid posts-grid--rows">
+                                {filteredFeed.map((post, index) => (
+                                    <PostCard
+                                        key={`feed-${post.id}-${index}`}
+                                        post={post}
+                                        variant="row"
+                                        engagement={engagementMap[post.id]}
+                                        onReact={handleReaction}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* Вставки «Picked by Tale team» здесь больше нет: она повторяла
+                                пост, который и так виден в «Top picks» выше, и разбивала ленту. */}
+
+                            {/* Невидимая метка конца ленты: как только она попадает в экран,
+                                догружается следующая порция постов. */}
+                            <div ref={sentinelRef} className="blog-feed__sentinel" aria-hidden="true" />
+                            {loadingMore && <p className="blog-feed__loading muted">{t("blog.loadingMore")}</p>}
+                        </>
+                    ) : (
+                        <div className="blog-feed-empty surface">
+                            <h3>{t("blog.preparing")}</h3>
+                            <p className="muted">{t("blog.preparingText")}</p>
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* Баннер обещает «одно письмо в неделю» — значит, здесь и подписывают.
+                Раньше под этим текстом стояли кнопки в магазин: обещание одно, действие другое. */}
             <section className="cta-strip section">
                 <div className="container">
                     <div className="cta-card">
                         <div className="cta-copy">
-                            <h2>Looking for this week’s best prices?</h2>
-                            <p>One email per week. No spam. Unsubscribe anytime.</p>
+                            <h2>{t("blog.ctaTitle")}</h2>
+                            <p>{t("blog.ctaText")}</p>
                         </div>
-                        <div className="cta-actions">
-                            <button className="btn btn-primary" type="button">Go to Store</button>
-                            <button className="btn btn-secondary" type="button">Browse deals</button>
-                        </div>
+                        {knownSubscription || newsletterStatus === "done" ? (
+                            <p className="cta-done">
+                                {knownSubscription === "confirmed" || newsletterResult === "confirmed"
+                                    ? t("blog.ctaOnList")
+                                    : t("blog.ctaAlmost")}
+                            </p>
+                        ) : (
+                            <form className="cta-form" onSubmit={handleNewsletterSubmit}>
+                                <input
+                                    type="email"
+                                    required
+                                    placeholder="you@example.com"
+                                    aria-label={t("blog.ctaEmail")}
+                                    value={newsletterEmail}
+                                    onChange={(event) => setNewsletterEmail(event.target.value)}
+                                />
+                                <button className="btn btn-primary" type="submit" disabled={newsletterStatus === "sending"}>
+                                    {newsletterStatus === "sending" ? t("common.subscribing") : t("common.subscribe")}
+                                </button>
+                                {newsletterStatus === "error" && (
+                                    <p className="cta-error">{t("blog.ctaError")}</p>
+                                )}
+                            </form>
+                        )}
                     </div>
                 </div>
             </section>

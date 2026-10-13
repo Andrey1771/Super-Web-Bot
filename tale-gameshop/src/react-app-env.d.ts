@@ -1,1 +1,1 @@
-/// <reference types="react-scripts" />
+// Типы для импортов картинок — в src/types/assets.d.ts.

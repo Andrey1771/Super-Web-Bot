@@ -1,0 +1,89 @@
+@import '../../styles/tokens.css';
+
+/* Страницы confirm / unsubscribe — короткое действие по ссылке из письма. */
+.newsletter-action-page {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-48) var(--container-padding) var(--space-64);
+}
+
+.newsletter-action-card {
+    position: relative;
+    overflow: hidden;
+    width: min(560px, 100%);
+    text-align: center;
+    padding: var(--space-40) var(--space-32);
+    border-radius: var(--radius-lg);
+    border: 1px solid #ece8ff;
+    background:
+        radial-gradient(420px 240px at 85% -20%, rgba(124, 58, 237, 0.1), transparent 70%),
+        #ffffff;
+    box-shadow: var(--shadow-md);
+}
+
+.newsletter-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    margin-bottom: var(--space-16);
+    font-size: 28px;
+}
+
+.newsletter-action-icon.is-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.newsletter-action-icon.is-error {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.newsletter-action-icon.is-info {
+    background: #ede9fe;
+    color: #6b3ff2;
+}
+
+.newsletter-action-card h1 {
+    font-size: 26px;
+    margin-bottom: var(--space-8);
+}
+
+.newsletter-action-card p {
+    max-width: 42ch;
+    margin: 0 auto var(--space-24);
+}
+
+.newsletter-action-buttons {
+    display: flex;
+    gap: var(--space-12);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.newsletter-action-spinner {
+    width: 34px;
+    height: 34px;
+    margin: 0 auto var(--space-16);
+    border-radius: 50%;
+    border: 3px solid #ece8ff;
+    border-top-color: var(--color-primary);
+    animation: newsletter-spin 0.8s linear infinite;
+}
+
+@keyframes newsletter-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .newsletter-action-spinner {
+        animation: none;
+    }
+}

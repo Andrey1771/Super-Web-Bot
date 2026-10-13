@@ -1,0 +1,322 @@
+using Microsoft.Extensions.Logging;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces;
+using SuperBot.Core.Interfaces.IRepositories;
+using System;
+using System.Diagnostics;
+using System.Linq;
+
+namespace SuperBot.Core.Services
+{
+    public class RecommendationsService : IRecommendationsService
+    {
+        private readonly IGameRepository _gameRepository;
+        private readonly IWishlistRepository _wishlistRepository;
+        private readonly IViewedGameRepository _viewedGameRepository;
+        private readonly IOrderRepository _orderRepository;
+        private readonly IGameDetailsRepository _gameDetailsRepository;
+        private readonly ILogger<RecommendationsService> _logger;
+
+        public RecommendationsService(
+            IGameRepository gameRepository,
+            IWishlistRepository wishlistRepository,
+            IViewedGameRepository viewedGameRepository,
+            IOrderRepository orderRepository,
+            IGameDetailsRepository gameDetailsRepository,
+            ILogger<RecommendationsService> logger)
+        {
+            _gameDetailsRepository = gameDetailsRepository;
+            _gameRepository = gameRepository;
+            _wishlistRepository = wishlistRepository;
+            _viewedGameRepository = viewedGameRepository;
+            _orderRepository = orderRepository;
+            _logger = logger;
+        }
+
+        public async Task<IReadOnlyList<RecommendationItem>> GetRecommendationsAsync(string userId, int limit)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var normalizedLimit = Math.Clamp(limit, 1, 50);
+            var wishlistIds = await _wishlistRepository.GetGameIdsAsync(userId);
+            var viewed = await _viewedGameRepository.GetRecentAsync(userId, 50);
+
+            var purchasedIds = await GetPurchasedGameIdsAsync(userId);
+
+            var excludeIds = new HashSet<string>(wishlistIds ?? new HashSet<string>());
+            foreach (var purchasedId in purchasedIds)
+            {
+                excludeIds.Add(purchasedId);
+            }
+
+            // Игры, которые нельзя рекомендовать никогда (уже куплены или в вишлисте).
+            // Просмотренные исключаем только из основного контент-подбора, но в запасном
+            // «трендовом» варианте они могут снова всплыть.
+            var protectedIds = new HashSet<string>(excludeIds);
+
+            // Черновики — недоделанные карточки, снятые с витрины, — не рекомендуем: по ссылке
+            // покупатель получил бы 404. Раньше подборка шла по всему каталогу вместе с ними.
+            // Невышедшие в основной подбор не идут: касса их не продаст («isn't released yet»), а запасная подборка идёт по
+            // дате выхода — от новых к старым, и будущие релизы забивали бы её целиком.
+            var utcNow = DateTime.UtcNow;
+            var catalog = await WithoutDraftsAsync(await _gameRepository.GetAllAsync());
+            var allGames = catalog
+                .Where(game => game != null && !GameRelease.IsUpcoming(game.ReleaseDate, utcNow))
+                .ToList();
+
+            // Но одну — ближайшую по дате выхода, не купленную и не в желаемом — показываем последней: витрина рисует у неё
+            // дату выхода и «В желаемое» вместо цены и корзины. Только в подборках от трёх карточек, чтобы остальное было
+            // тем, что можно купить сейчас.
+            var upcoming = normalizedLimit >= 3
+                ? catalog
+                    .Where(game => game != null && !string.IsNullOrWhiteSpace(game.Id)
+                        && GameRelease.IsUpcoming(game.ReleaseDate, utcNow) && !protectedIds.Contains(game.Id))
+                    .OrderBy(game => game.ReleaseDate)
+                    .FirstOrDefault()
+                : null;
+            var releasedLimit = upcoming == null ? normalizedLimit : normalizedLimit - 1;
+            IReadOnlyList<RecommendationItem> WithUpcoming(IReadOnlyList<RecommendationItem> items) =>
+                upcoming == null ? items : items.Append(new RecommendationItem { Game = upcoming, Reason = "Coming soon" }).ToList();
+
+            if (!wishlistIds.Any() && viewed.Count == 0)
+            {
+                var fallback = WithUpcoming(BuildFallbackRecommendations(allGames, excludeIds, releasedLimit));
+                LogResult(userId, wishlistIds.Count, viewed.Count, fallback.Count, stopwatch);
+                return fallback;
+            }
+
+            var preferenceWeights = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var reasonByType = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var wishlistGames = await _gameRepository.GetByIdsAsync(wishlistIds);
+
+            foreach (var game in wishlistGames)
+            {
+                AddWeight(preferenceWeights, GameGenres.TagOf(game), 3.0);
+                if (!reasonByType.ContainsKey(GameGenres.TagOf(game)))
+                {
+                    reasonByType[GameGenres.TagOf(game)] = $"Because you wishlisted: {GetGameLabel(game)}";
+                }
+                excludeIds.Add(game.Id);
+            }
+
+            var viewedIds = viewed.Select(item => item.GameId).Distinct().ToList();
+            var viewedGames = await _gameRepository.GetByIdsAsync(viewedIds);
+            var viewedMap = viewedGames.Where(game => !string.IsNullOrWhiteSpace(game.Id))
+                .ToDictionary(game => game.Id, game => game);
+
+            foreach (var viewedItem in viewed)
+            {
+                if (!viewedMap.TryGetValue(viewedItem.GameId, out var game))
+                {
+                    continue;
+                }
+
+                var decay = GetRecencyDecay(viewedItem.LastViewedAt);
+                AddWeight(preferenceWeights, GameGenres.TagOf(game), 1.5 * decay);
+                if (!reasonByType.ContainsKey(GameGenres.TagOf(game)))
+                {
+                    reasonByType[GameGenres.TagOf(game)] = $"Similar to recently viewed: {GetGameLabel(game)}";
+                }
+                excludeIds.Add(game.Id);
+            }
+
+            var topTypes = preferenceWeights
+                .OrderByDescending(pair => pair.Value)
+                .Take(4)
+                .Select(pair => pair.Key)
+                .ToHashSet();
+
+            var candidates = allGames
+                .Where(game => game != null && !string.IsNullOrWhiteSpace(game.Id))
+                .Where(game => topTypes.Contains(GameGenres.TagOf(game)))
+                .Where(game => !excludeIds.Contains(game.Id))
+                .Select(game => new ScoredRecommendation
+                {
+                    Game = game,
+                    Score = preferenceWeights.TryGetValue(GameGenres.TagOf(game), out var weight) ? weight : 0,
+                    Reason = reasonByType.TryGetValue(GameGenres.TagOf(game), out var reason) ? reason : "Based on your interests"
+                })
+                .Select(item =>
+                {
+                    item.Score += GetReleaseRecencyBoost(item.Game.ReleaseDate);
+                    return item;
+                })
+                .OrderByDescending(item => item.Score)
+                .ThenByDescending(item => item.Game.ReleaseDate)
+                .ToList();
+
+            var diversified = DiversifyByType(candidates, releasedLimit, maxSameTypeInRow: 2);
+
+            var recommendations = diversified
+                .Select(item => new RecommendationItem
+                {
+                    Game = item.Game,
+                    Reason = item.Reason
+                })
+                .ToList();
+
+            // Контент-подбор ничего не дал (маленький/однотипный каталог, где всё уже
+            // в вишлисте или просмотрено) — не оставляем блок пустым, показываем «тренды»,
+            // исключая только купленное и то, что уже в вишлисте.
+            if (recommendations.Count == 0)
+            {
+                recommendations = BuildFallbackRecommendations(allGames, protectedIds, releasedLimit).ToList();
+            }
+
+            var result = WithUpcoming(recommendations);
+            LogResult(userId, wishlistIds.Count, viewed.Count, result.Count, stopwatch);
+
+            return result;
+        }
+
+        private void LogResult(string userId, int wishlistCount, int viewedCount, int recommendationCount, Stopwatch stopwatch)
+        {
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "Generated recommendations for {UserId}. Wishlist: {WishlistCount}, Viewed: {ViewedCount}, Returned: {RecommendationCount}, DurationMs: {DurationMs}",
+                userId,
+                wishlistCount,
+                viewedCount,
+                recommendationCount,
+                stopwatch.ElapsedMilliseconds);
+        }
+
+        private async Task<HashSet<string>> GetPurchasedGameIdsAsync(string userId)
+        {
+            if (_orderRepository == null)
+            {
+                return new HashSet<string>();
+            }
+
+            var orders = await _orderRepository.GetOrdersByUserAsync(userId);
+            return orders
+                .Select(order => order.GameId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToHashSet();
+        }
+
+        private static string GetGameLabel(Game game)
+        {
+            if (!string.IsNullOrWhiteSpace(game.Title))
+            {
+                return game.Title;
+            }
+
+            return game.Name ?? "this game";
+        }
+
+        private static void AddWeight(Dictionary<string, double> weights, string type, double weight)
+        {
+            if (!weights.ContainsKey(type))
+            {
+                weights[type] = 0;
+            }
+
+            weights[type] += weight;
+        }
+
+        private static double GetRecencyDecay(DateTime lastViewedAt)
+        {
+            var days = Math.Max((DateTime.UtcNow - lastViewedAt).TotalDays, 0);
+            var decay = Math.Exp(-days / 30d);
+            return Math.Clamp(decay, 0.3, 1);
+        }
+
+        private static double GetReleaseRecencyBoost(DateTime releaseDate)
+        {
+            if (releaseDate == default)
+            {
+                return 0;
+            }
+
+            var days = Math.Max((DateTime.UtcNow - releaseDate).TotalDays, 0);
+            var normalized = Math.Clamp(1 - (days / 365d), 0, 1);
+            return normalized * 0.5;
+        }
+
+        private async Task<List<Game>> WithoutDraftsAsync(List<Game> games)
+        {
+            var ids = games.Where(game => !string.IsNullOrWhiteSpace(game?.Id)).Select(game => game.Id!).ToList();
+            if (ids.Count == 0)
+            {
+                return games;
+            }
+
+            var drafts = (await _gameDetailsRepository.GetByGameIdsAsync(ids))
+                .Where(details => details.IsDraft && !string.IsNullOrWhiteSpace(details.GameId))
+                .Select(details => details.GameId!)
+                .ToHashSet(StringComparer.Ordinal);
+            return drafts.Count == 0 ? games : games.Where(game => game?.Id == null || !drafts.Contains(game.Id)).ToList();
+        }
+
+        private static IReadOnlyList<RecommendationItem> BuildFallbackRecommendations(
+            List<Game> allGames,
+            HashSet<string> excludeIds,
+            int limit)
+        {
+            var pool = allGames
+                .Where(game => game != null && !string.IsNullOrWhiteSpace(game.Id))
+                .ToList();
+
+            var filtered = pool
+                .Where(game => !excludeIds.Contains(game.Id))
+                .OrderByDescending(game => game.ReleaseDate)
+                .Take(limit)
+                .ToList();
+
+            // Последний рубеж: если после исключения купленного/вишлиста ничего не осталось
+            // (крошечный каталог, где пользователь уже всё «потрогал»), всё равно НЕ отдаём
+            // пустой блок — показываем топ каталога без исключений. Пустой «Recommended for you»
+            // на каждой странице выглядит как поломка; для витрины повтор уже виденной игры
+            // лучше пустоты. На большом каталоге эта ветка не срабатывает.
+            var source = filtered.Count > 0
+                ? filtered
+                : pool
+                    .OrderByDescending(game => game.ReleaseDate)
+                    .Take(limit)
+                    .ToList();
+
+            return source
+                .Select(game => new RecommendationItem
+                {
+                    Game = game,
+                    Reason = "Trending in the store"
+                })
+                .ToList();
+        }
+
+        private static List<ScoredRecommendation> DiversifyByType(
+            List<ScoredRecommendation> candidates,
+            int limit,
+            int maxSameTypeInRow)
+        {
+            var results = new List<ScoredRecommendation>();
+            var remaining = new List<ScoredRecommendation>(candidates);
+
+            while (remaining.Count > 0 && results.Count < limit)
+            {
+                var next = remaining.FirstOrDefault(item =>
+                {
+                    if (results.Count < maxSameTypeInRow)
+                    {
+                        return true;
+                    }
+
+                    var recentTypes = results.TakeLast(maxSameTypeInRow).Select(result => GameGenres.TagOf(result.Game)).Distinct();
+                    return !recentTypes.Contains(GameGenres.TagOf(item.Game));
+                }) ?? remaining.First();
+
+                results.Add(next);
+                remaining.Remove(next);
+            }
+
+            return results;
+        }
+
+        private class ScoredRecommendation
+        {
+            public Game Game { get; set; }
+            public double Score { get; set; }
+            public string Reason { get; set; }
+        }
+    }
+}

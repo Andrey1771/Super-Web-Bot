@@ -1,0 +1,493 @@
+.keys-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.keys-title {
+    margin: 0;
+    font-size: clamp(22px, 2vw, 28px);
+    color: var(--color-text);
+}
+
+.keys-description {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 15px;
+    color: var(--color-muted);
+}
+
+.keys-description p {
+    margin: 0;
+}
+
+.keys-link {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.keys-toolbar {
+    /* Контейнер запросов: панель фильтров живёт в колонке кабинета, и её ширина сильно
+       меньше ширины окна. Правила по @media до неё не доходили вовремя. */
+    container-type: inline-size;
+    container-name: keys-toolbar;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.keys-toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-search {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    min-width: 240px;
+}
+
+.keys-search input {
+    border: none;
+    background: transparent;
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+}
+
+.keys-search input:focus {
+    outline: none;
+}
+
+.keys-search svg {
+    color: var(--color-muted);
+}
+
+.keys-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-sort {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.keys-select {
+    border: 1px solid var(--color-border);
+    background: #fff;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    min-width: 140px;
+}
+
+.keys-toolbar-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.keys-clear-btn {
+    height: 36px;
+    padding-inline: var(--space-14);
+    font-size: 13px;
+}
+
+.keys-table-card {
+    padding: 0;
+}
+
+.keys-table-wrapper {
+    container-type: inline-size;
+    container-name: keys-table;
+    /* Прокрутка остаётся страховкой на случай очень длинного ключа, но на узком экране
+       до неё уже не доходит: таблица там превращается в список карточек. */
+    overflow-x: auto;
+}
+
+.keys-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.keys-table th,
+.keys-table td {
+    text-align: left;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+}
+
+.keys-table th {
+    color: var(--color-muted);
+    font-weight: 600;
+    background: rgba(124, 58, 237, 0.04);
+}
+
+.keys-table-state {
+    padding: var(--space-16);
+    text-align: center;
+    color: var(--color-muted);
+}
+
+.keys-table-state-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-12);
+}
+
+.keys-game-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    font-weight: 600;
+}
+
+.keys-product {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+/* Место активации ключа ПО под названием. */
+.keys-activation-note {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-muted, #6b7280);
+}
+
+.keys-activation-note a {
+    color: var(--color-primary, #6b3ff2);
+}
+
+.keys-game-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(236, 72, 153, 0.35));
+    flex-shrink: 0;
+}
+
+.keys-type-badge {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.keys-key-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-10);
+    flex-wrap: wrap;
+}
+
+.keys-key-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: #f7f5ff;
+    font-weight: 600;
+    color: #4b3a72;
+    font-size: 13px;
+}
+
+.keys-copy-btn,
+.keys-activation-btn {
+    height: 34px;
+    font-size: 13px;
+    padding-inline: var(--space-14);
+}
+
+.keys-activation-btn {
+    border-color: rgba(124, 58, 237, 0.35);
+    color: var(--color-primary);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.keys-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.keys-page-btn {
+    height: 36px;
+    min-width: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+}
+
+.keys-page-btn.is-active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+}
+
+.keys-pagination-note {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.keys-recommendations,
+.keys-recent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+}
+
+.keys-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    flex-wrap: wrap;
+}
+
+.keys-section-arrows {
+    display: flex;
+    gap: 8px;
+}
+
+.keys-arrow-btn {
+    height: 36px;
+    width: 36px;
+    padding: 0;
+}
+
+.keys-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+.keys-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-16);
+}
+
+.keys-card-media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(59, 130, 246, 0.35));
+    overflow: hidden;
+}
+
+.keys-card-media--wide {
+    aspect-ratio: 3 / 2;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.45), rgba(14, 116, 144, 0.35));
+}
+
+.keys-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.keys-card-fallback {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.4), rgba(59, 130, 246, 0.4));
+}
+
+.keys-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.keys-card-price {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.keys-card-date {
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.keys-card-btn {
+    height: 40px;
+    font-size: 14px;
+}
+
+.keys-card.is-skeleton {
+    min-height: 190px;
+    border: 1px dashed var(--color-border);
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: keys-card-shimmer 1.5s infinite;
+}
+
+.keys-recommendations-state {
+    padding: var(--space-16);
+}
+
+@keyframes keys-card-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (max-width: 1024px) {
+    .keys-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Таблица ключей на узкой колонке становится списком карточек.
+   Четыре колонки (игра, тип, дата, ключ с кнопкой) в 500px не помещаются, а
+   горизонтальная прокрутка внутри страницы — плохой ответ: полосу не видно, пальцем в неё
+   не попасть, и половина строки всегда за краем. Порог 700px — ширина, ниже которой
+   колонка «Key / Activation» перестаёт вмещать сам ключ и кнопку рядом. */
+@container keys-table (max-width: 700px) {
+    .keys-table,
+    .keys-table tbody {
+        display: block;
+    }
+
+    .keys-table thead {
+        display: none;
+    }
+
+    .keys-table tr {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: var(--space-8) var(--space-12);
+        align-items: center;
+        padding: var(--space-14) var(--space-16);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .keys-table td {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    /* Название игры сверху во всю ширину, под ним тип и дата в одну строку,
+       ещё ниже — сам ключ с кнопкой. */
+    .keys-cell-game,
+    .keys-cell-key,
+    .keys-table-state {
+        grid-column: 1 / -1;
+    }
+
+    .keys-cell-type {
+        grid-column: 1;
+    }
+
+    .keys-cell-date {
+        grid-column: 2;
+        color: var(--color-muted);
+    }
+
+    .keys-key-actions {
+        display: flex;
+        width: 100%;
+    }
+
+    /* Ключ занимает остаток строки и обрезается: кнопка «Copy» важнее его хвоста,
+       а целиком он всё равно попадает в буфер обмена. */
+    .keys-key-pill {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Фильтры узкой панели: два списка в ряд вместо трёх полос во всю ширину.
+   Раньше поиск, «Sort», тип и «Clear filters» стояли четырьмя одинаковыми блоками с
+   одинаковыми отступами — и читались как четыре не связанные друг с другом штуки. */
+@container keys-toolbar (max-width: 560px) {
+    .keys-toolbar-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-12);
+    }
+
+    .keys-filters {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-10);
+        width: 100%;
+    }
+
+    .keys-sort {
+        position: relative;
+    }
+
+    /* Подпись «Sort:» остаётся для читалок экрана, но места не занимает: значения в
+       списке говорят сами за себя, а подпись рядом ломала пару списков в один ряд. */
+    .keys-sort > span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        border: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .keys-select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .keys-toolbar-footer {
+        margin-top: calc(-1 * var(--space-4));
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 640px) {
+    .keys-pagination {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .keys-card-grid {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: var(--space-8);
+        gap: var(--space-16);
+        scroll-snap-type: x mandatory;
+    }
+
+    .keys-card {
+        min-width: 220px;
+        scroll-snap-align: start;
+    }
+}

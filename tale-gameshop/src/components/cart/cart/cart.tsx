@@ -1,21 +1,39 @@
-import React, {useMemo, useState} from 'react';
+import {useTranslation} from 'react-i18next';
+import React, {useEffect, useRef, useState} from 'react';
 import {useCart} from '../../../context/cart-context';
-import {Link} from "react-router-dom";
+import {analyticsClient} from '../../../utils/analytics-client';
+import {checkCartRegions, type CartItemRegion} from '../../../api/regionApi';
+import {countryName as countryNameOf, regionExclusionsText, regionLineText, regionSummaryText, regionTitleText} from '../../../utils/region-text';
+import CountryPickerPopover from './CountryPickerPopover';
+import KeyDetailsPopover from './KeyDetailsPopover';
+import {gaItemVariant, ITEM_LISTS, trackItemSelect, useItemListView} from '../../../utils/item-list-tracking';
+import {productHref} from '../../../utils/software';
+import {Link, useNavigate, useSearchParams} from "react-router-dom";
 import container from "../../../inversify.config";
 import {IUrlService} from "../../../iterfaces/i-url-service";
+import {IApiClient} from "../../../iterfaces/i-api-client";
 import IDENTIFIERS from "../../../constants/identifiers";
+import {useRecommendations} from '../../../hooks/use-recommendations';
+import RecommendationsSection from '../../../components/recommendations/recommendations-section';
+import type {RecommendationItem} from '../../../models/recommendations';
 import {
     faArrowRotateLeft,
     faBolt,
     faCartPlus,
     faCircleCheck,
-    faComments,
-    faCreditCard,
-    faShieldHalved,
-    faTruckFast
+    faHeart,
+    faShieldHalved
 } from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {Product} from "../../../reducers/cart-reducer";
+import {Product, cartLineKey} from "../../../reducers/cart-reducer";
+import Cover from "../../common/Cover";
+import HoverTrailer from "../../common/HoverTrailer";
+import {useSitePreferences} from "../../../context/site-preferences";
+import {formatMoney} from "../../../utils/format-money";
+import {CartCashbackNote} from "../../cashback/CashbackHints";
+import {useWishlist} from "../../../context/wishlist-context";
+import {releaseLabel} from "../../../utils/format-release-date";
+import './cart.css';
 
 type CartItemRowProps = {
     item: Product;
@@ -23,74 +41,77 @@ type CartItemRowProps = {
     onDecrease: (id: string) => void;
     onRemove: (id: string) => void;
     imageBaseUrl: string;
+    /** Регион этой позиции. undefined — ещё не загрузили, null — ограничений нет. */
+    region?: CartItemRegion | null;
 };
 
 type OrderSummaryProps = {
     subtotal: number;
-    discount: number;
     total: number;
 };
 
-const formatPrice = (value: number) => `$${value.toFixed(2)}`;
+const PAYMENT_BADGES = ['Visa', 'Mastercard', 'PayPal', 'Apple Pay', 'Google Pay'];
 
-const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, onRemove, imageBaseUrl}) => {
+/** Срок возврата магазина. Одно число на страницу: подсказка у позиции и плашка внизу — про него же. */
+const REFUND_DAYS = 14;
+
+const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, onRemove, imageBaseUrl, region}) => {
+    const {t} = useTranslation();
     const itemTotal = item.price * item.quantity;
-    const listPrice = itemTotal * 1.12;
+    const {currency} = useSitePreferences();
+    // Адрес — по slug позиции, как у карточек каталога; только у старых позиций без slug — из названия.
+    const gameHref = productHref({slug: item.slug, name: item.name});
 
     return (
-        <div className="flex flex-col gap-4 py-5 sm:flex-row sm:items-start sm:gap-6">
-            <div className="shrink-0">
-                <img
-                    src={`${imageBaseUrl}/${item.image}`}
-                    alt={item.name}
-                    className="h-28 w-28 rounded-2xl object-cover shadow-md shadow-purple-100"
-                />
-            </div>
-            <div className="flex-1 space-y-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                        <p className="text-sm text-gray-500">Platform - Steam · Region: Global · Edition: Standard</p>
+        <div className="cart-item">
+            {/* Из корзины можно вернуться к игре и обратно: обложка и название — обычные ссылки,
+                поэтому работают и «в новой вкладке», и кнопка «назад». */}
+            <Link className="cart-item-media" to={gameHref}>
+                <Cover ratio="square" sizes="104px" src={item.image} title={item.name} baseUrl={imageBaseUrl} />
+            </Link>
+            <div className="cart-item-body">
+                <div className="cart-item-top">
+                    <div>
+                        <h3 className="cart-item-name">
+                            <Link className="cart-item-name-link" to={gameHref}>{item.name}</Link>
+                        </h3>
+                        {/* Издание — из позиции; захардкоженные «Platform/Region/Edition: Standard» раньше врали для любого товара. */}
+                        {item.editionTitle && <p className="cart-item-meta">{t('cart.edition', {edition: item.editionTitle})}</p>}
+                        {/* Выбранный вариант ключа: покупатель выбрал именно его и должен видеть,
+                            что в корзине лежит он, а не «какой-нибудь» ключ этой игры. */}
+                        {item.offerTitle && <p className="cart-item-meta">{t('cart.keyRegion', {region: regionTitleText(item.offerTitle)})}</p>}
+                        {/* Регион — такое же свойство ключа, как издание. Показываем здесь, а не
+                            прячем до кассы: узнать о запрете после оплаты хуже всего. */}
+                        {region?.badge && (
+                            <p className={`cart-item-region${region.allowed === false ? ' is-blocked' : ''}`}>
+                                {region.allowed === false
+                                    // Под запретом причина важнее общего описания: «не активируется у вас —
+                                    // Activates worldwide» читается как противоречие, а «Not in RU, BY» объясняет.
+                                    ? t('cart.notInCountry', {reason: regionExclusionsText(region) ?? regionSummaryText(region)})
+                                    : regionLineText(region)}
+                            </p>
+                        )}
                     </div>
-                    <div className="space-y-1 text-right">
-                        <p className="text-sm text-gray-400 line-through">{formatPrice(listPrice)}</p>
-                        <p className="text-xl font-bold text-gray-900">{formatPrice(itemTotal)}</p>
-                    </div>
+                    <div className="cart-item-price">{formatMoney(itemTotal, currency)}</div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faBolt} className="text-purple-500"/>
-                        Instant delivery
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faCircleCheck} className="text-purple-500"/>
-                        Verified key
-                    </span>
+                <div className="cart-chips">
+                    <span className="cart-chip"><FontAwesomeIcon icon={faCircleCheck}/>{t('cart.verifiedKey')}</span>
+                    <KeyDetailsPopover
+                        region={region}
+                        edition={item.editionTitle}
+                        offer={item.offerTitle}
+                        refundDays={REFUND_DAYS}
+                    />
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4 text-sm font-medium text-purple-700">
-                        <button
-                            onClick={() => onRemove(item.gameId)}
-                            className="hover:text-purple-900 hover:underline"
-                        >
-                            Remove
-                        </button>
-                        <button className="hover:text-purple-900 hover:underline">Save for later</button>
+                <div className="cart-item-actions">
+                    <div className="cart-item-links">
+                        <button type="button" className="cart-item-link" onClick={() => onRemove(cartLineKey(item))}>{t('common.remove')}</button>
+                        <button type="button" className="cart-item-link">{t('cart.saveForLater')}</button>
                     </div>
-                    <div className="inline-flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-800 shadow-inner shadow-purple-50">
-                        <button
-                            onClick={() => onDecrease(item.gameId)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-700 transition hover:bg-purple-50 hover:text-purple-700"
-                        >
-                            −
-                        </button>
-                        <span className="min-w-[2ch] text-center text-base">{item.quantity}</span>
-                        <button
-                            onClick={() => onIncrease(item.gameId)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-700 transition hover:bg-purple-50 hover:text-purple-700"
-                        >
-                            +
-                        </button>
+                    <div className="qty-control">
+                        <button type="button" className="qty-btn" aria-label={t('cart.decrease')} onClick={() => onDecrease(cartLineKey(item))}>−</button>
+                        <span className="qty-value">{item.quantity}</span>
+                        <button type="button" className="qty-btn" aria-label={t('cart.increase')} onClick={() => onIncrease(cartLineKey(item))}>+</button>
                     </div>
                 </div>
             </div>
@@ -98,349 +119,471 @@ const CartItemRow: React.FC<CartItemRowProps> = ({item, onIncrease, onDecrease, 
     );
 };
 
-const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, discount, total}) => (
-    <div className="rounded-3xl border border-purple-100/70 bg-white/95 p-6 shadow-2xl shadow-purple-100/70 backdrop-blur">
-        <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Order summary</h2>
-            <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">Secure checkout</span>
-        </div>
-        <div className="space-y-3 text-sm text-gray-700">
-            <div className="flex items-center justify-between">
-                <span>Subtotal</span>
-                <span className="font-semibold text-gray-900">{formatPrice(subtotal)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-                <span>Discount</span>
-                <span className="font-semibold text-purple-700">-{formatPrice(discount)}</span>
-            </div>
-            <div className="flex items-center justify-between border-t border-dashed border-purple-100 pt-4 text-base font-bold text-gray-900">
-                <span>Total (USD)</span>
-                <span className="text-2xl">{formatPrice(total)}</span>
-            </div>
-        </div>
-        <div className="mt-6 space-y-3">
-            <Link
-                to="/checkout"
-                className="inline-flex w-full items-center justify-center rounded-full bg-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:bg-purple-700"
-            >
-                Checkout
-            </Link>
-            <Link
-                to="/"
-                className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-purple-700 ring-1 ring-purple-200 transition hover:bg-purple-50"
-            >
-                Continue shopping
-            </Link>
-        </div>
-    </div>
-);
-
-const PromoCodeCard: React.FC = () => {
-    const [code, setCode] = useState('');
-    const [status, setStatus] = useState<'idle' | 'loading' | 'applied'>('idle');
-
-    const handleApply = () => {
-        if (!code.trim()) return;
-        setStatus('loading');
-        setTimeout(() => {
-            setStatus('applied');
-        }, 900);
-    };
-
-    const buttonLabel = status === 'loading' ? 'Applying…' : status === 'applied' ? 'Applied' : 'Apply';
-    const isDisabled = status === 'loading' || !code.trim();
+const OrderSummary: React.FC<OrderSummaryProps> = ({subtotal, total}) => {
+    const {t} = useTranslation();
+    const {currency} = useSitePreferences();
 
     return (
-        <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Have a promo code?</h2>
-                    <p className="text-sm text-gray-500">Enter your promo code or gift card. One code per order.</p>
-                </div>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <input
-                        type="text"
-                        value={code}
-                        onChange={(e) => {
-                            setCode(e.target.value);
-                            setStatus('idle');
-                        }}
-                        placeholder="Promo code"
-                        className="w-full rounded-2xl border border-purple-100 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 shadow-inner shadow-purple-50 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:w-56"
-                    />
-                    <button
-                        onClick={handleApply}
-                        disabled={isDisabled}
-                        className={`inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-200 transition sm:w-auto ${isDisabled ? 'bg-purple-300 cursor-not-allowed' : 'bg-purple-600 hover:-translate-y-0.5 hover:bg-purple-700'}`}
-                    >
-                        {buttonLabel}
-                    </button>
-                </div>
+        <div className="card cart-summary">
+            <div className="cart-summary-head">
+                <h2>{t('cart.orderSummary')}</h2>
+                <span className="badge">{t('common.secureCheckout')}</span>
+            </div>
+            <div className="cart-summary-lines">
+                <div className="cart-summary-line"><span>{t('common.subtotal')}</span><strong>{formatMoney(subtotal, currency)}</strong></div>
+                {/* Цены с налогом: итог корзины и есть сумма к оплате, налог в нём уже учтён. */}
+                <div className="cart-summary-line cart-summary-line-muted"><span>{t('common.taxes')}</span><span>{t('common.includedInPrice')}</span></div>
+                <div className="cart-summary-line cart-summary-line-muted"><span>{t('cart.promoCode')}</span><span>{t('cart.applyAtCheckout')}</span></div>
+            </div>
+            <div className="cart-summary-total">
+                <span>{t('common.total')}</span>
+                <span className="cart-summary-amount">{formatMoney(total, currency)}</span>
+            </div>
+            {/* Кэшбэк — со всей суммы заказа. От региона активации он не зависит: про регион корзина
+                предупреждает отдельно, своей плашкой над позициями. */}
+            <CartCashbackNote total={total} currency={currency}/>
+            <div className="cart-summary-actions">
+                <Link to="/checkout" className="btn btn-primary">{t('cart.checkout')}</Link>
+                <Link to="/" className="btn btn-outline">{t('common.continueShopping')}</Link>
+            </div>
+            <div className="cart-pay-badges">
+                {PAYMENT_BADGES.map((label) => <span key={label} className="cart-pay-badge">{label}</span>)}
             </div>
         </div>
+    );
+};
+
+const TrustStrip: React.FC = () => {
+    const {t} = useTranslation();
+    return (
+    <div className="card cart-trust">
+        {[
+            {icon: faBolt, title: t('cart.trust.instantTitle'), text: t('cart.trust.instantText')},
+            {icon: faShieldHalved, title: t('cart.trust.secureTitle'), text: t('cart.trust.secureText')},
+            {icon: faArrowRotateLeft, title: t('cart.trust.refundTitle'), text: t('cart.trust.refundText', {days: REFUND_DAYS})},
+        ].map((feature) => (
+            <div key={feature.title} className="cart-trust-item">
+                <span className="cart-trust-icon"><FontAwesomeIcon icon={feature.icon}/></span>
+                <div className="cart-trust-text">
+                    <h4>{feature.title}</h4>
+                    <p>{feature.text}</p>
+                </div>
+            </div>
+        ))}
+    </div>
     );
 };
 
 const RecommendedRow: React.FC = () => {
-    const recommended = useMemo(() => ([
-        {
-            id: 'rec-1',
-            title: 'Cyber Realm',
-            price: 19.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1580128637428-81f51be9a1a6?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 'rec-2',
-            title: 'Mythic Odyssey',
-            price: 24.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 'rec-3',
-            title: 'Neon Runner',
-            price: 14.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 'rec-4',
-            title: 'Solar Frontier',
-            price: 29.99,
-            platform: 'Steam',
-            image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80'
-        }
-    ]), []);
+    const {t} = useTranslation();
+    const {
+        items: allRecommended,
+        isLoading: isRecommendationsLoading,
+        error: recommendationsError,
+        reload: reloadRecommendations
+    } = useRecommendations(4);
+    // Невышедшая игра (сервер кладёт не больше одной, последней) — с датой выхода и «В желаемое» вместо цены и корзины.
+    const recommended = allRecommended;
+    const {state, dispatch} = useCart();
+    const wishlist = useWishlist();
+    const {currency} = useSitePreferences();
+
+    // Показ подборки рекомендаций: без него клики по ней не с чем сравнивать.
+    useItemListView(
+        ITEM_LISTS.recommendationsCart,
+        recommended.map((item) => ({ id: item.game.id, title: item.game.title, price: Number(item.game.finalPrice ?? item.game.price) })),
+        currency,
+    );
+
+    // Добавление в корзину — тот же контракт, что в GameCard: цена с учётом активной скидки.
+    const handleAddRecommended = (game: RecommendationItem['game']) => {
+        const regularPrice = Number.isFinite(game.price) ? Number(game.price) : 0;
+        const finalPrice = Number.isFinite(game.finalPrice ?? game.price) ? Number(game.finalPrice ?? game.price) : regularPrice;
+
+        dispatch({
+            type: 'ADD_TO_CART',
+            payload: {
+                gameId: game.id ?? '',
+                slug: game.slug,
+                name: game.title ?? game.name,
+                price: finalPrice,
+                quantity: 1,
+                image: game.imagePath
+            } as Product,
+        });
+
+        // Событие отправляет корзина — одно на все кнопки магазина, см. CartProvider.
+    };
 
     return (
-        <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-            <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-gray-900">Recommended for you</h2>
-                <button className="text-sm font-semibold text-purple-700 hover:text-purple-900">View all →</button>
+        <div className="card">
+            <div className="cart-recs-head">
+                <h2>{t('cart.recommended')}</h2>
+                <Link to="/games" className="link-arrow">
+                    {t('common.browseGames')}
+                    <span className="link-arrow__icon" aria-hidden="true">→</span>
+                </Link>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {recommended.map((game) => (
-                    <div key={game.id} className="group flex flex-col overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm shadow-purple-100 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-100/80">
-                        <div className="relative h-40 overflow-hidden bg-purple-50">
-                            <img src={game.image} alt={game.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                        </div>
-                        <div className="space-y-2 p-4">
-                            <h3 className="text-base font-semibold text-gray-900">{game.title}</h3>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">{game.platform}</p>
-                            <div className="flex items-center justify-between">
-                                <span className="text-lg font-bold text-gray-900">{formatPrice(game.price)}</span>
-                                <button className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition hover:border-purple-300 hover:bg-purple-100">
-                                    <FontAwesomeIcon icon={faCartPlus} />
-                                    Add to cart
-                                </button>
+            <RecommendationsSection
+                items={recommended}
+                isLoading={isRecommendationsLoading}
+                error={recommendationsError}
+                onRetry={reloadRecommendations}
+                emptyMessage={t('cart.recommendedEmpty')}
+                listClassName="cart-recs-grid"
+                renderSkeleton={(index) => <div key={`rec-skeleton-${index}`} className="cart-recs-skeleton"/>}
+                renderItem={(item, index) => {
+                    const game = item.game;
+                    const href = productHref(game);
+                    const price = Number(game.price);
+                    const finalPrice = Number(game.finalPrice ?? game.price);
+                    const discounted = Number.isFinite(finalPrice) && Number.isFinite(price) && finalPrice < price;
+                    const priceCurrency = game.currency ?? currency;
+                    // Уже в корзине — это видно прямо над подборкой, и кнопка «Add» рядом со
+                    // списком, где игра уже лежит, сбивает с толку.
+                    const inCart = state.items.some((line) => line.gameId === game.id);
+
+                    return (
+                        <div
+                            key={game.id ?? game.title}
+                            className="cart-rec"
+                            data-hover-trailer-root=""
+                            onClick={() => trackItemSelect(
+                                ITEM_LISTS.recommendationsCart,
+                                { id: game.id, title: game.title, price: finalPrice },
+                                index,
+                                currency,
+                            )}
+                        >
+                            {/* Строка ведёт на страницу игры: раньше клик по карточке только
+                                считался в аналитике, а внешне она выглядела кликабельной. */}
+                            <Link className="cart-rec-media" to={href}>
+                                <Cover ratio="square" sizes="76px" src={game.imagePath} color={game.coverColor} title={game.title}>
+                                    <HoverTrailer src={game.trailerUrl} poster={game.trailerPosterUrl} title={game.title} />
+                                </Cover>
+                            </Link>
+                            <div className="cart-rec-body">
+                                <h3 className="cart-rec-title">
+                                    <Link className="cart-rec-title-link" to={href}>{game.title}</Link>
+                                </h3>
+                                {/* Почему игра здесь оказалась. Раньше на этом месте у всех стояло
+                                    «Steam» — площадка, которой в данных рекомендации нет вовсе. */}
+                                {game.isComingSoon
+                                    ? <p className="cart-rec-reason cart-rec-release">{releaseLabel(t, game.releaseDate)}</p>
+                                    : item.reason && <p className="cart-rec-reason">{item.reason}</p>}
                             </div>
+                            {game.isComingSoon ? (
+                                <div className="cart-rec-price">
+                                    <span className="cart-rec-soon">{t('common.comingSoon')}</span>
+                                </div>
+                            ) : (
+                            <div className="cart-rec-price">
+                                {/* Цена со скидкой — та же, что спишут: карточка показывала
+                                    полную, а в корзину клала уже уценённую. */}
+                                {discounted && (
+                                    <span className="cart-rec-price-old">{formatMoney(price, priceCurrency)}</span>
+                                )}
+                                <span className="cart-rec-price-now">{formatMoney(finalPrice, priceCurrency)}</span>
+                            </div>
+                            )}
+                            {game.isComingSoon ? (
+                                // Купить ещё нельзя — можно отложить: игра появится в «Желаемом» с уведомлением о выходе.
+                                <button
+                                    type="button"
+                                    className={`cart-rec-action cart-rec-wish ${wishlist.isWishlisted(game.id) ? 'is-active' : ''}`}
+                                    title={wishlist.isWishlisted(game.id) ? t('purchase.inWishlist') : t('common.addToWishlist')}
+                                    aria-label={wishlist.isWishlisted(game.id) ? t('purchase.inWishlist') : t('common.addToWishlist')}
+                                    aria-pressed={wishlist.isWishlisted(game.id)}
+                                    onClick={() => wishlist.toggle(game.id)}
+                                >
+                                    <FontAwesomeIcon icon={faHeart}/>
+                                </button>
+                            ) : inCart ? (
+                                // Не кнопка: добавлять нечего, игра уже в заказе выше. Подпись —
+                                // в title и для читалки экрана, на строке хватает галочки.
+                                <span className="cart-rec-action is-in-cart" title={t('cart.alreadyInCart')}>
+                                    <FontAwesomeIcon icon={faCircleCheck}/>
+                                    <span className="visually-hidden">{t('cart.alreadyInCart')}</span>
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="cart-rec-action"
+                                    title={t('cart.addToCartTitle', {title: game.title})}
+                                    aria-label={t('cart.addToCartTitle', {title: game.title})}
+                                    onClick={() => handleAddRecommended(game)}
+                                >
+                                    <FontAwesomeIcon icon={faCartPlus}/>
+                                </button>
+                            )}
                         </div>
-                    </div>
-                ))}
-            </div>
-            <div className="mt-6 flex items-center justify-center gap-2">
-                {[0, 1, 2].map((dot) => (
-                    <span
-                        key={dot}
-                        className={`h-2.5 w-2.5 rounded-full ${dot === 0 ? 'bg-purple-600 shadow-[0_0_0_6px] shadow-purple-100' : 'bg-purple-200'}`}
-                    ></span>
-                ))}
-            </div>
+                    );
+                }}
+            />
         </div>
     );
 };
 
-const SupportPolicies: React.FC = () => (
-    <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-        <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-gray-900">Support & policies</h2>
-            <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 ring-1 ring-purple-100">We have your back</span>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-3 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faBolt} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Instant delivery</h3>
-                        <p className="text-sm text-gray-600">Get your key via email within minutes.</p>
-                    </div>
-                </div>
-            </div>
-            <div className="flex flex-col gap-3 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faArrowRotateLeft} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Refund policy</h3>
-                        <p className="text-sm text-gray-600">Full refunds available within 14 days.</p>
-                    </div>
-                </div>
-            </div>
-            <div className="flex flex-col gap-3 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faCreditCard} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Secure payments</h3>
-                        <div className="mt-1 flex flex-wrap gap-2 text-xs font-semibold text-purple-700">
-                            {['Visa', 'Mastercard', 'PayPal', 'Apple Pay'].map((label) => (
-                                <span key={label} className="rounded-full bg-purple-50 px-3 py-1 ring-1 ring-purple-100">{label}</span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="flex flex-col gap-4 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 ring-1 ring-purple-100">
-                        <FontAwesomeIcon icon={faComments} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900">Need help?</h3>
-                        <p className="text-sm text-gray-600">Our team is here 24/7 to support you.</p>
-                    </div>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <Link
-                        to="/support"
-                        className="inline-flex items-center justify-center rounded-full bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-purple-200 transition hover:-translate-y-0.5 hover:bg-purple-700"
-                    >
-                        Contact support
-                    </Link>
-                    <Link
-                        to="/"
-                        className="inline-flex items-center justify-center rounded-full border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-semibold text-purple-700 transition hover:bg-purple-100"
-                    >
-                        Continue shopping
-                    </Link>
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-const CartCTA: React.FC = () => (
-    <div className="overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900 via-purple-800 to-gray-900 p-8 shadow-2xl shadow-purple-300/30">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-xl space-y-3 text-white">
-                <h2 className="text-3xl font-bold">Ready to checkout?</h2>
-                <p className="text-lg text-purple-100">Secure payments and instant delivery in minutes.</p>
-                <div className="flex flex-wrap gap-3 text-sm text-purple-100">
-                    {["Secure payments", "Instant email delivery", "Refund policy"].map((benefit) => (
-                        <span key={benefit} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
-                            <FontAwesomeIcon icon={faCircleCheck} className="text-purple-200" />
-                            {benefit}
-                        </span>
-                    ))}
-                </div>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                    to="/checkout"
-                    className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-purple-800 shadow-lg shadow-purple-400/30 transition hover:-translate-y-0.5"
-                >
-                    Checkout
-                </Link>
-                <Link
-                    to="/"
-                    className="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
-                >
-                    Continue shopping
-                </Link>
-            </div>
-        </div>
-    </div>
-);
-
 const Cart: React.FC = () => {
+    const {t} = useTranslation();
     const {state, dispatch} = useCart();
+    const viewCartSent = useRef(false);
+    const {country, countrySource, countries, setCountry} = useSitePreferences();
+    const [regions, setRegions] = useState<Record<string, CartItemRegion>>({});
+    const [isCountryOpen, setCountryOpen] = useState(false);
+    const countryName = country ? countryNameOf(country, countries.find((option) => option.code === country)?.name) : null;
+
+    /**
+     * Регионы позиций. Перезапрашиваются при смене страны — покупатель меняет её прямо здесь,
+     * и ответ обязан обновиться сразу, иначе он поменяет страну и увидит прежний запрет.
+     */
+    useEffect(() => {
+        const ids = state.items.map((item) => item.gameId).filter(Boolean);
+        if (ids.length === 0) {
+            setRegions({});
+            return;
+        }
+
+        let cancelled = false;
+        checkCartRegions(ids)
+            .then((response) => {
+                if (cancelled) {
+                    return;
+                }
+                const next: Record<string, CartItemRegion> = {};
+                for (const row of response.items) {
+                    next[row.gameId] = row;
+                }
+                setRegions(next);
+            })
+            // Молча: регион — подсказка, а не условие показа корзины. Отказ сервера не должен
+            // прятать товары, которые покупатель уже выбрал.
+            .catch(() => undefined);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [state.items, country]);
+
+    const blockedCount = state.items.filter((item) => regions[item.gameId]?.allowed === false).length;
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const seededRef = useRef<Set<string>>(new Set());
+    const {currency} = useSitePreferences();
+
+    // Валюта сменилась — цены в корзине выражены в прежней и больше ничего не значат.
+    // Помечаем корзину новой валютой (позиции обнулятся) и перезапрашиваем товары:
+    // пересчитывать на фронте нечем и не нужно, цену в каждой валюте назначает каталог.
+    useEffect(() => {
+        if (state.currency === currency) {
+            return;
+        }
+
+        dispatch({type: 'SET_CURRENCY', payload: currency});
+        // Позволяем дозагрузить цены заново тем же путём, что и deep-link из бота.
+        seededRef.current.clear();
+    }, [currency, dispatch, state.currency, state.items.length]);
+
+    /**
+     * Просмотр корзины. Отправляется один раз за визит на страницу и только когда в корзине
+     * что-то есть: пустая корзина — не шаг воронки, и считать её намерением купить значит
+     * завышать шаг для всех, кто просто кликнул по иконке.
+     *
+     * Цены позиций подгружаются с сервера уже после открытия страницы, поэтому ждём, пока
+     * сумма перестанет быть нулевой, — иначе в аналитику ушла бы корзина на ноль.
+     */
+    useEffect(() => {
+        if (viewCartSent.current || state.items.length === 0) {
+            return;
+        }
+        const value = state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        if (value <= 0) {
+            return;
+        }
+
+        viewCartSent.current = true;
+        analyticsClient.trackEcommerce('view_cart', {
+            currency: state.currency ?? currency,
+            value,
+            items: state.items.map((item) => ({
+                item_id: item.gameId,
+                item_name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                ...(item.category ? { item_category: item.category } : {}),
+                ...(gaItemVariant(item) ? { item_variant: gaItemVariant(item) } : {}),
+            })),
+        });
+    }, [state.items, state.currency, currency]);
+
+    // Позиции с обнулённой ценой (после смены валюты) добираем из каталога — уже в новой валюте.
+    useEffect(() => {
+        const stale = state.items.filter((item) => item.price === 0 && !seededRef.current.has(cartLineKey(item)));
+        if (stale.length === 0) {
+            return;
+        }
+
+        stale.forEach((item) => seededRef.current.add(cartLineKey(item)));
+
+        (async () => {
+            const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+            for (const item of stale) {
+                try {
+                    // У позиции с изданием — цена издания: тот же эндпоинт с editionCode.
+                    const editionQuery = item.editionCode ? `&editionCode=${encodeURIComponent(item.editionCode)}` : '';
+                    // Вариант ключа тоже: у европейского своя цена, и спрашивать цену игры
+                    // значит подменить выбранную покупателем строку на более дорогую.
+                    const offerQuery = item.offerKey ? `&offerKey=${encodeURIComponent(item.offerKey)}` : '';
+                    const {data} = await apiClient.api.get(`/api/game/${item.gameId}?currency=${encodeURIComponent(currency)}${editionQuery}${offerQuery}`);
+                    if (data?.id) {
+                        // Только эта позиция и поверх текущего состояния: список, собранный из
+                        // снимка на начало цикла, затирал бы цены, пришедшие до неё.
+                        dispatch({
+                            type: 'SET_ITEM_PRICES',
+                            payload: {[cartLineKey(item)]: Number(data.finalPrice ?? data.price ?? 0)},
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh cart price after currency change', error);
+                }
+            }
+        })();
+    }, [currency, dispatch, state.items]);
 
     const subtotal = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
-    const discount = subtotal * 0.08;
-    const total = Math.max(0, subtotal - discount);
-
+    const total = subtotal;
     const itemCount = state.items.length;
 
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
 
-    const handleIncreaseQuantity = (id: string) => {
-        dispatch({type: 'INCREASE_QUANTITY', payload: id});
-    };
+    // Deep-link из бота: /cart?add=<gameId> кладёт игру в корзину и убирает параметр из URL.
+    useEffect(() => {
+        const gameId = searchParams.get('add');
+        if (!gameId || seededRef.current.has(gameId)) {
+            return;
+        }
+        seededRef.current.add(gameId);
 
-    const handleDecreaseQuantity = (id: string) => {
-        dispatch({type: 'DECREASE_QUANTITY', payload: id});
-    };
+        (async () => {
+            let redirected = false;
+            try {
+                const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
+                // В валюте корзины: без неё в позицию легла бы цена в базовой валюте,
+                // а показана она была бы со значком выбранной.
+                const {data} = await apiClient.api.get(`/api/game/${gameId}?currency=${encodeURIComponent(currency)}`);
+                if (data?.id && data.isComingSoon) {
+                    // Невышедшую игру касса не продаст («isn't released yet») — ведём на её страницу: там дата выхода
+                    // и «в желаемое», а не позиция в корзине, которую потом не оплатить.
+                    redirected = true;
+                    navigate(productHref(data), {replace: true});
+                    return;
+                }
+                if (data?.id) {
+                    dispatch({
+                        type: 'ADD_TO_CART',
+                        payload: {
+                            gameId: data.id,
+                            slug: data.slug,
+                            name: data.title ?? data.name ?? 'Game',
+                            price: Number(data.finalPrice ?? data.price ?? 0),
+                            quantity: 1,
+                            image: data.imagePath ?? '',
+                        },
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to add game from deep-link', error);
+            } finally {
+                // Ушли на страницу игры — параметр чистить негде: setSearchParams вернул бы обратно в корзину.
+                if (!redirected) {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('add');
+                    setSearchParams(next, {replace: true});
+                }
+            }
+        })();
+    }, [searchParams, dispatch, setSearchParams, navigate]);
+
+    const handleIncreaseQuantity = (id: string) => dispatch({type: 'INCREASE_QUANTITY', payload: id});
+    const handleDecreaseQuantity = (id: string) => dispatch({type: 'DECREASE_QUANTITY', payload: id});
 
     return (
-        <div className="relative isolate">
-            <div className="flex flex-col gap-6 lg:gap-8">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="space-y-1">
-                        <p className="text-sm font-semibold uppercase tracking-[0.08em] text-purple-700">Cart</p>
-                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Your cart</h1>
-                        <p className="text-gray-600">Digital keys delivered instantly</p>
-                    </div>
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-800 shadow-sm ring-1 ring-purple-100">
-                        <span className="h-2 w-2 rounded-full bg-purple-500"></span>
-                        {itemCount} {itemCount === 1 ? 'item' : 'items'}
-                    </div>
+        <div className="cart-shell">
+            <div className="cart-head">
+                <div>
+                    <p className="cart-eyebrow">{t('cart.eyebrow')}</p>
+                    <h1 className="cart-title">{t('cart.title')}</h1>
+                    <p className="cart-sub">{t('cart.subtitle')}</p>
                 </div>
-
-                <PromoCodeCard />
-
-                {state.items.length === 0 ? (
-                    <div className="rounded-3xl border border-purple-100/70 bg-white/80 p-10 text-center shadow-lg shadow-purple-100">
-                        <h3 className="text-xl font-semibold text-gray-900">Your cart is empty</h3>
-                        <p className="mt-2 text-gray-600">Add some games to unlock instant delivery and exclusive deals.</p>
-                        <Link
-                            to="/"
-                            className="mt-6 inline-flex items-center justify-center rounded-full bg-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-200 transition hover:translate-y-0.5 hover:bg-purple-700"
-                        >
-                            Continue shopping
-                        </Link>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_0.8fr] lg:gap-10">
-                        <div className="rounded-3xl border border-purple-100/70 bg-white/90 p-6 shadow-xl shadow-purple-100/60 backdrop-blur">
-                            <div className="divide-y divide-gray-100/80">
-                                {state.items.map((item) => (
-                                    <CartItemRow
-                                        key={item.gameId}
-                                        item={item}
-                                        imageBaseUrl={urlService.apiBaseUrl}
-                                        onIncrease={handleIncreaseQuantity}
-                                        onDecrease={handleDecreaseQuantity}
-                                        onRemove={(id) => dispatch({type: 'REMOVE_FROM_CART', payload: id})}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="lg:sticky lg:top-6 space-y-4">
-                            <OrderSummary subtotal={subtotal} discount={discount} total={total} />
-                            <div className="grid gap-3 rounded-2xl border border-purple-100/70 bg-white/80 p-4 text-sm text-gray-700 shadow-lg shadow-purple-100/60">
-                                {[{label: 'Secure payments', icon: faShieldHalved}, {label: 'Instant email delivery', icon: faBolt}, {label: 'Refund policy', icon: faTruckFast}].map((feature) => (
-                                    <div key={feature.label} className="flex items-center gap-3 rounded-xl bg-purple-50/50 px-3 py-2 text-gray-800 ring-1 ring-purple-100">
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-purple-600 shadow-inner shadow-purple-100 ring-1 ring-purple-100">
-                                            <FontAwesomeIcon icon={feature.icon} />
-                                        </div>
-                                        <span className="font-semibold">{feature.label}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <RecommendedRow />
-                <SupportPolicies />
-                <CartCTA />
+                <span className="badge">{t('cart.items', {count: itemCount})}</span>
             </div>
+
+
+            {/* Страна активации — строкой, а не формой. Большинству покупателей она угадана
+                верно и трогать её не нужно; список открывается только тем, кто активирует ключ
+                в другой стране. Форма на видном месте пугает и заставляет что-то решать там,
+                где решать нечего. */}
+            <div className="cart-region-line">
+                <span>
+                    {t('cart.activatingIn')} <strong>{countryName ?? t('cart.notSelected')}</strong>
+                    {' · '}
+                    <button
+                        type="button"
+                        className="cart-region-change"
+                        aria-expanded={isCountryOpen}
+                        onClick={() => setCountryOpen((open) => !open)}
+                    >
+                        {t('common.change')}
+                    </button>
+                </span>
+                {/* Панель раскрывается под строкой и не двигает её: подмена «change» на список
+                    прямо в тексте меняла ширину строки и норовила закрыться от промаха. */}
+                {isCountryOpen && (
+                    <CountryPickerPopover
+                        countries={countries}
+                        value={country}
+                        onSelect={setCountry}
+                        onClose={() => setCountryOpen(false)}
+                    />
+                )}
+            </div>
+
+            {state.items.length === 0 ? (
+                <div className="card cart-empty">
+                    <h3>{t('cart.empty')}</h3>
+                    <p>{t('cart.emptyText')}</p>
+                    <Link to="/" className="btn btn-primary">{t('common.continueShopping')}</Link>
+                </div>
+            ) : (
+                <div className="cart-layout">
+                    <div className="card cart-items-card">
+                        {blockedCount > 0 && (
+                            <div className="cart-region-warning">
+                                {t('cart.blocked', {count: blockedCount})}
+                            </div>
+                        )}
+
+                        {state.items.map((item) => (
+                            <CartItemRow
+                                key={cartLineKey(item)}
+                                item={item}
+                                imageBaseUrl={urlService.apiBaseUrl}
+                                onIncrease={handleIncreaseQuantity}
+                                onDecrease={handleDecreaseQuantity}
+                                onRemove={(id) => dispatch({type: 'REMOVE_FROM_CART', payload: id})}
+                                region={regions[item.gameId] ?? null}
+                            />
+                        ))}
+                    </div>
+
+                    <aside className="cart-aside">
+                        <OrderSummary subtotal={subtotal} total={total}/>
+                        <TrustStrip/>
+                    </aside>
+                </div>
+            )}
+
+            <RecommendedRow/>
         </div>
     );
 };

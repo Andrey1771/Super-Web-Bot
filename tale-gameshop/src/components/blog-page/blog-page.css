@@ -1,62 +1,304 @@
 .blog-page {
-  background: var(--color-bg);
+  --blog-header-offset: 88px;
+  --blog-toolbar-gap: 12px;
+  --blog-sticky-offset: calc(var(--blog-header-offset) + var(--blog-toolbar-gap));
+  background: #f4f2fa;
+  padding-bottom: var(--space-40);
 }
 
-.section {
+.blog-page .container {
+  max-width: min(var(--container-max-width), 1180px);
+}
+
+.blog-page .section {
   width: 100%;
 }
 
 .blog-hero {
-  padding-top: var(--space-64);
-  padding-bottom: var(--space-48);
+  padding-top: clamp(20px, 2.8vw, 30px);
+  padding-bottom: clamp(14px, 2vw, 20px);
 }
 
-.blog-hero__inner {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: var(--space-32);
+/* Шапка раздела в одну строку, как у каталога: заголовок и подпись на одной
+   базовой линии. Никакой плакатной плашки — раньше eyebrow, огромный h1 и
+   подзаголовок шли этажеркой друг под другом и съедали пол-экрана. */
+.blog-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.blog-head h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #2b2350;
+}
+
+.blog-head__sub {
+  color: #6f64a8;
+  font-size: 0.9rem;
+}
+
+/* Просмотры — заметная плашка с глазом, а не серое слово в хвосте меты. */
+.views-pill {
+  display: inline-flex;
   align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #efeaff;
+  color: #5b21b6;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.blog-hero__copy h1 {
-  margin-bottom: var(--space-16);
+.views-pill svg {
+  width: 12px;
 }
 
-.hero-subtitle {
-  max-width: 620px;
+/* Тихая заметка о мягкой деградации — мелкий приглушённый текст, не тревога. */
+.blog-feed__notice {
+  margin: 0 0 var(--space-12);
   color: var(--color-muted);
-  font-size: 18px;
-  line-height: 1.6;
+  font-size: 13px;
+}
+
+/* Метка конца ленты для подгрузки — места не занимает, глазу не видна. */
+.blog-feed__sentinel {
+  height: 1px;
+}
+
+.blog-feed__loading {
+  margin: var(--space-16) 0 0;
+  text-align: center;
+  font-size: 14px;
 }
 
 .eyebrow {
+  margin: 0 0 var(--space-12);
   font-weight: 700;
-  letter-spacing: 0.18em;
-  font-size: 13px;
-  color: var(--color-muted);
+  letter-spacing: 0.16em;
+  font-size: 12px;
+  color: #7a7398;
   text-transform: uppercase;
-  margin-bottom: var(--space-12);
 }
 
-.blog-hero__actions {
+.blog-top {
+  padding-top: 0;
+  padding-bottom: var(--space-32);
+}
+
+.blog-top__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.32fr) minmax(300px, 0.68fr);
+  gap: clamp(18px, 2.4vw, 28px);
+  align-items: start;
+}
+
+.blog-page .surface {
+  background: #fff;
+  border: 1px solid #e9e4fa;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 26px rgba(63, 38, 128, 0.08);
+}
+
+.blog-top__featured {
+  padding: 18px;
+  overflow: hidden;
+}
+
+.blog-top__rail {
+  padding: 22px;
+  min-height: 100%;
+}
+
+.blog-top__rail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.blog-top__rail-head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.blog-mini-list {
+  display: grid;
+  gap: 14px;
+}
+
+.blog-mini-skeleton {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.blog-fallback-copy {
+  padding: var(--space-24);
+}
+
+/* Панель липкая: едет вместе с прокруткой, чтобы поиск и фильтры были под рукой
+   на любой глубине ленты — особенно теперь, когда лента дорастает подгрузкой. */
+.blog-toolbar-wrap {
+  padding-top: 0;
+  padding-bottom: var(--space-24);
+  position: sticky;
+  top: var(--blog-sticky-offset);
+  z-index: 30;
+}
+
+/* Прилипнув, панель сворачивается в таблетку: полноразмерная полоса, висящая
+   поверх постов, читалась как оторванный кусок интерфейса. Таблетка маленькая —
+   ей почти нечего закрывать, а всё нужное в ней есть: поиск, фильтр со счётчиком,
+   текущий порядок. Клик разворачивает полную панель на месте. */
+.blog-toolbar-wrap.is-stuck {
+  padding-bottom: var(--space-12);
+  /* Прилипший контейнер не должен ловить клики мимо таблетки — под ним посты. */
+  pointer-events: none;
+}
+
+.blog-toolbar-wrap.is-stuck .blog-toolbar-pill,
+.blog-toolbar-wrap.is-stuck .blog-toolbar {
+  pointer-events: auto;
+}
+
+/* Таблетка живёт в пустом поле СПРАВА ОТ КАРТОЧЕК, у края окна, — как кнопка чата
+   внизу, только сверху. Внутри контейнера (по центру или у его правого края) она
+   в любом положении ложилась на текст постов; в боковом поле перекрывать нечего.
+   Колонка узкая (~44px), поэтому помещается даже в скромный отступ до края. */
+.blog-toolbar-pill {
+  position: fixed;
+  top: calc(var(--blog-header-offset) + 24px);
+  right: 14px;
+  z-index: 40;
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
-  justify-self: end;
-  width: min(520px, 100%);
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 13px 10px;
+  border: 1px solid #dfd6f8;
+  border-radius: 999px;
+  background: #fff;
+  color: #6f64a8;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(74, 49, 143, 0.25);
+  animation: pill-in 0.18s ease both;
+}
+
+.blog-toolbar-pill:hover {
+  border-color: #6b3ff2;
+  color: #5b31cf;
+}
+
+.blog-toolbar-pill svg {
+  width: 15px;
+  height: 15px;
+}
+
+.blog-toolbar-pill__divider {
+  width: 16px;
+  height: 1px;
+  background: #e4def6;
+}
+
+.blog-toolbar-pill__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #6b3ff2;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Панель, развёрнутая из таблетки, ведёт себя как всплывающая: заметная тень
+   и крестик, чтобы её можно было убрать, не прокручивая страницу. */
+.blog-toolbar--floating {
+  box-shadow: 0 22px 44px rgba(74, 49, 143, 0.26);
+  animation: toolbar-expand 0.18s ease both;
+}
+
+.blog-toolbar__collapse {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #dfd6f8;
+  border-radius: 50%;
+  background: #fff;
+  color: #6f64a8;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(74, 49, 143, 0.18);
+}
+
+.blog-toolbar__collapse:hover {
+  color: #5b31cf;
+  border-color: #6b3ff2;
+}
+
+.blog-toolbar__collapse svg {
+  width: 12px;
+  height: 12px;
+}
+
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+  }
+}
+
+@keyframes toolbar-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-toolbar-pill,
+  .blog-toolbar--floating {
+    animation: none;
+  }
+}
+
+.blog-toolbar {
+  position: relative;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: minmax(250px, 1.2fr) minmax(0, 2fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid #dfd6f8;
+  box-shadow: 0 10px 24px rgba(74, 49, 143, 0.12);
 }
 
 .search-field {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
-  padding: 0 var(--space-16);
-  height: 56px;
-  border-radius: 16px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-  color: var(--color-muted);
+  gap: 10px;
+  height: 46px;
+  border-radius: var(--radius-md);
+  border: 1px solid #e4ddf8;
+  background: #f9f8fe;
+  color: #7c7598;
+  padding: 0 14px;
 }
 
 .search-field input {
@@ -64,90 +306,359 @@
   outline: none;
   background: transparent;
   width: 100%;
-  height: 100%;
-  font-size: 16px;
+  font-size: 15px;
   color: var(--color-text);
 }
 
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-}
-
-.chip {
-  height: 40px;
-  padding: 0 var(--space-16);
+.blog-page .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 13px;
   border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
+  border: 1px solid #e4def6;
+  background: #f8f7fd;
+  color: #5f577b;
   font-weight: 600;
-  box-shadow: var(--shadow-sm);
+  font-size: 13px;
   cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-.chip:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+.blog-page .chip:hover {
+  border-color: #ccb9fb;
+  color: #5b31cf;
 }
 
-.chip-active {
-  background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
-  color: var(--color-primary);
-  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-border));
-  box-shadow: var(--shadow-md);
+/* Выбранный тег залит целиком: бледная подложка была неотличима от обычного
+   наведения, и казалось, что клик по тегу ничего не делает. */
+.blog-page .chip-active {
+  background: #6b3ff2;
+  color: #fff;
+  border-color: #6b3ff2;
 }
 
-.blog-featured {
+.blog-page .chip-active:hover {
+  background: #5a2dd1;
+}
+
+.blog-toolbar__clear {
+  white-space: nowrap;
+}
+
+.blog-toolbar__summary {
+  margin: 0;
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: #6e6788;
+  padding-left: 2px;
+}
+
+.blog-feed {
   padding-top: 0;
-  padding-bottom: var(--space-48);
+  padding-bottom: var(--space-12);
 }
 
-.featured-card {
+.blog-feed__warning {
+  margin: 0 0 12px;
+  color: #7a4f26;
+  font-size: 14px;
+}
+
+.posts-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: var(--space-32);
-  background: var(--color-surface);
-  border-radius: 20px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-lg);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
 }
 
-.featured-media {
+/* Лента новостей: одна новость — одна строка на всю ширину, обложка сбоку.
+   ВАЖНО про селекторы: все правила строки идут через `.posts-grid--rows .post-card--row`
+   (два класса). Базовый `.post-card` объявлен НИЖЕ по файлу и при одиночном классе
+   перебивал бы display:grid обратно на колонку — карточка молча разваливалась
+   в «текст сверху, картинка под ним». */
+.posts-grid--rows {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.posts-grid--rows .post-card--row {
+  display: grid;
+  grid-template-columns: minmax(340px, 460px) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+/* Стороны чередуются, как у difmark: обложка слева, у следующей — справа. */
+.posts-grid--rows .post-card--row:nth-child(even) {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 460px);
+}
+
+/* Обложке — почти половина карточки и рамка воздуха вокруг: обложка здесь
+   главная зацепка взгляда, прижатая к краям она выглядела втиснутой. */
+.posts-grid--rows .post-card__media--row {
   position: relative;
-  min-height: 320px;
-  height: 100%;
+  align-self: stretch;
+  min-height: 280px;
+  margin: 18px 0 18px 18px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
-.featured-media img {
+.posts-grid--rows .post-card--row:nth-child(even) .post-card__media--row {
+  order: 2;
+  margin: 18px 18px 18px 0;
+}
+
+.posts-grid--rows .post-card__media--row img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.posts-grid--rows .post-card__body--row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 26px 32px;
+}
+
+.posts-grid--rows .post-card__body--row .post-card__title {
+  font-size: 22px;
+}
+
+/* «Read more» — кнопкой в правом нижнем углу, как READ у difmark: у текстовой
+   колонки появляется точка выхода, а не ещё одна строка в общем столбце. */
+.posts-grid--rows .post-card__body--row .post-card__footer {
+  margin-top: 6px;
+  align-self: flex-end;
+}
+
+.posts-grid--rows .post-card__footer .link-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: 1px solid #6b3ff2;
+  background: transparent;
+  color: #6b3ff2;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.posts-grid--rows .post-card__footer .link-primary:hover {
+  background: #6b3ff2;
+  color: #fff;
+}
+
+/* На узком экране обложка остаётся СБОКУ, только меньше: в столбик и под текст
+   строка не складывается. Чередование выключено, чтобы миниатюры не прыгали. */
+@media (max-width: 760px) {
+  .posts-grid--rows .post-card--row,
+  .posts-grid--rows .post-card--row:nth-child(even) {
+    grid-template-columns: 132px minmax(0, 1fr);
+  }
+
+  .posts-grid--rows .post-card--row:nth-child(even) .post-card__media--row {
+    order: 0;
+    margin: 12px 0 12px 12px;
+  }
+
+  .posts-grid--rows .post-card__media--row {
+    min-height: 120px;
+    margin: 12px 0 12px 12px;
+  }
+
+  .posts-grid--rows .post-card__body--row {
+    padding: 14px 16px;
+    gap: 8px;
+  }
+
+  .posts-grid--rows .post-card__body--row .post-card__title {
+    font-size: 17px;
+  }
+
+  .posts-grid--rows .post-card__footer .link-primary {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
+  /* В узкой строке подводящий текст и реакции не помещаются — остаются
+     заголовок, мета и «Read more». */
+  .posts-grid--rows .post-card__body--row .post-card__excerpt,
+  .posts-grid--rows .post-card__body--row .post-card__reactions {
+    display: none;
+  }
+}
+
+.post-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px solid #e7e2f8;
+  box-shadow: 0 8px 20px rgba(71, 45, 140, 0.08);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(71, 45, 140, 0.12);
+}
+
+.post-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.post-card--compact .post-card__media {
+  aspect-ratio: 16 / 8.6;
+}
+
+.post-card__media {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+}
+
+.post-card__media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.media-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(12, 15, 26, 0.35) 0%, rgba(12, 15, 26, 0.05) 65%);
-  mix-blend-mode: multiply;
-}
-
-.featured-content {
-  padding: var(--space-32) var(--space-32) var(--space-32) 0;
+.post-card__body {
+  padding: 20px 20px 22px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: var(--space-16);
+  gap: 12px;
+  min-width: 0;
 }
 
-.featured-badge {
-  background: color-mix(in srgb, var(--color-primary) 14%, #ffffff);
-  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+.post-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+}
+
+.post-card__title {
+  margin: 0;
+}
+
+.post-card__excerpt {
+  margin: 0;
+  color: #6c6880;
+}
+
+.post-card__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.post-card__reaction-btn {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid #e5def8;
+  background: #faf8ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #585272;
+}
+
+.post-card__reaction-btn.active {
+  border-color: #ccb7fb;
+  background: #f0e8ff;
+  color: #5c2fcf;
+}
+
+.post-card__footer {
+  margin-top: auto;
+}
+
+.post-card--featured {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 24px;
+  padding: 12px;
+  align-items: start;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  width: 100%;
+  isolation: isolate;
+}
+
+.post-card--featured .post-card__media {
+  aspect-ratio: 16 / 10;
+  min-height: clamp(220px, 22vw, 300px);
+  border-radius: var(--radius-md);
+  min-width: 0;
+  width: 100%;
+  z-index: 0;
+}
+
+.post-card--featured .post-card__body {
+  padding: 12px 10px 10px;
+  gap: 14px;
+  min-width: 0;
+  z-index: 1;
+}
+
+.post-card--featured .post-card__title {
+  font-size: clamp(28px, 2.35vw, 34px);
+  line-height: 1.2;
+}
+
+.post-card__footer--featured {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.post-card--mini {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 14px;
+  align-items: center;
+  background: #f9f8fe;
+  border: 1px solid #ebe5fb;
+  box-shadow: none;
+  padding: 12px 13px;
+  border-radius: var(--radius-md);
+}
+
+.post-card--mini:hover {
+  transform: none;
+}
+
+.post-card__media--mini {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+}
+
+.post-card__body--mini {
+  padding: 0;
+  gap: 7px;
+}
+
+.post-card__title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.post-card__title-link:hover {
   color: var(--color-primary);
 }
 
@@ -156,476 +667,174 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  color: var(--color-muted);
+  color: #79748f;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .meta-pill {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+  padding: 4px 10px;
+  background: #f2ecff;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
-  color: var(--color-primary);
-  font-size: 13px;
+  border: 1px solid #dccdfa;
+  color: #6434d7;
+  font-size: 12px;
 }
 
 .divider-dot {
-  color: var(--color-muted);
   opacity: 0.6;
+}
+
+.media-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(20, 14, 40, 0.22) 0%, rgba(20, 14, 40, 0.04) 70%);
+}
+
+.category-badge,
+.featured-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #d7c5fb;
+  background: #eee6ff;
+  color: #5e30cd;
+  font-size: 12px;
   font-weight: 700;
-}
-
-.featured-text {
-  color: var(--color-muted);
-  font-size: 17px;
-}
-
-.featured-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-16);
-  flex-wrap: wrap;
-}
-
-.latest-posts {
-  padding-top: 0;
-}
-
-.latest-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-16);
-  margin-bottom: var(--space-24);
-}
-
-.sort-select select {
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  padding: 0 var(--space-12);
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
-}
-
-.posts-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-24);
-  align-items: stretch;
-}
-
-.post-card {
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border-radius: 18px;
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.post-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-.post-media {
-  position: relative;
-  height: 200px;
-  overflow: hidden;
-}
-
-.post-card:nth-child(3n) .post-media {
-  height: 240px;
-}
-
-.post-card:nth-child(2n) .post-media {
-  height: 220px;
 }
 
 .category-badge {
   position: absolute;
-  top: var(--space-16);
-  left: var(--space-16);
+  top: 12px;
+  left: 12px;
   z-index: 2;
-  background: color-mix(in srgb, var(--color-primary) 14%, #ffffff);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
-  color: var(--color-primary);
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 13px;
 }
 
-.post-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.blog-feed-empty {
+  padding: 42px 28px;
+  text-align: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.blog-feed-empty h3 {
+  margin: 0;
+}
+
+.editorial-insert {
+  margin-top: 26px;
+  padding: 28px 30px;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(132deg, #f3edff 0%, #ffffff 65%);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.editorial-insert:hover {
+  transform: translateY(-1px);
+  border-color: #d9ccfa;
+  box-shadow: 0 12px 24px rgba(87, 56, 165, 0.13);
+}
+
+.editorial-insert:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.editorial-insert__thumb-link {
   display: block;
-}
-
-.post-body {
-  padding: var(--space-24);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-}
-
-.post-body h3 {
-  margin: 0;
-}
-
-.post-body p {
-  margin: 0;
-  color: var(--color-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  border-radius: var(--radius-md);
   overflow: hidden;
+  border: 1px solid #e3d8fb;
+  box-shadow: 0 8px 20px rgba(84, 54, 161, 0.12);
 }
 
-.post-footer {
-  margin-top: auto;
+.editorial-insert__thumb {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
 }
 
-.posts-actions {
-  margin-top: var(--space-24);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-16);
-  flex-wrap: wrap;
-  padding-top: var(--space-20);
-  border-top: 1px solid var(--color-border);
+.editorial-insert__body {
+  min-width: 0;
 }
 
-.btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  font-weight: 700;
-  box-shadow: var(--shadow-sm);
-  color: var(--color-text);
+.editorial-insert h3 {
+  margin: 0;
 }
 
-.btn-ghost:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-md);
+.editorial-insert p {
+  margin: 10px 0 0;
 }
 
-.pagination {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-muted);
-  font-weight: 700;
-}
-
-.page-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-  color: var(--color-text);
-  font-weight: 700;
-}
-
-.page-btn.active {
-  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
-  color: var(--color-primary);
-  box-shadow: var(--shadow-md);
-}
-
-.page-btn:hover:not(.active) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.page-ellipsis {
-  padding: 0 8px;
-  color: var(--color-muted);
-}
-
-.popular-posts {
-  padding-top: var(--space-32);
-  padding-bottom: var(--space-56);
-}
-
-.popular-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-16);
-  margin-bottom: var(--space-24);
-}
-
-.popular-grid .post-media {
-  height: 180px;
-}
-
-.popular-grid .post-card:nth-child(2) .post-media {
-  height: 210px;
-}
-
-.popular-grid .post-body {
-  padding: var(--space-20) var(--space-20) var(--space-24);
-  gap: var(--space-10);
-}
-
-.popular-grid .post-body p {
-  -webkit-line-clamp: 2;
+.editorial-insert__note {
+  margin: 12px 0 0;
+  color: #5f587a;
   font-size: 15px;
 }
 
-.section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-24);
-  margin-bottom: var(--space-24);
-  flex-wrap: wrap;
-}
-
-.section-subtitle {
-  margin: 6px 0 0;
-  color: var(--color-muted);
-}
-
-.topic-chips .chip {
-  box-shadow: none;
-}
-
-.topic-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-20);
-}
-
-.topic-card {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 9%, #ffffff) 0%, #ffffff 52%);
-  border: 1px solid var(--color-border);
-  border-radius: 18px;
-  padding: var(--space-20);
-  box-shadow: var(--shadow-md);
-  display: flex;
-  gap: var(--space-16);
-  align-items: flex-start;
-  height: 100%;
-}
-
-.topic-card:nth-child(-n+3) {
-  background: linear-gradient(140deg, color-mix(in srgb, var(--color-primary) 18%, #ffffff) 0%, #ffffff 65%);
-}
-
-.topic-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
-  flex-shrink: 0;
-}
-
-.topic-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.topic-body p {
-  margin: 0;
-  color: var(--color-muted);
-}
-
-.topic-bullets {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-  color: var(--color-text);
+.editorial-insert__meta {
+  color: #6f6a84;
+  font-size: 14px;
   font-weight: 600;
 }
 
-.topic-bullets li {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.topic-bullets li::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--color-primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, #ffffff);
-}
-
-.topic-body .link-primary {
-  margin-top: auto;
-}
-
-.editors-picks {
-  padding-top: var(--space-56);
-}
-
-.editors-layout {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: var(--space-32);
-  align-items: stretch;
-}
-
-.editors-featured {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  display: grid;
-  grid-template-rows: auto 1fr;
-}
-
-.editors-featured {
-  position: relative;
-  background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--color-primary) 14%, transparent) 0%, transparent 48%),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, #ffffff) 0%, #ffffff 70%);
-}
-
-.editors-featured::after {
-  content: "";
-  position: absolute;
-  inset: 10px;
-  border-radius: 16px;
-  pointer-events: none;
-}
-
-.editors-featured .post-media {
-  height: 260px;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
-}
-
-.editors-featured .post-body {
-  padding: var(--space-24);
-  gap: var(--space-12);
-}
-
-.editors-list {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 18px;
-  padding: var(--space-24);
-  box-shadow: var(--shadow-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-}
-
-.editors-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-16);
-}
-
-.editors-list-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-}
-
-.mini-post {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: var(--space-16);
-  align-items: center;
-}
-
-.mini-thumb {
-  width: 100%;
-  height: 90px;
-  border-radius: 14px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: var(--shadow-sm);
-}
-
-.mini-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.editors-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-12);
-  margin-top: auto;
-  align-self: flex-end;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
-  box-shadow: var(--shadow-sm);
-}
-
-.dot-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-muted);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-
-.dot-btn:hover {
-  color: var(--color-primary);
-  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
-}
-
-.dot-track {
-  display: inline-flex;
-  gap: 8px;
-}
-
-.editors-dots .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-border);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
-
-.editors-dots .dot.active {
-  background: var(--color-primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, #ffffff);
-}
-
+/* Нижний баннер прижат к ленте и подвалу: раньше под ним лежали 128px пустоты,
+   которые ничем не заняты и читались как обрыв страницы. */
 .cta-strip {
-  padding-top: var(--space-56);
-  padding-bottom: var(--space-56);
+  padding-top: 32px;
+  padding-bottom: 48px;
+}
+
+/* Форма подписки в баннере. Поле и кнопка одной строкой; на телефоне — друг под другом. */
+.cta-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 320px;
+}
+
+.cta-form input {
+  flex: 1 1 220px;
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid #ded6f8;
+  border-radius: var(--radius-md);
+  background: #fff;
+  font-size: 15px;
+  color: #3d2f74;
+}
+
+.cta-form input::placeholder {
+  color: #b0a7d4;
+}
+
+.cta-form input:focus {
+  outline: none;
+  border-color: #6b3ff2;
+}
+
+.cta-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: #b03030;
+}
+
+.cta-done {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #3d2f74;
 }
 
 .cta-card {
@@ -633,52 +842,35 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-24);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, #ffffff) 0%, #ffffff 60%);
-  border-radius: 22px;
-  padding: var(--space-32);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-lg);
-  position: relative;
-  overflow: hidden;
-}
-
-.cta-card > * {
-  position: relative;
-  z-index: 1;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, #ffffff) 0%, #ffffff 62%);
+  border-radius: var(--radius-lg);
+  padding: clamp(28px, 3.4vw, 38px);
+  border: 1px solid #e6defa;
+  box-shadow: 0 12px 26px rgba(77, 53, 145, 0.1);
 }
 
 .cta-copy p {
   margin: 8px 0 0;
-  color: var(--color-muted);
+  color: #6d6785;
+  max-width: 58ch;
 }
 
 .cta-actions {
   display: flex;
   gap: var(--space-12);
   flex-wrap: wrap;
+  padding-right: 40px;
 }
 
-.cta-card::before,
-.cta-card::after {
-  content: "";
-  position: absolute;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
-  filter: blur(16px);
+@supports selector(body:has(.blog-page)) {
+  body:has(.blog-page) .support-chat {
+    right: 24px;
+    bottom: max(24px, env(safe-area-inset-bottom));
+  }
 }
 
-.cta-card::before {
-  width: 260px;
-  height: 260px;
-  right: -60px;
-  top: -80px;
-}
-
-.cta-card::after {
-  width: 200px;
-  height: 200px;
-  left: -50px;
-  bottom: -100px;
+.measure-60ch {
+  max-width: 60ch;
 }
 
 .visually-hidden {
@@ -693,55 +885,1279 @@
 }
 
 @media (max-width: 1200px) {
-  .blog-hero__inner,
-  .featured-card {
+  .blog-top__grid,
+  .post-card--featured {
     grid-template-columns: 1fr;
   }
 
-  .topic-grid {
+  .post-card--featured .post-card__media {
+    min-height: clamp(220px, 32vw, 300px);
+  }
+
+  .blog-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .blog-toolbar__summary {
+    grid-column: 1;
+  }
+
+  .posts-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
   }
 
-  .editors-layout {
-    grid-template-columns: 1fr;
+  .blog-top__rail {
+    order: 2;
   }
 
-  .featured-content {
-    padding: 0 var(--space-24) var(--space-32);
+  .editorial-insert {
+    grid-template-columns: 200px minmax(0, 1fr);
   }
 
-  .blog-hero__actions {
+  .editorial-insert > .btn {
+    grid-column: 1 / -1;
     justify-self: start;
-    width: 100%;
   }
 }
 
 @media (max-width: 768px) {
+  .blog-page {
+    --blog-sticky-offset: 82px;
+  }
+
   .blog-hero,
-  .blog-featured,
-  .latest-posts {
-    padding-top: var(--space-32);
-    padding-bottom: var(--space-32);
+  .blog-top,
+  .blog-toolbar-wrap,
+  .blog-feed,
+  .cta-strip {
+    padding-bottom: 22px;
   }
 
   .blog-hero__inner {
-    gap: var(--space-24);
+    border-radius: var(--radius-lg);
   }
 
   .posts-grid {
     grid-template-columns: 1fr;
   }
 
-  .post-media {
-    height: 220px;
-  }
-
-  .topic-grid {
+  .cta-card,
+  .editorial-insert {
     grid-template-columns: 1fr;
   }
 
-  .cta-card {
+  .editorial-insert__thumb-link {
+    max-width: 280px;
+  }
+
+  .cta-actions {
+    padding-right: 0;
+  }
+
+  .post-card--featured {
+    gap: 16px;
+    padding: 8px;
+  }
+
+  .post-card--featured .post-card__body {
+    padding: 4px 4px 8px;
+  }
+}
+.blog-post-section {
+  padding-top: var(--space-40);
+}
+
+.blog-post-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+/* Полоса прогресса чтения по верхнему краю окна (поверх шапки, z-index 1000 + 1).
+   Ширину двигает JS через transform — без перерисовок React. */
+.blog-post-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 1001;
+  pointer-events: none;
+}
+
+.blog-post-progress__bar {
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--color-primary), #a855f7);
+}
+
+/* Хиро как у конкурентов: компактная обложка слева, справа заголовок, мета и
+   иконки шеринга — одна карточка, «социальный» блок наверху. */
+.blog-post-hero {
+  display: grid;
+  /* Обложка в размер difmark: ~540px и 16:9 — почти половина карточки. */
+  grid-template-columns: minmax(320px, 540px) minmax(0, 1fr);
+  gap: clamp(20px, 2.4vw, 32px);
+  align-items: start;
+  padding: clamp(18px, 2.2vw, 28px);
+}
+
+.blog-post-hero__head {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+/* Ряд круглых иконок шеринга: копия ссылки + соцсети + почта. */
+.blog-post-share-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.share-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e4def6;
+  background: #f8f7fd;
+  color: #5f577b;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.share-icon:hover {
+  color: var(--color-primary);
+  border-color: #ccb9fb;
+  background: #f2ebff;
+}
+
+.share-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.blog-post-hero__topic {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0;
+}
+
+.blog-post-hero h1 {
+  margin: 0;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.blog-post-hero__excerpt {
+  margin: 0;
+  max-width: 64ch;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--color-muted);
+}
+
+.blog-post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.blog-post-meta span {
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.blog-post-meta span:not(:last-child)::after {
+  content: "•";
+  margin-left: 12px;
+  color: color-mix(in srgb, var(--color-muted) 65%, transparent);
+}
+
+/* Плашка просмотров в мета-строке: без этого её перекрашивает
+   `.blog-post-meta span` — он специфичнее базового .views-pill. */
+.blog-post-meta .views-pill {
+  color: #5b21b6;
+  font-size: 12px;
+}
+
+.blog-post-cover {
+  /* relative — якорь для absolute-заглушки PostCoverArt. */
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  width: 100%;
+  min-height: 220px;
+  max-height: 380px;
+  background: color-mix(in srgb, var(--color-primary) 9%, #ffffff);
+  aspect-ratio: 16 / 9;
+}
+
+.blog-post-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Встроенное оглавление в начале статьи: компактная строка-ссылки вместо
+   бокового сайдбара — статья теперь во всю ширину, сайдбару негде жить. */
+.blog-post-toc-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  width: 100%;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid #e4def6;
+  background: #f8f7fd;
+  font-size: 14px;
+}
+
+.blog-post-toc-inline__title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+
+.blog-post-toc-inline a {
+  color: #5f577b;
+  font-weight: 600;
+}
+
+.blog-post-toc-inline a:hover {
+  color: var(--color-primary);
+}
+
+.blog-post-content {
+  padding: clamp(20px, 2.3vw, 34px);
+  max-width: min(100%, 76ch);
+}
+
+.blog-post-content > * {
+  max-width: 100%;
+}
+
+.blog-post-content h1,
+.blog-post-content h2,
+.blog-post-content h3,
+.blog-post-content h4 {
+  margin-top: 1.8em;
+  margin-bottom: 0.65em;
+  line-height: 1.25;
+  text-wrap: balance;
+  /* Якоря из оглавления: без запаса заголовок ныряет под фиксированную шапку. */
+  scroll-margin-top: calc(var(--blog-header-offset) + 16px);
+}
+
+.blog-post-content p,
+.blog-post-content li {
+  color: var(--color-text);
+  font-size: clamp(16px, 1.05vw, 18px);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.blog-post-content ul,
+.blog-post-content ol {
+  margin: 0 0 1.3rem;
+  padding-left: 1.2rem;
+}
+
+.blog-post-content ul {
+  list-style: disc;
+}
+
+.blog-post-content ol {
+  list-style: decimal;
+}
+
+.blog-post-content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.blog-post-content blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.2rem;
+  border-left: 4px solid color-mix(in srgb, var(--color-primary) 55%, #ffffff);
+  background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+  border-radius: 0 12px 12px 0;
+}
+
+.blog-post-content code {
+  padding: 0.18rem 0.36rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-primary) 14%, #ffffff);
+  font-size: 0.9em;
+}
+
+.blog-post-content pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: #0f172a;
+}
+
+.blog-post-content pre code {
+  background: transparent;
+  color: #f8fafc;
+  padding: 0;
+}
+
+.blog-post-content img {
+  margin: 1.4rem auto;
+  border-radius: var(--radius-md);
+}
+
+.blog-post-content hr {
+  border: none;
+  height: 1px;
+  background: var(--color-border);
+  margin: 2rem 0;
+}
+
+.blog-post-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+}
+
+.blog-post-content th,
+.blog-post-content td {
+  border: 1px solid var(--color-border);
+  padding: 0.7rem;
+  text-align: left;
+}
+
+
+.related-posts-section {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.related-posts-section__header p {
+  margin-bottom: 0;
+}
+
+.related-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.related-posts-empty,
+.related-posts-skeleton {
+  padding: var(--space-20);
+}
+
+.related-posts-skeleton__media {
+  height: 140px;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+.related-posts-skeleton__title {
+  height: 20px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+
+.related-posts-skeleton__meta {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  width: 60%;
+}
+
+.blog-post-state-card {
+  max-width: 900px;
+  display: grid;
+  gap: 16px;
+  padding: var(--space-24);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.blog-post-loading-hero {
+  display: grid;
+  gap: 12px;
+}
+
+.blog-post-skeleton-chip {
+  width: 96px;
+  height: 26px;
+  border-radius: 999px;
+}
+
+.blog-post-skeleton-title {
+  height: 42px;
+  border-radius: var(--radius-md);
+}
+
+.blog-post-skeleton-text {
+  height: 24px;
+  width: 80%;
+  border-radius: var(--radius-md);
+}
+
+.blog-post-skeleton-meta {
+  height: 18px;
+  width: 46%;
+  border-radius: var(--radius-md);
+}
+
+.blog-post-skeleton-cover {
+  height: clamp(240px, 34vw, 360px);
+  border-radius: var(--radius-lg);
+}
+
+.blog-post-skeleton-content {
+  height: 240px;
+  border-radius: var(--radius-lg);
+}
+
+/* Комментарии под статьёй: форма сверху, лента новых первыми ниже. */
+.blog-comments {
+  padding: clamp(20px, 2.4vw, 30px);
+  display: grid;
+  gap: 18px;
+}
+
+.blog-comments__title {
+  margin: 0;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.blog-comments__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #efeaff;
+  color: #5b21b6;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.blog-comments__form {
+  display: grid;
+  gap: 10px;
+}
+
+.blog-comments__text {
+  border: 1px solid #e4def6;
+  border-radius: var(--radius-md);
+  background: #f9f8fe;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--color-text);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  resize: vertical;
+  min-height: 96px;
+}
+
+.blog-comments__text:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+  outline-offset: 1px;
+  background: #ffffff;
+}
+
+/* Приглашение войти — вместо формы для гостей. */
+.blog-comments__login {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px dashed #d6ccf3;
+  border-radius: var(--radius-md);
+  background: #faf9ff;
+}
+
+.blog-comments__login p {
+  margin: 0;
+}
+
+.blog-comments__form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.blog-comments__counter {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.blog-comments__error {
+  margin: 0;
+  color: #d03f2f;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.blog-comments__state {
+  margin: 0;
+}
+
+.blog-comments__list {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blog-comment {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.blog-comment__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--color-primary), #a855f7);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.blog-comment__body {
+  min-width: 0;
+}
+
+.blog-comment__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.blog-comment__author {
+  font-weight: 700;
+}
+
+.blog-comment__date {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.blog-comment__text {
+  margin: 4px 0 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Админская кнопка удаления в строке комментария — сдержанная текстовая ссылка. */
+.blog-comment__delete {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #c2410c;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.blog-comment__delete:hover {
+  color: #d03f2f;
+  text-decoration: underline;
+}
+
+.blog-comments__more {
+  justify-self: start;
+}
+
+/* Навигация «новее/старше» — сдержанные текстовые ссылки между статьёй
+   и Related posts: карточки здесь выглядели отдельным висящим блоком. */
+.blog-post-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px 24px;
+  flex-wrap: wrap;
+  padding: 0 4px;
+  font-size: 14px;
+}
+
+.blog-post-nav__link {
+  color: var(--color-muted);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.blog-post-nav__link span {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.blog-post-nav__link:hover span {
+  color: var(--color-primary);
+}
+
+/* Единственный «старший» сосед прижимается вправо — к направлению стрелки. */
+.blog-post-nav__link--right {
+  margin-left: auto;
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .related-posts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  /* Узко для двух колонок — обложка встаёт над заголовком. */
+  .blog-post-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .blog-post-cover {
+    aspect-ratio: 16 / 9;
+    min-height: 180px;
+  }
+}
+
+@media (max-width: 680px) {
+  .blog-post-section {
+    padding-top: var(--space-28);
+  }
+
+  .related-posts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .blog-post-content {
+    padding: var(--space-16);
+  }
+
+  .blog-post-meta span:not(:last-child)::after {
+    margin-left: 8px;
+  }
+}
+
+/* --- blog post page refinement pass --- */
+/* Класс .blog-page носят И лента, И страница статьи. Правило из «прохода по статье»
+   молча перебивало верхние 40px на 112 — та самая необъяснимая пустота под лентой. */
+.blog-page {
+  padding-bottom: var(--space-40);
+}
+
+.blog-post-content {
+  background: var(--color-surface);
+  margin-top: 0;
+  max-width: min(100%, 74ch);
+}
+
+.blog-post-content h2 {
+  font-size: clamp(28px, 2vw, 34px);
+}
+
+.blog-post-content h3 {
+  font-size: clamp(22px, 1.6vw, 27px);
+}
+
+.blog-post-content h4 {
+  font-size: clamp(18px, 1.25vw, 22px);
+}
+
+.blog-post-content a {
+  text-underline-offset: 2px;
+}
+
+.blog-post-content strong {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.blog-post-content em {
+  color: color-mix(in srgb, var(--color-text) 86%, var(--color-primary));
+}
+
+.blog-post-content table {
+  font-size: 15px;
+}
+
+.blog-post-content--empty {
+  display: grid;
+  gap: 8px;
+}
+
+/* Теги-чипы: без flex ссылки лепились вплотную и читались как «#News#Deals». */
+.blog-post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.blog-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #e4def6;
+  background: #f8f7fd;
+  color: #5f577b;
+  font-size: 14px;
+  font-weight: 600;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.blog-tag:hover {
+  border-color: #ccb9fb;
+  color: #5b31cf;
+}
+
+.related-post-card {
+  height: 100%;
+}
+
+.post-reactions__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e4dcfa;
+  background: #ffffff;
+  color: #4d4668;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.post-reactions__chip.active {
+  border-color: #ccb8fb;
+  background: #f2ebff;
+  color: #5e30cd;
+}
+
+.related-post-card .post-card__body {
+  gap: 8px;
+}
+
+.related-post-card .post-card__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.related-post-card .post-card__excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.related-post-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 680px) {
+  .blog-page {
+    padding-bottom: var(--space-48);
+  }
+}
+
+/* --- blog post page refinement pass v2 --- */
+.blog-post-shell {
+  gap: var(--space-20);
+}
+
+.blog-post-meta span {
+  font-size: 13px;
+}
+
+.blog-post-content {
+  max-width: 72ch;
+  padding: clamp(18px, 2vw, 30px);
+  box-shadow: var(--shadow-sm);
+}
+
+.blog-post-content h1,
+.blog-post-content h2,
+.blog-post-content h3,
+.blog-post-content h4 {
+  margin-top: 1.55em;
+  margin-bottom: 0.58em;
+}
+
+.blog-post-content p {
+  margin-bottom: 1.05em;
+}
+
+.blog-post-content ul,
+.blog-post-content ol {
+  margin: 0.5rem 0 1.2rem;
+}
+
+.blog-post-content blockquote {
+  margin: 1.2rem 0 1.5rem;
+}
+
+.blog-post-content figure {
+  margin: 1.4rem 0;
+}
+
+.blog-post-content figcaption {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.blog-post-content pre {
+  margin: 1.15rem 0 1.3rem;
+}
+
+.blog-post-content table {
+  margin: 1rem 0 1.35rem;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* Related отделён от статьи заметным воздухом — это уже другой раздел страницы. */
+.related-posts-section {
+  gap: 12px;
+  margin-top: var(--space-24);
+}
+
+/* Подпись — под заголовком, а не оторванной строкой у правого края. */
+.related-posts-section__header p {
+  margin: 4px 0 0;
+}
+
+.related-post-card {
+  border-radius: var(--radius-lg);
+}
+
+.related-post-card .post-card__media {
+  position: relative;
+}
+
+.related-post-card .category-badge {
+  z-index: 2;
+}
+
+.related-post-card .post-card__body {
+  padding: 14px 14px 16px;
+}
+
+.related-post-card .meta-row {
+  font-size: 13px;
+}
+
+.related-post-card .post-card__excerpt {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.related-post-card .link-primary {
+  font-size: 14px;
+}
+
+.related-post-card:hover,
+.related-post-card:focus-within {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+}
+
+@media (max-width: 680px) {
+  .blog-post-hero h1 {
+    font-size: 26px;
+  }
+
+  .blog-post-cover {
+    aspect-ratio: 16 / 9;
+    min-height: 150px;
+  }
+
+  .related-posts-section__header {
+    display: block;
+  }
+}
+
+/* --- blog post page refinement pass v3 (article-first) --- */
+.blog-post-shell {
+  gap: 18px;
+}
+
+.blog-post-content--article {
+  min-height: clamp(380px, 54vh, 760px);
+  width: 100%;
+  max-width: 76ch;
+  margin-inline: 0 auto;
+  padding: clamp(22px, 2.4vw, 36px);
+}
+
+.blog-post-content--article > :first-child {
+  margin-top: 0;
+}
+
+/* Лид: первый абзац чуть крупнее — вход в текст, как в редакционных статьях.
+   Если статья начинается с заголовка, правило просто не срабатывает. */
+.blog-post-content--article > p:first-child {
+  font-size: clamp(17px, 1.15vw, 19.5px);
+  line-height: 1.72;
+  color: color-mix(in srgb, var(--color-text) 88%, var(--color-primary));
+}
+
+.blog-post-content h1,
+.blog-post-content h2,
+.blog-post-content h3,
+.blog-post-content h4 {
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.blog-post-content p,
+.blog-post-content li {
+  font-size: clamp(16px, 1.03vw, 18px);
+  line-height: 1.78;
+}
+
+.blog-post-content ul,
+.blog-post-content ol {
+  padding-left: 1.45rem;
+}
+
+.blog-post-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.blog-post-content img {
+  box-shadow: var(--shadow-sm);
+}
+
+.related-post-card .post-card__title {
+  line-height: 1.3;
+}
+
+.related-post-card .post-card__excerpt {
+  -webkit-line-clamp: 2;
+}
+
+.related-post-card .post-card__footer {
+  margin-top: auto;
+}
+
+/* --- blog post page refinement pass v4 (article card) --- */
+/* Полноширинная карточка статьи — той же ширины, что хиро с обложкой.
+   Текст внутри держит читаемую меру и стоит по центру карточки. */
+.blog-post-card {
+  display: grid;
+  gap: 0;
+  padding: clamp(22px, 2.6vw, 36px);
+}
+
+/* Рамку и фон даёт карточка — собственную «поверхность» контент-блока гасим.
+   Текст идёт во всю ширину карточки, без центрирования узкой колонки. */
+.blog-post-card .blog-post-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+}
+
+/* Подвал карточки: реакции слева, теги справа — одной строкой. */
+.blog-post-card__footer {
+  width: 100%;
+  margin: 24px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 12px;
+}
+
+.blog-post-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+}
+
+.post-reactions-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.blog-post-card__label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-right: 2px;
+}
+
+/* --- blog post page final polish pass --- */
+.blog-post-content--empty {
+  width: min(100%, 78ch);
+  min-height: 220px;
+  margin: 0;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+
+.related-post-card {
+  min-height: 100%;
+}
+
+.related-post-card .post-card__body {
+  height: 100%;
+}
+
+.related-post-card .post-card__title {
+  -webkit-line-clamp: 2;
+  margin-bottom: 2px;
+}
+
+.related-post-card .meta-row {
+  font-size: 12px;
+}
+
+.related-post-card .post-card__excerpt {
+  -webkit-line-clamp: 2;
+  min-height: 2.9em;
+}
+
+.related-post-card .post-card__footer {
+  padding-top: 2px;
+}
+
+.related-post-card .link-primary:focus-visible {
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 680px) {
+  .blog-post-content--empty {
+    min-height: 180px;
+    width: 100%;
+  }
+}
+
+/* --- blog post page final polish pass v2 --- */
+.blog-post-content--empty {
+  width: min(100%, 80ch);
+  margin-inline: auto;
+  justify-items: start;
+  padding-inline: clamp(20px, 2.2vw, 30px);
+}
+
+
+.related-post-card .post-card__content {
+  flex: 1;
+  gap: 10px;
+}
+
+.related-post-card .post-card__footer {
+  margin-top: 0;
+}
+
+.related-post-card .link-primary {
+  margin-top: 2px;
+}
+
+
+/* --- blog post page final polish pass v3 (data flow + share + layout tune) --- */
+.blog-post-content--empty {
+  margin-inline: 0;
+  justify-items: start;
+  width: min(100%, 76ch);
+  min-height: 210px;
+}
+
+
+.related-post-card .post-card__content {
+  justify-content: flex-start;
+}
+
+.related-post-card .post-card__footer {
+  margin-top: 8px;
+}
+
+
+@media (max-width: 760px) {
+  .blog-post-content--empty {
+    width: 100%;
+  }
+}
+
+/* --- blog listing filter/results polish --- */
+.latest-posts {
+  padding-top: var(--space-24);
+  padding-bottom: var(--space-40);
+}
+
+.latest-header {
+  margin-bottom: var(--space-24);
+}
+
+.latest-header--results {
+  align-items: flex-end;
+}
+
+.latest-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.blog-results-mode {
+  padding-top: var(--space-28);
+}
+
+.results-empty {
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.search-clear {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: var(--radius-md);
+  font-size: 20px;
+  line-height: 1;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.search-clear:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 992px) {
+  .latest-posts {
+    padding-top: var(--space-20);
+    padding-bottom: var(--space-32);
+  }
+
+  .results-empty {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .latest-header {
+    margin-bottom: var(--space-20);
+  }
+
+  .latest-header--results {
+    align-items: flex-start;
+  }
+}
+
+/* --- latest posts spacing consistency pass --- */
+.latest-posts {
+  padding-top: var(--space-20);
+  padding-bottom: var(--space-36);
+}
+
+.latest-header {
+  align-items: flex-end;
+  margin-bottom: var(--space-24);
+}
+
+.latest-posts .posts-grid {
+  gap: var(--space-20);
+}
+
+.latest-posts .post-card__body {
+  padding: var(--space-20) var(--space-20) var(--space-24);
+  gap: var(--space-10);
+}
+
+.latest-posts .post-card__content {
+  gap: 12px;
+}
+
+.latest-posts .post-card__excerpt {
+  font-size: 15px;
+}
+
+.posts-actions {
+  margin-top: var(--space-18);
+  padding-top: var(--space-16);
+}
+
+@media (max-width: 992px) {
+  .latest-posts {
+    padding-top: var(--space-20);
+    padding-bottom: var(--space-32);
+  }
+
+  .latest-header {
+    align-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .latest-header {
+    align-items: stretch;
+    gap: var(--space-12);
+    margin-bottom: var(--space-20);
+  }
+
+  .latest-header .sort-select {
+    align-self: flex-start;
+  }
+
+  .posts-actions {
+    margin-top: var(--space-14);
+    padding-top: var(--space-14);
   }
 }

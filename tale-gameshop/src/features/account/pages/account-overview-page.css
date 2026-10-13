@@ -1,0 +1,300 @@
+.account-card {
+    box-shadow: var(--shadow-sm);
+}
+
+.account-profile-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-24);
+}
+
+.account-profile-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+}
+
+.account-avatar-lg {
+    width: 64px;
+    height: 64px;
+    font-size: 20px;
+}
+
+.account-profile-text {
+    min-width: 0;
+}
+
+.account-profile-email {
+    margin-bottom: var(--space-8);
+}
+
+.account-member-since {
+    margin-top: var(--space-8);
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.account-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-20);
+}
+
+.account-action-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.account-action-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+}
+
+.account-action-header svg {
+    color: var(--color-primary);
+}
+
+.account-action-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+}
+
+.account-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    margin-bottom: var(--space-16);
+}
+
+.account-table-wrapper {
+    container-type: inline-size;
+    container-name: account-table;
+    /* Прокрутка остаётся страховкой на случай очень длинного названия игры, но на узком
+       экране до неё уже не доходит: таблица там превращается в список карточек. */
+    overflow-x: auto;
+}
+
+.account-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.account-table th,
+.account-table td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+}
+
+.account-table th {
+    color: var(--color-muted);
+    font-weight: 600;
+    background: rgba(124, 58, 237, 0.04);
+}
+
+.account-table-state {
+    text-align: center;
+    color: var(--color-muted);
+    font-size: 14px;
+    padding: 24px;
+}
+
+.account-table-state-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-12);
+}
+
+.account-key-list {
+    display: grid;
+    gap: var(--space-12);
+}
+
+.account-key-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-12) var(--space-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+}
+
+/* Название и подпись под ним — двумя строками.
+   Раньше подпись была inline-flex прямо после <strong>, и строка склеивалась:
+   «DOOM EternalSteam Key». Отступ сверху у подписи был, а вот строки не было —
+   grid превращает обоих детей в блоки и ставит их друг под другом.
+   Сам .account-key-meta остаётся inline: в пустом состоянии он дописывает
+   подсказку в строку («No keys yet. Complete a purchase…»), и там это верно. */
+.account-key-main {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+}
+
+.account-key-cover {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(236, 72, 153, 0.35));
+}
+
+/* «Steam Key - Oct 8, 2026» переносится целыми частями, а не по словам в три столбика. */
+.account-key-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px var(--space-8);
+    font-size: 13px;
+    color: var(--color-muted);
+    margin-top: 4px;
+}
+
+.account-key-meta > span {
+    white-space: nowrap;
+}
+
+.account-recommendations {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-20);
+}
+
+.account-recommendation-card.is-skeleton {
+    min-height: 190px;
+    border-style: dashed;
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: account-recommendation-shimmer 1.5s infinite;
+}
+
+.account-recommendation-fallback {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ded7ff 0%, #f6f4ff 100%);
+}
+
+.account-recommendations-state {
+    padding: var(--space-16);
+}
+
+.account-overview-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+    padding: var(--space-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: rgba(255, 193, 7, 0.08);
+    color: #8a6d3b;
+    font-size: 14px;
+}
+
+.account-overview-alert-actions {
+    display: inline-flex;
+    gap: var(--space-12);
+}
+
+@keyframes account-recommendation-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (max-width: 1024px) {
+    .account-quick-actions,
+    .account-recommendations {
+        grid-template-columns: 1fr;
+    }
+
+    .account-profile-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Таблица заказов на узкой колонке становится списком карточек.
+   Пять колонок в 400px не помещаются, а горизонтальная прокрутка внутри страницы — плохой
+   ответ: полосу не видно, пальцем в неё не попасть, и половина строки всегда за краем.
+   Порог 620px — ширина, ниже которой название игры перестаёт помещаться рядом с суммой. */
+@container account-table (max-width: 620px) {
+    .account-table,
+    .account-table tbody {
+        display: block;
+    }
+
+    .account-table thead {
+        display: none;
+    }
+
+    .account-table tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px var(--space-12);
+        align-items: center;
+        padding: var(--space-14) var(--space-16);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .account-table td {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    /* Сверху игра во всю ширину, под ней номер и дата, справа сумма, ниже кнопка. */
+    .account-cell-game {
+        grid-column: 1 / -1;
+        font-weight: 700;
+    }
+
+    .account-cell-order,
+    .account-cell-date {
+        color: var(--color-muted);
+        font-size: 13px;
+    }
+
+    .account-cell-amount {
+        grid-column: 2;
+        grid-row: 2;
+        text-align: right;
+        font-weight: 700;
+    }
+
+    .account-cell-action {
+        grid-column: 1 / -1;
+    }
+
+    .account-table-state {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Телефон: обложка, название и кнопка в одну строку не помещались — название сжималось в столбик в пять строк.
+   Кнопка уходит под текст, ровно под ним (44px обложки + отступ). */
+@media (max-width: 480px) {
+    .account-key-item {
+        flex-wrap: wrap;
+    }
+
+    .account-key-item .account-key-main {
+        flex-basis: calc(100% - 44px - var(--space-16));
+    }
+
+    .account-key-item .account-action-btn {
+        margin-left: calc(44px + var(--space-16));
+    }
+}

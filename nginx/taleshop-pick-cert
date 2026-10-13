@@ -1,0 +1,27 @@
+#!/bin/sh
+# Направляет /etc/nginx/certs/current на сертификат домена от Let's Encrypt, а пока его нет —
+# на самоподписанный (создаётся один раз). Без этого nginx не стартовал бы до получения
+# сертификата, а получить его через webroot нельзя без работающего nginx.
+set -eu
+
+live="/etc/letsencrypt/live/${DOMAIN}"
+fallback=/etc/nginx/certs/selfsigned
+current=/etc/nginx/certs/current
+mkdir -p /etc/nginx/certs
+
+if [ -s "$live/fullchain.pem" ] && [ -s "$live/privkey.pem" ]; then
+    target="$live"
+else
+    if [ ! -s "$fallback/privkey.pem" ]; then
+        mkdir -p "$fallback"
+        openssl req -x509 -nodes -newkey rsa:2048 -days 30 \
+            -subj "/CN=${DOMAIN}" -addext "subjectAltName=DNS:${DOMAIN}" \
+            -keyout "$fallback/privkey.pem" -out "$fallback/fullchain.pem" 2>/dev/null
+    fi
+    target="$fallback"
+fi
+
+if [ "$(readlink "$current" 2>/dev/null || true)" != "$target" ]; then
+    ln -sfn "$target" "$current"
+    echo "taleshop: сертификат — $target"
+fi

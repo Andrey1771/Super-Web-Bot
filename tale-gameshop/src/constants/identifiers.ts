@@ -7,6 +7,19 @@ const IDENTIFIERS = {
     IKeycloakService: Symbol.for("IKeycloakService"),
     IUrlService: Symbol.for("IUrlService"),
     IAdminService: Symbol.for("IAdminService"),
+    IWishlistService: Symbol.for("IWishlistService"),
+    IRecommendationsService: Symbol.for("IRecommendationsService"),
+    IGameDetailsService: Symbol.for("IGameDetailsService"),
+    IGameKeysService: Symbol.for("IGameKeysService"),
+    IOrdersService: Symbol.for("IOrdersService"),
+    IAdminOrdersService: Symbol.for("IAdminOrdersService"),
+    IBlogService: Symbol.for("IBlogService"),
+    IAdminBlogService: Symbol.for("IAdminBlogService"),
+    IAnalyticsService: Symbol.for("IAnalyticsService"),
+    IAdminAnalyticsService: Symbol.for("IAdminAnalyticsService"),
+    IAdminGameDetailsService: Symbol.for("IAdminGameDetailsService"),
+    IAdminPromoCodesService: Symbol.for("IAdminPromoCodesService"),
+    IAdminGameDiscountsService: Symbol.for("IAdminGameDiscountsService"),
 };
 
 export default IDENTIFIERS;

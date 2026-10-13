@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/cart-context';
@@ -24,7 +25,7 @@ function CallbackPage() {
         })()
     });
 
-    return <p>Loading...</p>;
+    return <p>{i18n.t('common.loadingDots')}</p>;
 }
 
 export default CallbackPage;

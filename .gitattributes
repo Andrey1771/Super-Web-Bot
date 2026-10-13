@@ -1,0 +1,6 @@
+# Скрипты и конфиги, которые исполняются внутри Linux-контейнеров и на сервере: с CRLF
+# (core.autocrlf=true на Windows) shebang превращается в "/bin/sh\r" и скрипт не запускается.
+*.sh            text eol=lf
+*.envsh         text eol=lf
+nginx/**        text eol=lf
+deploy/**       text eol=lf

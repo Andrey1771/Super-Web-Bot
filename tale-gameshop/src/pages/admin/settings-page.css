@@ -1,0 +1,214 @@
+/* Настройки сайта: поля с пометкой «custom / config» и кнопкой возврата к конфигу. */
+
+.site-settings__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin-top: 12px;
+}
+
+.site-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.site-settings__field--row {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.site-settings__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* «custom» — значение задано руками; «config» — унаследовано. Переопределённое поле — с
+   акцентной левой полосой, чтобы окинуть взглядом, что здесь трогали. */
+.site-settings__pill {
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.site-settings__pill--muted {
+  background: #f1f5f9;
+  color: #64748b;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.site-settings__field--overridden {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 10px;
+}
+
+.site-settings__control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.site-settings__control .input {
+  max-width: 220px;
+}
+
+.site-settings__unit {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.site-settings__reset {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.site-settings__reset:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.site-settings__hint {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.site-settings__hint--block {
+  flex-basis: 100%;
+  margin-left: 24px;
+}
+
+.site-settings__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Кэшбэк: статус программы и лестница уровней. */
+.site-settings__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f1f0f8;
+  color: var(--color-muted);
+}
+
+.site-settings__status.is-live {
+  background: #e7f7ee;
+  color: #15803d;
+}
+
+.cashback-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.cashback-tiers__row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1.4fr) 120px 150px 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Картинка уровня — в том же круглом тёмном медальоне, что на странице кэшбэка: сразу видно, как ляжет. */
+.cashback-tiers__image {
+  position: relative;
+  width: 52px;
+  height: 52px;
+}
+
+.cashback-tiers__thumb {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 58, 237, 0.35);
+  background: radial-gradient(circle at 35% 30%, #3a2d73, #1b1535);
+  cursor: pointer;
+}
+
+.cashback-tiers__thumb:hover,
+.cashback-tiers__thumb:focus-visible {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.cashback-tiers__thumb img {
+  width: 64%;
+  height: 64%;
+  object-fit: contain;
+}
+
+.cashback-tiers__clear {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border, #e6e3f2);
+  background: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cashback-tiers__hint {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.cashback-tiers__row--head {
+  font-size: 12px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cashback-tiers__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .site-settings__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cashback-tiers__row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cashback-tiers__row--head {
+    display: none;
+  }
+}

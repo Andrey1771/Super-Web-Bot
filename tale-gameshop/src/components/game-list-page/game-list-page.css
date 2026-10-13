@@ -1,0 +1,949 @@
+/* Витрина каталога шире общего контейнера сайта. Потолок всё же есть: на сверхшироком
+   мониторе строка из десятка карточек читается хуже, чем из шести. */
+.catalog-container {
+    max-width: 1760px;
+}
+
+/* Шапка страницы в одну строку. Раньше на её месте были огромный заголовок,
+   подзаголовок, два ряда чипов и второе поле поиска — товар начинался ниже сгиба. */
+.catalog-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.catalog-head-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+
+.catalog-head-line h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2b2350;
+}
+
+.catalog-head-count {
+    font-size: 0.9rem;
+    color: #6f64a8;
+}
+
+.catalog-head-note {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #6f64a8;
+}
+
+.catalog-head-note strong {
+    color: #2b2350;
+}
+
+.catalog-layout {
+    margin-top: 1.25rem;
+    display: grid;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* Карточка панели — снаружи, прокрутка — внутри: полоса прокрутки идёт внутри скруглённой рамки, а не поверх неё. */
+.catalog-sidebar {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-lg);
+    border: 1px solid #ece8ff;
+    background: #fff;
+    box-shadow: 0 18px 38px rgba(92, 69, 160, 0.12);
+    overflow: hidden;
+}
+
+.catalog-sidebar-scroll {
+    padding: 1.1rem;
+}
+
+/* Высота строки — по счётчику: без неё строка вырастала на пиксель, когда он появлялся, и фильтры ниже дёргались. */
+.catalog-sidebar-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 1.75rem;
+}
+
+.catalog-sidebar-head h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #2b2350;
+}
+
+/* Сколько фильтров включено — видно, не разворачивая панель. */
+.catalog-sidebar-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 999px;
+    background: #6b3ff2;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.catalog-filter-group {
+    margin-top: 1.1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f0ebff;
+}
+
+.catalog-filter-title {
+    margin: 0 0 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8a81b5;
+}
+
+.catalog-filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+/* «Show all 12» выглядит ссылкой, а не кнопкой: выдачу оно не меняет, только раскрывает список. */
+.catalog-filter-more {
+    align-self: flex-start;
+    margin: 0.2rem 0 0 0.45rem;
+    padding: 0.15rem 0;
+    border: 0;
+    background: none;
+    color: #6b3ff2;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.catalog-filter-more:hover {
+    color: #5a2dd1;
+    text-decoration: underline;
+}
+
+/* Кликабельна вся строка, а не только квадратик: попасть в чекбокс мышью труднее,
+   чем в строку, и на телефоне это разница между «работает» и «не нажимается». */
+.catalog-filter-option {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.35rem 0.45rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: #5a5286;
+    cursor: pointer;
+}
+
+.catalog-filter-option:hover {
+    background: #f7f4ff;
+}
+
+.catalog-filter-option.is-checked {
+    color: #3d2f74;
+    font-weight: 600;
+}
+
+/* Родной чекбокс прячем, но оставляем в потоке: он держит фокус и работу с клавиатуры. */
+.catalog-filter-option input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.catalog-filter-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 6px;
+    border: 1.5px solid #d8d0ff;
+    background: #fff;
+    color: transparent;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.catalog-filter-box svg {
+    width: 0.8rem;
+    height: 0.8rem;
+}
+
+.catalog-filter-option.is-checked .catalog-filter-box {
+    background: #6b3ff2;
+    border-color: #6b3ff2;
+    color: #fff;
+}
+
+.catalog-filter-option input:focus-visible + .catalog-filter-box {
+    outline: 2px solid #6b3ff2;
+    outline-offset: 2px;
+}
+
+.catalog-filter-icon {
+    flex: none;
+    width: 0.9rem;
+    color: #8a81b5;
+}
+
+.catalog-filter-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.catalog-filter-count {
+    flex: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #a79fcb;
+}
+
+.catalog-filter-reset {
+    width: 100%;
+    margin-top: 1.1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid #6b3ff2;
+    background: transparent;
+    color: #6b3ff2;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.catalog-filter-reset:disabled {
+    cursor: default;
+    border-color: #ece8ff;
+    color: #c2bade;
+}
+
+/* --- Цена с распределением --- */
+
+.price-filter-chart {
+    position: relative;
+    height: 46px;
+    margin-bottom: -6px;
+}
+
+.price-filter-chart svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.price-filter-chart polygon {
+    fill: rgba(107, 63, 242, 0.16);
+}
+
+.price-filter-chart polyline {
+    fill: none;
+    stroke: #6b3ff2;
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+}
+
+/* Отсечённая фильтром часть графика гасится — видно, что именно отброшено. */
+.price-filter-chart-mask {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.72);
+    pointer-events: none;
+}
+
+.price-filter-track {
+    position: relative;
+    height: 1.5rem;
+}
+
+/* Общая полоса и выбранный отрезок поверх неё. */
+.price-filter-track::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 4px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: #ece8ff;
+}
+
+.price-filter-selected {
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: #6b3ff2;
+}
+
+/* Две ручки лежат друг на друге: сама дорожка прозрачна и не ловит клики,
+   события принимают только кружки — иначе верхний слайдер перехватывал бы всё. */
+.price-filter-track input[type='range'] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background: none;
+    pointer-events: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.price-filter-track input[type='range']::-webkit-slider-thumb {
+    pointer-events: auto;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    border: 2px solid #6b3ff2;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(92, 69, 160, 0.25);
+    cursor: grab;
+}
+
+.price-filter-track input[type='range']::-moz-range-thumb {
+    pointer-events: auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    border: 2px solid #6b3ff2;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(92, 69, 160, 0.25);
+    cursor: grab;
+}
+
+/* Готовые диапазоны цены. Кликают по ним чаще, чем возят ручку, поэтому кнопки
+   крупные и с числом результатов. */
+.price-presets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.75rem;
+}
+
+.price-presets button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: #faf8ff;
+    color: #5a5286;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.price-presets button:hover {
+    border-color: #d8d0ff;
+    background: #f3eeff;
+}
+
+.price-presets button.is-active {
+    border-color: #6b3ff2;
+    background: #ede9fe;
+    color: #3d2f74;
+}
+
+.price-preset-count {
+    margin-left: auto;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #a79fcb;
+}
+
+.price-filter-values {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #3d2f74;
+}
+
+.catalog-products {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.catalog-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    border: 1px solid #ece8ff;
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    padding: 0.85rem 1rem;
+    box-shadow: 0 10px 24px rgba(90, 72, 162, 0.08);
+}
+
+.catalog-toolbar-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+/* Поиск по каталогу. Он не дублирует шапку: там ищут по всему магазину и уходят
+   на товар, здесь — сужают уже открытую выдачу вместе с остальными фильтрами. */
+.catalog-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 240px;
+    min-width: 0;
+    height: 2.5rem;
+    padding: 0 0.85rem;
+    border: 1px solid #e6e1ff;
+    border-radius: var(--radius-md);
+    background: #fbfaff;
+    color: #9b92c4;
+}
+
+.catalog-search:focus-within {
+    border-color: #6b3ff2;
+    background: #fff;
+}
+
+.catalog-search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    font-size: 0.88rem;
+    color: #5a5286;
+}
+
+.catalog-search input::placeholder {
+    color: #b0a7d4;
+}
+
+.catalog-search input:focus {
+    outline: none;
+}
+
+/* Стили выбора порядка живут в components/common/sort-select.css — компонент общий
+   для каталога и ленты новостей. */
+
+.catalog-view {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border: 1px solid #e6e1ff;
+    border-radius: var(--radius-md);
+    background: #fff;
+}
+
+.catalog-view button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: #9b92c4;
+    cursor: pointer;
+}
+
+.catalog-view button svg {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.catalog-view button:hover {
+    color: #6b3ff2;
+}
+
+.catalog-view button.is-active {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+/* Подпись у кнопки нужна скринридеру, но не глазу. */
+.sr-only-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.catalog-chosen {
+    border-top: 1px solid #f0ebff;
+    padding-top: 0.7rem;
+}
+
+.catalog-chosen-label {
+    font-size: 0.8rem;
+    color: #8a81b5;
+}
+
+.catalog-results-label {
+    margin: 0;
+    color: #8a81b5;
+    font-size: 0.82rem;
+}
+
+.catalog-clear-filters {
+    border: 0;
+    background: transparent;
+    color: #6b3ff2;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Включённый фильтр с собственным крестиком. */
+.catalog-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid #ded6ff;
+    border-radius: 999px;
+    background: #f6f2ff;
+    color: #5a2dd1;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    animation: chip-in 0.18s ease both;
+}
+
+@keyframes chip-in {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+.catalog-filter-chip:hover {
+    border-color: #6b3ff2;
+    background: #ede7ff;
+}
+
+.catalog-filter-chip:active {
+    transform: scale(0.96);
+}
+
+.catalog-filter-chip span {
+    font-size: 0.95rem;
+    line-height: 1;
+    color: #8a7fc0;
+}
+
+.catalog-sort-wrap {
+    width: 100%;
+    max-width: 240px;
+}
+
+.catalog-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    transition: opacity 0.15s ease;
+}
+
+/* Фильтры считает сервер, поэтому между кликом и новой выдачей есть пауза.
+   Прежний результат остаётся на месте приглушённым — так видно, что идёт загрузка,
+   и страница не прыгает. */
+.catalog-grid.is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+
+@media (min-width: 768px) {
+    .catalog-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .catalog-sidebar-scroll {
+        padding: 1.35rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .catalog-layout {
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 1.5rem;
+    }
+
+    /* Панель прилипает к экрану и не бывает выше окна. Как в каталоге Steam: колесо над фильтрами крутит фильтры,
+       над товаром — страницу. Докрутив фильтры до края, страница следом не уезжает. Тонкая полоса прокрутки
+       показывает, что фильтров больше, чем видно, и где ты в их списке. */
+    .catalog-sidebar {
+        position: sticky;
+        top: 110px;
+        max-height: calc(100vh - 126px);
+        /* Прокрутка отодвинута от краёв карточки: иначе полоса упиралась в скруглённые углы (радиус 16px),
+           и рамка срезала её верх и низ. Сумма с внутренним отступом — те же 1.35rem, что и без прокрутки. */
+        padding: 14px 5px 14px 0;
+    }
+
+    .catalog-sidebar-scroll {
+        /* Справа меньше на ширину полосы (≈10px): иначе содержимое стояло бы ближе к левому краю, чем к правому. */
+        padding: calc(1.35rem - 14px) calc(1.35rem - 15px) calc(1.35rem - 14px) 1.35rem;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: #d4ccf7 transparent;
+    }
+
+    .catalog-sidebar-scroll:hover {
+        scrollbar-color: #b3a5f0 transparent;
+    }
+
+    /* Для браузеров без scrollbar-width/scrollbar-color (Safari): та же тонкая полоса в цветах сайта. */
+    .catalog-sidebar-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .catalog-sidebar-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .catalog-sidebar-scroll::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: #d4ccf7;
+    }
+
+    .catalog-sidebar-scroll:hover::-webkit-scrollbar-thumb {
+        background: #b3a5f0;
+    }
+
+    .catalog-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .catalog-layout {
+        grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    /* Четвёртая колонка: карточка стала компактной, и на широком экране
+       в тот же ряд помещается больше товара для сравнения. */
+    .catalog-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+    }
+}
+
+/* Списочный вид: обложка слева, всё остальное строкой. Больше товара на экран
+   и место под жанр, оценку и наличие без сокращений. */
+.catalog-grid.is-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.catalog-grid.is-list .catalog-game-card {
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.catalog-grid.is-list .catalog-game-image {
+    flex: none;
+    width: 150px;
+    --cover-ratio: 4 / 3;
+}
+
+.catalog-grid.is-list .catalog-game-body {
+    flex: 1;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.catalog-grid.is-list .catalog-game-title {
+    font-size: 1rem;
+    white-space: normal;
+}
+
+.catalog-grid.is-list .catalog-game-chip {
+    max-width: none;
+}
+
+/* В строке места хватает — заголовок не режем, а кнопку показываем полностью. */
+.catalog-grid.is-list .catalog-game-cta {
+    padding: 0.45rem 1rem;
+    font-size: 0.82rem;
+}
+
+/* Короткое описание игры. В сетку оно не влезает, а в строке как раз заполняет
+   середину, которая иначе выглядела бы пустой. */
+.catalog-game-tagline {
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: #6f64a8;
+}
+
+.catalog-game-facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem;
+    font-size: 0.76rem;
+    color: #8a81b5;
+}
+
+.catalog-game-facts span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.catalog-game-facts svg {
+    width: 0.85rem;
+}
+
+@media (max-width: 640px) {
+    .catalog-grid.is-list .catalog-game-image {
+        width: 108px;
+    }
+}
+
+/* Движение — украшение, а не смысл. Кому оно мешает (укачивание, вестибулярные
+   нарушения, просто раздражает), система сообщает об этом сама — и тогда страница
+   работает точно так же, только без переходов. */
+@media (prefers-reduced-motion: reduce) {
+    .catalog-filter-chip,
+    .catalog-grid,
+    .price-presets button {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+
+/* Каркас карточки на время первой загрузки.
+   Пустая сетка на медленном интернете читалась как «игр нет»: счётчик показывал 0, фильтры
+   сообщали, что данных нет, и человек уходил, не дождавшись. Каркас отвечает на вопрос
+   «что здесь будет» до того, как приедут данные. */
+.catalog-card-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid #efecff;
+    background: #ffffff;
+}
+
+.catalog-card-skeleton__cover {
+    aspect-ratio: 1 / 1; /* как у настоящей плитки — иначе сетка прыгает после загрузки */
+    border-radius: 12px;
+}
+
+.catalog-card-skeleton__line {
+    height: 12px;
+    border-radius: 999px;
+}
+
+.catalog-card-skeleton__line.is-short {
+    width: 45%;
+}
+
+.catalog-card-skeleton__cover,
+.catalog-card-skeleton__line,
+.catalog-count-skeleton {
+    background: linear-gradient(90deg, #f5f3ff 0%, #ece8ff 50%, #f5f3ff 100%);
+    background-size: 200% 100%;
+    animation: catalog-skeleton-shimmer 1.5s linear infinite;
+}
+
+/* Место под «N games» в заголовке: без него строка схлопывается и заголовок дёргается,
+   когда число наконец приезжает. */
+.catalog-count-skeleton {
+    display: inline-block;
+    width: 62px;
+    height: 14px;
+    border-radius: 999px;
+    vertical-align: middle;
+}
+
+@keyframes catalog-skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .catalog-card-skeleton__cover,
+    .catalog-card-skeleton__line,
+    .catalog-count-skeleton {
+        animation: none;
+    }
+}
+
+/* ---------- Раздел ПО ---------- */
+
+/* Сегменты «срок» и «устройства»: вариантов мало, рядом их сравнить быстрее, чем списком. */
+.catalog-segments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.catalog-segments button {
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid #e6e1ff;
+    background: #fff;
+    color: #5a5286;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.catalog-segments button:hover {
+    border-color: #c9bdfb;
+}
+
+.catalog-segments button.is-active {
+    border-color: var(--color-primary, #6b3ff2);
+    background: var(--color-primary, #6b3ff2);
+    color: #fff;
+}
+
+/* Возврат к началу выдачи при смене страницы: верх панели — под шапкой сайта, а не за ней. */
+.catalog-toolbar {
+  scroll-margin-top: 96px;
+}
+
+/* Листание: узкая плашка по центру, прилипает к низу экрана, пока сетка в поле зрения, и встаёт
+   на место в её конце. При прокрутке вниз уезжает за край (.is-hidden), вверх — возвращается. */
+.catalog-pager {
+  position: sticky;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  width: fit-content;
+  margin: var(--space-32, 32px) auto 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  box-shadow: 0 10px 30px rgba(42, 27, 102, 0.16);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.catalog-pager.is-hidden {
+  transform: translateY(calc(100% + 32px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.catalog-pager__arrow {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.catalog-pager__arrow:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.catalog-pager__arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.catalog-pager__arrow:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.catalog-pager__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  font-size: 14px;
+  color: var(--color-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.catalog-pager__input {
+  width: auto;
+  min-width: 44px;
+  height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+}
+
+.catalog-pager__input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-pager {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .catalog-pager {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .catalog-pager__word {
+    display: none;
+  }
+}

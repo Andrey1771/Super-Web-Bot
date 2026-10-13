@@ -1,0 +1,129 @@
+.health-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.health-page__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.health-page__title {
+    margin: 0 0 4px;
+    font-size: 20px;
+}
+
+.health-page__muted {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.health-page__error {
+    margin: 0;
+    color: #8a1e1e;
+    font-size: 14px;
+}
+
+/* Сводка сверху: сколько сломано — это первое, что нужно увидеть, не читая список. */
+.health-page__summary {
+    margin: 0;
+    padding: 12px 16px;
+    border: 1px solid #ffcaca;
+    border-radius: var(--radius-md);
+    background: #ffeaea;
+    color: #8a1e1e;
+    font-weight: 600;
+}
+
+.health-page__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    overflow: hidden;
+}
+
+.health-page__item {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--color-border);
+}
+
+.health-page__item:first-child {
+    border-top: 0;
+}
+
+.health-page__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #c9c9d6;
+}
+
+.health-page__dot--ok {
+    background: #22c55e;
+}
+
+/* Полый кружок — «настроено, но не проверено»: обещания, что сервис отвечает, здесь нет. */
+.health-page__dot--configured {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px #22c55e;
+}
+
+.health-page__dot--warn {
+    background: #f5b53f;
+}
+
+.health-page__dot--down {
+    background: #dc2626;
+}
+
+.health-page__body {
+    min-width: 0;
+}
+
+.health-page__name {
+    font-weight: 700;
+}
+
+/* Причина — главное на странице: по ней видно, что чинить. Пусть переносится целиком. */
+.health-page__detail {
+    margin-top: 2px;
+    color: var(--color-muted);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.health-page__state {
+    text-align: right;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.health-page__footnote {
+    max-width: 70ch;
+}
+
+@media (max-width: 640px) {
+    .health-page__item {
+        grid-template-columns: 10px minmax(0, 1fr);
+        row-gap: 6px;
+    }
+
+    .health-page__state {
+        grid-column: 2;
+        text-align: left;
+    }
+}

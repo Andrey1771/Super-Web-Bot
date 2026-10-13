@@ -1,0 +1,3223 @@
+/* Страница игры. Слои: хиро (галерея · инфо · покупка) → вкладки → контент вкладки → похожие. */
+
+.game-details-page {
+  background: #f6f2fb;
+  color: var(--color-text);
+  padding-bottom: var(--space-64);
+}
+
+.game-details-container {
+  /* Не 112px: отступ под фиксированную шапку уже даёт распорка main-page-down-header-padding
+     с margin-top: var(--app-header-height). Здесь компенсация была вторым слоем поверх первого,
+     и над крошками зияло 112px пустоты. Осталась обычная отбивка от шапки. */
+  padding-top: var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+/* Две колонки, а не три. Раньше медиа получало 38% ширины, а две текстовые колонки рядом —
+   54% на двоих: главное содержимое магазина проигрывало тексту. Теперь слева всё, что
+   описывает игру (заголовок, галерея, факты, теги), справа — только покупка. */
+.gd-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--space-24);
+  align-items: start;
+}
+
+.gd-hero__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* Заголовок занимает обе колонки: он про страницу целиком, а не про левую половину.
+   Пока он лежал внутри левой колонки, галерея начиналась на 154 px ниже карточки покупки. */
+.gd-hero__head {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.gd-hero__media {
+  min-width: 0;
+}
+
+/* Карточка покупки прилипает при скролле хиро — кнопка «купить» не уезжает за галереей. */
+.gd-hero__buy {
+  position: sticky;
+  top: calc(var(--app-header-offset, var(--app-header-height, 108px)) + 24px);
+}
+
+/* Факты — горизонтальная лента под галереей, а не колонка. Переносятся по мере надобности,
+   на широком экране укладываются в один-два ряда. Разделители рисуем границей у пары,
+   а не отдельными элементами, чтобы перенос строки не оставлял висящую палочку. */
+/* Сетка, а не ряд с переносом: подписи второй строки встают под подписи первой,
+   а длинное значение («Firaxis Games, Feral Interactive (Mac)») переносится внутри своей колонки. */
+.gd-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+  gap: 14px 24px;
+  margin: 0;
+  padding: 14px 18px;
+  font-size: 14px;
+  background: #ffffff;
+  border: 1px solid #ece8ff;
+  border-radius: var(--radius-lg);
+}
+
+.gd-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gd-fact dt {
+  color: var(--color-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.gd-fact dt svg {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.gd-fact dd {
+  margin: 0;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.gd-fact__platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gd-age-icon {
+  height: 18px;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.gd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip--link {
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chip--link:hover {
+  background: #e9ddff;
+  color: #4c2ea8;
+}
+
+/* ---- Карточка покупки ---- */
+
+.purchase-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.purchase-stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  /* Не переносить «In stock» на две строки, когда справа стоят звёзды и «Top rated»:
+     плашка уходит второй строкой внутри блока рейтинга (.purchase-rating__row). */
+  white-space: nowrap;
+  flex: none;
+  line-height: 21px;
+}
+
+.purchase-stock__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.purchase-stock--ok {
+  color: #1b8a4a;
+}
+
+.purchase-stock--low {
+  color: #c2410c;
+}
+
+.purchase-stock--out {
+  color: #b91c1c;
+}
+
+.purchase-stock--soon {
+  color: #5b4bb5;
+}
+
+.purchase-price {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.discount-badge {
+  background: #fff0e6;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.discount-deadline {
+  font-size: 13px;
+  color: #c2410c;
+  font-weight: 600;
+}
+
+.purchase-price--na .price {
+  font-size: 20px;
+  color: var(--color-muted);
+}
+
+.purchase-price--na .discount-deadline {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+/* Издания: радио-строки внутри карточки, прямо над кнопкой покупки. */
+.purchase-editions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.purchase-edition {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #ece8ff;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.purchase-edition:hover {
+  border-color: #c7b8ff;
+}
+
+.purchase-edition.is-active {
+  border-color: var(--color-primary);
+  background: #f5f1ff;
+}
+
+.purchase-edition.is-unavailable {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.purchase-edition__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.purchase-edition__title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.purchase-edition__desc {
+  font-size: 12px;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-edition__price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.purchase-edition__price small {
+  font-weight: 400;
+  color: var(--color-muted);
+  text-decoration: line-through;
+  font-size: 12px;
+}
+
+.purchase-edition__price small:only-child {
+  text-decoration: none;
+}
+
+.purchase-cta {
+  width: 100%;
+}
+
+/* Факты о покупке: где активировать, доставка, возврат — со ссылками в справку. */
+.purchase-facts {
+  list-style: none;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid #f0ebff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.purchase-facts li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* «Ask support» — той же типографикой, что ссылки в фактах, но это кнопка: открывает чат. */
+.purchase-facts__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.purchase-facts__link:hover {
+  text-decoration: underline;
+}
+
+.purchase-facts svg {
+  margin-top: 3px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.purchase-facts strong {
+  color: var(--color-text);
+}
+
+.purchase-facts a {
+  color: var(--color-primary);
+}
+
+.purchase-payments {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  color: #6b6393;
+  padding-top: 4px;
+}
+
+.purchase-payments__label {
+  font-size: 12px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Вкладки ---- */
+
+/* Вкладки — подчёркнутые, на линии во всю ширину, как у Epic и GOG: линия принадлежит секции,
+   а не висит отдельной пилюлей. Панель липкая, фон — цвета страницы, чтобы контент под ней
+   не просвечивал. */
+/* Вкладки — белая панель в пластике карточек страницы, во всю ширину секции, индикатор активной —
+   на нижней кромке панели, как у Epic. Плоская лента цвета фона на градиентной странице читалась
+   как чужеродная полоса. Обёртка прозрачная: при прокрутке карточки проезжают под панелью, а не
+   под полосой цвета страницы. */
+.gd-tabs {
+  position: sticky;
+  top: var(--app-header-offset, var(--app-header-height, 108px));
+  z-index: 5;
+  background: transparent;
+  padding: 8px 0;
+  margin-bottom: var(--space-12);
+}
+
+.gd-tabs__inner {
+  display: flex;
+  gap: var(--space-4);
+  padding: 0 var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gd-tabs__inner::-webkit-scrollbar {
+  display: none;
+}
+
+.gd-tab {
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: 15px 16px;
+  line-height: 1.2;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.15s ease;
+}
+
+.gd-tab:hover {
+  color: var(--color-text);
+}
+
+/* Активная — цветом и линией под текстом, перекрывающей общую линию. */
+.gd-tab.is-active {
+  color: var(--color-primary);
+}
+
+/* Индикатор — по ширине текста вкладки (без внутренних отступов), на нижней кромке панели. */
+.gd-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--color-primary);
+}
+
+.gd-tab:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.gd-tab__count {
+  font-size: 12px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-muted) 12%, transparent);
+  color: var(--color-muted);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.gd-tab.is-active .gd-tab__count {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+/* ---- Системные требования ---- */
+
+.sysreq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sysreq-os {
+  display: inline-flex;
+  gap: 4px;
+  background: #f3effc;
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.sysreq-os__btn {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.sysreq-os__btn.is-active {
+  background: #ffffff;
+  color: var(--color-text);
+  box-shadow: 0 1px 4px rgba(60, 40, 120, 0.12);
+}
+
+.sysreq-grid {
+  display: grid;
+  gap: var(--space-24);
+  margin-top: var(--space-16);
+}
+
+.sysreq-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sysreq-grid h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+/* ---- Отзывы: шапка и аватары ---- */
+
+.reviews-header__count {
+  font-size: 16px;
+  color: var(--color-muted);
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+
+.reviews-empty {
+  color: var(--color-muted);
+  padding: var(--space-16) 0;
+}
+
+.review-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.review-avatar--initials {
+  display: grid;
+  place-items: center;
+  background: #ebe3ff;
+  color: #5b4bb5;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.award-year {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.studio-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #ebe3ff;
+  color: #5b4bb5;
+  font-weight: 700;
+}
+
+/* ---- Ошибка ---- */
+
+.gd-error {
+  margin: 48px auto;
+  max-width: 480px;
+  text-align: center;
+  padding: 40px 32px;
+}
+
+.gd-error__icon {
+  font-size: 40px;
+}
+
+.gd-error h2 {
+  margin: 12px 0 8px;
+}
+
+.gd-error p {
+  color: var(--color-muted);
+  margin-bottom: 20px;
+}
+
+/* ---- Скелет ---- */
+
+.gd-skeleton {
+  background: linear-gradient(90deg, #ece7f7 25%, #f5f1fc 50%, #ece7f7 75%);
+  background-size: 200% 100%;
+  animation: gd-shimmer 1.4s infinite;
+  border-radius: 10px;
+}
+
+@keyframes gd-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.gd-skeleton--crumbs {
+  height: 14px;
+  width: 260px;
+}
+
+.gd-skeleton--media {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: var(--radius-lg);
+}
+
+.gd-skeleton-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.gd-skeleton--thumb {
+  width: 96px;
+  height: 64px;
+}
+
+.gd-skeleton--badge {
+  height: 20px;
+  width: 90px;
+}
+
+.gd-skeleton--title {
+  height: 34px;
+  width: 70%;
+}
+
+.gd-skeleton--line {
+  height: 14px;
+  width: 100%;
+}
+
+.gd-skeleton--line.short {
+  width: 55%;
+}
+
+.gd-skeleton--price {
+  height: 36px;
+  width: 50%;
+}
+
+.gd-skeleton--button {
+  height: 48px;
+  width: 100%;
+  border-radius: var(--radius-md);
+}
+
+.gd-skeleton--button.outline {
+  opacity: 0.6;
+}
+
+.game-details-page .card {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(124, 58, 237, 0.08);
+  box-shadow: 0 14px 32px rgba(88, 74, 168, 0.08);
+}
+
+.game-media-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.game-media-main {
+  position: relative;
+  padding: var(--space-16);
+}
+
+/* Стрелки по бокам большого кадра — как в Steam: появляются при наведении, на тач-экранах
+   (где наведения нет) видны всегда, чуть прозрачные. Листают по кругу. */
+.game-media-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.55);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.game-media-arrow.is-prev {
+  left: var(--space-28);
+}
+
+.game-media-arrow.is-next {
+  right: var(--space-28);
+}
+
+.game-media-main:hover .game-media-arrow,
+.game-media-arrow:focus-visible {
+  opacity: 1;
+}
+
+.game-media-arrow:hover {
+  background: var(--color-primary);
+}
+
+.game-media-arrow:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+@media (hover: none) {
+  .game-media-arrow {
+    opacity: 0.85;
+  }
+}
+
+/* Видео идёт, панель плеера спряталась — стрелки (и счётчик в просмотрщике) прячутся вместе с ней, кадр чистый.
+   Касание или движение мыши возвращает всё сразу. */
+.game-media-main.is-video-idle .game-media-arrow,
+.media-lightbox.is-video-idle .media-lightbox__arrow,
+.media-lightbox.is-video-idle .media-lightbox__counter {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* Картинка в большом окне — кнопка: клик открывает просмотрщик. Курсор — рука, как у Steam и у всех
+   карточек сайта: клик открывает просмотр, а не приближает фрагмент, лупа обещала бы лишнее. */
+.game-media-zoom {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Кнопки режимов просмотра в правом нижнем углу кадра — как в Steam: «театр» и полный экран.
+   Видны вместе со стрелками, при наведении. */
+.game-media-tools {
+  position: absolute;
+  right: var(--space-28);
+  bottom: var(--space-28);
+  z-index: 2;
+  display: flex;
+  gap: var(--space-8);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.game-media-main:hover .game-media-tools,
+.game-media-tools:focus-within {
+  opacity: 1;
+}
+
+.game-media-tool {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.55);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.game-media-tool:hover {
+  background: var(--color-primary);
+}
+
+@media (hover: none) {
+  .game-media-tools {
+    opacity: 0.85;
+  }
+}
+
+/* ---------- Полноэкранный просмотр галереи ---------- */
+.media-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 8, 18, 0.94);
+  animation: media-lightbox-in 0.18s ease;
+}
+
+@keyframes media-lightbox-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.media-lightbox__stage {
+  margin: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* Рамка одна на все кадры — 16:9, во всю ширину, но не выше 80vh, как в Steam. Скриншот любой
+   пропорции и видео вписываются в неё с полями: при листании размер окна не скачет, стрелки и
+   кнопки режимов стоят на месте. Размер задаёт рамка, а не кадр. */
+.media-lightbox__frame {
+  position: relative;
+  display: block;
+  width: min(92vw, calc(80vh * 16 / 9), 1600px);
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius-md);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.media-lightbox__frame img,
+.media-lightbox__frame .vp {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.media-lightbox__caption {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  text-align: center;
+}
+
+.media-lightbox__caption b {
+  color: #ffffff;
+}
+
+/* Телефон: подпись под кадром не сдвигает его вверх — кадр стоит ровно по центру экрана, на одной линии со
+   стрелками (они центрируются по экрану). Места снизу на вертикальном экране для подписи хватает. */
+@media (max-width: 768px) {
+  .media-lightbox__stage {
+    position: relative;
+  }
+
+  .media-lightbox__caption {
+    position: absolute;
+    top: calc(100% + var(--space-12));
+    left: 0;
+    right: 0;
+  }
+}
+
+.media-lightbox__arrow,
+.media-lightbox__close {
+  position: absolute;
+  z-index: 1;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.media-lightbox__arrow:hover,
+.media-lightbox__close:hover {
+  background: var(--color-primary);
+}
+
+.media-lightbox__arrow {
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  transform: translateY(-50%);
+}
+
+.media-lightbox__arrow:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.media-lightbox__arrow.is-prev {
+  left: var(--space-24);
+}
+
+.media-lightbox__arrow.is-next {
+  right: var(--space-24);
+}
+
+.media-lightbox__close {
+  top: var(--space-20);
+  right: var(--space-20);
+  width: 44px;
+  height: 44px;
+}
+
+/* Рамка кадра: кнопки режимов стоят в её правом нижнем углу, как у Steam, а не в углу экрана. */
+.media-lightbox__tools {
+  position: absolute;
+  right: var(--space-12);
+  bottom: var(--space-12);
+  display: flex;
+  gap: var(--space-8);
+}
+
+.media-lightbox__tool {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.media-lightbox__tool:hover {
+  background: var(--color-primary);
+}
+
+.media-lightbox__tool:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* В полном экране кадр занимает весь экран, как в Steam: без полей, скруглений и тени; подпись
+   и счётчик уходят, чтобы не перекрывать видео. Театральные ограничения (80vh, 92vw) здесь не нужны. */
+.media-lightbox:fullscreen {
+  background: #050508;
+}
+
+.media-lightbox:fullscreen .media-lightbox__stage {
+  gap: 0;
+}
+
+.media-lightbox:fullscreen .media-lightbox__frame {
+  width: min(100vw, calc(100vh * 16 / 9));
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.media-lightbox:fullscreen .media-lightbox__caption,
+.media-lightbox:fullscreen .media-lightbox__counter {
+  display: none;
+}
+
+/* Стрелки и крестик — поверх кадра, полупрозрачные, чтобы не спорить с видео. */
+.media-lightbox:fullscreen .media-lightbox__arrow,
+.media-lightbox:fullscreen .media-lightbox__close {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.media-lightbox__counter {
+  position: absolute;
+  bottom: var(--space-20);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: opacity 0.2s ease;
+}
+
+/* Телефон боком: кадр во всю высоту экрана, без полей, подписи и счётчика — почти полный экран и там,
+   где Safari не даёт развернуть страницу (iPhone). */
+@media (orientation: landscape) and (max-height: 540px) {
+  .media-lightbox__frame {
+    width: min(100vw, calc(100dvh * 16 / 9));
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .media-lightbox__caption,
+  .media-lightbox__counter {
+    display: none;
+  }
+
+  .media-lightbox__close {
+    top: var(--space-8);
+    right: var(--space-8);
+    background: rgba(15, 23, 42, 0.45);
+  }
+}
+
+@media (max-width: 640px) {
+  .media-lightbox__arrow {
+    width: 42px;
+    height: 42px;
+  }
+
+  .media-lightbox__arrow.is-prev {
+    left: var(--space-8);
+  }
+
+  .media-lightbox__arrow.is-next {
+    right: var(--space-8);
+  }
+
+  .media-lightbox__frame {
+    width: 100vw;
+    border-radius: 0;
+  }
+}
+
+.game-media-image,
+.game-media-video {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  /* 16:9 — пропорция самого контента: трейлеры и большинство скриншотов именно такие.
+     Прежние 4:3 были компромиссом узкой колонки в трёхколоночном хиро; теперь галерея
+     занимает две трети ширины, и подгонять кадр под колонку больше не нужно. */
+  aspect-ratio: 16 / 9;
+  background: #ede9fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-placeholder {
+  color: #6d5f99;
+  font-weight: 600;
+}
+
+.game-media-image img,
+.game-media-video .vp,
+.video-poster img {
+  width: 100%;
+  height: 100%;
+  /* contain, а не cover: кадр обещает показать материал целиком. С cover ultrawide-скриншот
+     и портретный лишались краёв, а у трейлера срезало бы бока. Поля закрывает фон окна. */
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+}
+
+.video-poster {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.video-play {
+  position: absolute;
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(124, 58, 237, 0.85);
+  color: white;
+  font-size: 24px;
+  box-shadow: 0 12px 24px rgba(124, 58, 237, 0.35);
+}
+
+.thumbnail-strip-wrapper {
+  position: relative;
+}
+
+/* Нативный скроллбар спрятан: вместо него под лентой свой скроллер (.thumbnail-scroller),
+   и только когда миниатюры не влезают. Прокрутка колесом и пальцем работает как раньше. */
+/* Без scroll-behavior: smooth — иначе перетаскивание бегунка и колесо догоняют каждое движение
+   анимацией. Плавно листают только стрелки и переход к активному кадру (behavior: 'smooth' в коде). */
+.thumbnail-strip {
+  display: flex;
+  gap: var(--space-12);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.thumbnail-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Миниатюры тянутся и делят ширину поровну: пока их немного, помещаются все и прокрутка не
+   нужна. Раньше при фиксированной ширине из девяти было видно четыре, а о существовании
+   остальных догадаться было невозможно. min-width держит нижнюю границу читаемости —
+   когда кадров станет действительно много, лента снова начнёт прокручиваться. */
+.thumbnail-item {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  padding: 0;
+  flex: 1 1 88px;
+  min-width: 88px;
+  max-width: 148px;
+  aspect-ratio: 16 / 9;
+  background: #f8f6ff;
+  cursor: pointer;
+}
+
+.thumbnail-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-item.is-active {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.thumbnail-video {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.45));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.thumbnail-video .play-badge {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  backdrop-filter: blur(2px);
+}
+
+/* Скроллер ленты: стрелки по краям и полоса с бегунком. Ширина бегунка — доля видимой части
+   ленты, положение — доля прокрутки; бегунок можно тащить, по свободной части — листать на экран. */
+.thumbnail-scroller {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  margin-top: var(--space-10);
+}
+
+.thumbnail-nav {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.thumbnail-nav svg {
+  width: 16px;
+  height: 16px;
+}
+
+.thumbnail-nav:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  box-shadow: var(--shadow-sm);
+}
+
+.thumbnail-nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.thumbnail-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.thumbnail-track__thumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 24px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 55%, #ffffff);
+  cursor: grab;
+  transition: background-color 0.2s ease;
+}
+
+.thumbnail-track:hover .thumbnail-track__thumb {
+  background: var(--color-primary);
+}
+
+.thumbnail-track__thumb:active,
+.thumbnail-track.is-dragging,
+.thumbnail-track.is-dragging .thumbnail-track__thumb {
+  cursor: grabbing;
+}
+
+.thumbnail-track.is-dragging .thumbnail-track__thumb {
+  background: var(--color-primary);
+}
+
+.game-title {
+  margin: 0;
+  font-size: clamp(34px, 3vw, 38px);
+  line-height: 1.15;
+}
+
+.game-tagline {
+  font-size: 18px;
+  color: #6d5f99;
+}
+
+/* «DLC · Дополнение к игре [обложка] 7 Days to Die» — под названием DLC. */
+.gd-dlc-of {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 15px;
+  color: var(--color-muted);
+}
+
+.gd-dlc-of__badge {
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gd-dlc-of__game {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.gd-dlc-of__game:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.gd-dlc-of__cover {
+  width: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex: none;
+}
+
+/* Рейтинг под названием — кнопка: ведёт на вкладку отзывов. Как у Epic: звёзды, оценка, число отзывов. */
+.gd-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: fit-content;
+  margin-top: var(--space-4);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.gd-rating:disabled {
+  cursor: default;
+}
+
+.gd-rating__value {
+  font-weight: 700;
+}
+
+.gd-rating__count {
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.gd-rating:hover .gd-rating__count {
+  color: var(--color-primary);
+}
+
+.gd-rating__top {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.platform-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.platform-icon {
+  font-size: 13px;
+}
+/* Звёзды: закрашенные и половинки — оранжевые, пустые — серые. Раньше все пять были оранжевыми
+   при любой оценке, и «0.0» выглядело как «5.0». */
+.star-rating {
+  --star-empty: #d9dce6;
+  display: flex;
+  gap: 4px;
+  color: var(--star-empty);
+}
+
+.star.is-full,
+.star.is-half {
+  color: #f6b73c;
+}
+
+/* Якорь вкладок: клик по рейтингу под названием прокручивает сюда, с поправкой на липкую шапку. */
+.gd-tabs-anchor {
+  scroll-margin-top: calc(var(--app-header-offset, var(--app-header-height, 108px)) + 8px);
+}
+
+.purchase-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.purchase-price .price-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+
+.purchase-price .price {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.purchase-price .old-price {
+  text-decoration: line-through;
+  color: var(--color-muted);
+  font-size: 16px;
+}
+
+.purchase-price .discount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.rating-pill {
+  background: #f2efff;
+  color: #5c4ea3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.purchase-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-12);
+}
+
+.purchase-actions .btn {
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  padding: 10px 16px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.purchase-wishlist {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.purchase-wishlist-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.purchase-wishlist.is-active {
+  border-color: #6b3ff2;
+  color: #6b3ff2;
+}
+
+.purchase-note {
+  font-size: 13px;
+}
+
+/* Состояние «игра ещё не вышла»: вместо кнопки покупки — чип и дата релиза. */
+.purchase-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+}
+
+.purchase-coming-soon-chip {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-primary);
+}
+
+.purchase-coming-soon-date {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.game-details-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.8fr);
+  gap: var(--space-24);
+}
+
+.details-main,
+.details-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.features ul {
+  list-style: disc;
+  margin-left: 20px;
+  color: var(--color-muted);
+}
+
+.award-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.award-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f3f0ff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5c4ea3;
+}
+.detail-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding-bottom: var(--space-8);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #2b2350;
+}
+
+.detail-value {
+  color: var(--color-muted);
+  text-align: right;
+}
+.studio-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.studio-item {
+  display: flex;
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.studio-item img {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.studio-name {
+  font-weight: 600;
+  margin: 0;
+}
+
+.studio-link {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* Заголовок секции отзывов: «Customer reviews» и пилюля «4.8 · Very Positive», как у Amazon. */
+.reviews-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-16);
+}
+
+.reviews-head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.reviews-head__label {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f2efff;
+  color: #5c4ea3;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Сводка слева, список справа; колонки не тянутся друг под друга. */
+.reviews-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: var(--space-24);
+  align-items: start;
+}
+
+/* Сводка едет вместе со списком: при долгом списке оценка всегда рядом. Отступ — под липкую шапку и вкладки. */
+.review-summary {
+  position: sticky;
+  top: calc(var(--app-header-offset, var(--app-header-height, 108px)) + 64px);
+  padding: var(--space-20);
+}
+
+.review-summary__score {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.review-summary__score .review-count {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* «Review this game» внизу сводки: отделён линией, кнопка во всю ширину. */
+.review-summary__cta {
+  margin-top: var(--space-16);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border);
+}
+
+.review-summary__cta h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.review-summary__hint {
+  margin: 0 0 var(--space-12);
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.review-summary__btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Панель списка: слева «Top reviews» и диапазон, справа фильтр, сортировка, поиск. */
+.review-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.review-list-head__left {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-10, 10px);
+}
+
+.review-list-head__left h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.review-list-head__range {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.review-list-head__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.review-list-head__right .reviews-filter {
+  width: auto;
+  min-width: 130px;
+  height: 40px;
+}
+
+.review-list-head__right .reviews-search {
+  width: 200px;
+  height: 40px;
+}
+
+.review-list-head__right .sort-select-button {
+  min-width: 11rem;
+  height: 40px;
+}
+
+.review-score {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.review-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: var(--space-16) 0;
+}
+
+.review-bar {
+  display: grid;
+  grid-template-columns: 20px 1fr 40px;
+  gap: var(--space-8);
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.bar-track {
+  background: #f0ecff;
+  border-radius: 999px;
+  height: 8px;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+.review-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.tag-chip {
+  padding: 6px 10px;
+  background: #f3f0ff;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5c4ea3;
+}
+
+/* Список отзывов — одна панель с разделителями, как у Steam и App Store: стопка одинаковых
+   карточек с тенями дробила страницу на блоки и съедала место отступами. */
+.review-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.review-list > * + * {
+  border-top: 1px solid var(--color-border);
+}
+
+/* Карточка отзыва внутри панели: без своей рамки и тени. Аватар — своя колонка, имя, оценка,
+   текст и действия — колонка справа, выровненная по имени. */
+.review-list .review-card,
+.review-list .write-review {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.review-list > * + .review-card,
+.review-list > * + .write-review {
+  border-top: 1px solid var(--color-border);
+}
+
+.review-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  column-gap: var(--space-16);
+  align-items: start;
+  padding: 22px var(--space-24) 20px;
+}
+
+.review-card .review-avatar {
+  width: 44px;
+  height: 44px;
+}
+
+.review-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Шапка в две строки: имя и дата, под ними звёзды с вердиктом и часами. */
+.review-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.review-header__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+  /* Справа — место под флажок в углу карточки, чтобы дата не уходила под него. */
+  padding-right: 36px;
+}
+
+.review-card--mine .review-header__top {
+  padding-right: 0;
+}
+
+.review-header__side {
+  display: contents;
+}
+
+.review-name {
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.review-dates {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.review-date {
+  font-size: 12px;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.review-date--edited {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-muted) 80%, transparent);
+}
+
+/* Метаданные: звёзды, вердикт, часы — одной строкой; переносится, когда не влезает. */
+.review-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px var(--space-8);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.review-meta__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-meta__item::before {
+  content: '·';
+  margin-right: 8px;
+  color: color-mix(in srgb, var(--color-muted) 60%, transparent);
+}
+
+/* Вердикт — цветом, без плашки: зелёный «рекомендую», красный «нет», иконка пальца в тон. */
+/* Пометка возврата — тихая пилюля в строке метаданных, не спорит со звёздами. */
+.review-refunded {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-muted) 12%, transparent);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* На узком экране строка метаданных переносится: часы уходят на свою строку, а точка-разделитель
+   в начале строки выглядела бы как мусор. */
+@media (max-width: 480px) {
+  .review-meta__item {
+    flex-basis: 100%;
+  }
+
+  .review-meta__item::before {
+    display: none;
+  }
+}
+
+/* Переносы строк автора сохраняются (pre-line). Свёрнутый отзыв — пять строк без многоточия:
+   текст растворяется книзу, а на границе стоит круглая кнопка-стрелка (вариант 3 из макета). */
+.review-text-wrap {
+  position: relative;
+  margin-top: 10px;
+  max-width: 70ch;
+}
+
+.review-text-wrap.is-clamped::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.4em;
+  background: linear-gradient(to bottom, transparent, var(--review-surface, var(--color-surface)));
+  pointer-events: none;
+}
+
+.review-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  max-height: calc(1.6em * 5);
+  overflow: hidden;
+}
+
+.review-text.is-expanded {
+  max-height: none;
+}
+
+/* Кнопка раскрытия: круг по центру ширины текста, наполовину на затухании. Раскрыто — под текстом,
+   стрелкой вверх. */
+/* Центр — по всей колонке содержимого, а не по ширине текста (70ch): иначе на широкой карточке
+   кнопка стояла левее середины и казалась сдвинутой. */
+.review-more {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  margin-top: -14px;
+}
+
+.review-more.is-expanded {
+  margin-top: 8px;
+}
+
+.review-more__btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+  transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.review-more__btn:hover {
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  box-shadow: 0 3px 10px rgba(17, 24, 39, 0.12);
+}
+
+.review-more__btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.review-more__btn svg {
+  transition: transform 0.15s ease;
+}
+
+.review-more__btn svg.is-up {
+  transform: rotate(180deg);
+}
+
+/* Отклик читателя — отдельной, чуть отставленной строкой под телом отзыва. */
+.review-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-12);
+  margin-top: 14px;
+}
+
+.review-actions__prompt {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* «Полезно»: пилюля с пальцем и числом, приглушённая; поставленный голос — фиолетовый. */
+.review-vote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.review-vote:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  color: var(--color-primary);
+}
+
+.review-vote.is-active {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+  color: var(--color-primary);
+}
+
+.review-vote:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Флажок жалобы: только иконка, в приглушённом цвете, заметнее на наведении. */
+/* Флажок — в правом верхнем углу карточки, как у Steam; вне потока, чтобы не ломать перенос шапки на телефоне. */
+.review-flag {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.review-flag:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-primary);
+}
+
+/* На устройствах с мышью флажок появляется при наведении на карточку; с клавиатуры и на тач — виден всегда. */
+@media (hover: hover) {
+  .review-card .review-flag {
+    opacity: 0;
+    transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .review-card:hover .review-flag,
+  .review-card:focus-within .review-flag {
+    opacity: 1;
+  }
+}
+
+.review-flag:focus-visible,
+.review-vote:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.review-action-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.review-action-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-12);
+  margin: var(--space-8) 0 0;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.review-action-signin {
+  padding: 4px 12px;
+  min-height: 0;
+  font-size: 13px;
+}
+
+/* ---------- Окно жалобы на отзыв ---------- */
+.report-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+  background: rgba(8, 8, 18, 0.55);
+}
+
+.report-modal__card {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.report-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.report-modal__head h3 {
+  margin: 0;
+}
+
+.report-modal__close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.report-modal__close:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-text);
+}
+
+.report-modal__subtitle {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.report-modal__reasons {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: var(--space-8);
+}
+
+.report-modal__reasons legend {
+  font-weight: 600;
+  margin-bottom: var(--space-8);
+}
+
+.report-modal__reason {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.report-modal__reason:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+}
+
+.report-modal__reason.is-selected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+}
+
+.report-modal__reason input {
+  margin-top: 3px;
+  accent-color: var(--color-primary);
+}
+
+.report-modal__reason-label {
+  display: block;
+  font-weight: 600;
+}
+
+.report-modal__reason-hint {
+  display: block;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.report-modal__comment {
+  display: grid;
+  gap: var(--space-8);
+  font-weight: 600;
+}
+
+.report-modal__comment > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.report-modal__counter {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.report-modal__comment textarea {
+  resize: vertical;
+  font-weight: 400;
+}
+
+.report-modal__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+  margin: 0;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+/* Сессия истекла: не ошибка, а просьба войти — спокойный фон, кнопка входа и обещание сохранить текст. */
+.report-modal__error--session {
+  padding: var(--space-12);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+  color: var(--color-text);
+}
+
+.report-modal__error-hint {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.report-modal__error .btn {
+  padding: 4px 12px;
+  min-height: 0;
+  font-size: 13px;
+}
+
+.report-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-12);
+}
+
+.reviews-lower-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-24);
+  scroll-margin-top: calc(var(--app-header-offset, var(--app-header-height, 108px)) + 64px);
+}
+
+.write-review .review-textarea {
+  min-height: 120px;
+  margin: var(--space-12) 0;
+}
+
+/* Плашка вместо формы для тех, кому писать нельзя: одна строка, текст слева, кнопка входа справа. */
+.write-review--locked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-20);
+}
+
+.write-review--locked p {
+  margin: 0;
+}
+
+.write-stars {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.star-button {
+  border: none;
+  background: #f3f0ff;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: #f6b73c;
+  font-size: 18px;
+}
+
+.star-button.is-active {
+  background: #ffe9b1;
+}
+
+.recommendations {
+  margin-top: var(--space-32);
+}
+
+.recommendations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.recommendations-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: var(--space-16);
+  overflow-x: auto;
+  padding-bottom: var(--space-8);
+  margin-top: var(--space-16);
+  scroll-snap-type: x mandatory;
+}
+
+.recommendation-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  scroll-snap-align: start;
+}
+
+.recommendation-link img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.recommendation-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  color: inherit;
+}
+
+.recommendation-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* Ограничено страницей игры намеренно: класс .btn-small используется ещё и в админке,
+   где он не описан. Без этой привязки стили витрины меняли бы там кнопки — это всплыло,
+   когда карточку понадобилось отрисовать внутри админки для превью. */
+.game-details-page .btn-small {
+  height: 36px;
+  font-size: 12px;
+  padding: 0 var(--space-12);
+  width: 100%;
+}
+
+/* ---- Адаптив ---- */
+
+@media (max-width: 1200px) {
+  /* Планшет-ландшафт: колонка покупки сужается, но остаётся рядом — цена и кнопка
+     не должны уезжать под галерею раньше, чем это станет неизбежным.
+     Прежнее правило про `grid-column: 1 / -1` у медиа больше не нужно: галерея теперь
+     не прямой потомок сетки хиро, а лежит внутри левой колонки. */
+  .gd-hero {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .gd-hero__buy {
+    position: static;
+  }
+}
+
+@media (max-width: 1100px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-details-container {
+    /* Та же причина, что и в базовом правиле: шапку компенсирует распорка, не этот отступ. */
+    padding-top: var(--space-16);
+  }
+
+  .gd-hero {
+    grid-template-columns: 1fr;
+  }
+
+  /* Телефон: заголовок → галерея → покупка → факты → теги. Карточка покупки должна идти
+     сразу за галереей, но она сосед левой колонки, а не её потомок. display: contents
+     растворяет обёртку, её дети становятся прямыми элементами сетки — и порядком можно
+     управлять напрямую, не меняя разметку. */
+  .gd-hero__main {
+    display: contents;
+  }
+
+  .gd-hero__head {
+    order: 1;
+  }
+
+  .gd-hero__media {
+    order: 2;
+  }
+
+  .gd-hero__buy {
+    order: 3;
+  }
+
+  .gd-facts {
+    order: 4;
+  }
+
+  .gd-chips {
+    order: 5;
+  }
+
+  /* Описание тоже обязано получить свой номер. Без него у него order: 0 по умолчанию —
+     то есть меньше, чем у всех соседей, — и на узком экране блок «About this game»
+     выпрыгивал в самый верх, ВЫШЕ заголовка игры. */
+  .gd-about {
+    order: 6;
+  }
+
+  .purchase-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .reviews-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* В одну колонку сводка стоит перед списком; липкой ей быть нельзя — перекрывала бы отзывы. */
+  .review-summary {
+    position: static;
+  }
+
+  /* Панель списка на телефоне: заголовок строкой, контролы — на всю ширину. */
+  .review-list-head__right {
+    width: 100%;
+  }
+
+  .review-list-head__right .reviews-search {
+    flex: 1 1 160px;
+    width: auto;
+  }
+
+  .sysreq-grid--two {
+    grid-template-columns: 1fr;
+  }
+
+  .write-review--locked {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .thumbnail-item {
+    min-width: 72px;
+    height: 72px;
+  }
+
+  .purchase-price .price {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .game-media-image,
+  .game-media-video {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* Markdown-описание: заголовки из админки не должны спорить с заголовком карточки. */
+.gd-markdown h1,
+.gd-markdown h2,
+.gd-markdown h3 {
+  font-size: 17px;
+  margin: var(--space-16) 0 var(--space-8);
+}
+
+.gd-markdown h1:first-child,
+.gd-markdown h2:first-child,
+.gd-markdown h3:first-child {
+  margin-top: 0;
+}
+
+.gd-markdown p {
+  margin: 0 0 var(--space-12);
+  line-height: 1.6;
+}
+
+.gd-markdown ul,
+.gd-markdown ol {
+  padding-left: 20px;
+  margin: 0 0 var(--space-12);
+}
+
+/* Картинки и гифки в описании. Глобальный сброс уже даёт max-width: 100%, здесь —
+   оформление: скруглить, отбить от текста и не дать узкой картинке прилипнуть к краю. */
+.gd-markdown img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  /* По центру: гифки обычно уже колонки (увеличивать их — втрое раздувать вес файла),
+     и прижатая влево узкая картинка рядом с широкой выглядит как недосмотр, а не замысел. */
+  margin: var(--space-16) auto;
+  border-radius: var(--radius-md);
+  border: 1px solid #ece8ff;
+}
+
+/* Картинка одна в абзаце — сам абзац не должен добавлять второй отступ снизу. */
+.gd-markdown p:has(> img:only-child) {
+  margin-bottom: 0;
+}
+
+/* Декоративная полоска-разделитель из Steam: без рамки и скругления, во всю ширину колонки и с узкими отступами. */
+.gd-markdown img.is-divider {
+  width: 100%;
+  margin: var(--space-8) 0 var(--space-12);
+  border: none;
+  border-radius: 0;
+}
+
+.gd-markdown a {
+  color: var(--color-primary);
+}
+
+/* Картинки вписываем целиком: обложка — это арт, обрезать его нельзя; фон окна мягкий. */
+.game-media-image img {
+  object-fit: contain;
+}
+
+/* ---- Фаза B: языки, награды, студии, теги ---- */
+
+.gd-languages {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.gd-languages th,
+.gd-languages td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0ebff;
+  text-align: left;
+}
+
+.gd-languages th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.gd-languages th:not(:first-child),
+.gd-languages td:not(:first-child) {
+  text-align: center;
+  width: 160px;
+}
+
+.gd-languages td.is-yes {
+  color: #1b8a4a;
+  font-weight: 700;
+}
+
+.gd-languages td.is-no {
+  color: #b9b3d1;
+}
+
+.award-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.award-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* У .btn высота фиксированная — длинное название студии в две строки упиралось бы в рамку. */
+.studio-more {
+  margin-top: var(--space-12);
+  width: 100%;
+  height: auto;
+  min-height: 48px;
+  padding: 10px var(--space-16);
+  text-align: center;
+  line-height: 1.35;
+}
+
+.chip--tag {
+  background: transparent;
+  border: 1px dashed #d7ccff;
+  color: #6b5fa3;
+}
+
+.chip--tag:hover {
+  border-style: solid;
+}
+
+/* ---- Фаза C: отзывы и Q&A ---- */
+
+.review-list .review-card--mine {
+  --review-surface: color-mix(in srgb, var(--color-primary) 3%, var(--color-surface));
+  box-shadow: inset 3px 0 0 var(--color-primary);
+  background: var(--review-surface);
+}
+
+.review-mine-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+}
+
+/* «Edit» у своего отзыва — рядом с бейджем, а не кнопкой внизу: это правка записи, а не отклик. */
+.review-edit-link {
+  margin-left: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.review-edit-link:hover {
+  color: var(--color-primary);
+}
+
+.write-review-error {
+  color: #b91c1c;
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.write-review-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Правая колонка: полоса сортировки, панель списка, страницы. Прокрутка при смене страницы
+   встаёт под липкую шапку и вкладки. */
+.reviews-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  scroll-margin-top: calc(var(--app-header-offset, var(--app-header-height, 108px)) + 64px);
+}
+
+.reviews-column .pagination {
+  margin-top: var(--space-4);
+}
+
+.review-list .reviews-empty {
+  margin: 0;
+  padding: var(--space-24);
+  border-top: 0;
+}
+
+/* DLC списком с галочками (как «Content for this game» в Steam): галочка, обложка 16:9, название с датой,
+   цена. Вся строка — label: клик по ней ставит галочку, клик по названию ведёт на страницу DLC. */
+.dlc-checklist__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-8);
+}
+
+.dlc-checklist__head h2 {
+  margin: 0;
+}
+
+.dlc-checklist__count {
+  margin-left: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.dlc-checklist__select-all,
+.dlc-checklist__more {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dlc-checklist__select-all:hover,
+.dlc-checklist__more:hover {
+  text-decoration: underline;
+}
+
+.dlc-checklist__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dlc-checklist__list > li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.dlc-row {
+  display: grid;
+  grid-template-columns: 20px 128px minmax(0, 1fr) auto;
+  gap: var(--space-14);
+  align-items: center;
+  padding: var(--space-12) var(--space-8);
+  margin-inline: calc(-1 * var(--space-8));
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dlc-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.dlc-row.is-checked.is-selectable {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.dlc-row:not(.is-selectable) {
+  cursor: default;
+}
+
+.dlc-row:not(.is-selectable):hover {
+  background: none;
+}
+
+/* Настоящий чекбокс остаётся для клавиатуры и чтения с экрана, рисуем свой квадрат рядом. */
+.dlc-row__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dlc-row__box {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid color-mix(in srgb, var(--color-border) 60%, #94a3b8 40%);
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.dlc-row.is-checked .dlc-row__box {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.dlc-row.is-inCart .dlc-row__box {
+  background: color-mix(in srgb, var(--color-primary) 45%, #fff);
+  border-color: transparent;
+}
+
+.dlc-row:not(.is-selectable):not(.is-inCart) .dlc-row__box {
+  background: var(--color-bg);
+  border-style: dashed;
+}
+
+.dlc-row__input:focus-visible + .dlc-row__box {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.dlc-row__cover {
+  display: block;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.dlc-row__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dlc-row__title {
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+a.dlc-row__title:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.dlc-row__date {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.dlc-row__price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dlc-row__amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dlc-row__amount.is-muted {
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.dlc-row__old {
+  margin-right: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.dlc-row__sale {
+  background: #fff0e6;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.dlc-row__note {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.dlc-row__note.is-inCart,
+.dlc-row__note.is-owned {
+  color: var(--color-primary);
+}
+
+/* Купленное и недоступное приглушено целиком, кроме подписи-причины. */
+.dlc-row.is-owned .dlc-row__cover,
+.dlc-row.is-owned .dlc-row__body,
+.dlc-row.is-outOfStock .dlc-row__cover,
+.dlc-row.is-soon .dlc-row__cover,
+.dlc-row.is-noPrice .dlc-row__cover,
+.dlc-row.is-notSold .dlc-row__cover {
+  opacity: 0.55;
+}
+
+.dlc-checklist__more {
+  margin-top: var(--space-8);
+}
+
+.dlc-checklist__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-top: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+}
+
+.dlc-checklist__sum {
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.dlc-checklist__sum b {
+  font-size: 18px;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dlc-checklist__add {
+  height: 44px;
+}
+
+/* Телефон: обложка меньше, цена переезжает под название — четыре колонки в 360px не влезают. */
+@media (max-width: 640px) {
+  .dlc-row {
+    grid-template-columns: 20px 88px minmax(0, 1fr);
+    gap: var(--space-10);
+  }
+
+  .dlc-row__price {
+    grid-column: 3;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    text-align: left;
+  }
+
+  .dlc-checklist__add {
+    width: 100%;
+  }
+}
+
+.purchase-facts__dlc {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* Регион активации в карточке покупки. */
+.purchase-region-warning {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.purchase-region-warning svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.purchase-facts__region--blocked,
+.purchase-facts__region--blocked strong {
+  color: #b91c1c;
+}
+
+.purchase-facts__hint {
+  color: var(--color-muted);
+}
+
+/* «More like this» — сетка карточек из общего блока рекомендаций. */
+.recs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-16);
+}
+
+/* Карточка рекомендации на странице игры. Такая же по имени карточка есть в корзине, но
+   выглядит иначе; без этой привязки к странице одна молча перекрашивала другую. */
+
+/* Строка «для какой страны проверяли регион» — нейтральная: это в том числе догадка по часовому
+   поясу, и выдавать её за факт зелёным цветом нельзя. */
+.purchase-facts__country {
+  color: var(--color-muted);
+}
+
+.purchase-facts__country strong {
+  color: var(--color-text);
+}
+
+/* Подозрение на VPN/прокси: страна по IP не та, для которой подбирается ключ. Предупреждение, а не запрет. */
+.purchase-region-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.purchase-region-notice svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* ---- Описание в левой колонке хиро ---- */
+
+.gd-about {
+  margin: 0;
+}
+
+/* Свёрнутое состояние: ограничиваем высоту игасим нижний край градиентом.
+   Резкий обрыв на полуслове читается как баг вёрстки, а не как «есть продолжение». */
+.gd-about__body {
+  position: relative;
+  overflow: hidden;
+}
+
+.gd-about__body.is-collapsed::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 85%);
+  pointer-events: none;
+}
+
+.gd-about__toggle {
+  margin-top: 12px;
+  padding: 8px 18px;
+  border: 1px solid #ece8ff;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.gd-about__toggle:hover {
+  background: #f8f6ff;
+  border-color: var(--color-primary);
+}
+
+/* Варианты ключа: строка = где активируется + цена. Дешёвый сверху — их так и сравнивают. */
+.purchase-offers {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.purchase-offer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 10px;
+    background: #fff;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.purchase-offer.is-selected {
+    border-color: #6b3ff2;
+    box-shadow: 0 0 0 1px #6b3ff2 inset;
+}
+
+/* Недоступный вариант приглушён, но кликабелен: покупатель может смотреть его цену и
+   понимать, за что доплачивает, — прятать её значит выглядеть дороже, чем есть. */
+.purchase-offer.is-blocked {
+    opacity: 0.72;
+}
+
+.purchase-offer__main {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.purchase-offer__title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.purchase-offer__note {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.purchase-offer.is-blocked .purchase-offer__note {
+    color: #a03434;
+}
+
+.purchase-offer__price {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* ---- ПО: выбор лицензии, сравнение, активация ---- */
+
+.license-picker {
+    display: grid;
+    gap: 12px;
+}
+
+.license-picker__label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.license-picker__options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+    gap: 6px;
+}
+
+.license-option {
+    display: grid;
+    gap: 2px;
+    padding: 8px 6px;
+    border: 1px solid #ece8ff;
+    border-radius: var(--radius-md);
+    background: #fff;
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.license-option b {
+    font-size: 14px;
+}
+
+.license-option small {
+    font-size: 11.5px;
+    color: var(--color-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.license-option:hover {
+    border-color: #c7b8ff;
+}
+
+.license-option.is-selected {
+    border-color: var(--color-primary);
+    background: #f5f1ff;
+    box-shadow: 0 0 0 1px var(--color-primary) inset;
+}
+
+/* Комбинации с выбранным значением нет — кнопка ведёт к ближайшей лицензии, поэтому приглушена, но не выключена. */
+.license-option.is-other {
+    opacity: 0.6;
+}
+
+.license-per-unit {
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.license-summary {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    background: #f8f6ff;
+    font-size: 13px;
+    color: var(--color-text);
+}
+
+.license-compare__scroll {
+    overflow-x: auto;
+}
+
+.license-compare {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.license-compare th,
+.license-compare td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f0edff;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.license-compare th[scope='row'] {
+    text-align: left;
+    font-weight: 600;
+}
+
+.license-compare thead th {
+    font-size: 12px;
+    color: var(--color-muted);
+    font-weight: 600;
+}
+
+.license-compare td button {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.license-compare td button:hover:not(:disabled) {
+    border-color: #c7b8ff;
+}
+
+.license-compare td.is-selected button {
+    border-color: var(--color-primary);
+    background: #f5f1ff;
+}
+
+.license-compare td small {
+    font-size: 11px;
+    font-weight: 500;
+    color: #b91c1c;
+}
+
+.license-compare td.is-empty {
+    color: var(--color-muted);
+}
+
+.activation-steps {
+    margin: 0;
+    padding-left: 20px;
+    display: grid;
+    gap: 6px;
+    line-height: 1.5;
+}
+
+.activation-note {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: #f8f6ff;
+    font-size: 13px;
+    color: var(--color-muted);
+}

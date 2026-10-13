@@ -1,0 +1,215 @@
+.stripe-payment-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.stripe-payment-header h2 {
+    margin-bottom: var(--space-8);
+}
+
+.stripe-payment-header p {
+    margin: 0;
+    color: var(--color-muted);
+}
+
+/* Без своей рамки/фона: рамку рисует родительская .card один раз,
+   Stripe внутри — theme:'flat', так уходит вложенность «рамка в рамке». */
+.stripe-payment-body {
+    min-height: 220px;
+}
+
+.stripe-payment-note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-muted);
+    text-align: center;
+}
+
+.checkout-stripe-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.checkout-stripe-express {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Разделитель «or pay with card» между Express-кошельками и картой. */
+/* Согласие на немедленную выдачу — первым в форме оплаты. */
+.checkout-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: var(--space-12) var(--space-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    font-size: 13.5px;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.checkout-consent input {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    accent-color: var(--color-primary);
+}
+
+.checkout-consent-missing {
+    margin: 0;
+    padding: var(--space-12) var(--space-16);
+    border-radius: var(--radius-md);
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.checkout-stripe-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    color: var(--color-muted);
+    font-size: 13px;
+    text-transform: lowercase;
+}
+
+.checkout-stripe-divider::before,
+.checkout-stripe-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+}
+
+.checkout-stripe-submit {
+    width: 100%;
+    height: 52px;
+    font-size: 16px;
+}
+
+.checkout-stripe-cancel {
+    width: 100%;
+    height: 48px;
+    font-size: 15px;
+}
+
+/* Гостевая покупка: email вместо обязательного логина. */
+.checkout-guest {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-16) var(--space-4);
+}
+
+.checkout-guest h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.checkout-guest p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-muted);
+}
+
+.checkout-guest-label {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.checkout-guest-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.checkout-guest-divider::before,
+.checkout-guest-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+}
+
+/* Плашка над формой оплаты: куда придут ключи. */
+.checkout-guest-note {
+    margin: 0 0 var(--space-12);
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--color-border));
+    font-size: 13px;
+    color: var(--color-text);
+}
+
+.checkout-guest-change {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* Гость: платёж требует авторизации ([Authorize] на PaymentsController). */
+.checkout-signin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-12);
+    padding: var(--space-32) var(--space-16);
+}
+
+.checkout-signin-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.checkout-signin h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.checkout-signin p {
+    margin: 0;
+    max-width: 320px;
+    font-size: 14px;
+    color: var(--color-muted);
+}
+
+.checkout-signin .btn {
+    margin-top: var(--space-4);
+    min-width: 200px;
+    height: 48px;
+}
+
+.checkout-stripe-error {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin: 0;
+    padding: var(--space-12);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, #dc2626 8%, #ffffff);
+    border: 1px solid color-mix(in srgb, #dc2626 24%, var(--color-border));
+    color: #b91c1c;
+    font-size: 14px;
+}
+
+/* Код отказа — для поддержки; покупателю он не мешает, а разбор ускоряет. */
+.checkout-stripe-error__code {
+    font-size: 12px;
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}

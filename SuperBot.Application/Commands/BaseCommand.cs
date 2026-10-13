@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using SuperBot.Application.Messaging;
 using Telegram.Bot.Types;
 
 namespace SuperBot.Application.Commands

@@ -1,0 +1,140 @@
+/* Таблица админки (замена DataGrid из DevExtreme). Ячейки и шапка — общий стиль .admin-table,
+   здесь только то, что добавляет таблица с прокруткой: высота, липкая шапка, сортировка,
+   выделение строк и список колонок. */
+
+.data-grid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  background: var(--color-surface, #ffffff);
+}
+
+.data-grid--bordered {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.data-grid__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.data-grid__table {
+  table-layout: fixed;
+}
+
+.data-grid--auto-width .data-grid__table {
+  table-layout: auto;
+}
+
+/* Как у DevExtreme по умолчанию: текст ячейки в одну строку с многоточием. */
+.data-grid__table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.data-grid--wrap .data-grid__table td {
+  white-space: normal;
+  overflow: visible;
+}
+
+.data-grid__table th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-grid__sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.data-grid__sortable:hover {
+  color: var(--color-text);
+}
+
+.data-grid__sort-mark {
+  font-size: 10px;
+}
+
+.data-grid--hover .data-grid__row:hover > td {
+  background: #f8fafc;
+}
+
+.data-grid__row--selected > td {
+  background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+}
+
+.data-grid__check {
+  width: 44px;
+  text-align: center;
+}
+
+.data-grid__status > td {
+  text-align: center;
+  color: var(--color-muted);
+  padding: 18px 14px;
+}
+
+.data-grid__sentinel > td {
+  padding: 6px 14px;
+  border-bottom: 0;
+}
+
+.data-grid__chooser {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  min-width: 220px;
+  max-height: 70%;
+  overflow: auto;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 0.15);
+}
+
+.data-grid__chooser-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.data-grid__chooser-head button {
+  border: 0;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.data-grid__chooser-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Закреплённая колонка: прилипает к левому краю при горизонтальной прокрутке. */
+.data-grid__fixed {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-surface, #ffffff);
+}
+
+.data-grid__table th.data-grid__fixed {
+  z-index: 2;
+  background: #f8fafc;
+}

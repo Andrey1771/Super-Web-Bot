@@ -1,0 +1,184 @@
+/* Товарная полка (GameShelf): ряд карточек с заголовком и ссылкой «View all». Стили общие,
+   без привязки к главной — полка живёт и на главной (New/Deals/Upcoming/Under $N), и на странице
+   игры («More like this»). Карточка целиком — ссылка на страницу товара, покупки на полке нет.
+   Чип, бейдж скидки и ценовая полоса на обложке — в common/game-cover-overlay.css. */
+
+/* Единый стиль заголовков секций: маленький цветной eyebrow + заголовок + подпись. */
+.heading-eyebrow {
+  color: var(--color-primary);
+  letter-spacing: 0.16em;
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.heading-eyebrow.is-light {
+  color: #cdb5ff;
+}
+
+.shelf-section {
+  background: var(--color-bg);
+  padding: 56px 0 0;
+}
+
+/* Полка перед сменой фона: отступ получает только та полка, за которой действительно меняется
+   фон, иначе белая полоса начиналась ровно по нижней кромке карточек предыдущей. */
+.shelf-section:has(+ .shelf-section.is-surface) {
+  padding-bottom: 56px;
+}
+
+/* Каждая вторая полка на белом: полосы дают ритм и разделяют полки, стоящие вплотную. */
+.shelf-section.is-surface {
+  background: var(--color-surface);
+  padding-bottom: 56px;
+}
+
+/* Полка внутри чужой страницы (страница игры): без своих отступов, фона и контейнера —
+   всё это даёт родительская секция. */
+.shelf-section--embedded {
+  background: transparent;
+  padding: 0;
+}
+
+.shelf-section .section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shelf-section .section-heading h2,
+.shelf-section .section-heading h3,
+.shelf-section .section-heading .muted {
+  margin: 0;
+}
+
+.shelf-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-16);
+  flex-wrap: wrap;
+}
+
+.shelf-section .shelf-head .section-heading {
+  margin-bottom: var(--space-16);
+}
+
+.shelf-head-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  margin-bottom: var(--space-16);
+}
+
+.shelf-view-all {
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.shelf-view-all:hover {
+  text-decoration: underline;
+}
+
+.shelf-countdown {
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+
+.shelf-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-sm);
+}
+
+.shelf-cover {
+  position: relative;
+  /* Выше, чем классический 16:9 — карточка читается как «витринная» (референс difmark). */
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+}
+
+.shelf-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shelf-body {
+  padding: var(--space-12) var(--space-16);
+}
+
+.shelf-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Заглушка постоянной, но пока пустой полки (Upcoming, Latest news). */
+.shelf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: var(--space-32) var(--space-24);
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 3%, #ffffff);
+}
+
+.shelf-empty-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-primary) 12%, #f4f0ff);
+  color: var(--color-primary);
+  font-size: 17px;
+}
+
+.shelf-empty strong {
+  color: var(--color-text);
+}
+
+.shelf-empty p {
+  margin: 0;
+  font-size: 14px;
+  max-width: 340px;
+}
+
+@media (max-width: 991px) {
+  .shelf-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575px) {
+  .shelf-grid {
+    grid-template-columns: 1fr;
+  }
+}

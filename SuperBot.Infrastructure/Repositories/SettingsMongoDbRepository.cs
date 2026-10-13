@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+﻿using SuperBot.Infrastructure.Mapping;
 using Hangfire.Server;
 using MongoDB.Driver;
 using SuperBot.Core.Entities;

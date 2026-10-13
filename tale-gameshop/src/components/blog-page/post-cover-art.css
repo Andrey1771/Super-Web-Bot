@@ -1,0 +1,30 @@
+/* Заглушка-обложка поста: absolute-заливка контейнера медиа (у контейнеров
+   карточек и хиро размер задан aspect-ratio/min-height, сами они relative). */
+.post-cover-art {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Селектор из двух классов: перебивает размерные правила FontAwesome (.svg-inline--fa). */
+.post-cover-art .post-cover-art__icon {
+  width: clamp(28px, 26%, 64px);
+  height: auto;
+  opacity: 0.92;
+  filter: drop-shadow(0 6px 14px rgb(30 20 70 / 0.14));
+}
+
+/* Огромная полупрозрачная копия иконки в углу — глубина вместо плоской заливки. */
+.post-cover-art .post-cover-art__ghost {
+  position: absolute;
+  right: -6%;
+  bottom: -18%;
+  width: 42%;
+  height: auto;
+  opacity: 0.1;
+  transform: rotate(-12deg);
+  pointer-events: none;
+}

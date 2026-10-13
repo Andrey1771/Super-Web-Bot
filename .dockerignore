@@ -1,0 +1,14 @@
+# Артефакты сборки и зависимости не должны попадать в build-контекст:
+# иначе хостовые (Windows) node_modules затирают чистую установку в Linux-контейнере,
+# а stale dist подменяет свежую сборку фронта.
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/.cache
+
+# Прочее, что не нужно в образах
+.git
+.gitignore
+**/*.md
+tale-gameshop/build

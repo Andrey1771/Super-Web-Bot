@@ -1,0 +1,314 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using SuperBot.Core.Entities;
+using SuperBot.Core.Interfaces.IRepositories;
+using SuperBot.Core.Services;
+
+namespace SuperBot.Tests
+{
+    public class RecommendationsServiceTests
+    {
+        [Fact]
+        public async Task RanksWishlistTypesAheadOfViewed()
+        {
+            var games = new List<Game>
+            {
+                new Game { Id = "wish", Title = "Wishlisted", Name = "Wishlisted", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-6) },
+                new Game { Id = "view", Title = "Viewed", Name = "Viewed", GameType = GameType.Adventure, ReleaseDate = DateTime.UtcNow.AddMonths(-12) },
+                new Game { Id = "cand-action", Title = "Action Candidate", Name = "Action Candidate", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) },
+                new Game { Id = "cand-adv", Title = "Adventure Candidate", Name = "Adventure Candidate", GameType = GameType.Adventure, ReleaseDate = DateTime.UtcNow.AddMonths(-1) }
+            };
+
+            var wishlistRepository = new TestWishlistRepository(new HashSet<string> { "wish" });
+            var viewedRepository = new TestViewedRepository(new List<ViewedGame>
+            {
+                new ViewedGame { GameId = "view", LastViewedAt = DateTime.UtcNow.AddDays(-2), ViewCount = 1 }
+            });
+            var orderRepository = new TestOrderRepository();
+            var gameRepository = new TestGameRepository(games);
+
+            var service = new RecommendationsService(
+                gameRepository,
+                wishlistRepository,
+                viewedRepository,
+                orderRepository,
+                new TestGameDetailsRepository(),
+                NullLogger<RecommendationsService>.Instance);
+
+            var recommendations = await service.GetRecommendationsAsync("user", 2);
+
+            Assert.Equal("cand-action", recommendations.First().Game.Id);
+            Assert.DoesNotContain(recommendations, item => item.Game.Id == "wish");
+            Assert.DoesNotContain(recommendations, item => item.Game.Id == "view");
+        }
+
+        [Fact]
+        public async Task FiltersWishlistAndPurchasedGames()
+        {
+            var games = new List<Game>
+            {
+                new Game { Id = "wish", Title = "Wishlisted", Name = "Wishlisted", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-2) },
+                new Game { Id = "purchased", Title = "Purchased", Name = "Purchased", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-3) },
+                new Game { Id = "candidate", Title = "Candidate", Name = "Candidate", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) }
+            };
+
+            var wishlistRepository = new TestWishlistRepository(new HashSet<string> { "wish" });
+            var viewedRepository = new TestViewedRepository(new List<ViewedGame>
+            {
+                new ViewedGame { GameId = "wish", LastViewedAt = DateTime.UtcNow.AddDays(-2), ViewCount = 1 }
+            });
+            var orderRepository = new TestOrderRepository(new List<Order>
+            {
+                new Order { GameId = "purchased", UserName = "user" }
+            });
+            var gameRepository = new TestGameRepository(games);
+
+            var service = new RecommendationsService(
+                gameRepository,
+                wishlistRepository,
+                viewedRepository,
+                orderRepository,
+                new TestGameDetailsRepository(),
+                NullLogger<RecommendationsService>.Instance);
+
+            var recommendations = await service.GetRecommendationsAsync("user", 3);
+
+            Assert.Single(recommendations);
+            Assert.Equal("candidate", recommendations[0].Game.Id);
+        }
+
+        [Fact]
+        public async Task NeverRecommendsDrafts()
+        {
+            // Черновик снят с витрины: по ссылке из рекомендации покупатель получил бы 404.
+            var games = new List<Game>
+            {
+                new Game { Id = "published", Title = "Published", Name = "Published", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) },
+                new Game { Id = "draft", Title = "Draft", Name = "Draft", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) }
+            };
+            var details = new TestGameDetailsRepository();
+            details.DraftIds.Add("draft");
+
+            var service = new RecommendationsService(
+                new TestGameRepository(games),
+                new TestWishlistRepository(new HashSet<string>()),
+                new TestViewedRepository(new List<ViewedGame>()),
+                new TestOrderRepository(new List<Order>()),
+                details,
+                NullLogger<RecommendationsService>.Instance);
+
+            // Пустая история — сервис идёт в запасную «трендовую» подборку; черновика нет и там.
+            var recommendations = await service.GetRecommendationsAsync("user", 5);
+
+            Assert.Equal(new[] { "published" }, recommendations.Select(item => item.Game.Id).ToArray());
+        }
+
+        [Fact]
+        public async Task ShowsOneUpcomingGameLast_onlyInLargerLists()
+        {
+            // Невышедшую касса не продаст: в основной подбор она не идёт (запасная подборка — от новых к старым, будущие
+            // релизы встали бы первыми). Но одна — ближайшая по дате — показывается последней: витрина рисует у неё дату
+            // выхода и «В желаемое».
+            var games = new List<Game>
+            {
+                new Game { Id = "released-1", Title = "Released 1", Name = "Released 1", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) },
+                new Game { Id = "released-2", Title = "Released 2", Name = "Released 2", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-2) },
+                new Game { Id = "released-3", Title = "Released 3", Name = "Released 3", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-3) },
+                new Game { Id = "upcoming-late", Title = "Upcoming late", Name = "Upcoming late", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(6) },
+                new Game { Id = "upcoming-soon", Title = "Upcoming soon", Name = "Upcoming soon", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(1) }
+            };
+            RecommendationsService Service(List<ViewedGame> viewed, HashSet<string> wishlist) => new(
+                new TestGameRepository(games),
+                new TestWishlistRepository(wishlist),
+                new TestViewedRepository(viewed),
+                new TestOrderRepository(new List<Order>()),
+                new TestGameDetailsRepository(),
+                NullLogger<RecommendationsService>.Instance);
+
+            var fallback = await Service(new List<ViewedGame>(), new HashSet<string>()).GetRecommendationsAsync("user", 4);
+            Assert.Equal(new[] { "released-1", "released-2", "released-3", "upcoming-soon" }, fallback.Select(item => item.Game.Id).ToArray());
+
+            // По интересам — так же: одна невышедшая, последней.
+            var personal = await Service(new List<ViewedGame> { new ViewedGame { UserId = "user", GameId = "released-1", LastViewedAt = DateTime.UtcNow } }, new HashSet<string>())
+                .GetRecommendationsAsync("user", 4);
+            Assert.Equal("upcoming-soon", personal.Last().Game.Id);
+            Assert.Single(personal, item => item.Game.Id.StartsWith("upcoming"));
+
+            // Уже в желаемом — не предлагаем, берём следующую по дате.
+            var wished = await Service(new List<ViewedGame>(), new HashSet<string> { "upcoming-soon" }).GetRecommendationsAsync("user", 4);
+            Assert.Equal("upcoming-late", wished.Last().Game.Id);
+
+            // Маленькая подборка — только то, что можно купить сейчас.
+            var small = await Service(new List<ViewedGame>(), new HashSet<string>()).GetRecommendationsAsync("user", 2);
+            Assert.DoesNotContain(small, item => item.Game.Id.StartsWith("upcoming"));
+        }
+
+        private class TestGameRepository : IGameRepository
+        {
+            private readonly List<Game> _games;
+
+            public TestGameRepository(List<Game> games)
+            {
+                _games = games;
+            }
+
+            public Task<List<Game>> GetAllAsync() => Task.FromResult(_games);
+
+            public Task<Game> GetByIdAsync(string id) => Task.FromResult(_games.FirstOrDefault(game => game.Id == id));
+
+            public Task<Game> GetByExternalIdAsync(string externalId) =>
+                Task.FromResult(_games.FirstOrDefault(game => game.ExternalId == externalId));
+
+            public Task<Game> GetBySlugAsync(string slug) =>
+                Task.FromResult(_games.FirstOrDefault(game => game.Slug == slug));
+
+            public Task<List<Game>> GetByIdsAsync(IEnumerable<string> ids)
+            {
+                var idSet = ids.ToHashSet();
+                return Task.FromResult(_games.Where(game => idSet.Contains(game.Id)).ToList());
+            }
+
+            public Task<List<Game>> GetWithRegionSettingsAsync() =>
+                Task.FromResult(_games.Where(game => game.RegionPolicy is not null || game.RegionPrices is not null).ToList());
+
+            public Task<List<Game>> GetByCoverMediaIdAsync(string mediaId) =>
+                Task.FromResult(_games.Where(game => game.CoverMediaId == mediaId).ToList());
+
+            // Листание каталога этим тестам не нужно — они про рекомендации. Отдаём окно
+            // из своего набора, чтобы фейк отвечал интерфейсу.
+            public Task<(List<Game> Items, long Total)> GetPageAsync(
+                string? search,
+                IReadOnlyCollection<string>? onlyIds,
+                IReadOnlyCollection<string>? excludeIds,
+                string sortBy,
+                bool descending,
+                int skip,
+                int take,
+                bool onlyWithManualPrices = false) => Task.FromResult((_games.Skip(skip).Take(take).ToList(), (long)_games.Count));
+
+            public Task CreateAsync(Game game) => Task.CompletedTask;
+
+            public Task UpdateAsync(string id, Game updatedGame) => Task.CompletedTask;
+
+            public Task DeleteAsync(string id) => Task.CompletedTask;
+        }
+
+        private class TestWishlistRepository : IWishlistRepository
+        {
+            private readonly HashSet<string> _ids;
+
+            public TestWishlistRepository(HashSet<string> ids)
+            {
+                _ids = ids;
+            }
+
+            public Task<HashSet<string>> GetGameIdsAsync(string userId) => Task.FromResult(_ids);
+
+            public Task AddAsync(string userId, string gameId) => Task.CompletedTask;
+
+            public Task RemoveAsync(string userId, string gameId) => Task.CompletedTask;
+
+            public Task<HashSet<string>> MergeAsync(string userId, IEnumerable<string> guestIds) => Task.FromResult(_ids);
+
+            public Task<List<string>> GetUserIdsByGameAsync(string gameId) => Task.FromResult(new List<string>());
+
+            public Task<long> RemoveGameEverywhereAsync(string gameId) => Task.FromResult(0L);
+        }
+
+        private class TestGameDetailsRepository : IGameDetailsRepository
+        {
+            public Task DeleteByGameIdAsync(string gameId) => Task.CompletedTask;
+            public HashSet<string> DraftIds { get; } = new();
+
+            public Task<List<GameDetails>> GetByGameIdsAsync(IEnumerable<string> gameIds) =>
+                Task.FromResult(gameIds.Where(DraftIds.Contains).Select(id => new GameDetails { GameId = id, IsDraft = true }).ToList());
+
+            public Task<GameDetails> GetByGameIdAsync(string gameId) => throw new NotSupportedException();
+            public Task<GameDetails> GetBySlugAsync(string slug) => throw new NotSupportedException();
+            public Task CreateAsync(GameDetails details) => throw new NotSupportedException();
+            public Task UpsertAsync(GameDetails details) => throw new NotSupportedException();
+            public Task UpdateAsync(string id, GameDetails details) => throw new NotSupportedException();
+        }
+
+        private class TestViewedRepository : IViewedGameRepository
+        {
+            private readonly List<ViewedGame> _viewed;
+
+            public TestViewedRepository(List<ViewedGame> viewed)
+            {
+                _viewed = viewed;
+            }
+
+            public Task<List<ViewedGame>> GetRecentAsync(string userId, int limit) => Task.FromResult(_viewed.Take(limit).ToList());
+
+            public Task UpsertAsync(string userId, string gameId, string source = null) => Task.CompletedTask;
+        }
+
+        private class TestOrderRepository : IOrderRepository
+        {
+            private readonly List<Order> _orders;
+
+            public TestOrderRepository(List<Order> orders = null)
+            {
+                _orders = orders ?? new List<Order>();
+            }
+
+            public Task CreateOrderAsync(Order order) => Task.CompletedTask;
+
+            public Task<Order> GetOrderByIdAsync(string orderId) => Task.FromResult(_orders.FirstOrDefault());
+
+            public Task<Order> GetByPaymentIntentIdAsync(string paymentIntentId) =>
+                Task.FromResult(_orders.FirstOrDefault(order => order.PaymentIntentId == paymentIntentId));
+
+            public Task<IEnumerable<Order>> GetAllOrdersAsync() => Task.FromResult<IEnumerable<Order>>(_orders);
+
+            public Task<bool> HasPaidOrderAsync(string userKey) =>
+                Task.FromResult(_orders.Any(order => order.IsPaid
+                    && (order.UserId == userKey || order.UserName == userKey)));
+
+            public Task<List<Order>> GetPaidOrdersSinceAsync(DateTime sinceUtc) =>
+                Task.FromResult(_orders
+                    .Where(order => order.IsPaid && (order.PaidAt ?? order.OrderDate) >= sinceUtc)
+                    .ToList());
+
+            public Task<List<Order>> GetOrdersByUserAsync(string userName) => Task.FromResult(_orders.Where(order => order.UserName == userName).ToList());
+            public Task<List<Order>> GetOrdersByUsersAsync(IReadOnlyCollection<string> userNames) => Task.FromResult(_orders.Where(order => userNames.Contains(order.UserName)).ToList());
+
+            public Task<List<Order>> GetUnfulfilledPaidOrdersAsync() => Task.FromResult(_orders.Where(order => order.IsPaid && !order.IsFulfilled).ToList());
+
+            public Task<IReadOnlyDictionary<string, int>> GetOwedKeyCountByGameAsync() =>
+                Task.FromResult<IReadOnlyDictionary<string, int>>(new Dictionary<string, int>());
+
+            public Task<IReadOnlyList<OwedKeyLine>> GetOwedKeyOrdersAsync() =>
+                Task.FromResult<IReadOnlyList<OwedKeyLine>>(new List<OwedKeyLine>());
+
+            public Task<List<Order>> GetUnverifiedGuestOrdersAsync(DateTime createdBeforeUtc) =>
+                Task.FromResult(_orders.Where(order => order.RequiresDeliveryVerification && order.CreatedAt < createdBeforeUtc).ToList());
+
+            public Task<bool> HasVerifiedDeliveryEmailAsync(string email) =>
+                Task.FromResult(_orders.Any(order =>
+                    string.Equals(order.UserName, email, StringComparison.OrdinalIgnoreCase)
+                    && !order.RequiresDeliveryVerification
+                    && order.IsPaid
+                    && string.Equals(order.PaymentStatus, "PAID", StringComparison.OrdinalIgnoreCase)));
+
+            public Task<bool> TryMarkRefundPendingAsync(string orderId) => Task.FromResult(false);
+
+            public Task<Order> TryConfirmDeliveryVerificationAsync(string orderId) => Task.FromResult<Order>(null);
+
+            public Task<(IReadOnlyList<Order> Items, long Total)> GetPagedByUsersAsync(IReadOnlyCollection<string> userNames, OrderQueryParameters query)
+            {
+                var items = _orders.Where(order => userNames.Contains(order.UserName)).ToList();
+                return Task.FromResult<(IReadOnlyList<Order>, long)>((items, items.Count));
+            }
+
+            public Task<(IReadOnlyList<Order> Items, long Total)> GetPagedAsync(OrderQueryParameters query) =>
+                Task.FromResult<(IReadOnlyList<Order>, long)>((_orders, _orders.Count));
+
+            public Task UpdateOrderAsync(Order order) => Task.CompletedTask;
+
+            public Task SetTaxAsync(string orderId, OrderTax tax, decimal taxTotal) => Task.CompletedTask;
+
+            public Task DeleteOrderAsync(string orderId) => Task.CompletedTask;
+        }
+    }
+}

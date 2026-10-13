@@ -1,0 +1,582 @@
+# Стартовый каталог Tale Shop для импорта из Steam (админка → Steam import → Load starter catalog,
+# или консоль: docker compose run --rm --no-deps backend import-steam starter).
+#
+# 572 игр, отобраны 2026-10-01: платные игры Steam из топа по числу владельцев
+# (SteamSpy), хиты продаж и новинки витрины Steam и предзаказы с точной датой выхода. Исключены
+# бесплатные, DLC, игры с контентом 18+ и снятые с продажи. Порядок — по числу отзывов в Steam.
+# Импорт перепроверяет каждую игру, так что снятые с тех пор просто пропустятся.
+#
+# Формат: appid, после # — название для человека (импорт его не читает).
+
+105600   # Terraria
+252490   # Rust
+4000     # Garry's Mod
+413150   # Stardew Valley
+1091500  # Cyberpunk 2077
+2358720  # Black Myth: Wukong
+1174180  # Red Dead Redemption 2
+292030   # The Witcher 3: Wild Hunt — Remastered
+553850   # HELLDIVERS™ 2
+1245620  # ELDEN RING
+550      # Left 4 Dead 2
+227300   # Euro Truck Simulator 2
+1086940  # Baldur's Gate 3
+381210   # Dead by Daylight
+739630   # Phasmophobia
+945360   # Among Us
+322170   # Geometry Dash
+346110   # ARK: Survival Evolved
+242760   # The Forest
+367520   # Hollow Knight
+892970   # Valheim
+218620   # PAYDAY 2
+250900   # The Binding of Isaac: Rebirth
+1623730  # Palworld
+1966720  # Lethal Company
+620      # Portal 2
+284160   # BeamNG.drive
+221100   # DayZ
+239140   # Dying Light
+322330   # Don't Starve Together
+108600   # Project Zomboid
+960090   # Bloons TD 6
+3241660  # R.E.P.O.
+264710   # Subnautica
+394360   # Hearts of Iron IV
+648800   # Raft
+1172620  # Sea of Thieves: 2026 Edition
+582010   # Monster Hunter: World
+275850   # No Man's Sky
+391540   # Undertale
+3527290  # PEAK
+548430   # Deep Rock Galactic
+1118200  # People Playground
+1808500  # ARC Raiders
+377160   # Fallout 4
+3164500  # Schedule I
+1145360  # Hades
+1326470  # Sons Of The Forest
+251570   # 7 Days to Die
+374320   # DARK SOULS™ III
+289070   # Sid Meier’s Civilization® VI
+990080   # Hogwarts Legacy
+1144200  # Ready or Not
+1551360  # Forza Horizon 5
+1517290  # Battlefield™ 2042
+814380   # Sekiro™: Shadows Die Twice - GOTY Edition
+1237970  # Titanfall® 2
+1794680  # Vampire Survivors
+632360   # Risk of Rain 2
+976730   # Halo: The Master Chief Collection
+1238810  # Battlefield™ V
+526870   # Satisfactory
+107410   # Arma 3
+261550   # Mount & Blade II: Bannerlord
+1222140  # Detroit: Become Human
+255710   # Cities: Skylines
+489830   # The Elder Scrolls V: Skyrim Special Edition
+1426210  # It Takes Two
+49520    # Borderlands 2
+1229490  # ULTRAKILL
+3240220  # Grand Theft Auto V Enhanced
+594650   # Hunt: Showdown 1896
+22380    # Fallout: New Vegas
+294100   # RimWorld
+220      # Half-Life 2
+2246340  # Monster Hunter Wilds
+1238840  # Battlefield™ 1
+268910   # Cuphead
+427520   # Factorio
+646570   # Slay the Spire
+1468810  # 鬼谷八荒 Tale of Immortal
+782330   # DOOM Eternal
+2050650  # Resident Evil 4
+1903340  # Clair Obscur: Expedition 33
+12210    # Grand Theft Auto IV: The Complete Edition
+435150   # Divinity: Original Sin 2 - Definitive Edition
+393380   # Squad
+72850    # The Elder Scrolls V: Skyrim
+477160   # Human Fall Flat
+400      # Portal
+552520   # Far Cry® 5
+203160   # Tomb Raider Game of the Year
+812140   # Assassin's Creed® Odyssey
+10       # Counter-Strike
+2183900  # Warhammer 40,000: Space Marine 2
+270880   # American Truck Simulator
+2694490  # Path of Exile 2
+534380   # Dying Light 2 Stay Human: Reloaded Edition
+2379780  # Balatro
+813780   # Age of Empires II: Definitive Edition
+311210   # Call of Duty®: Black Ops III
+1332010  # Stray
+883710   # Resident Evil 2
+588650   # Dead Cells
+379720   # DOOM
+1172380  # STAR WARS Jedi: Fallen Order™
+281990   # Stellaris
+1771300  # Kingdom Come: Deliverance II
+508440   # Totally Accurate Battle Simulator
+3590     # Plants vs. Zombies GOTY Edition
+379430   # Kingdom Come: Deliverance
+1868140  # DAVE THE DIVER
+262060   # Darkest Dungeon®
+433340   # Slime Rancher
+1943950  # Escape the Backrooms
+1057090  # Ori and the Will of the Wisps
+244210   # Assetto Corsa
+240      # Counter-Strike: Source
+457140   # Oxygen Not Included
+48700    # Mount & Blade: Warband
+1092790  # Inscryption
+362890   # Black Mesa
+306130   # The Elder Scrolls® Online
+504230   # Celeste
+1593500  # God of War
+2622380  # ELDEN RING NIGHTREIGN
+1222680  # Need for Speed™ Heat
+8930     # Sid Meier's Civilization® V
+397540   # Borderlands 3
+671860   # BattleBit Remastered
+391220   # Rise of the Tomb Raider™
+1167630  # Teardown
+220240   # Far Cry 3
+2527500  # MiSide
+220200   # Kerbal Space Program
+211820   # Starbound
+582160   # Assassin's Creed® Origins
+601150   # Devil May Cry 5
+361420   # ASTRONEER
+632470   # Disco Elysium - The Final Cut
+223470   # POSTAL 2
+412020   # Metro Exodus
+70       # Half-Life
+774171   # Muse Dash
+3321460  # Crimson Desert Enhanced
+524220   # NieR:Automata™
+1716740  # Starfield
+1145350  # Hades II
+323190   # Frostpunk
+1313140  # Cult of the Lamb
+376210   # The Isle
+305620   # The Long Dark
+1942280  # Brotato
+208650   # Batman™: Arkham Knight
+1832640  # Mirror 2: Project X
+1604030  # V Rising
+2835570  # Buckshot Roulette
+219150   # Hotline Miami
+204360   # Castle Crashers®
+8870     # BioShock Infinite
+387990   # Scrap Mechanic
+304390   # FOR HONOR™
+1361210  # Warhammer 40,000: Darktide
+1643320  # S.T.A.L.K.E.R. 2: Heart of Chornobyl
+2399830  # ARK: Survival Ascended
+1196590  # Resident Evil Village
+899770   # Last Epoch
+236850   # Europa Universalis IV
+1142710  # Total War: WARHAMMER III
+238320   # Outlast
+581320   # Insurgency: Sandstorm
+225540   # Just Cause™ 3
+1158310  # Crusader Kings III
+244850   # Space Engineers
+1817070  # Marvel’s Spider-Man Remastered
+570940   # DARK SOULS™: REMASTERED
+460930   # Tom Clancy's Ghost Recon® Wildlands
+674940   # Stick Fight: The Game
+686810   # Hell Let Loose
+848450   # Subnautica: Below Zero
+233860   # Kenshi
+513710   # SCUM
+2669320  # EA SPORTS FC™ 25
+219740   # Don't Starve
+447040   # Watch_Dogs® 2
+286690   # Metro 2033 Redux
+383870   # Firewatch
+1203620  # Enshrouded
+546560   # Half-Life: Alyx
+219990   # Grim Dawn
+613100   # House Flipper
+1687950  # Persona 5 Royal
+629760   # MORDHAU
+1304930  # The Outlast Trials
+552500   # Warhammer: Vermintide 2
+952060   # Resident Evil 3
+753640   # Outer Wilds
+282070   # This War of Mine
+1030840  # Mafia: Definitive Edition
+1217060  # Gunfire Reborn
+2483190  # Forza Horizon 6
+418370   # Resident Evil 7 Biohazard
+1454400  # Cookie Clicker
+232090   # Killing Floor 2
+356190   # Middle-earth™: Shadow of War™
+594570   # Total War: WARHAMMER II
+1237950  # STAR WARS™ Battlefront™ II
+1867240  # WARDOGS
+976310   # Mortal Kombat 11
+646910   # The Crew™ 2
+222880   # Insurgency
+221380   # Age of Empires II (Retired)
+335300   # DARK SOULS™ II: Scholar of the First Sin
+683320   # GRIS
+1366540  # Dyson Sphere Program
+1259420  # Days Gone
+20900    # The Witcher: Enhanced Edition Director's Cut
+635260   # CarX Drift Racing Online
+359320   # Elite Dangerous
+20920    # The Witcher 2: Assassins of Kings Enhanced Edition
+881100   # Noita
+703080   # Planet Zoo
+1774580  # STAR WARS Jedi: Survivor™
+1446780  # MONSTER HUNTER RISE
+268500   # XCOM® 2
+1150690  # OMORI
+440900   # Conan Exiles Enhanced
+815370   # Green Hell
+311690   # Enter the Gungeon
+2670630  # Supermarket Simulator
+289650   # Assassin's Creed® Unity
+977950   # A Dance of Fire and Ice
+254700   # Resident Evil 4 (2005)
+39210    # FINAL FANTASY XIV Online
+2001120  # Split Fiction
+1151340  # Fallout 76
+1222700  # A Way Out
+1363080  # Manor Lords
+365590   # Tom Clancy’s The Division™
+2054970  # Dragon's Dogma 2
+636480   # Ravenfield
+962130   # Grounded
+240720   # Getting Over It with Bennett Foddy
+239030   # Papers, Please
+287700   # METAL GEAR SOLID V: THE PHANTOM PAIN
+750920   # Shadow of the Tomb Raider: Definitive Edition
+2881650  # Content Warning
+779340   # Total War: THREE KINGDOMS
+349040   # NARUTO SHIPPUDEN: Ultimate Ninja STORM 4
+1466860  # Age of Empires IV: Anniversary Edition
+287390   # Metro: Last Light Redux
+1113000  # Persona 4 Golden
+307690   # Sleeping Dogs: Definitive Edition
+1250410  # Microsoft Flight Simulator (2020) 40th Anniversary Edition
+304430   # INSIDE
+620980   # Beat Saber
+206440   # To the Moon
+1248130  # Farming Simulator 22
+1238860  # Battlefield 4™
+274170   # Hotline Miami 2: Wrong Number
+2479810  # Gray Zone Warfare
+235460   # METAL GEAR RISING: REVENGEANCE
+1284190  # The Planet Crafter
+231430   # Company of Heroes 2
+298110   # Far Cry® 4
+1274570  # DEVOUR
+389730   # TEKKEN 7
+1172710  # Dune: Awakening
+205100   # Dishonored
+1888160  # ARMORED CORE™ VI FIRES OF RUBICON™
+17390    # SPORE™
+414340   # Hellblade: Senua's Sacrifice
+2231450  # Pizza Tower
+460950   # Katana ZERO
+1371980  # No Rest for the Wicked
+1888930  # The Last of Us™ Part I
+949230   # Cities: Skylines II
+747660   # Five Nights at Freddy's: Security Breach
+2215430  # Ghost of Tsushima DIRECTOR'S CUT
+787860   # Farming Simulator 19
+4001890  # How to Fish
+241930   # Middle-earth™: Shadow of Mordor™
+752590   # A Plague Tale: Innocence
+2406770  # Bodycam
+582660   # Black Desert
+233450   # Prison Architect
+212680   # FTL: Faster Than Light
+387290   # Ori and the Blind Forest: Definitive Edition
+1328670  # Mass Effect™ Legendary Edition
+35140    # Batman: Arkham Asylum Game of the Year Edition
+728880   # Overcooked! 2
+602960   # Barotrauma
+424370   # Wolcen: Lords of Mayhem
+213670   # South Park™: The Stick of Truth™
+2344520  # Diablo® IV
+493340   # Planet Coaster
+2623190  # The Elder Scrolls IV: Oblivion Remastered
+1404210  # Red Dead Online
+246620   # Plague Inc: Evolved
+495420   # State of Decay 2: Juggernaut Edition
+629730   # Blade and Sorcery
+1659040  # HITMAN World of Assassination
+214950   # Total War: ROME II - Emperor Edition
+500      # Left 4 Dead
+1260320  # Party Animals
+33230    # Assassin's Creed 2
+234140   # Mad Max
+206420   # Saints Row IV: Re-Elected
+3146520  # WEBFISHING
+838350   # The Scroll of Taiwu : Beyond The Dome
+3932890  # Escape from Tarkov
+200260   # Batman: Arkham City - Game of the Year Edition
+1089980  # The Henry Stickmin Collection
+238460   # BattleBlock Theater®
+204100   # Max Payne 3
+924970   # Back 4 Blood
+678950   # DRAGON BALL FighterZ
+285900   # Gang Beasts
+774361   # Blasphemous
+2567870  # Chained Together
+265930   # Goat Simulator
+466560   # Northgard: Definitive Edition
+312660   # Sniper Elite 4
+414700   # Outlast 2
+552100   # Brick Rigs
+207610   # The Walking Dead
+319510   # Five Nights at Freddy's
+1533390  # Gorilla Tag
+568220   # Lobotomy Corporation | Monster Management Simulation
+409710   # BioShock™ Remastered
+424840   # Little Nightmares
+221040   # Resident Evil 6
+870780   # CONTROL Ultimate Edition
+1290000  # PowerWash Simulator
+431240   # Golf With Your Friends
+1147560  # Skul: The Hero Slayer
+1850570  # DEATH STRANDING DIRECTOR'S CUT
+1790600  # DRAGON BALL: Sparking! ZERO
+1017180  # The Long Drive
+1621690  # Core Keeper
+1364780  # Street Fighter™ 6
+203140   # Hitman: Absolution™
+243470   # Watch_Dogs™
+274190   # Broforce
+1272080  # PAYDAY 3
+113200   # The Binding of Isaac
+21690    # Resident Evil 5
+55230    # Saints Row: The Third
+286160   # Tabletop Simulator
+3097560  # Liar's Bar
+214490   # Alien: Isolation
+645630   # Car Mechanic Simulator 2018
+648350   # Jurassic World Evolution
+346010   # Besiege
+603850   # Age of History II
+3070070  # TCG Card Shop Simulator
+1562430  # DREDGE
+1384160  # GUILTY GEAR -STRIVE-
+1778820  # TEKKEN 8
+617290   # Remnant: From the Ashes
+972660   # Spiritfarer®: Farewell Edition
+312520   # Rain World
+1824220  # Chivalry 2
+1139900  # Ghostrunner
+282140   # SOMA
+1282100  # REMNANT II®
+201810   # Wolfenstein: The New Order
+502500   # ACE COMBAT™ 7: SKIES UNKNOWN
+6060     # STAR WARS™ Battlefront II (Classic, 2005)
+678960   # CODE VEIN
+644930   # They Are Billions
+493520   # GTFO
+880940   # Pummel Party
+680420   # OUTRIDERS
+108710   # Alan Wake
+10090    # Call of Duty: World at War
+209000   # Batman™: Arkham Origins
+529340   # Victoria 3
+454650   # DRAGON BALL XENOVERSE 2
+637650   # FINAL FANTASY XV WINDOWS EDITION
+219640   # Chivalry: Medieval Warfare
+1462040  # FINAL FANTASY VII REMAKE INTERGRADE
+2161700  # Persona 3 Reload
+22370    # Fallout 3: Game of the Year Edition
+851850   # DRAGON BALL Z: KAKAROT
+668580   # Atomic Heart
+1129580  # Medieval Dynasty
+403640   # Dishonored 2
+22330    # The Elder Scrolls IV: Oblivion® Game of the Year Edition (2009)
+418460   # Rising Storm 2: Vietnam
+633230   # NARUTO TO BORUTO: SHINOBI STRIKER
+621060   # PC Building Simulator
+470220   # UNO
+360430   # Mafia III: Definitive Edition
+1845910  # Dragon Age™: The Veilguard
+881020   # Granblue Fantasy: Relink
+386940   # Ultimate Chicken Horse
+2138720  # REMATCH
+8190     # Just Cause 2
+48000    # LIMBO
+200510   # XCOM: Enemy Unknown
+239820   # Game Dev Tycoon
+221910   # The Stanley Parable
+1250     # Killing Floor
+599140   # Graveyard Keeper
+307780   # Mortal Kombat X
+690790   # DiRT Rally 2.0
+1987080  # Inside the Backrooms
+302510   # Ryse: Son of Rome
+920210   # LEGO® Star Wars™: The Skywalker Saga
+4500     # S.T.A.L.K.E.R.: Shadow of Chernobyl
+242920   # Banished
+675010   # MudRunner
+12200    # Bully: Scholarship Edition
+367500   # Dragon's Dogma: Dark Arisen
+704850   # Thief Simulator
+933110   # Age of Empires III: Definitive Edition
+834910   # ATLAS
+1190000  # Car Mechanic Simulator 2021
+269210   # Hero Siege
+50130    # Mafia II (Classic)
+1178830  # Bright Memory: Infinite
+32470    # STAR WARS™ Empire at War - Gold Pack
+2322560  # Love Is All Around
+10180    # Call of Duty®: Modern Warfare® 2 (2009)
+10190    # Call of Duty®: Modern Warfare® 2 (2009)
+1557740  # ROUNDS
+1478500  # Big Walk
+612880   # Wolfenstein II: The New Colossus
+1296830  # 暖雪 Warm Snow
+2531310  # The Last of Us™ Part II Remastered
+1184370  # Pathfinder: Wrath of the Righteous - Enhanced Edition
+823500   # BONEWORKS
+805550   # Assetto Corsa Competizione
+2186680  # Warhammer 40,000: Rogue Trader
+585420   # Trailmakers
+1282730  # Loop Hero
+476600   # Call of Duty®: WWII
+225080   # Brothers - A Tale of Two Sons
+554620   # Life is Strange: Before the Storm
+1211020  # Wobbly Life
+200710   # Torchlight II
+2221490  # Tom Clancy’s The Division® 2
+967050   # Pacify
+261640   # Borderlands: The Pre-Sequel
+2322010  # God of War Ragnarök
+364360   # Total War: WARHAMMER
+939960   # Far Cry® New Dawn
+488790   # South Park™: The Fractured But Whole™
+266840   # Age of Mythology: Extended Edition
+1483870  # Draw & Guess
+1213210  # Command & Conquer™ Remastered Collection
+228380   # Wreckfest
+701160   # Kingdom Two Crowns
+368500   # Assassin's Creed® Syndicate
+17410    # Mirror's Edge™
+110800   # L.A. Noire
+460920   # Steep™
+47890    # The Sims™ 3
+527230   # For The King
+942970   # Unheard - Voices of Crime
+334230   # Town of Salem
+1262350  # SIGNALIS
+418240   # Shadow Tactics: Blades of the Shogun
+337000   # Deus Ex: Mankind Divided
+569480   # Kingdoms and Castles
+1374490  # RuneScape: Dragonwilds
+955050   # Bright Memory
+40800    # Super Meat Boy
+485510   # Nioh: Complete Edition
+692850   # Bloodstained: Ritual of the Night
+975370   # Dwarf Fortress
+257510   # The Talos Principle
+337320   # Paint the Town Red
+245170   # Skullgirls 2nd Encore
+704270   # Generation Zero®
+1030830  # Mafia II: Definitive Edition
+242860   # Verdun
+47810    # Dragon Age: Origins - Ultimate Edition
+32370    # STAR WARS™ Knights of the Old Republic™
+1049410  # Superliminal
+657200   # Hand Simulator
+107100   # Bastion
+640820   # Pathfinder: Kingmaker — Enhanced Plus Edition
+237930   # Transistor
+310950   # Street Fighter V
+322500   # SUPERHOT
+740130   # Tales of ARISE
+304240   # Resident Evil
+373420   # Divinity: Original Sin - Enhanced Edition
+1262580  # Need for Speed™ Payback
+460790   # Bayonetta
+4700     # Total War: MEDIEVAL II – Definitive Edition
+3751950  # Assassin's Creed Black Flag Resynced
+325610   # Total War: ATTILA
+261030   # The Walking Dead: Season Two
+535930   # Two Point Hospital
+641990   # The Escapists 2
+475150   # Titan Quest Anniversary Edition
+2909400  # FINAL FANTASY VII REBIRTH
+427730   # Who's Your Daddy?!
+394510   # HELLDIVERS™ Dive Harder Edition
+2280     # DOOM + DOOM II
+287290   # Resident Evil Revelations 2
+50       # Half-Life: Opposing Force
+238010   # Deus Ex: Human Revolution - Director's Cut
+2679460  # Metaphor: ReFantazio
+392160   # X4: Foundations
+312530   # Duck Game
+7670     # BioShock™
+1029690  # Sniper Elite 5
+48190    # Assassin’s Creed® Brotherhood
+35450    # Red Orchestra 2: Heroes of Stalingrad with Rising Storm
+699130   # World War Z
+794260   # Outward Definitive Edition
+1044720  # Farthest Frontier
+409720   # BioShock™ 2 Remastered
+324800   # Shadow Warrior 2
+383150   # Dead Island Definitive Edition
+15100    # Assassin's Creed™: Director's Cut Edition
+247080   # Crypt of the NecroDancer
+1401590  # Disney Dreamlight Valley
+2075800  # STAR WARS Zero Company™
+3892270  # Gamble With Your Friends
+2584270  # Mortal Shell II
+3751260  # The Blood of Dawnwalker
+2638890  # Onimusha: Way of the Sword
+2950790  # IRON NEST: Heavy Turret Simulator
+3219630  # Halloween: The Game
+2958130  # Jurassic World Evolution 3
+2552430  # KINGDOM HEARTS -HD 1.5+2.5 ReMIX-
+3722330  # Shift At Midnight
+3812600  # ReStory: Chill Electronics Repairs
+1449110  # The Outer Worlds 2
+3669870  # CONTROL Resonant
+4019220  # Dressmaker
+266410   # iRacing
+4080220  # EA SPORTS FC™ 27
+1912410  # Minecraft Dungeons II
+2288340  # ACE COMBAT 8: WINGS OF THEVE
+4705510  # Happy Wheels
+4656000  # BOMBANANA!
+4032350  # EA SPORTS™ College Football 27
+1636440  # SILENT HILL: Townfall
+3493540  # Transport Fever 3
+2887580  # Active Matter
+4356430  # NBA 2K27
+1488490  # Nivalis Nights
+2543830  # Way of the Hunter 2
+3940610  # EA SPORTS™ Madden NFL 27
+3841510  # DYNASTY WARRIORS 3: Complete Edition Remastered
+3010850  # Gears of War: E-Day
+1706510  # Songs of Glimmerwick
+4078430  # STAR WARS: Galactic Racer™
+4435490  # Call of Duty®: Modern Warfare® 4
+1551980  # Clive Barker's Hellraiser: Revival
+3219030  # Planet Zoo 2
+3634190  # MXGP 26 - The Official Game
+4231820  # Castlevania: Belmont's Curse
+4115450  # Phantom Blade Zero
+3259780  # FINAL FANTASY RESONANCE
+1182900  # A Plague Tale: Requiem
+1265920  # Life is Strange
+2537590  # Microsoft Flight Simulator
+210970   # The Witness
+736260   # Baba Is You
+1003590  # Tetris Effect: Connected
+252950   # Rocket League
+1711950  # Gwent: Rogue Mage
+1284210  # Guild Wars 2
+1944430  # Amnesia: The Bunker
+1135690  # Unpacking
