@@ -32,23 +32,25 @@ public class AdminPricesTests
 
     private static async Task<JsonElement> Body(HttpResponseMessage r) => JsonSerializer.Deserialize<JsonElement>(await r.Content.ReadAsStringAsync());
 
-    private async Task<string> SeedGameAsync()
+    // Название — чтобы найти игру в матрице поиском: матрица постраничная, и в общей тестовой базе своя игра
+    // могла оказаться не на первой странице.
+    private async Task<(string Id, string Title)> SeedGameAsync()
     {
         using var scope = _factory.Services.CreateScope();
         var games = scope.ServiceProvider.GetRequiredService<IGameRepository>();
         var id = ObjectId.GenerateNewId().ToString();
         var title = $"Priced Game {Guid.NewGuid():N}"[..24];
         await games.CreateAsync(new Game { Id = id, Name = title, Title = title, Price = 20m, Currency = "USD", ImagePath = "c.png" });
-        return id;
+        return (id, title);
     }
 
     [Fact]
     public async Task Matrix_marks_base_cell_and_lets_manual_price_be_set_and_cleared()
     {
-        var gameId = await SeedGameAsync();
+        var (gameId, gameTitle) = await SeedGameAsync();
         var admin = Admin();
 
-        var matrix = await Body(await admin.GetAsync("/api/admin/prices"));
+        var matrix = await Body(await admin.GetAsync($"/api/admin/prices?q={Uri.EscapeDataString(gameTitle)}"));
         var baseCurrency = matrix.GetProperty("baseCurrency").GetString()!;
         var row = matrix.GetProperty("games").EnumerateArray().Single(g => g.GetProperty("gameId").GetString() == gameId);
         var baseCell = row.GetProperty("cells").GetProperty(baseCurrency);
@@ -85,9 +87,9 @@ public class AdminPricesTests
     [Fact]
     public async Task Base_price_cannot_be_cleared_and_negative_is_rejected()
     {
-        var gameId = await SeedGameAsync();
+        var (gameId, gameTitle) = await SeedGameAsync();
         var admin = Admin();
-        var matrix = await Body(await admin.GetAsync("/api/admin/prices"));
+        var matrix = await Body(await admin.GetAsync($"/api/admin/prices?q={Uri.EscapeDataString(gameTitle)}"));
         var baseCurrency = matrix.GetProperty("baseCurrency").GetString()!;
 
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync($"/api/admin/prices/{gameId}/{baseCurrency}", new { price = (decimal?)null })).StatusCode);

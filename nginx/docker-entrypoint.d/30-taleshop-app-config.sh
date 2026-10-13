@@ -55,3 +55,27 @@ awk -v tag='<script src="/app-config.js"></script>' -v f=/tmp/app-config.inline 
 ' "$orig" > "$html/index.html.tmp"
 mv "$html/index.html.tmp" "$html/index.html"
 rm -f /tmp/app-config.inline
+
+# Теги <head> страницы — от сервера (nginx SSI → /__page-head → PageHeadService на бэкенде): у игры и статьи свои
+# заголовок, описание и картинка ещё до JavaScript, иначе превью ссылок показывали «Tale Shop» у любой страницы.
+# Общие <title> и description из сборки уходят в блок-заглушку: их nginx подставит, если сервер ответит пусто или с
+# ошибкой. Метку ставим здесь, а не в public/index.html: минификатор сборки вырезает комментарии, а SSI — комментарии.
+title='<title>Tale Shop</title>'
+desc=$(grep -o '<meta name="description"[^>]*>' "$html/index.html" | head -n 1)
+if [ -n "$desc" ] && grep -qF "$title" "$html/index.html"; then
+    printf '%s' "$desc" > /tmp/page-head.desc
+    printf '<!--# block name="page_head" -->%s%s<!--# endblock --><!--# include virtual="/__page-head" stub="page_head" -->' \
+        "$desc" "$title" > /tmp/page-head.ssi
+    awk -v t="$title" -v df=/tmp/page-head.desc -v sf=/tmp/page-head.ssi '
+        BEGIN { getline d < df; getline s < sf }
+        {
+            i = index($0, d); if (i) $0 = substr($0, 1, i - 1) substr($0, i + length(d))
+            i = index($0, t); if (i) $0 = substr($0, 1, i - 1) s substr($0, i + length(t))
+            print
+        }
+    ' "$html/index.html" > "$html/index.html.tmp"
+    mv "$html/index.html.tmp" "$html/index.html"
+    rm -f /tmp/page-head.desc /tmp/page-head.ssi
+else
+    echo "taleshop: в index.html нет общих <title>/description — теги страниц от сервера не подключены" >&2
+fi

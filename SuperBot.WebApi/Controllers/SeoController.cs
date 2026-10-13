@@ -85,6 +85,28 @@ public class SeoController : ControllerBase
         return Content(builder.ToString(), "text/plain; charset=utf-8");
     }
 
+    /// <summary>
+    /// Теги &lt;head&gt; страницы витрины (см. <see cref="SuperBot.WebApi.Services.Seo.PageHeadService"/>). Зовёт nginx
+    /// внутренним запросом при отдаче index.html; адрес страницы — в заголовке X-Page-Uri (для отладки — ?uri=).
+    /// Пустой ответ — страница без своих тегов, nginx оставит общие.
+    /// </summary>
+    [HttpGet("/api/seo/page-head")]
+    public async Task<ContentResult> PageHead([FromServices] SuperBot.WebApi.Services.Seo.PageHeadService pageHead, [FromQuery] string? uri = null)
+    {
+        var requestUri = Request.Headers["X-Page-Uri"].FirstOrDefault() ?? uri;
+        string html;
+        try
+        {
+            html = await pageHead.BuildAsync(requestUri, BaseUrl());
+        }
+        catch
+        {
+            // Сбой здесь не должен ломать страницу: nginx при пустом ответе оставит общие теги.
+            html = string.Empty;
+        }
+        return Content(html, "text/html; charset=utf-8");
+    }
+
     [HttpGet("/sitemap.xml")]
     public async Task<ContentResult> Sitemap()
     {

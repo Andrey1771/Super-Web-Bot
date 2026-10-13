@@ -338,6 +338,8 @@ builder.Services.AddScoped<IGameTrackingRepository, GameTrackingMongoDbRepositor
 // Собранный каталог для витрины. Сам объект кэшируется в IMemoryCache, поэтому сервис
 // может быть scoped — состояния он не держит.
 builder.Services.AddScoped<ICatalogSnapshotService, CatalogSnapshotService>();
+// Теги <head> страниц витрины для nginx SSI: превью ссылок и роботы без JavaScript (см. PageHeadService).
+builder.Services.AddScoped<SuperBot.WebApi.Services.Seo.PageHeadService>();
 builder.Services.AddScoped<IGameGenreDirectory, GameGenreDirectory>();
 builder.Services.AddScoped<ISoftwareCategoryDirectory, SoftwareCategoryDirectory>();
 builder.Services.AddScoped<SuperBot.WebApi.Services.Storefront.IDealSpotlightService, SuperBot.WebApi.Services.Storefront.DealSpotlightService>();
