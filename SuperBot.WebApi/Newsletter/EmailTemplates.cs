@@ -49,8 +49,9 @@ public static class EmailTemplates
         var taglineHtml = System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(tagline) ? "Tale Shop · Game keys, delivered." : tagline);
         var logo = string.IsNullOrWhiteSpace(logoUrl)
             ? Wordmark
-            : $"<img src=\"{logoUrl}\" width=\"116\" alt=\"Tale Shop\" " +
-              "style=\"display:block;width:116px;height:auto;border:0;outline:none;text-decoration:none;\" />";
+            // По центру, как всё письмо: прижатый влево крупный логотип при центрированном тексте выглядел перекосом.
+            : $"<img src=\"{logoUrl}\" width=\"84\" alt=\"Tale Shop\" " +
+              "style=\"display:block;margin:0 auto;width:84px;height:auto;border:0;outline:none;text-decoration:none;\" />";
         return Layout.Value.Replace("{{LOGO}}", logo).Replace("{{CONTENT}}", contentHtml).Replace("{{TAGLINE}}", taglineHtml);
     }
 

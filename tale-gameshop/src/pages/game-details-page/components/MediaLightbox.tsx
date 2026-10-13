@@ -34,6 +34,8 @@ const MediaLightbox = ({ media, index, title, fullscreen = false, onNavigate, on
   const rootRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const [isFullscreen, setFullscreen] = useState(false);
+  // Панель плеера спряталась — стрелки и счётчик прячутся вместе с ней.
+  const [videoIdle, setVideoIdle] = useState(false);
   const fullscreenSupported = typeof document !== 'undefined' && typeof document.documentElement?.requestFullscreen === 'function';
 
   const enterFullscreen = () => rootRef.current?.requestFullscreen?.().catch(() => undefined);
@@ -110,7 +112,7 @@ const MediaLightbox = ({ media, index, title, fullscreen = false, onNavigate, on
 
   return createPortal(
     <div
-      className="media-lightbox"
+      className={`media-lightbox${videoIdle ? ' is-video-idle' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={t('media.viewer', { title })}
@@ -139,8 +141,10 @@ const MediaLightbox = ({ media, index, title, fullscreen = false, onNavigate, on
               poster={item.posterUrl ?? item.thumbUrl}
               title={t('media.video', { title })}
               autoPlay
+              onIdleChange={setVideoIdle}
               extraControls={theaterControl('vp__btn')}
               onFullscreen={fullscreenSupported ? toggleFullscreen : undefined}
+              nativeFullscreenFallback={!fullscreenSupported}
               isFullscreen={isFullscreen}
             />
           ) : (

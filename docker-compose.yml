@@ -108,6 +108,8 @@ services:
       - SupportChat__DeepSeekApiKey=${DEEPSEEK_API_KEY:-}
       # Имя модели берётся из актуального прайса провайдера; reasoning-версию не используем.
       - SupportChat__DeepSeekModel=${DEEPSEEK_MODEL:-deepseek-chat}
+      # Рассуждение модели перед ответом (DeepSeek V4 включает его сам): для поддержки — выключено, см. SupportChatOptions.
+      - SupportChat__DeepSeekThinking=${DEEPSEEK_THINKING:-disabled}
       # Метка приложения в запросах: одним ключом могут пользоваться несколько наших проектов.
       - SupportChat__AppTag=${SUPPORT_CHAT_APP_TAG:-tale-shop-support}
       # Потолок расходов на ИИ-чат в сутки, $. По умолчанию 5: без потолка чат с ботами за прокси
@@ -299,6 +301,8 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_AUTH=${SMTP_USERNAME:+true}
       - SMTP_USE_TLS=${SMTP_USE_TLS:-false}
+      # Порт 465 (Cloudflare Email Sending) — шифрование сразу: SMTP_SSL=true. Уже работающему realm — deploy/keycloak-smtp.sh.
+      - SMTP_SSL=${SMTP_SSL:-false}
       - MAIL_FROM=${MAIL_FROM:-no-reply@taleshop.local}
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro

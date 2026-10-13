@@ -410,7 +410,7 @@ const MiniAppPage: React.FC = () => {
                         return (
                             <article key={game.id} className="miniapp__card">
                                 <button className="miniapp__coverbtn" onClick={() => openProduct(game)}>
-                                    <Cover as="span" ratio="landscape" sizes="50vw" src={game.imagePath} title={game.title} baseUrl={window.location.origin} />
+                                    <Cover as="span" ratio="landscape" sizes="50vw" src={game.imagePath} color={game.coverColor} title={game.title} baseUrl={window.location.origin} />
                                     {game.discountActive && game.discountPercent ? (
                                         <span className="miniapp__badge">−{Number(game.discountPercent).toFixed(0)}%</span>
                                     ) : null}
@@ -519,7 +519,10 @@ const MiniAppPage: React.FC = () => {
     };
 
     const renderCart = () => {
-        const recommendations = games.filter((g) => !cart.some((line) => line.game.id === g.id)).slice(0, 6);
+        // Только то, что можно купить: невышедшая игра здесь выглядела как «+ ⭐ цена», а нажатие ничего не давало.
+        const recommendations = games
+            .filter((g) => !g.isComingSoon && !cart.some((line) => line.game.id === g.id))
+            .slice(0, 6);
         return (
         <div className="miniapp__cartview">
             <h1>Корзина</h1>

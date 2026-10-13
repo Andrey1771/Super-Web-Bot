@@ -2,7 +2,9 @@
 # Публикует подготовленные статьи блога (deploy/content/news-*.json) в базу — на сервере или стенде:
 #   bash deploy/import-news.sh deploy/content/news-2026-09.json
 # На стенде: COMPOSE_FILE=docker-compose.yml:docker-compose.override.yml bash deploy/import-news.sh …
-# Уже существующие адреса пропускаются. Текст — с источниками; обложки — арт игр из Steam (внешние ссылки).
+# Уже существующие адреса пропускаются. Текст — с источниками; обложки — арт игр из Steam (внешние ссылки,
+# переносятся к себе командой backend localize-media) или свои из deploy/content/covers: их скопировать в
+# uploads/blog тома бэкенда (docker compose cp … backend:/app/wwwroot/uploads/blog/).
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 

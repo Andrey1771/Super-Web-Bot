@@ -23,18 +23,11 @@ for (let i = 0; !db.hello().isWritablePrimary; i++) {
 }
 
 // Только своя база: чтение/запись и индексы. Ни других баз, ни управления сервером.
-// Демо-сайт (DEMO_MODE=true) — исключение: у каждого посетителя своя копия базы (tsdemo_*), их создаёт и удаляет
-// приложение, а выдать права по шаблону имени базы Mongo не умеет. На демо-сервере других данных нет.
-const demo = process.env.DEMO_MODE === "true";
-const roles = demo
-  ? [
-      { role: "readWriteAnyDatabase", db: "admin" },
-      { role: "dbAdminAnyDatabase", db: "admin" },
-    ]
-  : [
-      { role: "readWrite", db: dbName },
-      { role: "dbAdmin", db: dbName },
-    ];
+// (Повторный запуск сужает и права, выданные прежней версией демо на чужие базы.)
+const roles = [
+  { role: "readWrite", db: dbName },
+  { role: "dbAdmin", db: dbName },
+];
 const appDb = db.getSiblingDB(dbName);
 if (appDb.getUser(user)) {
   appDb.updateUser(user, { pwd, roles });

@@ -5,6 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { Game } from "../../models/game";
 import SafeGameImage from "../common/SafeGameImage";
+import { buildCoverSrcSet } from "../../utils/cover-variants";
+import { normalizeGameCoverUrl } from "../../utils/game-cover";
 import { slugify } from "../../utils/slugify";
 import { ITEM_LISTS, trackItemSelect, useItemListView } from "../../utils/item-list-tracking";
 import { discountPercentOf, finalPriceOf, hasVisibleDiscount } from "../../utils/game-pricing";
@@ -186,12 +188,18 @@ export default function HeroBillboardCarousel({ games, isLoading, apiBaseUrl }: 
                             )}
                         >
                             <div className="hb-media">
-                                {/* Первый слайд — LCP первого экрана, грузим сразу; остальные не торопим. */}
+                                {/* Варианты 16:9 под ширину экрана вместо исходника на 1920 px. Без lazy: слайды стоят
+                                    в сдвинутой ленте, и Safari на iPhone «ленивые» картинки в ней так и не грузил —
+                                    баннер оставался без обложки. Первый слайд — LCP первого экрана, он в приоритете. */}
                                 <SafeGameImage
                                     gameTitle={game.title}
                                     src={game.imagePath}
                                     baseUrl={apiBaseUrl}
-                                    loading={realIndex === 0 && !clone ? "eager" : "lazy"}
+                                    srcSet={buildCoverSrcSet(normalizeGameCoverUrl(game.imagePath, apiBaseUrl), "wide", [480, 960, 1400])}
+                                    sizes="(max-width: 1024px) 100vw, 66vw"
+                                    loading="eager"
+                                    decoding="async"
+                                    fetchPriority={realIndex === 0 && !clone ? "high" : "low"}
                                 />
                             </div>
                             <span className="hb-scrim" aria-hidden="true" />

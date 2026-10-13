@@ -128,6 +128,12 @@
     box-sizing: inherit;
   }
 
+  /* Ничто не делает страницу шире экрана: на iPhone от этого «уезжали» вправо окна, прибитые к краям (демо-окно).
+     clip, а не hidden: не превращает корень в прокручиваемый блок и не ломает position: sticky. */
+  #root {
+    overflow-x: clip;
+  }
+
   html,
   body {
     margin: 0;
@@ -287,6 +293,42 @@
 /* Единственное определение бейджа на весь магазин. Отступ и прозрачная рамка — то, что
    реально показывалось до этого: раньше их поверх этого правила задавала страница игры,
    и бейджи всего сайта выглядели так, как решил её файл. */
+/* Половинки почты (components/common/EmailText): каждая — одним куском, пока влезает в строку. */
+.email-text__part {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Текст-заглушка на время загрузки: строка той же высоты, что и настоящий текст, только «полоска» вместо букв —
+   когда данные приходят, ничего не сдвигается (было «Loading…» другой высоты и моковые данные). */
+.skeleton-text {
+  width: fit-content;
+  max-width: 100%;
+  color: transparent !important;
+  border-color: transparent !important;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ece8ff 0%, #f5f3ff 50%, #ece8ff 100%) !important;
+  background-size: 200% 100% !important;
+  animation: skeleton-text-shimmer 1.5s infinite;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  user-select: none;
+}
+
+.skeleton-text * {
+  visibility: hidden;
+}
+
+@keyframes skeleton-text-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-text { animation: none; }
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

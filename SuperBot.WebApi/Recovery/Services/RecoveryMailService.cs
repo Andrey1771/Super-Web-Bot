@@ -74,7 +74,6 @@ public class RecoveryMailService
         try
         {
             // Сервер, логин и шифрование — общие для всей почты (секция Mail).
-            using var client = SmtpClients.Create(_mail);
             using var message = new MailMessage
             {
                 From = new MailAddress(_mail.FromAddress, _mail.FromName),
@@ -82,7 +81,7 @@ public class RecoveryMailService
                 Body = body
             };
             message.To.Add(to);
-            await client.SendMailAsync(message);
+            await SmtpClients.SendAsync(_mail, message);
         }
         catch (Exception ex)
         {

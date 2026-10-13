@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../../i18n/format';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {
     faChevronLeft,
@@ -11,9 +11,9 @@ import AccountShell from '../components/AccountShell';
 import './account-billing-page.css';
 import AddCardModal from '../../../components/billing/AddCardModal';
 import PaymentCardTile from '../../../components/billing/PaymentCardTile';
+import { useIsDemoViewer } from '../../demo/useDemoConfig';
 import {
     createSetupIntent,
-    downloadDataExport,
     downloadInvoicePdf,
     fetchBillingProfile,
     fetchInvoices,
@@ -44,12 +44,12 @@ const AccountBillingPage: React.FC = () => {
     const invoicePageSize = 10;
 
     const [isAddCardOpen, setIsAddCardOpen] = useState(false);
+    // Демо-админ — «только просмотр»: сервер всё равно откажет в привязке карты, поэтому кнопка выключена заранее.
+    const isDemoViewer = useIsDemoViewer();
     const [isBillingDetailsOpen, setIsBillingDetailsOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
-    const [isDownloadingData, setIsDownloadingData] = useState(false);
     const [isDownloadingInvoice, setIsDownloadingInvoice] = useState<string | null>(null);
-    const profileDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const invoiceTotalPages = Math.max(1, Math.ceil(invoiceTotalCount / invoicePageSize));
 
@@ -120,36 +120,6 @@ const AccountBillingPage: React.FC = () => {
         loadInvoices(invoicePage);
     }, [invoicePage]);
 
-    useEffect(() => {
-        if (!profileDraft || !profile) {
-            return;
-        }
-        if (profile.hideOwnedGamesInProfile === profileDraft.hideOwnedGamesInProfile) {
-            return;
-        }
-
-        if (profileDebounceRef.current) {
-            clearTimeout(profileDebounceRef.current);
-        }
-
-        profileDebounceRef.current = setTimeout(async () => {
-            try {
-                const updated = await updateBillingProfile({
-                    hideOwnedGamesInProfile: profileDraft.hideOwnedGamesInProfile
-                });
-                syncProfileDraft(updated);
-            } catch (error) {
-                setToast(t('account.billing.toast.privacyFailed'));
-            }
-        }, 500);
-
-        return () => {
-            if (profileDebounceRef.current) {
-                clearTimeout(profileDebounceRef.current);
-            }
-        };
-    }, [profileDraft?.hideOwnedGamesInProfile]);
-
     const handleProfileChange = (updates: Partial<BillingProfileDto>) => {
         setProfileDraft((prev) => (prev ? { ...prev, ...updates } : prev));
     };
@@ -177,8 +147,7 @@ const AccountBillingPage: React.FC = () => {
         try {
             const updated = await updateBillingProfile({
                 displayName: profileDraft.displayName,
-                billingDetails: profileDraft.billingDetails,
-                hideOwnedGamesInProfile: profileDraft.hideOwnedGamesInProfile
+                billingDetails: profileDraft.billingDetails
             });
             syncProfileDraft(updated);
             setToast(t('account.billing.toast.profileUpdated'));
@@ -235,25 +204,6 @@ const AccountBillingPage: React.FC = () => {
             setToast(t('account.billing.toast.invoiceFailed'));
         } finally {
             setIsDownloadingInvoice(null);
-        }
-    };
-
-    const handleDownloadData = async () => {
-        setIsDownloadingData(true);
-        try {
-            const blob = await downloadDataExport();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'tale-shop-data-export.zip';
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            setToast(t('account.billing.toast.exportFailed'));
-        } finally {
-            setIsDownloadingData(false);
         }
     };
 
@@ -323,14 +273,24 @@ const AccountBillingPage: React.FC = () => {
                             key={method.id}
                             method={method}
                             busy={busyMethodId === method.id}
-                            onSetDefault={handleSetDefault}
-                            onRemove={handleRemoveMethod}
+                            // Демо-админ — «только просмотр»: без кнопок «сделать основной» и «удалить».
+                            onSetDefault={isDemoViewer ? undefined : handleSetDefault}
+                            onRemove={isDemoViewer ? undefined : handleRemoveMethod}
                         />
                     ))}
-                    <button type="button" className="btn btn-outline billing-add-btn" onClick={() => setIsAddCardOpen(true)}>
+                    <button
+                        type="button"
+                        className="btn btn-outline billing-add-btn"
+                        onClick={() => setIsAddCardOpen(true)}
+                        disabled={isDemoViewer}
+                        aria-describedby={isDemoViewer ? 'billing-demo-note' : undefined}
+                    >
                         {t('account.billing.addMethod')}
                     </button>
                 </div>
+                {isDemoViewer && (
+                    <p id="billing-demo-note" className="billing-demo-note">{t('billing.demoViewer')}</p>
+                )}
                 {profileError && (
                     <div className="billing-state billing-state-error">
                         <FontAwesomeIcon icon={faCircleExclamation} />
@@ -461,31 +421,6 @@ const AccountBillingPage: React.FC = () => {
                             ? t('common.showingZero')
                             : t('common.showingRange', { from: (invoicePage - 1) * invoicePageSize + 1, to: Math.min(invoicePage * invoicePageSize, invoiceTotalCount), total: invoiceTotalCount })}
                     </span>
-                </div>
-            </div>
-
-            <div className="card billing-card billing-privacy-card">
-                <div className="billing-card-header">
-                    <h3>{t('account.billing.privacy')}</h3>
-                </div>
-                <div className="billing-privacy-row">
-                    <label className="billing-checkbox">
-                        <input
-                            type="checkbox"
-                            checked={profileDraft?.hideOwnedGamesInProfile ?? false}
-                            onChange={(event) => handleProfileChange({ hideOwnedGamesInProfile: event.target.checked })}
-                            disabled={profileLoading}
-                        />
-                        {t('account.billing.hideOwned')}
-                    </label>
-                    <button
-                        type="button"
-                        className="btn btn-outline billing-download-btn"
-                        onClick={handleDownloadData}
-                        disabled={isDownloadingData}
-                    >
-                        {isDownloadingData ? t('common.preparing') : t('account.billing.downloadData')}
-                    </button>
                 </div>
             </div>
 

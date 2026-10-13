@@ -92,7 +92,7 @@ const CashbackOrderCard: React.FC = () => {
         <figure className="rw-order" aria-label={t("rewards.exampleOrder")}>
           <div className="rw-order-card">
             <div className="rw-order-head rw-r-step" style={{ "--d": "0.2s" } as React.CSSProperties}>
-                <Cover className="rw-order-cover" ratio="portrait" sizes="64px" widths={[240]} src={game.imagePath} title={game.title ?? game.name} baseUrl={services.urlService.apiBaseUrl} />
+                <Cover className="rw-order-cover" ratio="portrait" sizes="64px" widths={[240]} src={game.imagePath} color={game.coverColor} title={game.title ?? game.name} baseUrl={services.urlService.apiBaseUrl} />
                 <div className="rw-order-title">
                     <strong>{game.title ?? game.name}</strong>
                     <span>{platform} · {t("rewards.digitalKey")}</span>

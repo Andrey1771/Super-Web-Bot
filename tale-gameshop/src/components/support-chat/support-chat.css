@@ -151,11 +151,15 @@
 /* Телефон: во весь экран, включая область под клавиатурой (dvh учитывает её появление). */
 .support-chat__window--fullscreen {
   position: fixed;
-  inset: 0;
+  /* Видимая часть экрана над клавиатурой — её размеры ставит ChatWindow (visualViewport). */
+  top: var(--chat-top, 0);
+  left: 0;
+  right: 0;
+  bottom: auto;
   width: 100vw;
   max-width: 100vw;
   height: 100vh;
-  height: 100dvh;
+  height: var(--chat-vh, 100dvh);
   max-height: none;
   border-radius: 0;
   border: none;
@@ -416,14 +420,8 @@
   font-weight: 600;
 }
 
-/* Разговор растёт снизу вверх: приветствие и первые реплики стоят над полем ввода, а пустота
-   уходит под шапку. Иначе в окне фиксированной высоты содержимое висело посередине.
-   Именно margin-top, а не justify-content: flex-end — при переполнении тот отрезает верх
-   прокручиваемой области, и до первых сообщений было бы не добраться. */
-.support-chat__messages {
-  margin-top: auto;
-}
-
+/* Разговор идёт сверху, как в чатах поддержки (Intercom, Crisp): приветствие — сразу под шапкой, а не над полем
+   ввода с пустотой над ним. Длинная переписка прокручивается к последнему сообщению. */
 .support-chat__messages {
   display: flex;
   flex-direction: column;
@@ -1048,5 +1046,91 @@
   .support-chat {
     right: max(10px, env(safe-area-inset-right));
     bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Подложка под окном на весь экран (телефон): то, что видно сквозь полупрозрачные панели Safari над клавиатурой, —
+   фон чата, а не страница магазина. */
+.support-chat__backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--chat-surface);
+  touch-action: none;
+}
+
+/* Прокрутка переписки не передаётся странице, когда доходит до края. */
+.support-chat__window--fullscreen .support-chat__body,
+.support-chat__window--fullscreen textarea {
+  overscroll-behavior: contain;
+}
+
+/* Поля в чате на телефоне — не мельче 16px: иначе Safari на iPhone при нажатии сам увеличивает страницу,
+   и окно чата «уезжает» за край экрана. */
+.support-chat__window--fullscreen input,
+.support-chat__window--fullscreen textarea,
+.support-chat__window--fullscreen select {
+  font-size: 16px;
+}
+
+/* Телефон: компактные шапка и строка ввода, как в мессенджерах, — переписке остаётся больше места над клавиатурой.
+   Поле — отдельная «таблетка» с тонкой рамкой, кнопка отправки — залитый кружок рядом с ней. */
+.support-chat__window--fullscreen .support-chat__header {
+  padding: 10px 8px 10px 16px;
+}
+
+.support-chat__window--fullscreen .support-chat__footer {
+  padding: 6px 8px 6px 12px;
+}
+
+.support-chat__window--fullscreen .support-chat__composer {
+  align-items: end;
+  gap: 8px;
+  border-radius: 0;
+}
+
+.support-chat__window--fullscreen .support-chat__composer:focus-within {
+  background: transparent;
+}
+
+.support-chat__window--fullscreen .support-chat__input {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid rgba(109, 59, 255, 0.18);
+  border-radius: 20px;
+  background: var(--chat-body);
+  line-height: 1.4;
+  transition: border-color 0.18s ease;
+}
+
+.support-chat__window--fullscreen .support-chat__input:focus {
+  border-color: rgba(109, 59, 255, 0.5);
+}
+
+.support-chat__window--fullscreen .support-chat__send {
+  width: 40px;
+  height: 40px;
+  background: var(--chat-accent);
+  color: #fff;
+}
+
+.support-chat__window--fullscreen .support-chat__send:disabled {
+  background: #e6e3f0;
+  color: #fff;
+}
+
+/* Переписка уходит под строку ввода мягко, а не обрывается по линии. */
+.support-chat__window--fullscreen .support-chat__body {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+}
+
+.support-chat__window--fullscreen .support-chat__scroll-down {
+  bottom: 14px;
+}
+
+/* Телефон: кнопка чата на одной линии с кружком «Демо» (у него отступ больше — под лучи, см. demo-layer.css). */
+@media (max-width: 720px) {
+  .support-chat {
+    bottom: max(19px, calc(env(safe-area-inset-bottom) + 11px));
   }
 }

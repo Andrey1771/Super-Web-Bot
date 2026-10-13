@@ -287,6 +287,15 @@ function resolveCountry(): { country: string | null; source: CountrySource | nul
 
 const initialCountry = resolveCountry();
 
+/**
+ * Страна покупателя определилась: выбрана им самим, пришла от сервера по IP (или сервер не ответил) — дальше
+ * не поменяется сама. До этого каталог не запрашивается: доступность ключей зависит от страны, и раньше первый
+ * запрос уходил с догадкой по часовому поясу, а через ~0,2 с повторялся с настоящей страной — лишняя выдача и
+ * лишний пересчёт карточек. Сервер молчит дольше REGION_WAIT_MS — не ждём.
+ */
+const REGION_WAIT_MS = 1500;
+let regionSettled = !isBrowser || Boolean(readStoredCountry());
+
 let snapshot: {
   lang: LangCode;
   currency: string;
@@ -297,6 +306,7 @@ let snapshot: {
   /** Страна по IP (от CDN/прокси), независимо от выбора, — для предупреждения о VPN/прокси. */
   ipCountry: string | null;
   countries: CountryOption[];
+  regionSettled: boolean;
 } = {
   lang: readLang(),
   currency: resolveCurrency(),
@@ -306,6 +316,7 @@ let snapshot: {
   countrySource: initialCountry.source,
   ipCountry: null,
   countries: countryCatalog,
+  regionSettled,
 };
 
 // Apply the saved language to the document as soon as this module loads, so the whole app
@@ -336,7 +347,8 @@ function refresh() {
     nextCountry.country !== snapshot.country ||
     nextCountry.source !== snapshot.countrySource ||
     detectedCountry !== snapshot.ipCountry ||
-    countriesChanged
+    countriesChanged ||
+    regionSettled !== snapshot.regionSettled
   ) {
     snapshot = {
       lang: nextLang,
@@ -347,6 +359,7 @@ function refresh() {
       countrySource: nextCountry.source,
       ipCountry: detectedCountry,
       countries: countryCatalog,
+      regionSettled,
     };
     listeners.forEach((listener) => listener());
   }
@@ -421,15 +434,23 @@ async function loadStorefrontRegion(): Promise<void> {
     }
     const detected = payload?.detectedCountry;
     detectedCountry = typeof detected === "string" && /^[A-Z]{2}$/i.test(detected) ? detected.toUpperCase() : null;
-    refresh();
   } catch {
     /* оффлайн или CORS — остаёмся с догадкой по часовому поясу */
+  } finally {
+    regionSettled = true;
+    refresh();
   }
 }
 
 if (isBrowser) {
   void loadStorefrontCurrency();
   void loadStorefrontRegion();
+  window.setTimeout(() => {
+    if (!regionSettled) {
+      regionSettled = true;
+      refresh();
+    }
+  }, REGION_WAIT_MS);
 }
 
 function subscribe(callback: () => void): () => void {
@@ -556,6 +577,8 @@ export function useSitePreferences() {
     /** Страна по IP от сервера (если прокси/CDN её передал) — для предупреждения о VPN/прокси. */
     ipCountry: state.ipCountry,
     countries: state.countries,
+    /** Страна больше сама не поменяется (см. REGION_WAIT_MS) — можно запрашивать то, что от неё зависит. */
+    regionSettled: state.regionSettled,
     setCountry,
   };
 }

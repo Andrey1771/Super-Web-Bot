@@ -8,7 +8,9 @@ namespace SuperBot.WebApi.Services.SteamImport;
 ///
 ///   docker compose run --rm --no-deps backend import-dlc all                  — DLC всех игр из Steam
 ///   docker compose run --rm --no-deps backend import-dlc 268500,1091500       — только этих игр (appid базовой)
-///   ... [--min-price 10] [--with-trailers] [--update]
+///   ... [--min-price 10] [--with-trailers] [--update] [--only-existing]
+///
+/// --update --only-existing — обновить из Steam только уже заведённые DLC (тексты, картинки), не добавляя новых.
 ///
 /// Список DLC игры — один запрос dlcforapp; дальше каждое DLC заводится тем же импортёром, что и игры,
 /// отдельным товаром с ParentGameId базовой игры. Бесплатные DLC не берём (ключ на них не продают),
@@ -37,7 +39,7 @@ public static class SteamDlcCli
         var source = args.FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal));
         if (string.IsNullOrWhiteSpace(source))
         {
-            Console.Error.WriteLine($"Usage: {Command} all|<base game app ids> [--min-price <usd>] [--with-trailers] [--update] [--parallel <n>]");
+            Console.Error.WriteLine($"Usage: {Command} all|<base game app ids> [--min-price <usd>] [--with-trailers] [--update] [--only-existing] [--parallel <n>]");
             return 2;
         }
         var only = source == "all"
@@ -52,9 +54,18 @@ public static class SteamDlcCli
         };
 
         List<Game> parents;
+        HashSet<string>? existingDlc = null;
         using (var scope = services.CreateScope())
         {
-            parents = (await scope.ServiceProvider.GetRequiredService<IGameRepository>().GetAllAsync())
+            var all = await scope.ServiceProvider.GetRequiredService<IGameRepository>().GetAllAsync();
+            if (args.Contains("--only-existing"))
+            {
+                existingDlc = all
+                    .Where(g => g.ExternalId?.StartsWith("steam-", StringComparison.Ordinal) == true && !string.IsNullOrWhiteSpace(g.ParentGameId))
+                    .Select(g => g.ExternalId!["steam-".Length..])
+                    .ToHashSet(StringComparer.Ordinal);
+            }
+            parents = all
                 .Where(g => g.ExternalId?.StartsWith("steam-", StringComparison.Ordinal) == true && string.IsNullOrWhiteSpace(g.ParentGameId))
                 .Where(g => only is null || only.Contains(g.ExternalId!["steam-".Length..]))
                 .OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
@@ -85,7 +96,7 @@ public static class SteamDlcCli
                     continue;
                 }
                 var family = listing.Select(d => d.AppId).Append(parentAppId).ToHashSet(StringComparer.Ordinal);
-                var picked = Pick(listing, minPriceCents);
+                var picked = Pick(listing, minPriceCents).Where(d => existingDlc is null || existingDlc.Contains(d.AppId)).ToList();
                 logger.LogInformation("[{Index}/{Total}] {Game}: {Picked} of {All} DLC", index, parents.Count, parent.Name, picked.Count, listing.Count);
                 foreach (var dlc in picked.Where(d => queued.Add(d.AppId)))
                 {

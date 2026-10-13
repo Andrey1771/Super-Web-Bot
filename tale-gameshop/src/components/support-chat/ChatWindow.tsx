@@ -179,6 +179,84 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   // Окно прижато к правому нижнему углу, поэтому ручка — в левом верхнем: тянешь наружу,
   // окно растёт, а его угол остаётся на месте.
   const windowRef = useRef<HTMLDivElement | null>(null);
+
+  // Телефон: чат — полноэкранный слой, как у Intercom и Crisp. Окно — ровно видимая часть экрана над клавиатурой
+  // (visualViewport), страница под ним заморожена, а пальцем прокручивается только переписка. Иначе на iPhone
+  // Safari прокручивал страницу под чатом: из-под окна вылезал каталог, а при перетаскивании всё дёргалось —
+  // окно догоняло сдвиг экрана с опозданием.
+  useEffect(() => {
+    if (!compact || !isOpen) return;
+    const viewport = window.visualViewport;
+    const { documentElement: html, body } = document;
+    const scrollY = window.scrollY;
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+    };
+    // overflow: hidden Safari не останавливает — страницу держит только position: fixed.
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    const fit = () => {
+      const element = windowRef.current;
+      if (!element || !viewport) return;
+      element.style.setProperty("--chat-vh", `${viewport.height}px`);
+      element.style.setProperty("--chat-top", `${viewport.offsetTop}px`);
+    };
+    let frame = 0;
+    const scheduleFit = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
+
+    // Жест пропускаем только там, где есть что прокручивать (переписка, длинное поле ввода) и пока не упёрлись в край:
+    // всё остальное Safari отдал бы на сдвиг экрана под клавиатурой.
+    let startY = 0;
+    const onTouchStart = (event: TouchEvent) => {
+      startY = event.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length > 1) return;
+      const deltaY = (event.touches[0]?.clientY ?? startY) - startY;
+      let node = event.target instanceof Element ? event.target : null;
+      while (node && node !== windowRef.current) {
+        const { overflowY } = getComputedStyle(node);
+        if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight) {
+          const atTop = node.scrollTop <= 0;
+          const atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+          if (!(deltaY > 0 && atTop) && !(deltaY < 0 && atBottom)) return;
+          break;
+        }
+        node = node.parentElement;
+      }
+      if (event.cancelable) event.preventDefault();
+    };
+
+    fit();
+    viewport?.addEventListener("resize", scheduleFit);
+    viewport?.addEventListener("scroll", scheduleFit);
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport?.removeEventListener("resize", scheduleFit);
+      viewport?.removeEventListener("scroll", scheduleFit);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      html.style.overflow = previous.htmlOverflow;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.position = previous.bodyPosition;
+      body.style.top = previous.bodyTop;
+      body.style.width = previous.bodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [compact, isOpen]);
   const [size, setSize] = useState<WindowSize | null>(readStoredSize);
   const resizeRef = useRef({
     startX: 0,
@@ -442,6 +520,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       };
 
   return (
+    <>
+    {/* Телефон: сплошная подложка во весь экран под окном. Панели Safari над клавиатурой (адрес, «вверх/вниз/готово»)
+        полупрозрачные и лежат ниже окна — сквозь них раньше просвечивал каталог. */}
+    {compact && <div className="support-chat__backdrop" aria-hidden="true" />}
     <div
       ref={windowRef}
       className={`support-chat__window${compact ? " support-chat__window--fullscreen" : ""}`}
@@ -677,6 +759,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         />
       </div>
     </div>
+    </>
   );
 };
 

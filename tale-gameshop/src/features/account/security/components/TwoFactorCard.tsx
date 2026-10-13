@@ -32,7 +32,7 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
     const {t} = useTranslation();
     if (isPending) {
         return (
-            <div className="card security-card" data-testid="security-2fa-card" aria-busy="true">
+            <div id="security-2fa" className="card security-card" data-testid="security-2fa-card" aria-busy="true">
                 <div className="security-card-header">
                     <h3>{t('account.security.twoFactor.title')}</h3>
                     <span className="security-status-pill is-off">{t('common.loading')}</span>
@@ -44,7 +44,7 @@ const TwoFactorCard: React.FC<TwoFactorCardProps> = ({
     }
 
     return (
-        <div className="card security-card" data-testid="security-2fa-card">
+        <div id="security-2fa" className="card security-card" data-testid="security-2fa-card">
             <div className="security-card-header">
                 <h3>{t('account.security.twoFactor.title')}</h3>
                 <span className={`security-status-pill ${isEnabled ? 'is-on' : 'is-off'}`}>

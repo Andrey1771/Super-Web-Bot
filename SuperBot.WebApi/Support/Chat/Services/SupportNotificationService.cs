@@ -108,7 +108,6 @@ public class SupportNotificationService : ISupportNotificationService
                 .AppendLine($"Open the conversation: {BuildSessionLink(session)}")
                 .ToString();
 
-            using var client = SmtpClients.Create(_mailOptions);
             using var message = new MailMessage
             {
                 From = new MailAddress(_mailOptions.FromAddress, _mailOptions.FromName),
@@ -116,7 +115,7 @@ public class SupportNotificationService : ISupportNotificationService
                 Body = body
             };
             message.To.Add(to);
-            await client.SendMailAsync(message);
+            await SmtpClients.SendAsync(_mailOptions, message);
         }
         catch (Exception ex)
         {

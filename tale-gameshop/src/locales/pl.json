@@ -1002,7 +1002,9 @@
       "generic_decline": "Bank odrzucił płatność bez podania przyczyny. Spróbuj innej karty.",
       "authentication_required": "Bank wymaga dodatkowego uwierzytelnienia. Spróbuj ponownie."
     },
-    "taxSales": "Podatek od sprzedaży"
+    "taxSales": "Podatek od sprzedaży",
+    "stripeBlocked": "Formularz płatności Stripe się nie załadował. Może go blokować sieć lub bloker reklam — spróbuj innego połączenia (np. danych komórkowych lub VPN) albo wyłącz bloker dla tej strony i odśwież stronę.",
+    "reloadPage": "Odśwież stronę"
   },
   "cashback": {
     "badge": "+{{amount}} cashback",
@@ -1084,7 +1086,9 @@
     "removeCard": "Usuń kartę",
     "card": "Karta",
     "brandCard": "Karta {{brand}}",
-    "paymentCard": "Karta płatnicza"
+    "paymentCard": "Karta płatnicza",
+    "stripeUnavailable": "Formularz karty Stripe się nie załadował. Może go blokować sieć lub bloker reklam — spróbuj innego połączenia albo wyłącz bloker dla tej strony.",
+    "demoViewer": "Konto demo-admina służy tylko do podglądu, więc nie można w nim dodać karty. Załóż własne konto i wypróbuj to z kartą testową."
   },
   "account": {
     "nav": {
@@ -1296,10 +1300,14 @@
       "linkedAccount": "Połączone konto",
       "connectTelegram": "Połącz Telegram",
       "telegramUnavailable": "Łączenie z Telegramem jest teraz niedostępne — bot nie jest skonfigurowany na serwerze. Klucze pozostają dostępne tutaj, na koncie.",
+      "telegramDemoViewer": "Demo-administrator nie może połączyć Telegrama: powiadomienia ze wspólnego publicznego konta trafiałyby do tego, kto je połączył. Załóż własne konto, aby to wypróbować.",
       "accountSecurity": "Konto i bezpieczeństwo",
       "securityPointer": "Hasło, uwierzytelnianie dwuskładnikowe, aktywne sesje i usunięcie konta znajdziesz w sekcji Bezpieczeństwo. Metody płatności i prywatność profilu — w sekcji Płatności.",
       "openSecurity": "Otwórz Bezpieczeństwo",
-      "billingPrivacy": "Płatności i prywatność",
+      "billingPrivacy": "Płatności",
+      "securityTile": "Bezpieczeństwo",
+      "securityTileText": "Hasło, 2FA, sesje, usunięcie konta",
+      "billingTileText": "Metody płatności, faktury, dane rozliczeniowe",
       "disconnectTitle": "Rozłączyć Telegram?",
       "disconnectText": "Dostawa kluczy na czat Telegram zostanie wstrzymana. Możesz połączyć ponownie w dowolnej chwili.",
       "removeAvatarTitle": "Usunąć awatar?",
@@ -1317,8 +1325,11 @@
         "profileSaveFailed": "Nie udało się zapisać profilu. Spróbuj ponownie.",
         "prefsSaved": "Ustawienia powiadomień zapisane.",
         "newsletterFailed": "Nie udało się zaktualizować subskrypcji newslettera. Spróbuj ponownie.",
-        "avatarRemoveLater": "Awatar zostanie usunięty po zapisaniu zmian."
-      }
+        "avatarRemoveLater": "Awatar zostanie usunięty po zapisaniu zmian.",
+        "exportFailed": "Nie udało się pobrać danych. Spróbuj ponownie."
+      },
+      "dataTile": "Pobierz moje dane",
+      "dataTileText": "Profil, opłacone zamówienia, lista życzeń i karty — jeden plik .zip"
     },
     "avatar": {
       "title": "Edytuj awatar",
@@ -1346,6 +1357,8 @@
       "subtitle": "Zarządzaj hasłem, weryfikacją e-mail i 2FA.",
       "unavailable": "Ustawienia bezpieczeństwa niedostępne",
       "unavailableText": "Nie udało się wczytać uwierzytelniania dwuskładnikowego i weryfikacji e-mail. Zmiana hasła poniżej nadal działa.",
+      "demoViewerTitle": "Demo-administrator — tylko podgląd",
+      "demoViewerText": "To wspólne konto demo z publicznym hasłem, więc jego ustawienia bezpieczeństwa są zablokowane: gdyby ktoś włączył 2FA lub zmienił hasło, pozostali nie mogliby się zalogować. Załóż własne konto, aby wypróbować 2FA, zmianę hasła i resztę.",
       "checklist": {
         "verifyEmail": "Zweryfikuj e-mail",
         "resendEmail": "Wyślij ponownie",
@@ -1483,9 +1496,6 @@
       "invoice": "Faktura",
       "noInvoices": "Brak faktur.",
       "downloadPdf": "Pobierz PDF",
-      "privacy": "Prywatność i dane",
-      "hideOwned": "Ukryj posiadane gry w profilu",
-      "downloadData": "Pobierz moje dane",
       "editDetails": "Edytuj dane rozliczeniowe",
       "editDetailsText": "Zaktualizuj adres rozliczeniowy do faktur.",
       "addressLine": "Adres",
@@ -1497,7 +1507,6 @@
         "profileLoadFailed": "Nie udało się wczytać profilu rozliczeniowego.",
         "methodsLoadFailed": "Nie udało się wczytać metod płatności.",
         "invoicesLoadFailed": "Nie udało się wczytać faktur.",
-        "privacyFailed": "Nie udało się zaktualizować ustawienia prywatności.",
         "profileUpdated": "Profil rozliczeniowy zaktualizowany.",
         "profileSaveFailed": "Nie udało się zapisać zmian profilu.",
         "defaultUpdated": "Domyślna metoda płatności zaktualizowana.",
@@ -1505,7 +1514,6 @@
         "methodRemoved": "Metoda płatności usunięta.",
         "removeFailed": "Nie udało się usunąć metody płatności.",
         "invoiceFailed": "Nie udało się pobrać faktury.",
-        "exportFailed": "Nie udało się pobrać eksportu danych.",
         "cardLinked": "Karta została podłączona."
       }
     },
@@ -3121,39 +3129,30 @@
   },
   "demo": {
     "badge": "Demo",
-    "barLabel": "Strona demo",
-    "templateHint": "To wersja demo sklepu. Oglądaj wszystko — a żeby kupować i wypróbować panel admina, otwórz własną kopię.",
-    "ownCopy": "Twoja kopia sklepu · zostało {{hours}} godz. {{minutes}} min",
-    "open": "Otwórz własną kopię",
-    "opening": "Otwieramy…",
-    "mailbox": "Poczta demo",
-    "accountsAndCard": "Konta i karta testowa",
-    "reset": "Zacznij od nowa",
-    "resetConfirm": "Odrzucić wszystkie zmiany?",
-    "resetYes": "Tak, od nowa",
-    "resetFailed": "Nie udało się zresetować kopii. Spróbuj ponownie.",
-    "openFailed": "Nie udało się otworzyć kopii. Spróbuj ponownie.",
-    "full": "Wszystkie kopie demo są teraz zajęte. Spróbuj za chwilę.",
-    "ipLimit": "Otworzyłeś dziś już kilka kopii — kontynuuj w swojej.",
-    "readonly": "W demo to wyłączone: zmieniłoby stronę dla wszystkich odwiedzających, a nie tylko twoją kopię.",
+    "readonly": "Demo: konto administratora służy tylko do podglądu. Załóż własne konto, aby kupować i testować sklep.",
     "welcomeTitle": "To wersja demo sklepu",
-    "welcomeText": "Wszystko działa naprawdę: katalog, koszyk, płatność kartą testową, konto i panel admina. Otwórz własną kopię sklepu — jest twoja przez {{hours}} godziny: zmieniaj ceny, dodawaj gry, kupuj. Twoje zmiany widzisz tylko ty.",
-    "roleAdmin": "Administrator",
-    "roleBuyer": "Kupujący",
+    "welcomeText": "Wszystko działa jak w prawdziwym sklepie: załóż własne konto, kup dowolną grę kartą testową — prawdziwe pieniądze nie są pobierane — i odbierz klucz na stronie zamówienia oraz e-mailem. Chcesz zobaczyć panel administratora? Zaloguj się jako administrator demo: cały panel w trybie podglądu.",
+    "roleAdmin": "Administrator · tylko podgląd",
     "login": "Login",
     "password": "Hasło",
     "signInAdmin": "Zaloguj jako admin",
-    "signInBuyer": "Zaloguj jako kupujący",
     "copy": "Kopiuj",
     "copied": "Skopiowano",
     "testCard": "Karta testowa",
     "testCardNote": "Dowolna przyszła data ważności i dowolny CVC. Prawdziwe pieniądze nie są pobierane.",
     "continue": "Dalej",
     "justLook": "Tylko pooglądam",
-    "mailboxText": "E-maile, które sklep wysłał z twojej kopii: klucze po zakupie, potwierdzenia, cashback. Nic nie wychodzi poza demo.",
-    "mailboxEmpty": "Na razie brak e-maili — kup coś, a klucz przyjdzie tutaj.",
-    "collapse": "Zwiń",
-    "expand": "Pokaż panel demo",
-    "resetting": "Przywracamy…"
+    "fabLabel": "Demo: konta i karta testowa",
+    "panelTitle": "Wersja demo sklepu",
+    "whatIsThis": "Co to za strona?",
+    "findLater": "Konta i karta testowa są zawsze pod kółkiem DEMO w lewym dolnym rogu.",
+    "checkoutHint": "Płatność demo: zapłać kartą testową — prawdziwe pieniądze nie są pobierane.",
+    "fabHint": "Tu znajdziesz konto administratora demo i kartę testową.",
+    "panelText": "Załóż własne konto i płać kartą testową. Panel administratora jest otwarty w trybie podglądu.",
+    "register": "Załóż konto",
+    "cardExpiry": "Ważność",
+    "cardCvc": "CVC",
+    "cardOther": "Imię, kod pocztowy",
+    "cardOtherValue": "dowolne"
   }
 }

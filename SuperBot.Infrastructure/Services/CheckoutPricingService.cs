@@ -317,7 +317,8 @@ namespace SuperBot.Infrastructure.Services
                 // всех оплат (Stripe, крипто), поэтому запрет живёт именно здесь.
                 if (SuperBot.Core.Services.GameRelease.IsUpcoming(game.ReleaseDate, utcNow))
                 {
-                    return CheckoutPricingResult.Fail($"“{title}” isn't released yet.", "checkout.notReleased", new { title });
+                    // gameId — чтобы касса предложила убрать именно эту позицию, а не «попробуйте ещё раз».
+                    return CheckoutPricingResult.Fail($"“{title}” isn't released yet.", "checkout.notReleased", new { title, gameId });
                 }
 
                 // Регион: политика игры должна пропускать страну покупателя — вопрос «продаём ли

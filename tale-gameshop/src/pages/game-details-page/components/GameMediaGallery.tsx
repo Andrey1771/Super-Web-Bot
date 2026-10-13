@@ -35,6 +35,9 @@ const GameMediaGallery = ({
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState(media[0]?.id ?? '');
   const [isPlaying, setIsPlaying] = useState(false);
+  // Панель плеера спряталась — стрелки поверх кадра прячутся вместе с ней, как в YouTube.
+  const [videoIdle, setVideoIdle] = useState(false);
+  const pageFullscreenSupported = typeof document !== 'undefined' && typeof document.documentElement?.requestFullscreen === 'function';
   const [lightbox, setLightbox] = useState<'closed' | 'theater' | 'fullscreen'>('closed');
   const isLightboxOpen = lightbox !== 'closed';
   const thumbnailRef = useRef<HTMLDivElement | null>(null);
@@ -227,7 +230,7 @@ const GameMediaGallery = ({
 
   return (
     <div className="game-media-gallery" onKeyDown={handleKeyDown}>
-      <div className="game-media-main card">
+      <div className={`game-media-main card${videoIdle ? ' is-video-idle' : ''}`}>
         {selectedMedia?.type === 'video' ? (
           <div className="game-media-video">
             {isPlaying ? (
@@ -237,7 +240,10 @@ const GameMediaGallery = ({
                 poster={selectedMedia.posterUrl ?? selectedMedia.thumbUrl}
                 title={t('media.trailer', { title })}
                 autoPlay
-                onFullscreen={() => openLightbox('fullscreen')}
+                onIdleChange={setVideoIdle}
+                // На iPhone страницу на весь экран не развернуть — сразу встроенный плеер iOS (см. VideoPlayer).
+                onFullscreen={pageFullscreenSupported ? () => openLightbox('fullscreen') : undefined}
+                nativeFullscreenFallback={!pageFullscreenSupported}
                 extraControls={
                   <button type="button" className="vp__btn" aria-label={t('media.theater')} title={t('media.theater')} onClick={() => openLightbox('theater')}>
                     <TheaterGlyph />

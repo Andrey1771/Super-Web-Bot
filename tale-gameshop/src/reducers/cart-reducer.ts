@@ -60,6 +60,12 @@ export interface CartState {
      * Пусто у корзин, сохранённых до мультивалютности.
      */
     currency?: string;
+    /**
+     * Чья это корзина в браузере: почта аккаунта, копией корзины которого она стала после входа; пусто — гостевая.
+     * Без отметки корзина переживала выход из аккаунта (следующий гость видел чужие игры), а при входе в другой
+     * аккаунт вливалась в него. Вливается в аккаунт только гостевая — собранная до входа.
+     */
+    owner?: string | null;
 }
 
 export type CartAction =
@@ -78,7 +84,14 @@ export type CartAction =
      * ровно один товар с ценой, остальные показывали ноль.
      */
     | { type: 'SET_ITEM_PRICES'; payload: Record<string, number> }
-    | { type: 'CLEAR_CART' };
+    | { type: 'CLEAR_CART' }
+    /** Корзина аккаунта после входа: позиции с сервера (или гостевые, влитые в них) и владелец. На сервер не шлётся — уже там. */
+    | { type: 'ADOPT_CART'; payload: { items: Product[]; owner: string } }
+    /** Вышли из аккаунта: копия его корзины в браузере больше не нужна (на сервере она остаётся). Гостевую не трогает. */
+    | { type: 'RESET_LOCAL_CART' };
+
+/** Действия, которые только приводят браузер в соответствие с сервером, — обратно на сервер их не отправляем. */
+const LOCAL_ONLY_ACTIONS: ReadonlySet<CartAction['type']> = new Set(['ADOPT_CART', 'RESET_LOCAL_CART']);
 
 export const initialState: CartState = {
     items: [],
@@ -158,6 +171,12 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
             case 'SET_CART':
                 return { ...state, items: action.payload };
 
+            case 'ADOPT_CART':
+                return { ...state, items: action.payload.items, owner: action.payload.owner };
+
+            case 'RESET_LOCAL_CART':
+                return state.owner ? { ...state, items: [], owner: null } : state;
+
             case 'SET_CURRENCY': {
                 if (state.currency === action.payload) {
                     return state;
@@ -198,7 +217,7 @@ export const cartReducer = (state: CartState, action: CartAction): CartState => 
     const newState = execute();
     const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
     // @ts-ignore Keycloak возвращает email TODO
-    if (keycloakService.keycloak.tokenParsed?.email) {
+    if (!LOCAL_ONLY_ACTIONS.has(action.type) && keycloakService.keycloak.tokenParsed?.email) {
         // @ts-ignore Keycloak возвращает email TODO
         syncCartWithServer(keycloakService.keycloak.tokenParsed.email, newState);
     }

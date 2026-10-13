@@ -97,7 +97,11 @@ export class ApiClient implements IApiClient {
                 }
                 // Демо-сайт отказал по своим правилам: объяснит DemoLayer (открыть свою копию / только просмотр).
                 const demoCode = demoRefusalCode(error.response?.status, error.response?.data);
-                if (demoCode) {
+                // Корзина сохраняется на сервер сама (после входа и при каждом изменении): у демо-админа это фоновый
+                // отказ, и пояснение всплывало сразу после входа ни с того ни с сего. Корзина у него живёт в браузере,
+                // а пояснение он увидит, когда попробует оплатить.
+                const backgroundCartSync = (error.config?.url ?? '').startsWith('/api/cart/');
+                if (demoCode && !backgroundCartSync) {
                     window.dispatchEvent(new CustomEvent(DEMO_EVENT, { detail: { code: demoCode } }));
                 }
                 if (error.response && error.response.status === 401 && this._keycloakService.keycloak?.authenticated) {

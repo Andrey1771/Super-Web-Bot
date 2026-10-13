@@ -7,7 +7,6 @@ namespace SuperBot.Core.Entities
         public string DisplayName { get; set; }
         public string Email { get; set; }
         public BillingDetails BillingDetails { get; set; }
-        public bool HideOwnedGamesInProfile { get; set; }
         public string DefaultPaymentMethodId { get; set; }
     }
 

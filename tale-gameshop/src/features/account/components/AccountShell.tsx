@@ -12,6 +12,9 @@ import container from '../../../inversify.config';
 import IDENTIFIERS from '../../../constants/identifiers';
 import type { IKeycloakAuthService } from '../../../iterfaces/i-keycloak-auth-service';
 import './account-shell.css';
+import { EMAIL_SKELETON } from '../../../components/common/EmailText';
+import VerifiedBuyerMark from './VerifiedBuyerMark';
+import { useAccountIdentity } from '../useAccountIdentity';
 
 interface AccountShellProps {
     title: string;
@@ -72,7 +75,6 @@ const AccountShell: React.FC<AccountShellProps> = ({
     children
 }) => {
     const {t} = useTranslation();
-    const { profile, isLoading: isProfileLoading } = useAccountProfile();
     const counters = useAccountCounters();
     const { count: wishlistCount } = useWishlist();
     const { keycloak } = useKeycloak();
@@ -85,22 +87,9 @@ const AccountShell: React.FC<AccountShellProps> = ({
         : null;
 
     // Пока профиль грузится — скелетон; фолбэк после загрузки — данные из токена, не моки.
-    const showProfileSkeleton = isProfileLoading && !profile;
-    const tokenClaims = (keycloak?.tokenParsed ?? {}) as {
-        name?: string;
-        preferred_username?: string;
-        email?: string;
-    };
-    const displayName = profile?.displayName ?? tokenClaims.name ?? tokenClaims.preferred_username ?? t('account.myAccount');
-    const email = profile?.email ?? tokenClaims.email ?? '';
-    const initialsSource = displayName || email;
-    const initials = initialsSource
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0])
-        .join('')
-        .toUpperCase() || '?';
+    const identity = useAccountIdentity();
+    const showProfileSkeleton = identity.isLoading;
+    const { displayName, email, initials } = identity;
 
     // Честный бейдж: «Verified buyer» только при наличии завершённых покупок.
     const isVerifiedBuyer = (counters?.orders ?? 0) > 0;
@@ -240,24 +229,27 @@ const AccountShell: React.FC<AccountShellProps> = ({
                         {showProfileSkeleton ? (
                             <>
                                 <div className="account-avatar is-skeleton" aria-hidden="true" />
+                                {/* Те же строки, что у готового блока, только «полосками»: высота не меняется. */}
                                 <div className="account-profile-details" aria-busy="true">
-                                    <span className="account-skeleton-line" />
-                                    <span className="account-skeleton-line is-short" />
+                                    <strong className="account-profile-name"><span className="skeleton-text">{t('common.loading')}</span></strong>
+                                    <span className="account-email"><span className="skeleton-text">{EMAIL_SKELETON}</span></span>
                                 </div>
                             </>
                         ) : (
                             <>
                                 <div className="account-avatar">
-                                    {profile?.avatarUrl ? (
-                                        <img src={profile.avatarUrl} alt={t('account.avatarAlt', {name: displayName})} />
+                                    {identity.avatarUrl ? (
+                                        <img src={identity.avatarUrl} alt={t('account.avatarAlt', {name: displayName})} />
                                     ) : (
                                         initials
                                     )}
                                 </div>
                                 <div className="account-profile-details">
-                                    <strong>{displayName}</strong>
-                                    <span className="account-email">{email}</span>
-                                    {isVerifiedBuyer && <span className="badge">{t('account.verifiedBuyer')}</span>}
+                                    <strong className="account-profile-name">
+                                        <span className="account-profile-name__text">{displayName}</span>
+                                        {isVerifiedBuyer && <VerifiedBuyerMark />}
+                                    </strong>
+                                    <span className="account-email" title={email}>{email}</span>
                                 </div>
                             </>
                         )}

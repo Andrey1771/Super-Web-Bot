@@ -1,56 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useKeycloak } from "@react-keycloak/web";
 import { useToast } from "../../components/ui/ToastProvider";
 import { currentLang } from "../../context/site-preferences";
-import {
-  DEMO_EVENT,
-  getDemoConfig,
-  getDemoMailbox,
-  openDemoSandbox,
-  resetDemoSandbox,
-  type DemoAccount,
-  type DemoConfig,
-  type DemoLetter,
-  type DemoRefusalCode,
-} from "./demoApi";
+import { DEMO_EVENT, type DemoAccount, type DemoConfig, type DemoRefusalCode } from "./demoApi";
+import DemoCredentials from "./DemoCredentials";
+import { loadDemoConfig } from "./useDemoConfig";
 import "./demo-layer.css";
 
-/** Тестовая карта Stripe: в демо оплата идёт в тестовом режиме, настоящие деньги не списываются. */
-const TEST_CARD = "4242 4242 4242 4242";
+/** Сколько кружок «Демо» пульсирует после появления: заметить успевают, а на видео и в работе он уже не мешает. */
+const PULSE_MS = 8000;
+/** Подсказка у кружка «здесь всё для демо» — один раз на браузер и ненадолго. */
+const HINT_MS = 9000;
+const HINT_SEEN_KEY = "demo-fab-hint-seen";
 
-const remaining = (expiresAt: string, now: number) => {
-  const minutes = Math.max(0, Math.round((new Date(expiresAt).getTime() - now) / 60000));
-  return { hours: Math.floor(minutes / 60), minutes: minutes % 60 };
-};
-
-const CopyButton: React.FC<{ value: string; label: string }> = ({ value, label }) => {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      className="demo-copy"
-      aria-label={`${t("demo.copy")}: ${label}`}
-      onClick={() => {
-        navigator.clipboard
-          ?.writeText(value)
-          .then(() => {
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1500);
-          })
-          .catch(() => undefined);
-      }}
-    >
-      {copied ? t("demo.copied") : t("demo.copy")}
-    </button>
-  );
-};
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * Демо-сайт для портфолио: полоска сверху (своя копия магазина и сколько ей осталось), приглашение открыть копию
- * с демо-аккаунтами и тестовой картой, демо-почта. На обычном магазине сервер отвечает «демо выключено» — и слой
- * ничего не рисует.
+ * Демо-сайт для портфолио: окно приглашения при первом заходе, после закрытия оно «улетает» в кружок «Демо»
+ * в левом нижнем углу. Кружок есть на всех страницах; по нажатию — панель: зарегистрироваться и купить тестовой
+ * картой, войти демо-админом («только просмотр»). На обычном магазине слой ничего не рисует.
  */
 const DemoLayer: React.FC = () => {
   const { t } = useTranslation();
@@ -58,45 +28,54 @@ const DemoLayer: React.FC = () => {
   const { keycloak, initialized } = useKeycloak();
   const [config, setConfig] = useState<DemoConfig | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
-  const [mailOpen, setMailOpen] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [busy, setBusy] = useState(false);
-  // Свернуть до значка «Демо» — чтобы полоска не мешала на видео и на телефоне.
-  const [collapsed, setCollapsed] = useState(() => sessionStorage.getItem("demo-bar-collapsed") === "1");
-  const toggleCollapsed = () => {
-    setCollapsed((value) => {
-      sessionStorage.setItem("demo-bar-collapsed", value ? "0" : "1");
-      return !value;
-    });
-  };
-  const [now, setNow] = useState(() => Date.now());
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [pulse, setPulse] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
+  const fabRef = useRef<HTMLButtonElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
-  const load = useCallback(() => {
-    getDemoConfig()
-      .then((value) => {
-        setConfig(value);
-        // Первый заход без копии — сразу объясняем, что это за сайт.
-        if (value.enabled && !value.sandbox && sessionStorage.getItem("demo-welcome-seen") !== "1") {
-          setWelcomeOpen(true);
-        }
-      })
-      .catch(() => setConfig({ enabled: false }));
+  const startPulse = useCallback(() => {
+    setPulse(true);
+    window.setTimeout(() => setPulse(false), PULSE_MS);
+    // Первый раз в этом браузере — ещё и подпись рядом с кружком: что в нём лежит.
+    let seen = true;
+    try {
+      seen = localStorage.getItem(HINT_SEEN_KEY) === "1";
+      localStorage.setItem(HINT_SEEN_KEY, "1");
+    } catch {
+      /* storage unavailable — подсказку не показываем, чтобы не всплывала на каждой странице */
+    }
+    if (!seen) {
+      setHintOpen(true);
+      window.setTimeout(() => setHintOpen(false), HINT_MS);
+    }
   }, []);
-
-  useEffect(load, [load]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30000);
-    return () => window.clearInterval(timer);
-  }, []);
+    loadDemoConfig().then((value) => {
+      setConfig(value);
+      if (!value.enabled) return;
+      // Первый заход в этой вкладке — сразу объясняем, что это за сайт; дальше просто показываем кружок.
+      let seen = false;
+      try {
+        seen = sessionStorage.getItem("demo-welcome-seen") === "1";
+      } catch {
+        /* storage unavailable */
+      }
+      if (!seen) {
+        setWelcomeOpen(true);
+      } else {
+        startPulse();
+      }
+    });
+  }, [startPulse]);
 
-  // Отказы сервера по правилам демо (см. demoEvents): без копии — приглашение, «только просмотр» — пояснение.
+  // Демо-админ — «только просмотр»: на отказ сервера (см. demoEvents) показываем пояснение, а не голую ошибку.
   useEffect(() => {
     const onRefusal = (event: Event) => {
       const code = (event as CustomEvent<{ code: DemoRefusalCode }>).detail?.code;
-      if (code === "demo_sandbox_required") {
-        setWelcomeOpen(true);
-      } else if (code === "demo_readonly") {
+      if (code === "demo_readonly") {
         addToast(t("demo.readonly"), "info");
       }
     };
@@ -104,237 +83,176 @@ const DemoLayer: React.FC = () => {
     return () => window.removeEventListener(DEMO_EVENT, onRefusal);
   }, [addToast, t]);
 
-  const sandbox = config?.sandbox ?? null;
-  const left = useMemo(() => (sandbox ? remaining(sandbox.expiresAt, now) : null), [sandbox, now]);
+  // Панель закрывается кликом мимо неё и клавишей Esc.
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!panelRef.current?.contains(target) && !fabRef.current?.contains(target)) {
+        setPanelOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPanelOpen(false);
+        fabRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [panelOpen]);
 
   if (!config?.enabled) {
     return null;
   }
 
+  const accounts = config.accounts ?? [];
+
+  /** Окно не просто исчезает, а «улетает» в кружок — чтобы было видно, где теперь искать аккаунты и карту. */
   const closeWelcome = () => {
-    sessionStorage.setItem("demo-welcome-seen", "1");
-    setWelcomeOpen(false);
-  };
-
-  const openSandbox = async () => {
-    setBusy(true);
     try {
-      await openDemoSandbox();
       sessionStorage.setItem("demo-welcome-seen", "1");
-      // Страница перечитывается целиком: всё, что уже загружено, — из общего шаблона, а не из копии.
-      window.location.reload();
-    } catch (error: unknown) {
-      const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code;
-      addToast(code === "demo_full" ? t("demo.full") : code === "demo_ip_limit" ? t("demo.ipLimit") : t("demo.openFailed"), "error");
-      setBusy(false);
-    }
-  };
-
-  const reset = async () => {
-    setBusy(true);
-    try {
-      await resetDemoSandbox();
-      window.location.reload();
     } catch {
-      addToast(t("demo.resetFailed"), "error");
-      setBusy(false);
+      /* storage unavailable */
     }
+    const card = cardRef.current;
+    const fab = fabRef.current;
+    if (!card || !fab || prefersReducedMotion() || typeof card.animate !== "function") {
+      setWelcomeOpen(false);
+      startPulse();
+      return;
+    }
+    const from = card.getBoundingClientRect();
+    const to = fab.getBoundingClientRect();
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+    const scale = to.width / from.width;
+    const animation = card.animate(
+      [
+        { transform: "translate(0, 0) scale(1)", opacity: 1, borderRadius: "16px" },
+        { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0, borderRadius: "50%" },
+      ],
+      { duration: 480, easing: "cubic-bezier(0.55, 0, 0.3, 1)", fill: "forwards" }
+    );
+    card.parentElement?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 480, fill: "forwards" });
+    // Закрываем и по таймеру: Safari на iPhone иногда не присылает onfinish (браузер свернули посреди полёта),
+    // и окно оставалось у кружка белым кругом. К концу полёта окно гаснет полностью — даже застряв, его не видно.
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      setWelcomeOpen(false);
+      startPulse();
+    };
+    animation.onfinish = finish;
+    window.setTimeout(finish, 700);
   };
 
-  const signIn = (account: DemoAccount) => {
-    keycloak.login({ loginHint: account.username, redirectUri: window.location.href, locale: currentLang() });
-  };
+  const signedOut = initialized && !keycloak.authenticated;
+  // Вход демо-админом: страница входа уже знает логин (loginHint), а кнопка там подставляет и пароль.
+  const signIn = signedOut
+    ? (account: DemoAccount) => keycloak.login({ loginHint: account.username, redirectUri: window.location.href, locale: currentLang() })
+    : undefined;
+  // Свой аккаунт посетителя — сразу на регистрацию Keycloak, и обратно на ту же страницу.
+  const register = () => keycloak.register({ redirectUri: window.location.href, locale: currentLang() });
 
   return (
     <>
-      <div className={`demo-bar${collapsed ? " is-collapsed" : ""}`} role="region" aria-label={t("demo.barLabel")}>
-        <div className="demo-bar__inner">
+      <button
+        ref={fabRef}
+        type="button"
+        className={`demo-fab${pulse ? " is-pulsing" : ""}${panelOpen ? " is-open" : ""}`}
+        aria-expanded={panelOpen}
+        aria-label={t("demo.fabLabel")}
+        title={t("demo.fabLabel")}
+        onClick={() => {
+          setPulse(false);
+          setHintOpen(false);
+          setPanelOpen((value) => !value);
+        }}
+      >
+        <span className="demo-fab__rays" aria-hidden="true" />
+        <span className="demo-fab__text">{t("demo.badge")}</span>
+      </button>
+
+      {hintOpen && !panelOpen && (
+        <div className="demo-fab-hint" role="status">
           <button
             type="button"
-            className="demo-bar__toggle"
-            aria-expanded={!collapsed}
-            title={collapsed ? t("demo.expand") : t("demo.collapse")}
-            onClick={toggleCollapsed}
+            className="demo-fab-hint__body"
+            onClick={() => {
+              setHintOpen(false);
+              setPanelOpen(true);
+            }}
           >
-            <span className="demo-bar__badge">{t("demo.badge")}</span>
+            {t("demo.fabHint")}
           </button>
-          {!collapsed && (
-            <>
-          {sandbox && left ? (
-            <span className="demo-bar__text">{t("demo.ownCopy", { hours: left.hours, minutes: left.minutes })}</span>
-          ) : (
-            <span className="demo-bar__text">{t("demo.templateHint")}</span>
-          )}
-          <span className="demo-bar__actions">
-            {sandbox ? (
-              <>
-                <button type="button" className="demo-bar__link" onClick={() => setMailOpen(true)}>
-                  {t("demo.mailbox")}
-                </button>
-                <button type="button" className="demo-bar__link" onClick={() => setWelcomeOpen(true)}>
-                  {t("demo.accountsAndCard")}
-                </button>
-                {confirmReset ? (
-                  <span className="demo-bar__confirm">
-                    {t("demo.resetConfirm")}
-                    <button type="button" className="demo-bar__link demo-bar__link--strong" disabled={busy} onClick={reset}>
-                      {busy ? t("demo.resetting") : t("demo.resetYes")}
-                    </button>
-                    <button type="button" className="demo-bar__link" onClick={() => setConfirmReset(false)}>
-                      {t("common.cancel")}
-                    </button>
-                  </span>
-                ) : (
-                  <button type="button" className="demo-bar__link" onClick={() => setConfirmReset(true)}>
-                    {t("demo.reset")}
-                  </button>
-                )}
-              </>
-            ) : (
-              <button type="button" className="demo-bar__cta" disabled={busy} onClick={openSandbox}>
-                {busy ? t("demo.opening") : t("demo.open")}
+          <button type="button" className="demo-fab-hint__close" aria-label={t("common.close")} onClick={() => setHintOpen(false)}>
+            ×
+          </button>
+        </div>
+      )}
+
+      {panelOpen && (
+        <div ref={panelRef} className="demo-panel" role="dialog" aria-label={t("demo.panelTitle")}>
+          <div className="demo-panel__head">
+            <span className="demo-badge">{t("demo.badge")}</span>
+            <strong>{t("demo.panelTitle")}</strong>
+          </div>
+          <p className="demo-panel__status">{t("demo.panelText")}</p>
+
+          <DemoCredentials accounts={accounts} onSignIn={signIn} />
+
+          <div className="demo-panel__actions">
+            {signedOut && (
+              <button type="button" className="btn btn-primary" onClick={register}>
+                {t("demo.register")}
               </button>
             )}
-          </span>
-            </>
-          )}
+            <button type="button" className="demo-panel__link" onClick={() => { setPanelOpen(false); setWelcomeOpen(true); }}>
+              {t("demo.whatIsThis")}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {welcomeOpen && (
         <div className="demo-dialog" role="dialog" aria-modal="true" aria-labelledby="demo-dialog-title" onClick={closeWelcome}>
-          <div className="demo-dialog__card" onClick={(event) => event.stopPropagation()}>
+          <div ref={cardRef} className="demo-dialog__card" onClick={(event) => event.stopPropagation()}>
             <button type="button" className="demo-dialog__close" aria-label={t("common.close")} onClick={closeWelcome}>
               ×
             </button>
-            <span className="demo-bar__badge">{t("demo.badge")}</span>
+            <span className="demo-badge">{t("demo.badge")}</span>
             <h2 id="demo-dialog-title">{t("demo.welcomeTitle")}</h2>
-            <p className="demo-dialog__lead">{t("demo.welcomeText", { hours: config.sandboxHours ?? 24 })}</p>
+            <p className="demo-dialog__lead">{t("demo.welcomeText")}</p>
 
-            {(config.accounts ?? []).length > 0 && (
-              <div className="demo-accounts">
-                {(config.accounts ?? []).map((account) => (
-                  <div key={account.username} className="demo-account">
-                    <div className="demo-account__role">{account.role === "admin" ? t("demo.roleAdmin") : t("demo.roleBuyer")}</div>
-                    <div className="demo-account__row">
-                      <span className="demo-account__label">{t("demo.login")}</span>
-                      <code>{account.username}</code>
-                      <CopyButton value={account.username} label={t("demo.login")} />
-                    </div>
-                    <div className="demo-account__row">
-                      <span className="demo-account__label">{t("demo.password")}</span>
-                      <code>{account.password}</code>
-                      <CopyButton value={account.password} label={t("demo.password")} />
-                    </div>
-                    {sandbox && initialized && !keycloak.authenticated && (
-                      <button type="button" className="btn btn-outline demo-account__signin" onClick={() => signIn(account)}>
-                        {account.role === "admin" ? t("demo.signInAdmin") : t("demo.signInBuyer")}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="demo-card-hint">
-              <span>{t("demo.testCard")}</span>
-              <code>{TEST_CARD}</code>
-              <CopyButton value={TEST_CARD.replace(/ /g, "")} label={t("demo.testCard")} />
-              <span className="demo-card-hint__note">{t("demo.testCardNote")}</span>
-            </div>
+            <DemoCredentials accounts={accounts} onSignIn={signIn} />
 
             <div className="demo-dialog__actions">
-              {sandbox ? (
-                <button type="button" className="btn btn-primary" onClick={closeWelcome}>
-                  {t("demo.continue")}
-                </button>
-              ) : (
+              {signedOut ? (
                 <>
-                  <button type="button" className="btn btn-primary" disabled={busy} onClick={openSandbox}>
-                    {busy ? t("demo.opening") : t("demo.open")}
+                  <button type="button" className="btn btn-primary" onClick={register}>
+                    {t("demo.register")}
                   </button>
                   <button type="button" className="btn btn-outline" onClick={closeWelcome}>
                     {t("demo.justLook")}
                   </button>
                 </>
+              ) : (
+                <button type="button" className="btn btn-primary" onClick={closeWelcome}>
+                  {t("demo.continue")}
+                </button>
               )}
             </div>
+            <p className="demo-dialog__footnote">{t("demo.findLater")}</p>
           </div>
         </div>
       )}
-
-      {mailOpen && <DemoMailbox onClose={() => setMailOpen(false)} />}
     </>
-  );
-};
-
-/** Демо-почта: письма, которые сайт «отправил» из этой копии. Письмо показывается в изолированной рамке. */
-const DemoMailbox: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { t, i18n } = useTranslation();
-  const [letters, setLetters] = useState<DemoLetter[] | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  useEffect(() => {
-    getDemoMailbox()
-      .then((items) => {
-        setLetters(items);
-        setOpenId(items[0]?.id ?? null);
-      })
-      .catch(() => setLetters([]));
-  }, []);
-
-  const open = letters?.find((letter) => letter.id === openId) ?? null;
-
-  return (
-    <div className="demo-dialog" role="dialog" aria-modal="true" aria-labelledby="demo-mail-title" onClick={onClose}>
-      <div className="demo-dialog__card demo-mail" onClick={(event) => event.stopPropagation()}>
-        <button type="button" className="demo-dialog__close" aria-label={t("common.close")} onClick={onClose}>
-          ×
-        </button>
-        <h2 id="demo-mail-title">{t("demo.mailbox")}</h2>
-        <p className="demo-dialog__lead">{t("demo.mailboxText")}</p>
-        {letters === null ? (
-          <p>{t("common.loading")}</p>
-        ) : letters.length === 0 ? (
-          <p className="demo-mail__empty">{t("demo.mailboxEmpty")}</p>
-        ) : (
-          <div className="demo-mail__layout">
-            <ul className="demo-mail__list">
-              {letters.map((letter) => (
-                <li key={letter.id}>
-                  <button
-                    type="button"
-                    className={`demo-mail__item${letter.id === openId ? " is-active" : ""}`}
-                    onClick={() => setOpenId(letter.id)}
-                  >
-                    <span className="demo-mail__subject">{letter.subject}</span>
-                    <span className="demo-mail__meta">
-                      {letter.to} · {new Date(letter.sentAt).toLocaleString(i18n.language)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {open && (
-              <div className="demo-mail__view">
-                {open.html ? (
-                  // Скрипты в письме не выполняются (нет allow-scripts). Тот же источник — чтобы грузились
-                  // картинки сайта (логотип), ссылки открываются в новой вкладке: «Подтвердить», «Ключи» — работают.
-                  <iframe
-                    title={open.subject}
-                    sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-                    srcDoc={`<base target="_blank">${open.html}`}
-                    className="demo-mail__frame"
-                  />
-                ) : (
-                  <pre className="demo-mail__text">{open.text}</pre>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   );
 };
 

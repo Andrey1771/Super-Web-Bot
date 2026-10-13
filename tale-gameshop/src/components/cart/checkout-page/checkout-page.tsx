@@ -1,5 +1,6 @@
 import {Trans, useTranslation} from 'react-i18next';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {cartLineKey} from '../../../reducers/cart-reducer';
 import { trackFunnelStep } from "../../../utils/funnel-tracking";
 import { getAttribution } from "../../../utils/attribution";
 import { gaItemVariant } from "../../../utils/item-list-tracking";
@@ -60,7 +61,7 @@ const stripeAppearance = {
 
 const CheckoutPage: React.FC = () => {
     const {t} = useTranslation();
-    const {state} = useCart();
+    const {state, dispatch: dispatchCart} = useCart();
     const {keycloak, initialized} = useKeycloak();
     const urlService = container.get<IUrlService>(IDENTIFIERS.IUrlService);
     const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
@@ -110,6 +111,20 @@ const CheckoutPage: React.FC = () => {
     // подтверждённые почты выдают ключи сразу). По умолчанию true — до ответа считаем, что нужно.
     const [requiresEmailVerification, setRequiresEmailVerification] = useState(true);
     const [paymentInitError, setPaymentInitError] = useState('');
+    // Игра в корзине ещё не вышла (касса её не продаст): «попробовать ещё раз» тут не поможет — предлагаем убрать её.
+    const [unreleasedGameId, setUnreleasedGameId] = useState<string | null>(null);
+    // Скрипт Stripe не загрузился (сеть или блокировщик режут js.stripe.com): формы карты не будет, и касса молча
+    // показывала пустое место с неактивной кнопкой. Грузим его сразу на кассе и, если не вышло, говорим об этом прямо.
+    const [stripeLoadFailed, setStripeLoadFailed] = useState(false);
+    useEffect(() => {
+        let active = true;
+        getStripe()?.then((stripe) => {
+            if (active) setStripeLoadFailed(!stripe);
+        });
+        return () => {
+            active = false;
+        };
+    }, []);
     /**
      * Позиции, которые в стране покупателя не активируются.
      *
@@ -128,6 +143,14 @@ const CheckoutPage: React.FC = () => {
     // Номер последнего запроса создания платежа. Запросы уходят на каждое изменение и возвращаются в любом порядке;
     // применяем только ответ на последний, иначе опоздавший старый ответ перерисовывал сумму и кэшбэк мигал.
     const paymentRequestSeq = useRef(0);
+    // Что покупаем — без цен и без «того же массива»: синхронизация корзины с сервером и обновление цен дают новый
+    // массив тех же позиций, и платёж создавался заново — на кассе выходила пачка одинаковых запросов подряд.
+    const paymentItemsKey = useMemo(
+        () => JSON.stringify(state.items.map((item) => [item.gameId, item.quantity, item.editionCode ?? null, item.offerKey ?? null])),
+        [state.items],
+    );
+    const paymentItemsRef = useRef(state.items);
+    paymentItemsRef.current = state.items;
     const hasTrackedCheckout = useRef(false);
     const {currency, country, lang} = useSitePreferences();
     const [cryptoEnabled, setCryptoEnabled] = useState(false);
@@ -308,7 +331,8 @@ const CheckoutPage: React.FC = () => {
                 return;
             }
 
-            if (state.items.length === 0) {
+            const items = paymentItemsRef.current;
+            if (items.length === 0) {
                 setClientSecret(null); setCustomerSessionClientSecret(null);
                 setServerTotals(null);
                 setPaymentInitError('');
@@ -317,6 +341,7 @@ const CheckoutPage: React.FC = () => {
 
             try {
                 setPaymentInitError('');
+                setUnreleasedGameId(null);
                 setIsCreatingPayment(true);
                 // Шлём ТОЛЬКО что и сколько покупаем. Никаких сумм — их считает сервер по каталогу.
                 // Идентификатор посетителя для аналитики: покупку отправляет сервер, а куки
@@ -335,7 +360,7 @@ const CheckoutPage: React.FC = () => {
                     email: isAuthenticated ? undefined : guestEmail,
                     // Валюта покупателя: суммы сервер посчитает сам по каталогу в ней же.
                     currency,
-                    items: state.items.map((item) => ({
+                    items: items.map((item) => ({
                         gameId: item.gameId,
                         quantity: item.quantity,
                         editionCode: item.editionCode,
@@ -391,6 +416,8 @@ const CheckoutPage: React.FC = () => {
                     setPaymentInitError(t('checkout.paymentSignIn'));
                 } else {
                     setPaymentInitError(serverErrorText(error, t('checkout.paymentInitFailed')));
+                    const body = error?.response?.data;
+                    setUnreleasedGameId(body?.code === 'checkout.notReleased' ? body?.args?.gameId ?? null : null);
                 }
             } finally {
                 if (isLatest()) {
@@ -403,7 +430,7 @@ const CheckoutPage: React.FC = () => {
         // Зависим только от корзины, промокода, применённого email гостя и счётчика ручного
         // повтора: суммы приходят ОТ сервера, держать их в зависимостях — значит зациклить запрос.
     // Переключатель кэшбэка тоже меняет сумму платежа — поэтому он в зависимостях.
-    }, [apiClient.api, isAuthenticated, guestEmail, promoCode, state.items, paymentRetry, payWithCashback]);
+    }, [apiClient.api, isAuthenticated, guestEmail, promoCode, paymentItemsKey, paymentRetry, payWithCashback]);
 
     const handleApplyPromo = async () => {
         setApplyingPromo(true);
@@ -537,7 +564,7 @@ const CheckoutPage: React.FC = () => {
                                             {t('checkout.signInHaveAccount')}
                                         </button>
                                     </div>
-                                ) : clientSecret && getStripe() ? (
+                                ) : clientSecret && getStripe() && !stripeLoadFailed ? (
                                     <>
                                         {!isAuthenticated && (
                                             <p className="checkout-guest-note">
@@ -567,16 +594,40 @@ const CheckoutPage: React.FC = () => {
                                     </>
                                 ) : (
                                     <div className="checkout-page-stripe-placeholder">
-                                        {paymentInitError ? (
+                                        {stripeLoadFailed ? (
                                             <>
-                                                <span>{paymentInitError}</span>
+                                                <span role="alert">{t('checkout.stripeBlocked')}</span>
+                                                {/* Повтор без перезагрузки не поможет: неудачная загрузка скрипта запоминается до конца страницы. */}
                                                 <button
                                                     type="button"
                                                     className="btn btn-outline checkout-retry"
-                                                    onClick={() => setPaymentRetry((n) => n + 1)}
+                                                    onClick={() => window.location.reload()}
                                                 >
-                                                    {t('common.tryAgain')}
+                                                    {t('checkout.reloadPage')}
                                                 </button>
+                                            </>
+                                        ) : paymentInitError ? (
+                                            <>
+                                                <span>{paymentInitError}</span>
+                                                {unreleasedGameId && state.items.some((item) => item.gameId === unreleasedGameId) ? (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline checkout-retry"
+                                                        onClick={() => state.items
+                                                            .filter((item) => item.gameId === unreleasedGameId)
+                                                            .forEach((item) => dispatchCart({type: 'REMOVE_FROM_CART', payload: cartLineKey(item)}))}
+                                                    >
+                                                        {t('common.removeFromCart')}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline checkout-retry"
+                                                        onClick={() => setPaymentRetry((n) => n + 1)}
+                                                    >
+                                                        {t('common.tryAgain')}
+                                                    </button>
+                                                )}
                                             </>
                                         ) : !getStripe() ? (
                                             t('checkout.stripeUnavailable')

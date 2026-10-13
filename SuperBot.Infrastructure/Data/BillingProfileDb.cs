@@ -3,6 +3,8 @@ using MongoDB.Bson;
 
 namespace SuperBot.Infrastructure.Data
 {
+    // В старых записях остались поля, которых больше нет (HideOwnedGamesInProfile), — читаем их без ошибки.
+    [BsonIgnoreExtraElements]
     public class BillingProfileDb
     {
         [BsonId]
@@ -13,7 +15,6 @@ namespace SuperBot.Infrastructure.Data
         public string DisplayName { get; set; }
         public string Email { get; set; }
         public BillingDetailsDb BillingDetails { get; set; }
-        public bool HideOwnedGamesInProfile { get; set; }
         public string DefaultPaymentMethodId { get; set; }
     }
 

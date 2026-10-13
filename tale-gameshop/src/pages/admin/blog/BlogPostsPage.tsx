@@ -325,13 +325,20 @@ const BlogPostsPage: React.FC = () => {
     credits: { enabled: false }
   };
 
+  // Нулевые доли не рисуем: Highcharts рисовал для них подписи с выносками вокруг пустого круга.
+  const reactionSlices = Object.entries(currentAnalytics?.reactionsByEmoji ?? {})
+    .map(([name, y]) => ({ name, y: Number(y) || 0 }))
+    .filter((slice) => slice.y > 0);
+  const hasViews = (currentAnalytics?.viewsTimeline ?? []).some((item) => item.count > 0);
+  const hasReactions = (currentAnalytics?.reactionsTimeline ?? []).some((item) => item.count > 0);
+
   const distributionOptions: Highcharts.Options = {
     chart: { type: "pie", height: 280 },
     title: { text: analyticsMode === "overview" ? "Reaction distribution - All posts" : `Reaction distribution - ${selectedPost?.title ?? "Selected post"}` },
     series: [{
       type: "pie",
       name: "Reactions",
-      data: Object.entries(currentAnalytics?.reactionsByEmoji ?? {}).map(([name, y]) => ({ name, y })),
+      data: reactionSlices,
       point: {
         events: {
           click: function (this: any) {
@@ -606,11 +613,18 @@ const BlogPostsPage: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <HighchartsReact highcharts={Highcharts} options={viewsChartOptions} />
-                <HighchartsReact highcharts={Highcharts} options={reactionsChartOptions} />
+                {/* Нет данных — заголовок и короткая подпись вместо пустых осей и пустого круга. */}
+                {hasViews
+                  ? <HighchartsReact highcharts={Highcharts} options={viewsChartOptions} />
+                  : <ChartEmptyState title={viewsChartOptions.title?.text ?? ""} text="No views in this period yet." />}
+                {hasReactions
+                  ? <HighchartsReact highcharts={Highcharts} options={reactionsChartOptions} />
+                  : <ChartEmptyState title={reactionsChartOptions.title?.text ?? ""} text="No reactions in this period yet." />}
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <HighchartsReact highcharts={Highcharts} options={distributionOptions} />
+                {reactionSlices.length > 0
+                  ? <HighchartsReact highcharts={Highcharts} options={distributionOptions} />
+                  : <ChartEmptyState title={distributionOptions.title?.text ?? ""} text="No reactions yet — the split by emoji appears with the first one." />}
                 {analyticsMode === "overview" && overviewAnalytics ? (
                   <div className="border rounded-xl p-3 bg-white">
                     <h4 className="text-sm font-semibold mb-2">Top posts</h4>
@@ -892,5 +906,13 @@ const BlogPostsPage: React.FC = () => {
     </div>
   );
 };
+
+/** Пустой график: тот же заголовок, что у Highcharts, и подпись по центру той же высоты (280px). */
+const ChartEmptyState = ({ title, text }: { title: string; text: string }) => (
+  <div className="flex flex-col items-center" style={{ height: 280 }}>
+    <h4 className="text-lg font-semibold text-slate-900 mt-2 text-center">{title}</h4>
+    <p className="flex-1 flex items-center text-sm text-slate-500 text-center px-6">{text}</p>
+  </div>
+);
 
 export default BlogPostsPage;

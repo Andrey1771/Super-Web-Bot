@@ -105,8 +105,12 @@ public static partial class SteamHtml
                     }
                     break;
                 default:
-                    // Текст и строчные теги вне абзацев: собираем подряд до следующего блока.
-                    var inline = Inline(child);
+                    // Текст и строчные теги вне абзацев: собираем подряд до следующего блока. Сам узел, а не только
+                    // его детей: у голого текста детей нет, и абзацы вида «<br><br>Текст<h2>» (Subnautica и другие
+                    // старые карточки) пропадали целиком — от описания оставались одни заголовки и картинки.
+                    var inlineSb = new StringBuilder();
+                    AppendInline(inlineSb, child, skipLists: false);
+                    var inline = inlineSb.ToString();
                     if (inline.Trim().Length > 0)
                     {
                         sb.Append(inline);
@@ -141,70 +145,75 @@ public static partial class SteamHtml
         var sb = new StringBuilder();
         foreach (var child in node.ChildNodes)
         {
-            switch (child.Name)
-            {
-                case "#text":
-                    sb.Append(CollapseSpaces().Replace(WebUtility.HtmlDecode(child.InnerText), " "));
-                    break;
-                case "br":
-                    sb.Append('\n');
-                    break;
-                case "strong":
-                case "b":
-                    Wrap(sb, Inline(child), "**");
-                    break;
-                case "i":
-                case "em":
-                    Wrap(sb, Inline(child), "*");
-                    break;
-                case "a":
-                {
-                    var label = Inline(child).Trim();
-                    var href = UnwrapLinkFilter(child.GetAttributeValue("href", ""));
-                    if (label.Length == 0)
-                    {
-                        break;
-                    }
-                    sb.Append(IsHttpUrl(href) ? $"[{label}]({href})" : label);
-                    break;
-                }
-                case "img":
-                {
-                    var src = child.GetAttributeValue("src", "");
-                    if (IsHttpUrl(src))
-                    {
-                        sb.Append("\n\n![](").Append(src).Append(")\n\n");
-                    }
-                    break;
-                }
-                case "video":
-                {
-                    var poster = child.GetAttributeValue("poster", "");
-                    if (IsHttpUrl(poster))
-                    {
-                        sb.Append("\n\n![](").Append(poster).Append(")\n\n");
-                    }
-                    break;
-                }
-                case "script":
-                case "style":
-                    break;
-                case "ul":
-                case "ol":
-                    if (!skipLists)
-                    {
-                        sb.Append(Inline(child));
-                    }
-                    break;
-                case "li":
-                    sb.Append("\n- ").Append(Inline(child).Trim());
-                    break;
-                default:
-                    sb.Append(Inline(child, skipLists));
-                    break;
-            }
+            AppendInline(sb, child, skipLists);
         }
         return sb.ToString();
+    }
+
+    private static void AppendInline(StringBuilder sb, HtmlNode child, bool skipLists)
+    {
+        switch (child.Name)
+        {
+            case "#text":
+                sb.Append(CollapseSpaces().Replace(WebUtility.HtmlDecode(child.InnerText), " "));
+                break;
+            case "br":
+                sb.Append('\n');
+                break;
+            case "strong":
+            case "b":
+                Wrap(sb, Inline(child), "**");
+                break;
+            case "i":
+            case "em":
+                Wrap(sb, Inline(child), "*");
+                break;
+            case "a":
+            {
+                var label = Inline(child).Trim();
+                var href = UnwrapLinkFilter(child.GetAttributeValue("href", ""));
+                if (label.Length == 0)
+                {
+                    break;
+                }
+                sb.Append(IsHttpUrl(href) ? $"[{label}]({href})" : label);
+                break;
+            }
+            case "img":
+            {
+                var src = child.GetAttributeValue("src", "");
+                if (IsHttpUrl(src))
+                {
+                    sb.Append("\n\n![](").Append(src).Append(")\n\n");
+                }
+                break;
+            }
+            case "video":
+            {
+                var poster = child.GetAttributeValue("poster", "");
+                if (IsHttpUrl(poster))
+                {
+                    sb.Append("\n\n![](").Append(poster).Append(")\n\n");
+                }
+                break;
+            }
+            case "script":
+            case "style":
+                break;
+            case "ul":
+            case "ol":
+                if (!skipLists)
+                {
+                    sb.Append(Inline(child));
+                }
+                break;
+            case "li":
+                sb.Append("\n- ").Append(Inline(child).Trim());
+                break;
+            default:
+                sb.Append(Inline(child, skipLists));
+                break;
+        }
     }
 
     private static void Wrap(StringBuilder sb, string inner, string marker)

@@ -47,7 +47,6 @@ namespace SuperBot.Infrastructure.Repositories
                 StripeCustomerId = profile.StripeCustomerId,
                 DisplayName = profile.DisplayName,
                 Email = profile.Email,
-                HideOwnedGamesInProfile = profile.HideOwnedGamesInProfile,
                 DefaultPaymentMethodId = profile.DefaultPaymentMethodId,
                 BillingDetails = profile.BillingDetails == null
                     ? null
@@ -70,7 +69,6 @@ namespace SuperBot.Infrastructure.Repositories
                 StripeCustomerId = profile.StripeCustomerId,
                 DisplayName = profile.DisplayName,
                 Email = profile.Email,
-                HideOwnedGamesInProfile = profile.HideOwnedGamesInProfile,
                 DefaultPaymentMethodId = profile.DefaultPaymentMethodId,
                 BillingDetails = profile.BillingDetails == null
                     ? null

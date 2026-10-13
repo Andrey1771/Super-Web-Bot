@@ -16,9 +16,8 @@ public class MailOptions
     public string? SmtpPassword { get; set; }
 
     /// <summary>
-    /// STARTTLS. Настоящие почтовые сервисы (Mailgun, Postmark, Яндекс и т.п.) принимают письма
-    /// только по шифрованному соединению — порт 587. Неявный TLS на 465 встроенный SmtpClient
-    /// .NET не поддерживает, поэтому такой порт отклоняется при старте (см. Validate).
+    /// STARTTLS (обычно порт 587). На порту 465 шифрование включается сразу при подключении, без этой
+    /// настройки (так принимает Cloudflare Email Sending) — см. SmtpClients.
     /// </summary>
     public bool SmtpUseTls { get; set; }
 
@@ -31,10 +30,6 @@ public class MailOptions
     /// <summary>Ошибка конфигурации или null. Проверяется на старте, чтобы письма не терялись молча.</summary>
     public string? Validate()
     {
-        if (SmtpPort == 465)
-        {
-            return "Mail:SmtpPort 465 (implicit TLS) is not supported by the .NET SMTP client. Use port 587 with Mail:SmtpUseTls=true (STARTTLS).";
-        }
         if (!string.IsNullOrWhiteSpace(SmtpUsername) && string.IsNullOrEmpty(SmtpPassword))
         {
             return "Mail:SmtpUsername is set but Mail:SmtpPassword is empty.";

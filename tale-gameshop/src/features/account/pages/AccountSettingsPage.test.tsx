@@ -25,6 +25,11 @@ jest.mock('../../../api/telegramLinkApi', () => ({
     unlinkTelegram: jest.fn(),
 }));
 
+const mockDownloadDataExport = jest.fn();
+jest.mock('../../../api/billing-api', () => ({
+    downloadDataExport: () => mockDownloadDataExport(),
+}));
+
 jest.mock('../../../api/accountApi', () => ({
     fetchAccountProfile: jest.fn(),
     saveAccountProfile: jest.fn(),
@@ -39,6 +44,12 @@ jest.mock('../context/AccountProfileContext', () => ({
 
 jest.mock('../../../components/ui/ToastProvider', () => ({
     useToast: () => ({ addToast: jest.fn() }),
+}));
+
+// Вошёл ли общий демо-админ: по умолчанию — обычный покупатель.
+const mockIsDemoViewer = jest.fn(() => false);
+jest.mock('../../demo/useDemoConfig', () => ({
+    useIsDemoViewer: () => mockIsDemoViewer(),
 }));
 
 jest.mock('../components/AccountShell', () => ({
@@ -57,6 +68,7 @@ const priceDropsBox = () => screen.getByLabelText(/Price drops/) as HTMLInputEle
 
 beforeEach(() => {
     jest.clearAllMocks();
+    mockIsDemoViewer.mockReturnValue(false);
     localStorage.clear();
     mockGetTelegramStatus.mockResolvedValue({ linked: false });
     mockSetMyNewsletter.mockResolvedValue({ subscribed: true, status: 'confirmed', dealAlerts: true });
@@ -105,6 +117,14 @@ it('shows the Telegram integration row in both states', async () => {
     expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
 });
 
+it('tells the demo admin that Telegram is closed to him instead of failing on click', async () => {
+    mockIsDemoViewer.mockReturnValue(true);
+    renderPage();
+    const row = await screen.findByTestId('settings-telegram');
+    expect(screen.getByRole('button', { name: 'Connect Telegram' })).toBeDisabled();
+    expect(row).toHaveTextContent("The demo admin can't connect Telegram");
+});
+
 it('names the linked Telegram account and offers to disconnect', async () => {
     mockGetTelegramStatus.mockResolvedValue({ linked: true, username: 'andrey' });
     renderPage();
@@ -113,4 +133,17 @@ it('names the linked Telegram account and offers to disconnect', async () => {
     expect(row).toHaveTextContent('Connected');
     expect(screen.getByRole('button', { name: 'Disconnect' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Connect Telegram' })).toBeNull();
+});
+
+it('downloads the account data archive from the account & security list', async () => {
+    mockGetMyNewsletter.mockResolvedValue({ subscribed: false, status: 'none', dealAlerts: false });
+    mockDownloadDataExport.mockResolvedValue(new Blob(['zip']));
+    const createUrl = jest.fn(() => 'blob:export');
+    Object.assign(window.URL, { createObjectURL: createUrl, revokeObjectURL: jest.fn() });
+
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: /Download my data/ }));
+
+    await waitFor(() => expect(mockDownloadDataExport).toHaveBeenCalledTimes(1));
+    expect(createUrl).toHaveBeenCalled();
 });

@@ -102,6 +102,46 @@ namespace SuperBot.Tests
             Assert.Equal(new[] { "published" }, recommendations.Select(item => item.Game.Id).ToArray());
         }
 
+        [Fact]
+        public async Task ShowsOneUpcomingGameLast_onlyInLargerLists()
+        {
+            // Невышедшую касса не продаст: в основной подбор она не идёт (запасная подборка — от новых к старым, будущие
+            // релизы встали бы первыми). Но одна — ближайшая по дате — показывается последней: витрина рисует у неё дату
+            // выхода и «В желаемое».
+            var games = new List<Game>
+            {
+                new Game { Id = "released-1", Title = "Released 1", Name = "Released 1", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-1) },
+                new Game { Id = "released-2", Title = "Released 2", Name = "Released 2", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-2) },
+                new Game { Id = "released-3", Title = "Released 3", Name = "Released 3", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(-3) },
+                new Game { Id = "upcoming-late", Title = "Upcoming late", Name = "Upcoming late", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(6) },
+                new Game { Id = "upcoming-soon", Title = "Upcoming soon", Name = "Upcoming soon", GameType = GameType.Action, ReleaseDate = DateTime.UtcNow.AddMonths(1) }
+            };
+            RecommendationsService Service(List<ViewedGame> viewed, HashSet<string> wishlist) => new(
+                new TestGameRepository(games),
+                new TestWishlistRepository(wishlist),
+                new TestViewedRepository(viewed),
+                new TestOrderRepository(new List<Order>()),
+                new TestGameDetailsRepository(),
+                NullLogger<RecommendationsService>.Instance);
+
+            var fallback = await Service(new List<ViewedGame>(), new HashSet<string>()).GetRecommendationsAsync("user", 4);
+            Assert.Equal(new[] { "released-1", "released-2", "released-3", "upcoming-soon" }, fallback.Select(item => item.Game.Id).ToArray());
+
+            // По интересам — так же: одна невышедшая, последней.
+            var personal = await Service(new List<ViewedGame> { new ViewedGame { UserId = "user", GameId = "released-1", LastViewedAt = DateTime.UtcNow } }, new HashSet<string>())
+                .GetRecommendationsAsync("user", 4);
+            Assert.Equal("upcoming-soon", personal.Last().Game.Id);
+            Assert.Single(personal, item => item.Game.Id.StartsWith("upcoming"));
+
+            // Уже в желаемом — не предлагаем, берём следующую по дате.
+            var wished = await Service(new List<ViewedGame>(), new HashSet<string> { "upcoming-soon" }).GetRecommendationsAsync("user", 4);
+            Assert.Equal("upcoming-late", wished.Last().Game.Id);
+
+            // Маленькая подборка — только то, что можно купить сейчас.
+            var small = await Service(new List<ViewedGame>(), new HashSet<string>()).GetRecommendationsAsync("user", 2);
+            Assert.DoesNotContain(small, item => item.Game.Id.StartsWith("upcoming"));
+        }
+
         private class TestGameRepository : IGameRepository
         {
             private readonly List<Game> _games;

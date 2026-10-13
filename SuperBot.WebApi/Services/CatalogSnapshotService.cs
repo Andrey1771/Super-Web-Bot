@@ -87,7 +87,9 @@ public sealed record CatalogItem(
     /// null — видео у товара нет. Постер — обложка ролика, пока он грузится.
     /// </summary>
     string? TrailerUrl = null,
-    string? TrailerPosterUrl = null)
+    string? TrailerPosterUrl = null,
+    /// <summary>Основной цвет обложки (#rrggbb) — фон рамки на витрине, пока картинка грузится. null — ещё не посчитан.</summary>
+    string? CoverColor = null)
 {
     /// <summary>Переводы описания карточки по языкам сайта; подставляются на выходе (StorefrontCards). Свойство, а не параметр: тесты собирают запись по позициям.</summary>
     public Dictionary<string, string>? DescriptionI18n { get; init; }
@@ -184,6 +186,7 @@ public sealed class CatalogSnapshotService : ICatalogSnapshotService
     private readonly IGameGenreDirectory _genres;
     private readonly ISoftwareCategoryDirectory _softwareCategories;
     private readonly IMemoryCache _cache;
+    private readonly ICoverImageMetaRepository _coverMeta;
     private readonly Microsoft.Extensions.Options.IOptionsMonitor<SuperBot.WebApi.Services.SiteSettings.StockOptions> _stock;
 
     public CatalogSnapshotService(
@@ -196,8 +199,10 @@ public sealed class CatalogSnapshotService : ICatalogSnapshotService
         IGameGenreDirectory genres,
         ISoftwareCategoryDirectory softwareCategories,
         IMemoryCache cache,
+        ICoverImageMetaRepository coverMeta,
         Microsoft.Extensions.Options.IOptionsMonitor<SuperBot.WebApi.Services.SiteSettings.StockOptions> stock)
     {
+        _coverMeta = coverMeta;
         _stock = stock;
         _games = games;
         _discounts = discounts;
@@ -238,7 +243,7 @@ public sealed class CatalogSnapshotService : ICatalogSnapshotService
         var snapshot = await _cache.GetOrCreateAsync(CacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheTtl;
-            var all = WithDlcCounts(await BuildAsync());
+            var all = WithDlcCounts(await WithCoverColorsAsync(await BuildAsync()));
             // Черновики витрине не отдаются. Фильтр здесь, а не в каждом запросе: снимок — единственный источник
             // для витрины, полок главной и поиска, поэтому одного места достаточно и нельзя забыть закрыть ещё одно.
             return new Snapshot(all, all.Where(item => !item.IsDraft).ToList());
@@ -248,6 +253,30 @@ public sealed class CatalogSnapshotService : ICatalogSnapshotService
     }
 
     public void Invalidate() => _cache.Remove(CacheKey);
+
+    /// <summary>
+    /// Цвета обложек — одним запросом на весь снимок. Без цвета позиция остаётся как есть: витрина покажет общий фон.
+    /// Сбой здесь витрину не ломает — цвет лишь украшение на время загрузки.
+    /// </summary>
+    private async Task<IReadOnlyList<CatalogItem>> WithCoverColorsAsync(IReadOnlyList<CatalogItem> items)
+    {
+        try
+        {
+            var pathOf = items.ToDictionary(item => item, item => CoverImages.ToRelativePath(item.ImagePath), ReferenceEqualityComparer.Instance);
+            var colors = await _coverMeta.GetColorsAsync(pathOf.Values.OfType<string>());
+            if (colors.Count == 0)
+            {
+                return items;
+            }
+            return items
+                .Select(item => pathOf[item] is { } path && colors.TryGetValue(path, out var color) ? item with { CoverColor = color } : item)
+                .ToList();
+        }
+        catch (Exception)
+        {
+            return items;
+        }
+    }
 
     /// <summary>
     /// Связи игр и DLC в снимке. Каждой игре — число её DLC: черновики не считаются, витрина их не показывает, и

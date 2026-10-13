@@ -53,3 +53,43 @@ it('keeps overlays inside the frame and uses a blurred tiny copy as the loading 
     expect(frame).toHaveClass('cover', 'cover--blur', 'hero-cover');
     expect(frame.style.backgroundImage).toContain('/uploads/v/24/16x9/images/abc.png.webp');
 });
+
+/** Пока обложка грузится, рамка закрашена её основным цветом; картинка проявляется, когда загрузилась. */
+it('paints the frame with the cover color and reveals the image once it has loaded', () => {
+    const { container } = render(<Cover src="/uploads/images/abc.png" title="Game" color="#3a5f8b" />);
+    const frame = container.querySelector('.cover') as HTMLElement;
+    expect(frame.style.getPropertyValue('--cover-bg')).toBe('#3a5f8b');
+    expect(frame).not.toHaveClass('cover--loaded');
+
+    fireEvent.load(container.querySelector('img')!);
+    expect(frame).toHaveClass('cover--loaded');
+});
+
+it('ignores anything but a #rrggbb color', () => {
+    const { container } = render(<Cover src="/uploads/images/abc.png" title="Game" color="red; background:url(x)" />);
+    expect((container.querySelector('.cover') as HTMLElement).style.getPropertyValue('--cover-bg')).toBe('');
+});
+
+/** Возврат в каталог: картинка уже в кэше браузера и готова до первой отрисовки — сразу видна, а не прозрачна. */
+it('shows an image that is already in the browser cache right away', () => {
+    const complete = jest.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+    const width = jest.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(480);
+    try {
+        const { container } = render(<Cover src="/uploads/images/abc.png" title="Game" color="#3a5f8b" />);
+        expect(container.querySelector('.cover')).toHaveClass('cover--loaded');
+    } finally {
+        complete.mockRestore();
+        width.mockRestore();
+    }
+});
+
+it('keeps the image visible when its load event fires before the effects run', () => {
+    const { container, rerender } = render(<Cover src="/uploads/images/abc.png" title="Game" />);
+    fireEvent.load(container.querySelector('img')!);
+    rerender(<Cover src="/uploads/images/abc.png" title="Game" />);
+    expect(container.querySelector('.cover')).toHaveClass('cover--loaded');
+
+    // Другая картинка в той же рамке — снова ждём её загрузки.
+    rerender(<Cover src="/uploads/images/other.png" title="Game" />);
+    expect(container.querySelector('.cover')).not.toHaveClass('cover--loaded');
+});

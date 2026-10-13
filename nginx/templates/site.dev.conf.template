@@ -1,5 +1,6 @@
 # Стенд разработчика: один http-сервер на 80-м порту, без TLS и без закрытых путей —
 # админ-консоль Keycloak открыта по http://localhost/auth/admin.
+# site-extra — дополнения по режиму (демо-сайт закрывает там консоль, см. 35-taleshop-demo.sh).
 server {
     listen 80 default_server;
     server_name _;
@@ -8,5 +9,6 @@ server {
     index index.html;
 
     include /etc/nginx/security-headers.conf;
+    include /etc/nginx/site-extra/*.conf;
     include /etc/nginx/locations.conf;
 }

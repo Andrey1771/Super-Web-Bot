@@ -53,7 +53,7 @@ const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
 
     if (isPending) {
         return (
-            <div className="card security-card" data-testid="security-email-card" aria-busy="true">
+            <div id="security-email" className="card security-card" data-testid="security-email-card" aria-busy="true">
                 <div className="security-card-header">
                     <h3>{t('account.security.email.title')}</h3>
                     <span className="security-status-pill is-off">{t('common.loading')}</span>
@@ -65,7 +65,7 @@ const EmailVerificationCard: React.FC<EmailVerificationCardProps> = ({
     }
 
     return (
-        <div className="card security-card" data-testid="security-email-card">
+        <div id="security-email" className="card security-card" data-testid="security-email-card">
             <div className="security-card-header">
                 <h3>{t('account.security.email.title')}</h3>
                 <span className={`security-status-pill ${emailVerified ? 'is-on' : ''}`}>

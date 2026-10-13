@@ -124,9 +124,13 @@ public class FakeStripeCustomerGateway : IStripeCustomerGateway
     /// <summary>true — Stripe не выдаёт сессии покупателя (как при сбое API); касса должна работать и так.</summary>
     public volatile bool FailCustomerSessions;
 
-    public Task<string?> CreateCheckoutSessionSecretAsync(string customerId)
+    /// <summary>allowSave последнего запроса сессии покупателя (касса демо-админа карты не сохраняет).</summary>
+    public volatile bool LastSessionAllowedSave = true;
+
+    public Task<string?> CreateCheckoutSessionSecretAsync(string customerId, bool allowSave = true)
     {
         Interlocked.Increment(ref CallCount);
+        LastSessionAllowedSave = allowSave;
         if (FailCustomerSessions)
         {
             throw new InvalidOperationException("Stripe customer sessions are unavailable in this test.");

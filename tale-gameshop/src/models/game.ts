@@ -73,5 +73,7 @@ export interface Game {
     /** Трейлер для превью при наведении на плитку; нет — видео у товара нет. */
     trailerUrl?: string | null;
     trailerPosterUrl?: string | null;
+    /** Основной цвет обложки (#rrggbb) — фон рамки, пока картинка грузится; нет — общий фон. */
+    coverColor?: string | null;
     releaseDate: string;
 }

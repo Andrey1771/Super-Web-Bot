@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SkiaSharp;
 using SuperBot.WebApi.Services;
@@ -116,6 +117,117 @@ public class CoverImagesTests
     {
         var response = await _factory.CreateClient().GetAsync(url);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    // ---------- нарезка заранее ----------
+
+    [Fact]
+    public async Task Prerender_cuts_every_storefront_frame_once_and_records_the_cover_color()
+    {
+        var name = $"images/{Guid.NewGuid():N}.png";
+        Seed(name, Png(1600, 1200));
+
+        using var scope = _factory.Services.CreateScope();
+        var covers = scope.ServiceProvider.GetRequiredService<ICoverImages>();
+
+        var rendered = await covers.PrerenderAsync(name, CancellationToken.None);
+
+        Assert.Equal(CoverImages.Ratios.Count * CoverImages.PrerenderWidths.Length, rendered);
+        foreach (var ratio in CoverImages.Ratios.Keys)
+        {
+            foreach (var width in CoverImages.PrerenderWidths)
+            {
+                Assert.True(File.Exists(Path.Combine(_factory.UploadsRoot, "v", width.ToString(), ratio, name.Replace('/', Path.DirectorySeparatorChar) + ".webp")),
+                    $"{width}/{ratio} is missing");
+            }
+        }
+        // 1400 — только для крупных баннеров, его по-прежнему режет первый запрос.
+        Assert.False(File.Exists(Path.Combine(_factory.UploadsRoot, "v", "1400", "sq", name.Replace('/', Path.DirectorySeparatorChar) + ".webp")));
+        Assert.NotNull((await covers.GetMetaAsync(name, CancellationToken.None))?.DominantColor);
+
+        // Повторный проход ничего не режет: после рестарта сервер проверяет весь каталог, и это должно быть дёшево.
+        Assert.Equal(0, await covers.PrerenderAsync(name, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Warmup_worker_renders_queued_covers_in_the_background_and_keeps_running()
+    {
+        var name = $"images/{Guid.NewGuid():N}.png";
+        Seed(name, Png(1200, 900));
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Covers:Warmup"] = "true", ["Covers:WarmupDelaySeconds"] = "0" })
+            .Build();
+        // Своя очередь: общую в тестах никто не разбирает, и другие тесты смотрят, что в неё попало.
+        var queue = new CoverWarmupQueue();
+        var worker = new CoverWarmupWorker(queue, _factory.Services.GetRequiredService<IServiceScopeFactory>(), config,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CoverWarmupWorker>.Instance);
+
+        await worker.StartAsync(CancellationToken.None);
+        try
+        {
+            queue.Enqueue(name);
+            var last = Path.Combine(_factory.UploadsRoot, "v", "960", "3x2", name.Replace('/', Path.DirectorySeparatorChar) + ".webp");
+            for (var i = 0; i < 100 && !File.Exists(last); i++)
+            {
+                await Task.Delay(100);
+            }
+            Assert.True(File.Exists(last));
+            // Разобрав очередь, воркер не падает (раньше Count у очереди бросал и гасил весь сервер).
+            await Task.Delay(300);
+            Assert.False(worker.ExecuteTask?.IsCompleted ?? true);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task Uploaded_cover_is_queued_for_prerendering()
+    {
+        var response = await Admin().PostAsync("/api/media/upload", Upload(Png(1200, 900), "queued.png"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var url = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("url").GetString()!;
+        var relative = url[(url.IndexOf("/uploads/", StringComparison.Ordinal) + "/uploads/".Length)..];
+
+        // Фоновая нарезка в тестах выключена — очередь никто не разбирает, и в ней видно, что попало.
+        var queue = _factory.Services.GetRequiredService<CoverWarmupQueue>();
+        var queued = new List<string>();
+        while (queue.Reader.TryRead(out var path))
+        {
+            queued.Add(path);
+        }
+        Assert.Contains(relative, queued);
+    }
+
+    [Fact]
+    public async Task Catalog_card_carries_the_cover_color_for_the_frame_background()
+    {
+        var name = $"images/{Guid.NewGuid():N}.png";
+        Seed(name, Png(1200, 900));
+        var title = $"Color Probe {Guid.NewGuid():N}";
+        string color;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var covers = scope.ServiceProvider.GetRequiredService<ICoverImages>();
+            await covers.PrerenderAsync(name, CancellationToken.None);
+            color = (await covers.GetMetaAsync(name, CancellationToken.None))!.DominantColor!;
+
+            await scope.ServiceProvider.GetRequiredService<SuperBot.Core.Interfaces.IRepositories.IGameRepository>().CreateAsync(new SuperBot.Core.Entities.Game
+            {
+                Name = title,
+                Title = title,
+                Slug = $"color-probe-{Guid.NewGuid():N}",
+                Price = 10m,
+                ImagePath = $"/uploads/{name}",
+                ReleaseDate = DateTime.UtcNow.AddYears(-1)
+            });
+            scope.ServiceProvider.GetRequiredService<ICatalogSnapshotService>().Invalidate();
+        }
+
+        var page = await _factory.CreateClient().GetFromJsonAsync<JsonElement>($"/api/game/catalog?q={Uri.EscapeDataString(title)}&pageSize=48");
+        var card = page.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("title").GetString() == title);
+        Assert.Equal(color, card.GetProperty("coverColor").GetString());
     }
 
     // ---------- точка фокуса ----------

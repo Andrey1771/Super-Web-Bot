@@ -21,6 +21,10 @@
     font-size: 20px;
 }
 
+.account-profile-text {
+    min-width: 0;
+}
+
 .account-profile-email {
     margin-bottom: var(--space-8);
 }
@@ -132,15 +136,31 @@
    подсказку в строку («No keys yet. Complete a purchase…»), и там это верно. */
 .account-key-main {
     display: grid;
+    flex: 1;
+    min-width: 0;
 }
 
+.account-key-cover {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(236, 72, 153, 0.35));
+}
+
+/* «Steam Key - Oct 8, 2026» переносится целыми частями, а не по словам в три столбика. */
 .account-key-meta {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-8);
+    gap: 2px var(--space-8);
     font-size: 13px;
     color: var(--color-muted);
     margin-top: 4px;
+}
+
+.account-key-meta > span {
+    white-space: nowrap;
 }
 
 .account-recommendations {
@@ -260,5 +280,21 @@
 
     .account-table-state {
         grid-column: 1 / -1;
+    }
+}
+
+/* Телефон: обложка, название и кнопка в одну строку не помещались — название сжималось в столбик в пять строк.
+   Кнопка уходит под текст, ровно под ним (44px обложки + отступ). */
+@media (max-width: 480px) {
+    .account-key-item {
+        flex-wrap: wrap;
+    }
+
+    .account-key-item .account-key-main {
+        flex-basis: calc(100% - 44px - var(--space-16));
+    }
+
+    .account-key-item .account-action-btn {
+        margin-left: calc(44px + var(--space-16));
     }
 }

@@ -5,6 +5,7 @@ import React, {useCallback, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
 import SecurityChecklist from '../security/components/SecurityChecklist';
+import { useIsDemoViewer } from '../../demo/useDemoConfig';
 import type {SecurityChecklistStep} from '../security/components/SecurityChecklist';
 import TwoFactorCard from '../security/components/TwoFactorCard';
 import EmailVerificationCard from '../security/components/EmailVerificationCard';
@@ -275,33 +276,34 @@ const AccountSecurityPage: React.FC = () => {
         setChecklistDismissed(true);
     };
 
-    // Последовательное ведение к защищённому аккаунту: один primary-CTA на следующий незакрытый шаг.
+    // Сводка шагов к защищённому аккаунту; следующий незакрытый шаг ведёт к своей карточке ниже.
     const checklistSteps: SecurityChecklistStep[] = [
         {
             key: 'email',
             label: t('account.security.checklist.verifyEmail'),
             done: Boolean(status?.emailVerified),
-            actionLabel: t('account.security.checklist.resendEmail'),
-            onAction: () => { void handleResendEmail(); }
+            targetId: 'security-email'
         },
         {
             key: '2fa',
             label: t('account.security.checklist.enable2fa'),
             done: Boolean(status?.twoFactorEnabled),
-            actionLabel: t('account.security.checklist.enable2faAction'),
-            onAction: handleSetup2fa
+            targetId: 'security-2fa'
         },
         {
             key: 'backup-codes',
             label: t('account.security.checklist.backupCodes'),
             // Исчерпанный набор (0 оставшихся) — то же, что отсутствие кодов: шаг снова не выполнен.
             done: Boolean(status?.backupCodesGenerated) && (status?.backupCodesRemaining == null || status.backupCodesRemaining > 0),
-            actionLabel: t('account.security.checklist.backupCodesAction'),
-            onAction: handleGenerateBackupCodes
+            // Резервные коды выпускаются в карточке 2FA.
+            targetId: 'security-2fa'
         }
     ];
     // Показываем только по загруженному статусу, чтобы чеклист не мигал до ответа сервера.
-    const checklistVisible = !checklistDismissed && status !== null && checklistSteps.some((step) => !step.done);
+    // Общий демо-админ: настройки безопасности только для просмотра. 2FA или новый пароль на общей учётке заперли бы
+    // снаружи всех остальных (на сервере это вдобавок откатывает deploy/demo/keycloak-demo-guard.sh).
+    const isDemoViewer = useIsDemoViewer();
+    const checklistVisible = !isDemoViewer && !checklistDismissed && status !== null && checklistSteps.some((step) => !step.done);
     const passwordUpdatedLabel = useMemo(() => getRelativePasswordLabel(status?.passwordUpdatedAt ?? null), [status?.passwordUpdatedAt]);
 
     return (
@@ -314,9 +316,19 @@ const AccountSecurityPage: React.FC = () => {
             <SecurityChecklist
                 show={checklistVisible}
                 steps={checklistSteps}
-                isBusy={isSubmitting}
                 onDismiss={handleDismissChecklist}
             />
+
+            {isDemoViewer && (
+                <div className="card security-demo-note" data-testid="security-demo-note" role="note">
+                    <strong>{t('account.security.demoViewerTitle')}</strong>
+                    <p>{t('account.security.demoViewerText')}</p>
+                </div>
+            )}
+
+            {/* Для демо-админа все кнопки карточек неактивны разом: fieldset disabled выключает их без правок в каждой
+                карточке, а display: contents не меняет раскладку. */}
+            <fieldset className="security-fieldset" disabled={isDemoViewer}>
 
             {loadFailed ? (
                 <div className="card security-card" data-testid="security-load-error" role="alert">
@@ -381,6 +393,7 @@ const AccountSecurityPage: React.FC = () => {
                     onDownloadReport={handleDownloadReport}
                 />
             </div>
+            </fieldset>
 
             <ChangeEmailModal
                 isOpen={isChangeEmailOpen}

@@ -108,12 +108,44 @@
     color: var(--color-muted);
 }
 
-.security-checklist-btn {
-    margin-left: auto;
-    height: 36px;
-    padding-inline: var(--space-16);
-    white-space: nowrap;
+/* Следующий шаг — строка-ссылка к своей карточке: подпись акцентным цветом и стрелка справа. */
+.security-checklist-goto {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-primary);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.security-checklist-goto svg {
+    flex-shrink: 0;
     font-size: 13px;
+    transition: transform 0.15s ease;
+}
+
+.security-checklist-goto:hover svg {
+    transform: translateX(3px);
+}
+
+.security-checklist-goto:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+/* Карточка, к которой прокрутили, не прячется под липкой шапкой сайта. */
+#security-2fa,
+#security-email {
+    scroll-margin-top: 96px;
 }
 
 .security-grid {
@@ -709,4 +741,23 @@
         width: 100%;
         justify-content: center;
     }
+}
+
+/* Обёртка карточек (см. AccountSecurityPage): нужна только чтобы разом выключить кнопки демо-админу. */
+.security-fieldset {
+    display: contents;
+}
+
+.security-demo-note {
+    display: grid;
+    gap: 6px;
+    padding: var(--space-16) var(--space-20);
+    border-left: 4px solid var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+}
+
+.security-demo-note p {
+    margin: 0;
+    color: var(--color-muted);
+    line-height: 1.5;
 }

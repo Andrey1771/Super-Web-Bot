@@ -39,6 +39,7 @@ import {
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import { listChatSessions } from "../../api/supportChatApi";
+import { useIsDemoViewer } from "../../features/demo/useDemoConfig";
 import logo from "../../assets/images/tale-shop-frog.svg";
 // Свёрнутая колонка — узкая полоса значков: там знак стоит один, без надписи рядом,
 // и квадратный вариант садится по центру, а не жмётся к краю.
@@ -105,12 +106,24 @@ const usePendingChatCount = (enabled: boolean) => {
   return count;
 };
 
+// Консоль на localhost, а сайт открыт не с localhost — значит, это SSH-туннель: без него (и с телефона) ссылка никуда
+// не ведёт, поэтому таких ссылок не показываем — владелец открывает консоль закладкой при поднятом туннеле.
+const consoleNeedsTunnel = (adminConsoleUrl: string): boolean => {
+  const isLocal = (host: string) => host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+  try {
+    return isLocal(new URL(adminConsoleUrl).hostname) && !isLocal(window.location.hostname);
+  } catch {
+    return false;
+  }
+};
+
 // Роли и сессии живут в Keycloak, и делать это лучше него мы не станем — ведём в его консоль.
-// Адрес — тот же, которым логинится сайт, если конфиг не задаёт отдельный: в продакшене консоль
-// наружу закрыта и открывается через SSH-туннель (keycloak.adminConsoleUrl, см. docs/deploy.md).
+// Адрес — тот же, которым логинится сайт, если конфиг не задаёт отдельный (стенд разработчика). В продакшене и на демо
+// консоль наружу закрыта и открывается только через SSH-туннель (keycloak.adminConsoleUrl, см. docs/deploy.md) —
+// тогда ссылки нет (undefined), и кнопки на консоль не рисуются.
 export const keycloakConsoleUrl = (section: "" | "users" | "roles" | "sessions" = ""): string | undefined => {
   const cfg = typeof window !== "undefined" ? window.__APP_CONFIG__?.keycloak : undefined;
-  if (!cfg?.url || !cfg?.realm) {
+  if (!cfg?.url || !cfg?.realm || (cfg.adminConsoleUrl && consoleNeedsTunnel(cfg.adminConsoleUrl))) {
     return undefined;
   }
   const base = String(cfg.adminConsoleUrl || cfg.url).replace(/\/+$/, "");
@@ -159,6 +172,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   // Эндпоинт списка диалогов закрыт теми же ролями, что и сам пункт меню, — без них не опрашиваем.
   const pendingChats = usePendingChatCount(hasRoles(["admin", "support"]));
+  // Демо-админу ссылки на консоль Keycloak не показываем: пароля от неё у него нет.
+  const isDemoViewer = useIsDemoViewer();
 
   const toggleGroup = useCallback((key: string) => {
     setCollapsedGroups((prev) => {
@@ -337,7 +352,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       </div>
 
       {groups.map((group) => {
-        const visible = group.items.filter((item) => hasRoles(item.roles) && (item.to || item.href));
+        const visible = group.items.filter(
+          (item) => hasRoles(item.roles) && (item.to || (item.href && !isDemoViewer))
+        );
         if (visible.length === 0) {
           return null;
         }

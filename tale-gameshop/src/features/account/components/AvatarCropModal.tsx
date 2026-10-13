@@ -38,6 +38,27 @@ const VIEWPORT_SIZE = 360;
 const MASK_RATIO = 0.72;
 const MAX_ZOOM = 4;
 
+/**
+ * Поворот — один угол на весь круг (−180°…180°): ползунок крутит его целиком, кнопки «90°» — четвертями по кругу.
+ * Раньше ползунок знал только ±45°, а кнопки прибавляли 90° к тому же значению: после «90°» ползунок упирался в край,
+ * а стоило его тронуть — поворот на 90° пропадал.
+ */
+export const normalizeRotation = (angle: number): number => {
+  const wrapped = ((((angle + 180) % 360) + 360) % 360) - 180;
+  return wrapped === -180 ? 180 : wrapped;
+};
+
+/** Ровные углы (0°, ±90°, 180°) ставятся легко: в пределах 3° ползунок к ним прилипает. */
+const ROTATION_SNAP_DEG = 3;
+export const snapRotation = (angle: number): number => {
+  for (const target of [-180, -90, 0, 90, 180]) {
+    if (Math.abs(angle - target) <= ROTATION_SNAP_DEG) {
+      return normalizeRotation(target);
+    }
+  }
+  return angle;
+};
+
 const getRotatedBounds = (width: number, height: number, rotation: number): Size => {
   const radians = (Math.PI * rotation) / 180;
   const sin = Math.abs(Math.sin(radians));
@@ -465,19 +486,20 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, isOpen, isS
               <span>{t('common.rotate')}</span>
               <input
                 type="range"
-                min={-45}
-                max={45}
+                min={-180}
+                max={180}
                 step={1}
                 value={rotation}
-                onChange={(event) => setRotation(Number(event.target.value))}
+                onChange={(event) => setRotation(snapRotation(Number(event.target.value)))}
               />
+              <span className="ts-avatar-crop-controls__zoom-value">{rotation > 0 ? `+${rotation}` : rotation}°</span>
             </label>
 
             <div className="ts-avatar-crop-controls__buttons">
-              <button type="button" className="btn btn-outline" onClick={() => setRotation((value) => value - 90)}>
+              <button type="button" className="btn btn-outline" onClick={() => setRotation((value) => normalizeRotation(value - 90))}>
                 <FontAwesomeIcon icon={faRotateLeft} /> 90°
               </button>
-              <button type="button" className="btn btn-outline" onClick={() => setRotation((value) => value + 90)}>
+              <button type="button" className="btn btn-outline" onClick={() => setRotation((value) => normalizeRotation(value + 90))}>
                 <FontAwesomeIcon icon={faRotateRight} /> 90°
               </button>
               <button type="button" className="btn btn-outline" onClick={handleResetFit}>

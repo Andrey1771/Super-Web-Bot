@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AvatarCropModal from './AvatarCropModal';
+import AvatarCropModal, { normalizeRotation, snapRotation } from './AvatarCropModal';
 import { AVATAR_BACKDROPS, DEFAULT_BACKDROP_COLOR } from '../../../utils/avatarBackdrop';
 
 /**
@@ -125,4 +125,39 @@ it('previews the chosen colour under the art', async () => {
     // Сами тона проверяются в avatarBackdrop.test.ts: jsdom не разбирает radial-gradient
     // и выбрасывает такой inline-стиль, поэтому здесь — только наличие подложки.
     expect(container.querySelector('.ts-avatar-cropper-backdrop')).not.toBeNull();
+});
+
+describe('rotation', () => {
+    it('keeps any angle within one turn and snaps to straight angles', () => {
+        expect(normalizeRotation(270)).toBe(-90);
+        expect(normalizeRotation(-270)).toBe(90);
+        expect(normalizeRotation(180)).toBe(180);
+        expect(normalizeRotation(-180)).toBe(180);
+        expect(snapRotation(2)).toBe(0);
+        expect(snapRotation(-88)).toBe(-90);
+        expect(snapRotation(-178)).toBe(180);
+        expect(snapRotation(17)).toBe(17);
+    });
+
+    it('turns the full circle with the 90° buttons and the slider shows the real angle', async () => {
+        mockHasTransparency.mockResolvedValue(false);
+        renderModal();
+
+        const slider = await screen.findByRole('slider', { name: /Rotate/ });
+        const [left, right] = screen.getAllByRole('button', { name: /90°/ });
+        await userEvent.click(right);
+        await userEvent.click(right);
+        expect(slider).toHaveValue('180');
+        await userEvent.click(right);
+        expect(slider).toHaveValue('-90');
+        await userEvent.click(left);
+        expect(slider).toHaveValue('180');
+        await userEvent.click(left);
+        expect(slider).toHaveValue('90');
+
+        // Ползунок крутит весь круг, а не только ±45°, и не сбрасывает поворот кнопок.
+        fireEvent.change(slider, { target: { value: '135' } });
+        expect(slider).toHaveValue('135');
+        expect(screen.getByText('+135°')).toBeInTheDocument();
+    });
 });

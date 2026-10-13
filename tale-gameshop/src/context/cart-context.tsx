@@ -1,8 +1,8 @@
 // src/context/CartContext.tsx
-import React, {createContext, useContext, useEffect, useMemo, useReducer} from 'react';
+import React, {createContext, useContext, useEffect, useMemo, useReducer, useRef} from 'react';
 import {CartAction, initialState, CartState, cartReducer, cartLineKey, Product} from '../reducers/cart-reducer';
 import {analyticsClient} from "../utils/analytics-client";
-import {trackFunnelStep} from "../utils/funnel-tracking";
+import {trackFunnelStep} from "../utils/funnel-tracking";
 import {gaItemVariant} from "../utils/item-list-tracking";
 import {useSitePreferences} from "../context/site-preferences";
 import container from "../inversify.config";
@@ -14,12 +14,11 @@ import {flyToCart} from "../components/cart/cart-flight";
 const CartContext = createContext<{
     state: CartState;
     dispatch: React.Dispatch<CartAction>;
-    syncCartWithServer: (userId: string) => Promise<void>;
+    syncCartWithServer: (userId: string) => Promise<boolean>;
 }>({
     state: initialState,
     dispatch: () => null,
-    syncCartWithServer: async () => {
-    },
+    syncCartWithServer: async () => false,
 });
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
@@ -28,6 +27,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
         const storedCart = localStorage.getItem('cart');
         return storedCart ? JSON.parse(storedCart) : initial;
     });
+
+    // С каким аккаунтом корзина уже сверена на этой странице. onAuthSuccess приходит не только при входе, но и при каждом
+    // обновлении токена (раз в несколько минут); сверка на каждом склеивала корзину с серверной заново, и игра, удалённая
+    // за секунду до этого (сервер ещё не записал), возвращалась обратно. Сверяемся один раз на открытие страницы.
+    const syncedForRef = useRef<string | null>(null);
 
     useEffect(() => {
         localStorage.setItem('cart', JSON.stringify(state));
@@ -38,7 +42,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
                 return;
             }
             // @ts-ignore Keycloak содержит
-            await syncCartWithServer(keycloakService.keycloak.tokenParsed.email);
+            const email: string | undefined = keycloakService.keycloak.tokenParsed?.email;
+            if (!email || syncedForRef.current === email.toLowerCase()) {
+                return;
+            }
+            syncedForRef.current = email.toLowerCase();
+            if (!(await syncCartWithServer(email))) {
+                syncedForRef.current = null; // не вышло — попробуем при следующем событии
+            }
         };
 
         keycloakService.stateChangedEmitter.off('onAuthSuccess', handleAuthSuccess);
@@ -48,6 +59,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
             keycloakService.stateChangedEmitter.off('onAuthSuccess', handleAuthSuccess);
         };
     }, [state]);
+
+    // Сайт открыт гостем — в том числе после выхода (Keycloak возвращает на сайт уже без входа): копия корзины аккаунта
+    // уходит из браузера, на сервере она остаётся и вернётся при следующем входе. Гостевую корзину это не трогает.
+    // На «сессия истекла» не реагируем: человек ещё на странице (может, на кассе), и корзина не должна пустеть у него
+    // на глазах — после повторного входа она та же.
+    useEffect(() => {
+        const keycloakService = container.get<IKeycloakService>(IDENTIFIERS.IKeycloakService);
+        const handleGuest = () => {
+            syncedForRef.current = null;
+            dispatch({type: 'RESET_LOCAL_CART'});
+        };
+        keycloakService.stateChangedEmitter.on('onAuthGuest', handleGuest);
+        return () => {
+            keycloakService.stateChangedEmitter.off('onAuthGuest', handleGuest);
+        };
+    }, []);
 
     // Функция объединения двух корзин
     const mergeCarts = (localCart: Product[], serverCart: { userId: string, cartGames: Product[]}) => {
@@ -69,9 +96,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
     };
 
     // Функция синхронизации корзины с сервером
-    const syncCartWithServer = async (userId: string) => {
+    // true — сверка прошла (или делать нечего); false — сервер не ответил, повторим позже.
+    const syncCartWithServer = async (userId: string): Promise<boolean> => {
         if (!userId || window.location.pathname.startsWith('/admin')) {
-            return;
+            return true;
         }
         try {
             const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
@@ -81,10 +109,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
             const serverCart: { userId: string, cartGames: Product[]} = response.data;
 
 
-            // Сливаем локальную корзину и серверную
+            // Корзина в браузере — чья? Своего аккаунта — берём серверную как есть: каждое изменение и так уходит на сервер,
+            // а на другом устройстве её могли поменять (раньше склейка «сервер + браузер» возвращала удалённые игры).
+            // Другого аккаунта (вышли из одного, вошли в другой) — тоже только серверная: чужие игры к новому не едут.
+            // Гостевая (владельца нет) вливается в аккаунт, как в любом магазине, — и только её отправляем на сервер.
+            const serverItems = serverCart?.cartGames ?? [];
+            const isGuestCart = !state.owner;
+            if (!isGuestCart) {
+                dispatch({type: 'ADOPT_CART', payload: {items: serverItems, owner: userId}});
+                return true;
+            }
             const mergedCart = serverCart?.cartGames != null ? mergeCarts(state.items, serverCart) : state.items;
 
-            // Отправляем объединённую корзину на сервер
             await apiClient.api.post(`/api/cart/${userId}`, {
                 userId: userId,
                 cartGames: [...mergedCart.map(product => ({
@@ -100,13 +136,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({children}
                 }))]
             });
 
-            // Устанавливаем итоговую корзину в состояние
-            dispatch({type: 'SET_CART', payload: mergedCart});
-
-            // Очищаем локальную корзину
-            localStorage.removeItem('cart');
+            // Итоговая корзина — теперь копия корзины этого аккаунта (на сервер повторно не уходит, она уже там).
+            dispatch({type: 'ADOPT_CART', payload: {items: mergedCart, owner: userId}});
+            return true;
         } catch (error) {
             console.error('Failed to sync cart with server:', error);
+            return false;
         }
     };
 

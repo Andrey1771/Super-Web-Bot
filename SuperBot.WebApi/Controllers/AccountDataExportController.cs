@@ -17,23 +17,31 @@ namespace SuperBot.WebApi.Controllers
     public class AccountDataExportController : ControllerBase
     {
         private readonly IBillingProfileRepository _billingProfileRepository;
-        private readonly ISteamOrderRepository _steamOrderRepository;
+        private readonly IOrderRepository _orderRepository;
         private readonly IWishlistRepository _wishlistRepository;
         private readonly CustomerService _customerService;
         private readonly PaymentMethodService _paymentMethodService;
+        private readonly ILogger<AccountDataExportController> _logger;
 
         public AccountDataExportController(
             IBillingProfileRepository billingProfileRepository,
-            ISteamOrderRepository steamOrderRepository,
-            IWishlistRepository wishlistRepository)
+            IOrderRepository orderRepository,
+            IWishlistRepository wishlistRepository,
+            ILogger<AccountDataExportController> logger)
         {
             _billingProfileRepository = billingProfileRepository;
-            _steamOrderRepository = steamOrderRepository;
+            _orderRepository = orderRepository;
             _wishlistRepository = wishlistRepository;
+            _logger = logger;
             _customerService = new CustomerService();
             _paymentMethodService = new PaymentMethodService();
         }
 
+        /// <summary>
+        /// Копия своих данных (право доступа и переносимости, GDPR): профиль оплаты, оплаченные заказы, список
+        /// желаемого и сохранённые карты (только система и последние цифры). Ключи активации в выгрузку не попадают:
+        /// на сайте они открываются только после ввода пароля, и архив не должен обходить эту защиту.
+        /// </summary>
         [HttpGet("data-export")]
         public async Task<IActionResult> Export()
         {
@@ -43,49 +51,86 @@ namespace SuperBot.WebApi.Controllers
                 return Unauthorized();
             }
 
-            var profile = await _billingProfileRepository.GetByUserIdAsync(userId);
-            if (profile == null)
+            // Скачивание ничего не записывает: нет профиля — выгружаем то, что известно из входа.
+            var profile = await _billingProfileRepository.GetByUserIdAsync(userId) ?? new BillingProfile
             {
-                profile = new BillingProfile
-                {
-                    UserId = userId,
-                    DisplayName = User.GetDisplayName(),
-                    Email = User.GetEmail(),
-                    HideOwnedGamesInProfile = false
-                };
-                await _billingProfileRepository.UpsertAsync(profile);
-            }
-            var orders = await _steamOrderRepository.GetAllOrdersAsync();
+                UserId = userId,
+                DisplayName = User.GetDisplayName(),
+                Email = User.GetEmail()
+            };
+            // Только свои заказы и прямо запросом в базу — раньше читались все заказы магазина, да ещё из старой
+            // коллекции SteamOrders, в которую магазин давно не пишет: заказов в выгрузке не было ни у кого.
+            var orders = await _orderRepository.GetOrdersByUsersAsync(User.GetOrderOwnerAliases());
             var wishlistIds = await _wishlistRepository.GetGameIdsAsync(userId);
 
             var paymentMethods = Array.Empty<object>();
-            if (!string.IsNullOrWhiteSpace(profile?.StripeCustomerId))
+            if (!string.IsNullOrWhiteSpace(profile.StripeCustomerId))
             {
-                var customer = await _customerService.GetAsync(profile.StripeCustomerId);
-                var defaultPaymentMethodId = profile.DefaultPaymentMethodId ?? customer?.InvoiceSettings?.DefaultPaymentMethodId;
-                var methods = await _paymentMethodService.ListAsync(new PaymentMethodListOptions
+                try
                 {
-                    Customer = profile.StripeCustomerId,
-                    Type = "card"
-                });
+                    var customer = await _customerService.GetAsync(profile.StripeCustomerId);
+                    var defaultPaymentMethodId = profile.DefaultPaymentMethodId ?? customer?.InvoiceSettings?.DefaultPaymentMethodId;
+                    var methods = await _paymentMethodService.ListAsync(new PaymentMethodListOptions
+                    {
+                        Customer = profile.StripeCustomerId,
+                        Type = "card"
+                    });
 
-                paymentMethods = methods.Data.Select(method => new
+                    paymentMethods = methods.Data.Select(method => new
+                    {
+                        Brand = method.Card?.Brand,
+                        Last4 = method.Card?.Last4,
+                        ExpMonth = method.Card?.ExpMonth,
+                        ExpYear = method.Card?.ExpYear,
+                        IsDefault = method.Id == defaultPaymentMethodId
+                    }).ToArray();
+                }
+                catch (StripeException ex)
                 {
-                    method.Id,
-                    Brand = method.Card?.Brand,
-                    Last4 = method.Card?.Last4,
-                    ExpMonth = method.Card?.ExpMonth,
-                    ExpYear = method.Card?.ExpYear,
-                    IsDefault = method.Id == defaultPaymentMethodId
-                }).ToArray();
+                    // Stripe недоступен — отдаём остальное, а не ошибку на всю выгрузку.
+                    _logger.LogWarning(ex, "Data export: saved cards are unavailable for {UserId}.", userId);
+                }
             }
 
-            var identifiers = User.GetAccountIdentifiers();
             var exportPayload = new
             {
-                Profile = profile,
+                Profile = new
+                {
+                    profile.DisplayName,
+                    profile.Email,
+                    profile.BillingDetails
+                },
                 WishlistGameIds = wishlistIds,
-                Orders = orders.Where(order => identifiers.Contains(order.Username)).Where(order => order.IsPaid).ToList(),
+                Orders = orders
+                    .Where(order => order.IsPaid)
+                    .OrderByDescending(order => order.PaidAt ?? order.OrderDate)
+                    .Select(order => new
+                    {
+                        Order = string.IsNullOrWhiteSpace(order.OrderNumber) ? order.Id.ToString() : order.OrderNumber,
+                        order.OrderDate,
+                        order.PaidAt,
+                        order.Status,
+                        Currency = order.Currency ?? "USD",
+                        order.SubtotalAmount,
+                        order.DiscountTotal,
+                        order.TaxTotal,
+                        order.TotalAmount,
+                        order.RefundedAmount,
+                        order.PromoCode,
+                        PaidWith = string.IsNullOrWhiteSpace(order.PaidWithLast4) ? order.PaidWithWallet : $"{order.PaidWithBrand} •••• {order.PaidWithLast4}",
+                        order.BuyerCountry,
+                        Items = order.Items.Select(item => new
+                        {
+                            item.Title,
+                            item.EditionTitle,
+                            item.Platform,
+                            item.Quantity,
+                            item.FinalUnitPrice,
+                            item.LineTotal,
+                            item.RefundedQuantity
+                        })
+                    })
+                    .ToList(),
                 PaymentMethods = paymentMethods,
                 ExportedAt = DateTime.UtcNow
             };

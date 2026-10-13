@@ -36,8 +36,14 @@ public class SupportLlmStartupLogger : IHostedService
                 _options.OllamaBaseUrl, _options.OllamaModel);
         }
 
-        await CheckOllamaAsync(wantsDeepSeek, cancellationToken);
+        // Проверка — только запись в лог, ждать её нельзя: хост не начинает принимать запросы, пока не стартуют все
+        // IHostedService, а без Ollama запрос висел до таймаута HttpClient (100 с) — столько сайт и лежал после
+        // каждого рестарта. Теперь фоном и не дольше OllamaCheckTimeout.
+        _ = Task.Run(() => CheckOllamaAsync(wantsDeepSeek, CancellationToken.None), CancellationToken.None);
+        await Task.CompletedTask;
     }
+
+    private static readonly TimeSpan OllamaCheckTimeout = TimeSpan.FromSeconds(5);
 
     private void ReportDeepSeek()
     {
@@ -80,7 +86,9 @@ public class SupportLlmStartupLogger : IHostedService
         try
         {
             var url = $"{_options.OllamaBaseUrl.TrimEnd('/')}/api/tags";
-            var response = await _httpClient.GetAsync(url, cancellationToken);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(OllamaCheckTimeout);
+            var response = await _httpClient.GetAsync(url, timeout.Token);
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Ollama ({Role}) is reachable.", role);

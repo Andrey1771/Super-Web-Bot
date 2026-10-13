@@ -156,6 +156,7 @@ public class DeepSeekChatClient : ISupportLlmClient
             User = string.IsNullOrWhiteSpace(_options.AppTag) ? null : _options.AppTag,
             Temperature = request.Temperature,
             MaxTokens = request.MaxOutputTokens,
+            Thinking = string.IsNullOrWhiteSpace(_options.DeepSeekThinking) ? null : new ThinkingOption { Type = _options.DeepSeekThinking.Trim() },
             Stream = stream,
             // Расход токенов нужен для дневного бюджета, иначе в стриме его не присылают.
             StreamOptions = stream ? new StreamOptions { IncludeUsage = true } : null,
@@ -238,6 +239,14 @@ public class DeepSeekChatClient : ISupportLlmClient
 
         /// <summary>Кто спрашивает: метка приложения, чтобы отличать нас в логах провайдера.</summary>
         public string? User { get; set; }
+
+        /// <summary>Рассуждение перед ответом (DeepSeek V4): см. <see cref="SupportChatOptions.DeepSeekThinking"/>.</summary>
+        public ThinkingOption? Thinking { get; set; }
+    }
+
+    private class ThinkingOption
+    {
+        public string Type { get; set; } = "disabled";
     }
 
     private class StreamOptions

@@ -1,10 +1,10 @@
 namespace SuperBot.WebApi.Demo;
 
 /// <summary>
-/// Демо-сайт для портфолио (секция Demo, env Demo__*). Включается на отдельной установке: у каждого посетителя
-/// своя копия базы-шаблона на сутки (песочница), письма складываются в «демо-почту», а действия, которые
-/// изменили бы сайт для всех (общие демо-аккаунты Keycloak, настройки сайта, файлы медиа), — только просмотр.
-/// На обычном магазине выключено и ни на что не влияет.
+/// Демо-сайт для портфолио (секция Demo, env Demo__*). Работает как обычный магазин: посетители регистрируются,
+/// покупают тестовой картой Stripe и пишут в поддержку. Отличия: общий демо-админ видит всю админку, но ничего
+/// не меняет (<see cref="DemoGuard"/>), почты посетителей ему показываются замаскированными, а ключи демо-игр
+/// не кончаются (<see cref="DemoKeyTopUpWorker"/>). На обычном магазине выключено и ни на что не влияет.
 /// </summary>
 public sealed class DemoOptions
 {
@@ -12,39 +12,28 @@ public sealed class DemoOptions
 
     public bool Enabled { get; set; }
 
-    /// <summary>Имя базы песочницы — этот префикс + id. Mongo ограничивает имя базы 64 байтами.</summary>
-    public string SandboxDatabasePrefix { get; set; } = "tsdemo_";
-
-    /// <summary>Сколько живёт песочница.</summary>
-    public int SandboxHours { get; set; } = 24;
-
-    /// <summary>Сколько песочниц может жить одновременно: каждая — копия базы, сервер у демо маленький.</summary>
-    public int MaxSandboxes { get; set; } = 20;
-
     /// <summary>
-    /// Сколько готовых копий держать про запас. Копия шаблона собирается секунды (индексы — операции над базой),
-    /// а посетитель получает запасную сразу; новая собирается в фоне. 0 — собирать по запросу.
-    /// </summary>
-    public int SpareSandboxes { get; set; } = 2;
-
-    /// <summary>Через сколько дней невыданная запасная копия пересобирается (шаблон мог обновиться).</summary>
-    public int SpareMaxAgeDays { get; set; } = 7;
-
-    /// <summary>Сколько новых песочниц можно открыть с одного адреса за сутки.</summary>
-    public int MaxSandboxesPerIpPerDay { get; set; } = 3;
-
-    public string CookieName { get; set; } = "ts_demo";
-
-    /// <summary>
-    /// Демо-аккаунты, которые показываются на странице входа в демо. Пароли публичные намеренно: это общие
-    /// учётки демо, сменить их из песочницы нельзя (см. <see cref="DemoGuard"/>).
+    /// Демо-аккаунты, которые показываются посетителю (окно приглашения, страница входа). Пароли публичные
+    /// намеренно. Учётка с ролью admin — «только просмотр»: менять пароль, профиль и данные сайта ей нельзя.
     /// </summary>
     public List<DemoAccount> Accounts { get; set; } = [];
+
+    /// <summary>Сколько ключей держать у каждого товара (и издания): покупки посетителей не должны его распродать.</summary>
+    public int KeysPerProduct { get; set; } = 25;
+
+    /// <summary>Как часто доливать ключи до <see cref="KeysPerProduct"/>.</summary>
+    public int KeyTopUpMinutes { get; set; } = 60;
+
+    /// <summary>
+    /// Домены самого магазина: почты на них демо-админу не маскируются — это адрес поддержки и рассылок, а не посетитель
+    /// (иначе «help@…» превращался в «h***@…» и выглядел чьей-то личной почтой). Поддомены тоже свои.
+    /// </summary>
+    public List<string> OwnEmailDomains { get; set; } = ["tale-shop.com", "taleshop.dev"];
 }
 
 public sealed class DemoAccount
 {
-    /// <summary>admin или buyer — какую роль показывает карточка.</summary>
+    /// <summary>admin — демо-админ «только просмотр»; buyer — общий покупатель (сейчас не используется).</summary>
     public string Role { get; set; } = "buyer";
     public string Username { get; set; } = "";
     public string Password { get; set; } = "";

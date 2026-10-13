@@ -75,7 +75,7 @@ const StoreGameCard: React.FC<StoreGameCardProps> = ({
                 ratio="square"
                 sizes="(max-width: 640px) 48vw, (max-width: 1100px) 30vw, 280px"
                 title={game.title}
-                src={game.imagePath}
+                src={game.imagePath} color={game.coverColor}
                 baseUrl={baseUrl}
                 imgClassName="pointer-events-none"
             >

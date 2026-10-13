@@ -11,3 +11,12 @@ export const formatReleaseDate = (value?: string | null): string | null => {
         ? null
         : parsed.toLocaleDateString(currentLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
 };
+
+/**
+ * «Выйдет 28 окт. 2026 г.» / «Дата выхода пока не объявлена» — подпись невышедшей игры там, где вместо цены и корзины
+ * (рекомендации). t — переводчик вызывающего компонента.
+ */
+export const releaseLabel = (t: (key: string, options?: Record<string, unknown>) => string, value?: string | null): string => {
+    const date = formatReleaseDate(value);
+    return date ? t('purchase.releases', { date }) : t('purchase.releaseTba');
+};

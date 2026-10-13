@@ -696,6 +696,16 @@
   }
 }
 
+/* Видео идёт, панель плеера спряталась — стрелки (и счётчик в просмотрщике) прячутся вместе с ней, кадр чистый.
+   Касание или движение мыши возвращает всё сразу. */
+.game-media-main.is-video-idle .game-media-arrow,
+.media-lightbox.is-video-idle .media-lightbox__arrow,
+.media-lightbox.is-video-idle .media-lightbox__counter {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
 /* Картинка в большом окне — кнопка: клик открывает просмотрщик. Курсор — рука, как у Steam и у всех
    карточек сайта: клик открывает просмотр, а не приближает фрагмент, лупа обещала бы лишнее. */
 .game-media-zoom {
@@ -814,6 +824,21 @@
   color: #ffffff;
 }
 
+/* Телефон: подпись под кадром не сдвигает его вверх — кадр стоит ровно по центру экрана, на одной линии со
+   стрелками (они центрируются по экрану). Места снизу на вертикальном экране для подписи хватает. */
+@media (max-width: 768px) {
+  .media-lightbox__stage {
+    position: relative;
+  }
+
+  .media-lightbox__caption {
+    position: absolute;
+    top: calc(100% + var(--space-12));
+    left: 0;
+    right: 0;
+  }
+}
+
 .media-lightbox__arrow,
 .media-lightbox__close {
   position: absolute;
@@ -825,7 +850,7 @@
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
 .media-lightbox__arrow:hover,
@@ -929,6 +954,28 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
+  transition: opacity 0.2s ease;
+}
+
+/* Телефон боком: кадр во всю высоту экрана, без полей, подписи и счётчика — почти полный экран и там,
+   где Safari не даёт развернуть страницу (iPhone). */
+@media (orientation: landscape) and (max-height: 540px) {
+  .media-lightbox__frame {
+    width: min(100vw, calc(100dvh * 16 / 9));
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .media-lightbox__caption,
+  .media-lightbox__counter {
+    display: none;
+  }
+
+  .media-lightbox__close {
+    top: var(--space-8);
+    right: var(--space-8);
+    background: rgba(15, 23, 42, 0.45);
+  }
 }
 
 @media (max-width: 640px) {
@@ -2429,6 +2476,14 @@
 /* Картинка одна в абзаце — сам абзац не должен добавлять второй отступ снизу. */
 .gd-markdown p:has(> img:only-child) {
   margin-bottom: 0;
+}
+
+/* Декоративная полоска-разделитель из Steam: без рамки и скругления, во всю ширину колонки и с узкими отступами. */
+.gd-markdown img.is-divider {
+  width: 100%;
+  margin: var(--space-8) 0 var(--space-12);
+  border: none;
+  border-radius: 0;
 }
 
 .gd-markdown a {

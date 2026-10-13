@@ -956,7 +956,9 @@
       "generic_decline": "Your bank declined the payment without a reason. Try another card.",
       "authentication_required": "Your bank requires additional authentication. Please try again."
     },
-    "taxSales": "Sales tax"
+    "taxSales": "Sales tax",
+    "stripeBlocked": "The Stripe payment form did not load. It may be blocked by your network or an ad blocker — try another connection (for example, mobile data or a VPN) or disable the blocker for this site, then reload the page.",
+    "reloadPage": "Reload page"
   },
   "cashback": {
     "badge": "+{{amount}} cashback",
@@ -1038,7 +1040,9 @@
     "removeCard": "Remove card",
     "card": "Card",
     "brandCard": "{{brand}} card",
-    "paymentCard": "Payment card"
+    "paymentCard": "Payment card",
+    "stripeUnavailable": "The Stripe card form did not load. It may be blocked by your network or an ad blocker — try another connection or disable the blocker for this site.",
+    "demoViewer": "The demo admin account is view-only, so it cannot link cards. Create your own account to try it with a test card."
   },
   "account": {
     "nav": {
@@ -1238,10 +1242,14 @@
       "linkedAccount": "Linked account",
       "connectTelegram": "Connect Telegram",
       "telegramUnavailable": "Telegram linking is unavailable right now — the bot is not configured on the server. Your keys stay available here in your account.",
+      "telegramDemoViewer": "The demo admin can't connect Telegram: notifications from a shared public account would reach whoever linked it. Create your own account to try it.",
       "accountSecurity": "Account & security",
       "securityPointer": "Password, two-factor authentication, active sessions and account deletion are managed in Security. Payment methods and profile privacy live in Billing.",
       "openSecurity": "Open Security",
-      "billingPrivacy": "Billing & privacy",
+      "billingPrivacy": "Billing",
+      "securityTile": "Security",
+      "securityTileText": "Password, 2FA, sessions, account deletion",
+      "billingTileText": "Payment methods, invoices, billing details",
       "disconnectTitle": "Disconnect Telegram?",
       "disconnectText": "Key deliveries to your Telegram chat will stop. You can reconnect anytime.",
       "removeAvatarTitle": "Remove avatar?",
@@ -1259,8 +1267,11 @@
         "profileSaveFailed": "Profile save failed. Please try again.",
         "prefsSaved": "Notification preferences saved.",
         "newsletterFailed": "Failed to update the newsletter subscription. Please try again.",
-        "avatarRemoveLater": "Avatar will be removed after Save changes."
-      }
+        "avatarRemoveLater": "Avatar will be removed after Save changes.",
+        "exportFailed": "Unable to download your data. Please try again."
+      },
+      "dataTile": "Download my data",
+      "dataTileText": "Profile, paid orders, wishlist and saved cards — one .zip file"
     },
     "avatar": {
       "title": "Edit avatar",
@@ -1288,6 +1299,8 @@
       "subtitle": "Manage password, email verification and 2FA.",
       "unavailable": "Security settings unavailable",
       "unavailableText": "We could not load two-factor authentication and email verification. Changing your password below still works.",
+      "demoViewerTitle": "Demo admin — view only",
+      "demoViewerText": "This is the shared demo account with a public password, so its security settings are locked: if someone enabled 2FA or changed the password, everyone else would be locked out. Create your own account to try 2FA, password changes and the rest.",
       "checklist": {
         "verifyEmail": "Verify your email",
         "resendEmail": "Resend email",
@@ -1419,9 +1432,6 @@
       "invoice": "Invoice",
       "noInvoices": "No invoices available yet.",
       "downloadPdf": "Download PDF",
-      "privacy": "Privacy & data",
-      "hideOwned": "Hide owned games in profile",
-      "downloadData": "Download my data",
       "editDetails": "Edit billing details",
       "editDetailsText": "Update your billing address for invoices.",
       "addressLine": "Address line",
@@ -1433,7 +1443,6 @@
         "profileLoadFailed": "Unable to load billing profile.",
         "methodsLoadFailed": "Unable to load payment methods.",
         "invoicesLoadFailed": "Unable to load invoices.",
-        "privacyFailed": "Unable to update privacy setting.",
         "profileUpdated": "Billing profile updated.",
         "profileSaveFailed": "Unable to save profile changes.",
         "defaultUpdated": "Default payment method updated.",
@@ -1441,7 +1450,6 @@
         "methodRemoved": "Payment method removed.",
         "removeFailed": "Unable to remove payment method.",
         "invoiceFailed": "Unable to download invoice.",
-        "exportFailed": "Unable to download data export.",
         "cardLinked": "Card linked successfully."
       }
     },
@@ -3043,39 +3051,30 @@
   },
   "demo": {
     "badge": "Demo",
-    "barLabel": "Demo site",
-    "templateHint": "This is a demo store. Look around freely — to buy and use the admin panel, open your own copy.",
-    "ownCopy": "Your own copy of the store · {{hours}} h {{minutes}} min left",
-    "open": "Open my copy",
-    "opening": "Opening…",
-    "mailbox": "Demo mailbox",
-    "accountsAndCard": "Accounts & test card",
-    "reset": "Start over",
-    "resetConfirm": "Discard all your changes?",
-    "resetYes": "Yes, start over",
-    "resetFailed": "Could not reset the copy. Please try again.",
-    "openFailed": "Could not open a copy. Please try again.",
-    "full": "All demo copies are taken right now. Please try again in a while.",
-    "ipLimit": "You have opened several copies today — please continue in the one you have.",
-    "readonly": "Disabled in the demo: this would change the site for every visitor, not just your copy.",
+    "readonly": "Demo: the admin account is view-only. Create your own account to buy and test the store.",
     "welcomeTitle": "This is a demo store",
-    "welcomeText": "Everything works for real: catalog, cart, test-card checkout, account and admin panel. Open your own copy of the store — it is yours for {{hours}} hours: change prices, add games, make purchases. Only you see your changes.",
-    "roleAdmin": "Administrator",
-    "roleBuyer": "Buyer",
+    "welcomeText": "Everything works like a real store: create your own account, buy any game with the test card — no real money is charged — and get the key on the order page and by email. Want to see the admin side? Sign in as the demo admin: the whole admin panel, view-only.",
+    "roleAdmin": "Administrator · view only",
     "login": "Login",
     "password": "Password",
     "signInAdmin": "Sign in as admin",
-    "signInBuyer": "Sign in as buyer",
     "copy": "Copy",
     "copied": "Copied",
     "testCard": "Test card",
     "testCardNote": "Any future expiry date and any CVC. No real money is charged.",
     "continue": "Continue",
     "justLook": "Just look around",
-    "mailboxText": "Emails the store sent from your copy: keys after purchase, confirmations, cashback. Nothing leaves the demo.",
-    "mailboxEmpty": "No emails yet — buy something and the key will arrive here.",
-    "collapse": "Collapse",
-    "expand": "Show demo panel",
-    "resetting": "Restoring…"
+    "fabLabel": "Demo: accounts and test card",
+    "panelTitle": "Demo store",
+    "whatIsThis": "What is this site?",
+    "findLater": "Accounts and the test card are always in the DEMO circle at the bottom left.",
+    "checkoutHint": "Demo checkout: pay with the test card — no real money is charged.",
+    "fabHint": "The demo admin account and the test card — all here.",
+    "panelText": "Create your own account and buy with the test card. The admin panel is open in view-only mode.",
+    "register": "Create my account",
+    "cardExpiry": "Expiry",
+    "cardCvc": "CVC",
+    "cardOther": "Name, ZIP",
+    "cardOtherValue": "any"
   }
 }

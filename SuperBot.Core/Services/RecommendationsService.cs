@@ -55,10 +55,31 @@ namespace SuperBot.Core.Services
 
             // Черновики — недоделанные карточки, снятые с витрины, — не рекомендуем: по ссылке
             // покупатель получил бы 404. Раньше подборка шла по всему каталогу вместе с ними.
-            var allGames = await WithoutDraftsAsync(await _gameRepository.GetAllAsync());
+            // Невышедшие в основной подбор не идут: касса их не продаст («isn't released yet»), а запасная подборка идёт по
+            // дате выхода — от новых к старым, и будущие релизы забивали бы её целиком.
+            var utcNow = DateTime.UtcNow;
+            var catalog = await WithoutDraftsAsync(await _gameRepository.GetAllAsync());
+            var allGames = catalog
+                .Where(game => game != null && !GameRelease.IsUpcoming(game.ReleaseDate, utcNow))
+                .ToList();
+
+            // Но одну — ближайшую по дате выхода, не купленную и не в желаемом — показываем последней: витрина рисует у неё
+            // дату выхода и «В желаемое» вместо цены и корзины. Только в подборках от трёх карточек, чтобы остальное было
+            // тем, что можно купить сейчас.
+            var upcoming = normalizedLimit >= 3
+                ? catalog
+                    .Where(game => game != null && !string.IsNullOrWhiteSpace(game.Id)
+                        && GameRelease.IsUpcoming(game.ReleaseDate, utcNow) && !protectedIds.Contains(game.Id))
+                    .OrderBy(game => game.ReleaseDate)
+                    .FirstOrDefault()
+                : null;
+            var releasedLimit = upcoming == null ? normalizedLimit : normalizedLimit - 1;
+            IReadOnlyList<RecommendationItem> WithUpcoming(IReadOnlyList<RecommendationItem> items) =>
+                upcoming == null ? items : items.Append(new RecommendationItem { Game = upcoming, Reason = "Coming soon" }).ToList();
+
             if (!wishlistIds.Any() && viewed.Count == 0)
             {
-                var fallback = BuildFallbackRecommendations(allGames, excludeIds, normalizedLimit);
+                var fallback = WithUpcoming(BuildFallbackRecommendations(allGames, excludeIds, releasedLimit));
                 LogResult(userId, wishlistIds.Count, viewed.Count, fallback.Count, stopwatch);
                 return fallback;
             }
@@ -123,7 +144,7 @@ namespace SuperBot.Core.Services
                 .ThenByDescending(item => item.Game.ReleaseDate)
                 .ToList();
 
-            var diversified = DiversifyByType(candidates, normalizedLimit, maxSameTypeInRow: 2);
+            var diversified = DiversifyByType(candidates, releasedLimit, maxSameTypeInRow: 2);
 
             var recommendations = diversified
                 .Select(item => new RecommendationItem
@@ -138,12 +159,13 @@ namespace SuperBot.Core.Services
             // исключая только купленное и то, что уже в вишлисте.
             if (recommendations.Count == 0)
             {
-                recommendations = BuildFallbackRecommendations(allGames, protectedIds, normalizedLimit).ToList();
+                recommendations = BuildFallbackRecommendations(allGames, protectedIds, releasedLimit).ToList();
             }
 
-            LogResult(userId, wishlistIds.Count, viewed.Count, recommendations.Count, stopwatch);
+            var result = WithUpcoming(recommendations);
+            LogResult(userId, wishlistIds.Count, viewed.Count, result.Count, stopwatch);
 
-            return recommendations;
+            return result;
         }
 
         private void LogResult(string userId, int wishlistCount, int viewedCount, int recommendationCount, Stopwatch stopwatch)

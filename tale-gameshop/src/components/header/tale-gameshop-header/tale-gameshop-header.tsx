@@ -29,6 +29,7 @@ import HeaderSearch from "../header-search/header-search";
 import { useSitePreferences, formatMoney } from "../../../context/site-preferences";
 import { getCatalogPage } from "../../../api/catalogApi";
 import { gamesCatalogPath } from "../../../utils/software";
+import EmailText from "../../common/EmailText";
 
 // Компакт-режим шапки: скролл вниз складывает ряд навигации, остаётся одна строка
 // (лого/поиск/корзина). Разворот — скролл вверх, наведение мыши или фокус клавиатуры.
@@ -630,7 +631,7 @@ export default function TaleGameshopHeader() {
                                     </button>
                                     <div className={`account-dropdown ${isAccountOpen ? "open" : ""}`}>
                                         <div className="account-signed-in">
-                                            {t("header.signedInAs")} <span>{email}</span>
+                                            {t("header.signedInAs")} <span><EmailText email={email} /></span>
                                         </div>
                                         <div className="account-links">
                                             <Link to="/account" className="account-link" onClick={() => setIsAccountOpen(false)}>
@@ -879,7 +880,7 @@ export default function TaleGameshopHeader() {
                                 </span>
                                 <FontAwesomeIcon className="drawer-account-caret" icon={faChevronDown} />
                             </button>
-                            <div className="drawer-account-email">{t("header.signedInAs")} {email}</div>
+                            <div className="drawer-account-email">{t("header.signedInAs")} <EmailText email={email} /></div>
                             <div className={`drawer-account-links ${isDrawerAccountOpen ? "open" : ""}`}>
                                 <Link to="/account" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
                                     {t("header.profile")}

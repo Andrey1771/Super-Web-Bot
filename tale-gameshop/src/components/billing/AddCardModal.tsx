@@ -9,7 +9,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock } from '@fortawesome/free-solid-svg-icons';
 import { getStripe } from '../../utils/stripe-loader';
 import CardBrandIcon from './CardBrandIcon';
-
 const elementStyle = {
     style: {
         base: {
@@ -39,11 +38,14 @@ interface AddCardModalProps {
     onSuccess: () => void;
 }
 
-const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 'onSuccess' | 'onCreateSetupIntent'>> = ({
+const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 'onSuccess' | 'onCreateSetupIntent'> & {
+    stripeUnavailable: boolean;
+}> = ({
     displayName,
     onClose,
     onSuccess,
-    onCreateSetupIntent
+    onCreateSetupIntent,
+    stripeUnavailable
 }) => {
     const { t } = useTranslation();
     const stripe = useStripe();
@@ -120,8 +122,7 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
         <form className="billing-modal-body" onSubmit={handleSubmit}>
             <h3>{t('billing.linkCard')}</h3>
             <p className="billing-modal-subtitle">{t('billing.linkSubtitle')}</p>
-            <div className="billing-info-banner">{t('billing.verifyNote')}</div>
-            <div className="billing-card-form">
+            <div className="billing-info-banner">{t('billing.verifyNote')}</div>            <div className="billing-card-form">
                 <label className="billing-field">
                     <span>{t('billing.cardNumber')}</span>
                     <div className="billing-stripe-input">
@@ -164,7 +165,10 @@ const AddCardForm: React.FC<Pick<AddCardModalProps, 'displayName' | 'onClose' | 
                     <span>{t('billing.secure')}</span>
                 </div>
             </div>
-            {errorMessage && <div className="billing-error-text">{errorMessage}</div>}
+            {/* Stripe.js не загрузился (сеть или блокировщик режут js.stripe.com) — поля остаются пустыми рамками,
+                поэтому говорим об этом прямо, а не «попробуйте ещё раз». */}
+            {stripeUnavailable && <div className="billing-error-text" role="alert">{t('billing.stripeUnavailable')}</div>}
+            {errorMessage && !stripeUnavailable && <div className="billing-error-text">{errorMessage}</div>}
             <div className="billing-modal-actions">
                 <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting}>
                     {t('common.cancel')}
@@ -189,14 +193,23 @@ const AddCardModal: React.FC<AddCardModalProps> = ({
         fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' }],
         locale: stripeLocaleFor(lang),
     }), [lang]);
+    // Загружаем Stripe.js только когда модалку действительно открыли: до этого момента
+    // она возвращает null, и трогать чужой CDN незачем.
+    const stripePromise = isOpen ? getStripe() : null;
+    const [stripeUnavailable, setStripeUnavailable] = useState(false);
+    useEffect(() => {
+        let active = true;
+        stripePromise?.then((stripe) => {
+            if (active) setStripeUnavailable(!stripe);
+        });
+        return () => {
+            active = false;
+        };
+    }, [stripePromise]);
 
     if (!isOpen) {
         return null;
     }
-
-    // Загружаем Stripe.js только когда модалку действительно открыли: до этого момента
-    // она возвращает null, и трогать чужой CDN незачем.
-    const stripePromise = getStripe();
 
     if (!stripePromise) {
         return (
@@ -225,6 +238,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({
                         onClose={onClose}
                         onCreateSetupIntent={onCreateSetupIntent}
                         onSuccess={onSuccess}
+                        stripeUnavailable={stripeUnavailable}
                     />
                 </Elements>
             </div>

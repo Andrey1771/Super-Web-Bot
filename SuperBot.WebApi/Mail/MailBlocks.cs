@@ -18,11 +18,18 @@ internal static class MailBlocks
 
     public static string Enc(string value) => WebUtility.HtmlEncode(value);
 
+    /// <summary>
+    /// Значок письма в кружке. Центрируется ячейкой таблицы (align + valign), а не высотой строки: почтовые клиенты рисуют
+    /// эмодзи своей картинкой со своим сдвигом (Gmail — ниже базовой линии), и при line-height значок съезжал вниз и вбок.
+    /// </summary>
     public static string Hero(string glyph) =>
-        "<div style=\"text-align:center;padding:2px 0 16px;\">" +
-        "<div style=\"display:inline-block;width:56px;height:56px;line-height:56px;text-align:center;border-radius:50%;" +
-        $"background:{SoftBg};border:1px solid {SoftBorder};font-size:26px;\">{glyph}</div>" +
-        "</div>";
+        "<table role=\"presentation\" align=\"center\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:4px auto 18px;border-collapse:separate;\">" +
+        // Ширина 54 + рамка = 56, высота ячейки таблицы рамку уже включает: ровный круг 56×56, а не овал 58×56.
+        "<tr><td align=\"center\" valign=\"middle\" width=\"54\" height=\"56\" " +
+        $"style=\"width:54px;height:56px;padding:0;border-radius:50%;background:{SoftBg};border:1px solid {SoftBorder};" +
+        "font-size:26px;line-height:26px;mso-line-height-rule:exactly;text-align:center;vertical-align:middle;" +
+        "font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;\">" +
+        $"{glyph}</td></tr></table>";
 
     public static string Heading(string text) =>
         $"<div style=\"text-align:center;font-size:25px;font-weight:800;color:{Ink};margin:2px 0 12px;letter-spacing:-0.2px;\">{Enc(text)}</div>";

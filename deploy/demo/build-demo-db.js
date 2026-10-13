@@ -99,7 +99,8 @@ for (const name of db.getCollectionNames()) {
     db[name].deleteMany({});
   }
 }
-db.PromoCodes.updateMany({}, { $set: { UsedCount: 0, usedCount: 0 } });
+// Счётчиков в самих промокодах нет: использования — в PromoCodeUsages, она очищена выше. (Раньше здесь писалось
+// поле UsedCount, которого нет в модели, — и список промокодов в админке демо падал с 500.)
 
 // Ключи Google Analytics и почта специалиста стенда в демо не едут.
 db.AnalyticsSettings.updateMany({}, {

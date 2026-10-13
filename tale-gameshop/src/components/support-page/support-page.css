@@ -226,6 +226,8 @@
 .support-search-card input {
   border: none;
   flex: 1;
+  /* Без этого поле не ужимается меньше своей «естественной» ширины и выталкивает метку темы за край. */
+  min-width: 0;
   font-size: 16px;
   padding: var(--space-8) 0;
   background: transparent;
@@ -538,13 +540,15 @@ button.support-contact-card:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* Поиск остаётся строкой, как у любого поля поиска: лупа, поле, метка темы. В столбик (раньше) лупа и метка
+     вставали над и под полем, и карточка выглядела сломанной. Тесно — уже отступы и метка. */
   .support-search-card {
-    flex-direction: column;
-    align-items: flex-start;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16);
   }
 
   .support-search-active {
-    align-self: flex-start;
+    padding: 5px 8px;
   }
 
   .support-hero-channel {

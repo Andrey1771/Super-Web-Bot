@@ -13,6 +13,7 @@
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.25" />
     <PackageReference Include="Hangfire.Mongo" Version="1.17.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.13.0" />
+    <PackageReference Include="MailKit" Version="4.18.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
     <!-- Картинки: SkiaSharp (MIT). ImageSharp 4 требует платный ключ даже для сборки. -->
     <PackageReference Include="SkiaSharp" Version="4.153.1" />

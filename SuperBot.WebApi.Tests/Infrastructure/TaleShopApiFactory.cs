@@ -53,6 +53,9 @@ public class TaleShopApiFactory : WebApplicationFactory<Program>
 
         builder.UseSetting("ConnectionStrings:MongoDb", _mongo.ConnectionString);
         builder.UseSetting("Uploads:Root", UploadsRoot);
+        // Фоновая нарезка обложек перерезала бы файлы прямо во время тестов (например, после смены фокуса);
+        // тесты вызывают ICoverImages.PrerenderAsync сами.
+        builder.UseSetting("Covers:Warmup", "false");
         builder.UseSetting("ConnectionStrings:Name", $"taleshop_tests_{Guid.NewGuid():N}");
 
         // Валидный ФОРМАТ токена, чтобы конструктор TelegramBotClient не падал; наружу ничего не уходит.

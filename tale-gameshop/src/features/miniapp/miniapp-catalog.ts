@@ -10,6 +10,8 @@ export type MiniAppGame = {
     name: string;
     title: string;
     imagePath?: string;
+    /** Основной цвет обложки — фон рамки, пока картинка грузится. */
+    coverColor?: string | null;
     description?: string;
     price: number;
     finalPrice?: number;

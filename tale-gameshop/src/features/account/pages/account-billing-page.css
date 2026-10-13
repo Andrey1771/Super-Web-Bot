@@ -199,6 +199,29 @@
     color: var(--color-primary);
 }
 
+.billing-methods .billing-add-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.billing-methods .billing-add-btn:disabled:hover {
+    background: #faf8ff;
+    border-color: #d9d0f5;
+    color: inherit;
+}
+
+/* Демо-админ: почему карту не привязать — тем же видом, что пометка на странице безопасности. */
+.billing-demo-note {
+    margin: var(--space-16) 0 0;
+    padding: 12px var(--space-16);
+    border-left: 4px solid var(--color-primary);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    background: color-mix(in srgb, var(--color-primary) 6%, #ffffff);
+    color: var(--color-muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
 .billing-card-footer {
     display: flex;
     align-items: center;
@@ -332,36 +355,10 @@
     color: var(--color-muted);
 }
 
-.billing-privacy-card {
-    gap: var(--space-16);
-}
-
-.billing-privacy-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-16);
-    flex-wrap: wrap;
-}
-
 .billing-form-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-16);
-}
-
-.billing-checkbox {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-    color: var(--color-text);
-}
-
-.billing-checkbox input {
-    accent-color: var(--color-primary);
-    width: 16px;
-    height: 16px;
 }
 
 .billing-recommendations {
@@ -499,7 +496,11 @@
     gap: var(--space-16);
 }
 
+/* Высота задана, а не берётся из поля Stripe: пока (или если) iframe Stripe не загрузился, рамка оставалась
+   сплющенной полоской. */
 .billing-stripe-input {
+    box-sizing: border-box;
+    min-height: 46px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: 12px var(--space-16);

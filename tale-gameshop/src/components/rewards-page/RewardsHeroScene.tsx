@@ -132,7 +132,7 @@ const RewardsHeroScene: React.FC = () => {
                             transform: `rotate(${FAN[index].rotate}deg)`,
                         }}
                     >
-                        <Cover className="rw-cover" style={{ "--i": index } as React.CSSProperties} ratio="portrait" sizes="200px" src={game.imagePath} title={game.title ?? game.name} baseUrl={services.urlService.apiBaseUrl} imgProps={{ draggable: false }} />
+                        <Cover className="rw-cover" style={{ "--i": index } as React.CSSProperties} ratio="portrait" sizes="200px" src={game.imagePath} color={game.coverColor} title={game.title ?? game.name} baseUrl={services.urlService.apiBaseUrl} imgProps={{ draggable: false }} />
                     </div>
                 ))}
             </div>

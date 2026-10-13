@@ -63,6 +63,10 @@ export class KeycloakService implements IKeycloakService {
             case "onReady":
                 if (this._keycloak?.authenticated) {
                     this.stateChangedEmitter.emit('onAuthSuccess');
+                } else {
+                    // Сайт открыт без входа (в том числе после выхода — Keycloak возвращает на сайт уже гостем):
+                    // корзина убирает из браузера копию корзины аккаунта, иначе её увидел бы следующий гость.
+                    this.stateChangedEmitter.emit('onAuthGuest');
                 }
                 break;
             case "onInitError":

@@ -1,55 +1,36 @@
-using System.Net;
+using MailKit.Security;
 using SuperBot.WebApi.Mail;
 using Xunit;
 
 namespace SuperBot.WebApi.Tests;
 
 /// <summary>
-/// SMTP-клиент для всей почты: с логином и STARTTLS для настоящего почтового сервиса, без них —
-/// для Mailpit на стенде. И отказ от настроек, с которыми письма молча не ушли бы.
+/// Шифрование SMTP для всей почты: 465 — сразу (так принимает Cloudflare Email Sending), 587 — STARTTLS,
+/// Mailpit на стенде — без шифрования. И отказ от настроек, с которыми письма молча не ушли бы.
 /// </summary>
 public class SmtpClientsTests
 {
-    [Fact]
-    public void Real_provider_settings_give_an_authenticated_encrypted_client()
+    [Theory]
+    [InlineData(465, false, SecureSocketOptions.SslOnConnect)]
+    [InlineData(465, true, SecureSocketOptions.SslOnConnect)]
+    [InlineData(587, true, SecureSocketOptions.StartTls)]
+    [InlineData(1025, false, SecureSocketOptions.None)]
+    public void Port_and_tls_setting_pick_the_encryption(int port, bool useTls, SecureSocketOptions expected)
     {
-        using var client = SmtpClients.Create(new MailOptions
-        {
-            SmtpHost = "smtp.example.com",
-            SmtpPort = 587,
-            SmtpUsername = "postmaster@example.com",
-            SmtpPassword = "secret",
-            SmtpUseTls = true,
-        });
-
-        Assert.Equal("smtp.example.com", client.Host);
-        Assert.Equal(587, client.Port);
-        Assert.True(client.EnableSsl);
-        var credentials = Assert.IsType<NetworkCredential>(client.Credentials);
-        Assert.Equal("postmaster@example.com", credentials.UserName);
+        Assert.Equal(expected, SmtpClients.SecurityFor(new MailOptions { SmtpHost = "smtp.example.com", SmtpPort = port, SmtpUseTls = useTls }));
     }
 
     [Fact]
-    public void Local_trap_settings_give_a_plain_client_without_credentials()
+    public void Username_without_password_is_rejected()
     {
-        using var client = SmtpClients.Create(new MailOptions { SmtpHost = "mailpit", SmtpPort = 1025 });
-
-        Assert.False(client.EnableSsl);
-        Assert.Null(client.Credentials);
+        Assert.NotNull(new MailOptions { SmtpHost = "smtp.example.com", SmtpPort = 587, SmtpUsername = "user" }.Validate());
     }
 
     [Theory]
-    [InlineData(465, null, null)]
-    [InlineData(587, "user", null)]
-    public void Settings_that_would_lose_mail_are_rejected(int port, string? username, string? password)
+    [InlineData(587, true)]
+    [InlineData(465, false)]
+    public void Valid_settings_pass(int port, bool useTls)
     {
-        var options = new MailOptions { SmtpHost = "smtp.example.com", SmtpPort = port, SmtpUsername = username, SmtpPassword = password };
-        Assert.NotNull(options.Validate());
-    }
-
-    [Fact]
-    public void Valid_settings_pass()
-    {
-        Assert.Null(new MailOptions { SmtpHost = "smtp.example.com", SmtpPort = 587, SmtpUsername = "u", SmtpPassword = "p", SmtpUseTls = true }.Validate());
+        Assert.Null(new MailOptions { SmtpHost = "smtp.example.com", SmtpPort = port, SmtpUsername = "api_token", SmtpPassword = "p", SmtpUseTls = useTls }.Validate());
     }
 }

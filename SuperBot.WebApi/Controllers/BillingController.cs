@@ -16,20 +16,20 @@ namespace SuperBot.WebApi.Controllers
     public class BillingController : ControllerBase
     {
         private readonly IBillingProfileRepository _billingProfileRepository;
-        private readonly ISteamOrderRepository _steamOrderRepository;
+        private readonly IOrderRepository _orderRepository;
         private readonly IStripeCustomerGateway _stripe;
         private readonly SuperBot.WebApi.Services.IBillingCustomers _billingCustomers;
         private readonly ILogger<BillingController> _logger;
 
         public BillingController(
             IBillingProfileRepository billingProfileRepository,
-            ISteamOrderRepository steamOrderRepository,
+            IOrderRepository orderRepository,
             IStripeCustomerGateway stripe,
             SuperBot.WebApi.Services.IBillingCustomers billingCustomers,
             ILogger<BillingController> logger)
         {
             _billingProfileRepository = billingProfileRepository;
-            _steamOrderRepository = steamOrderRepository;
+            _orderRepository = orderRepository;
             _stripe = stripe;
             _billingCustomers = billingCustomers;
             _logger = logger;
@@ -78,11 +78,6 @@ namespace SuperBot.WebApi.Controllers
                     Country = request.BillingDetails.Country,
                     Phone = request.BillingDetails.Phone
                 };
-            }
-
-            if (request.HideOwnedGamesInProfile.HasValue)
-            {
-                profile.HideOwnedGamesInProfile = request.HideOwnedGamesInProfile.Value;
             }
 
             await _billingProfileRepository.UpsertAsync(profile);
@@ -225,8 +220,10 @@ namespace SuperBot.WebApi.Controllers
         [HttpGet("invoices")]
         public async Task<ActionResult<InvoicePageDto>> GetInvoices([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var identifiers = User.GetAccountIdentifiers();
-            if (identifiers.Count == 0)
+            // Счета — по настоящим заказам (Orders), тем же владельцам, что и в «Мои заказы». Раньше читалась старая
+            // коллекция SteamOrders, в которую магазин давно не пишет, — счетов не было ни у кого.
+            var aliases = User.GetOrderOwnerAliases();
+            if (aliases.Count == 0)
             {
                 return Unauthorized();
             }
@@ -234,11 +231,10 @@ namespace SuperBot.WebApi.Controllers
             var normalizedPage = Math.Max(1, page);
             var normalizedPageSize = Math.Clamp(pageSize, 1, 50);
 
-            var orders = await _steamOrderRepository.GetAllOrdersAsync();
+            var orders = await _orderRepository.GetOrdersByUsersAsync(aliases);
             var userOrders = orders
-                .Where(order => identifiers.Contains(order.Username))
                 .Where(order => order.IsPaid)
-                .OrderByDescending(order => order.OrderCreationDate)
+                .OrderByDescending(order => order.PaidAt ?? order.OrderDate)
                 .ToList();
 
             var totalCount = userOrders.Count;
@@ -248,11 +244,11 @@ namespace SuperBot.WebApi.Controllers
                 .Take(normalizedPageSize)
                 .Select(order => new InvoiceDto
                 {
-                    Id = order.Id,
-                    OrderId = order.PayId ?? order.Id,
-                    Date = order.OrderCreationDate,
-                    Amount = order.TotalAmount,
-                    Currency = "usd",
+                    Id = order.Id.ToString(),
+                    OrderId = OrderLabel(order),
+                    Date = order.PaidAt ?? order.OrderDate,
+                    Amount = OrderTotal(order),
+                    Currency = (order.Currency ?? "usd").ToLowerInvariant(),
                     PdfAvailable = true
                 })
                 .ToList();
@@ -274,33 +270,40 @@ namespace SuperBot.WebApi.Controllers
                 return BadRequest("InvoiceId is required.");
             }
 
-            var order = await _steamOrderRepository.GetOrderByIdAsync(invoiceId);
-            if (order == null)
+            // Чужой и неоплаченный заказ — «не найден», как в «Мои заказы»: не подсказываем, что такой номер есть.
+            var order = await _orderRepository.GetOrderByIdAsync(invoiceId);
+            var aliases = User.GetOrderOwnerAliases();
+            if (order == null || !order.IsPaid || !aliases.Contains(order.UserName ?? string.Empty))
             {
                 return NotFound();
             }
-            var identifiers = User.GetAccountIdentifiers();
-            if (!identifiers.Contains(order.Username))
-            {
-                return Forbid();
-            }
 
-            var profile = await GetOrCreateProfileAsync(User.GetUserId());
+            var profile = await _billingProfileRepository.GetByUserIdAsync(User.GetUserId());
+            var currency = (order.Currency ?? "USD").ToUpperInvariant();
             var lines = new List<string>
             {
                 "Tale Shop Invoice",
                 $"Invoice ID: {order.Id}",
-                $"Order ID: {order.PayId ?? order.Id}",
-                $"Customer: {profile?.DisplayName}",
-                $"Email: {profile?.Email}",
-                $"Date: {order.OrderCreationDate:yyyy-MM-dd}",
-                $"Amount: {order.TotalAmount:0.00} USD"
+                $"Order: {OrderLabel(order)}",
+                $"Customer: {profile?.DisplayName ?? User.GetDisplayName()}",
+                $"Email: {profile?.Email ?? User.GetEmail()}",
+                $"Date: {order.PaidAt ?? order.OrderDate:yyyy-MM-dd}",
+                ""
             };
+            lines.AddRange(order.Items.Select(item =>
+                $"{item.Title}{(string.IsNullOrWhiteSpace(item.EditionTitle) ? "" : $" ({item.EditionTitle})")} x{Math.Max(1, item.Quantity)}: {item.LineTotal:0.00} {currency}"));
+            lines.Add("");
+            lines.Add($"Total: {OrderTotal(order):0.00} {currency}");
 
             var pdfBytes = BuildSimplePdf(lines);
-            var filename = $"invoice_{order.PayId ?? order.Id}.pdf";
+            var filename = $"invoice_{OrderLabel(order)}.pdf";
             return File(pdfBytes, "application/pdf", filename);
         }
+
+        private static string OrderLabel(Order order) =>
+            string.IsNullOrWhiteSpace(order.OrderNumber) ? order.Id.ToString() : order.OrderNumber;
+
+        private static decimal OrderTotal(Order order) => order.TotalAmount ?? order.Items.Sum(item => item.LineTotal);
 
         private async Task<BillingProfile> GetOrCreateProfileAsync(string userId)
         {
@@ -311,8 +314,7 @@ namespace SuperBot.WebApi.Controllers
                 {
                     UserId = userId,
                     DisplayName = User.GetDisplayName(),
-                    Email = User.GetEmail(),
-                    HideOwnedGamesInProfile = false
+                    Email = User.GetEmail()
                 };
                 await _billingProfileRepository.UpsertAsync(profile);
                 return profile;
@@ -375,7 +377,6 @@ namespace SuperBot.WebApi.Controllers
             {
                 DisplayName = profile.DisplayName,
                 Email = profile.Email,
-                HideOwnedGamesInProfile = profile.HideOwnedGamesInProfile,
                 BillingDetails = profile.BillingDetails == null
                     ? null
                     : new BillingDetailsDto
@@ -447,7 +448,6 @@ namespace SuperBot.WebApi.Controllers
         public string DisplayName { get; set; }
         public string Email { get; set; }
         public BillingDetailsDto BillingDetails { get; set; }
-        public bool HideOwnedGamesInProfile { get; set; }
     }
 
     public class BillingDetailsDto
@@ -463,7 +463,6 @@ namespace SuperBot.WebApi.Controllers
     {
         public string DisplayName { get; set; }
         public BillingDetailsDto BillingDetails { get; set; }
-        public bool? HideOwnedGamesInProfile { get; set; }
     }
 
     public class PaymentMethodDto

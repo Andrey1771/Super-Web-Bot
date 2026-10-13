@@ -39,7 +39,8 @@ namespace SuperBot.Infrastructure.Services
         /// сохранённые карты покупателя и галочку «сохранить эту карту» (по умолчанию снята); отмеченная галочка
         /// сохраняет карту для оплат с участием покупателя (on_session) — списаний без него не будет.
         /// </summary>
-        Task<string?> CreateCheckoutSessionSecretAsync(string customerId);
+        /// <param name="allowSave">false — форма карты не предлагает сохранить новую карту (общий демо-админ).</param>
+        Task<string?> CreateCheckoutSessionSecretAsync(string customerId, bool allowSave = true);
     }
 
     /// <summary>Снимок карты — ровно те поля, которые нужны кабинету.</summary>
@@ -130,14 +131,14 @@ namespace SuperBot.Infrastructure.Services
             return intent.ClientSecret;
         }
 
-        public async Task<string?> CreateCheckoutSessionSecretAsync(string customerId)
+        public async Task<string?> CreateCheckoutSessionSecretAsync(string customerId, bool allowSave = true)
         {
-            var session = await _customerSessions.CreateAsync(CheckoutSessionOptions(customerId));
+            var session = await _customerSessions.CreateAsync(CheckoutSessionOptions(customerId, allowSave));
             return session.ClientSecret;
         }
 
         /// <summary>Что разрешено форме карты на кассе для этого покупателя. Отдельно — ради теста без Stripe.</summary>
-        public static CustomerSessionCreateOptions CheckoutSessionOptions(string customerId) => new()
+        public static CustomerSessionCreateOptions CheckoutSessionOptions(string customerId, bool allowSave = true) => new()
         {
             Customer = customerId,
             Components = new CustomerSessionComponentsOptions
@@ -152,8 +153,8 @@ namespace SuperBot.Infrastructure.Services
                         // их allow_redisplay = unspecified; фильтр по умолчанию показывает только "always", и такие карты
                         // на кассе не появлялись. Покупатель добавил их сам и явно — показываем и их.
                         PaymentMethodAllowRedisplayFilters = new List<string> { "always", "unspecified" },
-                        PaymentMethodSave = "enabled",
-                        PaymentMethodSaveUsage = "on_session",
+                        PaymentMethodSave = allowSave ? "enabled" : "disabled",
+                        PaymentMethodSaveUsage = allowSave ? "on_session" : null,
                         // Удаление карт — в кабинете (Billing), касса только платит.
                         PaymentMethodRemove = "disabled"
                     }

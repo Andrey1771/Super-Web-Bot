@@ -41,3 +41,17 @@ window.__APP_CONFIG__ = window.__APP_CONFIG__ || {
   }
 };
 JS
+
+# Тот же конфиг — прямо в index.html вместо <script src="/app-config.js">: отдельный файл грузился до всего сайта
+# и не кэшировался (около 0,3 с лишнего ожидания на каждом заходе), а index.html и так всегда свежий.
+# Собираем из нетронутой копии: при перезапуске контейнера конфиг (ключ Stripe и т.п.) мог поменяться.
+html=/usr/share/nginx/html
+orig=/usr/share/nginx/index.html.orig   # вне папки сайта, наружу не отдаётся
+[ -f "$orig" ] || cp "$html/index.html" "$orig"
+{ printf '<script>'; cat "$html/app-config.js"; printf '</script>'; } > /tmp/app-config.inline
+awk -v tag='<script src="/app-config.js"></script>' -v f=/tmp/app-config.inline '
+    BEGIN { while ((getline line < f) > 0) inline = inline line "\n" }
+    { i = index($0, tag); if (i) $0 = substr($0, 1, i - 1) inline substr($0, i + length(tag)); print }
+' "$orig" > "$html/index.html.tmp"
+mv "$html/index.html.tmp" "$html/index.html"
+rm -f /tmp/app-config.inline

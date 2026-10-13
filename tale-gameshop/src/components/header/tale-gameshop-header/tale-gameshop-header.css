@@ -602,15 +602,21 @@
     margin-bottom: var(--space-12);
 }
 
-.account-signed-in span {
+.account-signed-in > span {
+    /* Почта — своей строкой и целиком; переносится только если сама не влезает в ширину меню. */
+    display: block;
+    margin-top: 2px;
     color: #4a3c7a;
-    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 .account-links {
     display: grid;
     gap: 4px;
+    /* Разделитель перед «Выйти» — у списка, а не у кнопки: её скруглённые углы загибали линию в рамку. */
+    padding-bottom: var(--space-8);
     margin-bottom: var(--space-8);
+    border-bottom: 1px solid #ece6ff;
 }
 
 .account-link {
@@ -636,9 +642,6 @@
 
 .account-link.sign-out {
     width: 100%;
-    border-top: 1px solid #ece6ff;
-    margin-top: var(--space-8);
-    padding-top: 14px;
 }
 
 /* ---------- Nav bar ---------- */
@@ -1141,7 +1144,7 @@
 .drawer-account-email {
     font-size: 13px;
     color: #8a7fb4;
-    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 .drawer-account-links {

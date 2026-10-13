@@ -104,17 +104,11 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddMemoryCache();
-// Кэш раскладывается по песочницам демо (на обычном магазине ключи те же, что были): см. SandboxAwareMemoryCache.
-builder.Services.Replace(ServiceDescriptor.Singleton<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp =>
-    new SuperBot.WebApi.Demo.SandboxAwareMemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCache(
-        sp.GetRequiredService<IOptions<Microsoft.Extensions.Caching.Memory.MemoryCacheOptions>>()))));
 
-// Демо-сайт для портфолио: песочницы, демо-почта, правила «только просмотр». На магазине выключено.
+// Демо-сайт для портфолио: обычный магазин, где общий демо-админ — «только просмотр», а демо-ключи не кончаются
+// (см. Demo/DemoOptions.cs). На магазине выключено.
 builder.Services.Configure<SuperBot.WebApi.Demo.DemoOptions>(builder.Configuration.GetSection(SuperBot.WebApi.Demo.DemoOptions.SectionName));
-var demoEnabled = builder.Configuration.GetValue<bool>("Demo:Enabled");
-var sandboxDatabasePrefix = builder.Configuration["Demo:SandboxDatabasePrefix"] ?? new SuperBot.WebApi.Demo.DemoOptions().SandboxDatabasePrefix;
-builder.Services.AddSingleton<SuperBot.WebApi.Demo.DemoSandboxService>();
-builder.Services.AddHostedService<SuperBot.WebApi.Demo.DemoSandboxCleanupWorker>();
+builder.Services.AddHostedService<SuperBot.WebApi.Demo.DemoKeyTopUpWorker>();
 
 
 // CORS: фронт с того же домена за nginx и дев-сервер на :3000.
@@ -226,19 +220,8 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     var mongoClient = sp.GetRequiredService<IMongoClient>();
 
     var mongoName = builder.Configuration.GetSection("ConnectionStrings:Name").Value;
-    // В демо у посетителя своя копия базы: метку ставит DemoSandboxMiddleware. Только для области самого запроса:
-    // долгоживущие сервисы (настройки сайта, курсы, кэши), создающие свою область посреди запроса из песочницы,
-    // получают базу сайта — иначе их общие для всех данные читались бы из копии одного посетителя.
-    if (SuperBot.Core.Demo.DemoSandbox.CurrentId is { } sandbox && IsRequestScope(sp))
-    {
-        return mongoClient.GetDatabase(sandboxDatabasePrefix + sandbox);
-    }
     return mongoClient.GetDatabase(mongoName);
 });
-// Область запроса — та, что у HttpContext; вне запроса (консольные команды, тесты) метка песочницы решает сама.
-static bool IsRequestScope(IServiceProvider scope) =>
-    scope.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()?.HttpContext is not { } http
-    || ReferenceEquals(http.RequestServices, scope);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<MongoDbInitializer>();
 builder.Services.AddScoped<AdminDashboardService>();
@@ -367,6 +350,10 @@ builder.Services.AddScoped<ICartRepository, CartMongoDbRepository>();
 builder.Services.AddScoped<IBillingProfileRepository, BillingProfileMongoDbRepository>();
 builder.Services.AddScoped<ICoverImageMetaRepository, SuperBot.Infrastructure.Repositories.CoverImageMetaMongoDbRepository>();
 builder.Services.AddScoped<SuperBot.WebApi.Services.ICoverImages, SuperBot.WebApi.Services.CoverImages>();
+// Обложки нарезаются заранее: после загрузки, смены фокуса и один раз по всему каталогу после старта (CoverWarmup.cs).
+builder.Services.AddSingleton<SuperBot.WebApi.Services.CoverWarmupQueue>();
+builder.Services.AddSingleton<SuperBot.WebApi.Services.ICoverWarmupQueue>(sp => sp.GetRequiredService<SuperBot.WebApi.Services.CoverWarmupQueue>());
+builder.Services.AddHostedService<SuperBot.WebApi.Services.CoverWarmupWorker>();
 builder.Services.AddScoped<IPromoCodeRepository, PromoCodeMongoDbRepository>();
 builder.Services.AddScoped<IPromoCodeUsageRepository, PromoCodeUsageMongoDbRepository>();
 builder.Services.AddScoped<IImportJobRepository, ImportJobMongoDbRepository>();
@@ -417,12 +404,12 @@ builder.Services.AddOptions<SuperBot.WebApi.Mail.MailOptions>()
     })
     // Неверные SMTP-настройки должны ронять старт, а не тихо терять письма с ключами.
     .Validate(mail => mail.Validate() is null,
-        "Invalid Mail settings: port 465 is not supported (use 587 with Mail:SmtpUseTls=true), and Mail:SmtpUsername needs Mail:SmtpPassword.")
+        "Invalid Mail settings: Mail:SmtpUsername needs Mail:SmtpPassword.")
     .ValidateOnStart();
-if (demoEnabled)
+if (builder.Configuration.GetValue<bool>("Mail:DryRun"))
 {
-    // Демо ничего не шлёт наружу: письма ложатся в «демо-почту» копии посетителя.
-    builder.Services.AddScoped<SuperBot.WebApi.Mail.IMailSender, SuperBot.WebApi.Demo.DemoMailboxSender>();
+    // Письма не отправляются, только пишутся в лог: наполнение демо (demo-seed) — адреса покупателей там выдуманные.
+    builder.Services.AddScoped<SuperBot.WebApi.Mail.IMailSender, SuperBot.WebApi.Mail.DryRunMailSender>();
 }
 else
 {
@@ -552,6 +539,24 @@ var app = builder.Build();
 if (args.Length > 0 && args[0] == SuperBot.WebApi.Demo.DemoKeysCli.Command)
 {
     Environment.ExitCode = await SuperBot.WebApi.Demo.DemoKeysCli.RunAsync(app.Services, args[1..]);
+    return;
+}
+// Наполнение демо историей заказов, отзывами, скидками и промокодами (см. DemoSeedCli).
+if (args.Length > 0 && args[0] == SuperBot.WebApi.Demo.DemoSeedCli.Command)
+{
+    Environment.ExitCode = await SuperBot.WebApi.Demo.DemoSeedCli.RunAsync(app.Services, args[1..]);
+    return;
+}
+// Второй слой наполнения демо: статистика во всех разделах админки (см. DemoFillCli).
+if (args.Length > 0 && args[0] == SuperBot.WebApi.Demo.DemoFillCli.Command)
+{
+    Environment.ExitCode = await SuperBot.WebApi.Demo.DemoFillCli.RunAsync(app.Services, args[1..]);
+    return;
+}
+// Сохранённые тестовые карты демо-админа в Billing (см. DemoCardsCli).
+if (args.Length > 0 && args[0] == SuperBot.WebApi.Demo.DemoCardsCli.Command)
+{
+    Environment.ExitCode = await SuperBot.WebApi.Demo.DemoCardsCli.RunAsync(app.Services, args[1..]);
     return;
 }
 
@@ -695,8 +700,6 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetSection("Diagnostics
 }
 
 app.UseForwardedHeaders();
-// Песочницы демо — раньше всего, что берёт базу (вход, контроллеры): им достаётся уже копия посетителя.
-app.UseMiddleware<SuperBot.WebApi.Demo.DemoSandboxMiddleware>();
 
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
@@ -808,6 +811,8 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 app.UseAuthorization();
+// Демо: общий демо-админ — «только просмотр», почты посетителей ему маскируются. Сразу после входа: нужна его роль.
+app.UseMiddleware<SuperBot.WebApi.Demo.DemoGuardMiddleware>();
 app.UseRateLimiter();
 app.MapControllers();
 

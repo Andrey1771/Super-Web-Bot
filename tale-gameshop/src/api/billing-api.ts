@@ -22,7 +22,6 @@ export interface BillingProfileDto {
     displayName: string;
     email: string;
     billingDetails?: BillingDetailsDto | null;
-    hideOwnedGamesInProfile: boolean;
 }
 
 export interface InvoiceDto {

@@ -4,6 +4,8 @@ using SuperBot.Core.Entities;
 
 namespace SuperBot.Infrastructure.Data;
 
+/// <summary>Лишние поля (например, оставленные скриптами) не роняют чтение — иначе ломался весь список промокодов.</summary>
+[BsonIgnoreExtraElements]
 public class PromoCodeDb
 {
     [BsonId]

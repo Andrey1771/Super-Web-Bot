@@ -32,8 +32,13 @@ export type VideoPlayerProps = {
   /** Ролик реально пошёл (не просто нажали play): для аналитики. */
   onPlay?: () => void;
   onEnded?: () => void;
+  /** Панель спряталась или вернулась: родитель прячет вместе с ней свои кнопки поверх кадра (стрелки). */
+  onIdleChange?: (idle: boolean) => void;
   /** Куда открывать полный экран решает родитель; без обработчика кнопки нет. */
   onFullscreen?: () => void;
+  /** Полный экран страницы недоступен (iPhone: Safari разворачивает только само видео) — кнопка открывает
+      встроенный плеер iOS, как у YouTube в Safari. Свою панель он не покажет, зато ролик — на весь экран. */
+  nativeFullscreenFallback?: boolean;
   isFullscreen?: boolean;
   /** Кнопки родителя в правой части панели, перед полным экраном (например, «театр»). */
   extraControls?: React.ReactNode;
@@ -196,7 +201,9 @@ const VideoPlayer = ({
   autoPlay = false,
   onPlay,
   onEnded,
+  onIdleChange,
   onFullscreen,
+  nativeFullscreenFallback = false,
   isFullscreen = false,
   extraControls,
   className
@@ -213,6 +220,10 @@ const VideoPlayer = ({
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  // Чем управляют плеером. Пальцем — как в YouTube: касание кадра показывает и прячет панель, а не ставит паузу;
+  // пауза — кнопкой по центру, которая появляется вместе с панелью.
+  const lastPointerRef = useRef<string>('mouse');
+  const [touchUi, setTouchUi] = useState(false);
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
 
@@ -400,6 +411,41 @@ const VideoPlayer = ({
 
   const togglePlay = () => (playing ? pause() : play());
 
+  type IosVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+  const canNativeFullscreen =
+    nativeFullscreenFallback && typeof HTMLVideoElement !== 'undefined' && 'webkitEnterFullscreen' in HTMLVideoElement.prototype;
+  const handleFullscreen = onFullscreen ?? (canNativeFullscreen ? () => (videoRef.current as IosVideo | null)?.webkitEnterFullscreen?.() : undefined);
+
+  const handleRootPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    lastPointerRef.current = event.pointerType;
+    if (event.pointerType !== 'touch') {
+      wakeControls();
+      return;
+    }
+    setTouchUi(true);
+    // Касание панели или центральной кнопки — работа с плеером: панель не должна исчезнуть посреди неё.
+    if (event.target instanceof Element && event.target.closest('.vp__controls, .vp__big-play')) {
+      wakeControls();
+    }
+  };
+
+  const handleSurfaceClick = () => {
+    if (lastPointerRef.current !== 'touch') {
+      togglePlay();
+      return;
+    }
+    if (playing) {
+      if (controlsVisible) {
+        clearIdleTimer();
+        setControlsVisible(false);
+      } else {
+        wakeControls();
+      }
+    } else if (status === 'idle' || status === 'ended') {
+      play();
+    }
+  };
+
   const seekTo = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
@@ -524,13 +570,21 @@ const VideoPlayer = ({
     setBuffered(end);
   };
 
-  const showBigButton = status !== 'playing' && status !== 'error';
+  const showBigButton = (status !== 'playing' && status !== 'error') || (touchUi && playing && controlsVisible);
   const bigButtonLabel = status === 'ended' ? t('video.replay') : t('video.play');
   const played = duration > 0 ? clamp(currentTime / duration, 0, 1) : 0;
   const loaded = duration > 0 ? clamp(buffered / duration, 0, 1) : 0;
   const effectiveMuted = muted || volume === 0;
   const volumeIcon = effectiveMuted ? 'muted' : volume < 0.5 ? 'volume-low' : 'volume';
   const idle = playing && !controlsVisible && !scrubbing && !qualityOpen;
+
+  const onIdleChangeRef = useRef(onIdleChange);
+  onIdleChangeRef.current = onIdleChange;
+  useEffect(() => {
+    onIdleChangeRef.current?.(idle);
+  }, [idle]);
+  // Плеер убрали (другой кадр, закрыли просмотр) — кнопки родителя должны вернуться.
+  useEffect(() => () => onIdleChangeRef.current?.(false), []);
   const qualityLabel =
     quality === 'auto' ? (activeHeight ? `${t('video.qualityAuto')} · ${activeHeight}p` : t('video.qualityAuto')) : `${quality}p`;
 
@@ -541,8 +595,10 @@ const VideoPlayer = ({
       aria-label={t('video.player', { title })}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      onPointerMove={wakeControls}
-      onPointerDown={wakeControls}
+      onPointerMove={(event) => {
+        if (event.pointerType !== 'touch') wakeControls();
+      }}
+      onPointerDown={handleRootPointerDown}
       onFocus={wakeControls}
       onContextMenu={(event) => event.preventDefault()}
     >
@@ -555,7 +611,7 @@ const VideoPlayer = ({
         playsInline
         preload="metadata"
         aria-label={title}
-        onClick={togglePlay}
+        onClick={handleSurfaceClick}
         onPlay={() => {
           setStatus('playing');
           onPlay?.();
@@ -588,7 +644,7 @@ const VideoPlayer = ({
       {/* Большая кнопка — визуальная подсказка; для клавиатуры и читалок есть кнопка в панели, поэтому эта скрыта от них. */}
       {showBigButton && (
         <button type="button" className="vp__big-play" aria-hidden="true" tabIndex={-1} onClick={togglePlay}>
-          <Icon name={status === 'ended' ? 'replay' : 'play'} />
+          <Icon name={playing ? 'pause' : status === 'ended' ? 'replay' : 'play'} />
         </button>
       )}
 
@@ -673,7 +729,15 @@ const VideoPlayer = ({
                 aria-expanded={qualityOpen}
                 onClick={() => setQualityOpen((open) => !open)}
               >
-                {qualityLabel}
+                {/* «Auto · » — отдельно: в узком плеере (телефон) CSS прячет его и оставляет «720p». */}
+                {quality === 'auto' && activeHeight ? (
+                  <>
+                    <span className="vp__quality-auto">{t('video.qualityAuto')} · </span>
+                    {activeHeight}p
+                  </>
+                ) : (
+                  qualityLabel
+                )}
               </button>
               {qualityOpen && (
                 <ul className="vp__quality-menu" role="menu" aria-label={t('video.quality')}>
@@ -698,12 +762,12 @@ const VideoPlayer = ({
 
           {extraControls}
 
-          {onFullscreen && (
+          {handleFullscreen && (
             <button
               type="button"
               className="vp__btn"
               aria-label={isFullscreen ? t('media.exitFullscreen') : t('media.fullscreen')}
-              onClick={onFullscreen}
+              onClick={handleFullscreen}
             >
               <Icon name={isFullscreen ? 'compress' : 'expand'} />
             </button>

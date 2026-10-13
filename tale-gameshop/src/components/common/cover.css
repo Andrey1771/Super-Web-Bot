@@ -25,4 +25,17 @@
     height: 100%;
     object-fit: cover;
     display: block;
+    /* Пока не загрузилась — прозрачная: видно фон рамки (цвет обложки). Загрузилась — проявляется. */
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+.cover.cover--loaded > .cover__img {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cover.cover > .cover__img {
+        transition: none;
+    }
 }

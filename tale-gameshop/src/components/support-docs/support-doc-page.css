@@ -84,8 +84,9 @@
 
 .support-doc-meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-16);
+    gap: var(--space-8) var(--space-16);
     color: var(--color-muted);
     font-size: 13px;
     padding-top: var(--space-8);
@@ -97,11 +98,25 @@
     color: var(--color-primary);
 }
 
+/* Надпись в одну строку, высота растёт, а не обрезает текст: на телефоне в ряду с «2 min read» и датой кнопке
+   не хватало ширины, «Open recovery form» ломалось на три строки и вылезало за кнопку фиксированной высоты. */
 .support-doc-action {
     margin-left: auto;
-    height: 36px;
+    height: auto;
+    min-height: 36px;
     padding-inline: var(--space-16);
     font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Телефон: кнопка — отдельной строкой во всю ширину под «время чтения · дата». */
+@media (max-width: 560px) {
+    .support-doc-action {
+        flex-basis: 100%;
+        margin-left: 0;
+        min-height: 44px;
+        font-size: 14px;
+    }
 }
 
 /* Callout-блоки */

@@ -11,6 +11,7 @@ import {
     faMagnifyingGlass
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import Cover from '../../../components/common/Cover';
 import { useGameKeys } from '../../../hooks/use-game-keys';
 import './account-keys-page.css';
 import { activationPlace, isSoftware, licenseText } from '../../../utils/software';
@@ -230,7 +231,15 @@ const AccountKeysPage: React.FC = () => {
                                             делать нельзя — порядок ещё поменяется. */}
                                         <td className="keys-cell-game">
                                             <div className="keys-game-cell">
-                                                <div className="keys-game-cover" aria-hidden="true" />
+                                                {/* Обложка игры — как в корзине и заказах; без картинки — фирменный градиент рамки. */}
+                                                <Cover
+                                                    className="keys-game-cover"
+                                                    ratio="square"
+                                                    sizes="44px"
+                                                    src={row.game?.imagePath}
+                                                    color={row.game?.coverColor}
+                                                    title={title}
+                                                />
                                                 <span className="keys-product">
                                                     <span>{title}</span>
                                                     {/* Где активировать — прямо под названием: ключ ПО вводят не в Steam. */}

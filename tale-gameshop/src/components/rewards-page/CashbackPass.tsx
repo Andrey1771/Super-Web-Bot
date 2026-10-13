@@ -160,7 +160,7 @@ const CashbackPass: React.FC = () => {
             <div className="cpass-floor" aria-hidden="true"><div /></div>
             <div className="cpass-horizon" aria-hidden="true" />
             {covers.slice(0, 3).map((game, index) => (
-                <Cover key={game.id ?? index} className={`cpass-cover cpass-cover-${index + 1}`} ratio="portrait" sizes="150px" src={game.imagePath} title={game.title ?? game.name} baseUrl={services.urlService.apiBaseUrl} imgProps={{ 'aria-hidden': true }} />
+                <Cover key={game.id ?? index} className={`cpass-cover cpass-cover-${index + 1}`} ratio="portrait" sizes="150px" src={game.imagePath} color={game.coverColor} title={game.title ?? game.name} baseUrl={services.urlService.apiBaseUrl} imgProps={{ 'aria-hidden': true }} />
             ))}
 
             <div className="container cpass-inner">

@@ -90,3 +90,14 @@
        поэтому без этого кнопка висит сразу под ценой — на разной высоте у соседей. */
     margin-top: auto;
 }
+
+/* Невышедшая игра: дата выхода вместо цены. */
+.account-recommendation-release {
+    color: var(--color-muted);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.account-recommendation-btn svg {
+    margin-right: 6px;
+}

@@ -24,14 +24,26 @@ public static class DemoKeysCli
     {
         var perProduct = args.Length > 0 && int.TryParse(args[0], out var n) && n > 0 ? n : 25;
         using var scope = services.CreateScope();
-        var games = scope.ServiceProvider.GetRequiredService<IGameRepository>();
-        var details = scope.ServiceProvider.GetRequiredService<IGameDetailsRepository>();
-        var keys = scope.ServiceProvider.GetRequiredService<IGameKeyRepository>();
+        var (added, products) = await TopUpAsync(scope.ServiceProvider, perProduct);
+        Console.WriteLine($"Demo keys: {added} added across {products} products ({perProduct} per product and edition).");
+        return 0;
+    }
+
+    /// <summary>
+    /// Долить ключи каждому товару и изданию до perProduct. Его же раз в час зовёт <see cref="DemoKeyTopUpWorker"/>:
+    /// посетители демо покупают по-настоящему, и без доливки игры через пару дней стали бы «нет в наличии».
+    /// </summary>
+    public static async Task<(int Added, int Products)> TopUpAsync(IServiceProvider scoped, int perProduct, CancellationToken ct = default)
+    {
+        var games = scoped.GetRequiredService<IGameRepository>();
+        var details = scoped.GetRequiredService<IGameDetailsRepository>();
+        var keys = scoped.GetRequiredService<IGameKeyRepository>();
 
         var added = 0;
         var products = await games.GetAllAsync();
         foreach (var game in products)
         {
+            ct.ThrowIfCancellationRequested();
             var card = await details.GetByGameIdAsync(game.Id!);
             var editions = card?.Editions?.Where(e => !string.IsNullOrWhiteSpace(e.Code)).ToList() ?? [];
             var targets = editions.Count > 0
@@ -50,8 +62,7 @@ public static class DemoKeysCli
                 added += result.Added;
             }
         }
-        Console.WriteLine($"Demo keys: {added} added across {products.Count} products ({perProduct} per product and edition).");
-        return 0;
+        return (added, products.Count);
     }
 
     private static string NewKey() =>

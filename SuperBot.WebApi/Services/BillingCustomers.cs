@@ -58,8 +58,7 @@ public class BillingCustomers : IBillingCustomers
         {
             UserId = userId,
             DisplayName = DisplayName(user),
-            Email = Email(user),
-            HideOwnedGamesInProfile = false
+            Email = Email(user)
         };
 
         if (!string.IsNullOrWhiteSpace(profile.StripeCustomerId))

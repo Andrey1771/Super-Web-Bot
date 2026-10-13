@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {Link} from 'react-router-dom';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faPen} from '@fortawesome/free-solid-svg-icons';
+import {faChevronRight, faDownload, faPen} from '@fortawesome/free-solid-svg-icons';
 import {faTelegram} from '@fortawesome/free-brands-svg-icons';
 import AccountShell from '../components/AccountShell';
 import AvatarCropModal from '../components/AvatarCropModal';
@@ -11,6 +11,9 @@ import { useToast } from '../../../components/ui/ToastProvider';
 import { fetchAccountProfile, saveAccountProfile } from '../../../api/accountApi';
 import { getMyNewsletter, setMyNewsletter } from '../../../api/newsletterApi';
 import { getTelegramStatus, createTelegramLinkToken, unlinkTelegram, type TelegramLinkStatus } from '../../../api/telegramLinkApi';
+import { useIsDemoViewer } from '../../demo/useDemoConfig';
+import { downloadDataExport } from '../../../api/billing-api';
+import { demoRefusalCode } from '../../demo/demoEvents';
 import { useAccountProfile } from '../context/AccountProfileContext';
 import './account-settings-page.css';
 
@@ -58,9 +61,33 @@ const AccountSettingsPage: React.FC = () => {
     // Бот не настроен на сервере (503). Это не сбой связи: повторять попытку бессмысленно,
     // пока в окружении нет токена бота, — поэтому и предлагать «попробуйте ещё раз» нельзя.
     const [isTelegramUnavailable, setIsTelegramUnavailable] = useState(false);
+    // Демо-админу привязка закрыта (иначе уведомления с публичной учётки получал бы тот, кто её привязал):
+    // показываем это сразу, а не отказом после нажатия.
+    const isDemoViewer = useIsDemoViewer();
     // Человек ушёл в бота — по возвращении на вкладку статус перечитывается сам, без кнопки «Refresh».
     const awaitingTelegramLink = useRef(false);
     const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
+    const [isDownloadingData, setIsDownloadingData] = useState(false);
+
+    // Копия своих данных (GDPR) — .zip с JSON: профиль оплаты, оплаченные заказы, список желаемого, карты без номеров.
+    const handleDownloadData = async () => {
+        setIsDownloadingData(true);
+        try {
+            const blob = await downloadDataExport();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'tale-shop-data-export.zip';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch {
+            addToast(t('account.settings.toast.exportFailed'), 'error');
+        } finally {
+            setIsDownloadingData(false);
+        }
+    };
 
     // «Promotions» — не локальная галочка, а реальная подписка на рассылку,
     // привязанная к email аккаунта (см. NewsletterController /me).
@@ -93,7 +120,12 @@ const AccountSettingsPage: React.FC = () => {
             // 503 приходит от бот-сервиса, когда у него нет токена: он не может узнать имя бота,
             // а без имени нет и ссылки на диалог. Отличаем это от временной неудачи — иначе
             // человек будет жать кнопку по кругу, а мешает ему настройка сервера.
-            const status = (error as { response?: { status?: number } })?.response?.status;
+            const response = (error as { response?: { status?: number; data?: unknown } })?.response;
+            const status = response?.status;
+            // Отказ демо уже объяснил DemoLayer — вторая, красная «ошибка» поверх только путает.
+            if (demoRefusalCode(status, response?.data)) {
+                return;
+            }
             if (status === 503) {
                 setIsTelegramUnavailable(true);
                 addToast(t('account.settings.toast.telegramNotConfigured'), 'error');
@@ -445,7 +477,7 @@ const AccountSettingsPage: React.FC = () => {
                                 className="btn btn-primary settings-telegram-btn"
                                 aria-label={t('account.settings.connectTelegram')}
                                 onClick={handleConnectTelegram}
-                                disabled={isTelegramBusy || isTelegramUnavailable}
+                                disabled={isTelegramBusy || isTelegramUnavailable || isDemoViewer}
                             >
                                 {isTelegramBusy ? t('common.working') : t('common.connect')}
                             </button>
@@ -457,19 +489,50 @@ const AccountSettingsPage: React.FC = () => {
                         {t('account.settings.telegramUnavailable')}
                     </p>
                 )}
+                {isDemoViewer && !telegram?.linked && (
+                    <p className="settings-telegram-note settings-telegram-note--info">
+                        {t('account.settings.telegramDemoViewer')}
+                    </p>
+                )}
             </div>
 
-            <div className="card settings-card" data-testid="settings-security-pointer">
+            <div className="card settings-card settings-pointer-card" data-testid="settings-security-pointer">
                 <div className="settings-card-header">
                     <h3>{t('account.settings.accountSecurity')}</h3>
                 </div>
-                <p className="settings-muted-link">
-                    {t('account.settings.securityPointer')}
-                </p>
-                <div className="settings-pointer-actions">
-                    <Link to="/account/security" className="btn btn-outline">{t('account.settings.openSecurity')}</Link>
-                    <Link to="/account/billing" className="btn btn-outline">{t('account.settings.billingPrivacy')}</Link>
-                </div>
+                {/* Разделы — строками на всю ширину карточки, как в настройках iPhone: название, что внутри и «›».
+                    Раньше — абзац и две кнопки-рамки, на телефоне они вставали друг под другом во всю ширину. */}
+                <nav className="settings-pointer-list">
+                    <Link to="/account/security" className="settings-pointer-row">
+                        <span className="settings-pointer-main">
+                            <span className="settings-pointer-title">{t('account.settings.securityTile')}</span>
+                            <span className="settings-pointer-text">{t('account.settings.securityTileText')}</span>
+                        </span>
+                        <FontAwesomeIcon className="settings-pointer-chevron" icon={faChevronRight} aria-hidden="true" />
+                    </Link>
+                    <Link to="/account/billing" className="settings-pointer-row">
+                        <span className="settings-pointer-main">
+                            <span className="settings-pointer-title">{t('account.settings.billingPrivacy')}</span>
+                            <span className="settings-pointer-text">{t('account.settings.billingTileText')}</span>
+                        </span>
+                        <FontAwesomeIcon className="settings-pointer-chevron" icon={faChevronRight} aria-hidden="true" />
+                    </Link>
+                    <button
+                        type="button"
+                        className="settings-pointer-row"
+                        onClick={handleDownloadData}
+                        disabled={isDownloadingData}
+                        aria-busy={isDownloadingData}
+                    >
+                        <span className="settings-pointer-main">
+                            <span className="settings-pointer-title">{t('account.settings.dataTile')}</span>
+                            <span className="settings-pointer-text">
+                                {isDownloadingData ? t('common.preparing') : t('account.settings.dataTileText')}
+                            </span>
+                        </span>
+                        <FontAwesomeIcon className="settings-pointer-chevron" icon={faDownload} aria-hidden="true" />
+                    </button>
+                </nav>
             </div>
 
             <AvatarCropModal

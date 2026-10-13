@@ -1,0 +1,963 @@
+/*
+  Страницы Keycloak (вход, регистрация, сброс пароля, ошибки) в стиле Tale Shop — поверх keycloak.v2 (PatternFly 5).
+  Шаблоны Keycloak не переписываем: только стили + js/tale-shop.js (витрина справа, подзаголовок, демо-вход),
+  поэтому обновления Keycloak тему не ломают. Цвета — токены сайта (tale-gameshop/src/styles/tokens.css).
+*/
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../fonts/inter-cyrillic-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../fonts/inter-latin-ext-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../fonts/inter-latin-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --ts-bg: #ffffff;
+  --ts-surface: #ffffff;
+  --ts-field: #ffffff;
+  --ts-text: #0f172a;
+  --ts-muted: #4b5563;
+  --ts-placeholder: #9ca3af;
+  --ts-border: #e5e7eb;
+  --ts-primary: #7c3aed;
+  --ts-primary-soft: rgba(124, 58, 237, 0.1);
+  --ts-indigo: #6366f1;
+  --ts-fuchsia: #d946ef;
+  --ts-cashback: #22b36a;
+  --ts-danger: #dc2626;
+  --ts-hero: #0c0f1a;
+  --ts-hero-muted: #d3d7e3;
+  --ts-radius: 12px;
+  --ts-font: "Inter Variable", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* Тёмная тема системы: keycloak.v2 ставит класс pf-v5-theme-dark на <html>. */
+:root.pf-v5-theme-dark {
+  --ts-bg: #0c0f1a;
+  --ts-surface: #0c0f1a;
+  --ts-field: #161b2c;
+  --ts-text: #f1f5f9;
+  --ts-muted: #a8b0c2;
+  --ts-placeholder: #6b7389;
+  --ts-border: #2a3147;
+  --ts-primary: #a78bfa;
+  --ts-primary-soft: rgba(167, 139, 250, 0.14);
+  --ts-danger: #f87171;
+  --ts-hero: #05060b;
+}
+
+/* --- Каркас: слева форма, справа витрина --- */
+html.login-pf,
+html.login-pf body {
+  min-height: 100%;
+  background: var(--ts-bg);
+}
+
+html.login-pf body {
+  margin: 0;
+  font-family: var(--ts-font);
+  color: var(--ts-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.login-pf .pf-v5-c-login {
+  display: grid;
+  grid-template-columns: minmax(440px, 1fr) minmax(0, 1.1fr);
+  align-items: stretch;
+  justify-items: stretch;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0;
+  background: var(--ts-bg);
+  font-family: var(--ts-font);
+}
+
+/* Тёмная подложка витрины рисуется сразу стилями — пока скрипт наполняет её, страница не прыгает. */
+.login-pf .pf-v5-c-login::before {
+  content: "";
+  grid-column: 2;
+  grid-row: 1;
+  margin: 12px;
+  border-radius: 28px;
+  background:
+    radial-gradient(420px 420px at 85% 0%, rgba(124, 58, 237, 0.55), transparent 70%),
+    radial-gradient(320px 320px at 0% 80%, rgba(217, 70, 239, 0.3), transparent 70%),
+    var(--ts-hero);
+}
+
+.login-pf .pf-v5-c-login__container {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 32px 56px;
+}
+
+/* Шапка: лягушка + «Tale Shop» (название realm «TaleShop» прячем, пишем как на сайте). */
+.login-pf #kc-header {
+  margin: 0;
+  padding: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.login-pf #kc-header-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  font-size: 0 !important;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ts-text) !important;
+  white-space: nowrap;
+}
+
+.login-pf #kc-header-wrapper::before {
+  content: "";
+  width: 37px;
+  height: 34px;
+  background: url(../img/tale-shop-frog.svg) center / contain no-repeat;
+}
+
+.login-pf #kc-header-wrapper::after {
+  content: "Tale Shop";
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Форма — по центру левой колонки. */
+.login-pf .pf-v5-c-login__main {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 32px 0;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  color: var(--ts-text);
+}
+
+.login-pf .pf-v5-c-login__main::before,
+.login-pf .pf-v5-c-login__main::after {
+  display: none;
+}
+
+.login-pf .pf-v5-c-login__main-header {
+  display: block;
+  padding: 0;
+  margin: 0 0 22px;
+  border: 0;
+}
+
+.login-pf #kc-page-title {
+  margin: 0;
+  font-family: var(--ts-font);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ts-text);
+  text-wrap: balance;
+}
+
+.ts-sub {
+  margin: 8px 0 0;
+  color: var(--ts-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Язык — пилюля в правом верхнем углу левой колонки, на уровне логотипа. */
+.login-pf .pf-v5-c-login__main-header-utilities {
+  position: absolute;
+  top: 34px;
+  right: 56px;
+  margin: 0;
+}
+
+/* Высота пилюли 36px, по центру 40-пиксельной шапки с логотипом. */
+.login-pf .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control {
+  width: auto;
+  min-width: 0;
+  border: 1px solid var(--ts-border);
+  border-radius: 999px;
+  background: var(--ts-field);
+}
+
+.login-pf .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control::before,
+.login-pf .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control::after {
+  display: none;
+}
+
+.login-pf /* Ширина — по выбранному языку, а не по самому длинному («Ukrainian (українська)»). */
+#login-select-toggle {
+  field-sizing: content;
+  width: auto;
+  max-width: 170px;
+  text-overflow: ellipsis;
+  height: 34px;
+  min-height: 0;
+  padding: 0 34px 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ts-muted);
+  font: 600 13px var(--ts-font);
+  cursor: pointer;
+}
+
+/* Кнопка «Добавить в приложение-аутентификатор» на странице настройки 2FA (см. addAuthenticatorLink). Только на
+   сенсорных экранах: на компьютере QR-код сканируют телефоном, а ссылку otpauth:// там открыть нечем. */
+.ts-totp-app {
+  display: none;
+  margin-top: 14px;
+}
+
+@media (pointer: coarse) {
+  .ts-totp-app {
+    display: grid;
+    gap: 8px;
+  }
+}
+
+.login-pf .ts-totp-app .ts-totp-app__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--ts-radius);
+  background: var(--ts-primary-soft);
+  color: var(--ts-primary);
+  font: 600 15px var(--ts-font);
+  text-decoration: none;
+}
+
+.ts-totp-app__btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.ts-totp-app__hint {
+  margin: 0;
+  color: var(--ts-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Своё меню языков (см. addLanguageMenu в tale-shop.js) — та же пилюля, а список — карточкой в стиле страницы. */
+.ts-lang {
+  position: relative;
+}
+
+.ts-lang__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px 0 14px;
+  border: 1px solid var(--ts-border);
+  border-radius: 999px;
+  background: var(--ts-field);
+  color: var(--ts-muted);
+  font: 600 13px var(--ts-font);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.ts-lang__toggle:hover,
+.ts-lang__toggle[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--ts-primary) 45%, var(--ts-border));
+  color: var(--ts-text);
+}
+
+.ts-lang__toggle:focus-visible {
+  outline: 2px solid var(--ts-primary);
+  outline-offset: 2px;
+}
+
+.ts-lang__toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+}
+
+.ts-lang__toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.ts-lang__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 172px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+}
+
+.ts-lang__menu[hidden] {
+  display: none;
+}
+
+.login-pf .ts-lang .ts-lang__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--ts-text);
+  font: 500 14px var(--ts-font);
+  text-decoration: none;
+}
+
+.login-pf .ts-lang .ts-lang__item:hover,
+.login-pf .ts-lang .ts-lang__item:focus-visible {
+  background: var(--ts-primary-soft);
+  color: var(--ts-primary);
+  outline: none;
+  text-decoration: none;
+}
+
+.login-pf .ts-lang .ts-lang__item.is-current {
+  color: var(--ts-primary);
+  font-weight: 600;
+}
+
+.ts-lang__item svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.login-pf .pf-v5-c-login__main-body {
+  padding: 0;
+}
+
+/* --- Поля --- */
+.login-pf .pf-v5-c-form {
+  gap: 18px;
+  font-family: var(--ts-font);
+}
+
+.login-pf .pf-v5-c-form__group {
+  gap: 7px;
+}
+
+.login-pf .pf-v5-c-form__group-label {
+  padding-bottom: 0 !important;
+}
+
+.login-pf .pf-v5-c-form__label-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ts-text);
+}
+
+.login-pf .pf-v5-c-form__group:has(.ts-forgot) .pf-v5-c-form__group-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ts-forgot,
+.login-pf .pf-v5-c-login__main a,
+.login-pf .pf-v5-c-login__main-footer a {
+  color: var(--ts-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ts-forgot {
+  font-size: 13px;
+}
+
+.ts-forgot:hover,
+.login-pf .pf-v5-c-login__main a:hover {
+  text-decoration: underline;
+}
+
+.login-pf .pf-v5-c-form-control,
+.login-pf .pf-v5-c-input-group {
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  background: var(--ts-field);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-pf .pf-v5-c-form-control::before,
+.login-pf .pf-v5-c-form-control::after {
+  display: none;
+}
+
+.login-pf .pf-v5-c-input-group .pf-v5-c-form-control {
+  border: 0;
+  background: transparent;
+}
+
+.login-pf .pf-v5-c-form-control:focus-within,
+.login-pf .pf-v5-c-input-group:focus-within {
+  border-color: var(--ts-primary);
+  box-shadow: 0 0 0 4px var(--ts-primary-soft);
+}
+
+.login-pf .pf-v5-c-input-group .pf-v5-c-form-control:focus-within {
+  box-shadow: none;
+}
+
+.login-pf .pf-v5-c-form-control:has([aria-invalid="true"]),
+.login-pf .pf-v5-c-input-group:has([aria-invalid="true"]) {
+  border-color: var(--ts-danger);
+}
+
+.login-pf .pf-v5-c-form-control > input,
+.login-pf .pf-v5-c-form-control > select,
+.login-pf .pf-v5-c-form-control > textarea {
+  min-height: 46px;
+  padding: 0 14px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ts-text);
+  font: 15px var(--ts-font);
+}
+
+.login-pf input::placeholder {
+  color: var(--ts-placeholder);
+}
+
+.login-pf input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 40px var(--ts-field) inset;
+  -webkit-text-fill-color: var(--ts-text);
+}
+
+.login-pf .pf-v5-c-input-group .pf-v5-c-button.pf-m-control {
+  border: 0;
+  background: transparent;
+  color: var(--ts-muted);
+  padding: 0 14px;
+}
+
+.login-pf .pf-v5-c-input-group .pf-v5-c-button.pf-m-control::before,
+.login-pf .pf-v5-c-input-group .pf-v5-c-button.pf-m-control::after {
+  display: none;
+}
+
+.login-pf .pf-v5-c-input-group__item {
+  border: 0;
+  box-shadow: none;
+}
+
+.login-pf .pf-v5-c-form__helper-text:empty,
+.login-pf .pf-v5-c-form__helper-text:not(:has(.pf-v5-c-helper-text__item-text:not(:empty))) {
+  display: none;
+}
+
+.login-pf .pf-v5-c-helper-text__item-text,
+.login-pf [id^="input-error"] {
+  font-size: 13px;
+}
+
+.login-pf [id^="input-error"] .pf-v5-c-helper-text__item-text,
+.login-pf .pf-m-error .pf-v5-c-helper-text__item-text {
+  color: var(--ts-danger);
+}
+
+/* Галочки («Запомнить меня», согласия). */
+.login-pf .pf-v5-c-check__label {
+  font-size: 14px;
+  color: var(--ts-muted);
+}
+
+.login-pf .pf-v5-c-check__input {
+  accent-color: var(--ts-primary);
+}
+
+/* --- Кнопки --- */
+.login-pf .pf-v5-c-form__actions {
+  margin: 0;
+  padding: 0;
+  gap: 10px;
+}
+
+.login-pf .pf-v5-c-button.pf-m-primary {
+  width: 100%;
+  margin: 0;
+  min-height: 50px;
+  border: 0;
+  border-radius: var(--ts-radius);
+  background: linear-gradient(135deg, var(--ts-indigo), #7c3aed 55%, #9333ea);
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.3);
+  color: #fff;
+  font: 700 15px var(--ts-font);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.login-pf .pf-v5-c-button.pf-m-primary:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 14px 30px rgba(124, 58, 237, 0.38);
+}
+
+.login-pf .pf-v5-c-button.pf-m-primary:active {
+  transform: translateY(1px);
+}
+
+.login-pf .pf-v5-c-button.pf-m-primary:disabled {
+  filter: saturate(0.6);
+  opacity: 0.75;
+}
+
+.login-pf .pf-v5-c-button.pf-m-secondary,
+.login-pf .pf-v5-c-button.pf-m-link {
+  width: 100%;
+  margin: 0;
+  min-height: 46px;
+  border-radius: var(--ts-radius);
+  font: 600 14px var(--ts-font);
+  color: var(--ts-primary);
+}
+
+.login-pf .pf-v5-c-button.pf-m-secondary {
+  border: 1px solid var(--ts-border);
+  background: var(--ts-field);
+}
+
+.login-pf .pf-v5-c-button.pf-m-secondary::after {
+  display: none;
+}
+
+/* Сообщения (неверный пароль, письмо отправлено и т.п.). */
+.login-pf .pf-v5-c-alert {
+  margin-bottom: 18px;
+  border-radius: var(--ts-radius);
+  font-family: var(--ts-font);
+  box-shadow: none;
+}
+
+/* «Впервые в Tale Shop? Создать аккаунт» и другие ссылки под формой. */
+.login-pf .pf-v5-c-login__main-footer {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.login-pf .pf-v5-c-login__main-footer-band {
+  margin-top: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ts-muted);
+}
+
+.login-pf .pf-v5-c-login__main-footer-band::before {
+  display: none;
+}
+
+/* Подвал левой колонки (добавляет скрипт). */
+.ts-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ts-muted);
+}
+
+.ts-foot a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ts-foot a:hover {
+  color: var(--ts-primary);
+}
+
+.ts-foot svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --- Демо-вход: две плитки и разделитель --- */
+.ts-demo {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.ts-demo__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ts-muted);
+}
+
+.ts-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ts-primary-soft);
+  color: var(--ts-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.ts-demo__grid {
+  display: grid;
+  /* Одна плитка (демо-админ) — во всю ширину; если аккаунтов станет больше — встанут рядом. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.ts-demo-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  background: var(--ts-field);
+  color: var(--ts-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.ts-demo-tile:hover,
+.ts-demo-tile:focus-visible {
+  border-color: var(--ts-primary);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.14);
+  outline: none;
+}
+
+.ts-demo-tile:active {
+  transform: translateY(1px);
+}
+
+.ts-demo-tile__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--ts-primary-soft);
+  color: var(--ts-primary);
+}
+
+.ts-demo-tile__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ts-demo-tile__text {
+  min-width: 0;
+  display: grid;
+}
+
+.ts-demo-tile__name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ts-demo-tile__meta {
+  font-size: 12px;
+  color: var(--ts-muted);
+}
+
+.ts-demo-tile__arrow {
+  margin-left: auto;
+  color: var(--ts-primary);
+  font-weight: 700;
+}
+
+.ts-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--ts-placeholder);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ts-divider::before,
+.ts-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ts-border);
+}
+
+/* --- Витрина справа --- */
+.ts-showcase {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  overflow: hidden;
+  margin: 12px;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48px 56px;
+  color: #fff;
+  font-family: var(--ts-font);
+}
+
+.ts-wall {
+  position: absolute;
+  inset: -40px -40px auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  transform: rotate(-8deg) translateY(-10px);
+}
+
+.ts-wall img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.ts-wall img.is-loaded {
+  opacity: 0.9;
+}
+
+.ts-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 15, 26, 0.1) 0%, rgba(12, 15, 26, 0.75) 45%, #0c0f1a 72%);
+}
+
+.ts-pitch {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  max-width: 540px;
+}
+
+.ts-pitch h2 {
+  margin: 0;
+  font-size: clamp(30px, 3vw, 42px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: #fff;
+  text-wrap: balance;
+}
+
+.ts-pitch h2 span {
+  background: linear-gradient(90deg, #a78bfa, var(--ts-fuchsia));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ts-pitch p {
+  margin: 0;
+  color: var(--ts-hero-muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.ts-perks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.ts-perk {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ts-hero-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ts-perk b {
+  color: #fff;
+  font-size: 14px;
+}
+
+.ts-perk svg {
+  width: 20px;
+  height: 20px;
+  color: #c4b5fd;
+}
+
+.ts-perk--cash svg {
+  color: var(--ts-cashback);
+}
+
+/* Лента обложек над формой — только на телефоне, вместо витрины. */
+.ts-strip {
+  display: none;
+}
+
+/* --- Средние экраны: витрина уже, тексты короче --- */
+@media (max-width: 1180px) {
+  .login-pf .pf-v5-c-login__container {
+    padding: 28px 36px;
+  }
+
+  .login-pf .pf-v5-c-login__main-header-utilities {
+    top: 30px;
+    right: 36px;
+  }
+
+  .ts-showcase {
+    padding: 36px;
+  }
+
+  .ts-perks {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Телефон и узкий планшет: одна колонка --- */
+@media (max-width: 860px) {
+  .login-pf .pf-v5-c-login {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-pf .pf-v5-c-login::before,
+  .ts-showcase {
+    display: none;
+  }
+
+  .login-pf .pf-v5-c-login__container {
+    padding: 20px;
+  }
+
+  .login-pf .pf-v5-c-login__main-header-utilities {
+    top: 22px;
+    right: 20px;
+  }
+
+  .login-pf .pf-v5-c-login__main {
+    padding: 24px 0 32px;
+  }
+
+  /* Ровно три обложки по ширине формы. Раньше лента из шести по 120 px уходила за правый край экрана
+     и резко обрезалась — выглядело как вёрстка, вылезшая за экран. */
+  .ts-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 18px 0 0;
+  }
+
+  .ts-strip img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 10px;
+    background: var(--ts-border);
+  }
+
+  .ts-strip img:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+/* Телефон: форма сразу под лентой обложек; на планшете остаётся по центру. */
+@media (max-width: 600px) {
+  .login-pf .pf-v5-c-login__main {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-pf #kc-page-title {
+    font-size: 26px;
+  }
+
+  .ts-demo__grid {
+    gap: 8px;
+  }
+
+  .ts-demo-tile {
+    padding: 9px 10px;
+    gap: 8px;
+  }
+
+  .ts-demo-tile__arrow {
+    display: none;
+  }
+
+  .ts-foot span {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ts-wall img,
+  .ts-demo-tile,
+  .login-pf .pf-v5-c-button.pf-m-primary {
+    transition: none;
+  }
+}

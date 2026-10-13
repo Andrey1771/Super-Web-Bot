@@ -623,6 +623,25 @@
     border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
 }
 
+/* Невышедшая игра в рекомендациях: дата выхода вместо причины, «Coming soon» вместо цены, сердечко вместо корзины. */
+.cart-rec-release {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.cart-rec-soon {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-muted);
+    white-space: nowrap;
+}
+
+.cart-rec-wish.is-active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+}
+
 /* Уже в заказе — не кнопка, а отметка: нажимать нечего. */
 .cart-rec-action.is-in-cart {
     cursor: default;

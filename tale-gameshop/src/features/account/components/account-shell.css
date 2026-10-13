@@ -41,6 +41,8 @@
 }
 
 .account-avatar {
+    /* flex: none — длинная почта рядом не должна сжимать круг в овал. */
+    flex: none;
     width: 48px;
     height: 48px;
     border-radius: 999px;
@@ -61,6 +63,7 @@
 }
 
 .account-profile-details {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -72,9 +75,51 @@
     align-self: flex-start;
 }
 
+/* Имя + галочка «Verified buyer» одной строкой (галочка приходит позже и не должна добавлять строку). */
+.account-profile-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    min-width: 0;
+}
+
+.account-profile-name__text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.verified-buyer {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-primary);
+    line-height: 1;
+}
+
+.verified-buyer svg {
+    width: 16px;
+    height: 16px;
+}
+
+.verified-buyer--label {
+    padding: 4px 10px 4px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
 .account-email {
     color: var(--color-muted);
     font-size: 13px;
+    /* В узкой панели — одной строкой: высота блока одна и та же и пока профиль грузится, и с длинной почтой.
+       Полный адрес — в подсказке и на карточке обзора. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Баннер активной заявки на восстановление доступа — красный, потому что это
@@ -120,21 +165,6 @@
     background: linear-gradient(90deg, #ece8ff 0%, #f5f3ff 50%, #ece8ff 100%);
     background-size: 200% 100%;
     animation: account-skeleton-shimmer 1.5s infinite;
-}
-
-.account-skeleton-line {
-    display: block;
-    width: 120px;
-    height: 12px;
-    border-radius: 6px;
-    background: linear-gradient(90deg, #ece8ff 0%, #f5f3ff 50%, #ece8ff 100%);
-    background-size: 200% 100%;
-    animation: account-skeleton-shimmer 1.5s infinite;
-}
-
-.account-skeleton-line.is-short {
-    width: 80px;
-    height: 10px;
 }
 
 @keyframes account-skeleton-shimmer {
@@ -284,10 +314,14 @@
     flex-wrap: wrap;
 }
 
+/* Подпись в одну строку и кнопка не ужимается: на телефоне длинное название рядом отбирало место, «View keys»
+   переносилось на две строки и вылезало за кнопку фиксированной высоты. Переносится текст слева, не кнопка. */
 .account-action-btn {
-    height: 40px;
+    min-height: 40px;
     font-size: 14px;
     padding-inline: var(--space-16);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* «Помощь» в шапке кабинета — только серый знак вопроса, без рамки и фона: светлый кружок-фон

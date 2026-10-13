@@ -267,7 +267,7 @@ const HeaderSearch: React.FC<HeaderSearchProps> = ({ variant = "bar", onNavigate
                                 onMouseEnter={() => setActiveIndex(index)}
                                 onClick={() => goToGame(game)}
                             >
-                                <Cover as="span" className="search-suggest-thumb" ratio="wide" sizes="46px" widths={[240]} title={game.title} src={game.imagePath} baseUrl={urlService.apiBaseUrl} />
+                                <Cover as="span" className="search-suggest-thumb" ratio="wide" sizes="46px" widths={[240]} title={game.title} src={game.imagePath} color={game.coverColor} baseUrl={urlService.apiBaseUrl} />
                                 <span className="search-suggest-title">{game.title}</span>
                                 {/* Поиск общий — вид товара помечаем, чтобы «Nova Drift» и «Nova Security» не путались. */}
                                 {isSoftware(game.kind) && <span className="search-suggest-kind">{t("common.software")}</span>}

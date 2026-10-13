@@ -1,4 +1,4 @@
-import React, { CSSProperties, ImgHTMLAttributes, useMemo } from 'react';
+import React, { CSSProperties, ImgHTMLAttributes, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import SafeGameImage from './SafeGameImage';
 import { normalizeGameCoverUrl } from '../../utils/game-cover';
 import {
@@ -28,6 +28,11 @@ export interface CoverProps {
     priority?: boolean;
     /** Размытая крошечная копия под картинкой, пока та грузится: для крупных рамок. */
     blur?: boolean;
+    /**
+     * Основной цвет обложки (#rrggbb из каталога): рамка сразу закрашена им, а картинка проявляется поверх,
+     * когда загрузится, — вместо одинаковых пустых сиреневых квадратов.
+     */
+    color?: string | null;
     className?: string;
     style?: CSSProperties;
     /** Тег рамки: внутри кнопки или ссылки-строки нужен span. */
@@ -47,6 +52,9 @@ export interface CoverProps {
  *
  * Внутри — варианты нужной ширины (srcset), чтобы плитка весила килобайты, а не исходник на мегабайты.
  */
+/** Цвет из каталога попадает в style — только строгое #rrggbb, никаких произвольных строк. */
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
 const Cover: React.FC<CoverProps> = ({
     src,
     title,
@@ -56,6 +64,7 @@ const Cover: React.FC<CoverProps> = ({
     widths = COVER_WIDTHS,
     priority = false,
     blur = false,
+    color,
     className,
     style,
     as: Tag = 'div',
@@ -70,16 +79,37 @@ const Cover: React.FC<CoverProps> = ({
         [blur, resolved, ratio],
     );
 
+    // Картинка проявляется, когда загрузилась (фон рамки уже её цвета) — без резкого «щелчка» из пустоты.
+    // «Загружена» помнится для конкретного адреса, а не флагом со сбросом: из кэша браузера (возврат в каталог)
+    // картинка загружается раньше, чем отработал бы сброс, и он затирал «загружена» — обложки оставались прозрачными.
+    const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+    // Без адреса показывается заглушка — у неё свой ключ, пустая строка.
+    const srcKey = resolved ?? '';
+    const loaded = loadedSrc === srcKey;
+    const frameRef = useRef<HTMLElement | null>(null);
+    // Уже готовая из кэша — показываем до первой отрисовки, без проявления.
+    useLayoutEffect(() => {
+        const img = frameRef.current?.querySelector('img');
+        if (img?.complete && img.naturalWidth > 0) {
+            setLoadedSrc(srcKey);
+        }
+    }, [srcKey]);
+
     const frameStyle: CSSProperties = {
         ...style,
         ['--cover-ratio' as string]: COVER_RATIO_CSS[ratio],
+        ...(color && HEX_COLOR.test(color) ? { ['--cover-bg' as string]: color } : {}),
         ...(placeholder ? { backgroundImage: `url("${placeholder}")` } : {}),
     };
 
     return (
-        <Tag className={`cover${blur && placeholder ? ' cover--blur' : ''}${className ? ` ${className}` : ''}`} style={frameStyle} data-ratio={ratio}>
+        <Tag className={`cover${blur && placeholder ? ' cover--blur' : ''}${loaded ? ' cover--loaded' : ''}${className ? ` ${className}` : ''}`} style={frameStyle} data-ratio={ratio} ref={frameRef as React.Ref<HTMLDivElement & HTMLSpanElement>}>
             <SafeGameImage
                 {...imgProps}
+                onLoad={(event) => {
+                    setLoadedSrc(srcKey);
+                    imgProps?.onLoad?.(event);
+                }}
                 className={`cover__img${imgClassName ? ` ${imgClassName}` : ''}`}
                 src={resolved}
                 gameTitle={title}

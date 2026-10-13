@@ -3,7 +3,8 @@
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml:docker-compose.demo.yml
 #
 # Отличия от магазина (подробно — docs/demo.md):
-#  - у каждого посетителя своя копия базы на сутки (Demo__*), письма — в «демо-почту», оплата — тестовый Stripe;
+#  - обычный магазин: посетители регистрируются, покупают тестовой картой Stripe и пишут в поддержку; общий
+#    демо-админ видит всю админку, но ничего не меняет (Demo__*); письма уходят по-настоящему (SMTP_* в .env);
 #  - сайт делит маленький сервер с другими: 80/443 держит системный nginx сервера и проксирует домен демо сюда,
 #    на 127.0.0.1:8081 (TLS снимает он же); лимиты памяти — под сервер на 2 ГБ (+ swap);
 #  - поисковикам закрыт; резервные копии и выпуск сертификата не запускаются (данные демо пересобираются из пакета).
@@ -13,14 +14,14 @@ services:
     mem_limit: 450m
     environment:
       - Demo__Enabled=true
-      - Demo__MaxSandboxes=${DEMO_MAX_SANDBOXES:-10}
-      - Demo__SpareSandboxes=${DEMO_SPARE_SANDBOXES:-2}
+      # Общий демо-админ «только просмотр» (Keycloak — deploy/demo/keycloak-demo-users.sh).
       - Demo__Accounts__0__Role=admin
       - Demo__Accounts__0__Username=demo-admin
       - Demo__Accounts__0__Password=${DEMO_ADMIN_PASSWORD:?задайте DEMO_ADMIN_PASSWORD в .env}
-      - Demo__Accounts__1__Role=buyer
-      - Demo__Accounts__1__Username=demo-buyer
-      - Demo__Accounts__1__Password=${DEMO_BUYER_PASSWORD:?задайте DEMO_BUYER_PASSWORD в .env}
+      # Адреса на юридических страницах — настоящий ящик поддержки (Cloudflare Email Routing пересылает его владельцу),
+      # а не заглушки *@taleshop.example из appsettings.json, куда письма не доходят.
+      - Legal__SupportEmail=${LEGAL_SUPPORT_EMAIL:-support@tale-shop.com}
+      - Legal__PrivacyEmail=${LEGAL_PRIVACY_EMAIL:-support@tale-shop.com}
       # .NET бережёт память агрессивнее (сборщик мусора чаще возвращает её системе).
       - DOTNET_GCConserveMemory=7
 
@@ -28,17 +29,15 @@ services:
     mem_limit: 200m
     environment:
       - Demo__Enabled=true
+      # Кто демо-админ — тот же список, что у сайта: ему закрыта привязка Telegram (см. DemoBotGuard).
+      - Demo__Accounts__0__Role=admin
+      - Demo__Accounts__0__Username=demo-admin
       - DOTNET_GCConserveMemory=7
 
   mongo1:
     mem_limit: 450m
     # Кэш WiredTiger по умолчанию — половина памяти контейнера; демо-база — десятки мегабайт.
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/configdb/keyfile", "--wiredTigerCacheSizeGB", "0.25"]
-
-  mongo-setup:
-    environment:
-      # Права приложения на базы песочниц tsdemo_* (см. deploy/mongo/setup.js).
-      - DEMO_MODE=true
 
   keycloak-db:
     mem_limit: 160m

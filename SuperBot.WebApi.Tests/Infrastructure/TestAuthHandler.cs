@@ -21,6 +21,8 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
     public const string RolesHeader = "X-Test-Roles";
     /// <summary>Отображаемое имя (клейм name / Identity.Name). По умолчанию — email; у настоящего токена это «Иван Петров».</summary>
     public const string NameHeader = "X-Test-Name";
+    /// <summary>Логин Keycloak (клейм preferred_username): по нему, например, узнаётся демо-админ.</summary>
+    public const string UsernameHeader = "X-Test-Username";
 
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -47,6 +49,11 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
             new(ClaimTypes.NameIdentifier, Request.Headers[SubHeader].FirstOrDefault() ?? $"test-user-{email}"),
             new(ClaimTypes.Name, Request.Headers[NameHeader].FirstOrDefault() ?? email),
         };
+
+        if (Request.Headers[UsernameHeader].FirstOrDefault() is { Length: > 0 } username)
+        {
+            claims.Add(new Claim("preferred_username", username));
+        }
 
         var roles = Request.Headers[RolesHeader].FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(roles))

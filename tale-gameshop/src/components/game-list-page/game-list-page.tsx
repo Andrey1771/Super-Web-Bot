@@ -309,7 +309,7 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
     const softwareCategories = useSoftwareCategories();
     // Жанры — ради страницы жанра: её адрес — код жанра, а название приходит из админки и может меняться.
     const { genres: gameGenres } = useGameGenres();
-    const { currency, country } = useSitePreferences();
+    const { currency, country, regionSettled } = useSitePreferences();
     // Страница каталога целиком приходит с сервера: и товар, и счётчики фильтров.
     const [catalog, setCatalog] = useState<CatalogPage>(EMPTY_CATALOG_PAGE);
     const [isLoading, setIsLoading] = useState(true);
@@ -431,6 +431,10 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
     }, [searchParams, categorySlug, currency, country, software, gamesOnly]);
 
     useEffect(() => {
+        // Пока страна не определилась, выдача всё равно перезапросилась бы — ждём (не дольше 1,5 с).
+        if (!regionSettled) {
+            return;
+        }
         let cancelled = false;
         setIsLoading(true);
 
@@ -460,7 +464,7 @@ const TaleGameshopGameList: React.FC<{ kind?: CatalogKind }> = ({ kind = 'game' 
         return () => {
             cancelled = true;
         };
-    }, [catalogRequest]);
+    }, [catalogRequest, regionSettled]);
 
     const patchSearchParams = useCallback(
         (patchFn: (params: URLSearchParams) => void, options?: { replace?: boolean }) => {

@@ -8,6 +8,7 @@ import {
     ExpressCheckoutElement
 } from '@stripe/react-stripe-js';
 import { Link } from 'react-router-dom';
+import DemoTestCardHint from '../../../features/demo/DemoTestCardHint';
 import {StripePaymentElementOptions} from '@stripe/stripe-js';
 
 /** Текст согласия приходит с сервера — показываем дословно то, что он и сохранит. */
@@ -179,6 +180,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({clientSecret, consent, onRec
                 />
             </div>
             {hasExpressMethods && canPay && <div className="checkout-stripe-divider"><span>{t('checkout.orPayWithCard')}</span></div>}
+            {/* Демо-сайт: какой картой платить — прямо над полем карты (на обычном магазине не рисуется). */}
+            <DemoTestCardHint/>
             <PaymentElement options={paymentElementOptions}/>
             <button
                 disabled={!stripe || isSubmitting || !canPay}

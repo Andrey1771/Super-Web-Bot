@@ -68,6 +68,33 @@ describe('playback', () => {
     expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
   });
 
+  it('on touch a tap on the picture shows and hides the controls instead of pausing', async () => {
+    render(<VideoPlayer src="/trailer.mp4" title="Lanternfall trailer" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }));
+    const region = screen.getByRole('region', { name: 'Lanternfall trailer — video player' });
+
+    // В jsdom нет PointerEvent, и fireEvent.pointerDown теряет pointerType — задаём его на событии сами.
+    const tap = () => {
+      const down = new Event('pointerdown', { bubbles: true });
+      Object.defineProperty(down, 'pointerType', { value: 'touch' });
+      act(() => {
+        video().dispatchEvent(down);
+      });
+      fireEvent.click(video());
+    };
+
+    // Панель видна после запуска — касание её прячет, видео играет дальше.
+    tap();
+    expect(HTMLMediaElement.prototype.pause).not.toHaveBeenCalled();
+    expect(region).toHaveClass('is-idle');
+
+    // Второе касание возвращает панель и кнопку паузы по центру, как в YouTube.
+    tap();
+    expect(region).not.toHaveClass('is-idle');
+    await userEvent.click(document.querySelector<HTMLButtonElement>('.vp__big-play')!);
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
+  });
+
   it('reports the real start to the parent and offers replay at the end', async () => {
     const onPlay = jest.fn();
     const onEnded = jest.fn();
@@ -413,5 +440,24 @@ describe('autoCapIndex', () => {
     expect(autoCapIndex(levels, 800, 2)).toBe(-1);
     expect(autoCapIndex(levels, 1400, 1)).toBe(-1);
     expect(autoCapIndex(levels, 1100, 1)).toBe(3);
+  });
+});
+
+describe('fullscreen on iPhone', () => {
+  it('falls back to the native iOS player when the page cannot go fullscreen', async () => {
+    const enter = jest.fn();
+    Object.defineProperty(HTMLVideoElement.prototype, 'webkitEnterFullscreen', { configurable: true, value: enter });
+    try {
+      render(<VideoPlayer src="/trailer.mp4" title="Lanternfall trailer" nativeFullscreenFallback />);
+      await userEvent.click(screen.getByRole('button', { name: 'Fullscreen' }));
+      expect(enter).toHaveBeenCalledTimes(1);
+    } finally {
+      delete (HTMLVideoElement.prototype as { webkitEnterFullscreen?: unknown }).webkitEnterFullscreen;
+    }
+  });
+
+  it('shows no fullscreen button without a handler or native support', () => {
+    render(<VideoPlayer src="/trailer.mp4" title="Lanternfall trailer" nativeFullscreenFallback />);
+    expect(screen.queryByRole('button', { name: 'Fullscreen' })).toBeNull();
   });
 });

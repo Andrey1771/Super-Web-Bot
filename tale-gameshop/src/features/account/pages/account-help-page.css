@@ -77,10 +77,14 @@
     justify-self: end;
 }
 
+/* Надпись в одну строку и кнопка не ужимается: на телефоне длинный заголовок рядом отбирал место, «New request»
+   переносилось на две строки и вылезало за кнопку фиксированной высоты. Переносится заголовок, не кнопка. */
 .help-action-btn {
-    height: 38px;
+    min-height: 38px;
     padding-inline: var(--space-20);
     font-size: 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .help-muted {
@@ -140,18 +144,26 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-12);
+    /* Кнопка по умолчанию центрирует текст: двухстрочный вопрос вставал посередине, а не по левому краю. */
+    text-align: left;
     font-weight: 600;
     color: var(--color-text);
     cursor: pointer;
+}
+
+.help-accordion-trigger svg {
+    flex-shrink: 0;
 }
 
 .help-accordion-item.is-open .help-accordion-trigger {
     background: rgba(124, 58, 237, 0.08);
 }
 
+/* Отступ сверху: ответ начинался вплотную к подсвеченной полосе вопроса. */
 .help-accordion-content {
     margin: 0;
-    padding: 0 var(--space-16) var(--space-16);
+    padding: var(--space-14) var(--space-16) var(--space-16);
     color: var(--color-muted);
     line-height: 1.5;
 }

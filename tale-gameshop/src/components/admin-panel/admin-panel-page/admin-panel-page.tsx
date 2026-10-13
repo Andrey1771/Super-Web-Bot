@@ -9,6 +9,7 @@ import type { IApiClient } from "../../../iterfaces/i-api-client";
 import { formatMoney } from "../../../utils/format-money";
 import "./admin-panel-page.css";
 import { keycloakConsoleUrl } from "../../layout/Sidebar";
+import { useIsDemoViewer } from "../../../features/demo/useDemoConfig";
 
 /**
  * Главная страница админки — сводка «что сегодня горит».
@@ -73,6 +74,9 @@ const AdminPanelPage: React.FC = () => {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Консоль Keycloak: ссылки нет за туннелем (см. keycloakConsoleUrl), а демо-админу она не нужна — пароля от неё нет.
+  const isDemoViewer = useIsDemoViewer();
+  const consoleUrl = isDemoViewer ? undefined : keycloakConsoleUrl();
 
   const load = useCallback(async (silent = false) => {
     if (!silent) {
@@ -289,8 +293,8 @@ const AdminPanelPage: React.FC = () => {
           <Link className="btn btn-outline" to="/admin/support/live-chat">Live chat</Link>
           <Link className="btn btn-outline" to="/admin/support/tickets">Tickets</Link>
           <Link className="btn btn-outline" to="/admin/promo-codes">Promo codes</Link>
-          {keycloakConsoleUrl() && (
-            <a className="btn btn-outline" href={keycloakConsoleUrl()} target="_blank" rel="noopener noreferrer" title="Opens the Keycloak admin console in a new tab. Login: KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD from .env">
+          {consoleUrl && (
+            <a className="btn btn-outline" href={consoleUrl} target="_blank" rel="noopener noreferrer" title="Opens the Keycloak admin console in a new tab. Login: KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD from .env">
               Keycloak console ↗
             </a>
           )}

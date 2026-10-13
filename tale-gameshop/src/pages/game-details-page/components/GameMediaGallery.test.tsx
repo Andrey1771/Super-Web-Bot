@@ -210,3 +210,26 @@ describe('thumbnail scroller', () => {
     expect(strip.scrollLeft).toBe(150);
   });
 });
+
+it('hides the side arrows together with the player controls while the trailer plays', async () => {
+  render(<GameMediaGallery media={media} title="Lanternfall" />);
+  await userEvent.click(screen.getByRole('button', { name: 'Play trailer' }));
+  const main = document.querySelector('.game-media-main')!;
+  expect(main).not.toHaveClass('is-video-idle');
+
+  jest.useFakeTimers();
+  try {
+    // Ролик идёт: через паузу бездействия панель плеера уходит — и стрелки галереи вместе с ней.
+    fireEvent.play(document.querySelector('video')!);
+    fireEvent.pointerMove(document.querySelector('.vp')!);
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(main).toHaveClass('is-video-idle');
+
+    fireEvent.pointerMove(document.querySelector('.vp')!);
+    expect(main).not.toHaveClass('is-video-idle');
+  } finally {
+    jest.useRealTimers();
+  }
+});

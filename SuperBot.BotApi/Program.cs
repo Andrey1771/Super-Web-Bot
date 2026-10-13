@@ -149,9 +149,10 @@ if (!botTokenUsable)
 }
 
 app.UseForwardedHeaders();
-// Демо-сайт: всё, что меняет общего бота или списывает Telegram Stars, — только просмотр (см. DemoBotGuard).
-app.UseDemoBotGuard(app.Configuration);
 app.UseAuthentication();
+// Демо-сайт: всё, что меняет общего бота или списывает Telegram Stars, — только просмотр (см. DemoBotGuard).
+// После входа: привязку Telegram запрет касается только демо-админа, его узнают по токену.
+app.UseDemoBotGuard(app.Configuration);
 app.UseAuthorization();
 app.MapControllers();
 

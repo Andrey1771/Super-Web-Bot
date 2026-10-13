@@ -74,7 +74,7 @@ const DealSpotlightCard: React.FC<DealSpotlightCardProps> = ({
                 ratio="portrait"
                 sizes="(max-width: 900px) 100vw, 320px"
                 title={game.title}
-                src={game.imagePath}
+                src={game.imagePath} color={game.coverColor}
                 baseUrl={baseUrl}
                 priority
                 blur

@@ -33,6 +33,13 @@ public interface ICoverImages
     /// <summary>Метаданные обложки; если их ещё нет — считаются по файлу с точкой фокуса в центре.</summary>
     Task<CoverImageMeta?> GetMetaAsync(string relativePath, CancellationToken ct);
 
+    /// <summary>
+    /// Заранее нарезать варианты обложки (<see cref="CoverImages.PrerenderWidths"/> × все рамки) и, если его ещё нет,
+    /// посчитать основной цвет. Готовые файлы пропускаются. Возвращает, сколько вариантов нарезано.
+    /// Иначе первый посетитель каталога ждал, пока сервер по очереди режет 24 обложки (~0,25 с каждая).
+    /// </summary>
+    Task<int> PrerenderAsync(string relativePath, CancellationToken ct);
+
     /// <summary>Переставить точку фокуса. Готовые варианты этой картинки стираются: рамки перережутся вокруг новой точки.</summary>
     Task<CoverImageMeta?> SetFocusAsync(string relativePath, double focusX, double focusY, CancellationToken ct);
 
@@ -49,6 +56,12 @@ public class CoverImages : ICoverImages
 {
     /// <summary>Ширины, которые витрина запрашивает через srcset; 24 — размытая заглушка, пока грузится настоящая.</summary>
     public static readonly int[] Widths = { 24, 240, 480, 960, 1400 };
+
+    /// <summary>
+    /// Что нарезается заранее (<see cref="PrerenderAsync"/>): все рамки в ширинах, которые плитки и полки реально берут
+    /// из srcset, плюс 24 для заглушки. 1400 нужен только крупным баннерам — его, как раньше, режет первый запрос.
+    /// </summary>
+    public static readonly int[] PrerenderWidths = { 24, 240, 480, 960 };
 
     /// <summary>Рамки витрины. Ключ — сегмент адреса; значение — пропорция (ширина, высота).</summary>
     public static readonly IReadOnlyDictionary<string, (int W, int H)> Ratios = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase)
@@ -73,13 +86,15 @@ public class CoverImages : ICoverImages
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Locks = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly ICoverImageMetaRepository _meta;
+    private readonly ICoverWarmupQueue _warmup;
     private readonly ILogger<CoverImages> _logger;
 
     public string Root { get; }
 
-    public CoverImages(IConfiguration configuration, IWebHostEnvironment env, ICoverImageMetaRepository meta, ILogger<CoverImages> logger)
+    public CoverImages(IConfiguration configuration, IWebHostEnvironment env, ICoverImageMetaRepository meta, ICoverWarmupQueue warmup, ILogger<CoverImages> logger)
     {
         _meta = meta;
+        _warmup = warmup;
         _logger = logger;
         Root = ResolveRoot(configuration, env);
         Directory.CreateDirectory(Root);
@@ -99,7 +114,10 @@ public class CoverImages : ICoverImages
         return Path.GetFullPath(Path.Combine(webRoot, "uploads"));
     }
 
-    public string? NormalizeRelativePath(string? pathOrUrl)
+    public string? NormalizeRelativePath(string? pathOrUrl) => ToRelativePath(pathOrUrl);
+
+    /// <summary>То же, что <see cref="NormalizeRelativePath"/>, без экземпляра — для снимка каталога.</summary>
+    public static string? ToRelativePath(string? pathOrUrl)
     {
         if (string.IsNullOrWhiteSpace(pathOrUrl))
         {
@@ -190,7 +208,84 @@ public class CoverImages : ICoverImages
     private static async Task RenderVariantAsync(string source, string target, int width, (int W, int H) frame, CoverImageMeta? meta, CancellationToken ct)
     {
         using var image = await RasterImage.LoadAsync(source, ct);
+        await RenderVariantAsync(image, target, width, frame, meta, ct);
+    }
 
+    /// <inheritdoc />
+    public async Task<int> PrerenderAsync(string relativePath, CancellationToken ct)
+    {
+        var relative = NormalizeRelativePath(relativePath);
+        var source = relative == null ? null : SourcePath(relative);
+        if (relative == null || source == null)
+        {
+            return 0;
+        }
+
+        var missing = Ratios
+            .SelectMany(ratio => PrerenderWidths.Select(width => (Width: width, Ratio: ratio.Key, Frame: ratio.Value, Target: VariantPath(relative, width, ratio.Key))))
+            .Where(variant => !File.Exists(variant.Target))
+            .ToList();
+        var meta = await _meta.GetAsync(relative, ct);
+        var needsColor = meta?.DominantColor == null;
+        if (missing.Count == 0 && !needsColor)
+        {
+            return 0;
+        }
+
+        RasterImage image;
+        try
+        {
+            // Исходник открывается один раз на все рамки — это самая дорогая часть, а не сами уменьшенные копии.
+            image = await RasterImage.LoadAsync(source, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not read cover {Path} for pre-rendering.", relative);
+            return 0;
+        }
+
+        using (image)
+        {
+            if (needsColor)
+            {
+                // Цвет — фон рамки на витрине, пока картинка грузится. Точку фокуса, если она уже была, не трогаем.
+                meta ??= new CoverImageMeta { Path = relative };
+                meta.Width = image.Width;
+                meta.Height = image.Height;
+                meta.DominantColor = image.AverageColorHex();
+                meta.UpdatedAt = DateTime.UtcNow;
+                await _meta.UpsertAsync(meta, ct);
+            }
+
+            var rendered = 0;
+            foreach (var variant in missing)
+            {
+                var gate = Locks.GetOrAdd(variant.Target, _ => new SemaphoreSlim(1, 1));
+                await gate.WaitAsync(ct);
+                try
+                {
+                    // Пока ждали, вариант мог нарезать запрос посетителя.
+                    if (!File.Exists(variant.Target))
+                    {
+                        await RenderVariantAsync(image, variant.Target, variant.Width, variant.Frame, meta, ct);
+                        rendered++;
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "Could not pre-render cover variant {Width}/{Ratio} for {Path}.", variant.Width, variant.Ratio, relative);
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            }
+            return rendered;
+        }
+    }
+
+    private static async Task RenderVariantAsync(RasterImage image, string target, int width, (int W, int H) frame, CoverImageMeta? meta, CancellationToken ct)
+    {
         // Самая большая область нужной пропорции, которая помещается в исходник, — потом она ужимается до запрошенной
         // ширины. Так рамка никогда не растягивает картинку: маленький исходник даёт вариант поменьше, а не мыло.
         var coverWidth = Math.Min(image.Width, image.Height * frame.W / (double)frame.H);
@@ -267,6 +362,8 @@ public class CoverImages : ICoverImages
             if (relative != null)
             {
                 await _meta.UpsertAsync(meta, ct);
+                // Рамки витрины — сразу в фоне, а не первым посетителем каталога; загрузка этого не ждёт.
+                _warmup.Enqueue(relative);
             }
             return new CoverPreparation(true, null, null, image.Width, image.Height, warnings, meta);
         }
@@ -328,6 +425,8 @@ public class CoverImages : ICoverImages
         meta.UpdatedAt = DateTime.UtcNow;
         await _meta.UpsertAsync(meta, ct);
         InvalidateVariants(meta.Path);
+        // Старые рамки удалены — новые (по новой точке фокуса) нарезаются в фоне.
+        _warmup.Enqueue(meta.Path);
         return meta;
     }
 

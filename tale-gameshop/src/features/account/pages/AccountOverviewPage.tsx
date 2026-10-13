@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '../../../i18n';
 import { tierName } from '../../../utils/cashback';
 import { formatDate } from '../../../i18n/format';
 import {Link, useNavigate} from 'react-router-dom';
@@ -14,9 +13,11 @@ import {
     faHourglassHalf
 } from '@fortawesome/free-solid-svg-icons';
 import AccountShell from '../components/AccountShell';
+import Cover from '../../../components/common/Cover';
 import AccountRecommendationCard from '../components/AccountRecommendationCard';
-import {accountProfile} from '../mockAccountData';
-import { useAccountProfile } from '../context/AccountProfileContext';
+import { useAccountIdentity } from '../useAccountIdentity';
+import EmailText, { EMAIL_SKELETON } from '../../../components/common/EmailText';
+import VerifiedBuyerMark from '../components/VerifiedBuyerMark';
 import { useRecommendations } from '../../../hooks/use-recommendations';
 import { useGameKeys } from '../../../hooks/use-game-keys';
 import { useOrders } from '../../../hooks/use-orders';
@@ -88,26 +89,17 @@ const AccountOverviewPage: React.FC = () => {
         reload: reloadPaymentMethods
     } = usePaymentMethodsSummary();
 
-    const ordersSummary = ordersError
-        ? t('common.unavailable')
-        : isOrdersLoading
-            ? t('common.loading')
-            : t('account.overview.orders', { count: ordersTotal });
-    const keysSummary = keysError
-        ? t('common.unavailable')
-        : isKeysLoading
-            ? t('common.loading')
-            : t('account.overview.activeKeys', { count: keys.length });
-    const savedSummary = wishlistError
-        ? t('common.unavailable')
-        : isWishlistLoading
-            ? t('common.loading')
-            : t('account.overview.items', { count: wishlistCount });
-    const billingSummary = paymentMethodsError
-        ? t('common.unavailable')
-        : isPaymentMethodsLoading
-            ? t('common.loading')
-            : t('account.overview.methods', { count: paymentMethodsCount });
+    // Пока число грузится — та же строка той же высоты, только «полоской» (skeleton-text), а не «Loading…».
+    const summary = (loading: boolean, error: unknown, ready: () => string) =>
+        error
+            ? <strong>{t('common.unavailable')}</strong>
+            : loading
+                ? <strong className="skeleton-text" aria-busy="true">{t('common.loading')}</strong>
+                : <strong>{ready()}</strong>;
+    const ordersSummary = summary(isOrdersLoading, ordersError, () => t('account.overview.orders', { count: ordersTotal }));
+    const keysSummary = summary(isKeysLoading, keysError, () => t('account.overview.activeKeys', { count: keys.length }));
+    const savedSummary = summary(isWishlistLoading, wishlistError, () => t('account.overview.items', { count: wishlistCount }));
+    const billingSummary = summary(isPaymentMethodsLoading, paymentMethodsError, () => t('account.overview.methods', { count: paymentMethodsCount }));
 
     // Кнопка вела в console.log. Открываем заказ там, где он показан целиком, — на «Orders»,
     // отфильтрованных по его номеру: сервер ищет в том числе по OrderNumber.
@@ -123,9 +115,8 @@ const AccountOverviewPage: React.FC = () => {
         navigate('/account/keys');
     };
 
-    const { profile } = useAccountProfile();
-    const displayName = profile?.displayName ?? accountProfile.name;
-    const email = profile?.email ?? accountProfile.email;
+    const identity = useAccountIdentity();
+    const isVerifiedBuyer = !isOrdersLoading && ordersTotal > 0;
 
     return (
         <AccountShell
@@ -134,13 +125,25 @@ const AccountOverviewPage: React.FC = () => {
             subtitle={t('account.overview.subtitle')}
         >
             <div className="card account-card account-profile-card">
-                <div className="account-profile-summary">
-                    <AccountProfileSummary />
-                    <div>
-                        <h2>{displayName}</h2>
-                        <p className="account-profile-email">{email}</p>
-                        {/* Честный бейдж: только при реальных покупках (раньше показывался всем из мока). */}
-                        {!isOrdersLoading && ordersTotal > 0 && <span className="badge">{t('account.verifiedBuyer')}</span>}
+                {/* Пока профиль грузится — те же строки «полосками» той же высоты; раньше здесь были моковые
+                    «Alex R.» с чужой почтой, и карточка перескакивала. «Verified buyer» — значком в строке имени:
+                    он приходит позже (заказы), строкой ниже он раздвигал карточку. */}
+                <div className="account-profile-summary" aria-busy={identity.isLoading || undefined}>
+                    <div className={`account-avatar account-avatar-lg${identity.isLoading ? ' is-skeleton' : ''}`}>
+                        {!identity.isLoading && (identity.avatarUrl
+                            ? <img src={identity.avatarUrl} alt={t('account.avatarAlt', { name: identity.displayName })} />
+                            : identity.initials)}
+                    </div>
+                    <div className="account-profile-text">
+                        <h2 className="account-profile-name">
+                            <span className={`account-profile-name__text${identity.isLoading ? ' skeleton-text' : ''}`}>
+                                {identity.isLoading ? t('common.loading') : identity.displayName}
+                            </span>
+                            {!identity.isLoading && isVerifiedBuyer && <VerifiedBuyerMark withLabel />}
+                        </h2>
+                        <p className={`account-profile-email${identity.isLoading ? ' skeleton-text' : ''}`}>
+                            {identity.isLoading ? EMAIL_SKELETON : <EmailText email={identity.email} />}
+                        </p>
                     </div>
                 </div>
                 <Link to="/account/settings" className="btn btn-primary account-action-btn">
@@ -158,7 +161,7 @@ const AccountOverviewPage: React.FC = () => {
                 </span>
                 <div className="cb-overview-balance">
                     <span className="cb-label">{t('account.overview.cashbackAvailable')}</span>
-                    <strong className="cb-overview-value">{cashbackMoney(cashback.available)}</strong>
+                    <strong className={`cb-overview-value${cashback.loaded ? '' : ' skeleton-text'}`}>{cashbackMoney(cashback.available)}</strong>
                     {cashback.pending > 0 && (
                         <span className="cb-overview-pending">
                             <FontAwesomeIcon icon={faHourglassHalf} />
@@ -171,7 +174,7 @@ const AccountOverviewPage: React.FC = () => {
                 <div className="cb-overview-level">
                     <div className="cb-overview-level-row">
                         <span className="cb-label">{t('account.overview.level')}</span>
-                        <span className="cb-tier-chip">
+                        <span className={`cb-tier-chip${cashback.loaded ? '' : ' skeleton-text'}`}>
                             <FontAwesomeIcon icon={tierIcon(cashbackTier.id)} />
                             {tierName(cashbackTier)} · {cashbackTier.percent}%
                         </span>
@@ -179,7 +182,7 @@ const AccountOverviewPage: React.FC = () => {
                     <div className="rewards-progress-bar" aria-hidden="true">
                         <span style={{ width: `${Math.round(cashback.level.progress * 100)}%` }} />
                     </div>
-                    <span className="cb-overview-next">
+                    <span className={`cb-overview-next${cashback.loaded ? '' : ' skeleton-text'}`}>
                         {cashbackNext && cashback.level.remainingToNext !== null ? (
                             <>
                                 {t('account.overview.moreTo', { amount: cashbackMoney(cashback.level.remainingToNext) })} <b>{tierName(cashbackNext)}</b>
@@ -201,7 +204,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>{t('account.overview.ordersText')}</p>
                     <div className="account-action-footer">
-                        <strong>{ordersSummary}</strong>
+                        {ordersSummary}
                         <Link to="/account/orders" className="btn btn-outline account-action-btn">
                             {t('common.view')}
                         </Link>
@@ -214,7 +217,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>{t('account.overview.keysText')}</p>
                     <div className="account-action-footer">
-                        <strong>{keysSummary}</strong>
+                        {keysSummary}
                         <Link to="/account/keys" className="btn btn-outline account-action-btn">
                             {t('common.open')}
                         </Link>
@@ -227,7 +230,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>{t('account.overview.savedText')}</p>
                     <div className="account-action-footer">
-                        <strong>{savedSummary}</strong>
+                        {savedSummary}
                         <Link to="/account/saved" className="btn btn-outline account-action-btn">
                             {t('common.open')}
                         </Link>
@@ -240,7 +243,7 @@ const AccountOverviewPage: React.FC = () => {
                     </div>
                     <p>{t('account.overview.billingText')}</p>
                     <div className="account-action-footer">
-                        <strong>{billingSummary}</strong>
+                        {billingSummary}
                         <Link to="/account/billing" className="btn btn-outline account-action-btn">
                             {t('common.manage')}
                         </Link>
@@ -268,7 +271,7 @@ const AccountOverviewPage: React.FC = () => {
                         {isOrdersLoading && (
                             <tr>
                                 <td colSpan={5} className="account-table-state">
-                                    {t('account.overview.loadingOrders')}
+                                    <span className="skeleton-text">{t('account.overview.loadingOrders')}</span>
                                 </td>
                             </tr>
                         )}
@@ -330,12 +333,9 @@ const AccountOverviewPage: React.FC = () => {
                 </div>
                 <div className="account-key-list">
                     {isKeysLoading && (
-                        <div className="account-key-item">
-                            <div className="account-key-main">
-                                <strong>{t('account.overview.loadingKeys')}</strong>
-                                <div className="account-key-meta">
-                                    <span>{t('account.overview.pleaseWait')}</span>
-                                </div>
+                        <div className="account-key-item" aria-busy="true">
+                            <div>
+                                <strong className="skeleton-text">{t('account.overview.loadingKeys')}</strong>
                             </div>
                         </div>
                     )}
@@ -367,6 +367,14 @@ const AccountOverviewPage: React.FC = () => {
 
                         return (
                             <div key={`${keyItem.key}-${index}`} className="account-key-item">
+                                <Cover
+                                    className="account-key-cover"
+                                    ratio="square"
+                                    sizes="44px"
+                                    src={keyItem.game?.imagePath}
+                                    color={keyItem.game?.coverColor}
+                                    title={title}
+                                />
                                 <div className="account-key-main">
                                     <strong>{title}</strong>
                                     <div className="account-key-meta">
@@ -427,29 +435,6 @@ const AccountOverviewPage: React.FC = () => {
                 />
             </div>
         </AccountShell>
-    );
-};
-
-const AccountProfileSummary: React.FC = () => {
-    const { profile } = useAccountProfile();
-    const displayName = profile?.displayName ?? accountProfile.name;
-    const initialsSource = displayName || profile?.email || accountProfile.name;
-    const initials = initialsSource
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0])
-        .join('')
-        .toUpperCase() || accountProfile.initials;
-
-    return (
-        <div className="account-avatar account-avatar-lg">
-            {profile?.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={i18n.t('account.avatarAlt', { name: displayName })} />
-            ) : (
-                initials
-            )}
-        </div>
     );
 };
 

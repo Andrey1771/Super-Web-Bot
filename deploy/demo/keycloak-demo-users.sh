@@ -1,65 +1,69 @@
 #!/usr/bin/env bash
-# Демо-аккаунты Keycloak для демо-сайта (портфолио): demo-admin (роль admin) и demo-buyer.
+# Демо-сайт (портфолио) в Keycloak: общий демо-админ «только просмотр» и открытая регистрация посетителей.
 #
 #   bash deploy/demo/keycloak-demo-users.sh
 #
-# Пароли — DEMO_ADMIN_PASSWORD и DEMO_BUYER_PASSWORD из .env (их же показывает сайт на странице приглашения,
-# они публичные намеренно). Повторный запуск безопасен: заводит недостающее и выставляет пароли заново.
+# Пароль — DEMO_ADMIN_PASSWORD из .env (его же показывает сайт в окне приглашения, он публичный намеренно).
+# Повторный запуск безопасен: заводит недостающее и выставляет пароль заново.
 #
 # Почему так:
-#  - аккаунты общие для всех посетителей, поэтому собственная страница аккаунта Keycloak у них только для чтения
-#    (вместо роли по умолчанию — одна account/view-profile): сменить пароль или включить 2FA оттуда нельзя;
-#    то же в самом сайте закрывает DemoGuard;
-#  - почта на несуществующем домене .invalid: «Забыли пароль» для них никуда не придёт;
-#  - в демо-realm выключены регистрация и восстановление пароля — входят только демо-аккаунтами
-#    (DEMO_LOCK_REALM=false — realm не трогать: так скрипт проверяют на стенде разработчика).
+#  - посетители регистрируют свои аккаунты и покупают тестовой картой, поэтому регистрация и «Забыли пароль?»
+#    открыты (письма уходят по SMTP из .env — см. deploy/keycloak-smtp.sh). Почту нужно подтвердить: письмо уходит
+#    сразу при регистрации, ссылка в нём живёт сутки (по умолчанию Keycloak — 5 минут, письмо часто открывают позже);
+#  - demo-admin общий для всех, поэтому собственной страницы аккаунта Keycloak у него нет
+#    (без ролей клиента account — ни просмотра, ни правок; IP и устройства других посетителей оттуда не видны);
+#    в самом сайте его правки закрывает DemoGuard, почта у него на несуществующем домене .invalid;
+#  - общий demo-buyer больше не нужен — отключается (не удаляется), если остался от прежней версии демо.
+#  DEMO_OPEN_REALM=false — настройки realm не трогать (так скрипт проверяют на стенде разработчика).
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
 # .env не исполняется шеллом (пароли со спецсимволами): значения читает env_value из deploy/lib.sh.
 . "$(dirname "$0")/../lib.sh"
 DEMO_ADMIN_PASSWORD="${DEMO_ADMIN_PASSWORD:-$(env_value DEMO_ADMIN_PASSWORD)}"
-DEMO_BUYER_PASSWORD="${DEMO_BUYER_PASSWORD:-$(env_value DEMO_BUYER_PASSWORD)}"
 : "${DEMO_ADMIN_PASSWORD:?задайте DEMO_ADMIN_PASSWORD в .env}"
-: "${DEMO_BUYER_PASSWORD:?задайте DEMO_BUYER_PASSWORD в .env}"
 REALM="${KEYCLOAK_REALM:-TaleShop}"
 
 # Всё выполняется внутри контейнера Keycloak: учётка администратора берётся из его окружения и не печатается.
 docker compose exec -T \
   -e DEMO_ADMIN_PASSWORD="$DEMO_ADMIN_PASSWORD" \
-  -e DEMO_BUYER_PASSWORD="$DEMO_BUYER_PASSWORD" \
   -e REALM="$REALM" \
-  -e DEMO_LOCK_REALM="${DEMO_LOCK_REALM:-true}" \
+  -e DEMO_OPEN_REALM="${DEMO_OPEN_REALM:-true}" \
   keycloak bash -s <<'IN_CONTAINER'
 set -euo pipefail
 kc=/opt/keycloak/bin/kcadm.sh
 $kc config credentials --server http://localhost:8080/auth --realm master \
   --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" >/dev/null
 
-if [ "$DEMO_LOCK_REALM" = true ]; then
-  $kc update "realms/$REALM" -s registrationAllowed=false -s resetPasswordAllowed=false
+if [ "$DEMO_OPEN_REALM" = true ]; then
+  $kc update "realms/$REALM" -s registrationAllowed=true -s resetPasswordAllowed=true -s verifyEmail=true \
+    -s "attributes.\"actionTokenGeneratedByUserLifespan.verify-email\"=86400"
+  echo "  регистрация и «Забыли пароль?» открыты, почта подтверждается письмом"
 fi
 
-demo_user() {
-  local username="$1" email="$2" first="$3" last="$4" password="$5" role="$6"
-  if [ -z "$($kc get users -r "$REALM" -q username="$username" -q exact=true --fields id --format csv --noquotes)" ]; then
-    $kc create users -r "$REALM" -s username="$username" -s email="$email" -s emailVerified=true \
-      -s enabled=true -s firstName="$first" -s lastName="$last" >/dev/null
-  fi
-  local id
-  id="$($kc get users -r "$REALM" -q username="$username" -q exact=true --fields id --format csv --noquotes)"
-  $kc update "users/$id" -r "$REALM" -s 'requiredActions=[]' -s emailVerified=true -s enabled=true
-  $kc set-password -r "$REALM" --username "$username" --new-password "$password"
-  # Роль по умолчанию даёт manage-account (смена пароля и 2FA на странице Keycloak) — у общих аккаунтов её нет.
-  $kc remove-roles -r "$REALM" --uusername "$username" --rolename "default-roles-$(echo "$REALM" | tr '[:upper:]' '[:lower:]')" 2>/dev/null || true
-  $kc add-roles -r "$REALM" --uusername "$username" --cclientid account --rolename view-profile
-  if [ -n "$role" ]; then
-    $kc add-roles -r "$REALM" --uusername "$username" --rolename "$role"
-  fi
-  echo "  $username — готов"
+user_id() {
+  $kc get users -r "$REALM" -q username="$1" -q exact=true --fields id --format csv --noquotes
 }
 
-demo_user demo-admin demo-admin@taleshop-demo.invalid Demo Admin "$DEMO_ADMIN_PASSWORD" admin
-demo_user demo-buyer demo-buyer@taleshop-demo.invalid Demo Buyer "$DEMO_BUYER_PASSWORD" ""
+if [ -z "$(user_id demo-admin)" ]; then
+  $kc create users -r "$REALM" -s username=demo-admin -s email=demo-admin@taleshop-demo.invalid -s emailVerified=true \
+    -s enabled=true -s firstName=Demo -s lastName=Admin >/dev/null
+fi
+id="$(user_id demo-admin)"
+$kc update "users/$id" -r "$REALM" -s 'requiredActions=[]' -s emailVerified=true -s enabled=true
+$kc set-password -r "$REALM" --username demo-admin --new-password "$DEMO_ADMIN_PASSWORD"
+# Роль по умолчанию даёт manage-account (смена пароля и 2FA на странице Keycloak) — у общего аккаунта её нет.
+$kc remove-roles -r "$REALM" --uusername demo-admin --rolename "default-roles-$(echo "$REALM" | tr '[:upper:]' '[:lower:]')" 2>/dev/null || true
+# И страницы аккаунта Keycloak у него нет совсем: даже view-profile отдаёт в API аккаунта его сеансы и устройства с IP —
+# а это сеансы всех, кто входил под общей учёткой. Сайту роль не нужна: «Безопасность» берёт данные через свой сервер.
+$kc remove-roles -r "$REALM" --uusername demo-admin --cclientid account --rolename view-profile 2>/dev/null || true
+$kc remove-roles -r "$REALM" --uusername demo-admin --cclientid account --rolename manage-account 2>/dev/null || true
+$kc add-roles -r "$REALM" --uusername demo-admin --rolename admin
+echo "  demo-admin — готов (только просмотр)"
+
+if buyer="$(user_id demo-buyer)" && [ -n "$buyer" ]; then
+  $kc update "users/$buyer" -r "$REALM" -s enabled=false
+  echo "  demo-buyer — отключён"
+fi
 IN_CONTAINER
-echo "Демо-аккаунты Keycloak готовы."
+echo "Демо в Keycloak готово."

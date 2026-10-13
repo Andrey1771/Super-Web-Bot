@@ -25,9 +25,31 @@ public class SmtpMailSender : IMailSender
         _logger = logger;
     }
 
+    /// <summary>
+    /// Домены, которых не бывает (RFC 2606/6761): демо-админ — demo-admin@taleshop-demo.invalid, покупатели наполнения
+    /// демо — @example.com. Письмо туда вернётся отказом, а отказы портят репутацию домена у почтового сервиса.
+    /// </summary>
+    public static bool IsUndeliverable(string address)
+    {
+        var at = address.LastIndexOf('@');
+        if (at < 0)
+        {
+            return true;
+        }
+        var domain = address[(at + 1)..].Trim().TrimEnd('.').ToLowerInvariant();
+        return domain is "example.com" or "example.net" or "example.org" or "localhost"
+            || domain.EndsWith(".invalid") || domain.EndsWith(".test") || domain.EndsWith(".example") || domain.EndsWith(".localhost")
+            || domain.EndsWith(".example.com") || domain.EndsWith(".example.net") || domain.EndsWith(".example.org");
+    }
+
     public async Task SendAsync(string to, string subject, string textBody, string? htmlBody = null, CancellationToken cancellationToken = default)
     {
-        using var client = SmtpClients.Create(_options);
+        if (IsUndeliverable(to))
+        {
+            _logger.LogInformation("Mail not sent to a reserved domain {To}: {Subject}", to, subject);
+            return;
+        }
+
         using var message = new MailMessage
         {
             From = new MailAddress(_options.FromAddress, _options.FromName),
@@ -44,7 +66,7 @@ public class SmtpMailSender : IMailSender
                 AlternateView.CreateAlternateViewFromString(htmlBody, Encoding.UTF8, "text/html"));
         }
 
-        await client.SendMailAsync(message, cancellationToken);
+        await SmtpClients.SendAsync(_options, message, cancellationToken);
         _logger.LogInformation("Mail sent to {To}: {Subject}", to, subject);
     }
 }

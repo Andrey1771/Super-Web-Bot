@@ -140,6 +140,20 @@ public class SteamImportParsingTests
     }
 
     [Fact]
+    public void Description_keeps_text_outside_paragraphs()
+    {
+        // Старые карточки Steam (Subnautica): текст стоит прямо между заголовками и картинками, без <p>.
+        const string html = """
+            Subnautica is an <b>underwater</b> adventure game.<h2 class="bb_tag">Dive Into a Vast Underwater World</h2><span class="bb_img_ctn"><img class="bb_img" src="https://cdn.example/line.png"></span><br><span class="bb_img_ctn"><img class="bb_img" src="https://cdn.example/reef.gif"></span><br><br>You have crash-landed on an alien ocean world.<h2 class="bb_tag">Scavenge, Craft, and Survive</h2>
+            """;
+
+        var md = SteamHtml.ToMarkdown(html);
+
+        Assert.StartsWith("Subnautica is an **underwater** adventure game.", md);
+        Assert.Contains("![](https://cdn.example/reef.gif)\n\nYou have crash-landed on an alien ocean world.\n\n### Scavenge", md);
+    }
+
+    [Fact]
     public void Requirements_become_label_value_pairs()
     {
         const string html = "<strong>Minimum:</strong><br><ul class=\"bb_ul\"><li>Requires a 64-bit processor and operating system<br></li><li><strong>OS:</strong> 64-bit Windows 10<br></li><li><strong>Processor:</strong> Core i7-6700 or Ryzen 5 1600<br></li><li><strong>Additional Notes:</strong> SSD required.</li></ul>";

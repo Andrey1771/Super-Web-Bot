@@ -59,6 +59,8 @@ public static class StorefrontCards
         activation = item.Activation?.ToString(),
         category = titles?.CategoryOf(item) ?? item.Category,
         imagePath = item.ImagePath,
+        // Фон рамки, пока обложка грузится (основной цвет картинки); null — общий фон витрины.
+        coverColor = item.CoverColor,
         coverMediaId = item.CoverMediaId,
         // Трейлер для превью при наведении на плитку; null — видео у товара нет.
         trailerUrl = item.TrailerUrl,

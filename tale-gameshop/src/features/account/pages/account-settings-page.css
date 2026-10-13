@@ -310,11 +310,88 @@
     text-decoration: underline;
 }
 
-.settings-pointer-actions {
+/* «Аккаунт и безопасность»: разделы строками на всю ширину карточки (как в настройках iPhone). Нижний отступ
+   карточки отдан строкам, чтобы последняя строка доходила до её края. */
+.settings-pointer-card {
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+.settings-pointer-list {
+    display: grid;
+    margin: 0 calc(-1 * var(--space-24));
+    border-top: 1px solid var(--color-border);
+}
+
+.settings-pointer-row {
     display: flex;
+    align-items: center;
     gap: var(--space-12);
-    flex-wrap: wrap;
-    margin-top: var(--space-12);
+    padding: var(--space-16) var(--space-24);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+/* «Download my data» — та же строка, но кнопка: сбрасываем вид кнопки. */
+button.settings-pointer-row {
+    width: 100%;
+    border: 0;
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.settings-pointer-row:disabled {
+    cursor: progress;
+}
+
+.settings-pointer-row + .settings-pointer-row {
+    border-top: 1px solid var(--color-border);
+}
+
+.settings-pointer-row:hover,
+.settings-pointer-row:focus-visible {
+    background: rgba(124, 58, 237, 0.04);
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.settings-pointer-row:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.settings-pointer-main {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.settings-pointer-title {
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.settings-pointer-text {
+    color: var(--color-muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.settings-pointer-chevron {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.settings-pointer-row:hover .settings-pointer-chevron {
+    color: var(--color-primary);
+    transform: translateX(2px);
 }
 
 /* Telegram — строка интеграции: логотип, текст, справа статус и действие. */
@@ -441,6 +518,14 @@
     font-size: 13px;
     line-height: 1.5;
     color: #b42318;
+}
+
+/* Пояснение, а не ошибка (демо-админу привязка закрыта намеренно) — спокойным цветом. */
+.settings-telegram-note--info {
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-sm);
+    background: rgba(124, 58, 237, 0.06);
+    color: var(--color-muted);
 }
 
 @media (max-width: 640px) {

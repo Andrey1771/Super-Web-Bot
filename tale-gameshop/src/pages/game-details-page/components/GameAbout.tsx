@@ -49,6 +49,26 @@ const GameAbout = ({ descriptionMarkdown, features, awards, noun = 'game' }: Gam
     return () => observer.disconnect();
   }, [description, features, awards]);
 
+  // Разделители из описаний Steam — картинки-полоски вроде 596×10 под каждым заголовком. С рамкой и скруглением,
+  // как у скриншотов, они превращались в пустые «таблетки»; помечаем их, и CSS рисует их просто линией.
+  useEffect(() => {
+    const images = bodyRef.current?.querySelectorAll<HTMLImageElement>('.gd-markdown img') ?? [];
+    const cleanups: Array<() => void> = [];
+    images.forEach((image) => {
+      const mark = () => {
+        const { naturalWidth: width, naturalHeight: height } = image;
+        image.classList.toggle('is-divider', height > 0 && (height <= 24 || width / height >= 12));
+      };
+      if (image.complete) {
+        mark();
+      } else {
+        image.addEventListener('load', mark, { once: true });
+        cleanups.push(() => image.removeEventListener('load', mark));
+      }
+    });
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [description]);
+
   if (!description && !hasFeatures && !hasAwards) {
     return null;
   }

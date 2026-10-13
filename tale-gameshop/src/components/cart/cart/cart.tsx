@@ -8,7 +8,7 @@ import CountryPickerPopover from './CountryPickerPopover';
 import KeyDetailsPopover from './KeyDetailsPopover';
 import {gaItemVariant, ITEM_LISTS, trackItemSelect, useItemListView} from '../../../utils/item-list-tracking';
 import {productHref} from '../../../utils/software';
-import {Link, useSearchParams} from "react-router-dom";
+import {Link, useNavigate, useSearchParams} from "react-router-dom";
 import container from "../../../inversify.config";
 import {IUrlService} from "../../../iterfaces/i-url-service";
 import {IApiClient} from "../../../iterfaces/i-api-client";
@@ -21,6 +21,7 @@ import {
     faBolt,
     faCartPlus,
     faCircleCheck,
+    faHeart,
     faShieldHalved
 } from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
@@ -30,6 +31,8 @@ import HoverTrailer from "../../common/HoverTrailer";
 import {useSitePreferences} from "../../../context/site-preferences";
 import {formatMoney} from "../../../utils/format-money";
 import {CartCashbackNote} from "../../cashback/CashbackHints";
+import {useWishlist} from "../../../context/wishlist-context";
+import {releaseLabel} from "../../../utils/format-release-date";
 import './cart.css';
 
 type CartItemRowProps = {
@@ -174,12 +177,15 @@ const TrustStrip: React.FC = () => {
 const RecommendedRow: React.FC = () => {
     const {t} = useTranslation();
     const {
-        items: recommended,
+        items: allRecommended,
         isLoading: isRecommendationsLoading,
         error: recommendationsError,
         reload: reloadRecommendations
     } = useRecommendations(4);
+    // Невышедшая игра (сервер кладёт не больше одной, последней) — с датой выхода и «В желаемое» вместо цены и корзины.
+    const recommended = allRecommended;
     const {state, dispatch} = useCart();
+    const wishlist = useWishlist();
     const {currency} = useSitePreferences();
 
     // Показ подборки рекомендаций: без него клики по ней не с чем сравнивать.
@@ -252,7 +258,7 @@ const RecommendedRow: React.FC = () => {
                             {/* Строка ведёт на страницу игры: раньше клик по карточке только
                                 считался в аналитике, а внешне она выглядела кликабельной. */}
                             <Link className="cart-rec-media" to={href}>
-                                <Cover ratio="square" sizes="76px" src={game.imagePath} title={game.title}>
+                                <Cover ratio="square" sizes="76px" src={game.imagePath} color={game.coverColor} title={game.title}>
                                     <HoverTrailer src={game.trailerUrl} poster={game.trailerPosterUrl} title={game.title} />
                                 </Cover>
                             </Link>
@@ -262,8 +268,15 @@ const RecommendedRow: React.FC = () => {
                                 </h3>
                                 {/* Почему игра здесь оказалась. Раньше на этом месте у всех стояло
                                     «Steam» — площадка, которой в данных рекомендации нет вовсе. */}
-                                {item.reason && <p className="cart-rec-reason">{item.reason}</p>}
+                                {game.isComingSoon
+                                    ? <p className="cart-rec-reason cart-rec-release">{releaseLabel(t, game.releaseDate)}</p>
+                                    : item.reason && <p className="cart-rec-reason">{item.reason}</p>}
                             </div>
+                            {game.isComingSoon ? (
+                                <div className="cart-rec-price">
+                                    <span className="cart-rec-soon">{t('common.comingSoon')}</span>
+                                </div>
+                            ) : (
                             <div className="cart-rec-price">
                                 {/* Цена со скидкой — та же, что спишут: карточка показывала
                                     полную, а в корзину клала уже уценённую. */}
@@ -272,7 +285,20 @@ const RecommendedRow: React.FC = () => {
                                 )}
                                 <span className="cart-rec-price-now">{formatMoney(finalPrice, priceCurrency)}</span>
                             </div>
-                            {inCart ? (
+                            )}
+                            {game.isComingSoon ? (
+                                // Купить ещё нельзя — можно отложить: игра появится в «Желаемом» с уведомлением о выходе.
+                                <button
+                                    type="button"
+                                    className={`cart-rec-action cart-rec-wish ${wishlist.isWishlisted(game.id) ? 'is-active' : ''}`}
+                                    title={wishlist.isWishlisted(game.id) ? t('purchase.inWishlist') : t('common.addToWishlist')}
+                                    aria-label={wishlist.isWishlisted(game.id) ? t('purchase.inWishlist') : t('common.addToWishlist')}
+                                    aria-pressed={wishlist.isWishlisted(game.id)}
+                                    onClick={() => wishlist.toggle(game.id)}
+                                >
+                                    <FontAwesomeIcon icon={faHeart}/>
+                                </button>
+                            ) : inCart ? (
                                 // Не кнопка: добавлять нечего, игра уже в заказе выше. Подпись —
                                 // в title и для читалки экрана, на строке хватает галочки.
                                 <span className="cart-rec-action is-in-cart" title={t('cart.alreadyInCart')}>
@@ -341,6 +367,7 @@ const Cart: React.FC = () => {
 
     const blockedCount = state.items.filter((item) => regions[item.gameId]?.allowed === false).length;
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const seededRef = useRef<Set<string>>(new Set());
     const {currency} = useSitePreferences();
 
@@ -438,11 +465,19 @@ const Cart: React.FC = () => {
         seededRef.current.add(gameId);
 
         (async () => {
+            let redirected = false;
             try {
                 const apiClient = container.get<IApiClient>(IDENTIFIERS.IApiClient);
                 // В валюте корзины: без неё в позицию легла бы цена в базовой валюте,
                 // а показана она была бы со значком выбранной.
                 const {data} = await apiClient.api.get(`/api/game/${gameId}?currency=${encodeURIComponent(currency)}`);
+                if (data?.id && data.isComingSoon) {
+                    // Невышедшую игру касса не продаст («isn't released yet») — ведём на её страницу: там дата выхода
+                    // и «в желаемое», а не позиция в корзине, которую потом не оплатить.
+                    redirected = true;
+                    navigate(productHref(data), {replace: true});
+                    return;
+                }
                 if (data?.id) {
                     dispatch({
                         type: 'ADD_TO_CART',
@@ -459,12 +494,15 @@ const Cart: React.FC = () => {
             } catch (error) {
                 console.error('Failed to add game from deep-link', error);
             } finally {
-                const next = new URLSearchParams(searchParams);
-                next.delete('add');
-                setSearchParams(next, {replace: true});
+                // Ушли на страницу игры — параметр чистить негде: setSearchParams вернул бы обратно в корзину.
+                if (!redirected) {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('add');
+                    setSearchParams(next, {replace: true});
+                }
             }
         })();
-    }, [searchParams, dispatch, setSearchParams]);
+    }, [searchParams, dispatch, setSearchParams, navigate]);
 
     const handleIncreaseQuantity = (id: string) => dispatch({type: 'INCREASE_QUANTITY', payload: id});
     const handleDecreaseQuantity = (id: string) => dispatch({type: 'DECREASE_QUANTITY', payload: id});

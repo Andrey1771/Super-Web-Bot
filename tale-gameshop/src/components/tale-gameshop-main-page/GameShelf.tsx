@@ -100,7 +100,7 @@ export default function GameShelf({
                             data-hover-trailer-root=""
                             onClick={onSelect ? () => onSelect(game, index) : undefined}
                         >
-                            <Cover className="shelf-cover" ratio="photo" sizes="(max-width: 640px) 50vw, 25vw" title={game.title} src={game.imagePath} baseUrl={baseUrl}>
+                            <Cover className="shelf-cover" ratio="photo" sizes="(max-width: 640px) 50vw, 25vw" title={game.title} src={game.imagePath} color={game.coverColor} baseUrl={baseUrl}>
                                 <HoverTrailer src={normalizeGameCoverUrl(game.trailerUrl, baseUrl)} poster={normalizeGameCoverUrl(game.trailerPosterUrl, baseUrl)} title={game.title} />
                                 <GameCoverOverlay game={game} chip={coverChip?.(game) ?? null} />
                             </Cover>

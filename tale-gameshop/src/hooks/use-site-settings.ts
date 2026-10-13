@@ -8,7 +8,7 @@ import type { Settings } from '../models/settings';
 // Результат кешируется на время жизни вкладки — настройки меняются редко,
 // и десяток компонентов не должен дёргать /api/Settings каждый по разу.
 
-export const DEFAULT_SUPPORT_EMAIL = 'support@taleshop.local';
+export const DEFAULT_SUPPORT_EMAIL = 'support@tale-shop.com';
 
 let settingsPromise: Promise<Settings | null> | null = null;
 

@@ -179,5 +179,6 @@ public class SteamMediaLocalizerTests : IDisposable
         public Task<CoverImageMeta?> GetMetaAsync(string relativePath, CancellationToken ct) => throw new NotSupportedException();
         public Task<CoverImageMeta?> SetFocusAsync(string relativePath, double focusX, double focusY, CancellationToken ct) => throw new NotSupportedException();
         public string? NormalizeRelativePath(string? pathOrUrl) => throw new NotSupportedException();
+        public Task<int> PrerenderAsync(string relativePath, CancellationToken ct) => throw new NotSupportedException();
     }
 }

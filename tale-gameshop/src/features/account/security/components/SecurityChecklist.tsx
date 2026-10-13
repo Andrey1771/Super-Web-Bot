@@ -1,24 +1,23 @@
 import {useTranslation} from 'react-i18next';
 import React from 'react';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faCheck, faShieldHalved, faXmark} from '@fortawesome/free-solid-svg-icons';
+import {faCheck, faChevronRight, faShieldHalved, faXmark} from '@fortawesome/free-solid-svg-icons';
 
 export type SecurityChecklistStep = {
     key: string;
     label: string;
     done: boolean;
-    actionLabel: string;
-    onAction: () => void;
+    /** Карточка, где этот шаг делается: сводка ведёт к ней, а не дублирует её кнопку. */
+    targetId: string;
 };
 
 type SecurityChecklistProps = {
     show: boolean;
     steps: SecurityChecklistStep[];
-    isBusy: boolean;
     onDismiss: () => void;
 };
 
-const SecurityChecklist: React.FC<SecurityChecklistProps> = ({show, steps, isBusy, onDismiss}) => {
+const SecurityChecklist: React.FC<SecurityChecklistProps> = ({show, steps, onDismiss}) => {
     const {t} = useTranslation();
     if (!show) {
         return null;
@@ -60,16 +59,19 @@ const SecurityChecklist: React.FC<SecurityChecklistProps> = ({show, steps, isBus
                         <span className="security-checklist-mark" aria-hidden="true">
                             {step.done && <FontAwesomeIcon icon={faCheck} />}
                         </span>
-                        <span className="security-checklist-label">{step.label}</span>
-                        {step === nextStep && (
+                        {/* Следующий шаг — ссылка к его карточке ниже. Своей кнопки действия у сводки нет: раньше
+                            «Enable 2FA» стояла и здесь, и в карточке 2FA прямо под ней. */}
+                        {step === nextStep ? (
                             <button
                                 type="button"
-                                className="btn btn-primary security-checklist-btn"
-                                onClick={step.onAction}
-                                disabled={isBusy}
+                                className="security-checklist-goto"
+                                onClick={() => document.getElementById(step.targetId)?.scrollIntoView({behavior: 'smooth', block: 'start'})}
                             >
-                                {step.actionLabel}
+                                <span>{step.label}</span>
+                                <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
                             </button>
+                        ) : (
+                            <span className="security-checklist-label">{step.label}</span>
                         )}
                     </li>
                 ))}

@@ -33,6 +33,20 @@ namespace SuperBot.Infrastructure.Repositories
             await _collection.ReplaceOneAsync(item => item.Path == meta.Path, Map(meta), new ReplaceOptions { IsUpsert = true }, ct);
         }
 
+        public async Task<IReadOnlyDictionary<string, string>> GetColorsAsync(IEnumerable<string> paths, CancellationToken ct = default)
+        {
+            var list = paths.Where(path => !string.IsNullOrWhiteSpace(path)).Distinct().ToList();
+            if (list.Count == 0)
+            {
+                return new Dictionary<string, string>();
+            }
+            var found = await _collection
+                .Find(Builders<CoverImageMetaDb>.Filter.In(item => item.Path, list) & Builders<CoverImageMetaDb>.Filter.Ne(item => item.DominantColor, null))
+                .Project(item => new { item.Path, item.DominantColor })
+                .ToListAsync(ct);
+            return found.ToDictionary(item => item.Path, item => item.DominantColor!, StringComparer.OrdinalIgnoreCase);
+        }
+
         private static CoverImageMeta Map(CoverImageMetaDb db) => new()
         {
             Path = db.Path,
