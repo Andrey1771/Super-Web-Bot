@@ -886,6 +886,42 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* Окно скидки: три подписанных поля, даты помещаются целиком; на узком экране — в столбик. */
+.admin-modal__card.discount-editor {
+  width: min(560px, 92vw);
+}
+
+.discount-editor h3 {
+  margin: 0 0 var(--space-16);
+  line-height: 1.3;
+}
+
+.discount-editor__fields {
+  display: grid;
+  grid-template-columns: 110px repeat(2, minmax(150px, 1fr));
+  gap: var(--space-12);
+}
+
+.discount-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.discount-editor__field .input {
+  width: 100%;
+}
+
+@media (max-width: 560px) {
+  .discount-editor__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-sticky-bar {
   position: sticky;
   bottom: 0;
