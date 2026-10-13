@@ -49,7 +49,17 @@ const statusLabels: Record<GameDiscountStatus, string> = {
   expired: "Expired"
 };
 
-const toDateInput = (iso?: string | null) => (iso ? iso.slice(0, 10) : new Date().toISOString().slice(0, 10));
+/**
+ * Даты скидки — дни по местному времени админа. Поле «с» — с начала дня, поле «по» — до конца дня включительно.
+ * Раньше на сервер уходила полночь начала дня «по» (по UTC): последний выбранный день в скидку не входил, а скидка
+ * «с 13.10 по 13.10» заканчивалась, не начавшись.
+ */
+const localDay = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const toDateInput = (iso?: string | null) => localDay(iso ? new Date(iso) : new Date());
+const daysFromToday = (days: number) => localDay(new Date(Date.now() + days * 24 * 60 * 60 * 1000));
+const startOfDayIso = (day: string) => new Date(`${day}T00:00:00`).toISOString();
+const endOfDayIso = (day: string) => new Date(`${day}T23:59:59.999`).toISOString();
 
 const GameDiscountsPage: React.FC = () => {
   const { baseCurrency } = useSitePreferences();
@@ -69,12 +79,10 @@ const GameDiscountsPage: React.FC = () => {
   const [editEndDate, setEditEndDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
   const [bulkPercent, setBulkPercent] = useState<number>(10);
-  const [bulkStartDate, setBulkStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [bulkStartDate, setBulkStartDate] = useState<string>(daysFromToday(0));
   // Конец периода — неделя вперёд. С «сегодня — сегодня» скидка применялась уже истёкшей:
   // конец периода — это полночь текущего дня, то есть момент, который уже прошёл.
-  const [bulkEndDate, setBulkEndDate] = useState<string>(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-  );
+  const [bulkEndDate, setBulkEndDate] = useState<string>(daysFromToday(7));
 
   // «Deal of the week»: герой + кулисы для баннера главной.
   const apiClient = useMemo(() => container.get<IApiClient>(IDENTIFIERS.IApiClient), []);
@@ -330,16 +338,21 @@ const SORT_FIELDS: Record<string, string> = {
     setEditing(item);
     setEditPercent(Number(item.discountPercent ?? 10));
     setEditStartDate(toDateInput(item.startDate));
-    setEditEndDate(toDateInput(item.endDate));
+    // Новая скидка — на неделю: с концом «сегодня» её легко сохранить уже почти истёкшей.
+    setEditEndDate(item.endDate ? toDateInput(item.endDate) : daysFromToday(7));
   };
 
   const saveEditor = async () => {
     if (!editing) return;
+    if (editEndDate < editStartDate) {
+      addToast("The end date is before the start date", "error");
+      return;
+    }
     try {
       await service.upsert(editing.gameId, {
         discountPercent: editPercent,
-        startDate: new Date(editStartDate).toISOString(),
-        endDate: new Date(editEndDate).toISOString()
+        startDate: startOfDayIso(editStartDate),
+        endDate: endOfDayIso(editEndDate)
       });
       addToast("Discount saved", "success");
       setEditing(null);
@@ -365,8 +378,8 @@ const SORT_FIELDS: Record<string, string> = {
       await service.bulkUpsert({
         gameIds: selectedIds,
         discountPercent: bulkPercent,
-        startDate: new Date(bulkStartDate).toISOString(),
-        endDate: new Date(bulkEndDate).toISOString()
+        startDate: startOfDayIso(bulkStartDate),
+        endDate: endOfDayIso(bulkEndDate)
       });
       addToast("Bulk discount applied", "success");
       await load();
@@ -672,6 +685,10 @@ const SORT_FIELDS: Record<string, string> = {
             <button
               className="btn btn-primary"
               onClick={() => {
+                if (bulkEndDate < bulkStartDate) {
+                  addToast("The end date is before the start date", "error");
+                  return;
+                }
                 if (window.confirm(`Apply ${bulkPercent}% discount to ${selectedIds.length} game(s)?`)) {
                   void runBulkUpsert();
                 }
@@ -771,7 +788,7 @@ const SORT_FIELDS: Record<string, string> = {
             allowSorting={true}
             cellRender={({ data }: { data: AdminGameDiscountRow }) => (
               <span>
-                {data.startDate ? data.startDate.slice(0, 10) : "—"} — {data.endDate ? data.endDate.slice(0, 10) : "—"}
+                {data.startDate ? toDateInput(data.startDate) : "—"} — {data.endDate ? toDateInput(data.endDate) : "—"}
               </span>
             )}
           />
@@ -808,15 +825,22 @@ const SORT_FIELDS: Record<string, string> = {
 
       {editing && (
         <div className="admin-modal" onClick={() => setEditing(null)}>
-          <div className="admin-modal__card" onClick={(event) => event.stopPropagation()}>
+          <div className="admin-modal__card discount-editor" onClick={(event) => event.stopPropagation()}>
             <h3>{editing.discountPercent ? "Edit discount" : "Set discount"} — {editing.title}</h3>
-            <div className="admin-grid admin-grid--3">
-              <select className="input" value="percentage" disabled>
-                <option value="percentage">Percentage</option>
-              </select>
-              <input className="input" type="number" min={1} max={95} value={editPercent} onChange={(event) => setEditPercent(Number(event.target.value))} />
-              <input className="input" type="date" value={editStartDate} onChange={(event) => setEditStartDate(event.target.value)} />
-              <input className="input" type="date" value={editEndDate} onChange={(event) => setEditEndDate(event.target.value)} />
+            {/* Скидка бывает только в процентах — без выпадающего «типа» с единственным выключенным вариантом. */}
+            <div className="discount-editor__fields">
+              <label className="discount-editor__field">
+                <span>Discount, %</span>
+                <input className="input" type="number" min={1} max={95} value={editPercent} onChange={(event) => setEditPercent(Number(event.target.value))} />
+              </label>
+              <label className="discount-editor__field">
+                <span>Starts</span>
+                <input className="input" type="date" value={editStartDate} onChange={(event) => setEditStartDate(event.target.value)} />
+              </label>
+              <label className="discount-editor__field">
+                <span>Ends (inclusive)</span>
+                <input className="input" type="date" min={editStartDate} value={editEndDate} onChange={(event) => setEditEndDate(event.target.value)} />
+              </label>
             </div>
             <div className="flex gap-2 mt-4">
               <button className="btn btn-primary" onClick={() => void saveEditor()}>Save</button>
